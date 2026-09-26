@@ -1,10 +1,34 @@
-import { Check, LogOut, Palette } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Check, ChevronRight, CreditCard, Crown, LogOut, Palette, PiggyBank, Repeat } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
+import { api } from '../lib/api'
+import { formatCOP } from '../lib/format'
+
+const PRECIO_PRO = 20000
 
 export default function Perfil() {
   const { theme, setTheme } = useTheme()
   const { usuario, logout } = useAuth()
+  const [plan, setPlan] = useState(null)
+  const [cargandoCheckout, setCargandoCheckout] = useState(false)
+
+  useEffect(() => {
+    api.plan().then((r) => setPlan(r.plan)).catch(() => setPlan('free'))
+  }, [])
+
+  async function upgrade() {
+    setCargandoCheckout(true)
+    try {
+      const base = window.location.origin + window.location.pathname
+      const { checkout_url } = await api.crearCheckout(`${base}#/perfil`, `${base}#/perfil`)
+      window.location.href = checkout_url
+    } catch (err) {
+      setCargandoCheckout(false)
+      alert(err.message || 'No se pudo iniciar el pago')
+    }
+  }
 
   return (
     <div className="flex-1 overflow-y-auto pb-6">
@@ -19,6 +43,56 @@ export default function Perfil() {
         <div>
           <p className="font-semibold">{usuario?.nombre}</p>
           <p className="text-sm text-ink-soft">{usuario?.email}</p>
+        </div>
+      </section>
+
+      <section className="mx-6 mt-6">
+        {plan === 'pro' ? (
+          <div className="rounded-2xl bg-accent-soft border border-accent/30 p-4 flex items-center gap-3">
+            <Crown size={20} className="text-accent shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-ink">CuadraMe Pro</p>
+              <p className="text-xs text-ink-soft">Tienes acceso completo de por vida</p>
+            </div>
+          </div>
+        ) : plan === 'free' ? (
+          <div className="rounded-2xl bg-paper-raised border border-line p-4">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Crown size={18} className="text-accent" />
+              <p className="text-sm font-semibold">Desbloquea CuadraMe Pro</p>
+            </div>
+            <p className="text-xs text-ink-soft mb-3">
+              Pago único de {formatCOP(PRECIO_PRO)}, acceso de por vida
+            </p>
+            <button
+              onClick={upgrade}
+              disabled={cargandoCheckout}
+              className="w-full bg-ink text-paper font-semibold rounded-xl py-3 text-sm disabled:opacity-60"
+            >
+              {cargandoCheckout ? 'Abriendo pago...' : 'Obtener Pro'}
+            </button>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="mx-6 mt-6">
+        <h2 className="text-[15px] font-semibold mb-3">Finanzas</h2>
+        <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
+          <Link to="/metas" className="flex items-center gap-3 px-4 py-3.5">
+            <PiggyBank size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Metas de ahorro</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/recurrentes" className="flex items-center gap-3 px-4 py-3.5">
+            <Repeat size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Gastos recurrentes</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/deudas" className="flex items-center gap-3 px-4 py-3.5">
+            <CreditCard size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Deudas</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
         </div>
       </section>
 

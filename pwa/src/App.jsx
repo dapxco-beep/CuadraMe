@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from './lib/ThemeContext'
 import { AuthProvider, useAuth } from './lib/AuthContext'
-import { api } from './lib/api'
+import { CuentasProvider, useCuentas } from './lib/CuentasContext'
 import BottomNav from './components/BottomNav'
 import Login from './screens/Login'
 import CrearCuenta from './screens/CrearCuenta'
@@ -11,24 +10,36 @@ import Movimientos from './screens/Movimientos'
 import DetalleMovimiento from './screens/DetalleMovimiento'
 import Agregar from './screens/Agregar'
 import Presupuesto from './screens/Presupuesto'
+import Metas from './screens/Metas'
+import Recurrentes from './screens/Recurrentes'
+import Deudas from './screens/Deudas'
 import Perfil from './screens/Perfil'
 
-function AppRoutes() {
-  const { usuario, cargando } = useAuth()
-  const [tieneCuentas, setTieneCuentas] = useState(null)
+function AppGate() {
+  const { cuentas, cargando, error, recargar } = useCuentas()
 
-  useEffect(() => {
-    if (!usuario) return
-    api
-      .cuentas()
-      .then((cs) => setTieneCuentas(cs.length > 0))
-      .catch(() => setTieneCuentas(true))
-  }, [usuario])
+  if (cargando) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-sm text-ink-soft">Cargando...</p>
+      </div>
+    )
+  }
 
-  if (cargando) return null
-  if (!usuario) return <Login />
-  if (tieneCuentas === null) return null
-  if (!tieneCuentas) return <CrearCuenta onCreada={() => setTieneCuentas(true)} />
+  if (error) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">
+        <p className="text-sm text-danger">{error}</p>
+        <button onClick={recargar} className="text-sm text-accent font-medium">
+          Reintentar
+        </button>
+      </div>
+    )
+  }
+
+  if (cuentas.length === 0) {
+    return <CrearCuenta onCreada={recargar} />
+  }
 
   return (
     <>
@@ -38,10 +49,26 @@ function AppRoutes() {
         <Route path="/movimientos/:id" element={<DetalleMovimiento />} />
         <Route path="/agregar" element={<Agregar />} />
         <Route path="/presupuesto" element={<Presupuesto />} />
+        <Route path="/metas" element={<Metas />} />
+        <Route path="/recurrentes" element={<Recurrentes />} />
+        <Route path="/deudas" element={<Deudas />} />
         <Route path="/perfil" element={<Perfil />} />
       </Routes>
       <BottomNav />
     </>
+  )
+}
+
+function AppRoutes() {
+  const { usuario, cargando } = useAuth()
+
+  if (cargando) return null
+  if (!usuario) return <Login />
+
+  return (
+    <CuentasProvider>
+      <AppGate />
+    </CuentasProvider>
   )
 }
 

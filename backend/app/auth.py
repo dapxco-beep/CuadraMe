@@ -35,6 +35,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> UsuarioActual:
             signing_key.key,
             algorithms=["ES256", "RS256"],
             audience="authenticated",
+            leeway=30,  # tolera pequeño desfase de reloj entre máquinas
         )
     except jwt.PyJWTError:
         raise credentials_exception

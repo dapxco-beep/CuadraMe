@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { api } from '../lib/api'
+import { useCuentas } from '../lib/CuentasContext'
 
 const categoriasRapidas = ['Comida', 'Transporte', 'Ocio', 'Hogar', 'Salud', 'Otros']
 
 export default function Agregar() {
   const navigate = useNavigate()
-  const [cuentas, setCuentas] = useState([])
+  const { cuentas, recargar: recargarCuentas } = useCuentas()
   const [cuentaId, setCuentaId] = useState('')
   const [monto, setMonto] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -17,14 +18,8 @@ export default function Agregar() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    api
-      .cuentas()
-      .then((cs) => {
-        setCuentas(cs)
-        if (cs.length > 0) setCuentaId(cs[0].id)
-      })
-      .catch(() => {})
-  }, [])
+    if (cuentas.length > 0 && !cuentaId) setCuentaId(cuentas[0].id)
+  }, [cuentas, cuentaId])
 
   async function onDescripcionBlur() {
     if (!descripcion.trim() || categoria) return
@@ -49,6 +44,7 @@ export default function Agregar() {
         tipo,
         categoria: categoria || undefined,
       })
+      await recargarCuentas()
       navigate('/')
     } catch (err) {
       setError(err.message || 'No se pudo guardar')

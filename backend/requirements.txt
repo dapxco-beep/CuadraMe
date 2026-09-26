@@ -4,8 +4,7 @@ sqlalchemy
 psycopg2-binary
 pydantic
 pydantic-settings
-email-validator
-python-jose[cryptography]
-bcrypt
+PyJWT[crypto]
 python-multipart
 httpx
+stripe
