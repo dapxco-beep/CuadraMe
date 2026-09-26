@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-ink: var(--c-ink);
+  --color-ink-soft: var(--c-ink-soft);
+  --color-paper: var(--c-paper);
+  --color-paper-raised: var(--c-paper-raised);
+  --color-line: var(--c-line);
+  --color-accent: var(--c-accent);
+  --color-accent-2: var(--c-accent-2);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-danger: var(--c-danger);
+  --color-danger-soft: var(--c-danger-soft);
+
+  --font-display: var(--f-display);
+  --font-sans: var(--f-sans);
+}
+
+/* Tema Wallet cálido (default) — tarjeta física, cálido y táctil */
+:root,
+:root[data-theme='wallet'] {
+  --c-ink: #14140f;
+  --c-ink-soft: #6b6759;
+  --c-paper: #f6f4ef;
+  --c-paper-raised: #ffffff;
+  --c-line: #e8e5db;
+  --c-accent: #0d5c43;
+  --c-accent-2: #d9a441;
+  --c-accent-soft: #e2efe8;
+  --c-danger: #a8392f;
+  --c-danger-soft: #f6e8e6;
+
+  --f-display: 'Fraunces', 'SF Pro Display', Georgia, serif;
+  --f-sans: 'Inter', -apple-system, system-ui, sans-serif;
+}
+
+/* Tema Editorial elegante — serif, sombras suaves, premium */
+:root[data-theme='editorial'] {
+  --c-ink: #14140f;
+  --c-ink-soft: #6b6759;
+  --c-paper: #f6f4ef;
+  --c-paper-raised: #ffffff;
+  --c-line: #e8e5db;
+  --c-accent: #0d5c43;
+  --c-accent-2: #d9a441;
+  --c-accent-soft: #e2efe8;
+  --c-danger: #a8392f;
+  --c-danger-soft: #f6e8e6;
+
+  --f-display: 'Fraunces', 'SF Pro Display', Georgia, serif;
+  --f-sans: 'Inter', -apple-system, system-ui, sans-serif;
+}
+
+/* Tema Oscuro vibrante — dark mode con acentos con glow */
+:root[data-theme='dark'] {
+  --c-ink: #f2f0e9;
+  --c-ink-soft: #8a8f89;
+  --c-paper: #0b0d0c;
+  --c-paper-raised: #151916;
+  --c-line: #212722;
+  --c-accent: #3ddc9a;
+  --c-accent-2: #e8bc63;
+  --c-accent-soft: #16261f;
+  --c-danger: #e08078;
+  --c-danger-soft: #2a1917;
+
+  --f-display: 'Fraunces', 'SF Pro Display', Georgia, serif;
+  --f-sans: 'Inter', -apple-system, system-ui, sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  overscroll-behavior-y: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+#root {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
