@@ -2,7 +2,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, engine
-from app.routers import cuentas, deudas, metas, movimientos, pagos, presupuestos, recurrentes, reportes
+from app.routers import (
+    conciliacion,
+    cuentas,
+    deudas,
+    metas,
+    movimientos,
+    pagos,
+    presupuestos,
+    recurrentes,
+    reportes,
+)
 
 Base.metadata.create_all(bind=engine)
 
@@ -29,6 +39,7 @@ app.include_router(reportes.router)
 app.include_router(metas.router)
 app.include_router(recurrentes.router)
 app.include_router(deudas.router)
+app.include_router(conciliacion.router)
 
 
 @app.get("/health")

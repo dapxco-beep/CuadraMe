@@ -13,6 +13,7 @@ import Presupuesto from './screens/Presupuesto'
 import Metas from './screens/Metas'
 import Recurrentes from './screens/Recurrentes'
 import Deudas from './screens/Deudas'
+import Conciliacion from './screens/Conciliacion'
 import Perfil from './screens/Perfil'
 
 function AppGate() {
@@ -52,6 +53,7 @@ function AppGate() {
         <Route path="/metas" element={<Metas />} />
         <Route path="/recurrentes" element={<Recurrentes />} />
         <Route path="/deudas" element={<Deudas />} />
+        <Route path="/conciliacion" element={<Conciliacion />} />
         <Route path="/perfil" element={<Perfil />} />
       </Routes>
       <BottomNav />

@@ -8,3 +8,4 @@ PyJWT[crypto]
 python-multipart
 httpx
 stripe
+pdfplumber

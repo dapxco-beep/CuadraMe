@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, ChevronRight, CreditCard, Crown, LogOut, Palette, PiggyBank, Repeat } from 'lucide-react'
+import { Check, ChevronRight, CreditCard, Crown, FileUp, LogOut, Palette, PiggyBank, Repeat } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -91,6 +91,11 @@ export default function Perfil() {
           <Link to="/deudas" className="flex items-center gap-3 px-4 py-3.5">
             <CreditCard size={18} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Deudas</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/conciliacion" className="flex items-center gap-3 px-4 py-3.5">
+            <FileUp size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Conciliar extracto</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
         </div>

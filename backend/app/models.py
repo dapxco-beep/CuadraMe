@@ -111,3 +111,20 @@ class Deuda(Base):
     notas = Column(String, default="")
     activa = Column(Boolean, default=True)
     creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class HistorialExtracto(Base):
+    __tablename__ = "historial_extractos"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    cuenta_id = Column(String, nullable=False)
+    banco_detectado = Column(String, default="desconocido")
+    total_movimientos = Column(Integer, default=0)
+    exactos = Column(Integer, default=0)
+    aproximados = Column(Integer, default=0)
+    faltantes = Column(Integer, default=0)
+    importados = Column(Integer, default=0)
+    estado = Column(String, default="pendiente_revision")  # pendiente_revision | conciliado | error
+    review_json = Column(String, default="[]")  # snapshot del review para reabrir sin re-subir el PDF
+    creado_en = Column(DateTime, default=datetime.utcnow)

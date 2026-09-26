@@ -61,4 +61,18 @@ export const api = {
   pagarDeuda: (id, montoPagado, crearMovimiento = true) =>
     request(`/deudas/${id}/pagar`, { method: 'POST', body: { monto_pagado: montoPagado, crear_movimiento: crearMovimiento } }),
   eliminarDeuda: (id) => request(`/deudas/${id}`, { method: 'DELETE' }),
+
+  procesarExtracto: (pdfBase64, cuentaId, password = '') =>
+    request('/conciliacion/procesar', {
+      method: 'POST',
+      body: { pdf_base64: pdfBase64, cuenta_id: cuentaId, password },
+    }),
+  historialExtractos: () => request('/conciliacion/historial'),
+  obtenerReviewExtracto: (id) => request(`/conciliacion/historial/${id}`),
+  importarFaltantes: (id, fingerprints) =>
+    request(`/conciliacion/historial/${id}/importar`, {
+      method: 'POST',
+      body: { fingerprints },
+    }),
+  eliminarHistorialExtracto: (id) => request(`/conciliacion/historial/${id}`, { method: 'DELETE' }),
 }

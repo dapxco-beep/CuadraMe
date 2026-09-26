@@ -205,3 +205,54 @@ class PagarDeudaRequest(BaseModel):
 
 class MarcarPagadoRequest(BaseModel):
     crear_movimiento: bool = True
+
+
+# ── Conciliación de extractos ──────────────────────────────────────
+
+class ProcesarExtractoRequest(BaseModel):
+    pdf_base64: str
+    cuenta_id: str
+    password: Optional[str] = ""
+
+
+class MovimientoReview(BaseModel):
+    fecha: str
+    descripcion: str
+    monto: float
+    tipo: str
+    referencia: Optional[str] = ""
+    fingerprint: str
+    estado: str  # exacto | aproximado | faltante
+    match_id: Optional[str] = None
+
+
+class ProcesarExtractoResponse(BaseModel):
+    ok: bool
+    historial_id: Optional[str] = None
+    banco_detectado: Optional[str] = None
+    total_movimientos: int = 0
+    exactos: int = 0
+    aproximados: int = 0
+    faltantes: int = 0
+    review: list[MovimientoReview] = []
+    error: Optional[str] = None
+
+
+class ImportarFaltantesRequest(BaseModel):
+    fingerprints: list[str]
+
+
+class HistorialExtractoOut(BaseModel):
+    id: str
+    cuenta_id: str
+    banco_detectado: str
+    total_movimientos: int
+    exactos: int
+    aproximados: int
+    faltantes: int
+    importados: int
+    estado: str
+    creado_en: datetime
+
+    class Config:
+        from_attributes = True
