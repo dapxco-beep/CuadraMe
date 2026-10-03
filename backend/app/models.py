@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from datetime import datetime
 
@@ -10,12 +11,22 @@ def gen_uuid():
     return str(uuid.uuid4())
 
 
+def gen_api_key():
+    return "cdm_" + secrets.token_urlsafe(24)
+
+
 class Perfil(Base):
     __tablename__ = "perfiles"
 
     usuario_id = Column(String, primary_key=True)  # UUID de Supabase Auth
     plan = Column(String, default="free")  # free | pro
     stripe_customer_id = Column(String, nullable=True)
+    api_key = Column(String, unique=True, index=True, default=gen_api_key)
+    gmail_conectado = Column(Boolean, default=False)
+    gmail_refresh_token_enc = Column(String, nullable=True)  # cifrado con Fernet
+    gmail_email = Column(String, nullable=True)
+    gmail_etiqueta = Column(String, default="gastos")
+    confianza_autoimport = Column(Float, default=0.75)  # 0.5-0.95: qué tan segura debe estar la categorización antes de auto-importar un movimiento sin preguntar
     actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
@@ -29,6 +40,76 @@ class Cuenta(Base):
     saldo = Column(Float, default=0)
     moneda = Column(String, default="COP")
     icono = Column(String, default="🏦")
+
+
+class CuentaCompartida(Base):
+    __tablename__ = "cuentas_compartidas"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    cuenta_id = Column(String, nullable=False, index=True)
+    usuario_id = Column(String, nullable=False, index=True)  # a quién se le compartió
+    rol = Column(String, default="viewer")  # viewer | editor
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class InvitacionCuenta(Base):
+    __tablename__ = "invitaciones_cuenta"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    cuenta_id = Column(String, nullable=False, index=True)
+    invitado_por = Column(String, nullable=False)  # usuario_id de quien invita
+    email_invitado = Column(String, nullable=False, index=True)
+    rol = Column(String, default="viewer")
+    estado = Column(String, default="pendiente")  # pendiente | aceptada | rechazada
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class RachaUsuario(Base):
+    """Racha de días consecutivos registrando al menos un movimiento.
+    Base para otorgar vidas del ahorcado por constancia."""
+    __tablename__ = "rachas_usuario"
+
+    usuario_id = Column(String, primary_key=True)
+    dias_consecutivos = Column(Integer, default=0)
+    ultimo_dia_activo = Column(DateTime, nullable=True)
+    mejor_racha = Column(Integer, default=0)
+
+
+class VidaAhorcado(Base):
+    """Créditos de juego ganados por logros financieros reales (presupuesto
+    cumplido, meta alcanzada, racha de constancia). Se consumen al jugar."""
+    __tablename__ = "vidas_ahorcado"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    origen = Column(String, nullable=False)  # racha_7 | racha_30 | presupuesto_cumplido | meta_cumplida
+    usada = Column(Boolean, default=False)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class PartidaAhorcado(Base):
+    __tablename__ = "partidas_ahorcado"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    palabra = Column(String, nullable=False)
+    pista = Column(String, default="")
+    letras_intentadas = Column(String, default="")  # letras separadas por coma
+    intentos_restantes = Column(Integer, default=6)
+    estado = Column(String, default="jugando")  # jugando | ganada | perdida
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class ReglaCategoria(Base):
+    __tablename__ = "reglas_categoria"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    patron = Column(String, nullable=False)  # texto a buscar en la descripción (contiene, case-insensitive)
+    categoria = Column(String, nullable=False)
+    tipo = Column(String, nullable=True)  # income | expense | transfer | null (no forzar tipo)
+    prioridad = Column(Integer, default=0)  # reglas con mayor prioridad se evalúan primero
+    creado_en = Column(DateTime, default=datetime.utcnow)
 
 
 class Movimiento(Base):
@@ -55,6 +136,12 @@ class Presupuesto(Base):
     periodo = Column(String, default="monthly")
     limite = Column(Float, nullable=False)
     alerta_pct = Column(Integer, default=80)
+    # Envelope budgeting: plata movida manualmente hacia (positivo) o desde
+    # (negativo) esta categoría, además de su límite mensual — así lo que
+    # sobra en una categoría se puede "pasar" a otra que se quedó corta,
+    # en vez de que el sobrante simplemente desaparezca cada mes.
+    sobre_ajuste = Column(Float, default=0)
+    ultima_alerta_mes = Column(String, nullable=True)  # "YYYY-MM" del último aviso push de umbral, para no repetirlo a diario
     activo = Column(Boolean, default=True)
 
 
@@ -67,8 +154,13 @@ class Meta(Base):
     descripcion = Column(String, default="")
     monto_objetivo = Column(Float, nullable=False)
     monto_actual = Column(Float, default=0)
+    icono = Column(String, default="🎯")
     fecha_inicio = Column(DateTime, default=datetime.utcnow)
     fecha_objetivo = Column(DateTime, nullable=True)
+    aporte_automatico = Column(Float, nullable=True)  # si tiene valor, se aporta este monto cada mes
+    dia_aporte = Column(Integer, default=1)
+    cuenta_origen_id = Column(String, nullable=True)  # de dónde sale la plata del aporte automático
+    ultimo_aporte_automatico = Column(DateTime, nullable=True)
     activa = Column(Boolean, default=True)
     creado_en = Column(DateTime, default=datetime.utcnow)
 
@@ -86,6 +178,7 @@ class Recurrente(Base):
     dia_del_mes = Column(Integer, default=1)
     alerta_dias_antes = Column(Integer, default=2)
     ultima_vez = Column(DateTime, nullable=True)
+    ultima_notificacion_vencimiento = Column(DateTime, nullable=True)
     notas = Column(String, default="")
     activo = Column(Boolean, default=True)
     creado_en = Column(DateTime, default=datetime.utcnow)
@@ -113,6 +206,38 @@ class Deuda(Base):
     creado_en = Column(DateTime, default=datetime.utcnow)
 
 
+class CorreoGasto(Base):
+    __tablename__ = "correos_gastos"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    gmail_msg_id = Column(String, nullable=False, index=True)
+    remitente = Column(String, default="")
+    asunto = Column(String, default="")
+    snippet = Column(String, default="")
+    recibido_en = Column(DateTime, nullable=True)
+    monto = Column(Float, default=0)
+    moneda = Column(String, default="COP")
+    comercio = Column(String, default="")
+    categoria_sugerida = Column(String, default="Otros")
+    tipo_sugerido = Column(String, default="expense")  # income | expense | transfer
+    confianza = Column(Float, default=0)
+    estado = Column(String, default="pendiente")  # pendiente | aprobado | descartado
+    movimiento_id = Column(String, nullable=True)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    endpoint = Column(String, nullable=False, unique=True)
+    p256dh = Column(String, nullable=False)
+    auth = Column(String, nullable=False)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+
 class HistorialExtracto(Base):
     __tablename__ = "historial_extractos"
 
@@ -124,7 +249,25 @@ class HistorialExtracto(Base):
     exactos = Column(Integer, default=0)
     aproximados = Column(Integer, default=0)
     faltantes = Column(Integer, default=0)
+    descartados = Column(Integer, default=0)
     importados = Column(Integer, default=0)
     estado = Column(String, default="pendiente_revision")  # pendiente_revision | conciliado | error
     review_json = Column(String, default="[]")  # snapshot del review para reabrir sin re-subir el PDF
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class Categoria(Base):
+    """Categorías de movimientos por usuario. Las 8 base (Comida, Transporte,
+    etc.) se crean automáticamente la primera vez que el usuario pide su
+    lista y no tiene ninguna — así puede renombrarlas, ocultarlas o agregar
+    las suyas propias (ej. "Mascotas") sin que queden fijas en el código."""
+    __tablename__ = "categorias"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    nombre = Column(String, nullable=False)
+    icono = Column(String, default="🏷️")
+    orden = Column(Integer, default=0)
+    activa = Column(Boolean, default=True)  # oculta en vez de borrar, para no perder el historial de movimientos ya categorizados con ella
+    es_base = Column(Boolean, default=False)  # una de las 8 originales — no se puede eliminar, solo ocultar o renombrar
     creado_en = Column(DateTime, default=datetime.utcnow)

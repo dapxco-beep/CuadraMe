@@ -3,12 +3,22 @@ Cálculos de metas de ahorro, recurrentes y deudas.
 Migrado de Features.js: progreso/ETA de metas, estado de recurrentes
 (pagado/próximo/vencido), amortización simple de deudas.
 """
+import calendar
 import math
-from datetime import datetime
+
+from app.utiles import ahora_co
+
+
+def _dia_valido_del_mes(anio: int, mes: int, dia: int) -> int:
+    """Clampa un 'día del mes' (1-31) al último día real de ese mes/año,
+    en vez de truncar siempre a 28 (lo que adelantaría fechas en meses
+    de 29, 30 o 31 días)."""
+    ultimo_dia = calendar.monthrange(anio, mes)[1]
+    return min(dia, ultimo_dia)
 
 
 def calc_progreso_meta(meta) -> dict:
-    hoy = datetime.utcnow()
+    hoy = ahora_co()
     objetivo = meta.monto_objetivo or 0
     actual = meta.monto_actual or 0
     progreso = min(100, (actual / objetivo) * 100) if objetivo > 0 else 0
@@ -37,10 +47,10 @@ def calc_progreso_meta(meta) -> dict:
 
 
 def calc_estado_recurrente(rec) -> dict:
-    hoy = datetime.utcnow()
+    hoy = ahora_co()
     dia_mes = rec.dia_del_mes or 1
     alerta_dias = rec.alerta_dias_antes or 2
-    fecha_esperada = hoy.replace(day=min(dia_mes, 28))
+    fecha_esperada = hoy.replace(day=_dia_valido_del_mes(hoy.year, hoy.month, dia_mes))
 
     ya_este_mes = (
         rec.ultima_vez is not None
@@ -67,7 +77,7 @@ def calc_estado_recurrente(rec) -> dict:
 
 
 def calc_deuda(deuda) -> dict:
-    hoy = datetime.utcnow()
+    hoy = ahora_co()
     saldo = deuda.saldo_actual or 0
     cuota = deuda.cuota_mensual or 0
     tasa_mensual = deuda.tasa_mensual or 0
@@ -88,22 +98,26 @@ def calc_deuda(deuda) -> dict:
             cuotas_faltantes = None
 
     dia_pago = deuda.dia_pago or 1
-    fecha_pago = hoy.replace(day=min(dia_pago, 28))
+    fecha_pago = hoy.replace(day=_dia_valido_del_mes(hoy.year, hoy.month, dia_pago))
     if fecha_pago < hoy:
         mes_siguiente = fecha_pago.month + 1
         anio = fecha_pago.year + (1 if mes_siguiente > 12 else 0)
         mes_siguiente = mes_siguiente if mes_siguiente <= 12 else 1
-        fecha_pago = fecha_pago.replace(year=anio, month=mes_siguiente)
+        fecha_pago = fecha_pago.replace(
+            year=anio, month=mes_siguiente, day=_dia_valido_del_mes(anio, mes_siguiente, dia_pago)
+        )
     dias_para_pago = math.ceil((fecha_pago - hoy).total_seconds() / 86400)
 
     dias_para_corte = None
     if deuda.dia_corte:
-        fecha_corte = hoy.replace(day=min(deuda.dia_corte, 28))
+        fecha_corte = hoy.replace(day=_dia_valido_del_mes(hoy.year, hoy.month, deuda.dia_corte))
         if fecha_corte < hoy:
             mes_siguiente = fecha_corte.month + 1
             anio = fecha_corte.year + (1 if mes_siguiente > 12 else 0)
             mes_siguiente = mes_siguiente if mes_siguiente <= 12 else 1
-            fecha_corte = fecha_corte.replace(year=anio, month=mes_siguiente)
+            fecha_corte = fecha_corte.replace(
+                year=anio, month=mes_siguiente, day=_dia_valido_del_mes(anio, mes_siguiente, deuda.dia_corte)
+            )
         dias_para_corte = math.ceil((fecha_corte - hoy).total_seconds() / 86400)
 
     if dias_para_pago <= 3:

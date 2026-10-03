@@ -108,3 +108,19 @@ def classify(descripcion: str, model: dict) -> dict | None:
         "confianza": round(confianza, 2),
         "fuente": "learned",
     }
+
+
+def aplicar_reglas(descripcion: str, reglas: list) -> dict | None:
+    """reglas: objetos ReglaCategoria, ya ordenados por prioridad desc.
+    Coincidencia simple: el patrón (case-insensitive) está contenido en la
+    descripción. La primera regla que matchea gana."""
+    desc_lower = descripcion.lower()
+    for regla in reglas:
+        if regla.patron.lower() in desc_lower:
+            return {
+                "categoria": regla.categoria,
+                "tipo": regla.tipo,
+                "confianza": 1.0,
+                "fuente": "regla",
+            }
+    return None

@@ -4,6 +4,7 @@ fingerprinting y matching contra el libro mayor (ledger).
 Migrado de PdfReconciliation.js y zzProduction.js.
 """
 import hashlib
+from contextvars import ContextVar
 import re
 import unicodedata
 from datetime import datetime, timedelta
@@ -13,28 +14,87 @@ MESES = {
     "jul": 7, "ago": 8, "sep": 9, "oct": 10, "nov": 11, "dic": 12,
 }
 
-NOMBRE_PROPIO = re.compile(r"\bDaniel\b", re.IGNORECASE)
+# Nombre del titular de la cuenta (el usuario que sube el extracto). Sirve para
+# reconocer "transferencias propias" (ej. "Enviaste a <mi nombre>"). Es un
+# ContextVar para no tener que pasar el nombre por cada parser: cada request
+# fija el suyo y no se mezcla con el de otros usuarios que lleguen a la vez.
+_nombre_titular: ContextVar[str] = ContextVar("nombre_titular", default="")
+
+
+def fijar_nombre_titular(nombre: str) -> None:
+    """Se llama una vez por request, antes de parsear el extracto."""
+    _nombre_titular.set((nombre or "").strip())
+
+
+def _patron_nombre_propio() -> re.Pattern | None:
+    # Solo el primer nombre y el primer apellido: los bancos suelen abreviar o
+    # truncar el resto. Con menos de 3 letras se descarta (evita falsos positivos).
+    partes = [p for p in re.split(r"\s+", _nombre_titular.get()) if len(p) >= 3][:2]
+    if not partes:
+        return None
+    return re.compile(r"\b(?:" + "|".join(re.escape(p) for p in partes) + r")\b", re.IGNORECASE)
+
+
+
+# Entidades financieras colombianas reconocidas, mapeadas a la "familia" de
+# parser cuyo formato de extracto más se les parece. No es necesario un
+# parser distinto por cada banco: casi todos exportan un extracto tabular
+# (fecha | descripción | valor[es]) que cae en alguna de estas 3 familias.
+_BANCOS_FAMILIA_NEQUI = ("nequi", "daviplata", "movii", "rappipay", "rappicard", "uala", "tpaga", "dale")
+_BANCOS_FAMILIA_NU = ("nu bank", "nubank", "nu colombia", "cuenta nu", "lulo bank", "lulobank")
+_BANCOS_FAMILIA_TABULAR = (
+    ("bancolombia", "bancolombia"),
+    ("davivienda", "davivienda"),
+    ("bbva", "bbva"),
+    ("scotiabank", "scotiabank"),
+    ("colpatria", "scotiabank"),
+    ("av villas", "avvillas"),
+    ("banco de bogota", "bogota"),
+    ("banco popular", "popular"),
+    ("banco de occidente", "occidente"),
+    ("caja social", "cajasocial"),
+    ("banco falabella", "falabella"),
+    ("banco pichincha", "pichincha"),
+    ("banco agrario", "agrario"),
+    ("itau", "itau"),
+    ("itaú", "itau"),
+    ("bancamia", "bancamia"),
+    ("banco w", "bancow"),
+    ("coltefinanciera", "coltefinanciera"),
+    ("confiar", "confiar"),
+    ("bancoomeva", "bancoomeva"),
+    ("banco serfinanza", "serfinanza"),
+    ("tuya", "tuya"),
+    ("cotrafa", "cotrafa"),
+    ("finandina", "finandina"),
+    ("mibanco", "mibanco"),
+    ("juriscoop", "juriscoop"),
+    ("coofinep", "coofinep"),
+    ("banco unión", "banco union"),
+)
 
 
 def detectar_banco(texto: str) -> str:
     t = texto.lower()
-    if re.search(r"nequi.*bancolombia|bancolombia.*nequi|nequi", t):
+    if re.search(r"nequi.*bancolombia|bancolombia.*nequi", t):
         return "nequi"
-    if re.search(r"nu bank|nubank|nu colombia|cuenta nu", t):
-        return "nu"
-    if re.search(r"bancolombia", t):
-        return "bancolombia"
-    if re.search(r"davivienda", t):
-        return "davivienda"
-    if re.search(r"bbva", t):
-        return "bbva"
-    if re.search(r"scotiabank|colpatria", t):
-        return "scotiabank"
-    if re.search(r"av villas", t):
-        return "avvillas"
-    if re.search(r"banco de bogota|bogota", t):
-        return "bogota"
+    for clave in _BANCOS_FAMILIA_NEQUI:
+        if clave in t:
+            return "nequi"
+    for clave in _BANCOS_FAMILIA_NU:
+        if clave in t:
+            return "nu"
+    for clave, nombre in _BANCOS_FAMILIA_TABULAR:
+        if clave in t:
+            return nombre
     return "generico"
+
+
+# Bancos cuyo extracto sigue el patrón tabular de Davivienda/BBVA/etc.
+# (fecha + descripción + un único valor con signo). Se agregan aquí todas
+# las entidades de _BANCOS_FAMILIA_TABULAR salvo bancolombia, que tiene su
+# propio parser de columnas débito/crédito separadas.
+_BANCOS_PARSER_TABULAR_SIMPLE = {nombre for _, nombre in _BANCOS_FAMILIA_TABULAR if nombre != "bancolombia"}
 
 
 def parse_monto_cop(valor: str) -> float:
@@ -49,10 +109,12 @@ def parse_monto_cop(valor: str) -> float:
 
 
 def es_transferencia_propia(desc: str) -> bool:
-    if re.search(r"BRE-?B", desc, re.IGNORECASE) and NOMBRE_PROPIO.search(desc):
-        return True
-    if re.search(r"enviaste\s+a\s+Daniel", desc, re.IGNORECASE):
-        return True
+    nombre = _patron_nombre_propio()
+    if nombre:
+        if re.search(r"BRE-?B", desc, re.IGNORECASE) and nombre.search(desc):
+            return True
+        if re.search(r"enviaste\s+a\s+", desc, re.IGNORECASE) and nombre.search(desc):
+            return True
     if re.search(r"\b(nequi|nu|daviplata)\b", desc, re.IGNORECASE) and re.search(
         r"\b(enviaste\s+a|recibiste\s+de|traslado|desde|hacia)\b", desc, re.IGNORECASE
     ):
@@ -68,23 +130,28 @@ def _tipo_por_signo(monto: float, desc: str) -> str:
     return "income" if monto > 0 else "expense"
 
 
-def parse_texto_con_regex(texto: str) -> list[dict]:
-    """Intenta parsers específicos por banco; retorna [] si ninguno matchea."""
+def parse_texto_con_regex(texto: str) -> tuple[list[dict], int]:
+    """Intenta parsers específicos por banco; retorna ([], 0) si ninguno matchea.
+    El segundo valor es cuántas líneas parecían un movimiento pero se descartaron
+    por ser ambiguas (ej. montos muy pequeños sin signo claro) — se usa para
+    avisarle al usuario que el conteo final puede no ser el total real, en vez
+    de fallar en silencio."""
     anio_match = re.search(r"\b(20\d{2})\b", texto)
     anio = anio_match.group(1) if anio_match else str(datetime.utcnow().year)
     banco = detectar_banco(texto)
     movimientos: list[dict] = []
+    descartados = 0
 
     if banco in ("nequi", "generico"):
         movimientos = _parse_nequi(texto)
 
     if not movimientos and banco in ("nu", "nequi", "generico"):
-        movimientos = _parse_nu(texto, anio)
+        movimientos, descartados = _parse_nu(texto, anio)
 
     if not movimientos and banco == "bancolombia":
         movimientos = _parse_bancolombia(texto)
 
-    if not movimientos and banco in ("davivienda", "bbva", "avvillas", "bogota", "scotiabank"):
+    if not movimientos and banco in _BANCOS_PARSER_TABULAR_SIMPLE:
         movimientos = _parse_davivienda_generico(texto)
 
     if not movimientos and banco == "generico":
@@ -93,7 +160,7 @@ def parse_texto_con_regex(texto: str) -> list[dict]:
     if not movimientos:
         movimientos = _parse_generico(texto)
 
-    return movimientos
+    return movimientos, descartados
 
 
 def _parse_nequi(texto: str) -> list[dict]:
@@ -155,8 +222,9 @@ def _parse_nequi(texto: str) -> list[dict]:
     return movimientos
 
 
-def _parse_nu(texto: str, anio: str) -> list[dict]:
+def _parse_nu(texto: str, anio: str) -> tuple[list[dict], int]:
     movimientos = []
+    descartados = 0
     patron = re.compile(
         r"(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\.?\s+(.+?)\s+([+\-]?)\s*\$?\s*([\d][\d.,]*\d|\d)\b",
         re.IGNORECASE,
@@ -173,6 +241,11 @@ def _parse_nu(texto: str, anio: str) -> list[dict]:
         if re.search(r"saldo|total|per[ií]odo|extracto|n[uú]mero de cuenta|^cuenta\b", desc, re.IGNORECASE):
             continue
         if not m.group(4) and abs(monto) < 100:
+            # Sin signo explícito y monto muy pequeño: probablemente ruido del
+            # PDF (ej. un número de página capturado por el regex), no un
+            # movimiento real. Se cuenta para poder avisarle al usuario, en
+            # vez de perderlo sin que se note.
+            descartados += 1
             continue
         signo = -1 if m.group(4) == "-" else 1
         tipo = "transfer" if es_transferencia_propia(desc) else ("income" if signo > 0 else "expense")
@@ -181,7 +254,7 @@ def _parse_nu(texto: str, anio: str) -> list[dict]:
             "descripcion": desc, "monto": abs(monto), "tipo": tipo,
             "referencia": "", "saldo": None,
         })
-    return movimientos
+    return movimientos, descartados
 
 
 def _parse_bancolombia(texto: str) -> list[dict]:

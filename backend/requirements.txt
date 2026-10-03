@@ -9,3 +9,11 @@ python-multipart
 httpx
 stripe
 pdfplumber
+google-auth
+google-auth-oauthlib
+google-api-python-client
+cryptography
+pywebpush
+openpyxl
+tzdata
+sentry-sdk[fastapi]

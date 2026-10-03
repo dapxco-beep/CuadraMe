@@ -1,13 +1,15 @@
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
+from app.conciliacion import normalize_texto
 from app.database import get_db
+from app.deteccion import detectar_recurrentes
 from app.finanzas import calc_estado_recurrente
 from app.models import Cuenta, Movimiento, Recurrente
-from app.schemas import MarcarPagadoRequest, RecurrenteCreate, RecurrenteOut
+from app.schemas import MarcarPagadoRequest, RecurrenteCreate, RecurrenteOut, RecurrenteSugerido
 
 router = APIRouter(prefix="/recurrentes", tags=["recurrentes"])
 
@@ -55,6 +57,39 @@ def crear_recurrente(
     return _serializar(rec)
 
 
+@router.get("/sugerencias", response_model=list[RecurrenteSugerido])
+def sugerir_recurrentes(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    """Analiza el historial de movimientos y sugiere posibles suscripciones/pagos
+    fijos que aún no están registrados como recurrentes. No los crea, solo sugiere."""
+    movimientos = (
+        db.query(Movimiento)
+        .filter(Movimiento.usuario_id == usuario.id)
+        .order_by(Movimiento.fecha.asc())
+        .all()
+    )
+    data = [
+        {
+            "id": m.id,
+            "descripcion": m.descripcion,
+            "categoria": m.categoria,
+            "tipo": m.tipo,
+            "monto": m.monto,
+            "fecha": m.fecha,
+            "cuenta_id": m.cuenta_id,
+        }
+        for m in movimientos
+    ]
+    sugerencias = detectar_recurrentes(data)
+
+    existentes = {
+        normalize_texto(r.nombre)
+        for r in db.query(Recurrente).filter(Recurrente.usuario_id == usuario.id).all()
+    }
+    return [s for s in sugerencias if normalize_texto(s["descripcion"]) not in existentes]
+
+
 @router.post("/{rec_id}/marcar_pagado", response_model=RecurrenteOut)
 def marcar_pagado(
     rec_id: str,
@@ -70,7 +105,7 @@ def marcar_pagado(
     if not rec:
         raise HTTPException(status_code=404, detail="Recurrente no encontrado")
 
-    rec.ultima_vez = datetime.utcnow()
+    rec.ultima_vez = ahora_co()
 
     if data.crear_movimiento and rec.cuenta_id:
         cuenta = (

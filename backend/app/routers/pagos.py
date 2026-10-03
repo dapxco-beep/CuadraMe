@@ -37,6 +37,10 @@ def crear_checkout(
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
+    for url in (success_url, cancel_url):
+        if not (url.startswith(settings.pwa_url) or url.startswith("http://localhost")):
+            raise HTTPException(status_code=400, detail="URL de retorno no permitida")
+
     perfil = _get_or_create_perfil(db, usuario.id)
     if perfil.plan == "pro":
         raise HTTPException(status_code=400, detail="Ya tienes CuadraMe Pro")

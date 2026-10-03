@@ -1,12 +1,20 @@
 """
 Verifica tokens emitidos por Supabase Auth usando sus claves públicas (JWKS).
 No emitimos JWT propios: Supabase maneja registro, login y OAuth (Google).
+
+Para clientes que no pueden hacer login interactivo (Atajos de iOS, Scriptable,
+Tasker, reglas de correo) hay una segunda vía: una API key propia por usuario
+(ver get_current_user_by_api_key), pensada solo para registrar movimientos.
 """
+import hmac
+
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.database import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="noop", auto_error=False)
 
@@ -14,9 +22,19 @@ _jwks_client = jwt.PyJWKClient(f"{settings.supabase_url}/auth/v1/.well-known/jwk
 
 
 class UsuarioActual:
-    def __init__(self, id: str, email: str):
+    def __init__(self, id: str, email: str, nombre: str = ""):
         self.id = id
         self.email = email
+        self.nombre = nombre
+
+
+def cron_autorizado(secreto_recibido: str) -> bool:
+    """Compara el secreto de los crons en tiempo constante (hmac.compare_digest)
+    para que no se pueda adivinar byte a byte midiendo tiempos de respuesta.
+    Si CRON_SECRET no está configurado, ningún cron queda autorizado."""
+    if not settings.cron_secret:
+        return False
+    return hmac.compare_digest(secreto_recibido.encode(), settings.cron_secret.encode())
 
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> UsuarioActual:
@@ -45,4 +63,17 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> UsuarioActual:
     if not usuario_id:
         raise credentials_exception
 
-    return UsuarioActual(id=usuario_id, email=email)
+    meta = payload.get("user_metadata") or {}
+    nombre = meta.get("nombre") or meta.get("full_name") or meta.get("name") or ""
+    return UsuarioActual(id=usuario_id, email=email, nombre=nombre)
+
+
+def get_current_user_by_api_key(
+    x_api_key: str = Header(...), db: Session = Depends(get_db)
+) -> UsuarioActual:
+    from app.models import Perfil
+
+    perfil = db.query(Perfil).filter(Perfil.api_key == x_api_key).first()
+    if not perfil:
+        raise HTTPException(status_code=401, detail="API key inválida")
+    return UsuarioActual(id=perfil.usuario_id, email="", nombre="")
