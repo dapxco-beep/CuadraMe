@@ -2,15 +2,7 @@ import { useState } from 'react'
 import { Mail, Sparkles, Wallet } from 'lucide-react'
 import { api } from '../lib/api'
 import { EncabezadoMarca } from '../brand/Marca'
-
-const MONEDAS = ['COP', 'USD', 'EUR']
-const iconos = ['🏦', '💜', '💵', '💳', '📈']
-const tipos = [
-  { id: 'ahorro', label: 'Ahorros' },
-  { id: 'efectivo', label: 'Efectivo' },
-  { id: 'credito', label: 'Crédito' },
-  { id: 'inversion', label: 'Inversión' },
-]
+import SelectorCuenta from '../components/SelectorCuenta'
 
 const PASOS_BIENVENIDA = [
   {
@@ -99,32 +91,24 @@ export default function CrearCuenta({ onCreada }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-center px-8 py-10 screen-enter">
+    <div className="flex-1 overflow-y-auto flex flex-col px-6 py-10 screen-enter">
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold">Crea tu primera cuenta</h1>
-        <p className="text-sm text-ink-soft mt-1">Bancolombia, Nequi, efectivo... la que uses más</p>
+        <p className="text-sm text-ink-soft mt-1">Elige la que uses más. Luego agregas las demás.</p>
       </div>
 
-      <div className="flex gap-2 justify-center mb-5">
-        {iconos.map((ic) => (
-          <button
-            key={ic}
-            onClick={() => setIcono(ic)}
-            className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center text-xl ${
-              icono === ic ? 'border-accent bg-accent-soft' : 'border-line'
-            }`}
-          >
-            {ic}
-          </button>
-        ))}
+      <div className="mb-4">
+        <SelectorCuenta
+          nombre={nombre}
+          setNombre={setNombre}
+          tipo={tipo}
+          setTipo={setTipo}
+          setIcono={setIcono}
+          moneda={moneda}
+          setMoneda={setMoneda}
+          mostrarMoneda={false}
+        />
       </div>
-
-      <input
-        value={nombre}
-        onChange={(e) => setNombre(e.target.value)}
-        placeholder="Nombre de la cuenta (ej. Bancolombia Ahorro)"
-        className="rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
-      />
 
       <input
         value={saldo}
@@ -134,32 +118,18 @@ export default function CrearCuenta({ onCreada }) {
         className="rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
 
-      <div className="flex gap-2 mb-3" role="group" aria-label="Moneda de la cuenta">
-        {MONEDAS.map((m) => (
+      <div className="flex gap-2 mb-5" role="group" aria-label="Moneda de la cuenta">
+        {['COP', 'USD', 'EUR'].map((m) => (
           <button
             key={m}
             type="button"
             aria-pressed={moneda === m}
             onClick={() => setMoneda(m)}
-            className={`flex-1 rounded-2xl border py-2.5 text-sm font-medium ${
+            className={`flex-1 rounded-2xl border py-2.5 text-sm font-medium min-h-[44px] ${
               moneda === m ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
             }`}
           >
             {m}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 mb-5">
-        {tipos.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTipo(t.id)}
-            className={`rounded-2xl border py-3 text-sm font-medium ${
-              tipo === t.id ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
-            }`}
-          >
-            {t.label}
           </button>
         ))}
       </div>

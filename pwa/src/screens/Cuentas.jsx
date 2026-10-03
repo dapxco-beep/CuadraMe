@@ -8,10 +8,10 @@ import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { ENTIDADES_FINANCIERAS_CO } from '../lib/entidadesFinancierasCO'
 import TarjetaCuenta from '../components/TarjetaCuenta'
+import SelectorCuenta from '../components/SelectorCuenta'
 import PanelTarjetaCredito from '../components/PanelTarjetaCredito'
 import BotonOjo from '../components/BotonOjo'
 
-const iconos = ['🏦', '💜', '💵', '💳', '📈']
 const tipos = [
   { id: 'ahorro', label: 'Ahorros' },
   { id: 'efectivo', label: 'Efectivo' },
@@ -118,7 +118,6 @@ export default function Cuentas() {
   )
 }
 
-const MONEDAS = ['COP', 'USD', 'EUR']
 
 function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
   const esEdicion = !!cuenta
@@ -179,67 +178,53 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
           </button>
         </div>
 
-        <div className="flex gap-2 justify-center mb-5">
-          {iconos.map((ic) => (
-            <button
-              key={ic}
-              onClick={() => setIcono(ic)}
-              className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center text-xl ${
-                icono === ic ? 'border-accent bg-accent-soft' : 'border-line'
-              }`}
-            >
-              {ic}
-            </button>
-          ))}
-        </div>
-
-        <input
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          placeholder="Nombre de la cuenta (ej. Bancolombia Ahorro)"
-          list="entidades-financieras-co-cuentas"
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
-        />
-        <datalist id="entidades-financieras-co-cuentas">
-          {ENTIDADES_FINANCIERAS_CO.map((e) => (
-            <option key={e} value={e} />
-          ))}
-        </datalist>
-
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {tipos.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTipo(t.id)}
-              className={`rounded-2xl border py-3 text-sm font-medium ${
-                tipo === t.id ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {esEdicion ? (
+          <>
+            <input
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Nombre de la cuenta (ej. Bancolombia Ahorro)"
+              aria-label="Nombre de la cuenta"
+              list="entidades-financieras-co-cuentas"
+              className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
+            />
+            <datalist id="entidades-financieras-co-cuentas">
+              {ENTIDADES_FINANCIERAS_CO.map((e) => (
+                <option key={e} value={e} />
+              ))}
+            </datalist>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {tipos.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  aria-pressed={tipo === t.id}
+                  onClick={() => setTipo(t.id)}
+                  className={`rounded-2xl border py-3 text-sm font-medium min-h-[44px] ${
+                    tipo === t.id ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="mb-4">
+            <SelectorCuenta
+              nombre={nombre}
+              setNombre={setNombre}
+              tipo={tipo}
+              setTipo={setTipo}
+              setIcono={setIcono}
+              moneda={moneda}
+              setMoneda={setMoneda}
+            />
+          </div>
+        )}
 
         {!esEdicion && (
           <>
-            <div className="mb-3">
-              <p className="text-xs text-ink-soft mb-1.5">Moneda</p>
-              <div className="flex gap-2" role="group" aria-label="Moneda de la cuenta">
-                {MONEDAS.map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    aria-pressed={moneda === m}
-                    onClick={() => setMoneda(m)}
-                    className={`flex-1 rounded-2xl border py-2.5 text-sm font-medium ${
-                      moneda === m ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-            </div>
             <input
               value={saldoInicial}
               onChange={(e) => setSaldoInicial(e.target.value.replace(/[^\d.]/g, ''))}

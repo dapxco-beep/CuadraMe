@@ -8,7 +8,7 @@ import BotonOjo from '../components/BotonOjo'
 import TarjetaSalud from '../components/TarjetaSalud'
 import { useAuth } from '../lib/AuthContext'
 import { useCategorias } from '../lib/CategoriasContext'
-import TarjetaCuenta from '../components/TarjetaCuenta'
+import MazoCuentas from '../components/MazoCuentas'
 import ArbolFinanciero from '../components/ArbolFinanciero'
 import CarruselDescubrir from '../components/CarruselDescubrir'
 import { etapaPorScore } from '../lib/saludFinanciera'
@@ -137,22 +137,7 @@ export default function Inicio() {
       </section>
 
       <section className="px-6 mt-4 stagger-item" style={{ '--stagger-i': 1 }}>
-        {cuentas.length > 0 && (
-          <Link to="/cuentas" className="relative block" style={{ height: `${88 + (cuentas.length - 1) * 18}px` }}>
-            {cuentas.map((c, i) => (
-              <TarjetaCuenta
-                key={c.id}
-                cuenta={c}
-                className="absolute inset-x-0"
-                style={{
-                  top: `${i * 18}px`,
-                  zIndex: cuentas.length - i,
-                  width: `${100 - i * 6}%`,
-                }}
-              />
-            ))}
-          </Link>
-        )}
+        <MazoCuentas cuentas={cuentas} />
       </section>
 
       {/* Carrusel de funciones a descubrir — mismo patrón que la alerta de
