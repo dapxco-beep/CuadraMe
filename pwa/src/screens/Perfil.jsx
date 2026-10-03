@@ -5,6 +5,7 @@ import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
 import { useDialogos } from '../lib/DialogosContext'
+import SeccionSeguridad from '../components/SeccionSeguridad'
 import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../lib/push'
 
 export default function Perfil() {
@@ -236,6 +237,8 @@ export default function Perfil() {
           </div>
         </section>
       )}
+
+      <SeccionSeguridad />
 
       <section className="mx-6 mt-8">
         <div className="flex items-center gap-2 mb-3">

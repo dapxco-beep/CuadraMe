@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, CreditCard, Mail, PiggyBank, Repeat, Sparkles, Wallet } from 'lucide-react'
-import { formatCOP } from '../lib/format'
+import { ChevronRight, CreditCard, Gift, Mail, PiggyBank, Repeat, Sparkles, Wallet } from 'lucide-react'
 import { api } from '../lib/api'
+import { useBloqueo } from '../lib/BloqueoContext'
+import BotonOjo from '../components/BotonOjo'
+import TarjetaSalud from '../components/TarjetaSalud'
 import { useAuth } from '../lib/AuthContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import TarjetaCuenta from '../components/TarjetaCuenta'
@@ -20,6 +22,7 @@ const ACCESOS_RAPIDOS = [
 export default function Inicio() {
   const { usuario } = useAuth()
   const { iconoDe } = useCategorias()
+  const { fmt } = useBloqueo()
   const primerNombre = (usuario?.nombre || '').trim().split(/\s+/)[0]
   const [cuentas, setCuentas] = useState([])
   const [movimientos, setMovimientos] = useState([])
@@ -68,8 +71,11 @@ export default function Inicio() {
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className="px-6 pt-14 pb-2 flex items-center justify-between">
         <p className="text-lg font-bold">{primerNombre ? `Hola, ${primerNombre}` : 'Hola'}</p>
-        <div className="w-10 h-10 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-hidden="true">
-          <Wallet size={18} className="text-ink-soft" />
+        <div className="flex items-center gap-2">
+          <BotonOjo />
+          <div className="w-10 h-10 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-hidden="true">
+            <Wallet size={18} className="text-ink-soft" />
+          </div>
         </div>
       </header>
 
@@ -95,7 +101,7 @@ export default function Inicio() {
           <p className="text-xs text-ink-soft">Saldo total</p>
           <p className="text-xs text-ink-soft">{cuentas.length} {cuentas.length === 1 ? 'cuenta' : 'cuentas'}</p>
         </div>
-        <p className="text-4xl font-extrabold tracking-tight mb-3">{formatCOP(saldoTotal)}</p>
+        <p className="text-4xl font-extrabold tracking-tight mb-3">{fmt(saldoTotal)}</p>
 
         {cuentas.length > 0 && (
           <Link to="/cuentas" className="relative block" style={{ height: `${88 + (cuentas.length - 1) * 18}px` }}>
@@ -149,25 +155,25 @@ export default function Inicio() {
         <section className="mx-6 mt-5 rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': 3 }}>
           <p className="text-xs text-ink-soft">Puedes gastar hoy sin quedar mal el resto del mes</p>
           <p className={`text-3xl font-bold mt-0.5 ${bolsillo.disponible_real_por_dia < 0 ? 'text-danger' : 'text-ink'}`}>
-            {formatCOP(bolsillo.disponible_real_por_dia)}
+            {fmt(bolsillo.disponible_real_por_dia)}
           </p>
           <div className="mt-3 pt-3 border-t border-line space-y-1.5">
             <div className="flex items-center justify-between text-xs">
               <span className="text-ink-soft">Saldo en tus cuentas</span>
-              <span className="font-medium">{formatCOP(bolsillo.saldo_total)}</span>
+              <span className="font-medium">{fmt(bolsillo.saldo_total)}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-ink-soft">− Gastos fijos que faltan este mes</span>
-              <span className="font-medium">{formatCOP(bolsillo.recurrentes_pendientes_mes)}</span>
+              <span className="font-medium">{fmt(bolsillo.recurrentes_pendientes_mes)}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-ink-soft">− Lo que aparto para tus metas</span>
-              <span className="font-medium">{formatCOP(bolsillo.aportes_comprometidos_mes)}</span>
+              <span className="font-medium">{fmt(bolsillo.aportes_comprometidos_mes)}</span>
             </div>
             <div className="flex items-center justify-between text-xs pt-1 border-t border-line">
               <span className="text-ink font-semibold">= Disponible real este mes</span>
               <span className={`font-bold ${bolsillo.disponible_real < 0 ? 'text-danger' : 'text-ink'}`}>
-                {formatCOP(bolsillo.disponible_real)}
+                {fmt(bolsillo.disponible_real)}
               </span>
             </div>
           </div>
@@ -181,10 +187,10 @@ export default function Inicio() {
             Además, dentro de tus presupuestos por categoría te quedan
           </p>
           <p className={`text-xl font-bold mt-0.5 ${disponible.disponible_total_hoy < 0 ? 'text-danger' : 'text-ink'}`}>
-            {formatCOP(disponible.disponible_total_hoy)}/día
+            {fmt(disponible.disponible_total_hoy)}/día
           </p>
           <p className="text-xs text-ink-soft mt-1">
-            {formatCOP(disponible.disponible_total_mes)} disponibles para los {disponible.dias_restantes_mes} días restantes del mes — esto es un límite aparte, más estricto que el número de arriba
+            {fmt(disponible.disponible_total_mes)} disponibles para los {disponible.dias_restantes_mes} días restantes del mes — esto es un límite aparte, más estricto que el número de arriba
           </p>
         </section>
       )}
@@ -205,6 +211,25 @@ export default function Inicio() {
         </Link>
       )}
 
+      {/* Puntaje de salud financiera (0-100) con desglose y consejos */}
+      <TarjetaSalud />
+
+      {/* Resumen mensual compartible */}
+      <Link
+        to="/resumen"
+        className="mx-6 mt-3 rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3 stagger-item"
+        style={{ '--stagger-i': 5 }}
+      >
+        <span className="w-10 h-10 rounded-xl bg-accent-soft flex items-center justify-center shrink-0">
+          <Gift size={18} className="text-accent" />
+        </span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold">Tu resumen del mes</p>
+          <p className="text-xs text-ink-soft mt-0.5">Míralo en diapositivas y compártelo</p>
+        </div>
+        <ChevronRight size={16} className="text-ink-soft shrink-0" />
+      </Link>
+
       {/* Categorías */}
       {reporte && reporte.top_categorias.length > 0 && (
         <section className="mx-6 mt-6">
@@ -218,7 +243,7 @@ export default function Inicio() {
                   {iconoDe(c.categoria)}
                 </span>
                 <p className="flex-1 text-sm font-medium">{c.categoria}</p>
-                <p className="text-sm font-semibold">{formatCOP(c.monto)}</p>
+                <p className="text-sm font-semibold">{fmt(c.monto)}</p>
               </div>
             ))}
           </div>
@@ -255,7 +280,7 @@ export default function Inicio() {
                 </div>
                 <span className={`text-sm font-semibold shrink-0 ${m.tipo === 'income' ? 'text-accent' : 'text-ink'}`}>
                   {m.tipo === 'income' ? '+' : m.tipo === 'expense' ? '-' : ''}
-                  {formatCOP(m.monto)}
+                  {fmt(m.monto)}
                 </span>
               </Link>
             ))}

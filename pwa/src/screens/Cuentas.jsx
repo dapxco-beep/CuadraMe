@@ -7,6 +7,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { ENTIDADES_FINANCIERAS_CO } from '../lib/entidadesFinancierasCO'
 import TarjetaCuenta from '../components/TarjetaCuenta'
+import BotonOjo from '../components/BotonOjo'
 
 const iconos = ['🏦', '💜', '💵', '💳', '📈']
 const tipos = [
@@ -32,12 +33,15 @@ export default function Cuentas() {
           </button>
           <h1 className="text-xl font-bold">Tus cuentas</h1>
         </div>
-        <button
-          onClick={() => setMostrarForm(true)}
-          className="w-9 h-9 rounded-full bg-accent text-white flex items-center justify-center"
-         aria-label="Nueva cuenta">
-          <Plus size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          <BotonOjo />
+          <button
+            onClick={() => setMostrarForm(true)}
+            className="w-9 h-9 rounded-full bg-accent text-white flex items-center justify-center"
+           aria-label="Nueva cuenta">
+            <Plus size={18} />
+          </button>
+        </div>
       </header>
 
       <p className="mx-6 mt-2 text-xs text-ink-soft">

@@ -1,7 +1,7 @@
 import calendar
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.utiles import ahora_co
@@ -11,6 +11,7 @@ from app.database import get_db
 from app.fx import convertir_a_cop
 from app.models import Cuenta, Movimiento, Recurrente
 from app.reportes import calc_health_score
+from app.wrapped import calcular_wrapped
 from app.schemas import (
     FlujoCajaFuturo,
     FlujoCajaMes,
@@ -214,3 +215,34 @@ def flujo_caja_futuro(
         )
 
     return FlujoCajaFuturo(saldo_actual=round(saldo_actual), meses=meses_proyeccion)
+
+
+@router.get("/wrapped")
+def resumen_wrapped(
+    mes: str | None = None,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Datos para las diapositivas del resumen mensual (por defecto, el mes
+    en curso). Solo movimientos de las cuentas del propio usuario."""
+    mes = mes or ahora_co().strftime("%Y-%m")
+    try:
+        anio, num = (int(x) for x in mes.split("-"))
+        if not 1 <= num <= 12:
+            raise ValueError
+        anterior = f"{anio - 1}-12" if num == 1 else f"{anio}-{num - 1:02d}"
+    except ValueError:
+        raise HTTPException(status_code=422, detail="El mes debe tener formato YYYY-MM")
+
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    monedas = _monedas_por_cuenta(db, ids_accesibles)
+    movimientos = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids_accesibles)).all()
+
+    def filas(clave):
+        return [
+            {"tipo": m.tipo, "monto": _monto_cop(m, monedas), "categoria": m.categoria, "fecha": m.fecha}
+            for m in movimientos
+            if m.fecha.strftime("%Y-%m") == clave
+        ]
+
+    return calcular_wrapped(mes, filas(mes), filas(anterior))

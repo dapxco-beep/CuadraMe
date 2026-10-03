@@ -5,6 +5,8 @@ import { AuthProvider, useAuth } from './lib/AuthContext'
 import { CuentasProvider, useCuentas } from './lib/CuentasContext'
 import { CategoriasProvider } from './lib/CategoriasContext'
 import { DialogosProvider } from './lib/DialogosContext'
+import { BloqueoProvider, useBloqueo } from './lib/BloqueoContext'
+import PantallaBloqueo from './components/PantallaBloqueo'
 import BottomNav from './components/BottomNav'
 import Login from './screens/Login'
 import CrearCuenta from './screens/CrearCuenta'
@@ -30,6 +32,7 @@ const Correos = lazy(() => import('./screens/Correos'))
 const Insights = lazy(() => import('./screens/Insights'))
 const ReglasCategoria = lazy(() => import('./screens/ReglasCategoria'))
 const Categorias = lazy(() => import('./screens/Categorias'))
+const Wrapped = lazy(() => import('./screens/Wrapped'))
 const Perfil = lazy(() => import('./screens/Perfil'))
 const TerminosCondiciones = lazy(() => import('./screens/legal/TerminosCondiciones'))
 const PoliticaPrivacidad = lazy(() => import('./screens/legal/PoliticaPrivacidad'))
@@ -88,6 +91,7 @@ function AppGate() {
         <Route path="/ahorcado" element={<Ahorcado />} />
         <Route path="/reglas-categoria" element={<ReglasCategoria />} />
         <Route path="/categorias" element={<Categorias />} />
+        <Route path="/resumen" element={<Wrapped />} />
         <Route path="/perfil" element={<Perfil />} />
         <Route path="/legal/terminos" element={<TerminosCondiciones />} />
         <Route path="/legal/privacidad" element={<PoliticaPrivacidad />} />
@@ -102,6 +106,7 @@ function AppGate() {
 
 function AppRoutes() {
   const { usuario, cargando, recuperando } = useAuth()
+  const { bloqueado } = useBloqueo()
 
   if (cargando) return null
 
@@ -120,6 +125,10 @@ function AppRoutes() {
     )
   }
 
+  // Con PIN activo y la app bloqueada no se monta nada de las pantallas: así
+  // tampoco se hacen llamadas al backend ni se renderizan saldos detrás del candado.
+  if (bloqueado) return <PantallaBloqueo />
+
   return (
     <CuentasProvider>
       <CategoriasProvider>
@@ -133,11 +142,13 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <DialogosProvider>
-          <HashRouter>
-            <AppRoutes />
-          </HashRouter>
-        </DialogosProvider>
+        <BloqueoProvider>
+          <DialogosProvider>
+            <HashRouter>
+              <AppRoutes />
+            </HashRouter>
+          </DialogosProvider>
+        </BloqueoProvider>
       </AuthProvider>
     </ThemeProvider>
   )
