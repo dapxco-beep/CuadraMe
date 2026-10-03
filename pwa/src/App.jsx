@@ -41,6 +41,10 @@ const TerminosCondiciones = lazy(() => import('./screens/legal/TerminosCondicion
 const PoliticaPrivacidad = lazy(() => import('./screens/legal/PoliticaPrivacidad'))
 const AutorizacionDatos = lazy(() => import('./screens/legal/AutorizacionDatos'))
 
+// Gastos compartidos (bloque aislado para minimizar conflictos al integrar)
+const DividirGasto = lazy(() => import('./screens/DividirGasto'))
+const CuentasAmigos = lazy(() => import('./screens/CuentasAmigos'))
+
 function Cargando() {
   return <CargandoMarca />
 }
@@ -78,6 +82,8 @@ function AppGate() {
         <Route path="/movimientos" element={<Movimientos />} />
         <Route path="/movimientos/:id" element={<DetalleMovimiento />} />
         <Route path="/agregar" element={<Agregar />} />
+        <Route path="/dividir" element={<DividirGasto />} />
+        <Route path="/amigos" element={<CuentasAmigos />} />
         <Route path="/presupuesto" element={<Presupuesto />} />
         <Route path="/patrimonio" element={<Patrimonio />} />
         <Route path="/metas" element={<Metas />} />

@@ -15,6 +15,8 @@ from app.routers import (
     cuentas,
     deudas,
     exportar,
+    facturas,
+    gastos_compartidos,
     insights,
     metas,
     metricas,
@@ -126,6 +128,8 @@ app.include_router(categorias.router)
 app.include_router(backup.router)
 app.include_router(metricas.router)
 app.include_router(patrimonio.router)
+app.include_router(gastos_compartidos.router)
+app.include_router(facturas.router)
 
 
 @app.get("/health")

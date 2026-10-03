@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Sparkles, X } from 'lucide-react'
+import { Calendar, Camera, Image as ImagenIcono, Sparkles, Users, X } from 'lucide-react'
 import { api } from '../lib/api'
+import { prepararImagen } from '../lib/imagen'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
@@ -43,6 +44,9 @@ export default function Agregar() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const carruselRef = useRef(null)
+  const [escaneando, setEscaneando] = useState(false)
+  const [factura, setFactura] = useState(null) // datos extra leídos de la foto (solo informativos)
+  const [errorFactura, setErrorFactura] = useState('')
 
   // Si el usuario aún no eligió cuenta se usa la primera: se deriva al renderizar
   // en vez de copiarla a un estado con un efecto (evita un render extra).
@@ -85,6 +89,41 @@ export default function Agregar() {
     setCategoriaAutoDetectada(false)
     setTipo(f.tipo)
     setMonto(String(Math.round(f.monto)))
+  }
+
+  // La foto solo RELLENA el formulario: el usuario revisa y toca "Guardar" él mismo.
+  async function leerFactura(e) {
+    const archivo = e.target.files?.[0]
+    e.target.value = '' // permite volver a elegir la misma foto
+    if (!archivo) return
+    setErrorFactura('')
+    setFactura(null)
+    setEscaneando(true)
+    try {
+      const { base64, mime } = await prepararImagen(archivo)
+      const r = await api.escanearFactura(base64, mime)
+      setTipo('expense')
+      setMonto(String(Math.round(r.total)))
+      if (r.comercio) setDescripcion(r.comercio)
+      if (r.fecha) setFecha(r.fecha)
+      if (r.categoria && r.categoria !== 'Otros') {
+        setCategoria(r.categoria)
+        setCategoriaAutoDetectada(true)
+      }
+      setFactura(r)
+    } catch (err) {
+      setErrorFactura(err.message || 'No pudimos leer la factura')
+    } finally {
+      setEscaneando(false)
+    }
+  }
+
+  function dividirGasto() {
+    setError('')
+    if (!monto || Number(monto) <= 0) return setError('Ingresa un monto válido para dividir')
+    navigate('/dividir', {
+      state: { monto: Number(monto), descripcion: descripcion.trim(), categoria: categoria || undefined, cuentaId, fecha },
+    })
   }
 
   async function guardar() {
@@ -164,6 +203,59 @@ export default function Agregar() {
           <Calendar size={16} />
         </button>
       </div>
+
+      {!esTransferencia && (
+        <div className="px-5 mt-2 flex gap-2">
+          <label
+            className={`flex-1 rounded-2xl border border-line bg-paper-raised py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 ${
+              escaneando ? 'opacity-60 pointer-events-none' : 'cursor-pointer'
+            }`}
+          >
+            <Camera size={14} /> Foto de factura
+            <input type="file" accept="image/*" capture="environment" className="hidden" aria-label="Tomar foto de factura" onChange={leerFactura} />
+          </label>
+          <label
+            className={`shrink-0 w-11 rounded-2xl border border-line bg-paper-raised flex items-center justify-center ${
+              escaneando ? 'opacity-60 pointer-events-none' : 'cursor-pointer'
+            }`}
+            title="Elegir de la galería"
+          >
+            <ImagenIcono size={16} />
+            <input type="file" accept="image/*" className="hidden" aria-label="Elegir factura de la galería" onChange={leerFactura} />
+          </label>
+          {tipo === 'expense' && (
+            <button
+              onClick={dividirGasto}
+              className="flex-1 rounded-2xl border border-line bg-paper-raised py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5"
+            >
+              <Users size={14} /> Dividir
+            </button>
+          )}
+        </div>
+      )}
+
+      {escaneando && (
+        <p role="status" className="px-5 mt-2 text-xs text-accent flex items-center gap-1.5">
+          <Sparkles size={12} className="animate-pulse" /> Leyendo tu factura...
+        </p>
+      )}
+      {errorFactura && (
+        <p role="alert" className="px-5 mt-2 text-xs text-danger">
+          {errorFactura}
+        </p>
+      )}
+      {factura && (
+        <div role="status" className="mx-5 mt-2 rounded-2xl bg-accent-soft border border-accent/40 px-4 py-2.5 text-xs text-accent">
+          <p className="font-semibold">Revisa los datos antes de guardar</p>
+          <p className="mt-0.5">
+            La IA puede equivocarse.
+            {factura.impuestos != null && ` IVA/impuestos: ${formatMoneda(factura.impuestos, factura.moneda)}.`}
+            {factura.propina != null && ` Propina: ${formatMoneda(factura.propina, factura.moneda)}.`}
+            {cuentaActual && factura.moneda !== (cuentaActual.moneda || 'COP') &&
+              ` La factura está en ${factura.moneda} y tu cuenta en ${cuentaActual.moneda}: ajusta el monto.`}
+          </p>
+        </div>
+      )}
 
       {mostrarFecha && (
         <div className="px-5 mt-2">
@@ -302,6 +394,9 @@ export default function Agregar() {
           className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
         >
           {guardando ? 'Guardando...' : esTransferencia ? 'Hacer transferencia' : 'Guardar movimiento'}
+        </button>
+        <button onClick={() => navigate('/amigos')} className="w-full text-center text-sm text-accent font-medium mt-4">
+          Cuentas con amigos
         </button>
       </div>
     </div>
