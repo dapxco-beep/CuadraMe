@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Check, FileUp, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
@@ -32,6 +32,7 @@ const estadoColor = {
 
 export default function Conciliacion() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: CATEGORIAS } = useCategorias()
   const { avisar } = useDialogos()
@@ -43,6 +44,24 @@ export default function Conciliacion() {
   const [seleccionados, setSeleccionados] = useState(new Set())
   const [categorias, setCategorias] = useState({}) // fingerprint -> categoría elegida
   const [importando, setImportando] = useState(false)
+
+  // Si llegamos desde "Extractos encontrados" (Correos), el PDF ya se procesó en
+  // el servidor: solo hay que abrir su revisión.
+  const historialInicial = location.state?.historialId
+  useEffect(() => {
+    if (!historialInicial) return
+    api.obtenerReviewExtracto(historialInicial).then(mostrarResultado).catch(() => setError('No se pudo abrir la revisión del extracto'))
+  }, [historialInicial])
+
+  function mostrarResultado(r) {
+    setResultado(r)
+    setSeleccionados(new Set(r.review.filter((m) => m.estado === 'faltante').map((m) => m.fingerprint)))
+    const inicial = {}
+    r.review.forEach((m) => {
+      if (m.estado === 'faltante') inicial[m.fingerprint] = m.categoria_sugerida || 'Otros'
+    })
+    setCategorias(inicial)
+  }
 
   async function onFile(e) {
     const file = e.target.files?.[0]
@@ -56,13 +75,7 @@ export default function Conciliacion() {
       if (!r.ok) {
         setError(r.error || 'No se pudo procesar el extracto')
       } else {
-        setResultado(r)
-        setSeleccionados(new Set(r.review.filter((m) => m.estado === 'faltante').map((m) => m.fingerprint)))
-        const inicial = {}
-        r.review.forEach((m) => {
-          if (m.estado === 'faltante') inicial[m.fingerprint] = m.categoria_sugerida || 'Otros'
-        })
-        setCategorias(inicial)
+        mostrarResultado(r)
       }
     } catch (err) {
       setError(err.message || 'Error al procesar el PDF')

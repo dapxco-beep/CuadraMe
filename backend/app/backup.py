@@ -38,7 +38,7 @@ def exportar_base_de_datos() -> bytes:
 
     with engine.connect() as conn:
         for nombre_tabla, tabla in Base.metadata.tables.items():
-            if nombre_tabla not in tablas_en_bd:
+            if nombre_tabla not in tablas_en_bd or nombre_tabla == "claves_pdf":  # las claves nunca viajan por correo
                 continue
             filas = conn.execute(tabla.select()).mappings().all()
             data[nombre_tabla] = [

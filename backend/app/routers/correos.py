@@ -1,3 +1,4 @@
+import base64
 import logging
 
 from google.auth.exceptions import RefreshError
@@ -11,19 +12,44 @@ from app.comercios_conocidos import clasificar_por_diccionario
 from app.config import settings
 from app.limites import verificar_limite
 from app.database import get_db
+from app.conciliacion import detectar_banco
+from app.extractos_gmail import (
+    MAX_PDF_BYTES,
+    abrir_pdf,
+    banco_por_remitente,
+    claves_candidatas,
+    construir_query_extractos,
+    construir_query_notificaciones,
+    contiene_palabra_extracto,
+    descargar_adjunto,
+    detectar_periodo,
+    detectar_ultimos4,
+    encabezados,
+    es_notificacion_transaccion,
+    fecha_mensaje,
+    listar_adjuntos_pdf,
+    sugerir_cuenta,
+)
 from app.gmail_extract import detectar_tipo, extraer_comercio, extraer_moneda, extraer_monto
 from app.gmail_oauth import (
     cifrar,
     cliente_gmail,
     crear_state,
+    descifrar,
     intercambiar_code,
     leer_state,
     obtener_email,
     url_autorizacion,
 )
-from app.models import Cuenta, CorreoGasto, Movimiento, Perfil
+from app.models import ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, Movimiento, Perfil
+from app.routers.conciliacion import procesar_extracto
 from app.schemas import (
     AprobarCorreoRequest,
+    ClavePdfIn,
+    ConciliarExtractoRequest,
+    ExtractoCorreoOut,
+    ProcesarExtractoRequest,
+    ProcesarExtractoResponse,
     CorreoGastoOut,
     CorreoGastoUpdate,
     GmailEstado,
@@ -32,6 +58,9 @@ from app.schemas import (
 
 router = APIRouter(prefix="/correos", tags=["correos"])
 logger = logging.getLogger(__name__)
+
+# Estados que se muestran en "Extractos encontrados" (los demás son marcas internas).
+ESTADOS_VISIBLES = ("nuevo", "falta_clave", "procesado", "error")
 
 
 def _get_or_create_perfil(db: Session, usuario_id: str) -> Perfil:
@@ -117,13 +146,168 @@ def actualizar_etiqueta(
     return {"ok": True, "etiqueta": perfil.gmail_etiqueta}
 
 
+MAX_EXTRACTOS_POR_SYNC = 8   # descargas de PDF por sincronización (cuida cuota y tiempo)
+MAX_REINTENTOS_CLAVE = 5
+
+
+def _clave_pdf(db: Session, usuario_id: str) -> str | None:
+    fila = db.query(ClavePdf).filter(ClavePdf.usuario_id == usuario_id).first()
+    if not fila:
+        return None
+    try:
+        return descifrar(fila.clave_enc)
+    except Exception:
+        return None
+
+
+def _crear_correo(msg: dict, usuario_id: str, modelo) -> CorreoGasto:
+    """Convierte un mensaje de Gmail en un CorreoGasto 'pendiente' (sugerencia
+    que el usuario debe aprobar; nunca crea movimientos)."""
+    h = encabezados(msg)
+    remitente = h.get("From", "")
+    asunto = h.get("Subject", "")
+    snippet = msg.get("snippet", "")
+    texto = f"{asunto} {snippet}"
+    comercio = extraer_comercio(remitente, asunto)
+    resultado = classify(comercio, modelo) or clasificar_por_diccionario(f"{comercio} {texto}")
+    return CorreoGasto(
+        usuario_id=usuario_id,
+        gmail_msg_id=msg["id"],
+        remitente=remitente,
+        asunto=asunto,
+        snippet=snippet[:400],
+        recibido_en=fecha_mensaje(msg),
+        monto=extraer_monto(texto),
+        moneda=extraer_moneda(texto),
+        comercio=comercio,
+        categoria_sugerida=resultado["categoria"] if resultado else "Otros",
+        tipo_sugerido=detectar_tipo(texto),
+        confianza=resultado["confianza"] if resultado else 0,
+        estado="pendiente",
+    )
+
+
+def _sync_transacciones(gmail, db: Session, usuario_id: str, existentes: set, modelo, label_id: str | None) -> tuple[int, int]:
+    """Correos con la etiqueta del usuario (si existe) + notificaciones de
+    remitentes bancarios conocidos SIN etiqueta. Devuelve (nuevos, omitidos)."""
+    refs: list[dict] = []
+    if label_id:
+        refs += gmail.users().messages().list(userId="me", labelIds=[label_id], maxResults=25).execute().get("messages", [])
+    refs += gmail.users().messages().list(
+        userId="me", q=construir_query_notificaciones(), maxResults=25
+    ).execute().get("messages", [])
+
+    nuevos = omitidos = 0
+    vistos: set[str] = set()
+    for ref in refs:
+        if ref["id"] in existentes or ref["id"] in vistos:
+            omitidos += 1
+            continue
+        vistos.add(ref["id"])
+        msg = gmail.users().messages().get(userId="me", id=ref["id"], format="full").execute()
+        correo = _crear_correo(msg, usuario_id, modelo)
+        con_etiqueta = bool(label_id) and label_id in (msg.get("labelIds") or [])
+        # Los de la etiqueta los eligió el usuario: entran siempre. Los
+        # detectados solos deben parecer una transacción real (con monto), para
+        # no llenar la bandeja de publicidad del banco. Los descartados se
+        # guardan como 'ignorado' para no volver a leerlos en cada sincronización.
+        if not con_etiqueta and not (
+            correo.monto > 0 and es_notificacion_transaccion(correo.asunto, correo.snippet)
+        ):
+            correo.estado = "ignorado"
+        else:
+            nuevos += 1
+        db.add(correo)
+    return nuevos, omitidos
+
+
+def _analizar_adjunto(gmail, fila: ExtractoCorreo, adjunto: dict, cuentas: list, clave: str | None) -> None:
+    """Descarga el PDF, intenta abrirlo y rellena banco/periodo/cuenta/estado.
+    El PDF no se guarda en ningún lado."""
+    try:
+        pdf = descargar_adjunto(gmail, fila.gmail_msg_id, adjunto["attachment_id"])
+    except Exception:
+        logger.warning("No se pudo descargar un adjunto del mensaje %s", fila.gmail_msg_id)
+        fila.estado = "error"
+        return
+    estado, texto, _ = abrir_pdf(pdf, claves_candidatas(clave))
+    if estado == "ok":
+        banco_texto = detectar_banco(texto)
+        if banco_texto not in ("generico", "desconocido") and not fila.banco:
+            fila.banco = banco_texto.capitalize()
+        fila.periodo = detectar_periodo(texto, f"{fila.archivo} {fila.asunto}")
+        fila.cuenta_sugerida_id = sugerir_cuenta(fila.banco, detectar_ultimos4(texto), cuentas)
+        fila.estado = "nuevo"
+    else:
+        # Sin texto no hay periodo ni cuenta; el banco sale del remitente.
+        fila.periodo = detectar_periodo("", f"{fila.archivo} {fila.asunto}")
+        fila.cuenta_sugerida_id = sugerir_cuenta(fila.banco, "", cuentas) if fila.banco else None
+        fila.estado = estado  # falta_clave | error
+
+
+def _sync_extractos(gmail, db: Session, usuario_id: str, cuentas: list, clave: str | None) -> int:
+    filas = db.query(ExtractoCorreo).filter(ExtractoCorreo.usuario_id == usuario_id).all()
+    msgs_vistos = {f.gmail_msg_id for f in filas}
+
+    # 1) Reintentar los que estaban esperando clave, si ahora hay una.
+    if clave:
+        pendientes_clave = [f for f in filas if f.estado == "falta_clave"][:MAX_REINTENTOS_CLAVE]
+        for fila in pendientes_clave:
+            try:
+                msg = gmail.users().messages().get(userId="me", id=fila.gmail_msg_id, format="full").execute()
+            except Exception:
+                continue
+            adj = next((a for a in listar_adjuntos_pdf(msg) if a["archivo"] == fila.archivo), None)
+            if adj:
+                _analizar_adjunto(gmail, fila, adj, cuentas, clave)
+
+    # 2) Extractos nuevos.
+    refs = gmail.users().messages().list(
+        userId="me", q=construir_query_extractos(), maxResults=25
+    ).execute().get("messages", [])
+    nuevos = 0
+    for ref in refs:
+        if ref["id"] in msgs_vistos:
+            continue
+        if nuevos >= MAX_EXTRACTOS_POR_SYNC:
+            break
+        msg = gmail.users().messages().get(userId="me", id=ref["id"], format="full").execute()
+        h = encabezados(msg)
+        remitente, asunto = h.get("From", ""), h.get("Subject", "")
+        snippet = msg.get("snippet", "")
+        banco = banco_por_remitente(remitente) or ""
+        adjuntos = [
+            a for a in listar_adjuntos_pdf(msg)
+            if contiene_palabra_extracto(asunto, a["archivo"], snippet) and a["tamano"] <= MAX_PDF_BYTES
+        ]
+        if not adjuntos:
+            # Marca para no volver a leer este correo en cada sincronización.
+            db.add(ExtractoCorreo(
+                usuario_id=usuario_id, gmail_msg_id=ref["id"], archivo="",
+                remitente=remitente, asunto=asunto, estado="ignorado",
+            ))
+            continue
+        for adj in adjuntos:
+            fila = ExtractoCorreo(
+                usuario_id=usuario_id, gmail_msg_id=ref["id"], archivo=adj["archivo"],
+                remitente=remitente, asunto=asunto, banco=banco, recibido_en=fecha_mensaje(msg),
+            )
+            _analizar_adjunto(gmail, fila, adj, cuentas, clave)
+            db.add(fila)
+            nuevos += 1
+    return nuevos
+
+
 @router.post("/sincronizar", response_model=SincronizarCorreosResponse)
 def sincronizar(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
-    """Lee los correos con la etiqueta configurada (por defecto 'gastos') que
-    aún no se han procesado, extrae monto/comercio y los deja como pendientes
-    de revisión — nunca crea movimientos automáticamente."""
+    """Busca en Gmail (solo lectura) sin exigir etiqueta: 1) notificaciones de
+    transacciones de bancos conocidos y los correos con la etiqueta opcional
+    (por defecto 'gastos'), que quedan como pendientes de revisión — nunca se
+    crean movimientos solos — y 2) extractos bancarios en PDF, que quedan en
+    'Extractos encontrados' listos para conciliar. Lo ya visto (gmail_msg_id)
+    no se duplica."""
     verificar_limite(f"sync-gmail:{usuario.id}", 12, 3600, "Sincronizaste muchas veces seguidas. Intenta en unos minutos.")
     perfil = _get_or_create_perfil(db, usuario.id)
     if not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
@@ -134,30 +318,12 @@ def sincronizar(
     try:
         gmail = cliente_gmail(perfil.gmail_refresh_token_enc)
         labels = gmail.users().labels().list(userId="me").execute().get("labels", [])
-        label_id = next(
-            (l["id"] for l in labels if l["name"].lower() == etiqueta.lower()), None
-        )
-        if not label_id:
-            return SincronizarCorreosResponse(
-                ok=False, nuevos=0, omitidos=0,
-                error=f"Etiqueta '{etiqueta}' no encontrada en Gmail",
-            )
+        label_id = next((l["id"] for l in labels if l["name"].lower() == etiqueta.lower()), None)
 
         existentes = {
             r[0]
-            for r in db.query(CorreoGasto.gmail_msg_id)
-            .filter(CorreoGasto.usuario_id == usuario.id)
-            .all()
+            for r in db.query(CorreoGasto.gmail_msg_id).filter(CorreoGasto.usuario_id == usuario.id).all()
         }
-
-        resultado = (
-            gmail.users()
-            .messages()
-            .list(userId="me", labelIds=[label_id], maxResults=25)
-            .execute()
-        )
-        mensajes = resultado.get("messages", [])
-
         historial = (
             db.query(Movimiento)
             .filter(Movimiento.usuario_id == usuario.id, Movimiento.categoria != "Otros")
@@ -167,49 +333,15 @@ def sincronizar(
             [{"descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo} for m in historial]
         )
 
-        nuevos = 0
-        omitidos = 0
-
-        for ref in mensajes:
-            if ref["id"] in existentes:
-                omitidos += 1
-                continue
-
-            msg = gmail.users().messages().get(userId="me", id=ref["id"], format="full").execute()
-            headers = {h["name"]: h["value"] for h in msg["payload"].get("headers", [])}
-            remitente = headers.get("From", "")
-            asunto = headers.get("Subject", "")
-            snippet = msg.get("snippet", "")
-            texto = f"{asunto} {snippet}"
-
-            monto = extraer_monto(texto)
-            moneda = extraer_moneda(texto)
-            comercio = extraer_comercio(remitente, asunto)
-            tipo = detectar_tipo(texto)
-
-            resultado_clasif = classify(comercio, modelo) or clasificar_por_diccionario(f"{comercio} {texto}")
-            categoria = resultado_clasif["categoria"] if resultado_clasif else "Otros"
-            confianza = resultado_clasif["confianza"] if resultado_clasif else 0
-
-            correo = CorreoGasto(
-                usuario_id=usuario.id,
-                gmail_msg_id=ref["id"],
-                remitente=remitente,
-                asunto=asunto,
-                snippet=snippet[:400],
-                monto=monto,
-                moneda=moneda,
-                comercio=comercio,
-                categoria_sugerida=categoria,
-                tipo_sugerido=tipo,
-                confianza=confianza,
-                estado="pendiente",
-            )
-            db.add(correo)
-            nuevos += 1
-
+        nuevos, omitidos = _sync_transacciones(gmail, db, usuario.id, existentes, modelo, label_id)
         db.commit()
-        return SincronizarCorreosResponse(ok=True, nuevos=nuevos, omitidos=omitidos)
+
+        cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
+        extractos_nuevos = _sync_extractos(gmail, db, usuario.id, cuentas, _clave_pdf(db, usuario.id))
+        db.commit()
+        return SincronizarCorreosResponse(
+            ok=True, nuevos=nuevos, omitidos=omitidos, extractos_nuevos=extractos_nuevos
+        )
 
     except HTTPException:
         raise
@@ -230,6 +362,137 @@ def sincronizar(
             ok=False, nuevos=0, omitidos=0,
             error="No se pudo sincronizar tus correos. Intenta de nuevo en un momento.",
         )
+
+
+# ── Extractos encontrados ──────────────────────────────────────────
+
+@router.get("/extractos", response_model=list[ExtractoCorreoOut])
+def listar_extractos(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    return (
+        db.query(ExtractoCorreo)
+        .filter(ExtractoCorreo.usuario_id == usuario.id, ExtractoCorreo.estado.in_(ESTADOS_VISIBLES))
+        .order_by(ExtractoCorreo.recibido_en.desc())
+        .limit(50)
+        .all()
+    )
+
+
+@router.post("/extractos/{extracto_id}/conciliar", response_model=ProcesarExtractoResponse)
+def conciliar_extracto(
+    extracto_id: str,
+    data: ConciliarExtractoRequest,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Vuelve a descargar el PDF desde Gmail y lo pasa por la conciliación
+    existente (/conciliacion/procesar). Devuelve la misma respuesta, con el
+    historial_id para abrir la revisión."""
+    verificar_limite(f"conciliar-gmail:{usuario.id}", 20, 3600, "Conciliaste muchos extractos seguidos. Intenta en un rato.")
+    fila = (
+        db.query(ExtractoCorreo)
+        .filter(ExtractoCorreo.id == extracto_id, ExtractoCorreo.usuario_id == usuario.id)
+        .first()
+    )
+    if not fila:
+        raise HTTPException(status_code=404, detail="Extracto no encontrado")
+    perfil = _get_or_create_perfil(db, usuario.id)
+    if not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
+        raise HTTPException(status_code=400, detail="Gmail no está conectado")
+
+    try:
+        gmail = cliente_gmail(perfil.gmail_refresh_token_enc)
+        msg = gmail.users().messages().get(userId="me", id=fila.gmail_msg_id, format="full").execute()
+        adj = next((a for a in listar_adjuntos_pdf(msg) if a["archivo"] == fila.archivo), None)
+        if not adj:
+            return ProcesarExtractoResponse(ok=False, error="El adjunto ya no está en tu correo.")
+        pdf = descargar_adjunto(gmail, fila.gmail_msg_id, adj["attachment_id"])
+    except RefreshError:
+        return ProcesarExtractoResponse(ok=False, error="Se perdió el acceso a Gmail. Conéctalo de nuevo.")
+    except Exception:
+        logger.exception("Error descargando extracto de %s", usuario.id)
+        return ProcesarExtractoResponse(ok=False, error="No se pudo descargar el extracto. Intenta de nuevo.")
+
+    estado, _texto, clave_usada = abrir_pdf(pdf, claves_candidatas(_clave_pdf(db, usuario.id)))
+    if estado == "falta_clave":
+        fila.estado = "falta_clave"
+        db.commit()
+        return ProcesarExtractoResponse(
+            ok=False, error="Este extracto está cifrado: guarda la clave del PDF (normalmente tu cédula) en los ajustes."
+        )
+    if estado != "ok":
+        fila.estado = "error"
+        db.commit()
+        return ProcesarExtractoResponse(ok=False, error="No se pudo leer este PDF.")
+
+    resp = procesar_extracto(
+        ProcesarExtractoRequest(
+            pdf_base64=base64.b64encode(pdf).decode(), cuenta_id=data.cuenta_id, password=clave_usada or ""
+        ),
+        db=db,
+        usuario=usuario,
+    )
+    if resp.ok:
+        fila.estado = "procesado"
+        fila.historial_id = resp.historial_id
+        db.commit()
+    return resp
+
+
+@router.post("/extractos/{extracto_id}/descartar")
+def descartar_extracto(
+    extracto_id: str,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    fila = (
+        db.query(ExtractoCorreo)
+        .filter(ExtractoCorreo.id == extracto_id, ExtractoCorreo.usuario_id == usuario.id)
+        .first()
+    )
+    if not fila:
+        raise HTTPException(status_code=404, detail="Extracto no encontrado")
+    fila.estado = "descartado"
+    db.commit()
+    return {"ok": True}
+
+
+# ── Clave de los PDF ───────────────────────────────────────────────
+
+@router.get("/clave-pdf")
+def estado_clave_pdf(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    """Solo dice si hay una clave guardada; nunca la devuelve."""
+    existe = db.query(ClavePdf).filter(ClavePdf.usuario_id == usuario.id).first() is not None
+    return {"configurada": existe}
+
+
+@router.put("/clave-pdf")
+def guardar_clave_pdf(
+    data: ClavePdfIn,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    verificar_limite(f"clave-pdf:{usuario.id}", 20, 3600, "Cambiaste la clave muchas veces. Intenta en un rato.")
+    fila = db.query(ClavePdf).filter(ClavePdf.usuario_id == usuario.id).first()
+    cifrada = cifrar(data.clave.strip())
+    if fila:
+        fila.clave_enc = cifrada
+    else:
+        db.add(ClavePdf(usuario_id=usuario.id, clave_enc=cifrada))
+    db.commit()
+    return {"ok": True, "configurada": True}
+
+
+@router.delete("/clave-pdf")
+def borrar_clave_pdf(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    db.query(ClavePdf).filter(ClavePdf.usuario_id == usuario.id).delete()
+    db.commit()
+    return {"ok": True, "configurada": False}
 
 
 @router.get("/pendientes", response_model=list[CorreoGastoOut])
