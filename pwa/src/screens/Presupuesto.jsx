@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeftRight, CalendarClock, Plus, TrendingUp, X } from 'lucide-react'
+import { ArrowLeftRight, CalendarClock, HandCoins, Plus, SlidersHorizontal, TrendingUp, X } from 'lucide-react'
 import { EstadoVacio, CargandoMarca } from '../brand/Marca'
 import { formatCOP } from '../lib/format'
 import { api } from '../lib/api'
 import GraficoTendencia from '../components/GraficoTendencia'
 import { useCategorias } from '../lib/CategoriasContext'
+import BarraProyeccion from '../components/BarraProyeccion'
+import ConfigPlanificacion from '../components/ConfigPlanificacion'
+import SugerenciaIngreso from '../components/SugerenciaIngreso'
+import { PERIODOS, etiquetaPeriodo, textoRango } from '../lib/planificacion'
 
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -17,6 +21,10 @@ export default function Presupuesto() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [mostrarMover, setMostrarMover] = useState(false)
   const [animarBarras, setAnimarBarras] = useState(false)
+  const [proyecciones, setProyecciones] = useState({})
+  const [configPlan, setConfigPlan] = useState(null)
+  const [mostrarConfig, setMostrarConfig] = useState(false)
+  const [mostrarIngreso, setMostrarIngreso] = useState(false)
 
   useEffect(() => {
     if (cargando) return
@@ -31,11 +39,13 @@ export default function Presupuesto() {
   async function cargar() {
     setCargando(true)
     try {
-      const [ps, reporte, tend, flujo] = await Promise.all([
+      const [ps, reporte, tend, flujo, proy] = await Promise.all([
         api.presupuestos(),
         api.reporteMensual(),
         api.tendencias(),
         api.flujoCajaFuturo(),
+        // Si la proyección falla, la pantalla sigue funcionando como antes.
+        api.proyeccionPresupuestos().catch(() => null),
       ])
       setPresupuestos(ps)
       const gastos = {}
@@ -45,6 +55,12 @@ export default function Presupuesto() {
       setGastosPorCategoria(gastos)
       setTendencias(tend)
       setFlujoCaja(flujo)
+      const porId = {}
+      ;(proy?.items || []).forEach((i) => {
+        porId[i.presupuesto_id] = i
+      })
+      setProyecciones(porId)
+      setConfigPlan(proy?.config || null)
     } catch {}
     setCargando(false)
   }
@@ -76,6 +92,21 @@ export default function Presupuesto() {
           </button>
         </div>
       </header>
+
+      <div className="px-6 pt-2 flex gap-2">
+        <button
+          onClick={() => setMostrarIngreso(true)}
+          className="flex items-center gap-1.5 rounded-full border border-line bg-paper-raised px-3.5 py-2 text-xs font-semibold min-h-[36px]"
+        >
+          <HandCoins size={14} className="text-accent" /> Repartir un ingreso
+        </button>
+        <button
+          onClick={() => setMostrarConfig(true)}
+          className="flex items-center gap-1.5 rounded-full border border-line bg-paper-raised px-3.5 py-2 text-xs font-semibold min-h-[36px]"
+        >
+          <SlidersHorizontal size={14} className="text-ink-soft" /> Ajustes
+        </button>
+      </div>
 
       {!cargando && tendencias && tendencias.meses.some((m) => m.ingresos || m.gastos) && (
         <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
@@ -143,10 +174,13 @@ export default function Presupuesto() {
       ) : (
         (() => {
           const conDatos = presupuestos.map((p) => {
-            const gastado = gastosPorCategoria[p.categoria] || 0
-            const limiteEfectivo = p.limite + (p.sobre_ajuste || 0)
+            // Con proyección, el gasto y el límite son los de SU periodo (quincena,
+            // semana...) e incluyen el sobrante arrastrado; sin ella, el mes de siempre.
+            const proy = proyecciones[p.id]
+            const gastado = proy ? proy.gastado : gastosPorCategoria[p.categoria] || 0
+            const limiteEfectivo = proy ? proy.limite : p.limite + (p.sobre_ajuste || 0)
             const pctReal = (gastado / limiteEfectivo) * 100
-            return { ...p, gastado, limite: limiteEfectivo, pctReal, pct: Math.min(100, Math.round(pctReal)) }
+            return { ...p, proy, gastado, limite: limiteEfectivo, pctReal, pct: Math.min(100, Math.round(pctReal)) }
           })
           const limiteTotal = conDatos.reduce((s, p) => s + p.limite, 0)
           const gastadoTotal = conDatos.reduce((s, p) => s + p.gastado, 0)
@@ -178,6 +212,11 @@ export default function Presupuesto() {
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-sm font-semibold">
                           {p.categoria}
+                          {p.proy && p.proy.periodo !== 'monthly' && (
+                            <span className="ml-1.5 text-[10px] font-bold text-ink-soft" data-testid="chip-periodo">
+                              {etiquetaPeriodo(p.proy.periodo)} · {textoRango(p.proy.inicio, p.proy.fin)}
+                            </span>
+                          )}
                           {p.sobre_ajuste !== 0 && (
                             <span className={`ml-1.5 text-[10px] font-bold ${p.sobre_ajuste > 0 ? 'text-accent-2' : 'text-ink-soft'}`}>
                               {p.sobre_ajuste > 0 ? '+' : ''}{formatCOP(p.sobre_ajuste)}
@@ -193,25 +232,42 @@ export default function Presupuesto() {
                           </button>
                         </div>
                       </div>
-                      <div className="h-2 rounded-full bg-line overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-700 ease-out"
-                          style={{
-                            width: `${animarBarras ? p.pct : 0}%`,
-                            background: sobrepasado
-                              ? 'var(--color-danger)'
-                              : cercaDelLimite
-                              ? 'var(--color-accent-2)'
-                              : 'var(--color-accent)',
-                          }}
-                        />
-                      </div>
-                      {sobrepasado && (
+                      {p.proy && p.proy.estado !== 'sin_limite' ? (
+                        <BarraProyeccion item={p.proy} animar={animarBarras} />
+                      ) : (
+                        <div className="h-2 rounded-full bg-line overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-700 ease-out"
+                            style={{
+                              width: `${animarBarras ? p.pct : 0}%`,
+                              background: sobrepasado
+                                ? 'var(--color-danger)'
+                                : cercaDelLimite
+                                ? 'var(--color-accent-2)'
+                                : 'var(--color-accent)',
+                            }}
+                          />
+                        </div>
+                      )}
+                      {p.proy && p.proy.arrastre > 0 && (
+                        <p className="text-[11px] text-accent-2 mt-1.5">
+                          Incluye {formatCOP(p.proy.arrastre)} que te sobraron del periodo anterior
+                        </p>
+                      )}
+                      {p.proy && p.proy.mensaje && (
+                        <p
+                          className={`text-xs mt-1.5 ${p.proy.estado === 'excedido' || p.proy.estado === 'en_riesgo' ? 'text-danger' : 'text-ink-soft'}`}
+                          data-testid="mensaje-proyeccion"
+                        >
+                          {p.proy.mensaje}
+                        </p>
+                      )}
+                      {!p.proy && sobrepasado && (
                         <p className="text-xs text-danger mt-1.5">
                           Te pasaste por {formatCOP(p.gastado - p.limite)} — ajusta el resto del mes para compensarlo
                         </p>
                       )}
-                      {cercaDelLimite && (
+                      {!p.proy && cercaDelLimite && (
                         <p className="text-xs text-ink-soft mt-1.5">
                           Te quedan {formatCOP(Math.max(0, p.limite - p.gastado))} para no pasarte este mes
                         </p>
@@ -225,8 +281,22 @@ export default function Presupuesto() {
         })()
       )}
 
+      {mostrarConfig && (
+        <ConfigPlanificacion
+          presupuestos={presupuestos}
+          onClose={() => setMostrarConfig(false)}
+          onGuardado={() => {
+            setMostrarConfig(false)
+            cargar()
+          }}
+        />
+      )}
+
+      {mostrarIngreso && <SugerenciaIngreso onClose={() => setMostrarIngreso(false)} onAplicado={cargar} />}
+
       {mostrarForm && (
         <FormPresupuesto
+          periodoInicial={configPlan?.periodo_defecto || 'monthly'}
           onClose={() => setMostrarForm(false)}
           onGuardado={() => {
             setMostrarForm(false)
@@ -249,11 +319,12 @@ export default function Presupuesto() {
   )
 }
 
-function FormPresupuesto({ onClose, onGuardado }) {
+function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
   const { nombres } = useCategorias()
   const categoriasSugeridas = nombres.filter((c) => c !== 'Ingresos' && c !== 'Transferencias')
   const [categoria, setCategoria] = useState('')
   const [limite, setLimite] = useState('')
+  const [periodo, setPeriodo] = useState(periodoInicial)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
@@ -264,7 +335,7 @@ function FormPresupuesto({ onClose, onGuardado }) {
 
     setGuardando(true)
     try {
-      await api.crearPresupuesto({ categoria, limite: Number(limite) })
+      await api.crearPresupuesto({ categoria, limite: Number(limite), periodo })
       onGuardado()
     } catch (err) {
       setError(err.message || 'No se pudo guardar')
@@ -298,11 +369,26 @@ function FormPresupuesto({ onClose, onGuardado }) {
           ))}
         </div>
 
+        <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Periodo</p>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {PERIODOS.map((pe) => (
+            <button
+              key={pe.valor}
+              onClick={() => setPeriodo(pe.valor)}
+              className={`rounded-2xl border py-2.5 text-sm font-medium ${
+                periodo === pe.valor ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
+              }`}
+            >
+              {pe.etiqueta}
+            </button>
+          ))}
+        </div>
+
         <input
           value={limite}
           onChange={(e) => setLimite(e.target.value.replace(/\D/g, ''))}
           inputMode="numeric"
-          placeholder="Límite mensual (ej. 500000)"
+          placeholder={`Límite ${etiquetaPeriodo(periodo).toLowerCase()} (ej. 500000)`}
           className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
         />
 

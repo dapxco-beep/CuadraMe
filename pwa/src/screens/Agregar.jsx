@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { prepararImagen } from '../lib/imagen'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
+import SugerenciaIngreso from '../components/SugerenciaIngreso'
 import { useCategorias } from '../lib/CategoriasContext'
 import TarjetaCuenta from '../components/TarjetaCuenta'
 
@@ -36,6 +37,7 @@ export default function Agregar() {
   const [monto, setMonto] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [tipo, setTipo] = useState('expense')
+  const [sugerirIngreso, setSugerirIngreso] = useState(null) // { monto, cuentaId } tras registrar un ingreso
   const [categoria, setCategoria] = useState('')
   const [categoriaAutoDetectada, setCategoriaAutoDetectada] = useState(false)
   const [frecuentes, setFrecuentes] = useState([])
@@ -155,12 +157,29 @@ export default function Agregar() {
         fecha: fecha ? `${fecha}T12:00:00` : undefined,
       })
       await recargarCuentas()
+      // Un ingreso abre la sugerencia de reparto (fijos, ahorro, gasto libre); el
+      // usuario la acepta o la descarta, y de ahí vuelve al inicio.
+      if (tipo === 'income') {
+        setSugerirIngreso({ monto: Number(monto), cuentaId })
+        return
+      }
       navigate('/')
     } catch (err) {
       setError(err.message || 'No se pudo guardar')
     } finally {
       setGuardando(false)
     }
+  }
+
+  if (sugerirIngreso) {
+    return (
+      <SugerenciaIngreso
+        monto={sugerirIngreso.monto}
+        cuentaId={sugerirIngreso.cuentaId}
+        onClose={() => navigate('/')}
+        onAplicado={recargarCuentas}
+      />
+    )
   }
 
   return (

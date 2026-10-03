@@ -25,6 +25,7 @@ from app.routers import (
     movimientos,
     pagos,
     patrimonio,
+    planificacion,
     perfil,
     presupuestos,
     push,
@@ -130,6 +131,7 @@ app.include_router(categorias.router)
 app.include_router(backup.router)
 app.include_router(metricas.router)
 app.include_router(patrimonio.router)
+app.include_router(planificacion.router)
 app.include_router(gastos_compartidos.router)
 app.include_router(facturas.router)
 app.include_router(asistente.router)

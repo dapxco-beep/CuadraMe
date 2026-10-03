@@ -68,6 +68,12 @@ export const api = {
       body: { presupuesto_origen_id: origenId, presupuesto_destino_id: destinoId, monto },
     }),
   disponibleHoy: () => request('/presupuestos/disponible-hoy'),
+  proyeccionPresupuestos: () => request('/planificacion/proyeccion'),
+  configPlanificacion: () => request('/planificacion/config'),
+  guardarConfigPlanificacion: (data) => request('/planificacion/config', { method: 'PUT', body: data }),
+  distribuirIngreso: (monto) => request('/planificacion/distribuir-ingreso', { method: 'POST', body: { monto } }),
+  planMeta: (data) => request('/planificacion/plan-meta', { method: 'POST', body: data }),
+  descomposicionPatrimonio: () => request('/planificacion/patrimonio-descomposicion'),
   enMiBolsillo: () => request('/presupuestos/en-mi-bolsillo'),
 
   reporteMensual: (opts = {}) => {

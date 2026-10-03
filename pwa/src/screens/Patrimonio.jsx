@@ -6,6 +6,7 @@ import { useDialogos } from '../lib/DialogosContext'
 import { CLASES, CLASES_BIEN, CLASES_MERCADO, formatPct, valorCDT } from '../lib/patrimonio'
 import GraficoPatrimonio from '../components/GraficoPatrimonio'
 import DonaDistribucion from '../components/DonaDistribucion'
+import GraficoDescomposicion from '../components/GraficoDescomposicion'
 import { Isotipo, Monto, IlustracionVacia } from '../brand/Marca'
 
 const MONEDAS = ['COP', 'USD', 'EUR']
@@ -26,12 +27,15 @@ export default function Patrimonio() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [formulario, setFormulario] = useState(null) // null | { activo?: objeto }
+  const [descomposicion, setDescomposicion] = useState([])
 
   async function cargar() {
     setCargando(true)
     setError('')
     try {
       setDatos(await api.patrimonio())
+      // Extra: si falla, el resto de la pantalla no se afecta.
+      api.descomposicionPatrimonio().then((r) => setDescomposicion(r?.meses || [])).catch(() => {})
     } catch (err) {
       setError(err.message || 'No se pudo cargar tu patrimonio')
     }
@@ -78,6 +82,13 @@ export default function Patrimonio() {
               <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': 1 }}>
                 <h2 className="text-sm font-semibold mb-3">Evolución</h2>
                 <GraficoPatrimonio historial={datos.historial} />
+              </section>
+            )}
+
+            {descomposicion.length > 0 && (
+              <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': 2 }}>
+                <h2 className="text-sm font-semibold mb-3">¿De dónde viene tu crecimiento?</h2>
+                <GraficoDescomposicion meses={descomposicion} />
               </section>
             )}
 
