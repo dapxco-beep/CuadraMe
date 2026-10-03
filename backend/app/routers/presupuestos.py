@@ -3,6 +3,7 @@ import calendar
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app import presupuesto_servicio as srv
 from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import cuentas_ids_accesibles
@@ -45,40 +46,30 @@ def crear_presupuesto(
 def disponible_hoy(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
-    """Cuánto queda disponible por gastar hoy y en lo que resta del mes,
-    por categoría con presupuesto activo y en total."""
+    """Cuánto queda disponible por gastar hoy y en lo que resta del periodo,
+    por categoría con presupuesto activo y en total. Cada presupuesto se mide en
+    SU periodo (mensual, quincenal o semanal); los antiguos son mensuales."""
     ahora = ahora_co()
-    inicio_mes = ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    ultimo_dia_mes = calendar.monthrange(ahora.year, ahora.month)[1]
-    dias_restantes = max(ultimo_dia_mes - ahora.day + 1, 1)
-
+    cfg = srv.obtener_config(db, usuario.id)
+    gastos = srv.GastosPorRango(db, usuario.id)
     presupuestos = (
         db.query(Presupuesto)
         .filter(Presupuesto.usuario_id == usuario.id, Presupuesto.activo == True)  # noqa: E712
         .all()
     )
-    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
-    monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()}
 
     categorias: list[DisponibleCategoria] = []
-    disponible_total_mes = 0.0
+    disponible_total = 0.0
+    disponible_hoy_total = 0.0
 
     for p in presupuestos:
-        gastado = (
-            db.query(Movimiento)
-            .filter(
-                Movimiento.cuenta_id.in_(ids_accesibles),
-                Movimiento.categoria == p.categoria,
-                Movimiento.tipo == "expense",
-                Movimiento.fecha >= inicio_mes,
-            )
-            .with_entities(Movimiento.monto, Movimiento.cuenta_id)
-            .all()
-        )
-        total_gastado = sum(convertir_a_cop(monto, monedas.get(cuenta_id, "COP")) for monto, cuenta_id in gastado)
-        limite_efectivo = p.limite + (p.sobre_ajuste or 0)
+        proy = srv.proyectar_presupuesto(p, cfg, gastos, ahora, n_historico=1)
+        dias_restantes = proy["dias_restantes"] + 1  # hoy todavía se puede gastar
+        limite_efectivo = proy["limite"]
+        total_gastado = proy["gastado"]
         disponible = limite_efectivo - total_gastado
-        disponible_total_mes += disponible
+        disponible_total += disponible
+        disponible_hoy_total += disponible / dias_restantes
 
         categorias.append(
             DisponibleCategoria(
@@ -92,10 +83,11 @@ def disponible_hoy(
             )
         )
 
+    ultimo_dia_mes = calendar.monthrange(ahora.year, ahora.month)[1]
     return DisponibleHoy(
-        disponible_total_hoy=disponible_total_mes / dias_restantes,
-        disponible_total_mes=disponible_total_mes,
-        dias_restantes_mes=dias_restantes,
+        disponible_total_hoy=disponible_hoy_total,
+        disponible_total_mes=disponible_total,
+        dias_restantes_mes=max(ultimo_dia_mes - ahora.day + 1, 1),
         categorias=categorias,
     )
 
@@ -177,22 +169,10 @@ def mover_sobre(
     if origen.id == destino.id:
         raise HTTPException(status_code=400, detail="Elige dos categorías distintas")
 
-    ahora = ahora_co()
-    inicio_mes = ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
-    monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()}
-    gastado_origen = sum(
-        convertir_a_cop(monto, monedas.get(cuenta_id, "COP"))
-        for monto, cuenta_id in db.query(Movimiento.monto, Movimiento.cuenta_id)
-        .filter(
-            Movimiento.cuenta_id.in_(ids_accesibles),
-            Movimiento.categoria == origen.categoria,
-            Movimiento.tipo == "expense",
-            Movimiento.fecha >= inicio_mes,
-        )
-        .all()
+    proy = srv.proyectar_presupuesto(
+        origen, srv.obtener_config(db, usuario.id), srv.GastosPorRango(db, usuario.id), ahora_co(), n_historico=1
     )
-    disponible_origen = origen.limite + (origen.sobre_ajuste or 0) - gastado_origen
+    disponible_origen = proy["limite"] - proy["gastado"]
     if data.monto > disponible_origen:
         raise HTTPException(
             status_code=400,

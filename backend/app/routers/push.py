@@ -1,10 +1,12 @@
 import calendar
+import json
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app import presupuesto_servicio as srv
 from app.auth import UsuarioActual, cron_autorizado, get_current_user
 from app.compartidos import cuentas_ids_accesibles
 from app.config import settings
@@ -93,8 +95,7 @@ def cron_revisar_presupuestos(
         s[0] for s in db.query(PushSubscription.usuario_id).distinct().all()
     }
     notificados = 0
-    inicio_mes = ahora_co().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    clave_mes = inicio_mes.strftime("%Y-%m")
+    ahora = ahora_co()
 
     for usuario_id in usuarios_con_push:
         presupuestos = (
@@ -102,33 +103,47 @@ def cron_revisar_presupuestos(
             .filter(Presupuesto.usuario_id == usuario_id, Presupuesto.activo == True)  # noqa: E712
             .all()
         )
-        ids_accesibles = cuentas_ids_accesibles(db, usuario_id)
+        cfg = srv.obtener_config(db, usuario_id)
+        gastos = srv.GastosPorRango(db, usuario_id)
         for p in presupuestos:
-            # Una sola alerta por presupuesto y por mes: sin esta marca, el aviso
-            # se repetiría cada día mientras el gasto siga sobre el umbral.
-            if p.ultima_alerta_mes == clave_mes or p.limite <= 0:
+            if p.limite <= 0:
                 continue
-            gastado = (
-                db.query(func.coalesce(func.sum(Movimiento.monto), 0.0))
-                .filter(
-                    Movimiento.cuenta_id.in_(ids_accesibles),
-                    Movimiento.categoria == p.categoria,
-                    Movimiento.tipo == "expense",
-                    Movimiento.fecha >= inicio_mes,
-                )
-                .scalar()
-            )
-            pct = (gastado / p.limite) * 100
-            if pct >= p.alerta_pct:
+            # Cada presupuesto se evalúa en SU periodo (mensual, quincenal, semanal).
+            proy = srv.proyectar_presupuesto(p, cfg, gastos, ahora)
+            clave = proy["clave_periodo"]
+            if proy["limite"] <= 0:
+                continue
+
+            # 1) Umbral ya usado. Una sola alerta por presupuesto y por periodo:
+            #    sin esta marca, el aviso se repetiría cada día sobre el umbral.
+            if p.ultima_alerta_mes != clave and proy["pct_usado"] >= p.alerta_pct:
                 enviar_push(
                     db,
                     usuario_id,
                     f"Presupuesto de {p.categoria}",
-                    f"Ya usaste el {round(pct)}% — quedan {max(0, p.limite - gastado):,.0f} COP",
+                    f"Ya usaste el {round(proy['pct_usado'])}% — quedan "
+                    f"{max(0, proy['limite'] - proy['gastado']):,.0f} COP",
                     "/presupuesto",
                 )
-                p.ultima_alerta_mes = clave_mes
+                p.ultima_alerta_mes = clave
                 db.commit()
+                notificados += 1
+                continue
+
+            # 2) Alerta PREDICTIVA: aún no llegas al umbral, pero al ritmo actual te
+            #    pasarías. Una vez por periodo y sin avisar en los primeros 3 días
+            #    (con tan pocos datos el ritmo engaña).
+            avisadas = srv.json_dict(cfg.alertas_proyeccion)
+            if (
+                p.ultima_alerta_mes != clave  # si ya avisó el umbral, no repetir
+                and proy["estado"] == "en_riesgo"
+                and proy["dias_transcurridos"] >= 3
+                and proy["dias_restantes"] > 0
+                and avisadas.get(p.id) != clave
+            ):
+                enviar_push(db, usuario_id, f"Ojo con {p.categoria}", proy["mensaje"], "/presupuesto")
+                avisadas[p.id] = clave
+                cfg = srv.guardar_config(db, usuario_id, alertas_proyeccion=json.dumps(avisadas))
                 notificados += 1
 
     return {"ok": True, "notificados": notificados}
