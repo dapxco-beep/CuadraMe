@@ -70,7 +70,7 @@ def extraer_monto(texto_original: str) -> float | None:
 
     # formato numérico directo: "20000", "20.000", "20 mil", "1.5 millones"
     match = re.search(
-        r"(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(mil|millon(?:es)?|k)?",
+        r"(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(millon(?:es)?|mil|k)?\b",
         texto,
     )
     if match and re.search(r"\d", match.group(0)):
@@ -110,7 +110,7 @@ def extraer_descripcion(texto_original: str, monto_texto_detectado: str = "") ->
     """Se queda con lo que sobra de la frase después de quitar el monto y
     las palabras de acción, para usarlo como descripción legible."""
     texto = texto_original.strip()
-    texto = re.sub(r"\d+(?:[.,]\d+)?\s*(mil|millones?|k)?", "", texto, flags=re.IGNORECASE)
+    texto = re.sub(r"\d+(?:[.,]\d+)?\s*(millones?|mil|k)?\b", "", texto, flags=re.IGNORECASE)
     for palabra in sorted(PALABRAS_INGRESO | PALABRAS_GASTO, key=len, reverse=True):
         texto = re.sub(re.escape(palabra), "", texto, flags=re.IGNORECASE)
     texto = re.sub(r"^\s*(en|de|del|la|el|los|las)\s+", "", texto, flags=re.IGNORECASE)

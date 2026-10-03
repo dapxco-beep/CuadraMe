@@ -168,6 +168,10 @@ export const api = {
   saludFinanciera: () => request('/insights/salud-financiera'),
   wrapped: (mes) => request(`/reportes/wrapped${mes ? `?mes=${mes}` : ''}`),
   alertasProactivas: () => request('/insights/alertas-proactivas'),
+  asistenteSugerencias: () => request('/asistente/sugerencias'),
+  asistenteMensaje: (texto) => request('/asistente/mensaje', { method: 'POST', body: { texto } }),
+  asistenteConfirmarMovimiento: (data) => request('/asistente/confirmar/movimiento', { method: 'POST', body: data }),
+  asistenteConfirmarPlan: (data) => request('/asistente/confirmar/plan', { method: 'POST', body: data }),
   preguntar: (pregunta) => request('/insights/preguntar', { method: 'POST', body: { pregunta } }),
 
   pushPublicKey: () => request('/push/vapid-public-key', { auth: false }),

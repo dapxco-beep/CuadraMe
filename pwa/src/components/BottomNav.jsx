@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, Link, useLocation } from 'react-router-dom'
 import {
-  CreditCard, FileCheck, Gift, Home, Landmark, LayoutGrid, List, Mail, PieChart, PiggyBank,
+  Bot, CreditCard, FileCheck, Gift, Home, Landmark, LayoutGrid, List, Mail, PieChart, PiggyBank,
   Plus, Repeat, Sparkles, Sprout, Tag, User, Wallet, X,
 } from 'lucide-react'
 
@@ -18,6 +18,7 @@ const tabs = [
 ]
 
 export const ITEMS_MAS = [
+  { to: '/asistente', icon: Bot, label: 'CuadraMe AI' },
   { to: '/patrimonio', icon: Landmark, label: 'Patrimonio' },
   { to: '/metas', icon: PiggyBank, label: 'Metas' },
   { to: '/deudas', icon: CreditCard, label: 'Deudas' },

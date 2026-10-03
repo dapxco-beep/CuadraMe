@@ -5,8 +5,10 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import Base, engine
+from app import models_asistente  # noqa: F401  (registra la tabla uso_asistente para create_all)
 from app.routers import (
     ahorcado,
+    asistente,
     backup,
     categorias,
     compartir,
@@ -130,6 +132,7 @@ app.include_router(metricas.router)
 app.include_router(patrimonio.router)
 app.include_router(gastos_compartidos.router)
 app.include_router(facturas.router)
+app.include_router(asistente.router)
 
 
 @app.get("/health")

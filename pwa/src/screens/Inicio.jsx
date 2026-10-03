@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeftRight, ChevronRight, CreditCard, Gift, Landmark, PiggyBank, Repeat, Sparkles } from 'lucide-react'
+import { ArrowLeftRight, Bot, ChevronRight, CreditCard, Gift, Landmark, PiggyBank, Repeat, Sparkles } from 'lucide-react'
 import { CargandoMarca, IlustracionVacia, Isotipo, Monto, SelloCuadre } from '../brand/Marca'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
@@ -238,6 +238,22 @@ export default function Inicio() {
           <ChevronRight size={16} className="text-ink-soft shrink-0" />
         </Link>
       )}
+
+      {/* CuadraMe AI: entrada al asistente (registra por texto, simula compras, arma planes) */}
+      <Link
+        to="/asistente"
+        className="mx-6 mt-5 card-marca bg-accent-soft border border-accent/20 p-4 flex items-center gap-3 stagger-item"
+        style={{ '--stagger-i': 4 }}
+      >
+        <span className="w-10 h-10 rounded-xl bg-paper-raised flex items-center justify-center shrink-0">
+          <Bot size={18} className="text-accent" />
+        </span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold">Pregúntale a CuadraMe AI</p>
+          <p className="text-xs text-ink-soft mt-0.5">«¿Puedo comprar un celular?» · «Gasté 18.000 en almuerzo»</p>
+        </div>
+        <ChevronRight size={16} className="text-ink-soft shrink-0" />
+      </Link>
 
       {/* Puntaje de salud financiera (0-100) con desglose y consejos */}
       <TarjetaSalud />
