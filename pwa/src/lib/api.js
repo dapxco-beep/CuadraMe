@@ -180,4 +180,22 @@ export const api = {
   nuevaPartidaAhorcado: () => request('/ahorcado/nueva-partida', { method: 'POST' }),
   adivinarLetraAhorcado: (partidaId, letra) =>
     request(`/ahorcado/${partidaId}/adivinar`, { method: 'POST', body: { letra } }),
+
+  // Gastos compartidos (cuentas con amigos)
+  contactosGasto: () => request('/gastos-compartidos/contactos'),
+  crearContactoGasto: (data) => request('/gastos-compartidos/contactos', { method: 'POST', body: data }),
+  eliminarContactoGasto: (id) => request(`/gastos-compartidos/contactos/${id}`, { method: 'DELETE' }),
+  gruposGasto: () => request('/gastos-compartidos/grupos'),
+  crearGrupoGasto: (data) => request('/gastos-compartidos/grupos', { method: 'POST', body: data }),
+  eliminarGrupoGasto: (id) => request(`/gastos-compartidos/grupos/${id}`, { method: 'DELETE' }),
+  calcularDivision: (data) => request('/gastos-compartidos/calcular', { method: 'POST', body: data }),
+  crearGastoCompartido: (data) => request('/gastos-compartidos', { method: 'POST', body: data }),
+  gastosCompartidos: (grupoId) => request(`/gastos-compartidos${grupoId ? `?grupo_id=${grupoId}` : ''}`),
+  eliminarGastoCompartido: (id) => request(`/gastos-compartidos/${id}`, { method: 'DELETE' }),
+  saldosGasto: (grupoId) => request(`/gastos-compartidos/saldos${grupoId ? `?grupo_id=${grupoId}` : ''}`),
+  registrarPagoGasto: (data) => request('/gastos-compartidos/liquidaciones', { method: 'POST', body: data }),
+
+  // Foto de factura (la IA solo sugiere; nada se guarda hasta que el usuario confirme)
+  escanearFactura: (imagenBase64, mime) =>
+    request('/facturas/escanear', { method: 'POST', body: { imagen_base64: imagenBase64, mime } }),
 }
