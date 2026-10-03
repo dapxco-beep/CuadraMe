@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import cuentas_ids_accesibles
+from app.contabilidad import tipo_efectivo_receta, tipos_cuenta_de, tipos_efectivos
 from app.database import get_db
 from app.fx import convertir_a_cop
 from app.models import Cuenta, Movimiento, Recurrente
@@ -66,13 +67,15 @@ def reporte_mensual(
         mes_target = mes or ahora_co().strftime("%Y-%m")
         mes_movs = [m for m in movimientos if m.fecha.strftime("%Y-%m") == mes_target]
 
-    ingresos = sum(_monto_cop(m, monedas) for m in mes_movs if m.tipo == "income")
-    gastos = sum(_monto_cop(m, monedas) for m in mes_movs if m.tipo == "expense")
+    # Tipo efectivo: el pago de tarjeta y los traslados entre cuentas propias no son gasto ni ingreso.
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
+    ingresos = sum(_monto_cop(m, monedas) for m in mes_movs if te[m.id] == "income")
+    gastos = sum(_monto_cop(m, monedas) for m in mes_movs if te[m.id] == "expense")
     ahorro = ingresos - gastos
 
     categorias: dict[str, float] = {}
     for m in mes_movs:
-        if m.tipo == "expense":
+        if te[m.id] == "expense":
             categorias[m.categoria] = categorias.get(m.categoria, 0) + _monto_cop(m, monedas)
     top_categorias = sorted(
         ({"categoria": k, "monto": v} for k, v in categorias.items()),
@@ -106,14 +109,15 @@ def tendencias(
     monedas = _monedas_por_cuenta(db, ids_accesibles)
     movimientos = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids_accesibles)).all()
 
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
     por_mes: dict[str, dict[str, float]] = {}
     for m in movimientos:
         clave = m.fecha.strftime("%Y-%m")
         por_mes.setdefault(clave, {"ingresos": 0.0, "gastos": 0.0})
         monto_cop = _monto_cop(m, monedas)
-        if m.tipo == "income":
+        if te[m.id] == "income":
             por_mes[clave]["ingresos"] += monto_cop
-        elif m.tipo == "expense":
+        elif te[m.id] == "expense":
             por_mes[clave]["gastos"] += monto_cop
 
     hoy = ahora_co()
@@ -175,8 +179,12 @@ def flujo_caja_futuro(
     def _monto_recurrente_cop(r: Recurrente) -> float:
         return convertir_a_cop(r.monto, monedas.get(r.cuenta_id, "COP"))
 
-    ingresos_recurrentes = sum(_monto_recurrente_cop(r) for r in recurrentes if r.tipo == "income")
-    gastos_recurrentes = sum(_monto_recurrente_cop(r) for r in recurrentes if r.tipo == "expense")
+    # Un recurrente "Pago tarjeta" no es gasto: las compras con la tarjeta ya cuentan en el promedio variable.
+    def _efectivo_rec(r):
+        return tipo_efectivo_receta(r.tipo, r.categoria, r.nombre)
+
+    ingresos_recurrentes = sum(_monto_recurrente_cop(r) for r in recurrentes if _efectivo_rec(r) == "income")
+    gastos_recurrentes = sum(_monto_recurrente_cop(r) for r in recurrentes if _efectivo_rec(r) == "expense")
 
     hoy = ahora_co()
     hace_3_meses = hoy - timedelta(days=90)
@@ -189,7 +197,8 @@ def flujo_caja_futuro(
         )
         .all()
     )
-    gasto_variable_total = sum(_monto_cop(m, monedas) for m in movimientos if m.tipo == "expense")
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
+    gasto_variable_total = sum(_monto_cop(m, monedas) for m in movimientos if te[m.id] == "expense")
     gasto_variable_promedio_mes = gasto_variable_total / 3
 
     meses_proyeccion: list[FlujoCajaMes] = []
@@ -238,9 +247,11 @@ def resumen_wrapped(
     monedas = _monedas_por_cuenta(db, ids_accesibles)
     movimientos = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids_accesibles)).all()
 
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
+
     def filas(clave):
         return [
-            {"tipo": m.tipo, "monto": _monto_cop(m, monedas), "categoria": m.categoria, "fecha": m.fecha}
+            {"tipo": te[m.id], "monto": _monto_cop(m, monedas), "categoria": m.categoria, "fecha": m.fecha}
             for m in movimientos
             if m.fecha.strftime("%Y-%m") == clave
         ]

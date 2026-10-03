@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import cuentas_ids_accesibles
+from app.contabilidad import gastos_por_categoria
 from app.database import get_db
 from app.fx import convertir_a_cop
 from app.models import Cuenta, Meta, Movimiento, Presupuesto, Recurrente
@@ -62,20 +63,11 @@ def disponible_hoy(
 
     categorias: list[DisponibleCategoria] = []
     disponible_total_mes = 0.0
+    # Gasto real del mes (sin pagos de tarjeta ni traslados entre cuentas propias).
+    gastado_mes = gastos_por_categoria(db, ids_accesibles, inicio_mes, monedas)
 
     for p in presupuestos:
-        gastado = (
-            db.query(Movimiento)
-            .filter(
-                Movimiento.cuenta_id.in_(ids_accesibles),
-                Movimiento.categoria == p.categoria,
-                Movimiento.tipo == "expense",
-                Movimiento.fecha >= inicio_mes,
-            )
-            .with_entities(Movimiento.monto, Movimiento.cuenta_id)
-            .all()
-        )
-        total_gastado = sum(convertir_a_cop(monto, monedas.get(cuenta_id, "COP")) for monto, cuenta_id in gastado)
+        total_gastado = gastado_mes.get(p.categoria, 0.0)
         limite_efectivo = p.limite + (p.sobre_ajuste or 0)
         disponible = limite_efectivo - total_gastado
         disponible_total_mes += disponible
@@ -181,17 +173,7 @@ def mover_sobre(
     inicio_mes = ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
     monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()}
-    gastado_origen = sum(
-        convertir_a_cop(monto, monedas.get(cuenta_id, "COP"))
-        for monto, cuenta_id in db.query(Movimiento.monto, Movimiento.cuenta_id)
-        .filter(
-            Movimiento.cuenta_id.in_(ids_accesibles),
-            Movimiento.categoria == origen.categoria,
-            Movimiento.tipo == "expense",
-            Movimiento.fecha >= inicio_mes,
-        )
-        .all()
-    )
+    gastado_origen = gastos_por_categoria(db, ids_accesibles, inicio_mes, monedas).get(origen.categoria, 0.0)
     disponible_origen = origen.limite + (origen.sobre_ajuste or 0) - gastado_origen
     if data.monto > disponible_origen:
         raise HTTPException(

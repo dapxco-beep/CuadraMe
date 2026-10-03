@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, cron_autorizado, get_current_user
 from app.compartidos import cuentas_ids_accesibles
+from app.contabilidad import gastos_por_categoria, tipos_cuenta_de, tipos_efectivos
 from app.config import settings
 from app.database import get_db
 from app.finanzas import calc_estado_recurrente
@@ -103,21 +104,13 @@ def cron_revisar_presupuestos(
             .all()
         )
         ids_accesibles = cuentas_ids_accesibles(db, usuario_id)
+        gastado_mes = gastos_por_categoria(db, ids_accesibles, inicio_mes)
         for p in presupuestos:
             # Una sola alerta por presupuesto y por mes: sin esta marca, el aviso
             # se repetiría cada día mientras el gasto siga sobre el umbral.
             if p.ultima_alerta_mes == clave_mes or p.limite <= 0:
                 continue
-            gastado = (
-                db.query(func.coalesce(func.sum(Movimiento.monto), 0.0))
-                .filter(
-                    Movimiento.cuenta_id.in_(ids_accesibles),
-                    Movimiento.categoria == p.categoria,
-                    Movimiento.tipo == "expense",
-                    Movimiento.fecha >= inicio_mes,
-                )
-                .scalar()
-            )
+            gastado = gastado_mes.get(p.categoria, 0.0)
             pct = (gastado / p.limite) * 100
             if pct >= p.alerta_pct:
                 enviar_push(
@@ -249,18 +242,9 @@ def cron_premiar_presupuestos_mes(
 
         ids_accesibles = cuentas_ids_accesibles(db, usuario_id)
         cumplio_todos = True
+        gastado_mes = gastos_por_categoria(db, ids_accesibles, inicio_mes)
         for p in presupuestos:
-            gastado = sum(
-                m.monto
-                for m in db.query(Movimiento)
-                .filter(
-                    Movimiento.cuenta_id.in_(ids_accesibles),
-                    Movimiento.categoria == p.categoria,
-                    Movimiento.tipo == "expense",
-                    Movimiento.fecha >= inicio_mes,
-                )
-                .all()
-            )
+            gastado = gastado_mes.get(p.categoria, 0.0)
             if gastado > p.limite:
                 cumplio_todos = False
                 break
@@ -312,8 +296,9 @@ def cron_resumen_semanal(
         def monto_cop(m):
             return convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
 
-        gastos = sum(monto_cop(m) for m in semana if m.tipo == "expense")
-        ingresos = sum(monto_cop(m) for m in semana if m.tipo == "income")
+        te = tipos_efectivos(semana, tipos_cuenta_de(db, ids_accesibles))
+        gastos = sum(monto_cop(m) for m in semana if te[m.id] == "expense")
+        ingresos = sum(monto_cop(m) for m in semana if te[m.id] == "income")
 
         enviar_push(
             db,

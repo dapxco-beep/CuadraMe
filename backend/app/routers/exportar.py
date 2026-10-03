@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import cuentas_ids_accesibles
+from app.contabilidad import tipos_cuenta_de, tipos_efectivos
 from app.database import get_db
 from app.models import Movimiento
 
@@ -28,6 +29,16 @@ def _movimientos_rango(
     return query.order_by(Movimiento.fecha.asc()).all()
 
 
+ETIQUETA_CONTABLE = {"expense": "Gasto", "income": "Ingreso", "transfer": "No cuenta (pago de tarjeta o traslado propio)"}
+
+
+def _etiquetas_contables(db: Session, usuario_id: str, movimientos: list[Movimiento]) -> dict[str, str]:
+    """Qué papel juega cada fila en los resúmenes: así quien suma el Excel por su cuenta
+    no cuenta dos veces las compras con tarjeta y el pago de esa tarjeta."""
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, cuentas_ids_accesibles(db, usuario_id)))
+    return {mid: ETIQUETA_CONTABLE[t] for mid, t in te.items()}
+
+
 @router.get("/movimientos.csv")
 def exportar_csv(
     desde: str | None = None,
@@ -39,11 +50,12 @@ def exportar_csv(
 
     buffer = io.StringIO()
     writer = csv.writer(buffer)
-    writer.writerow(["Fecha", "Descripción", "Categoría", "Tipo", "Monto", "Fuente", "Notas"])
+    etiquetas = _etiquetas_contables(db, usuario.id, movimientos)
+    writer.writerow(["Fecha", "Descripción", "Categoría", "Tipo", "Monto", "Fuente", "Notas", "Cuenta en resúmenes como"])
     for m in movimientos:
         writer.writerow([
             m.fecha.strftime("%Y-%m-%d"), m.descripcion, m.categoria,
-            m.tipo, m.monto, m.fuente, m.notas,
+            m.tipo, m.monto, m.fuente, m.notas, etiquetas[m.id],
         ])
 
     buffer.seek(0)
@@ -67,7 +79,8 @@ def exportar_excel(
     ws = wb.active
     ws.title = "Movimientos"
 
-    encabezados = ["Fecha", "Descripción", "Categoría", "Tipo", "Monto", "Fuente", "Notas"]
+    etiquetas = _etiquetas_contables(db, usuario.id, movimientos)
+    encabezados = ["Fecha", "Descripción", "Categoría", "Tipo", "Monto", "Fuente", "Notas", "Cuenta en resúmenes como"]
     ws.append(encabezados)
     for cell in ws[1]:
         cell.font = Font(bold=True)
@@ -75,7 +88,7 @@ def exportar_excel(
     for m in movimientos:
         ws.append([
             m.fecha.strftime("%Y-%m-%d"), m.descripcion, m.categoria,
-            m.tipo, m.monto, m.fuente, m.notas,
+            m.tipo, m.monto, m.fuente, m.notas, etiquetas[m.id],
         ])
 
     for col in ws.columns:
