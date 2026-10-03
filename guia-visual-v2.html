@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CuadraMe — Sistema unificado (4 paneles)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #f7f4ee;
+    --cream-raised: #ffffff;
+    --ink: #221f19;
+    --ink-soft: #221f1999;
+    --line: #e8e2d3;
+    --accent: #d9622b;
+    --accent-soft: #fbe4d3;
+    --accent-2: #2f8f5b;
+    --gold: #d9a441;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Sora', sans-serif; background: #e9e6df; padding: 40px 20px; color: var(--ink); }
+  .intro { max-width: 1400px; margin: 0 auto 40px; text-align: center; }
+  .intro h1 { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
+  .intro p { color: #555; font-size: 14px; max-width: 680px; margin: 0 auto; line-height: 1.5; }
+  .grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px; }
+  .card { background: var(--cream-raised); border-radius: 24px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.1); }
+  .card-label { padding: 16px 20px; background: var(--ink); color: white; }
+  .card-label .num { font-size: 11px; opacity: 0.55; letter-spacing: 1px; text-transform: uppercase; font-weight: 600; }
+  .card-label h2 { font-size: 16px; font-weight: 800; margin-top: 2px; }
+  .phone { background: var(--cream); min-height: 660px; padding: 24px 18px 40px; }
+
+  .hi { font-size: 13px; color: var(--ink-soft); font-weight: 600; }
+  .section-title { font-size: 11px; font-weight: 700; color: var(--ink-soft); margin: 18px 0 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ---------- PANEL 1: INICIO (mazo de cartas) ---------- */
+  .deck { margin-top: 16px; position: relative; height: 150px; }
+  .pcard { position: absolute; top: 0; width: 78%; height: 128px; border-radius: 20px; padding: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+  .pcard.c1 { left: 0; z-index: 3; }
+  .pcard.c2 { left: 22px; z-index: 2; opacity: 0.94; transform: scale(0.97); }
+  .pcard.c3 { left: 44px; z-index: 1; opacity: 0.85; transform: scale(0.94); }
+  .pcard .pc-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .pcard .pc-name { font-size: 11px; opacity: 0.85; font-weight: 700; }
+  .pcard .pc-bal { font-size: 21px; font-weight: 800; margin-top: 18px; letter-spacing: -0.5px; }
+  .mono-badge { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; background: rgba(255,255,255,0.22); }
+  /* colores reales de marca — cada entidad se reconoce de un vistazo, como en la billetera física */
+  .brand-nu { background: #820AD1; color: #fff; }
+  .brand-nequi { background: #1A0B33; color: #FF0FA8; }
+  .brand-bancolombia { background: #FFDD00; color: #0033A0; }
+  .brand-davivienda { background: #EE3831; color: #fff; }
+  .brand-daviplata { background: #EE3831; color: #fff; }
+  .brand-bbva { background: #072146; color: #fff; }
+  .brand-scotiabank { background: #EC111A; color: #fff; }
+  .brand-itau { background: #FF6200; color: #fff; }
+  .brand-bogota { background: #FFC20E; color: #002856; }
+  .brand-occidente { background: #00A84F; color: #fff; }
+  .brand-lulo { background: #0A0F2C; color: #6EE7F0; }
+  .brand-efectivo { background: var(--ink); color: #fff; }
+  .brand-generico { background: var(--gold); color: #fff; }
+  .today-box { margin-top: 18px; background: var(--accent-soft); border-radius: 20px; padding: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .today-box .t1 { font-size: 12px; color: var(--ink-soft); font-weight: 700; }
+  .today-box .t2 { font-size: 24px; font-weight: 800; margin-top: 2px; color: var(--ink); }
+  .today-box .badge { background: white; padding: 7px 12px; border-radius: 100px; font-size: 11px; font-weight: 700; color: var(--accent); }
+  .qgrid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 16px; }
+  .qbtn { background: var(--cream-raised); border: 1px solid var(--line); border-radius: 16px; padding: 12px 6px; text-align: center; }
+  .qbtn .ic { font-size: 18px; }
+  .qbtn .lb { font-size: 10px; font-weight: 700; margin-top: 4px; color: var(--ink-soft); }
+  .li2 { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: var(--cream-raised); border-radius: 14px; margin-bottom: 8px; }
+  .li2 .nm { font-weight: 700; font-size: 13px; }
+  .li2 .cat { font-size: 11px; color: var(--ink-soft); }
+  .li2 .val { font-weight: 800; font-size: 13px; }
+  .li2 .val.pos { color: var(--accent-2); }
+
+  /* ---------- PANEL 2: MOVIMIENTOS (timeline) ---------- */
+  .today-strip { margin-top: 6px; background: var(--gold); border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; color: white; }
+  .today-strip .l1 { font-size: 12px; font-weight: 700; opacity: 0.85; }
+  .today-strip .l2 { font-size: 20px; font-weight: 800; margin-top: 2px; }
+  .timeline { margin-top: 24px; position: relative; padding-left: 22px; }
+  .timeline::before { content: ''; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px; background: var(--line); }
+  .day-lbl { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 10px; }
+  .tl-item { position: relative; padding: 9px 0; }
+  .tl-item::before { content: ''; position: absolute; left: -22px; top: 15px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); border: 2px solid var(--cream); }
+  .tl-item.income::before { background: var(--accent-2); }
+  .tl-row { display: flex; justify-content: space-between; align-items: center; }
+  .tl-row .nm { font-size: 14px; font-weight: 700; }
+  .tl-row .cat { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
+  .tl-row .val { font-size: 15px; font-weight: 800; }
+  .tl-row .val.income { color: var(--accent-2); }
+
+  /* ---------- PANEL 3: PRESUPUESTO (termómetro) ---------- */
+  .therm-layout { display: flex; gap: 18px; margin-top: 6px; }
+  .therm-col { display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
+  .therm-track { width: 32px; height: 380px; background: var(--line); border-radius: 100px; position: relative; overflow: hidden; }
+  .therm-fill { position: absolute; bottom: 0; left: 0; right: 0; height: 62%; background: linear-gradient(180deg, var(--gold), var(--accent)); border-radius: 100px; }
+  .therm-label { font-size: 10px; color: var(--ink-soft); margin-top: 10px; text-align: center; font-weight: 700; line-height: 1.4; }
+  .main-col { flex: 1; min-width: 0; }
+  .main-col .big { font-size: 32px; font-weight: 800; margin-top: 8px; letter-spacing: -1px; }
+  .main-col .big-lbl { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .stat-row { display: flex; gap: 10px; margin-top: 20px; }
+  .stat-box { flex: 1; background: var(--cream-raised); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+  .stat-box .l1 { font-size: 10px; color: var(--ink-soft); font-weight: 700; }
+  .stat-box .l2 { font-size: 16px; font-weight: 800; margin-top: 3px; }
+  .cat-bars { margin-top: 20px; }
+  .cat-bar-row { margin-bottom: 12px; }
+  .cat-bar-row .cbr-top { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 5px; }
+  .cat-bar-track { height: 8px; background: var(--line); border-radius: 100px; overflow: hidden; }
+  .cat-bar-fill { height: 100%; border-radius: 100px; background: var(--accent); }
+
+  /* ---------- PANEL 4: INSIGHTS (mapa de calor) ---------- */
+  .hero-num { font-size: 40px; font-weight: 800; margin-top: 6px; letter-spacing: -1.5px; }
+  .hero-lbl { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .heatmap { margin-top: 24px; }
+  .hm-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .hm-cell { aspect-ratio: 1; border-radius: 6px; }
+  .legend { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 10px; color: var(--ink-soft); }
+  .legend .sw { width: 10px; height: 10px; border-radius: 3px; }
+  .top-cats { margin-top: 20px; display: flex; gap: 8px; }
+  .cat-pill { flex: 1; background: var(--cream-raised); border: 1px solid var(--line); border-radius: 14px; padding: 10px; text-align: center; }
+  .cat-pill .cn { font-size: 11px; font-weight: 700; color: var(--ink-soft); }
+  .cat-pill .cv { font-size: 13px; font-weight: 800; margin-top: 2px; }
+  .insight-card { margin-top: 16px; background: var(--accent-soft); border-radius: 16px; padding: 14px 16px; }
+  .insight-card .ic-lbl { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.4px; }
+  .insight-card .ic-txt { font-size: 13px; margin-top: 4px; line-height: 1.5; }
+
+  .vote { text-align: center; padding: 14px; font-size: 13px; color: #888; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>CuadraMe — sistema unificado, 4 paneles</h1>
+  <p>Misma base visual (crema, Sora, acento naranja/dorado) aplicada a cada pantalla con el layout que mejor le sirve a su propósito. Así se ve como una sola app, no un collage.</p>
+</div>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="card-label"><div class="num">Panel · Inicio</div><h2>Mazo de cuentas</h2></div>
+    <div class="phone">
+      <div class="hi">Hola, Daniel</div>
+      <div class="deck">
+        <div class="pcard c3 brand-nu">
+          <div class="pc-top"><span class="pc-name">Nu</span><span class="mono-badge">Nu</span></div>
+          <div class="pc-bal">$890.000</div>
+        </div>
+        <div class="pcard c2 brand-nequi">
+          <div class="pc-top"><span class="pc-name">Nequi</span><span class="mono-badge">N</span></div>
+          <div class="pc-bal">$210.000</div>
+        </div>
+        <div class="pcard c1 brand-bancolombia">
+          <div class="pc-top"><span class="pc-name">Bancolombia</span><span class="mono-badge" style="background:rgba(0,51,160,0.15)">BC</span></div>
+          <div class="pc-bal">$1.380.000</div>
+        </div>
+      </div>
+      <div class="today-box">
+        <div><div class="t1">Puedes gastar hoy</div><div class="t2">$38.500</div></div>
+        <div class="badge">3 cuentas</div>
+      </div>
+      <div class="qgrid">
+        <div class="qbtn"><div class="ic">🐷</div><div class="lb">Metas</div></div>
+        <div class="qbtn"><div class="ic">💳</div><div class="lb">Deudas</div></div>
+        <div class="qbtn"><div class="ic">🔁</div><div class="lb">Fijos</div></div>
+        <div class="qbtn"><div class="ic">✨</div><div class="lb">Insights</div></div>
+      </div>
+      <div class="section-title">Movimientos recientes</div>
+      <div class="li2"><div><div class="nm">Uber Rides</div><div class="cat">Transporte</div></div><div class="val">-$12.908</div></div>
+      <div class="li2"><div><div class="nm">Bancolombia</div><div class="cat">Ingresos</div></div><div class="val pos">+$116.913</div></div>
+    </div>
+    <div class="vote">Inicio</div>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><div class="num">Panel · Movimientos</div><h2>Timeline</h2></div>
+    <div class="phone">
+      <div class="hi">Todos tus movimientos</div>
+      <div class="today-strip">
+        <div><div class="l1">Puedes gastar hoy</div><div class="l2">$38.500</div></div>
+        <div style="font-size:20px">→</div>
+      </div>
+      <div class="timeline">
+        <div class="day-lbl">Hoy, 27 mayo</div>
+        <div class="tl-item"><div class="tl-row"><div><div class="nm">Uber Rides</div><div class="cat">Transporte</div></div><div class="val">-$12.908</div></div></div>
+        <div class="tl-item"><div class="tl-row"><div><div class="nm">Uber Rides</div><div class="cat">Transporte</div></div><div class="val">-$12.455</div></div></div>
+        <div class="tl-item income"><div class="tl-row"><div><div class="nm">Recibiste de Bancolombia</div><div class="cat">Ingresos</div></div><div class="val income">+$116.913</div></div></div>
+        <div class="day-lbl">Ayer, 26 mayo</div>
+        <div class="tl-item"><div class="tl-row"><div><div class="nm">Enviaste a Diego Hernández</div><div class="cat">Transferencias</div></div><div class="val">-$434.000</div></div></div>
+        <div class="tl-item"><div class="tl-row"><div><div class="nm">Enviaste a David Vanegas</div><div class="cat">Transferencias</div></div><div class="val">-$4.600</div></div></div>
+      </div>
+    </div>
+    <div class="vote">Movimientos</div>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><div class="num">Panel · Presupuesto</div><h2>Termómetro</h2></div>
+    <div class="phone">
+      <div class="hi">Presupuesto de mayo</div>
+      <div class="therm-layout">
+        <div class="therm-col">
+          <div class="therm-track"><div class="therm-fill"></div></div>
+          <div class="therm-label">62% del<br>mes usado</div>
+        </div>
+        <div class="main-col">
+          <div class="big">$38.500</div>
+          <div class="big-lbl">disponibles hoy sin pasarte</div>
+          <div class="stat-row">
+            <div class="stat-box"><div class="l1">SALDO</div><div class="l2">$2.48M</div></div>
+            <div class="stat-box"><div class="l1">FIJOS</div><div class="l2">$620K</div></div>
+          </div>
+          <div class="cat-bars">
+            <div class="cat-bar-row">
+              <div class="cbr-top"><span>Comida</span><span>$180K / $250K</span></div>
+              <div class="cat-bar-track"><div class="cat-bar-fill" style="width:72%"></div></div>
+            </div>
+            <div class="cat-bar-row">
+              <div class="cbr-top"><span>Transporte</span><span>$210K / $200K</span></div>
+              <div class="cat-bar-track"><div class="cat-bar-fill" style="width:100%; background:#c73e2c"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="vote">Presupuesto</div>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><div class="num">Panel · Insights</div><h2>Mapa de calor</h2></div>
+    <div class="phone">
+      <div class="hi">Tus patrones de mayo</div>
+      <div class="hero-num">$38.500</div>
+      <div class="hero-lbl">disponible hoy</div>
+      <div class="heatmap">
+        <div class="section-title" style="margin-top:20px">Tu gasto día a día</div>
+        <div class="hm-grid" id="hmgrid"></div>
+        <div class="legend"><span>Menos</span><span class="sw" style="background:#f0ece1"></span><span class="sw" style="background:#f3cfa0"></span><span class="sw" style="background:#e39457"></span><span class="sw" style="background:#c73e2c"></span><span>Más</span></div>
+      </div>
+      <div class="top-cats">
+        <div class="cat-pill"><div class="cn">Transporte</div><div class="cv">$210K</div></div>
+        <div class="cat-pill"><div class="cn">Comida</div><div class="cv">$180K</div></div>
+        <div class="cat-pill"><div class="cn">Otros</div><div class="cv">$90K</div></div>
+      </div>
+      <div class="insight-card">
+        <div class="ic-lbl">Detectamos</div>
+        <div class="ic-txt">Gastas 40% más los viernes — casi siempre en Transporte. ¿Es Uber al salir de rumba? 👀</div>
+      </div>
+    </div>
+    <div class="vote">Insights</div>
+  </div>
+
+</div>
+
+<script>
+  const colors = ['#f0ece1', '#f0ece1', '#f3cfa0', '#f3cfa0', '#e39457', '#c73e2c', '#f0ece1'];
+  const grid = document.getElementById('hmgrid');
+  for (let i = 0; i < 35; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'hm-cell';
+    cell.style.background = colors[Math.floor(Math.random() * colors.length)];
+    grid.appendChild(cell);
+  }
+</script>
+
+</body>
+</html>

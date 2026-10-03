@@ -10,3 +10,6 @@ test_gemini.ipynb
 
 # Config de Claude Code local
 .claude/
+
+# Credenciales y secretos (nunca deben subirse)
+secrets/
