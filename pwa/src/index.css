@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./brand/estilos.css";
 
 @theme inline {
   --color-ink: var(--c-ink);
@@ -11,6 +12,11 @@
   --color-accent-soft: var(--c-accent-soft);
   --color-danger: var(--c-danger);
   --color-danger-soft: var(--c-danger-soft);
+  --color-brand: var(--c-brand);
+  --color-brand-2: var(--c-brand-2);
+  --color-brand-ink: var(--c-brand-ink);
+  --color-cuadra: var(--c-cuadra);
+  --color-cuadra-soft: var(--c-cuadra-soft);
 
   --font-display: var(--f-display);
   --font-sans: var(--f-sans);
@@ -24,11 +30,24 @@
   --c-paper: #f7f4ee;
   --c-paper-raised: #ffffff;
   --c-line: #e8e2d3;
-  --c-accent: #d9622b;
+  /* --c-accent es el terracota para TEXTO y botones (contraste AA sobre papel:
+     5.2:1). --c-brand es el terracota "de logo", más vivo, solo para gráficos. */
+  --c-accent: #b04413;
   --c-accent-2: #d9a441;
   --c-accent-soft: #fbe4d3;
   --c-danger: #c73e2c;
   --c-danger-soft: #fbe2dd;
+
+  /* Identidad: isotipo y firma "cuadre" */
+  --c-brand: #d9622b;
+  --c-brand-2: #d9a441;
+  --c-brand-ink: #221f19;
+  --c-hero-a: #b8470f;
+  --c-hero-b: #8a3010;
+  --c-hero-ink: #fff7ee;
+  --c-hero-soft: #ffe3c9;
+  --c-cuadra: #2f6b3f;
+  --c-cuadra-soft: #e1efdf;
 
   --f-display: 'Sora', 'SF Pro Display', system-ui, sans-serif;
   --f-sans: 'Sora', -apple-system, system-ui, sans-serif;
@@ -46,6 +65,16 @@
   --c-accent-soft: #332615;
   --c-danger: #e0685a;
   --c-danger-soft: #2e1a16;
+
+  --c-brand: #e8823f;
+  --c-brand-2: #e8bc63;
+  --c-brand-ink: #17140f;
+  --c-hero-a: #5e2b11;
+  --c-hero-b: #2f180b;
+  --c-hero-ink: #fbeedd;
+  --c-hero-soft: #f0c9a4;
+  --c-cuadra: #7bc98d;
+  --c-cuadra-soft: #1d2d20;
 
   --f-display: 'Sora', 'SF Pro Display', system-ui, sans-serif;
   --f-sans: 'Sora', -apple-system, system-ui, sans-serif;
@@ -178,8 +207,13 @@ body {
   .sheet-backdrop,
   .sheet-content,
   .pop-once,
+  .sello-pop,
+  .ficha-loop,
   .skeleton {
     animation: none !important;
+  }
+  .splash-salida {
+    animation-duration: 0.01s !important;
   }
 }
 

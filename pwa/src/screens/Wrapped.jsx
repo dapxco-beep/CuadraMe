@@ -5,6 +5,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Share2 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useDialogos } from '../lib/DialogosContext'
+import { Isotipo } from '../brand/Marca'
 import { compartirImagen, construirDiapositivas, nombreMes } from '../lib/wrappedImagen'
 
 function mesRelativo(delta) {
@@ -48,7 +49,7 @@ export default function Wrapped() {
   async function compartir() {
     setCompartiendo(true)
     try {
-      const r = await compartirImagen(datos)
+      const r = await compartirImagen(datos, fmt)
       if (r === 'descargado') avisar('Se descargó la imagen de tu resumen.')
     } catch (err) {
       avisar(err.message || 'No se pudo compartir')
@@ -89,7 +90,13 @@ export default function Wrapped() {
       {d && (
         <>
           {/* Los toques en el tercio izquierdo/derecho cambian de diapositiva, como en las historias */}
-          <div className="relative flex-1 mx-6 mt-3 mb-3 rounded-[28px] overflow-hidden bg-[#17140f] text-[#f5f1e8] min-h-[360px]">
+          <div className="relative flex-1 mx-6 mt-3 mb-3 overflow-hidden bg-[#17140f] text-[#f5f1e8] min-h-[360px] card-marca"
+            style={{
+              backgroundImage:
+                'linear-gradient(to right, rgb(255 255 255 / 0.045) 1px, transparent 1px), linear-gradient(to bottom, rgb(255 255 255 / 0.045) 1px, transparent 1px)',
+              backgroundSize: '27px 27px',
+            }}
+          >
             <div className="absolute top-3 inset-x-4 flex gap-1.5 z-10" aria-hidden="true">
               {diapos.map((s, n) => (
                 <span key={s.id} className="flex-1 h-1 rounded-full bg-white/20 overflow-hidden">
@@ -117,6 +124,10 @@ export default function Wrapped() {
                 <p className="text-sm text-[#a39c8a] mt-3">{d.detalle}</p>
               </motion.div>
             </AnimatePresence>
+            <div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-1.5 text-[#b9b19e]" aria-hidden="true">
+              <Isotipo size={18} />
+              <span className="wordmark text-[13px]">Cuadra<b style={{ color: '#e8823f' }}>Me</b></span>
+            </div>
           </div>
 
           <div className="px-6 pb-4 flex items-center gap-3">

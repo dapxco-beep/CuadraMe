@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { EstadoVacio } from '../brand/Marca'
 import { useNavigate } from 'react-router-dom'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Pencil, Plus, Trash2, Users, X } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus, Trash2, Users, X, Wallet } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
@@ -57,9 +58,7 @@ export default function Cuentas() {
           <p className="text-sm text-danger mb-3">{error}</p>
         </div>
       ) : cuentas.length === 0 ? (
-        <div className="mx-6 mt-6 rounded-2xl bg-paper-raised border border-line p-8 text-center">
-          <p className="text-sm text-ink-soft">Aún no tienes cuentas</p>
-        </div>
+        <EstadoVacio icono={Wallet} titulo="Aún no tienes cuentas" texto="Agrega la primera con el botón +." className="mx-6 mt-6" />
       ) : (
         <div className="mx-6 mt-4 space-y-3">
           {cuentas.map((c, i) => (

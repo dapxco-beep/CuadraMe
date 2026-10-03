@@ -1,0 +1,114 @@
+/* ═══ Identidad CuadraMe ═══════════════════════════════════════════════
+   Tres piezas firmes que se repiten en toda la app:
+   1) La esquina: tarjetas con la esquina superior derecha grande (.card-marca),
+      eco de la ficha del isotipo.
+   2) El libro: retícula de papel contable (.hero-marca, .patron-libro-suave),
+      de fondo en héroes, splash e ilustraciones.
+   3) El sello: la ficha dorada con ✓ (<SelloCuadre/>) cuando todo cuadra. */
+
+.card-marca {
+  border-radius: 18px 30px 18px 18px;
+}
+.card-marca-sm {
+  border-radius: 12px 18px 12px 12px;
+}
+.nav-ficha {
+  border-radius: 18px 26px 18px 18px;
+}
+
+.patron-libro-suave {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-ink) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-ink) 5%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.hero-marca {
+  background-color: var(--c-hero-b);
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.06) 1px, transparent 1px),
+    linear-gradient(145deg, var(--c-hero-a), var(--c-hero-b));
+  background-size: 22px 22px, 22px 22px, 100% 100%;
+  color: var(--c-hero-ink);
+}
+
+/* Jerarquía tipográfica */
+.t-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.t-display {
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.t-title {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Números grandes: símbolo de moneda pequeño y elevado, cifra protagonista */
+.monto-simbolo {
+  font-size: 0.5em;
+  font-weight: 600;
+  letter-spacing: 0;
+  opacity: 0.85;
+  margin-right: 0.12em;
+  vertical-align: 0.55em;
+}
+
+.wordmark {
+  font-family: var(--f-display);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+.wordmark b {
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+/* Sello de cuadre: entra como un sellazo (grande, y cae a su sitio) */
+@keyframes sello {
+  0% { transform: scale(1.7) rotate(-8deg); opacity: 0; }
+  60% { transform: scale(0.94) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.sello-pop {
+  animation: sello 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+/* Loader de marca: la ficha entra y sale de su sitio en bucle */
+@keyframes ficha-loop {
+  0%, 15% { transform: translate(10px, -10px); opacity: 0; }
+  45%, 75% { transform: translate(0, 0); opacity: 1; }
+  100% { transform: translate(0, 0); opacity: 0; }
+}
+.ficha-loop {
+  animation: ficha-loop 1.5s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+/* Salida del splash */
+@keyframes splash-out {
+  to { opacity: 0; visibility: hidden; }
+}
+.splash-salida {
+  animation: splash-out 0.22s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sello-pop,
+  .ficha-loop {
+    animation: none !important;
+  }
+  .splash-salida {
+    animation-duration: 0.01s !important;
+  }
+}

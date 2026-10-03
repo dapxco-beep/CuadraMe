@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useCallback, useState } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from './lib/ThemeContext'
 import { AuthProvider, useAuth } from './lib/AuthContext'
@@ -8,6 +8,8 @@ import { DialogosProvider } from './lib/DialogosContext'
 import { BloqueoProvider, useBloqueo } from './lib/BloqueoContext'
 import PantallaBloqueo from './components/PantallaBloqueo'
 import BottomNav from './components/BottomNav'
+import SplashMarca, { splashPendiente } from './brand/SplashMarca'
+import { CargandoMarca } from './brand/Marca'
 import Login from './screens/Login'
 import CrearCuenta from './screens/CrearCuenta'
 import Inicio from './screens/Inicio'
@@ -40,11 +42,7 @@ const PoliticaPrivacidad = lazy(() => import('./screens/legal/PoliticaPrivacidad
 const AutorizacionDatos = lazy(() => import('./screens/legal/AutorizacionDatos'))
 
 function Cargando() {
-  return (
-    <div className="flex-1 flex items-center justify-center">
-      <p className="text-sm text-ink-soft">Cargando...</p>
-    </div>
-  )
+  return <CargandoMarca />
 }
 
 function AppGate() {
@@ -110,7 +108,7 @@ function AppRoutes() {
   const { usuario, cargando, recuperando } = useAuth()
   const { bloqueado } = useBloqueo()
 
-  if (cargando) return null
+  if (cargando) return <CargandoMarca />
 
   if (usuario && recuperando) return <NuevaPassword />
 
@@ -141,8 +139,12 @@ function AppRoutes() {
 }
 
 export default function App() {
+  // Splash de marca al abrir la app (una vez por sesión)
+  const [splash, setSplash] = useState(splashPendiente)
+  const terminarSplash = useCallback(() => setSplash(false), [])
   return (
     <ThemeProvider>
+      {splash && <SplashMarca onFin={terminarSplash} />}
       <AuthProvider>
         <BloqueoProvider>
           <DialogosProvider>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { EstadoVacio } from '../brand/Marca'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, X, Tag } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCategorias } from '../lib/CategoriasContext'
 
@@ -63,9 +64,7 @@ export default function ReglasCategoria() {
           </button>
         </div>
       ) : reglas.length === 0 ? (
-        <div className="mx-6 mt-6 rounded-2xl bg-paper-raised border border-line p-8 text-center">
-          <p className="text-sm text-ink-soft">Aún no tienes reglas creadas</p>
-        </div>
+        <EstadoVacio icono={Tag} titulo="Aún no tienes reglas creadas" texto="Una regla clasifica sola los movimientos que se repiten." className="mx-6 mt-6" />
       ) : (
         <div className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
           {reglas.map((r) => (

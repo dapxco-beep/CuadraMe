@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Plus, TrendingDown, TrendingUp, X } from 'lucide-react'
+import { Info, Landmark, Plus, TrendingDown, TrendingUp, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
 import { CLASES, CLASES_BIEN, CLASES_MERCADO, formatPct, valorCDT } from '../lib/patrimonio'
 import GraficoPatrimonio from '../components/GraficoPatrimonio'
 import DonaDistribucion from '../components/DonaDistribucion'
+import { Isotipo, Monto, IlustracionVacia } from '../brand/Marca'
 
 const MONEDAS = ['COP', 'USD', 'EUR']
 const CLASES_ACTIVO = ['cdt', 'fondo', 'etf', 'accion', 'cripto', 'inmueble', 'vehiculo']
@@ -88,9 +89,14 @@ export default function Patrimonio() {
             )}
 
             <section className="mx-5 mt-4">
-              <h2 className="text-sm font-semibold mb-2">Mis activos</h2>
+              <h2 className="text-sm font-semibold mb-1">Mis activos</h2>
+              <p className="text-xs text-ink-soft mb-2 flex gap-1.5 items-start" data-testid="aviso-inversion">
+                <Info size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
+                Las cuentas de tipo inversión ya se cuentan en “Cuentas”: no hace falta registrarlas también como activo.
+              </p>
               {datos.activos.length === 0 ? (
-                <div className="rounded-2xl bg-paper-raised border border-line p-6 text-center">
+                <div className="card-marca bg-paper-raised border border-line p-6 text-center">
+                  <IlustracionVacia icono={Landmark} size={92} className="mb-3" />
                   <p className="text-sm text-ink-soft mb-3">
                     {vacio
                       ? 'Aún no hay nada que contar. Agrega tu primer CDT, fondo, inmueble o vehículo.'
@@ -153,9 +159,10 @@ function TarjetaNeto({ datos }) {
   const variacion = datos.variacion_mes_anterior
   const sube = variacion !== null && variacion !== undefined && variacion >= 0
   return (
-    <div className="mx-5 mt-3 rounded-3xl bg-ink text-paper p-5 stagger-item" style={{ '--stagger-i': 0 }}>
-      <p className="text-xs opacity-70 mb-1">Patrimonio neto</p>
-      <p className="text-3xl font-bold tracking-tight tabular-nums">{formatCOP(datos.patrimonio_neto)}</p>
+    <div className="mx-5 mt-3 hero-marca card-marca relative overflow-hidden p-5 stagger-item" style={{ '--stagger-i': 0 }}>
+      <Isotipo mono size={130} className="absolute -right-5 -bottom-7 opacity-[0.1]" />
+      <p className="t-kicker mb-2">Patrimonio neto</p>
+      <p className="text-[38px] t-display"><Monto texto={formatCOP(datos.patrimonio_neto)} /></p>
       {variacion !== null && variacion !== undefined && (
         <p className="mt-1 text-xs flex items-center gap-1 opacity-90">
           {sube ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
@@ -165,15 +172,15 @@ function TarjetaNeto({ datos }) {
       )}
       <div className="grid grid-cols-3 gap-2 mt-4 text-xs">
         <div>
-          <p className="opacity-70">Inversiones y bienes</p>
+          <p className="opacity-90">Inversiones y bienes</p>
           <p className="font-semibold tabular-nums">{formatCOP(datos.total_activos)}</p>
         </div>
         <div>
-          <p className="opacity-70">Cuentas</p>
+          <p className="opacity-90">Cuentas</p>
           <p className="font-semibold tabular-nums">{formatCOP(datos.total_cuentas)}</p>
         </div>
         <div>
-          <p className="opacity-70">Deudas</p>
+          <p className="opacity-90">Deudas</p>
           <p className="font-semibold tabular-nums">-{formatCOP(datos.total_deudas)}</p>
         </div>
       </div>
@@ -351,6 +358,11 @@ function FormActivo({ activo, onClose, onGuardado }) {
           </button>
         </div>
 
+        {!editando && (
+          <p className="text-xs text-ink-soft mb-3">
+            Si ya tienes una cuenta de tipo inversión, no la registres aquí: ya se cuenta en tu patrimonio.
+          </p>
+        )}
         {!editando && (
           <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Clase de activo">
             {CLASES_ACTIVO.map((c) => (

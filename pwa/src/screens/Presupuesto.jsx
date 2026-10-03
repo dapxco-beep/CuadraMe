@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeftRight, CalendarClock, Plus, TrendingUp, X } from 'lucide-react'
+import { EstadoVacio, CargandoMarca } from '../brand/Marca'
 import { formatCOP } from '../lib/format'
 import { api } from '../lib/api'
 import GraficoTendencia from '../components/GraficoTendencia'
@@ -124,17 +125,21 @@ export default function Presupuesto() {
       )}
 
       {cargando ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <CargandoMarca className="py-16" />
       ) : presupuestos.length === 0 ? (
-        <div className="mx-6 mt-6 rounded-2xl bg-paper-raised border border-line p-8 text-center">
-          <p className="text-sm text-ink-soft">Aún no tienes presupuestos definidos</p>
+        <EstadoVacio
+          icono={TrendingUp}
+          titulo="Aún no tienes presupuestos definidos"
+          texto="Ponle un tope a una categoría y mira cómo va cuadrando el mes."
+          className="mx-6 mt-6"
+        >
           <button
             onClick={() => setMostrarForm(true)}
-            className="mt-4 text-sm text-accent font-medium"
+            className="mt-4 text-sm text-accent font-semibold min-h-[44px] px-3"
           >
             Crear el primero
           </button>
-        </div>
+        </EstadoVacio>
       ) : (
         (() => {
           const conDatos = presupuestos.map((p) => {

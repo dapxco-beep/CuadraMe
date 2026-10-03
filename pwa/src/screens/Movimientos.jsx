@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { EstadoVacio } from '../brand/Marca'
 import { Link } from 'react-router-dom'
 import { Check, Download, Search, SlidersHorizontal, X } from 'lucide-react'
 import { formatCOP, formatMoneda } from '../lib/format'
@@ -257,9 +258,7 @@ export default function Movimientos() {
           <p className="text-sm text-danger">{errorCarga}</p>
         </div>
       ) : filtrados.length === 0 ? (
-        <div className="mx-5 rounded-3xl bg-paper-raised border border-line p-8 text-center">
-          <p className="text-sm text-ink-soft">No hay movimientos que coincidan</p>
-        </div>
+        <EstadoVacio icono={Search} titulo="No hay movimientos que coincidan" texto="Prueba con otro filtro o búsqueda." className="mx-5" />
       ) : (
         <div className="mx-5 relative pl-5">
           <div className="absolute left-[9px] top-1.5 bottom-1.5 w-0.5 bg-line" />

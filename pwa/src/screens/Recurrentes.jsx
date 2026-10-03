@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { EstadoVacio } from '../brand/Marca'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, Plus, Sparkles, X } from 'lucide-react'
+import { ArrowLeft, Check, Plus, Sparkles, X, Repeat } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
@@ -132,9 +133,7 @@ export default function Recurrentes() {
           </button>
         </div>
       ) : recs.length === 0 ? (
-        <div className="mx-5 mt-6 rounded-2xl bg-paper-raised border border-line p-8 text-center">
-          <p className="text-sm text-ink-soft">Aún no tienes gastos o ingresos recurrentes</p>
-        </div>
+        <EstadoVacio icono={Repeat} titulo="Aún no tienes gastos o ingresos recurrentes" texto="Arriendo, suscripciones, nómina: regístralos una vez." className="mx-5 mt-6" />
       ) : (
         <div className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
           {recs.map((r, i) => (

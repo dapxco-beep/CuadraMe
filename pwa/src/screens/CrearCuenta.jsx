@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Mail, Sparkles, Wallet } from 'lucide-react'
 import { api } from '../lib/api'
+import { EncabezadoMarca } from '../brand/Marca'
 
 const MONEDAS = ['COP', 'USD', 'EUR']
 const iconos = ['🏦', '💜', '💵', '💳', '📈']
@@ -32,11 +33,7 @@ const PASOS_BIENVENIDA = [
 function Bienvenida({ onContinuar }) {
   return (
     <div className="flex-1 flex flex-col justify-center px-8 py-10">
-      <div className="text-center mb-8">
-        <img src="/icons/icon-192.png" alt="CuadraMe" className="w-16 h-16 rounded-3xl mx-auto mb-4" />
-        <h1 className="text-2xl font-bold">Bienvenido a CuadraMe</h1>
-        <p className="text-sm text-ink-soft mt-1">Esto es lo que puedes hacer</p>
-      </div>
+      <EncabezadoMarca titulo="Bienvenido a CuadraMe" lema="Esto es lo que puedes hacer" />
 
       <div className="flex flex-col gap-3 mb-8">
         {PASOS_BIENVENIDA.map((p, i) => (

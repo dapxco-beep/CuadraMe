@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
+import { EncabezadoMarca } from '../brand/Marca'
 
 export default function Login() {
   const { login, registro, loginConGoogle, recuperarPassword } = useAuth()
@@ -66,11 +67,7 @@ export default function Login() {
 
   return (
     <div className="flex-1 flex flex-col justify-center px-8 py-10">
-      <div className="text-center mb-8">
-        <img src="/icons/icon-192.png" alt="CuadraMe" className="w-16 h-16 rounded-3xl mx-auto mb-4" />
-        <h1 className="text-2xl font-bold">CuadraMe</h1>
-        <p className="text-sm text-ink-soft mt-1">Cuadra tus cuentas, simple y al día</p>
-      </div>
+      <EncabezadoMarca titulo={modo === 'login' ? 'CuadraMe — inicia sesión' : 'CuadraMe — crea tu cuenta'} />
 
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
         {modo === 'registro' && (

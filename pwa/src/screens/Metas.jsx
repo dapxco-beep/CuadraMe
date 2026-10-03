@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { EstadoVacio } from '../brand/Marca'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Repeat, X } from 'lucide-react'
+import { ArrowLeft, Plus, Repeat, X, PiggyBank } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
@@ -58,9 +59,7 @@ export default function Metas() {
           </button>
         </div>
       ) : metas.length === 0 ? (
-        <div className="mx-5 mt-6 rounded-2xl bg-paper-raised border border-line p-8 text-center">
-          <p className="text-sm text-ink-soft">Aún no tienes metas de ahorro</p>
-        </div>
+        <EstadoVacio icono={PiggyBank} titulo="Aún no tienes metas de ahorro" texto="Ponle nombre a algo que quieres lograr y ve cómo cuadra." className="mx-5 mt-6" />
       ) : (
         <div className="mx-5 mt-4 space-y-3">
           {metas.map((m, i) => (

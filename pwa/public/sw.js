@@ -1,7 +1,7 @@
 // Service worker de CuadraMe: notificaciones push + caché del "shell" de la app
 // para que abra aunque no haya conexión. Los datos (API, Supabase) NUNCA se
 // cachean aquí: un saldo viejo mostrado como si fuera actual es peor que un error.
-const VERSION = 'v2'
+const VERSION = 'v3'
 const CACHE_SHELL = `cuadrame-shell-${VERSION}`
 const CACHE_ASSETS = `cuadrame-assets-${VERSION}`
 
