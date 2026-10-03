@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { EstadoVacio } from '../brand/Marca'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Repeat, X, PiggyBank } from 'lucide-react'
+import { ArrowLeft, Plus, Repeat, X, PiggyBank, Sparkles } from 'lucide-react'
+import PlanificadorMeta from '../components/PlanificadorMeta'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
@@ -12,6 +13,7 @@ export default function Metas() {
   const [cargando, setCargando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [aportando, setAportando] = useState(null)
+  const [planeando, setPlaneando] = useState(false)
   const [error, setError] = useState('')
 
   async function cargar() {
@@ -41,12 +43,20 @@ export default function Metas() {
           </button>
           <h1 className="text-xl font-semibold">Metas de ahorro</h1>
         </div>
-        <button
-          onClick={() => setMostrarForm(true)}
-          className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center"
-         aria-label="Nueva meta">
-          <Plus size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPlaneando(true)}
+            className="w-10 h-10 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+            aria-label="Planear una meta">
+            <Sparkles size={17} className="text-accent" />
+          </button>
+          <button
+            onClick={() => setMostrarForm(true)}
+            className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center"
+           aria-label="Nueva meta">
+            <Plus size={20} />
+          </button>
+        </div>
       </header>
 
       {cargando ? (
@@ -101,6 +111,16 @@ export default function Metas() {
             </div>
           ))}
         </div>
+      )}
+
+      {planeando && (
+        <PlanificadorMeta
+          onClose={() => setPlaneando(false)}
+          onCreada={() => {
+            setPlaneando(false)
+            cargar()
+          }}
+        />
       )}
 
       {mostrarForm && (
