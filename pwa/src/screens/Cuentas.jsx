@@ -7,6 +7,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { ENTIDADES_FINANCIERAS_CO } from '../lib/entidadesFinancierasCO'
 import TarjetaCuenta from '../components/TarjetaCuenta'
+import PanelTarjetaCredito from '../components/PanelTarjetaCredito'
 
 const iconos = ['🏦', '💜', '💵', '💳', '📈']
 const tipos = [
@@ -58,18 +59,22 @@ export default function Cuentas() {
       ) : (
         <div className="mx-6 mt-4 space-y-3">
           {cuentas.map((c, i) => (
-            <div key={c.id} className="flex items-center gap-3 stagger-item" style={{ '--stagger-i': i }}>
-              <TarjetaCuenta cuenta={c} className="flex-1" />
-              <div className="flex flex-col items-center gap-1 shrink-0">
-                <button
-                  onClick={() => setEditando(c)}
-                  className="w-9 h-9 flex items-center justify-center text-ink-soft"
-                  aria-label="Editar cuenta"
-                >
-                  <Pencil size={16} />
-                </button>
-                <span className="text-[10px] text-ink-soft">{tipoLabel[c.tipo] || c.tipo}</span>
+            <div key={c.id} className="stagger-item" style={{ '--stagger-i': i }}>
+              <div className="flex items-center gap-3">
+                <TarjetaCuenta cuenta={c} className="flex-1" />
+                <div className="flex flex-col items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => setEditando(c)}
+                    className="w-9 h-9 flex items-center justify-center text-ink-soft"
+                    aria-label="Editar cuenta"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <span className="text-[10px] text-ink-soft">{tipoLabel[c.tipo] || c.tipo}</span>
+                </div>
               </div>
+              {/* Las cuentas de crédito son tarjetas reales: cupo, corte y pago */}
+              {c.tipo === 'credito' && <PanelTarjetaCredito cuenta={c} onCambio={recargar} />}
             </div>
           ))}
 

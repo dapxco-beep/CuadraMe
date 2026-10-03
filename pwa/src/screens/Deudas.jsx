@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import { ENTIDADES_FINANCIERAS_CO } from '../lib/entidadesFinancierasCO'
+import SimuladorDeudas from '../components/SimuladorDeudas'
 
 const urgenciaColor = {
   critico: 'text-danger',
@@ -105,6 +106,8 @@ export default function Deudas() {
           ))}
         </div>
       )}
+
+      {deudas.length > 0 && !cargando && !error && <SimuladorDeudas />}
 
       {mostrarForm && (
         <FormDeuda

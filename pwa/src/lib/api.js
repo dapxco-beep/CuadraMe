@@ -108,6 +108,7 @@ export const api = {
   pagarDeuda: (id, montoPagado, crearMovimiento = true) =>
     request(`/deudas/${id}/pagar`, { method: 'POST', body: { monto_pagado: montoPagado, crear_movimiento: crearMovimiento } }),
   eliminarDeuda: (id) => request(`/deudas/${id}`, { method: 'DELETE' }),
+  estrategiaDeudas: (extra = 0) => request(`/deudas/estrategia?extra=${encodeURIComponent(extra)}`),
 
   procesarExtracto: (pdfBase64, cuentaId, password = '') =>
     request('/conciliacion/procesar', {
