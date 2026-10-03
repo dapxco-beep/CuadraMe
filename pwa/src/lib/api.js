@@ -158,6 +158,8 @@ export const api = {
 
   resumenSemanal: () => request('/insights/resumen-semanal'),
   edadDelDinero: () => request('/insights/edad-del-dinero'),
+  saludFinanciera: () => request('/insights/salud-financiera'),
+  wrapped: (mes) => request(`/reportes/wrapped${mes ? `?mes=${mes}` : ''}`),
   alertasProactivas: () => request('/insights/alertas-proactivas'),
   preguntar: (pregunta) => request('/insights/preguntar', { method: 'POST', body: { pregunta } }),
 

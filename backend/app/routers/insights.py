@@ -11,6 +11,7 @@ from app.compartidos import cuentas_ids_accesibles
 from app.database import get_db
 from app.edad_dinero import calcular_edad_dinero, mensaje_edad, tendencia_edad
 from app.fx import convertir_a_cop
+from app.salud_financiera import calcular_salud_financiera
 from app.insights import detectar_anomalias, generar_resumen_semanal, responder_pregunta
 from app.models import Cuenta, Deuda, Meta, Movimiento, Presupuesto
 from app.schemas import (
@@ -182,3 +183,68 @@ def preguntar(
 
     respuesta = responder_pregunta(data.pregunta, contexto)
     return PreguntarResponse(respuesta=respuesta)
+
+
+@router.get("/salud-financiera")
+def salud_financiera(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    """Puntaje 0-100 con desglose. Aquí solo se juntan los datos (todo en COP);
+    la fórmula vive en app/salud_financiera.py como función pura."""
+    ahora = ahora_co()
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()
+    monedas = {c.id: c.moneda for c in cuentas}
+    # El colchón son los saldos líquidos: una cuenta de crédito no es plata propia.
+    saldo_liquido = sum(
+        convertir_a_cop(c.saldo, c.moneda) for c in cuentas if c.tipo in ("ahorro", "efectivo")
+    )
+
+    movs = (
+        db.query(Movimiento)
+        .filter(Movimiento.cuenta_id.in_(ids_accesibles), Movimiento.fecha >= ahora - timedelta(days=90))
+        .all()
+    )
+
+    def cop(m):
+        return convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
+
+    corte_30 = ahora - timedelta(days=30)
+    ult30 = [m for m in movs if m.fecha >= corte_30]
+    ingresos_30 = sum(cop(m) for m in ult30 if m.tipo == "income")
+    gastos_30 = sum(cop(m) for m in ult30 if m.tipo == "expense")
+
+    # Gasto mensual típico: gastos de hasta 90 días prorrateados a 30. Si la
+    # persona es nueva se usa solo el tiempo que lleva (mínimo 30 días) para no
+    # subestimar su gasto dividiendo entre meses vacíos.
+    gastos_90 = sum(cop(m) for m in movs if m.tipo == "expense")
+    if movs:
+        dias_obs = min(90, max(30, (ahora - min(m.fecha for m in movs)).days + 1))
+    else:
+        dias_obs = 30
+    gasto_mensual = gastos_90 / dias_obs * 30
+
+    deudas = db.query(Deuda).filter(Deuda.usuario_id == usuario.id, Deuda.activa == True).all()  # noqa: E712
+    cuotas = sum(d.cuota_mensual or 0 for d in deudas)
+
+    inicio_mes = ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    gastado_cat: dict[str, float] = {}
+    for m in movs:
+        if m.tipo == "expense" and m.fecha >= inicio_mes:
+            gastado_cat[m.categoria] = gastado_cat.get(m.categoria, 0) + cop(m)
+    presupuestos = [
+        (p.limite + (p.sobre_ajuste or 0), gastado_cat.get(p.categoria, 0))
+        for p in db.query(Presupuesto).filter(Presupuesto.usuario_id == usuario.id, Presupuesto.activo == True).all()  # noqa: E712
+    ]
+
+    dias_registro = len({m.fecha.date() for m in ult30})
+
+    return calcular_salud_financiera(
+        saldo_liquido=saldo_liquido,
+        gasto_mensual_promedio=gasto_mensual,
+        ingresos_30d=ingresos_30,
+        gastos_30d=gastos_30,
+        cuotas_deuda_mensual=cuotas,
+        presupuestos=presupuestos,
+        dias_con_registro_30d=dias_registro,
+    )

@@ -1,11 +1,12 @@
 import { marcaDeEntidad } from '../lib/entidadesFinancierasCO'
-import { formatMoneda } from '../lib/format'
+import { useBloqueo } from '../lib/BloqueoContext'
 
 // Tarjeta con identidad de marca real (color + monograma) de la entidad que el
 // usuario escribió al crear la cuenta — igual que abrir la billetera y reconocer
 // cada tarjeta física por su color, sin tener que leer el nombre completo.
 export default function TarjetaCuenta({ cuenta, style, className = '' }) {
   const marca = marcaDeEntidad(cuenta.nombre)
+  const { fmt } = useBloqueo()
 
   return (
     <div
@@ -21,7 +22,7 @@ export default function TarjetaCuenta({ cuenta, style, className = '' }) {
           {marca.mono}
         </span>
       </div>
-      <p className="text-xl font-extrabold mt-4 truncate">{formatMoneda(cuenta.saldo, cuenta.moneda)}</p>
+      <p className="text-xl font-extrabold mt-4 truncate">{fmt(cuenta.saldo, cuenta.moneda)}</p>
     </div>
   )
 }
