@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { Mail, Sparkles, Wallet } from 'lucide-react'
 import { api } from '../lib/api'
 
+const MONEDAS = ['COP', 'USD', 'EUR']
 const iconos = ['🏦', '💜', '💵', '💳', '📈']
 const tipos = [
   { id: 'ahorro', label: 'Ahorros' },
@@ -9,11 +11,68 @@ const tipos = [
   { id: 'inversion', label: 'Inversión' },
 ]
 
+const PASOS_BIENVENIDA = [
+  {
+    icon: Wallet,
+    titulo: 'Registra en segundos',
+    texto: 'Agrega un gasto o ingreso a mano, por voz con Siri, o deja que la app lo sugiera sola.',
+  },
+  {
+    icon: Mail,
+    titulo: 'O que lo haga por ti',
+    texto: 'Conecta tu Gmail y te sugerimos cada movimiento que llega de tu banco — tú solo apruebas.',
+  },
+  {
+    icon: Sparkles,
+    titulo: 'Entiende tus finanzas',
+    texto: 'Presupuestos, metas de ahorro, y un medidor visual de qué tan bien vas cada mes.',
+  },
+]
+
+function Bienvenida({ onContinuar }) {
+  return (
+    <div className="flex-1 flex flex-col justify-center px-8 py-10">
+      <div className="text-center mb-8">
+        <img src="/icons/icon-192.png" alt="CuadraMe" className="w-16 h-16 rounded-3xl mx-auto mb-4" />
+        <h1 className="text-2xl font-bold">Bienvenido a CuadraMe</h1>
+        <p className="text-sm text-ink-soft mt-1">Esto es lo que puedes hacer</p>
+      </div>
+
+      <div className="flex flex-col gap-3 mb-8">
+        {PASOS_BIENVENIDA.map((p, i) => (
+          <div
+            key={p.titulo}
+            className="flex items-start gap-3 rounded-2xl bg-paper-raised border border-line p-4 stagger-item"
+            style={{ '--stagger-i': i }}
+          >
+            <div className="w-10 h-10 rounded-full bg-accent-soft flex items-center justify-center shrink-0">
+              <p.icon size={18} className="text-accent" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{p.titulo}</p>
+              <p className="text-xs text-ink-soft mt-0.5">{p.texto}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={onContinuar}
+        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform"
+      >
+        Empezar — crea tu primera cuenta
+      </button>
+    </div>
+  )
+}
+
 export default function CrearCuenta({ onCreada }) {
+  const [paso, setPaso] = useState('bienvenida')
   const [nombre, setNombre] = useState('')
   const [tipo, setTipo] = useState('ahorro')
   const [icono, setIcono] = useState('🏦')
   const [saldo, setSaldo] = useState('')
+  const [moneda, setMoneda] = useState('COP')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
@@ -27,6 +86,7 @@ export default function CrearCuenta({ onCreada }) {
         nombre: nombre.trim(),
         tipo,
         icono,
+        moneda,
         saldo: Number(saldo) || 0,
       })
       onCreada(cuenta)
@@ -37,8 +97,12 @@ export default function CrearCuenta({ onCreada }) {
     }
   }
 
+  if (paso === 'bienvenida') {
+    return <Bienvenida onContinuar={() => setPaso('formulario')} />
+  }
+
   return (
-    <div className="flex-1 flex flex-col justify-center px-8 py-10">
+    <div className="flex-1 flex flex-col justify-center px-8 py-10 screen-enter">
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold">Crea tu primera cuenta</h1>
         <p className="text-sm text-ink-soft mt-1">Bancolombia, Nequi, efectivo... la que uses más</p>
@@ -67,11 +131,27 @@ export default function CrearCuenta({ onCreada }) {
 
       <input
         value={saldo}
-        onChange={(e) => setSaldo(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
+        onChange={(e) => setSaldo(e.target.value.replace(/[^\d.]/g, ''))}
+        inputMode="decimal"
         placeholder="Saldo actual (opcional)"
         className="rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
+
+      <div className="flex gap-2 mb-3" role="group" aria-label="Moneda de la cuenta">
+        {MONEDAS.map((m) => (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={moneda === m}
+            onClick={() => setMoneda(m)}
+            className={`flex-1 rounded-2xl border py-2.5 text-sm font-medium ${
+              moneda === m ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
+            }`}
+          >
+            {m}
+          </button>
+        ))}
+      </div>
 
       <div className="grid grid-cols-2 gap-2 mb-5">
         {tipos.map((t) => (

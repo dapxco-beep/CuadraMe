@@ -4,6 +4,8 @@ import { ArrowLeft, Check, FileUp, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
+import { useCategorias } from '../lib/CategoriasContext'
+import { useDialogos } from '../lib/DialogosContext'
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -31,12 +33,15 @@ const estadoColor = {
 export default function Conciliacion() {
   const navigate = useNavigate()
   const { cuentas, recargar: recargarCuentas } = useCuentas()
+  const { nombres: CATEGORIAS } = useCategorias()
+  const { avisar } = useDialogos()
   const [cuentaId, setCuentaId] = useState(cuentas[0]?.id || '')
   const [password, setPassword] = useState('')
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState('')
   const [resultado, setResultado] = useState(null)
   const [seleccionados, setSeleccionados] = useState(new Set())
+  const [categorias, setCategorias] = useState({}) // fingerprint -> categoría elegida
   const [importando, setImportando] = useState(false)
 
   async function onFile(e) {
@@ -53,6 +58,11 @@ export default function Conciliacion() {
       } else {
         setResultado(r)
         setSeleccionados(new Set(r.review.filter((m) => m.estado === 'faltante').map((m) => m.fingerprint)))
+        const inicial = {}
+        r.review.forEach((m) => {
+          if (m.estado === 'faltante') inicial[m.fingerprint] = m.categoria_sugerida || 'Otros'
+        })
+        setCategorias(inicial)
       }
     } catch (err) {
       setError(err.message || 'Error al procesar el PDF')
@@ -71,12 +81,22 @@ export default function Conciliacion() {
     })
   }
 
+  function cambiarCategoria(fp, categoria) {
+    setCategorias((prev) => ({ ...prev, [fp]: categoria }))
+  }
+
   async function importar() {
     if (!resultado?.historial_id || seleccionados.size === 0) return
     setImportando(true)
     try {
-      await api.importarFaltantes(resultado.historial_id, [...seleccionados])
+      const r = await api.importarFaltantes(resultado.historial_id, [...seleccionados], categorias)
       await recargarCuentas()
+      if (r.sin_categoria_clara > 0) {
+        avisar(
+          `Listo. ${r.sin_categoria_clara} de ${r.importados} movimientos quedaron en "Otros" porque no reconocimos de qué se trataban — puedes recategorizarlos desde Movimientos.`,
+          'ok'
+        )
+      }
       navigate('/')
     } catch (err) {
       setError(err.message || 'No se pudo importar')
@@ -86,12 +106,12 @@ export default function Conciliacion() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6">
+    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className="px-5 pt-14 pb-2 flex items-center gap-3">
         <button
           onClick={() => navigate('/perfil')}
           className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
-        >
+         aria-label="Volver">
           <ArrowLeft size={18} />
         </button>
         <h1 className="text-xl font-semibold">Conciliar extracto</h1>
@@ -158,31 +178,56 @@ export default function Conciliacion() {
             </div>
           </div>
 
+          {resultado.descartados > 0 && (
+            <div className="rounded-2xl bg-accent-soft p-3.5 mb-4">
+              <p className="text-xs text-ink">
+                Además del listado, {resultado.descartados}{' '}
+                {resultado.descartados === 1 ? 'línea del PDF no se pudo leer con certeza' : 'líneas del PDF no se pudieron leer con certeza'}{' '}
+                (montos ambiguos) y no aparecen aquí — revisa tu extracto original si crees que falta algo.
+              </p>
+            </div>
+          )}
+
           <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden mb-4">
             {resultado.review.map((m) => (
-              <label
-                key={m.fingerprint}
-                className="flex items-center gap-3 px-4 py-3.5"
-              >
-                {m.estado === 'faltante' && (
-                  <input
-                    type="checkbox"
-                    checked={seleccionados.has(m.fingerprint)}
-                    onChange={() => toggle(m.fingerprint)}
-                    className="w-5 h-5 accent-accent shrink-0"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{m.descripcion}</p>
-                  <p className={`text-xs ${estadoColor[m.estado]}`}>
-                    {m.fecha} · {estadoLabel[m.estado]}
+              <div key={m.fingerprint} className="px-4 py-3.5">
+                <label className="flex items-center gap-3">
+                  {m.estado === 'faltante' && (
+                    <input
+                      type="checkbox"
+                      checked={seleccionados.has(m.fingerprint)}
+                      onChange={() => toggle(m.fingerprint)}
+                      className="w-5 h-5 accent-accent shrink-0"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{m.descripcion}</p>
+                    <p className={`text-xs ${estadoColor[m.estado]}`}>
+                      {m.fecha} · {estadoLabel[m.estado]}
+                    </p>
+                  </div>
+                  <p className="text-sm font-semibold shrink-0">
+                    {m.tipo === 'income' ? '+' : m.tipo === 'transfer' ? '' : '-'}
+                    {formatCOP(m.monto)}
                   </p>
-                </div>
-                <p className="text-sm font-semibold shrink-0">
-                  {m.tipo === 'income' ? '+' : m.tipo === 'transfer' ? '' : '-'}
-                  {formatCOP(m.monto)}
-                </p>
-              </label>
+                </label>
+                {m.estado === 'faltante' && seleccionados.has(m.fingerprint) && (
+                  <select
+                    value={categorias[m.fingerprint] || 'Otros'}
+                    onChange={(e) => cambiarCategoria(m.fingerprint, e.target.value)}
+                    className={`w-full mt-2.5 ml-8 rounded-xl border px-3 py-2 text-xs ${
+                      categorias[m.fingerprint] === 'Otros' || !categorias[m.fingerprint]
+                        ? 'border-line bg-paper text-ink-soft'
+                        : 'border-accent bg-accent-soft text-ink'
+                    }`}
+                    style={{ width: 'calc(100% - 2rem)' }}
+                  >
+                    {CATEGORIAS.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
             ))}
           </div>
 

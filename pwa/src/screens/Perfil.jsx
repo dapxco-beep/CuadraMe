@@ -1,37 +1,96 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, ChevronRight, CreditCard, Crown, FileUp, LogOut, Palette, PiggyBank, Repeat } from 'lucide-react'
+import { Bell, Check, ChevronRight, Copy, CreditCard, FileText, FileUp, Landmark, Link2, LogOut, Mail, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2 } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
-import { formatCOP } from '../lib/format'
-
-const PRECIO_PRO = 20000
+import { useDialogos } from '../lib/DialogosContext'
+import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../lib/push'
 
 export default function Perfil() {
   const { theme, setTheme } = useTheme()
   const { usuario, logout } = useAuth()
-  const [plan, setPlan] = useState(null)
-  const [cargandoCheckout, setCargandoCheckout] = useState(false)
+  const { confirmar, avisar } = useDialogos()
+  const [apiKey, setApiKey] = useState(null)
+  const [copiado, setCopiado] = useState(false)
+  const [permisoPush, setPermisoPush] = useState('default')
+  const [cargandoPush, setCargandoPush] = useState(false)
+  const [confianza, setConfianza] = useState(0.75)
+  const [guardandoConfianza, setGuardandoConfianza] = useState(false)
+  const [eliminandoCuenta, setEliminandoCuenta] = useState(false)
 
   useEffect(() => {
-    api.plan().then((r) => setPlan(r.plan)).catch(() => setPlan('free'))
+    api.apiKey().then((r) => setApiKey(r.api_key)).catch(() => {})
+    estadoPermiso().then(setPermisoPush)
+    api.confianzaAutoimport().then((r) => setConfianza(r.confianza_autoimport)).catch(() => {})
   }, [])
 
-  async function upgrade() {
-    setCargandoCheckout(true)
+  async function cambiarConfianza(valor) {
+    setConfianza(valor)
+    setGuardandoConfianza(true)
     try {
-      const base = window.location.origin + window.location.pathname
-      const { checkout_url } = await api.crearCheckout(`${base}#/perfil`, `${base}#/perfil`)
-      window.location.href = checkout_url
+      await api.actualizarConfianzaAutoimport(valor)
+    } catch {} finally {
+      setGuardandoConfianza(false)
+    }
+  }
+
+  async function toggleNotificaciones() {
+    setCargandoPush(true)
+    try {
+      if (permisoPush === 'granted') {
+        await desactivarPush()
+        setPermisoPush('default')
+      } else {
+        await activarPush()
+        setPermisoPush('granted')
+      }
     } catch (err) {
-      setCargandoCheckout(false)
-      alert(err.message || 'No se pudo iniciar el pago')
+      avisar(err.message || 'No se pudo activar las notificaciones')
+    } finally {
+      setCargandoPush(false)
+    }
+  }
+
+  async function copiarApiKey() {
+    if (!apiKey) return
+    await navigator.clipboard.writeText(apiKey)
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 2000)
+  }
+
+  async function regenerarApiKey() {
+    const ok = await confirmar(
+      'Los atajos que ya configuraste dejarán de funcionar hasta que actualices la clave ahí.',
+      { titulo: 'Esto invalida la API key anterior', confirmarTexto: 'Regenerar', peligro: true }
+    )
+    if (!ok) return
+    try {
+      const { api_key } = await api.regenerarApiKey()
+      setApiKey(api_key)
+    } catch (err) {
+      avisar(err.message || 'No se pudo regenerar la API key')
+    }
+  }
+
+  async function eliminarMiCuenta() {
+    const ok = await confirmar(
+      'Se borrarán para siempre tus cuentas, movimientos, presupuestos, metas y todo lo demás. No se puede deshacer. Si quieres conservar tus datos, primero expórtalos desde Movimientos.',
+      { titulo: '¿Eliminar tu cuenta y todos tus datos?', confirmarTexto: 'Sí, eliminar todo', peligro: true }
+    )
+    if (!ok) return
+    setEliminandoCuenta(true)
+    try {
+      await api.eliminarMiCuenta()
+      await logout()
+    } catch (err) {
+      setEliminandoCuenta(false)
+      avisar(err.message || 'No se pudo eliminar la cuenta')
     }
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6">
+    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className="px-6 pt-14 pb-2">
         <h1 className="text-2xl font-bold">Perfil</h1>
       </header>
@@ -47,36 +106,64 @@ export default function Perfil() {
       </section>
 
       <section className="mx-6 mt-6">
-        {plan === 'pro' ? (
-          <div className="rounded-2xl bg-accent-soft border border-accent/30 p-4 flex items-center gap-3">
-            <Crown size={20} className="text-accent shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-ink">CuadraMe Pro</p>
-              <p className="text-xs text-ink-soft">Tienes acceso completo de por vida</p>
-            </div>
-          </div>
-        ) : plan === 'free' ? (
-          <div className="rounded-2xl bg-paper-raised border border-line p-4">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Crown size={18} className="text-accent" />
-              <p className="text-sm font-semibold">Desbloquea CuadraMe Pro</p>
-            </div>
-            <p className="text-xs text-ink-soft mb-3">
-              Pago único de {formatCOP(PRECIO_PRO)}, acceso de por vida
-            </p>
-            <button
-              onClick={upgrade}
-              disabled={cargandoCheckout}
-              className="w-full bg-ink text-paper font-semibold rounded-xl py-3 text-sm disabled:opacity-60"
-            >
-              {cargandoCheckout ? 'Abriendo pago...' : 'Obtener Pro'}
-            </button>
-          </div>
-        ) : null}
+        <h2 className="text-[15px] font-semibold mb-3">Tus cuentas</h2>
+        <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
+          <Link to="/cuentas" className="flex items-center gap-3 px-4 py-3.5">
+            <Landmark size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Ver y editar mis cuentas</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/compartir" className="flex items-center gap-3 px-4 py-3.5">
+            <Users size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Compartir una cuenta</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+        </div>
       </section>
 
       <section className="mx-6 mt-6">
-        <h2 className="text-[15px] font-semibold mb-3">Finanzas</h2>
+        <h2 className="text-[15px] font-semibold mb-3">Registro automático</h2>
+        <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
+          <Link to="/correos" className="flex items-center gap-3 px-4 py-3.5">
+            <Mail size={18} className="text-accent shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Leer correos bancarios</p>
+              <p className="text-xs text-ink-soft mt-0.5">Conecta tu Gmail y sugerimos movimientos por ti</p>
+            </div>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/conciliacion" className="flex items-center gap-3 px-4 py-3.5">
+            <FileUp size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Subir extracto (PDF)</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+        </div>
+
+        <div className="rounded-2xl bg-paper-raised border border-line p-4 mt-3">
+          <p className="text-sm font-medium">Qué tan seguro debe estar para auto-importar</p>
+          <p className="text-xs text-ink-soft mt-0.5 mb-3">
+            Al conciliar un extracto, un movimiento se registra solo (sin pedirte que lo revises)
+            cuando la categoría detectada supera este nivel de seguridad.
+          </p>
+          <input
+            type="range"
+            min="0.5"
+            max="0.95"
+            step="0.05"
+            value={confianza}
+            onChange={(e) => cambiarConfianza(Number(e.target.value))}
+            className="w-full accent-accent"
+          />
+          <div className="flex items-center justify-between text-xs text-ink-soft mt-1">
+            <span>Más permisivo</span>
+            <span className="font-semibold text-ink">{Math.round(confianza * 100)}%{guardandoConfianza ? ' · guardando...' : ''}</span>
+            <span>Más estricto</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-6 mt-6">
+        <h2 className="text-[15px] font-semibold mb-3">Planeación</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
           <Link to="/metas" className="flex items-center gap-3 px-4 py-3.5">
             <PiggyBank size={18} className="text-accent shrink-0" />
@@ -93,10 +180,104 @@ export default function Perfil() {
             <p className="flex-1 text-sm font-medium">Deudas</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
-          <Link to="/conciliacion" className="flex items-center gap-3 px-4 py-3.5">
-            <FileUp size={18} className="text-accent shrink-0" />
-            <p className="flex-1 text-sm font-medium">Conciliar extracto</p>
+          <Link to="/reglas-categoria" className="flex items-center gap-3 px-4 py-3.5">
+            <Wand2 size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Reglas de categorización</p>
             <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/categorias" className="flex items-center gap-3 px-4 py-3.5">
+            <Tag size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Categorías</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+        </div>
+      </section>
+
+      <section className="mx-6 mt-6">
+        <h2 className="text-[15px] font-semibold mb-3">Extra</h2>
+        <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
+          <Link to="/ahorcado" className="flex items-center gap-3 px-4 py-3.5">
+            <Sprout size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Tu árbol financiero</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+        </div>
+      </section>
+
+      {pushSoportado() && (
+        <section className="mx-6 mt-8">
+          <div className="flex items-center gap-2 mb-3">
+            <Bell size={16} className="text-ink-soft" />
+            <h2 className="text-[15px] font-semibold">Notificaciones</h2>
+          </div>
+          <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium">Alertas de presupuesto</p>
+              <p className="text-xs text-ink-soft mt-0.5">
+                Te avisamos cuando te acerques al límite de una categoría
+              </p>
+            </div>
+            <button
+              onClick={toggleNotificaciones}
+              disabled={cargandoPush}
+              role="switch"
+              aria-checked={permisoPush === 'granted'}
+              aria-label="Alertas de presupuesto"
+              className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${
+                permisoPush === 'granted' ? 'bg-accent' : 'bg-line'
+              } disabled:opacity-60`}
+            >
+              <span
+                className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                  permisoPush === 'granted' ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+        </section>
+      )}
+
+      <section className="mx-6 mt-8">
+        <div className="flex items-center gap-2 mb-3">
+          <Link2 size={16} className="text-ink-soft" />
+          <h2 className="text-[15px] font-semibold">Conectar dispositivos</h2>
+          <span className="text-[10px] font-bold text-ink-soft bg-line px-2 py-0.5 rounded-full uppercase tracking-wide">
+            Avanzado
+          </span>
+        </div>
+        <div className="rounded-2xl bg-paper-raised border border-line p-4">
+          <p className="text-xs text-ink-soft mb-3">
+            Para quienes quieren automatizar el registro con apps de terceros (Atajos de iOS,
+            Tasker en Android) o por voz con Siri. Requiere algo de configuración manual — si solo
+            quieres registrar rápido desde la app, no necesitas esto.
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-xs bg-paper rounded-xl px-3 py-2.5 truncate">
+              {apiKey || 'Cargando...'}
+            </code>
+            <button
+              onClick={copiarApiKey}
+              disabled={!apiKey}
+              className="shrink-0 w-9 h-9 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
+              aria-label="Copiar"
+            >
+              <Copy size={15} className={copiado ? 'text-accent' : 'text-ink-soft'} />
+            </button>
+            <button
+              onClick={regenerarApiKey}
+              disabled={!apiKey}
+              className="shrink-0 w-9 h-9 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
+              aria-label="Regenerar"
+            >
+              <RefreshCw size={15} className="text-ink-soft" />
+            </button>
+          </div>
+          {copiado && <p className="text-xs text-accent mt-2">Copiada al portapapeles</p>}
+          <Link
+            to="/conectar-dispositivo"
+            className="flex items-center justify-center gap-1.5 mt-3 text-sm text-accent font-semibold"
+          >
+            Ver guía paso a paso (iPhone/Android) <ChevronRight size={15} />
           </Link>
         </div>
       </section>
@@ -111,6 +292,7 @@ export default function Perfil() {
             <button
               key={t.id}
               onClick={() => setTheme(t.id)}
+              aria-pressed={theme === t.id}
               className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
             >
               <span
@@ -128,6 +310,27 @@ export default function Perfil() {
       </section>
 
       <section className="mx-6 mt-6">
+        <h2 className="text-[15px] font-semibold mb-3">Legal</h2>
+        <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
+          <Link to="/legal/terminos" className="flex items-center gap-3 px-4 py-3.5">
+            <FileText size={18} className="text-ink-soft shrink-0" />
+            <p className="flex-1 text-sm font-medium">Términos y Condiciones</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/legal/privacidad" className="flex items-center gap-3 px-4 py-3.5">
+            <FileText size={18} className="text-ink-soft shrink-0" />
+            <p className="flex-1 text-sm font-medium">Política de Privacidad</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/legal/autorizacion-datos" className="flex items-center gap-3 px-4 py-3.5">
+            <FileText size={18} className="text-ink-soft shrink-0" />
+            <p className="flex-1 text-sm font-medium">Autorización de datos</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+        </div>
+      </section>
+
+      <section className="mx-6 mt-6">
         <button
           onClick={logout}
           className="w-full flex items-center gap-3 rounded-2xl bg-paper-raised border border-line px-4 py-3.5 text-danger font-medium text-sm"
@@ -135,12 +338,27 @@ export default function Perfil() {
           <LogOut size={18} /> Cerrar sesión
         </button>
       </section>
+
+      <section className="mx-6 mt-3">
+        <button
+          onClick={eliminarMiCuenta}
+          disabled={eliminandoCuenta}
+          className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 text-danger/80 text-sm disabled:opacity-60"
+        >
+          <Trash2 size={18} /> {eliminandoCuenta ? 'Eliminando...' : 'Eliminar mi cuenta y mis datos'}
+        </button>
+      </section>
+
+      <footer className="flex flex-col items-center gap-1.5 mt-8 mb-2">
+        <img src="/icons/icon-192.png" alt="CuadraMe" className="w-8 h-8 rounded-xl" />
+        <p className="text-[11px] text-ink-soft">CuadraMe · Hecho por DAPX</p>
+      </footer>
     </div>
   )
 }
 
 const themePreview = {
-  wallet: 'linear-gradient(135deg, #0d5c43, #d9a441)',
-  editorial: 'linear-gradient(135deg, #f6f4ef, #0d5c43)',
-  dark: 'linear-gradient(135deg, #0b0d0c, #3ddc9a)',
+  auto: 'linear-gradient(135deg, #d9622b, #17140f)',
+  calido: 'linear-gradient(135deg, #d9622b, #d9a441)',
+  dark: 'linear-gradient(135deg, #17140f, #e8823f)',
 }

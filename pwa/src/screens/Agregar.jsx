@@ -1,48 +1,119 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { Calendar, Sparkles, X } from 'lucide-react'
 import { api } from '../lib/api'
+import { formatCOP, formatMoneda } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
+import { useCategorias } from '../lib/CategoriasContext'
+import TarjetaCuenta from '../components/TarjetaCuenta'
 
-const categoriasRapidas = ['Comida', 'Transporte', 'Ocio', 'Hogar', 'Salud', 'Otros']
+function hoyISO() {
+  const d = new Date()
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 10)
+}
+
+function calcularFrecuentes(movimientos) {
+  const vistos = new Map()
+  for (const m of movimientos) {
+    if (m.tipo === 'transfer') continue // las transferencias no son un gasto que se repita
+    const clave = m.descripcion.trim().toLowerCase()
+    if (!vistos.has(clave)) {
+      vistos.set(clave, { descripcion: m.descripcion, categoria: m.categoria, tipo: m.tipo, monto: m.monto, veces: 0 })
+    }
+    vistos.get(clave).veces += 1
+  }
+  return [...vistos.values()].sort((a, b) => b.veces - a.veces).slice(0, 6)
+}
 
 export default function Agregar() {
   const navigate = useNavigate()
   const { cuentas, recargar: recargarCuentas } = useCuentas()
-  const [cuentaId, setCuentaId] = useState('')
+  const { nombres: categoriasRapidas } = useCategorias()
+  const [cuentaElegidaId, setCuentaId] = useState('')
+  const [cuentaDestinoId, setCuentaDestinoId] = useState('')
   const [monto, setMonto] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [tipo, setTipo] = useState('expense')
   const [categoria, setCategoria] = useState('')
+  const [categoriaAutoDetectada, setCategoriaAutoDetectada] = useState(false)
+  const [frecuentes, setFrecuentes] = useState([])
+  const [fecha, setFecha] = useState(hoyISO())
+  const [mostrarFecha, setMostrarFecha] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const carruselRef = useRef(null)
+
+  // Si el usuario aún no eligió cuenta se usa la primera: se deriva al renderizar
+  // en vez de copiarla a un estado con un efecto (evita un render extra).
+  const cuentaId = cuentaElegidaId || cuentas[0]?.id || ''
+  const cuentaActual = cuentas.find((c) => c.id === cuentaId)
+  const esTransferencia = tipo === 'transfer'
+  const destinosPosibles = cuentas.filter((c) => c.id !== cuentaId)
+  const destinoId = destinosPosibles.some((c) => c.id === cuentaDestinoId)
+    ? cuentaDestinoId
+    : destinosPosibles[0]?.id || ''
+
+  function seleccionarCuenta(id) {
+    setCuentaId(id)
+    const idx = cuentas.findIndex((c) => c.id === id)
+    const el = carruselRef.current
+    if (el && idx >= 0) {
+      const tarjeta = el.children[idx]
+      tarjeta?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+    }
+  }
 
   useEffect(() => {
-    if (cuentas.length > 0 && !cuentaId) setCuentaId(cuentas[0].id)
-  }, [cuentas, cuentaId])
+    api.movimientos(60).then((movs) => setFrecuentes(calcularFrecuentes(movs))).catch(() => {})
+  }, [])
 
   async function onDescripcionBlur() {
     if (!descripcion.trim() || categoria) return
     try {
       const r = await api.clasificar({ descripcion })
-      if (r.categoria !== 'Otros') setCategoria(r.categoria)
+      if (r.categoria !== 'Otros') {
+        setCategoria(r.categoria)
+        setCategoriaAutoDetectada(true)
+      }
     } catch {}
+  }
+
+  function usarFrecuente(f) {
+    setDescripcion(f.descripcion)
+    setCategoria(f.categoria)
+    setCategoriaAutoDetectada(false)
+    setTipo(f.tipo)
+    setMonto(String(Math.round(f.monto)))
   }
 
   async function guardar() {
     setError('')
     if (!cuentaId) return setError('Crea una cuenta primero')
     if (!monto || Number(monto) <= 0) return setError('Ingresa un monto válido')
-    if (!descripcion.trim()) return setError('Ingresa una descripción')
+    if (!esTransferencia && !descripcion.trim()) return setError('Ingresa una descripción')
+    if (esTransferencia && !destinoId) return setError('Necesitas al menos dos cuentas para transferir')
 
     setGuardando(true)
     try {
+      if (esTransferencia) {
+        await api.crearTransferencia({
+          cuenta_origen_id: cuentaId,
+          cuenta_destino_id: destinoId,
+          monto: Number(monto),
+          fecha: fecha ? `${fecha}T12:00:00` : undefined,
+        })
+        await recargarCuentas()
+        navigate('/')
+        return
+      }
       await api.crearMovimiento({
         cuenta_id: cuentaId,
         descripcion: descripcion.trim(),
         monto: Number(monto),
         tipo,
         categoria: categoria || undefined,
+        fecha: fecha ? `${fecha}T12:00:00` : undefined,
       })
       await recargarCuentas()
       navigate('/')
@@ -60,6 +131,7 @@ export default function Agregar() {
         <button
           onClick={() => navigate('/')}
           className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+          aria-label="Cerrar"
         >
           <X size={18} />
         </button>
@@ -69,10 +141,12 @@ export default function Agregar() {
         {[
           { id: 'expense', label: 'Gasto' },
           { id: 'income', label: 'Ingreso' },
+          ...(cuentas.length > 1 ? [{ id: 'transfer', label: 'Transferir' }] : []),
         ].map((t) => (
           <button
             key={t.id}
             onClick={() => setTipo(t.id)}
+            aria-pressed={tipo === t.id}
             className={`flex-1 rounded-2xl py-2.5 text-sm font-semibold border ${
               tipo === t.id ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
             }`}
@@ -80,7 +154,28 @@ export default function Agregar() {
             {t.label}
           </button>
         ))}
+        <button
+          onClick={() => setMostrarFecha((v) => !v)}
+          className={`shrink-0 w-11 rounded-2xl border flex items-center justify-center ${
+            fecha !== hoyISO() ? 'bg-accent-soft border-accent text-accent' : 'border-line text-ink-soft'
+          }`}
+          aria-label="Cambiar fecha"
+        >
+          <Calendar size={16} />
+        </button>
       </div>
+
+      {mostrarFecha && (
+        <div className="px-5 mt-2">
+          <input
+            type="date"
+            value={fecha}
+            max={hoyISO()}
+            onChange={(e) => setFecha(e.target.value)}
+            className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-2.5 text-sm outline-none focus:border-accent"
+          />
+        </div>
+      )}
 
       <div className="flex flex-col items-center justify-center px-8 py-8">
         <div className="flex items-baseline gap-1">
@@ -93,9 +188,10 @@ export default function Agregar() {
             className="bg-transparent outline-none text-6xl font-semibold text-center w-full tabular-nums placeholder:text-ink-soft/40"
           />
         </div>
-        <p className="text-sm text-ink-soft mt-2">COP</p>
+        <p className="text-sm text-ink-soft mt-2">{cuentaActual?.moneda || 'COP'}</p>
       </div>
 
+      {!esTransferencia && (
       <div className="px-5 mb-4">
         <input
           value={descripcion}
@@ -104,31 +200,88 @@ export default function Agregar() {
           placeholder="¿En qué fue? (ej. Éxito, Uber, Netflix)"
           className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"
         />
+        {categoriaAutoDetectada && categoria && (
+          <div className="flex items-center gap-1.5 mt-2 text-xs text-accent">
+            <Sparkles size={12} />
+            <span>Detectamos: {categoria}</span>
+          </div>
+        )}
       </div>
+      )}
 
-      {cuentas.length > 1 && (
-        <div className="px-5 mb-4 flex gap-2 overflow-x-auto no-scrollbar">
-          {cuentas.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setCuentaId(c.id)}
-              className={`shrink-0 text-sm px-4 py-1.5 rounded-full border ${
-                cuentaId === c.id ? 'bg-accent text-white border-accent' : 'border-line text-ink-soft'
-              }`}
-            >
-              {c.icono} {c.nombre}
-            </button>
-          ))}
+      {!esTransferencia && frecuentes.length > 0 && !descripcion && (
+        <div className="px-5 mb-4">
+          <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Frecuentes</p>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            {frecuentes.map((f) => (
+              <button
+                key={f.descripcion}
+                onClick={() => usarFrecuente(f)}
+                className="shrink-0 rounded-2xl border border-line bg-paper-raised px-3.5 py-2.5 text-left"
+              >
+                <p className="text-xs font-semibold max-w-[110px] truncate">{f.descripcion}</p>
+                <p className="text-[11px] text-ink-soft mt-0.5">{formatCOP(f.monto)}</p>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
+      {cuentas.length > 1 && (
+        <div className="mb-4">
+          <p className="px-5 text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">
+            {esTransferencia ? 'Desde' : 'Cuenta'}
+          </p>
+          <div ref={carruselRef} className="flex gap-3 overflow-x-auto no-scrollbar px-5 pb-1 snap-x snap-mandatory">
+            {cuentas.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => seleccionarCuenta(c.id)}
+                className="shrink-0 w-40 snap-center transition-transform"
+                style={{ transform: cuentaId === c.id ? 'scale(1)' : 'scale(0.92)', opacity: cuentaId === c.id ? 1 : 0.6 }}
+              >
+                <TarjetaCuenta cuenta={c} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {esTransferencia && (
+        <div className="px-5 mb-5">
+          <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Hacia</p>
+          <div className="grid grid-cols-2 gap-2">
+            {destinosPosibles.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setCuentaDestinoId(c.id)}
+                aria-pressed={destinoId === c.id}
+                className={`rounded-2xl border py-3 px-3 text-left ${
+                  destinoId === c.id ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
+                }`}
+              >
+                <p className="text-sm font-medium truncate">{c.nombre}</p>
+                <p className="text-[11px] text-ink-soft mt-0.5">{formatMoneda(c.saldo, c.moneda)}</p>
+              </button>
+            ))}
+          </div>
+          {cuentaActual && destinosPosibles.find((c) => c.id === destinoId)?.moneda !== cuentaActual.moneda && (
+            <p className="text-xs text-danger mt-2">Las cuentas tienen monedas distintas; aún no se pueden transferir entre sí.</p>
+          )}
+        </div>
+      )}
+
+      {!esTransferencia && (
       <div className="px-5 mb-5">
         <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Categoría</p>
         <div className="grid grid-cols-3 gap-2">
           {categoriasRapidas.map((c) => (
             <button
               key={c}
-              onClick={() => setCategoria(c)}
+              onClick={() => {
+                setCategoria(c)
+                setCategoriaAutoDetectada(false)
+              }}
               className={`rounded-2xl border py-3 text-sm font-medium ${
                 categoria === c ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
               }`}
@@ -138,6 +291,7 @@ export default function Agregar() {
           ))}
         </div>
       </div>
+      )}
 
       {error && <p className="px-5 text-sm text-danger mb-3">{error}</p>}
 
@@ -147,7 +301,7 @@ export default function Agregar() {
           disabled={guardando}
           className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
         >
-          {guardando ? 'Guardando...' : 'Guardar movimiento'}
+          {guardando ? 'Guardando...' : esTransferencia ? 'Hacer transferencia' : 'Guardar movimiento'}
         </button>
       </div>
     </div>

@@ -16,56 +16,39 @@
   --font-sans: var(--f-sans);
 }
 
-/* Tema Wallet cálido (default) — tarjeta física, cálido y táctil */
+/* Tema CuadraMe cálido (default) — crema, Sora, acento naranja/dorado */
 :root,
-:root[data-theme='wallet'] {
-  --c-ink: #14140f;
-  --c-ink-soft: #6b6759;
-  --c-paper: #f6f4ef;
+:root[data-theme='calido'] {
+  --c-ink: #221f19;
+  --c-ink-soft: #6b6656;
+  --c-paper: #f7f4ee;
   --c-paper-raised: #ffffff;
-  --c-line: #e8e5db;
-  --c-accent: #0d5c43;
+  --c-line: #e8e2d3;
+  --c-accent: #d9622b;
   --c-accent-2: #d9a441;
-  --c-accent-soft: #e2efe8;
-  --c-danger: #a8392f;
-  --c-danger-soft: #f6e8e6;
+  --c-accent-soft: #fbe4d3;
+  --c-danger: #c73e2c;
+  --c-danger-soft: #fbe2dd;
 
-  --f-display: 'Fraunces', 'SF Pro Display', Georgia, serif;
-  --f-sans: 'Inter', -apple-system, system-ui, sans-serif;
+  --f-display: 'Sora', 'SF Pro Display', system-ui, sans-serif;
+  --f-sans: 'Sora', -apple-system, system-ui, sans-serif;
 }
 
-/* Tema Editorial elegante — serif, sombras suaves, premium */
-:root[data-theme='editorial'] {
-  --c-ink: #14140f;
-  --c-ink-soft: #6b6759;
-  --c-paper: #f6f4ef;
-  --c-paper-raised: #ffffff;
-  --c-line: #e8e5db;
-  --c-accent: #0d5c43;
-  --c-accent-2: #d9a441;
-  --c-accent-soft: #e2efe8;
-  --c-danger: #a8392f;
-  --c-danger-soft: #f6e8e6;
-
-  --f-display: 'Fraunces', 'SF Pro Display', Georgia, serif;
-  --f-sans: 'Inter', -apple-system, system-ui, sans-serif;
-}
-
-/* Tema Oscuro vibrante — dark mode con acentos con glow */
+/* Tema CuadraMe oscuro — misma identidad, de noche */
 :root[data-theme='dark'] {
-  --c-ink: #f2f0e9;
-  --c-ink-soft: #8a8f89;
-  --c-paper: #0b0d0c;
-  --c-paper-raised: #151916;
-  --c-line: #212722;
-  --c-accent: #3ddc9a;
+  --c-ink: #f5f1e8;
+  --c-ink-soft: #a39c8a;
+  --c-paper: #17140f;
+  --c-paper-raised: #221f19;
+  --c-line: #332e24;
+  --c-accent: #e8823f;
   --c-accent-2: #e8bc63;
-  --c-accent-soft: #16261f;
-  --c-danger: #e08078;
-  --c-danger-soft: #2a1917;
+  --c-accent-soft: #332615;
+  --c-danger: #e0685a;
+  --c-danger-soft: #2e1a16;
 
-  --f-display: 'Fraunces', 'SF Pro Display', Georgia, serif;
-  --f-sans: 'Inter', -apple-system, system-ui, sans-serif;
+  --f-display: 'Sora', 'SF Pro Display', system-ui, sans-serif;
+  --f-sans: 'Sora', -apple-system, system-ui, sans-serif;
 }
 
 * {
@@ -99,4 +82,119 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* ── Animaciones compartidas ──────────────────────────────────────── */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-up-sm {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Pantalla completa entrando: usar en el contenedor raíz de cada screen */
+.screen-enter {
+  animation: slide-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Tarjetas/filas que aparecen en cascada dentro de una lista: aplicar
+   la misma clase a cada item y dejar que --stagger-i (0,1,2...) escalone
+   el delay, o usar .stagger-N para los primeros índices sin variables. */
+.stagger-item {
+  animation: slide-up-sm 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--stagger-i, 0) * 35ms);
+}
+
+.pop-in {
+  animation: scale-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Modal/hoja inferior: fondo con fade, contenido deslizando desde abajo */
+.sheet-backdrop {
+  animation: fade-in 0.18s ease-out both;
+}
+.sheet-content {
+  animation: sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Pulso corto para confirmar una acción (ej. saldo actualizado, check) */
+.pop-once {
+  animation: pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Esqueleto de carga con brillo, para reemplazar "Cargando..." en texto plano */
+.skeleton {
+  background: linear-gradient(90deg, var(--color-line) 25%, color-mix(in srgb, var(--color-line) 50%, var(--color-paper-raised)) 50%, var(--color-line) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-enter,
+  .stagger-item,
+  .pop-in,
+  .sheet-backdrop,
+  .sheet-content,
+  .pop-once,
+  .skeleton {
+    animation: none !important;
+  }
+}
+
+/* Botones y filas interactivas: feedback táctil consistente en toda la app */
+button, a {
+  transition: transform 0.15s ease, opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+button:active:not(:disabled), a:active {
+  transform: scale(0.97);
+}
+
+/* Foco visible para navegación con teclado (antes solo se veía el borde por
+   defecto del navegador, que en varios botones queda tapado por el diseño). */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* En pantallas anchas (escritorio/tablet) la app sigue siendo una columna
+   móvil, pero se enmarca para que no parezca una página rota con bordes vacíos. */
+@media (min-width: 640px) {
+  body {
+    background: color-mix(in srgb, var(--color-paper) 88%, var(--color-ink));
+  }
+  #root {
+    background: var(--color-paper);
+    box-shadow: 0 0 0 1px var(--color-line), 0 20px 60px -20px rgb(0 0 0 / 0.25);
+  }
 }

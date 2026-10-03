@@ -6,6 +6,8 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [cargando, setCargando] = useState(true)
+  // true cuando el usuario llegó desde el enlace "restablecer contraseña" del correo
+  const [recuperando, setRecuperando] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -13,8 +15,9 @@ export function AuthProvider({ children }) {
       setCargando(false)
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((evento, s) => {
       setSession(s)
+      if (evento === 'PASSWORD_RECOVERY') setRecuperando(true)
     })
 
     return () => listener.subscription.unsubscribe()
@@ -46,6 +49,17 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
   }
 
+  async function recuperarPassword(email) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+    if (error) throw new Error(traducirError(error.message))
+  }
+
+  async function cambiarPassword(nueva) {
+    const { error } = await supabase.auth.updateUser({ password: nueva })
+    if (error) throw new Error(traducirError(error.message))
+    setRecuperando(false)
+  }
+
   const usuario = session
     ? {
         id: session.user.id,
@@ -55,7 +69,7 @@ export function AuthProvider({ children }) {
     : null
 
   return (
-    <AuthContext.Provider value={{ usuario, session, cargando, login, registro, loginConGoogle, logout }}>
+    <AuthContext.Provider value={{ usuario, session, cargando, recuperando, login, registro, loginConGoogle, logout, recuperarPassword, cambiarPassword }}>
       {children}
     </AuthContext.Provider>
   )
@@ -68,6 +82,10 @@ export function useAuth() {
 function traducirError(msg) {
   if (msg.includes('Invalid login credentials')) return 'Correo o contraseña incorrectos'
   if (msg.includes('User already registered')) return 'Ese correo ya está registrado'
-  if (msg.includes('Password should be at least')) return 'La contraseña debe tener al menos 6 caracteres'
+  if (msg.includes('Password should be at least')) return 'La contraseña es muy corta'
+  if (msg.includes('Email not confirmed')) return 'Confirma tu correo antes de entrar (revisa tu bandeja y spam)'
+  if (msg.includes('rate limit') || msg.includes('too many')) return 'Demasiados intentos. Espera unos minutos e intenta de nuevo'
+  if (msg.includes('same password')) return 'La nueva contraseña debe ser distinta a la anterior'
+  if (msg.includes('Failed to fetch')) return 'Sin conexión. Revisa tu internet e intenta de nuevo'
   return msg
 }

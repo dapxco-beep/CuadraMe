@@ -1,12 +1,14 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 
 export default function Login() {
-  const { login, registro, loginConGoogle } = useAuth()
+  const { login, registro, loginConGoogle, recuperarPassword } = useAuth()
   const [modo, setModo] = useState('login') // login | registro
   const [nombre, setNombre] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [aceptaTerminos, setAceptaTerminos] = useState(false)
   const [error, setError] = useState('')
   const [mensaje, setMensaje] = useState('')
   const [cargando, setCargando] = useState(false)
@@ -15,6 +17,12 @@ export default function Login() {
     e.preventDefault()
     setError('')
     setMensaje('')
+
+    if (modo === 'registro' && !aceptaTerminos) {
+      setError('Debes aceptar los Términos y la Política de Privacidad para continuar')
+      return
+    }
+
     setCargando(true)
     try {
       if (modo === 'login') {
@@ -30,8 +38,25 @@ export default function Login() {
     }
   }
 
+  async function onOlvide() {
+    setError('')
+    setMensaje('')
+    if (!email.trim()) return setError('Escribe tu correo arriba y vuelve a tocar "¿Olvidaste tu contraseña?"')
+    try {
+      await recuperarPassword(email.trim())
+      // Mismo mensaje exista o no el correo, para no revelar quién tiene cuenta.
+      setMensaje('Si ese correo tiene cuenta, te enviamos un enlace para crear una contraseña nueva')
+    } catch (err) {
+      setError(err.message || 'No se pudo enviar el correo')
+    }
+  }
+
   async function onGoogle() {
     setError('')
+    if (modo === 'registro' && !aceptaTerminos) {
+      setError('Debes aceptar los Términos y la Política de Privacidad para continuar')
+      return
+    }
     try {
       await loginConGoogle()
     } catch (err) {
@@ -42,7 +67,7 @@ export default function Login() {
   return (
     <div className="flex-1 flex flex-col justify-center px-8 py-10">
       <div className="text-center mb-8">
-        <div className="w-16 h-16 rounded-3xl bg-accent mx-auto mb-4" />
+        <img src="/icons/icon-192.png" alt="CuadraMe" className="w-16 h-16 rounded-3xl mx-auto mb-4" />
         <h1 className="text-2xl font-bold">CuadraMe</h1>
         <p className="text-sm text-ink-soft mt-1">Cuadra tus cuentas, simple y al día</p>
       </div>
@@ -53,6 +78,8 @@ export default function Login() {
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             placeholder="Nombre"
+            aria-label="Nombre"
+            autoComplete="name"
             required
             className="rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"
           />
@@ -62,6 +89,8 @@ export default function Login() {
           onChange={(e) => setEmail(e.target.value)}
           type="email"
           placeholder="Correo"
+          aria-label="Correo"
+          autoComplete="email"
           required
           className="rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"
         />
@@ -71,16 +100,43 @@ export default function Login() {
           type="password"
           placeholder="Contraseña"
           required
-          minLength={6}
+          minLength={modo === 'registro' ? 8 : 6}
+          autoComplete={modo === 'registro' ? 'new-password' : 'current-password'}
+          aria-label="Contraseña"
           className="rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"
         />
 
-        {error && <p className="text-sm text-danger">{error}</p>}
-        {mensaje && <p className="text-sm text-accent">{mensaje}</p>}
+        {modo === 'login' && (
+          <button type="button" onClick={onOlvide} className="text-xs text-accent font-medium text-right -mt-1">
+            ¿Olvidaste tu contraseña?
+          </button>
+        )}
+
+        {modo === 'registro' && (
+          <label className="flex items-start gap-2.5 px-1">
+            <input
+              type="checkbox"
+              checked={aceptaTerminos}
+              onChange={(e) => setAceptaTerminos(e.target.checked)}
+              className="mt-0.5 w-4 h-4 shrink-0 accent-accent"
+            />
+            <span className="text-xs text-ink-soft leading-relaxed">
+              Acepto los{' '}
+              <Link to="/legal/terminos" className="text-accent font-medium">Términos y Condiciones</Link>,
+              la{' '}
+              <Link to="/legal/privacidad" className="text-accent font-medium">Política de Privacidad</Link>
+              {' '}y la{' '}
+              <Link to="/legal/autorizacion-datos" className="text-accent font-medium">Autorización de tratamiento de datos</Link>.
+            </span>
+          </label>
+        )}
+
+        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+        {mensaje && <p role="status" className="text-sm text-accent">{mensaje}</p>}
 
         <button
           type="submit"
-          disabled={cargando}
+          disabled={cargando || (modo === 'registro' && !aceptaTerminos)}
           className="mt-2 w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
         >
           {cargando ? 'Un momento...' : modo === 'login' ? 'Entrar' : 'Crear cuenta'}
@@ -95,10 +151,18 @@ export default function Login() {
 
       <button
         onClick={onGoogle}
-        className="w-full flex items-center justify-center gap-2 rounded-2xl border border-line bg-paper-raised py-3.5 text-sm font-semibold"
+        disabled={modo === 'registro' && !aceptaTerminos}
+        className="w-full flex items-center justify-center gap-2 rounded-2xl border border-line bg-paper-raised py-3.5 text-sm font-semibold disabled:opacity-50"
       >
         <GoogleIcon /> Continuar con Google
       </button>
+      {modo === 'login' && (
+        <p className="text-[11px] text-ink-soft text-center mt-2 leading-relaxed">
+          Si es tu primera vez, al continuar aceptas los{' '}
+          <Link to="/legal/terminos" className="text-accent">Términos</Link> y la{' '}
+          <Link to="/legal/privacidad" className="text-accent">Política de Privacidad</Link>.
+        </p>
+      )}
 
       <button
         onClick={() => setModo(modo === 'login' ? 'registro' : 'login')}

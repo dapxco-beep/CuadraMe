@@ -23,20 +23,65 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
   return res.json()
 }
 
+async function descargarArchivo(path, nombreArchivo) {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) throw new Error(`Error ${res.status}`)
+
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nombreArchivo
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export const api = {
   cuentas: () => request('/cuentas'),
   crearCuenta: (data) => request('/cuentas', { method: 'POST', body: data }),
+  editarCuenta: (id, data) => request(`/cuentas/${id}`, { method: 'PUT', body: data }),
+  eliminarCuenta: (id) => request(`/cuentas/${id}`, { method: 'DELETE' }),
 
-  movimientos: (limit = 100) => request(`/movimientos?limit=${limit}`),
+  movimientos: (limit = 100, offset = 0) => request(`/movimientos?limit=${limit}&offset=${offset}`),
+  movimiento: (id) => request(`/movimientos/${id}`),
+  editarMovimiento: (id, data) => request(`/movimientos/${id}`, { method: 'PUT', body: data }),
+  crearTransferencia: (data) => request('/movimientos/transferencia', { method: 'POST', body: data }),
   crearMovimiento: (data) => request('/movimientos', { method: 'POST', body: data }),
   eliminarMovimiento: (id) => request(`/movimientos/${id}`, { method: 'DELETE' }),
+  recategorizarMasivo: (movimientoIds, categoria) =>
+    request('/movimientos/recategorizar-masivo', {
+      method: 'POST',
+      body: { movimiento_ids: movimientoIds, categoria },
+    }),
   clasificar: (data) => request('/movimientos/clasificar', { method: 'POST', body: data }),
 
   presupuestos: () => request('/presupuestos'),
   crearPresupuesto: (data) => request('/presupuestos', { method: 'POST', body: data }),
   eliminarPresupuesto: (id) => request(`/presupuestos/${id}`, { method: 'DELETE' }),
+  moverSobre: (origenId, destinoId, monto) =>
+    request('/presupuestos/mover-sobre', {
+      method: 'POST',
+      body: { presupuesto_origen_id: origenId, presupuesto_destino_id: destinoId, monto },
+    }),
+  disponibleHoy: () => request('/presupuestos/disponible-hoy'),
+  enMiBolsillo: () => request('/presupuestos/en-mi-bolsillo'),
 
-  reporteMensual: (mes) => request(`/reportes/mensual${mes ? `?mes=${mes}` : ''}`),
+  reporteMensual: (opts = {}) => {
+    const mes = typeof opts === 'string' ? opts : opts.mes
+    const { cuentaId, desde, hasta } = typeof opts === 'string' ? {} : opts
+    const params = new URLSearchParams()
+    if (mes) params.set('mes', mes)
+    if (cuentaId) params.set('cuenta_id', cuentaId)
+    if (desde) params.set('desde', desde)
+    if (hasta) params.set('hasta', hasta)
+    const qs = params.toString()
+    return request(`/reportes/mensual${qs ? `?${qs}` : ''}`)
+  },
+  tendencias: (meses = 6) => request(`/reportes/tendencias?meses=${meses}`),
 
   plan: () => request('/pagos/plan'),
   crearCheckout: (successUrl, cancelUrl) =>
@@ -47,10 +92,12 @@ export const api = {
 
   metas: () => request('/metas'),
   crearMeta: (data) => request('/metas', { method: 'POST', body: data }),
-  aportarMeta: (id, monto) => request(`/metas/${id}/aportar?monto=${monto}`, { method: 'POST' }),
+  aportarMeta: (id, monto, cuentaId) =>
+    request(`/metas/${id}/aportar?monto=${monto}${cuentaId ? `&cuenta_id=${cuentaId}` : ''}`, { method: 'POST' }),
   eliminarMeta: (id) => request(`/metas/${id}`, { method: 'DELETE' }),
 
   recurrentes: () => request('/recurrentes'),
+  sugerenciasRecurrentes: () => request('/recurrentes/sugerencias'),
   crearRecurrente: (data) => request('/recurrentes', { method: 'POST', body: data }),
   marcarRecurrentePagado: (id, crearMovimiento = true) =>
     request(`/recurrentes/${id}/marcar_pagado`, { method: 'POST', body: { crear_movimiento: crearMovimiento } }),
@@ -69,10 +116,68 @@ export const api = {
     }),
   historialExtractos: () => request('/conciliacion/historial'),
   obtenerReviewExtracto: (id) => request(`/conciliacion/historial/${id}`),
-  importarFaltantes: (id, fingerprints) =>
+  importarFaltantes: (id, fingerprints, categorias) =>
     request(`/conciliacion/historial/${id}/importar`, {
       method: 'POST',
-      body: { fingerprints },
+      body: { fingerprints, categorias },
     }),
   eliminarHistorialExtracto: (id) => request(`/conciliacion/historial/${id}`, { method: 'DELETE' }),
+
+  categorias: (incluirInactivas = false) =>
+    request(`/categorias${incluirInactivas ? '?incluir_inactivas=true' : ''}`),
+  crearCategoria: (data) => request('/categorias', { method: 'POST', body: data }),
+  editarCategoria: (id, data) => request(`/categorias/${id}`, { method: 'PUT', body: data }),
+  eliminarCategoria: (id) => request(`/categorias/${id}`, { method: 'DELETE' }),
+
+  eliminarMiCuenta: () => request('/perfil/eliminar-cuenta', { method: 'POST', body: { confirmacion: 'ELIMINAR' } }),
+  apiKey: () => request('/perfil/api-key'),
+  regenerarApiKey: () => request('/perfil/api-key/regenerar', { method: 'POST' }),
+  confianzaAutoimport: () => request('/perfil/confianza-autoimport'),
+  actualizarConfianzaAutoimport: (valor) =>
+    request('/perfil/confianza-autoimport', { method: 'PUT', body: { confianza_autoimport: valor } }),
+
+  gmailEstado: () => request('/correos/gmail/estado'),
+  gmailConectar: () => request('/correos/gmail/conectar'),
+  gmailDesconectar: () => request('/correos/gmail/desconectar', { method: 'POST' }),
+  gmailEtiqueta: (etiqueta) => request(`/correos/gmail/etiqueta?etiqueta=${encodeURIComponent(etiqueta)}`, { method: 'POST' }),
+  sincronizarCorreos: () => request('/correos/sincronizar', { method: 'POST' }),
+  correosPendientes: () => request('/correos/pendientes'),
+  editarCorreo: (id, data) => request(`/correos/${id}`, { method: 'PATCH', body: data }),
+  aprobarCorreo: (id, cuentaId) => request(`/correos/${id}/aprobar`, { method: 'POST', body: { cuenta_id: cuentaId } }),
+  descartarCorreo: (id) => request(`/correos/${id}/descartar`, { method: 'POST' }),
+
+  resumenSemanal: () => request('/insights/resumen-semanal'),
+  edadDelDinero: () => request('/insights/edad-del-dinero'),
+  alertasProactivas: () => request('/insights/alertas-proactivas'),
+  preguntar: (pregunta) => request('/insights/preguntar', { method: 'POST', body: { pregunta } }),
+
+  pushPublicKey: () => request('/push/vapid-public-key', { auth: false }),
+  pushSuscribir: (data) => request('/push/suscribir', { method: 'POST', body: data }),
+  pushDesuscribir: (endpoint) => request(`/push/desuscribir?endpoint=${encodeURIComponent(endpoint)}`, { method: 'POST' }),
+  pushProbar: () => request('/push/probar', { method: 'POST' }),
+
+  buscarMovimientos: (filtros) => request(`/movimientos?${new URLSearchParams(filtros).toString()}`),
+
+  exportarCSV: () => descargarArchivo('/exportar/movimientos.csv', 'movimientos_cuadrame.csv'),
+  exportarExcel: () => descargarArchivo('/exportar/movimientos.xlsx', 'movimientos_cuadrame.xlsx'),
+
+  invitarACuenta: (cuentaId, email, rol = 'viewer') =>
+    request(`/cuentas/${cuentaId}/invitar`, { method: 'POST', body: { email, rol } }),
+  invitacionesDeCuenta: (cuentaId) => request(`/cuentas/${cuentaId}/invitaciones`),
+  compartidaCon: (cuentaId) => request(`/cuentas/${cuentaId}/compartida-con`),
+  misInvitacionesPendientes: () => request('/cuentas/invitaciones/pendientes'),
+  aceptarInvitacion: (id) => request(`/cuentas/invitaciones/${id}/aceptar`, { method: 'POST' }),
+  rechazarInvitacion: (id) => request(`/cuentas/invitaciones/${id}/rechazar`, { method: 'POST' }),
+  revocarAcceso: (cuentaId, usuarioId) => request(`/cuentas/${cuentaId}/compartir/${usuarioId}`, { method: 'DELETE' }),
+
+  reglasCategoria: () => request('/reglas-categoria'),
+  crearReglaCategoria: (data) => request('/reglas-categoria', { method: 'POST', body: data }),
+  eliminarReglaCategoria: (id) => request(`/reglas-categoria/${id}`, { method: 'DELETE' }),
+
+  flujoCajaFuturo: (meses = 3) => request(`/reportes/flujo-caja-futuro?meses=${meses}`),
+
+  vidasAhorcado: () => request('/ahorcado/vidas'),
+  nuevaPartidaAhorcado: () => request('/ahorcado/nueva-partida', { method: 'POST' }),
+  adivinarLetraAhorcado: (partidaId, letra) =>
+    request(`/ahorcado/${partidaId}/adivinar`, { method: 'POST', body: { letra } }),
 }

@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
+import { ENTIDADES_FINANCIERAS_CO } from '../lib/entidadesFinancierasCO'
 
 const urgenciaColor = {
   critico: 'text-danger',
@@ -18,12 +19,16 @@ export default function Deudas() {
   const [cargando, setCargando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [pagando, setPagando] = useState(null)
+  const [error, setError] = useState('')
 
   async function cargar() {
     setCargando(true)
+    setError('')
     try {
       setDeudas(await api.deudas())
-    } catch {}
+    } catch (err) {
+      setError(err.message || 'No se pudieron cargar tus deudas')
+    }
     setCargando(false)
   }
 
@@ -34,13 +39,13 @@ export default function Deudas() {
   const totalDeuda = deudas.reduce((s, d) => s + d.saldo_actual, 0)
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6">
+    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className="px-5 pt-14 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/perfil')}
             className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
-          >
+           aria-label="Volver">
             <ArrowLeft size={18} />
           </button>
           <h1 className="text-xl font-semibold">Deudas</h1>
@@ -48,7 +53,7 @@ export default function Deudas() {
         <button
           onClick={() => setMostrarForm(true)}
           className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center"
-        >
+         aria-label="Nueva deuda">
           <Plus size={20} />
         </button>
       </header>
@@ -62,14 +67,21 @@ export default function Deudas() {
 
       {cargando ? (
         <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+      ) : error ? (
+        <div className="mx-5 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
+          <p className="text-sm text-danger mb-3">{error}</p>
+          <button onClick={cargar} className="text-sm font-semibold text-danger underline">
+            Reintentar
+          </button>
+        </div>
       ) : deudas.length === 0 ? (
         <div className="mx-5 mt-6 rounded-2xl bg-paper-raised border border-line p-8 text-center">
           <p className="text-sm text-ink-soft">No tienes deudas registradas</p>
         </div>
       ) : (
         <div className="mx-5 mt-4 space-y-3">
-          {deudas.map((d) => (
-            <div key={d.id} className="rounded-2xl bg-paper-raised border border-line p-4">
+          {deudas.map((d, i) => (
+            <div key={d.id} className="rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': i }}>
               <div className="flex items-center justify-between mb-1">
                 <p className="text-sm font-semibold">{d.nombre}</p>
                 <p className="text-sm font-bold">{formatCOP(d.saldo_actual)}</p>
@@ -156,11 +168,11 @@ function FormDeuda({ onClose, onGuardada }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 overflow-y-auto">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8">
+    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 overflow-y-auto sheet-backdrop">
+      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Nueva deuda</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center">
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
             <X size={16} />
           </button>
         </div>
@@ -175,8 +187,14 @@ function FormDeuda({ onClose, onGuardada }) {
           value={entidad}
           onChange={(e) => setEntidad(e.target.value)}
           placeholder="Entidad (ej. Bancolombia)"
+          list="entidades-financieras-co"
           className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
         />
+        <datalist id="entidades-financieras-co">
+          {ENTIDADES_FINANCIERAS_CO.map((e) => (
+            <option key={e} value={e} />
+          ))}
+        </datalist>
         <input
           value={saldoInicial}
           onChange={(e) => setSaldoInicial(e.target.value.replace(/\D/g, ''))}
@@ -203,8 +221,23 @@ function FormDeuda({ onClose, onGuardada }) {
           onChange={(e) => setDiaPago(e.target.value.replace(/\D/g, '').slice(0, 2))}
           inputMode="numeric"
           placeholder="Día de pago (1-31)"
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
+          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
         />
+
+        {cuentas.length > 1 && (
+          <label className="block mb-4">
+            <span className="text-xs text-ink-soft">Cuenta desde la que pagas</span>
+            <select
+              value={cuentaPagoId}
+              onChange={(e) => setCuentaPagoId(e.target.value)}
+              className="w-full mt-1 rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"
+            >
+              {cuentas.map((c) => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+          </label>
+        )}
 
         {error && <p className="text-sm text-danger mb-3">{error}</p>}
 
@@ -241,11 +274,11 @@ function FormPago({ deuda, onClose, onPagado }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8">
+    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
+      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Pagar "{deuda.nombre}"</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center">
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
             <X size={16} />
           </button>
         </div>

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, X } from 'lucide-react'
+import { ArrowLeft, Plus, Repeat, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
+import { useCuentas } from '../lib/CuentasContext'
 
 export default function Metas() {
   const navigate = useNavigate()
@@ -10,12 +11,16 @@ export default function Metas() {
   const [cargando, setCargando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [aportando, setAportando] = useState(null)
+  const [error, setError] = useState('')
 
   async function cargar() {
     setCargando(true)
+    setError('')
     try {
       setMetas(await api.metas())
-    } catch {}
+    } catch (err) {
+      setError(err.message || 'No se pudieron cargar tus metas')
+    }
     setCargando(false)
   }
 
@@ -24,13 +29,13 @@ export default function Metas() {
   }, [])
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6">
+    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className="px-5 pt-14 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/perfil')}
             className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
-          >
+           aria-label="Volver">
             <ArrowLeft size={18} />
           </button>
           <h1 className="text-xl font-semibold">Metas de ahorro</h1>
@@ -38,21 +43,28 @@ export default function Metas() {
         <button
           onClick={() => setMostrarForm(true)}
           className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center"
-        >
+         aria-label="Nueva meta">
           <Plus size={20} />
         </button>
       </header>
 
       {cargando ? (
         <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+      ) : error ? (
+        <div className="mx-5 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
+          <p className="text-sm text-danger mb-3">{error}</p>
+          <button onClick={cargar} className="text-sm font-semibold text-danger underline">
+            Reintentar
+          </button>
+        </div>
       ) : metas.length === 0 ? (
         <div className="mx-5 mt-6 rounded-2xl bg-paper-raised border border-line p-8 text-center">
           <p className="text-sm text-ink-soft">Aún no tienes metas de ahorro</p>
         </div>
       ) : (
         <div className="mx-5 mt-4 space-y-3">
-          {metas.map((m) => (
-            <div key={m.id} className="rounded-2xl bg-paper-raised border border-line p-4">
+          {metas.map((m, i) => (
+            <div key={m.id} className="rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': i }}>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-semibold">{m.nombre}</p>
                 <p className="text-xs text-ink-soft">{m.progreso_pct}%</p>
@@ -68,8 +80,13 @@ export default function Metas() {
                 <span>{formatCOP(m.monto_objetivo)}</span>
               </div>
               {m.eta_meses && !m.completada && (
-                <p className="text-xs text-ink-soft mb-3">
+                <p className="text-xs text-ink-soft mb-1.5">
                   A tu ritmo actual, la alcanzas en ~{m.eta_meses} {m.eta_meses === 1 ? 'mes' : 'meses'}
+                </p>
+              )}
+              {m.aporte_automatico && !m.completada && (
+                <p className="text-xs text-accent flex items-center gap-1 mb-3">
+                  <Repeat size={11} /> {formatCOP(m.aporte_automatico)} automático el día {m.dia_aporte}
                 </p>
               )}
               {m.completada ? (
@@ -112,9 +129,14 @@ export default function Metas() {
 }
 
 function FormMeta({ onClose, onGuardada }) {
+  const { cuentas } = useCuentas()
   const [nombre, setNombre] = useState('')
   const [montoObjetivo, setMontoObjetivo] = useState('')
   const [montoActual, setMontoActual] = useState('')
+  const [ahorroAutomatico, setAhorroAutomatico] = useState(false)
+  const [aporteAutomatico, setAporteAutomatico] = useState('')
+  const [diaAporte, setDiaAporte] = useState('1')
+  const [cuentaOrigenId, setCuentaOrigenId] = useState(cuentas[0]?.id || '')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
@@ -122,6 +144,9 @@ function FormMeta({ onClose, onGuardada }) {
     setError('')
     if (!nombre.trim()) return setError('Ponle un nombre a tu meta')
     if (!montoObjetivo || Number(montoObjetivo) <= 0) return setError('Ingresa un monto objetivo válido')
+    if (ahorroAutomatico && (!aporteAutomatico || Number(aporteAutomatico) <= 0)) {
+      return setError('Ingresa cuánto quieres apartar automáticamente')
+    }
 
     setGuardando(true)
     try {
@@ -129,6 +154,11 @@ function FormMeta({ onClose, onGuardada }) {
         nombre: nombre.trim(),
         monto_objetivo: Number(montoObjetivo),
         monto_actual: Number(montoActual) || 0,
+        ...(ahorroAutomatico && {
+          aporte_automatico: Number(aporteAutomatico),
+          dia_aporte: Number(diaAporte) || 1,
+          cuenta_origen_id: cuentaOrigenId || null,
+        }),
       })
       onGuardada()
     } catch (err) {
@@ -139,11 +169,11 @@ function FormMeta({ onClose, onGuardada }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8">
+    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
+      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 max-h-[90vh] overflow-y-auto sheet-content">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Nueva meta</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center">
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
             <X size={16} />
           </button>
         </div>
@@ -169,6 +199,56 @@ function FormMeta({ onClose, onGuardada }) {
           className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
         />
 
+        <button
+          type="button"
+          onClick={() => setAhorroAutomatico((v) => !v)}
+          className="w-full flex items-center gap-3 rounded-2xl border border-line bg-paper-raised px-4 py-3.5 mb-3"
+        >
+          <span
+            className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+              ahorroAutomatico ? 'bg-accent border-accent' : 'border-line'
+            }`}
+          >
+            {ahorroAutomatico && <span className="w-2 h-2 rounded-sm bg-white" />}
+          </span>
+          <span className="text-sm text-left flex-1">Apartar dinero automáticamente cada mes</span>
+        </button>
+
+        {ahorroAutomatico && (
+          <div className="rounded-2xl bg-accent-soft p-3 mb-4 space-y-3">
+            <input
+              value={aporteAutomatico}
+              onChange={(e) => setAporteAutomatico(e.target.value.replace(/\D/g, ''))}
+              inputMode="numeric"
+              placeholder="Cuánto apartar cada mes"
+              className="w-full rounded-xl border border-line bg-paper px-3.5 py-3 text-sm outline-none focus:border-accent"
+            />
+            <div className="flex gap-2">
+              <input
+                value={diaAporte}
+                onChange={(e) => setDiaAporte(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                inputMode="numeric"
+                placeholder="Día del mes (1-31)"
+                className="flex-1 rounded-xl border border-line bg-paper px-3.5 py-3 text-sm outline-none focus:border-accent"
+              />
+              {cuentas.length > 0 && (
+                <select
+                  value={cuentaOrigenId}
+                  onChange={(e) => setCuentaOrigenId(e.target.value)}
+                  className="flex-1 rounded-xl border border-line bg-paper px-3.5 py-3 text-sm"
+                >
+                  {cuentas.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <p className="text-xs text-ink-soft">
+              Ese día se descuenta de la cuenta elegida y se suma a tu meta automáticamente.
+            </p>
+          </div>
+        )}
+
         {error && <p className="text-sm text-danger mb-3">{error}</p>}
 
         <button
@@ -184,7 +264,9 @@ function FormMeta({ onClose, onGuardada }) {
 }
 
 function FormAporte({ meta, onClose, onAportado }) {
+  const { cuentas } = useCuentas()
   const [monto, setMonto] = useState('')
+  const [cuentaId, setCuentaId] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
@@ -194,7 +276,7 @@ function FormAporte({ meta, onClose, onAportado }) {
 
     setGuardando(true)
     try {
-      await api.aportarMeta(meta.id, Number(monto))
+      await api.aportarMeta(meta.id, Number(monto), cuentaId || undefined)
       onAportado()
     } catch (err) {
       setError(err.message || 'No se pudo registrar el aporte')
@@ -204,11 +286,11 @@ function FormAporte({ meta, onClose, onAportado }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8">
+    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
+      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Aportar a "{meta.nombre}"</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center">
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
             <X size={16} />
           </button>
         </div>
@@ -219,8 +301,26 @@ function FormAporte({ meta, onClose, onAportado }) {
           inputMode="numeric"
           placeholder="Monto a aportar"
           autoFocus
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
+          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
         />
+
+        {cuentas.length > 0 && (
+          <>
+            <select
+              value={cuentaId}
+              onChange={(e) => setCuentaId(e.target.value)}
+              className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm mb-1"
+            >
+              <option value="">No descontar de ninguna cuenta (dinero externo)</option>
+              {cuentas.map((c) => (
+                <option key={c.id} value={c.id}>Descontar de {c.nombre}</option>
+              ))}
+            </select>
+            <p className="text-xs text-ink-soft mb-4">
+              Si eliges una cuenta, el monto se descuenta de su saldo real.
+            </p>
+          </>
+        )}
 
         {error && <p className="text-sm text-danger mb-3">{error}</p>}
 

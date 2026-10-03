@@ -1,15 +1,27 @@
 import { useEffect, useState } from 'react'
-import { Plus, X } from 'lucide-react'
+import { ArrowLeftRight, CalendarClock, Plus, TrendingUp, X } from 'lucide-react'
 import { formatCOP } from '../lib/format'
 import { api } from '../lib/api'
+import GraficoTendencia from '../components/GraficoTendencia'
+import { useCategorias } from '../lib/CategoriasContext'
 
-const categoriasSugeridas = ['Comida', 'Transporte', 'Ocio', 'Hogar', 'Salud', 'Otros']
+const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 export default function Presupuesto() {
   const [presupuestos, setPresupuestos] = useState([])
   const [gastosPorCategoria, setGastosPorCategoria] = useState({})
+  const [tendencias, setTendencias] = useState(null)
+  const [flujoCaja, setFlujoCaja] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
+  const [mostrarMover, setMostrarMover] = useState(false)
+  const [animarBarras, setAnimarBarras] = useState(false)
+
+  useEffect(() => {
+    if (cargando) return
+    const t = setTimeout(() => setAnimarBarras(true), 60)
+    return () => clearTimeout(t)
+  }, [cargando])
 
   useEffect(() => {
     cargar()
@@ -18,13 +30,20 @@ export default function Presupuesto() {
   async function cargar() {
     setCargando(true)
     try {
-      const [ps, reporte] = await Promise.all([api.presupuestos(), api.reporteMensual()])
+      const [ps, reporte, tend, flujo] = await Promise.all([
+        api.presupuestos(),
+        api.reporteMensual(),
+        api.tendencias(),
+        api.flujoCajaFuturo(),
+      ])
       setPresupuestos(ps)
       const gastos = {}
       reporte.top_categorias.forEach((c) => {
         gastos[c.categoria] = c.monto
       })
       setGastosPorCategoria(gastos)
+      setTendencias(tend)
+      setFlujoCaja(flujo)
     } catch {}
     setCargando(false)
   }
@@ -35,16 +54,74 @@ export default function Presupuesto() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6">
+    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className="px-6 pt-14 pb-2 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Presupuesto</h1>
-        <button
-          onClick={() => setMostrarForm(true)}
-          className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center"
-        >
-          <Plus size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          {presupuestos.length > 1 && (
+            <button
+              onClick={() => setMostrarMover(true)}
+              className="w-10 h-10 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+              aria-label="Mover plata entre categorías"
+            >
+              <ArrowLeftRight size={17} className="text-ink-soft" />
+            </button>
+          )}
+          <button
+            onClick={() => setMostrarForm(true)}
+            className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center"
+           aria-label="Nuevo presupuesto">
+            <Plus size={20} />
+          </button>
+        </div>
       </header>
+
+      {!cargando && tendencias && tendencias.meses.some((m) => m.ingresos || m.gastos) && (
+        <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp size={15} className="text-ink-soft" />
+            <p className="text-sm font-semibold">Tendencia (6 meses)</p>
+          </div>
+          <GraficoTendencia meses={tendencias.meses} />
+
+          <div className="mt-4 pt-4 border-t border-line">
+            <p className="text-xs text-ink-soft">Proyección de gasto este mes</p>
+            <p className="text-xl font-bold mt-0.5">
+              {formatCOP(tendencias.proyeccion.gasto_proyectado_mes)}
+            </p>
+            <p className="text-xs text-ink-soft mt-0.5">
+              Al ritmo de {formatCOP(tendencias.proyeccion.ritmo_diario)}/día, con{' '}
+              {tendencias.proyeccion.dias_restantes_mes} días restantes
+            </p>
+          </div>
+        </section>
+      )}
+
+      {!cargando && flujoCaja && flujoCaja.meses.length > 0 && (
+        <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarClock size={15} className="text-ink-soft" />
+            <p className="text-sm font-semibold">Proyección de saldo</p>
+          </div>
+          <div className="flex items-stretch gap-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-ink-soft">Hoy</p>
+              <p className="text-sm font-bold truncate">{formatCOP(flujoCaja.saldo_actual)}</p>
+            </div>
+            {flujoCaja.meses.map((m) => (
+              <div key={m.mes} className="flex-1 min-w-0">
+                <p className="text-xs text-ink-soft">{MESES_CORTOS[parseInt(m.mes.split('-')[1], 10) - 1]}</p>
+                <p className={`text-sm font-bold truncate ${m.saldo_proyectado < 0 ? 'text-danger' : ''}`}>
+                  {formatCOP(m.saldo_proyectado)}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-ink-soft mt-3">
+            Estimado según tus recurrentes conocidos y tu ritmo de gasto habitual
+          </p>
+        </section>
+      )}
 
       {cargando ? (
         <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
@@ -59,40 +136,88 @@ export default function Presupuesto() {
           </button>
         </div>
       ) : (
-        <div className="mx-6 mt-4 space-y-3">
-          {presupuestos.map((p) => {
+        (() => {
+          const conDatos = presupuestos.map((p) => {
             const gastado = gastosPorCategoria[p.categoria] || 0
-            const pct = Math.min(100, Math.round((gastado / p.limite) * 100))
-            const alerta = pct >= p.alerta_pct
-            return (
-              <div key={p.id} className="rounded-2xl bg-paper-raised border border-line p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-semibold">{p.categoria}</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs text-ink-soft">
-                      {formatCOP(gastado)} / {formatCOP(p.limite)}
-                    </p>
-                    <button onClick={() => eliminar(p.id)} className="text-ink-soft">
-                      <X size={14} />
-                    </button>
-                  </div>
-                </div>
-                <div className="h-2 rounded-full bg-line overflow-hidden">
+            const limiteEfectivo = p.limite + (p.sobre_ajuste || 0)
+            const pctReal = (gastado / limiteEfectivo) * 100
+            return { ...p, gastado, limite: limiteEfectivo, pctReal, pct: Math.min(100, Math.round(pctReal)) }
+          })
+          const limiteTotal = conDatos.reduce((s, p) => s + p.limite, 0)
+          const gastadoTotal = conDatos.reduce((s, p) => s + p.gastado, 0)
+          const pctGeneral = limiteTotal > 0 ? Math.min(100, Math.round((gastadoTotal / limiteTotal) * 100)) : 0
+          const colorNivel = pctGeneral >= 100 ? 'var(--color-danger)' : pctGeneral >= 80 ? 'var(--color-accent-2)' : 'var(--color-accent)'
+
+          return (
+            <div className="mx-6 mt-4 flex gap-4">
+              {/* Termómetro: nivel general del mes de un vistazo */}
+              <div className="flex flex-col items-center pt-1 shrink-0">
+                <div className="w-8 rounded-full bg-line overflow-hidden relative" style={{ height: `${Math.max(180, conDatos.length * 76)}px` }}>
                   <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${pct}%`,
-                      background: alerta ? 'var(--color-danger)' : 'var(--color-accent)',
-                    }}
+                    className="absolute bottom-0 left-0 right-0 rounded-full transition-all duration-700 ease-out"
+                    style={{ height: `${animarBarras ? pctGeneral : 0}%`, background: colorNivel }}
                   />
                 </div>
-                {alerta && (
-                  <p className="text-xs text-danger mt-1.5">Te acercas al límite de este mes</p>
-                )}
+                <p className="text-[10px] text-ink-soft text-center mt-2.5 leading-tight font-medium">
+                  {pctGeneral}% del<br />mes usado
+                </p>
               </div>
-            )
-          })}
-        </div>
+
+              {/* Categorías, cada una con su propia barra */}
+              <div className="flex-1 min-w-0 space-y-3">
+                {conDatos.map((p, i) => {
+                  const sobrepasado = p.pctReal > 100
+                  const cercaDelLimite = !sobrepasado && p.pct >= p.alerta_pct
+                  return (
+                    <div key={p.id} className="rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': i }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-semibold">
+                          {p.categoria}
+                          {p.sobre_ajuste !== 0 && (
+                            <span className={`ml-1.5 text-[10px] font-bold ${p.sobre_ajuste > 0 ? 'text-accent-2' : 'text-ink-soft'}`}>
+                              {p.sobre_ajuste > 0 ? '+' : ''}{formatCOP(p.sobre_ajuste)}
+                            </span>
+                          )}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-ink-soft">
+                            {formatCOP(p.gastado)} / {formatCOP(p.limite)}
+                          </p>
+                          <button onClick={() => eliminar(p.id)} className="w-8 h-8 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label="Cerrar">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="h-2 rounded-full bg-line overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700 ease-out"
+                          style={{
+                            width: `${animarBarras ? p.pct : 0}%`,
+                            background: sobrepasado
+                              ? 'var(--color-danger)'
+                              : cercaDelLimite
+                              ? 'var(--color-accent-2)'
+                              : 'var(--color-accent)',
+                          }}
+                        />
+                      </div>
+                      {sobrepasado && (
+                        <p className="text-xs text-danger mt-1.5">
+                          Te pasaste por {formatCOP(p.gastado - p.limite)} — ajusta el resto del mes para compensarlo
+                        </p>
+                      )}
+                      {cercaDelLimite && (
+                        <p className="text-xs text-ink-soft mt-1.5">
+                          Te quedan {formatCOP(Math.max(0, p.limite - p.gastado))} para no pasarte este mes
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()
       )}
 
       {mostrarForm && (
@@ -104,11 +229,24 @@ export default function Presupuesto() {
           }}
         />
       )}
+
+      {mostrarMover && (
+        <FormMoverSobre
+          presupuestos={presupuestos}
+          onClose={() => setMostrarMover(false)}
+          onMovido={() => {
+            setMostrarMover(false)
+            cargar()
+          }}
+        />
+      )}
     </div>
   )
 }
 
 function FormPresupuesto({ onClose, onGuardado }) {
+  const { nombres } = useCategorias()
+  const categoriasSugeridas = nombres.filter((c) => c !== 'Ingresos' && c !== 'Transferencias')
   const [categoria, setCategoria] = useState('')
   const [limite, setLimite] = useState('')
   const [guardando, setGuardando] = useState(false)
@@ -131,11 +269,11 @@ function FormPresupuesto({ onClose, onGuardado }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8">
+    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
+      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Nuevo presupuesto</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center">
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
             <X size={16} />
           </button>
         </div>
@@ -171,6 +309,88 @@ function FormPresupuesto({ onClose, onGuardado }) {
           className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
         >
           {guardando ? 'Guardando...' : 'Guardar presupuesto'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function FormMoverSobre({ presupuestos, onClose, onMovido }) {
+  const [origenId, setOrigenId] = useState(presupuestos[0]?.id || '')
+  const [destinoId, setDestinoId] = useState(presupuestos[1]?.id || '')
+  const [monto, setMonto] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState('')
+
+  async function guardar() {
+    setError('')
+    if (origenId === destinoId) return setError('Elige dos categorías distintas')
+    if (!monto || Number(monto) <= 0) return setError('Ingresa un monto válido')
+
+    setGuardando(true)
+    try {
+      await api.moverSobre(origenId, destinoId, Number(monto))
+      onMovido()
+    } catch (err) {
+      setError(err.message || 'No se pudo mover')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
+      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Mover plata entre categorías</h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+            <X size={16} />
+          </button>
+        </div>
+
+        <p className="text-xs text-ink-soft mb-4">
+          Lo que te sobró en una categoría lo puedes pasar a otra que se quedó corta,
+          en vez de perderlo cada mes.
+        </p>
+
+        <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Desde</p>
+        <select
+          value={origenId}
+          onChange={(e) => setOrigenId(e.target.value)}
+          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm mb-3"
+        >
+          {presupuestos.map((p) => (
+            <option key={p.id} value={p.id}>{p.categoria}</option>
+          ))}
+        </select>
+
+        <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Hacia</p>
+        <select
+          value={destinoId}
+          onChange={(e) => setDestinoId(e.target.value)}
+          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm mb-3"
+        >
+          {presupuestos.map((p) => (
+            <option key={p.id} value={p.id}>{p.categoria}</option>
+          ))}
+        </select>
+
+        <input
+          value={monto}
+          onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
+          inputMode="numeric"
+          placeholder="Monto a mover"
+          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
+        />
+
+        {error && <p className="text-sm text-danger mb-3">{error}</p>}
+
+        <button
+          onClick={guardar}
+          disabled={guardando}
+          className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        >
+          {guardando ? 'Moviendo...' : 'Mover plata'}
         </button>
       </div>
     </div>

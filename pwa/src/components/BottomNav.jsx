@@ -18,6 +18,7 @@ export default function BottomNav() {
             <NavLink
               key={to}
               to={to}
+              aria-label="Agregar movimiento"
               className="flex flex-col items-center justify-center -mt-6"
             >
               <span className="w-14 h-14 rounded-full bg-accent text-paper-raised flex items-center justify-center shadow-lg shadow-accent/30 active:scale-95 transition-transform">
@@ -30,13 +31,22 @@ export default function BottomNav() {
               to={to}
               end={to === '/'}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-1 px-2 py-1 min-w-[56px] ${
+                `flex flex-col items-center gap-1 px-2 py-1 min-w-[56px] transition-colors duration-200 ${
                   isActive ? 'text-accent' : 'text-ink-soft'
                 }`
               }
             >
-              <Icon size={22} strokeWidth={2} />
-              <span className="text-[11px] font-medium">{label}</span>
+              {({ isActive }) => (
+                <>
+                  <Icon
+                    size={22}
+                    strokeWidth={2}
+                    className="transition-transform duration-200"
+                    style={{ transform: isActive ? 'translateY(-1px) scale(1.08)' : 'none' }}
+                  />
+                  <span className="text-[11px] font-medium">{label}</span>
+                </>
+              )}
             </NavLink>
           )
         )}
