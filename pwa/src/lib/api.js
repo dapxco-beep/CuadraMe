@@ -217,4 +217,24 @@ export const api = {
   // Foto de factura (la IA solo sugiere; nada se guarda hasta que el usuario confirme)
   escanearFactura: (imagenBase64, mime) =>
     request('/facturas/escanear', { method: 'POST', body: { imagen_base64: imagenBase64, mime } }),
+
+  // Importar CSV / Excel: la vista previa NO guarda nada; solo /confirmar crea movimientos
+  importarVistaPrevia: (data) => request('/importar/vista-previa', { method: 'POST', body: data }),
+  importarConfirmar: (data) => request('/importar/confirmar', { method: 'POST', body: data }),
+
+  // Impuestos Colombia (informativo)
+  impuestosResumen: (anio) => request(`/impuestos/resumen${anio ? `?anio=${anio}` : ''}`),
+  impuestosAjustes: (cuentaExentaId) =>
+    request('/impuestos/ajustes', { method: 'PUT', body: { cuenta_exenta_gmf_id: cuentaExentaId || null } }),
+  impuestosMarcar: (movimientoId, data) =>
+    request(`/impuestos/marcas/${movimientoId}`, { method: 'PUT', body: data }),
+  impuestosQuitarMarca: (movimientoId) => request(`/impuestos/marcas/${movimientoId}`, { method: 'DELETE' }),
+  impuestosExcel: (anio) => descargarArchivo(`/impuestos/exportar.xlsx?anio=${anio}`, `cuadrame_renta_${anio}.xlsx`),
+
+  // Cierre de mes
+  cierresMes: () => request('/cierre-mes'),
+  cierreMes: (mes) => request(`/cierre-mes/${mes}`),
+  generarCierreMes: (mes) => request(`/cierre-mes/${mes}/generar`, { method: 'POST' }),
+  cierrePreferencias: () => request('/cierre-mes/preferencias'),
+  guardarCierrePreferencias: (correo) => request('/cierre-mes/preferencias', { method: 'PUT', body: { correo } }),
 }

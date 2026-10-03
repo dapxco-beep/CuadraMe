@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Check, ChevronRight, Copy, CreditCard, FileText, FileUp, Landmark, Link2, List, LogOut, Mail, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2 } from 'lucide-react'
+import { Bell, Receipt, Check, ChevronRight, Copy, CreditCard, FileText, FileUp, Landmark, Link2, List, LogOut, Mail, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2 } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -143,6 +143,11 @@ export default function Perfil() {
             <p className="flex-1 text-sm font-medium">Subir extracto (PDF)</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
+          <Link to="/importar" className="flex items-center gap-3 px-4 py-3.5">
+            <FileUp size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Importar Excel o CSV</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
         </div>
 
         <div className="rounded-2xl bg-paper-raised border border-line p-4 mt-3">
@@ -202,6 +207,16 @@ export default function Perfil() {
       <section className="mx-6 mt-6">
         <h2 className="text-[15px] font-semibold mb-3">Extra</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
+          <Link to="/impuestos" className="flex items-center gap-3 px-4 py-3.5">
+            <Receipt size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Impuestos (4x1000 y renta)</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/cierre-mes" className="flex items-center gap-3 px-4 py-3.5">
+            <FileText size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Cierre de mes</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
           <Link to="/ahorcado" className="flex items-center gap-3 px-4 py-3.5">
             <Sprout size={18} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Tu árbol financiero</p>

@@ -18,6 +18,17 @@
 
 ---
 
+## 🆕 Importar Excel/CSV, regla contable, Impuestos y Cierre de mes (pendiente de tu aprobación)
+
+- ⏳ **SQL sin ejecutar:** `backend/supabase/migraciones/impuestos_cierre_mes.sql` (3 tablas + RLS, idempotente). Correrlo en Supabase antes de desplegar; si no, el backend las crea al arrancar pero sin RLS. Importar CSV/Excel no necesita SQL.
+- **Regla contable:** el pago de una tarjeta y los traslados entre cuentas propias no cuentan como gasto ni ingreso (`backend/app/contabilidad.py`; lo usan reportes, presupuestos, insights, salud, wrapped, push, exportar y cierre). Los saldos no cambian.
+- **Importar:** Movimientos/Conciliación/Perfil -> "Importar Excel o CSV" (`/importar`). `.xls` antiguo requiere `xlrd` (agregado a requirements; sin él se pide guardar como .xlsx).
+- **Impuestos:** `/impuestos` (4x1000 estimado, cuenta exenta, posibles deducibles con nota de soporte, Excel y PDF por impresión). UVT por año en `app/impuestos.py`: actualizar cada diciembre.
+- ⏳ **Cron de cierre de mes (NO creado):** `POST /cierre-mes/cron/cerrar-mes` con header `X-Cron-Secret`. Programarlo en cron-job.org **1 vez al día** (p. ej. 07:00 hora Colombia, mismo método de `backend/cronjobs/crear_crons.py`); solo actúa sobre el mes ya terminado y es idempotente por usuario/mes (no repite informes, push ni correos). Parámetro opcional `?mes=AAAA-MM` para regenerar. El correo (Resend) solo se envía a quien lo active en la pantalla "Cierre de mes".
+- **Legal:** Términos, Privacidad y Autorización actualizados (v1.1, 3-oct-2026) y siguen marcados como borrador pendiente de abogado colombiano.
+
+---
+
 ## 🆕 Módulo Patrimonio e inversiones (pendiente de tu aprobación)
 
 - ⏳ **SQL sin ejecutar:** `backend/supabase/migraciones/patrimonio.sql` (4 tablas + RLS, idempotente). Córrelo en Supabase ANTES de desplegar: si no, el backend las crea solo al arrancar (`create_all`) pero sin RLS.

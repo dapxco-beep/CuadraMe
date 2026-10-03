@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, ArrowLeft, Clock, Send, Sparkles, TrendingUp, Zap } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
+import { tipoEfectivo } from '../lib/contabilidad'
 
 function construirMapaCalor(movimientos) {
   const gastoPorDia = {}
   for (const m of movimientos) {
-    if (m.tipo !== 'expense') continue
+    if (tipoEfectivo(m) !== 'expense') continue
     const dia = m.fecha.slice(0, 10)
     gastoPorDia[dia] = (gastoPorDia[dia] || 0) + m.monto
   }
