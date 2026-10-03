@@ -2,7 +2,7 @@ import secrets
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, Float, DateTime, Boolean, Integer
+from sqlalchemy import Column, String, Float, DateTime, Boolean, Integer, UniqueConstraint
 
 from app.database import Base
 
@@ -225,6 +225,37 @@ class CorreoGasto(Base):
     estado = Column(String, default="pendiente")  # pendiente | aprobado | descartado
     movimiento_id = Column(String, nullable=True)
     creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class ExtractoCorreo(Base):
+    """Extracto bancario (PDF adjunto) detectado en el Gmail del usuario.
+    NO guarda el PDF: solo metadatos. Para conciliar se vuelve a descargar."""
+    __tablename__ = "extractos_correo"
+    __table_args__ = (UniqueConstraint("usuario_id", "gmail_msg_id", "archivo", name="uq_extracto_correo"),)
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    gmail_msg_id = Column(String, nullable=False)
+    archivo = Column(String, default="")  # nombre del adjunto
+    remitente = Column(String, default="")
+    asunto = Column(String, default="")
+    banco = Column(String, default="")
+    periodo = Column(String, default="")
+    cuenta_sugerida_id = Column(String, nullable=True)
+    estado = Column(String, default="nuevo")  # nuevo | falta_clave | procesado | descartado | error
+    historial_id = Column(String, nullable=True)
+    recibido_en = Column(DateTime, nullable=True)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class ClavePdf(Base):
+    """Clave con la que se abren los extractos cifrados (normalmente la
+    cédula). Se guarda cifrada con Fernet, igual que el refresh token."""
+    __tablename__ = "claves_pdf"
+
+    usuario_id = Column(String, primary_key=True)
+    clave_enc = Column(String, nullable=False)
+    actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class PushSubscription(Base):

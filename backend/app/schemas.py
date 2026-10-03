@@ -497,7 +497,32 @@ class SincronizarCorreosResponse(BaseModel):
     ok: bool
     nuevos: int
     omitidos: int
+    extractos_nuevos: int = 0
     error: Optional[str] = None
+
+
+class ExtractoCorreoOut(BaseModel):
+    id: str
+    remitente: str
+    asunto: str
+    archivo: str
+    banco: str
+    periodo: str
+    cuenta_sugerida_id: Optional[str]
+    estado: str
+    historial_id: Optional[str]
+    recibido_en: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+class ClavePdfIn(BaseModel):
+    clave: str = Field(min_length=1, max_length=120)
+
+
+class ConciliarExtractoRequest(BaseModel):
+    cuenta_id: str
 
 
 # ── Notificaciones push ──────────────────────────────────────

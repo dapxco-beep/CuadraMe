@@ -145,6 +145,13 @@ export const api = {
   editarCorreo: (id, data) => request(`/correos/${id}`, { method: 'PATCH', body: data }),
   aprobarCorreo: (id, cuentaId) => request(`/correos/${id}/aprobar`, { method: 'POST', body: { cuenta_id: cuentaId } }),
   descartarCorreo: (id) => request(`/correos/${id}/descartar`, { method: 'POST' }),
+  extractosCorreo: () => request('/correos/extractos'),
+  conciliarExtractoCorreo: (id, cuentaId) =>
+    request(`/correos/extractos/${id}/conciliar`, { method: 'POST', body: { cuenta_id: cuentaId } }),
+  descartarExtractoCorreo: (id) => request(`/correos/extractos/${id}/descartar`, { method: 'POST' }),
+  clavePdfEstado: () => request('/correos/clave-pdf'),
+  guardarClavePdf: (clave) => request('/correos/clave-pdf', { method: 'PUT', body: { clave } }),
+  borrarClavePdf: () => request('/correos/clave-pdf', { method: 'DELETE' }),
 
   resumenSemanal: () => request('/insights/resumen-semanal'),
   edadDelDinero: () => request('/insights/edad-del-dinero'),
