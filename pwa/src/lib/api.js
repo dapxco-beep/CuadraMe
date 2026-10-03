@@ -110,6 +110,15 @@ export const api = {
   eliminarDeuda: (id) => request(`/deudas/${id}`, { method: 'DELETE' }),
   estrategiaDeudas: (extra = 0) => request(`/deudas/estrategia?extra=${encodeURIComponent(extra)}`),
 
+  patrimonio: () => request('/patrimonio'),
+  crearActivo: (data) => request('/patrimonio/activos', { method: 'POST', body: data }),
+  editarActivo: (id, data) => request(`/patrimonio/activos/${id}`, { method: 'PUT', body: data }),
+  eliminarActivo: (id) => request(`/patrimonio/activos/${id}`, { method: 'DELETE' }),
+  registrarValorActivo: (id, valor, fecha) =>
+    request(`/patrimonio/activos/${id}/valor`, { method: 'POST', body: { valor, fecha } }),
+  registrarFlujoActivo: (id, monto, fecha, nota = '') =>
+    request(`/patrimonio/activos/${id}/flujos`, { method: 'POST', body: { monto, fecha, nota } }),
+
   procesarExtracto: (pdfBase64, cuentaId, password = '') =>
     request('/conciliacion/procesar', {
       method: 'POST',

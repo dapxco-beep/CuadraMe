@@ -1,11 +1,15 @@
 import { NavLink } from 'react-router-dom'
-import { Home, List, Plus, PieChart, User } from 'lucide-react'
+import { Home, Landmark, Plus, PieChart, User } from 'lucide-react'
 
+// Cinco destinos + el botón central. Al sumar Patrimonio la barra pasaba de 5 a 6
+// ítems y "Movimientos" (etiqueta más larga) ya no cabía en pantallas de 360px.
+// Movimientos es lo que menos se abre como pestaña: Inicio tiene "Ver todos" y
+// Perfil tiene un acceso directo "Todos mis movimientos".
 const tabs = [
   { to: '/', icon: Home, label: 'Inicio' },
-  { to: '/movimientos', icon: List, label: 'Movimientos' },
-  { to: '/agregar', icon: Plus, label: '', primary: true },
   { to: '/presupuesto', icon: PieChart, label: 'Presupuesto' },
+  { to: '/agregar', icon: Plus, label: '', primary: true },
+  { to: '/patrimonio', icon: Landmark, label: 'Patrimonio' },
   { to: '/perfil', icon: User, label: 'Perfil' },
 ]
 
