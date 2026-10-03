@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Check, ChevronRight, Copy, CreditCard, FileText, FileUp, Landmark, Link2, LogOut, Mail, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2 } from 'lucide-react'
+import { Bell, Check, ChevronRight, Copy, CreditCard, FileText, FileUp, Landmark, Link2, List, LogOut, Mail, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2 } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -111,6 +111,11 @@ export default function Perfil() {
           <Link to="/cuentas" className="flex items-center gap-3 px-4 py-3.5">
             <Landmark size={18} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Ver y editar mis cuentas</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/movimientos" className="flex items-center gap-3 px-4 py-3.5">
+            <List size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Todos mis movimientos</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/compartir" className="flex items-center gap-3 px-4 py-3.5">

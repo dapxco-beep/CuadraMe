@@ -109,6 +109,15 @@ export const api = {
     request(`/deudas/${id}/pagar`, { method: 'POST', body: { monto_pagado: montoPagado, crear_movimiento: crearMovimiento } }),
   eliminarDeuda: (id) => request(`/deudas/${id}`, { method: 'DELETE' }),
 
+  patrimonio: () => request('/patrimonio'),
+  crearActivo: (data) => request('/patrimonio/activos', { method: 'POST', body: data }),
+  editarActivo: (id, data) => request(`/patrimonio/activos/${id}`, { method: 'PUT', body: data }),
+  eliminarActivo: (id) => request(`/patrimonio/activos/${id}`, { method: 'DELETE' }),
+  registrarValorActivo: (id, valor, fecha) =>
+    request(`/patrimonio/activos/${id}/valor`, { method: 'POST', body: { valor, fecha } }),
+  registrarFlujoActivo: (id, monto, fecha, nota = '') =>
+    request(`/patrimonio/activos/${id}/flujos`, { method: 'POST', body: { monto, fecha, nota } }),
+
   procesarExtracto: (pdfBase64, cuentaId, password = '') =>
     request('/conciliacion/procesar', {
       method: 'POST',

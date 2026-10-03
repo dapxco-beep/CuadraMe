@@ -18,6 +18,15 @@
 
 ---
 
+## 🆕 Módulo Patrimonio e inversiones (pendiente de tu aprobación)
+
+- ⏳ **SQL sin ejecutar:** `backend/supabase/migraciones/patrimonio.sql` (4 tablas + RLS, idempotente). Córrelo en Supabase ANTES de desplegar: si no, el backend las crea solo al arrancar (`create_all`) pero sin RLS.
+- ⏳ **Cron opcional (no creado):** `POST /patrimonio/cron/snapshot-mensual` con header `X-Cron-Secret`, 1 vez al día, guarda la foto mensual de todos los usuarios. Sin él la serie igual se llena sola cuando alguien abre la pestaña Patrimonio.
+- 🔲 **Precios automáticos:** interfaz lista en `backend/app/precios.py` (registrar un proveedor y poner su nombre en `fuente_precio`); hoy los precios son manuales.
+- Cambio de navegación: la barra inferior ahora es Inicio · Presupuesto · (+) · Patrimonio · Perfil; "Movimientos" pasó a Perfil ("Todos mis movimientos") y sigue en "Ver todos" de Inicio.
+
+---
+
 ## 🔴 Bloqueante — antes de invitar gente nueva
 
 - 🔲 **Verificación OAuth de Google (Gmail)**: hoy solo funciona para correos agregados como "test user" en Google Cloud Console → OAuth consent screen. Cualquier persona nueva que quiera conectar su Gmail va a ver un error 403 si no la agregas primero ahí. Dos caminos:

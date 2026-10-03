@@ -20,6 +20,7 @@ from app.routers import (
     metricas,
     movimientos,
     pagos,
+    patrimonio,
     perfil,
     presupuestos,
     push,
@@ -117,6 +118,7 @@ app.include_router(ahorcado.router)
 app.include_router(categorias.router)
 app.include_router(backup.router)
 app.include_router(metricas.router)
+app.include_router(patrimonio.router)
 
 
 @app.get("/health")

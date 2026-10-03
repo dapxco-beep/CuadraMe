@@ -160,7 +160,18 @@ body {
   border-radius: 10px;
 }
 
+/* Línea del gráfico de patrimonio que se "dibuja" al aparecer (pathLength=1) */
+@keyframes dibujar-linea {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.linea-patrimonio {
+  stroke-dasharray: 1;
+  animation: dibujar-linea 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .linea-patrimonio,
   .screen-enter,
   .stagger-item,
   .pop-in,
