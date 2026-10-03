@@ -6,6 +6,8 @@ from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
 from app.conciliacion import normalize_texto
 from app.database import get_db
+from app.compartidos import cuentas_ids_accesibles
+from app.contabilidad import tipos_cuenta_de, tipos_efectivos
 from app.deteccion import detectar_recurrentes
 from app.finanzas import calc_estado_recurrente
 from app.models import Cuenta, Movimiento, Recurrente
@@ -69,12 +71,14 @@ def sugerir_recurrentes(
         .order_by(Movimiento.fecha.asc())
         .all()
     )
+    # El pago de la tarjeta no es una suscripción: se sugiere con el tipo efectivo.
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, cuentas_ids_accesibles(db, usuario.id)))
     data = [
         {
             "id": m.id,
             "descripcion": m.descripcion,
             "categoria": m.categoria,
-            "tipo": m.tipo,
+            "tipo": te.get(m.id, m.tipo),
             "monto": m.monto,
             "fecha": m.fecha,
             "cuenta_id": m.cuenta_id,

@@ -11,6 +11,7 @@ from app.routers import (
     asistente,
     backup,
     categorias,
+    cierre,
     compartir,
     conciliacion,
     correos,
@@ -19,6 +20,8 @@ from app.routers import (
     exportar,
     facturas,
     gastos_compartidos,
+    importar,
+    impuestos,
     insights,
     metas,
     metricas,
@@ -135,6 +138,9 @@ app.include_router(planificacion.router)
 app.include_router(gastos_compartidos.router)
 app.include_router(facturas.router)
 app.include_router(asistente.router)
+app.include_router(importar.router)
+app.include_router(impuestos.router)
+app.include_router(cierre.router)
 
 
 @app.get("/health")

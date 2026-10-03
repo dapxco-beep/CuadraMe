@@ -87,7 +87,9 @@ def procesar_extracto(
 
     ledger = _cargar_ledger(db, usuario.id, cuenta.id)
     for mov in movimientos:
-        mov["cuenta"] = cuenta.nombre
+        # La huella del ledger (_cargar_ledger) usa el id de la cuenta; con el nombre
+        # nunca coincidían y los movimientos ya registrados salían como "aproximados".
+        mov["cuenta"] = cuenta.id
     resultado = auditar_movimientos(movimientos, ledger)
 
     # Auto-importar los "faltantes" con alta confianza del clasificador aprendido,

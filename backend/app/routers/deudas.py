@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
 from app.estrategia_deudas import comparar_estrategias
+from app.contabilidad import CATEGORIA_PAGO_TARJETA
 from app.finanzas import calc_deuda
 from app.models import Cuenta, Deuda, Movimiento
 from app.schemas import DeudaCreate, DeudaOut, EstrategiaOut, PagarDeudaRequest
@@ -113,7 +114,8 @@ def pagar_deuda(
                 usuario_id=usuario.id,
                 cuenta_id=cuenta.id,
                 descripcion=f"Pago {deuda.nombre}",
-                categoria="Deudas",
+                # Pagar una deuda de tarjeta salda compras ya registradas: no es gasto nuevo.
+                categoria=CATEGORIA_PAGO_TARJETA if deuda.tipo == "tarjeta" else "Deudas",
                 tipo="expense",
                 monto=data.monto_pagado,
                 fuente="manual",

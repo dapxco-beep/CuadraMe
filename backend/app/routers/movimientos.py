@@ -9,6 +9,7 @@ from app.auth import UsuarioActual, get_current_user, get_current_user_by_api_ke
 from app.classifier import aplicar_reglas, build_model, classify
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, cuentas_ids_accesibles, puede_editar_cuenta
+from app.contabilidad import CATEGORIA_PAGO_TARJETA, es_pago_tarjeta
 from app.database import get_db
 from app.limites import verificar_limite
 from app.models import Cuenta, Movimiento, ReglaCategoria
@@ -457,6 +458,9 @@ def _movimientos_categorizados(db: Session, usuario_id: str) -> list[dict]:
 
 def _clasificar(db: Session, usuario_id: str, descripcion: str) -> dict | None:
     """Reglas del usuario primero (control explícito), modelo aprendido después."""
+    if es_pago_tarjeta(descripcion):
+        # El pago de una tarjeta no es un gasto (las compras ya se contaron).
+        return {"categoria": CATEGORIA_PAGO_TARJETA, "tipo": "expense", "confianza": 1.0, "fuente": "regla_tarjeta"}
     reglas = (
         db.query(ReglaCategoria)
         .filter(ReglaCategoria.usuario_id == usuario_id)

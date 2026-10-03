@@ -14,7 +14,7 @@ export default function AutorizacionDatos() {
       </header>
 
       <div className="px-6 mt-4 text-sm leading-relaxed text-ink space-y-5">
-        <p className="text-xs text-ink-soft">Última actualización: 30 de septiembre de 2026</p>
+        <p className="text-xs text-ink-soft">Versión 1.1 (borrador) · Última actualización: 3 de octubre de 2026</p>
 
         <section>
           <p>
@@ -75,6 +75,25 @@ export default function AutorizacionDatos() {
             técnica que DAPX utiliza para operar CuadraMe (actualmente Supabase, Railway y Vercel),
             quienes actúan como encargados del tratamiento bajo instrucciones de DAPX y sujetos a
             condiciones de confidencialidad.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="font-semibold mb-1.5">Autorizaciones adicionales (octubre de 2026)</h2>
+          <p>
+            Autorizo la lectura de adjuntos y extractos en mi Gmail (si conecto Gmail), incluida la detección de notificaciones bancarias sin etiqueta y de extractos en PDF; el PDF no se almacena.
+          </p>
+          <p>
+            Autorizo, si decido guardarla, el almacenamiento cifrado de la clave de mis extractos en PDF, que puedo borrar cuando quiera.
+          </p>
+          <p>
+            Autorizo el procesamiento de fotos de facturas que yo suba (no se almacenan) y el envío a un proveedor de IA (OpenRouter y sus modelos, posiblemente fuera de Colombia) de los datos mínimos necesarios para responder mis consultas: mi pregunta, un resumen de mis movimientos, cuentas, presupuestos, metas y deudas, o el contenido del documento. Nunca contraseñas, PIN ni claves.
+          </p>
+          <p>
+            Declaro que los datos de terceros que registre en gastos compartidos (nombres de contactos) los trato con su conocimiento y solo para dividir gastos.
+          </p>
+          <p>
+            Entiendo que el PIN y la biometría se verifican localmente en mi dispositivo, y que los datos de patrimonio, impuestos y cierres mensuales se guardan en mi cuenta como información de apoyo, no asesoría.
           </p>
         </section>
 

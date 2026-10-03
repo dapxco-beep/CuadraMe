@@ -8,6 +8,7 @@ from app.utiles import ahora_co
 from app.alertas_proactivas import detectar_cobros_duplicados, detectar_comisiones
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import cuentas_ids_accesibles
+from app.contabilidad import tipos_cuenta_de, tipos_efectivos
 from app.database import get_db
 from app.edad_dinero import calcular_edad_dinero, mensaje_edad, tendencia_edad
 from app.fx import convertir_a_cop
@@ -40,12 +41,13 @@ def resumen_semanal(
     def monto_cop(m):
         return convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
 
-    ingresos = sum(monto_cop(m) for m in semana if m.tipo == "income")
-    gastos = sum(monto_cop(m) for m in semana if m.tipo == "expense")
+    te = tipos_efectivos(todos, tipos_cuenta_de(db, ids_accesibles))  # sin pagos de tarjeta ni traslados propios
+    ingresos = sum(monto_cop(m) for m in semana if te[m.id] == "income")
+    gastos = sum(monto_cop(m) for m in semana if te[m.id] == "expense")
 
     categorias: dict[str, float] = {}
     for m in semana:
-        if m.tipo == "expense":
+        if te[m.id] == "expense":
             categorias[m.categoria] = categorias.get(m.categoria, 0) + monto_cop(m)
     top_categorias = sorted(
         ({"categoria": k, "monto": v} for k, v in categorias.items()),
@@ -54,7 +56,7 @@ def resumen_semanal(
     )[:3]
 
     anomalias_raw = detectar_anomalias(
-        [{"categoria": m.categoria, "tipo": m.tipo, "monto": monto_cop(m), "fecha": m.fecha} for m in todos]
+        [{"categoria": m.categoria, "tipo": te[m.id], "monto": monto_cop(m), "fecha": m.fecha} for m in todos]
     )
 
     texto = generar_resumen_semanal({
@@ -94,13 +96,14 @@ def alertas_proactivas(
     # detectar_cobros_duplicados dos montos iguales en monedas distintas
     # (o el mismo monto en USD vs. su equivalente en COP) no se comparan
     # de forma consistente con el resto de la app.
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
     data = [
         {
             "id": m.id,
             "descripcion": m.descripcion,
             "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP")),
             "fecha": m.fecha,
-            "tipo": m.tipo,
+            "tipo": te[m.id],
         }
         for m in movimientos
     ]
@@ -125,8 +128,9 @@ def edad_del_dinero(
         .filter(Movimiento.cuenta_id.in_(ids_accesibles), Movimiento.fecha >= hace_90_dias)
         .all()
     )
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
     data = [
-        {"fecha": m.fecha, "tipo": m.tipo, "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))}
+        {"fecha": m.fecha, "tipo": te[m.id], "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))}
         for m in movimientos
     ]
 
@@ -209,15 +213,16 @@ def salud_financiera(
     def cop(m):
         return convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
 
+    te = tipos_efectivos(movs, tipos_cuenta_de(db, ids_accesibles))
     corte_30 = ahora - timedelta(days=30)
     ult30 = [m for m in movs if m.fecha >= corte_30]
-    ingresos_30 = sum(cop(m) for m in ult30 if m.tipo == "income")
-    gastos_30 = sum(cop(m) for m in ult30 if m.tipo == "expense")
+    ingresos_30 = sum(cop(m) for m in ult30 if te[m.id] == "income")
+    gastos_30 = sum(cop(m) for m in ult30 if te[m.id] == "expense")
 
     # Gasto mensual típico: gastos de hasta 90 días prorrateados a 30. Si la
     # persona es nueva se usa solo el tiempo que lleva (mínimo 30 días) para no
     # subestimar su gasto dividiendo entre meses vacíos.
-    gastos_90 = sum(cop(m) for m in movs if m.tipo == "expense")
+    gastos_90 = sum(cop(m) for m in movs if te[m.id] == "expense")
     if movs:
         dias_obs = min(90, max(30, (ahora - min(m.fecha for m in movs)).days + 1))
     else:
@@ -230,7 +235,7 @@ def salud_financiera(
     inicio_mes = ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     gastado_cat: dict[str, float] = {}
     for m in movs:
-        if m.tipo == "expense" and m.fecha >= inicio_mes:
+        if te[m.id] == "expense" and m.fecha >= inicio_mes:
             gastado_cat[m.categoria] = gastado_cat.get(m.categoria, 0) + cop(m)
     presupuestos = [
         (p.limite + (p.sobre_ajuste or 0), gastado_cat.get(p.categoria, 0))

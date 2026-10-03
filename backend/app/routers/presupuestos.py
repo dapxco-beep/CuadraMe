@@ -9,7 +9,7 @@ from app.auth import UsuarioActual, get_current_user
 from app.compartidos import cuentas_ids_accesibles
 from app.database import get_db
 from app.fx import convertir_a_cop
-from app.models import Cuenta, Meta, Movimiento, Presupuesto, Recurrente
+from app.models import Cuenta, Meta, Presupuesto, Recurrente
 from app.schemas import (
     DisponibleCategoria,
     DisponibleHoy,

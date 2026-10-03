@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, FileUp, X } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ArrowLeft, Check, FileSpreadsheet, FileUp, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
@@ -171,6 +171,17 @@ export default function Conciliacion() {
           </label>
 
           {error && <p className="text-sm text-danger mt-4">{error}</p>}
+
+          <Link
+            to="/importar"
+            className="mt-4 flex items-center gap-3 rounded-2xl border border-line bg-paper-raised px-4 py-3.5"
+          >
+            <FileSpreadsheet size={20} className="text-accent shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">¿Tienes un Excel o CSV?</p>
+              <p className="text-xs text-ink-soft mt-0.5">Impórtalo, revisa las columnas y confirma lo que se guarda</p>
+            </div>
+          </Link>
         </div>
       )}
 

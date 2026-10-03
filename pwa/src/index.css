@@ -243,3 +243,11 @@ button:active:not(:disabled), a:active {
     box-shadow: 0 0 0 1px var(--color-line), 0 20px 60px -20px rgb(0 0 0 / 0.25);
   }
 }
+
+/* Impresión / "Guardar como PDF" (pantalla Impuestos) */
+.print-only { display: none; }
+@media print {
+  .no-print, nav { display: none !important; }
+  .print-only { display: block !important; }
+  body, #root { background: #fff !important; box-shadow: none !important; }
+}

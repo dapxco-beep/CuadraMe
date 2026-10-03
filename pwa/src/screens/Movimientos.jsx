@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { EstadoVacio } from '../brand/Marca'
 import { Link } from 'react-router-dom'
-import { Check, Download, Search, SlidersHorizontal, X } from 'lucide-react'
+import { Check, Download, Search, SlidersHorizontal, Upload, X } from 'lucide-react'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
+import { tipoEfectivo } from '../lib/contabilidad'
 
 const TAMANO_PAGINA = 200
 
@@ -78,8 +79,10 @@ export default function Movimientos() {
     return coincideBusqueda && coincideFiltro && coincideCuenta && coincideDesde && coincideHasta
   })
 
-  const totalIngresos = filtrados.filter((m) => m.tipo === 'income').reduce((s, m) => s + m.monto, 0)
-  const totalGastos = filtrados.filter((m) => m.tipo === 'expense').reduce((s, m) => s + m.monto, 0)
+  // Totales con la regla contable: el pago de la tarjeta y los traslados propios no suman.
+  const tiposCuenta = Object.fromEntries(cuentas.map((c) => [c.id, c.tipo]))
+  const totalIngresos = filtrados.filter((m) => tipoEfectivo(m, tiposCuenta) === 'income').reduce((s, m) => s + m.monto, 0)
+  const totalGastos = filtrados.filter((m) => tipoEfectivo(m, tiposCuenta) === 'expense').reduce((s, m) => s + m.monto, 0)
   const hayFiltrosActivos = !!(cuentaId || desde || hasta || (filtro !== 'Todos') || busqueda)
 
   const grupos = []
@@ -168,6 +171,13 @@ export default function Movimientos() {
             >
               <Download size={16} />
             </button>
+            <Link
+              to="/importar"
+              className="w-9 h-9 rounded-full border border-line text-ink-soft flex items-center justify-center"
+              aria-label="Importar desde Excel o CSV"
+            >
+              <Upload size={16} />
+            </Link>
           </div>
         )}
       </header>

@@ -1,12 +1,13 @@
 """Capa con base de datos de la proyección de presupuestos: arma los datos y
 delega TODO el cálculo en las funciones puras de planificacion.py."""
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
 from app import planificacion as plan
 from app.compartidos import cuentas_ids_accesibles
+from app.contabilidad import tipos_cuenta_de, tipos_efectivos
 from app.fx import convertir_a_cop
 from app.models import Cuenta, Movimiento, Presupuesto
 from app.models_planificacion import ConfigPlanificacion
@@ -65,18 +66,27 @@ class GastosPorRango:
         self.monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(self.ids)).all()}
 
     def gastado(self, categoria: str, inicio, fin) -> float:
-        filas = (
-            self.db.query(Movimiento.monto, Movimiento.cuenta_id)
+        # Regla contable (contabilidad.py): no cuentan los pagos de tarjeta ni los
+        # traslados entre cuentas propias. Se leen 3 días antes del rango solo para
+        # poder emparejar traslados que caen en el borde.
+        if not self.ids:
+            return 0.0
+        desde, hasta = _dt(inicio), _dt(fin)
+        movs = (
+            self.db.query(Movimiento)
             .filter(
                 Movimiento.cuenta_id.in_(self.ids),
-                Movimiento.categoria == categoria,
-                Movimiento.tipo == "expense",
-                Movimiento.fecha >= _dt(inicio),
-                Movimiento.fecha < _dt(fin),
+                Movimiento.fecha >= desde - timedelta(days=3),
+                Movimiento.fecha < hasta + timedelta(days=3),
             )
             .all()
         )
-        return sum(convertir_a_cop(m, self.monedas.get(c, "COP")) for m, c in filas)
+        te = tipos_efectivos(movs, tipos_cuenta_de(self.db, self.ids))
+        return sum(
+            convertir_a_cop(m.monto, self.monedas.get(m.cuenta_id, "COP"))
+            for m in movs
+            if m.categoria == categoria and desde <= m.fecha < hasta and te[m.id] == "expense"
+        )
 
 
 def proyectar_presupuesto(p: Presupuesto, cfg: ConfigPlanificacion, gastos: GastosPorRango,

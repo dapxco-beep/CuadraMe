@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, Link, useLocation } from 'react-router-dom'
 import {
-  Bot, CreditCard, FileCheck, Gift, Home, Landmark, LayoutGrid, List, Mail, PieChart, PiggyBank,
+  Bot, CalendarCheck, CreditCard, FileCheck, Receipt, Gift, Home, Landmark, LayoutGrid, List, Mail, PieChart, PiggyBank,
   Plus, Repeat, Sparkles, Sprout, Tag, User, Wallet, X,
 } from 'lucide-react'
 
@@ -26,6 +26,8 @@ export const ITEMS_MAS = [
   { to: '/cuentas', icon: Wallet, label: 'Cuentas' },
   { to: '/insights', icon: Sparkles, label: 'Insights' },
   { to: '/resumen', icon: Gift, label: 'Resumen del mes' },
+  { to: '/cierre-mes', icon: CalendarCheck, label: 'Cierre de mes' },
+  { to: '/impuestos', icon: Receipt, label: 'Impuestos' },
   { to: '/correos', icon: Mail, label: 'Correos' },
   { to: '/conciliacion', icon: FileCheck, label: 'Conciliar extracto' },
   { to: '/categorias', icon: Tag, label: 'Categorías' },
@@ -34,7 +36,7 @@ export const ITEMS_MAS = [
 ]
 
 // "Más" se ve activo cuando estás en cualquiera de sus pantallas (o parientes).
-const RUTAS_MAS = [...ITEMS_MAS.map((i) => i.to), '/compartir', '/reglas-categoria', '/conectar-dispositivo', '/legal']
+const RUTAS_MAS = [...ITEMS_MAS.map((i) => i.to), '/compartir', '/importar', '/reglas-categoria', '/conectar-dispositivo', '/legal']
 
 function estaEnMas(pathname) {
   return RUTAS_MAS.some((r) => pathname === r || pathname.startsWith(`${r}/`))
