@@ -1,0 +1,53 @@
+name: iOS IPA (sin firmar)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: pwa
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+
+      - run: npm ci
+
+      # Las VITE_* se "hornean" en el bundle al compilar, por eso van como secrets.
+      - name: Build web
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Copiar web al proyecto iOS
+        run: npx cap sync ios
+
+      # CODE_SIGNING_ALLOWED=NO: no firmamos aquí; Sideloadly firma con tu Apple ID en Windows.
+      - name: Compilar .app sin firmar
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App \
+            -configuration Release -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build
+
+      # Un .ipa es solo un zip con la carpeta Payload/App.app
+      - name: Empaquetar .ipa
+        run: |
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qr CuadraMe.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CuadraMe-ipa
+          path: pwa/CuadraMe.ipa
