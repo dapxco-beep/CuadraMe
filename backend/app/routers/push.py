@@ -14,6 +14,7 @@ from app.fx import convertir_a_cop
 from app.models import Cuenta, Meta, Movimiento, Presupuesto, PushSubscription, Recurrente
 from app.push import enviar_push
 from app.rachas import otorgar_vida_si_nueva
+from app.tarjetas import tarjetas_por_avisar
 from app.utiles import ahora_co
 from app.schemas import PushSubscribeRequest, VapidPublicKeyResponse
 
@@ -366,4 +367,29 @@ def cron_recordar_recurrentes(
         db.commit()
         notificados += 1
 
-    return {"ok": True, "notificados": notificados}
+    # Mismo cron diario: también avisa de tarjetas de crédito con pago cerca.
+    # Así no hace falta un cron nuevo ni cambiar horarios.
+    tarjetas_avisadas = 0
+    usuarios_con_push = {s[0] for s in db.query(PushSubscription.usuario_id).distinct().all()}
+    if usuarios_con_push:
+        tarjetas = (
+            db.query(Cuenta)
+            .filter(Cuenta.usuario_id.in_(usuarios_con_push), Cuenta.tipo == "credito")
+            .all()
+        )
+        for cuenta, info in tarjetas_por_avisar(tarjetas, hoy):
+            dias = info["dias_para_pago"]
+            cuando = "hoy" if dias == 0 else f"en {dias} {'día' if dias == 1 else 'días'}"
+            enviar_push(
+                db,
+                cuenta.usuario_id,
+                f"Paga tu {cuenta.nombre}",
+                f"Paga antes del {info['proximo_pago']} ({cuando}) para no pagar intereses — "
+                f"debes {info['cupo_usado']:,.0f}",
+                "/cuentas",
+            )
+            cuenta.ultima_alerta_pago = info["proximo_pago"]
+            db.commit()
+            tarjetas_avisadas += 1
+
+    return {"ok": True, "notificados": notificados, "tarjetas_avisadas": tarjetas_avisadas}

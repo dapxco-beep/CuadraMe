@@ -56,6 +56,13 @@ if engine.dialect.name == "postgresql":
             "ALTER TABLE presupuestos ADD COLUMN IF NOT EXISTS "
             "ultima_alerta_mes VARCHAR"
         ))
+        # Tarjetas de crédito reales: cupo, corte, pago y tasa en la cuenta.
+        # (La misma lista, como SQL suelto, está en supabase/migraciones/.)
+        conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS cupo_total FLOAT"))
+        conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS dia_corte INTEGER"))
+        conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS dia_pago INTEGER"))
+        conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS tasa_ea FLOAT"))
+        conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS ultima_alerta_pago VARCHAR"))
         # Casi toda consulta filtra por cuenta y ordena/filtra por fecha.
         conn.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_movimientos_cuenta_fecha "

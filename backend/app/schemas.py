@@ -10,6 +10,10 @@ class CuentaCreate(BaseModel):
     saldo: float = 0
     moneda: str = "COP"
     icono: str = "🏦"
+    cupo_total: Optional[float] = Field(default=None, ge=0)
+    dia_corte: Optional[int] = Field(default=None, ge=1, le=31)
+    dia_pago: Optional[int] = Field(default=None, ge=1, le=31)
+    tasa_ea: Optional[float] = Field(default=None, ge=0, le=200)
 
 
 class EliminarCuentaRequest(BaseModel):
@@ -47,6 +51,24 @@ class CuentaUpdate(BaseModel):
     nombre: Optional[str] = None
     tipo: Optional[str] = None
     icono: Optional[str] = None
+    cupo_total: Optional[float] = Field(default=None, ge=0)
+    dia_corte: Optional[int] = Field(default=None, ge=1, le=31)
+    dia_pago: Optional[int] = Field(default=None, ge=1, le=31)
+    tasa_ea: Optional[float] = Field(default=None, ge=0, le=200)
+
+
+class TarjetaInfo(BaseModel):
+    """Cálculos derivados de una tarjeta de crédito (ver app/tarjetas.py)."""
+    cupo_usado: float
+    cupo_disponible: Optional[float]
+    utilizacion_pct: Optional[float]
+    nivel_utilizacion: str  # sin_cupo | ok | alerta | critico
+    proximo_corte: Optional[str]  # YYYY-MM-DD
+    proximo_pago: Optional[str]
+    dias_para_corte: Optional[int]
+    dias_para_pago: Optional[int]
+    pago_minimo_estimado: float
+    interes_estimado: Optional[float]
 
 
 class CuentaOut(BaseModel):
@@ -56,6 +78,11 @@ class CuentaOut(BaseModel):
     saldo: float
     moneda: str
     icono: str
+    cupo_total: Optional[float] = None
+    dia_corte: Optional[int] = None
+    dia_pago: Optional[int] = None
+    tasa_ea: Optional[float] = None
+    tarjeta: Optional[TarjetaInfo] = None
 
     class Config:
         from_attributes = True
@@ -613,3 +640,31 @@ class HistorialExtractoOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ── Estrategia de deudas ────────────────────────
+
+class PlanDeudaOut(BaseModel):
+    id: str
+    nombre: str
+    mes_libre: Optional[int]  # mes (1 = el próximo) en que queda en cero
+
+
+class ResultadoMetodoOut(BaseModel):
+    metodo: str  # sin_extra | avalancha | bola_de_nieve
+    meses: Optional[int]  # None si no se termina de pagar en el horizonte
+    fecha_libre: Optional[str]  # YYYY-MM
+    intereses_totales: float
+    ahorro_intereses: Optional[float]  # frente a pagar solo las cuotas actuales
+    meses_ahorrados: Optional[int]
+    orden: list[PlanDeudaOut]
+    saldo_por_mes: list[float]  # deuda total al cierre de cada mes (0 = hoy)
+
+
+class EstrategiaOut(BaseModel):
+    extra_mensual: float
+    deuda_total: float
+    sin_extra: ResultadoMetodoOut
+    avalancha: ResultadoMetodoOut
+    bola_de_nieve: ResultadoMetodoOut
+    mejor: str  # avalancha | bola_de_nieve

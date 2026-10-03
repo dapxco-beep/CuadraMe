@@ -40,6 +40,13 @@ class Cuenta(Base):
     saldo = Column(Float, default=0)
     moneda = Column(String, default="COP")
     icono = Column(String, default="🏦")
+    # Solo para tipo "credito" (tarjeta de crédito). Todos opcionales: una
+    # cuenta de crédito sin cupo sigue funcionando como una cuenta más.
+    cupo_total = Column(Float, nullable=True)
+    dia_corte = Column(Integer, nullable=True)  # 1-31
+    dia_pago = Column(Integer, nullable=True)  # 1-31
+    tasa_ea = Column(Float, nullable=True)  # tasa efectiva anual en %
+    ultima_alerta_pago = Column(String, nullable=True)  # fecha de pago ya avisada (YYYY-MM-DD)
 
 
 class CuentaCompartida(Base):

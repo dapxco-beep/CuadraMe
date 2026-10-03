@@ -6,8 +6,26 @@ from app.compartidos import cuentas_ids_accesibles
 from app.database import get_db
 from app.models import Cuenta, Movimiento
 from app.schemas import CuentaCreate, CuentaOut, CuentaUpdate
+from app.tarjetas import calc_tarjeta
 
 router = APIRouter(prefix="/cuentas", tags=["cuentas"])
+
+
+def _serializar(cuenta: Cuenta) -> dict:
+    """Cuenta + (si es tarjeta de crédito) los cálculos de cupo y fechas."""
+    return {
+        "id": cuenta.id,
+        "nombre": cuenta.nombre,
+        "tipo": cuenta.tipo,
+        "saldo": cuenta.saldo,
+        "moneda": cuenta.moneda,
+        "icono": cuenta.icono,
+        "cupo_total": cuenta.cupo_total,
+        "dia_corte": cuenta.dia_corte,
+        "dia_pago": cuenta.dia_pago,
+        "tasa_ea": cuenta.tasa_ea,
+        "tarjeta": calc_tarjeta(cuenta) if cuenta.tipo == "credito" else None,
+    }
 
 
 @router.get("", response_model=list[CuentaOut])
@@ -15,7 +33,7 @@ def listar_cuentas(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
     ids = cuentas_ids_accesibles(db, usuario.id)
-    return db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()
+    return [_serializar(c) for c in db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()]
 
 
 @router.post("", response_model=CuentaOut)
@@ -28,7 +46,7 @@ def crear_cuenta(
     db.add(cuenta)
     db.commit()
     db.refresh(cuenta)
-    return cuenta
+    return _serializar(cuenta)
 
 
 @router.put("/{cuenta_id}", response_model=CuentaOut)
@@ -51,7 +69,7 @@ def editar_cuenta(
 
     db.commit()
     db.refresh(cuenta)
-    return cuenta
+    return _serializar(cuenta)
 
 
 @router.delete("/{cuenta_id}")
