@@ -309,6 +309,7 @@ class TendenciaMes(BaseModel):
     ingresos: float
     gastos: float
     ahorro: float
+    num_movimientos: int = 0
 
 
 class Proyeccion(BaseModel):
@@ -602,6 +603,9 @@ class ResumenSemanal(BaseModel):
     top_categorias: list[dict]
     anomalias: list[Anomalia]
     texto: str
+    desde: str | None = None
+    hasta: str | None = None
+    etiqueta: str | None = None
 
 
 class PreguntarRequest(BaseModel):
@@ -610,6 +614,8 @@ class PreguntarRequest(BaseModel):
 
 class PreguntarResponse(BaseModel):
     respuesta: str
+    fuentes: list[str] = []
+    sugerencias: list[str] = []
 
 
 # ── Conciliación de extractos ──────────────────────────────────────

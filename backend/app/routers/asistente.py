@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app import asistente as ia
 from app import asistente_calc as calc
+from app import asistente_consultas as consultas
 from app.asistente_datos import cargar_datos, contexto_ia, fuentes_de
 from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
@@ -114,16 +115,12 @@ def _oportunidades(d: dict) -> list[dict]:
     return salida
 
 
-def _responder_rapida(rid: str, d: dict) -> dict:
-    hoy = d["hoy"]
-    if rid == "gasto_mes":
-        filas = calc.gasto_por_categoria(d["movs"], hoy.year, hoy.month)
-        if not filas:
-            return {"texto": f"Aún no hay gastos registrados en {ia.etiqueta_mes(hoy)}.", "fuentes": fuentes_de(d, {"mov_mes"})}
-        total = sum(f["monto"] for f in filas)
-        partes = ", ".join(f"{f['categoria']} {ia.cop(f['monto'])} ({f['pct']} %)" for f in filas[:3])
-        return {"texto": f"En {ia.etiqueta_mes(hoy)} llevas {ia.cop(total)} en gastos. Lo que más pesa: {partes}.",
-                "fuentes": fuentes_de(d, {"mov_mes"}), "calculo": {"categorias": filas[:5], "total": total}}
+def _responder_rapida(rid: str, d: dict, periodo: dict | None = None) -> dict:
+    if rid in ("gasto_mes", "ahorro_mes"):
+        # Con periodo explícito ("en julio", "el mes pasado"); sin él, este mes.
+        # Misma regla contable que los reportes y comparación con el periodo anterior.
+        return consultas.responder_consulta(
+            {"tipo": "gasto_top" if rid == "gasto_mes" else "ahorro", "periodo": periodo}, d)
     if rid == "anomalias":
         ops = [o for o in _oportunidades(d) if o["tipo"] != "recurrentes"]
         if not ops:
@@ -143,11 +140,7 @@ def _responder_rapida(rid: str, d: dict) -> dict:
         return {"texto": f"Tu dinero realmente disponible hoy es {ia.cop(disp)}: tus cuentas de ahorro y efectivo ({ia.cop(d['saldo_liquido'])}) "
                          f"menos gastos fijos ({ia.cop(d['recurrentes_pendientes'])}), cuotas ({ia.cop(d['cuotas_pendientes'])}) y aportes a metas ({ia.cop(d['aportes_metas'])}) de este mes.",
                 "fuentes": fuentes_de(d, {"saldos", "recurrentes", "deudas", "metas"})}
-    # ahorro_mes
-    neto = d["ingreso_mes_actual"] - d["gasto_mes_actual"]
-    signo = "ahorrado" if neto >= 0 else "gastado de más"
-    return {"texto": f"En {ia.etiqueta_mes(hoy)} entraron {ia.cop(d['ingreso_mes_actual'])} y salieron {ia.cop(d['gasto_mes_actual'])}: "
-                     f"has {signo} {ia.cop(abs(neto))}.", "fuentes": fuentes_de(d, {"mov_mes"})}
+    return {"texto": consultas.texto_no_entendi(), "fuentes": [], "sugerencias": consultas.SUGERENCIAS_UTILES}
 
 
 def _numeros_de_contexto(ctx: dict):
@@ -162,6 +155,8 @@ def sugerencias(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(
     d = cargar_datos(db, usuario.id, ahora_co())
     return {
         "preguntas": ia.PREGUNTAS_RAPIDAS + [
+            {"id": "comparar", "texto": "¿Gasté más o menos que el mes pasado?"},
+            {"id": "presupuesto", "texto": "¿Voy bien con mi presupuesto?"},
             {"id": "comprar", "texto": "¿Puedo comprar algo de 2 millones?"},
             {"id": "ahorro", "texto": "Quiero ahorrar 12 millones en 12 meses"},
         ],
@@ -185,8 +180,11 @@ def mensaje(
         intento = ia.detectar_intencion(texto, hoy)
         tipo = intento["intencion"]
 
+        if tipo == "consulta":
+            return {"tipo": "respuesta", **consultas.responder_consulta(intento, d)}
+
         if tipo == "rapida":
-            return {"tipo": "respuesta", **_responder_rapida(intento["id"], d)}
+            return {"tipo": "respuesta", **_responder_rapida(intento["id"], d, intento.get("periodo"))}
 
         if tipo == "registrar":
             propuesta = ia.proponer_movimiento(
@@ -251,8 +249,8 @@ def mensaje(
         _consumir_cupo_ia(db, usuario.id, hoy)
         respuesta = ia.responder_libre(texto, contexto, _numeros_de_contexto(contexto))
         if not respuesta:
-            return {"tipo": "respuesta", "texto": "No pude responder eso con certeza. Prueba una de las preguntas sugeridas.",
-                    "fuentes": [], "sugerir": True}
+            return {"tipo": "respuesta", "texto": consultas.texto_no_entendi(),
+                    "fuentes": [], "sugerir": True, "sugerencias": consultas.SUGERENCIAS_UTILES}
         return {"tipo": "respuesta", "texto": respuesta,
                 "fuentes": fuentes_de(d, {"mov_mes", "mov_historial", "saldos", "recurrentes", "deudas", "metas", "presupuestos"})}
 

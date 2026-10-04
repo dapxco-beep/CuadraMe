@@ -21,6 +21,7 @@ from app.routers import (
     facturas,
     gastos_compartidos,
     importar,
+    informes,
     impuestos,
     insights,
     metas,
@@ -141,6 +142,7 @@ app.include_router(asistente.router)
 app.include_router(importar.router)
 app.include_router(impuestos.router)
 app.include_router(cierre.router)
+app.include_router(informes.router)
 
 
 @app.get("/health")
