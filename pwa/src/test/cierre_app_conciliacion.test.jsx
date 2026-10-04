@@ -35,13 +35,13 @@ const montar = (ui, estado) =>
 
 beforeEach(() => Object.values(api).forEach((f) => f.mockReset()))
 
-describe('guía del atajo único', () => {
-  it('explica un atajo con dos automatizaciones y conserva el aviso "llega pronto"', () => {
+describe('guía de los dos atajos', () => {
+  it('explica dos atajos con sus automatizaciones y conserva el aviso "llega pronto"', () => {
     expect(ATAJO_ICLOUD_URL).toBe('')
     api.apiKey.mockResolvedValue({ api_key: 'k' })
     montar(<ConectarDispositivo />)
-    expect(screen.getByText('Un atajo, dos automatizaciones')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /Apple Pay y el cierre de Nequi/ })).toBeInTheDocument()
+    expect(screen.getByText('Dos atajos, dos tipos de automatización')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Apple Pay y el cierre de cualquier app/ })).toBeInTheDocument()
     expect(screen.getByText(/Automatización 1: pagos con Apple Pay/)).toBeInTheDocument()
     expect(screen.getByText(/Automatización 2: cierre de la app de tu banco/)).toBeInTheDocument()
     expect(screen.getByText(/Se cierra/, { selector: 'b' })).toBeInTheDocument()

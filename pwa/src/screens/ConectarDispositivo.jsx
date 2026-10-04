@@ -408,8 +408,8 @@ export default function ConectarDispositivo() {
 
       {plataforma === 'ios' && (
         <>
-          <section className="mx-6 mt-6" aria-label="Un atajo, dos automatizaciones">
-            <h2 className="text-[15px] font-semibold mb-3">Un atajo, dos automatizaciones</h2>
+          <section className="mx-6 mt-6" aria-label="Dos atajos, dos tipos de automatización">
+            <h2 className="text-[15px] font-semibold mb-3">Dos atajos, dos tipos de automatización</h2>
             <div className="rounded-2xl bg-paper-raised border border-line p-4">
               <DiagramaAtajo />
               <ul className="mt-3 space-y-2 text-sm text-ink-soft list-disc pl-5">
