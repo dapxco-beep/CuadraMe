@@ -1,4 +1,7 @@
-import { lazy, Suspense, useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { api } from './lib/api'
+import AutorizacionTratamiento from './screens/AutorizacionTratamiento'
+import ConsentimientoGlobal from './components/ConsentimientoGlobal'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from './lib/ThemeContext'
 import { AuthProvider, useAuth } from './lib/AuthContext'
@@ -144,12 +147,53 @@ function AppRoutes() {
   if (bloqueado) return <PantallaBloqueo />
 
   return (
-    <CuentasProvider>
-      <CategoriasProvider>
-        <AppGate />
-      </CategoriasProvider>
-    </CuentasProvider>
+    <PuertaAutorizacion>
+      <CuentasProvider>
+        <CategoriasProvider>
+          <AppGate />
+        </CategoriasProvider>
+      </CuentasProvider>
+      <ConsentimientoGlobal />
+    </PuertaAutorizacion>
   )
+}
+
+// Tras iniciar sesión (y cuando cambia la versión de los textos legales) exige la
+// autorización de tratamiento de datos antes de mostrar nada de la app. Los textos
+// legales siguen siendo legibles desde la pantalla de autorización.
+function PuertaAutorizacion({ children }) {
+  const [estado, setEstado] = useState('cargando') // cargando | requiere | ok | error
+  const cargar = useCallback(() => {
+    setEstado('cargando')
+    Promise.resolve()
+      .then(() => api.consentimientos())
+      .then((r) => setEstado(r.requiere_autorizacion ? 'requiere' : 'ok'))
+      .catch(() => setEstado('error'))
+  }, [])
+  useEffect(cargar, [cargar])
+
+  if (estado === 'cargando') return <CargandoMarca />
+  if (estado === 'error') {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">
+        <p className="text-sm text-danger">No pudimos verificar tu autorización de datos. Revisa tu conexión.</p>
+        <button onClick={cargar} className="text-sm text-accent font-medium">Reintentar</button>
+      </div>
+    )
+  }
+  if (estado === 'requiere') {
+    return (
+      <Suspense fallback={<Cargando />}>
+        <Routes>
+          <Route path="/legal/terminos" element={<TerminosCondiciones />} />
+          <Route path="/legal/privacidad" element={<PoliticaPrivacidad />} />
+          <Route path="/legal/autorizacion-datos" element={<AutorizacionDatos />} />
+          <Route path="*" element={<AutorizacionTratamiento onListo={() => setEstado('ok')} />} />
+        </Routes>
+      </Suspense>
+    )
+  }
+  return children
 }
 
 export default function App() {

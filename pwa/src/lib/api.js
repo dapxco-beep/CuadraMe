@@ -18,7 +18,19 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
-    throw new Error(data.detail || `Error ${res.status}`)
+    const d = data.detail
+    // Autorización pendiente (Ley 1581): el backend responde con un objeto {codigo, finalidad, mensaje}.
+    // Se avisa a la app para que muestre el consentimiento específico en vez de un error crudo.
+    if (d && typeof d === 'object' && d.codigo === 'consentimiento_requerido') {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cuadrame:consentimiento', { detail: { finalidad: d.finalidad } }))
+      }
+      const err = new Error(d.mensaje || 'Falta una autorización')
+      err.codigo = d.codigo
+      err.finalidad = d.finalidad
+      throw err
+    }
+    throw new Error((typeof d === 'string' && d) || `Error ${res.status}`)
   }
   return res.json()
 }
@@ -45,6 +57,14 @@ export const api = {
   crearCuenta: (data) => request('/cuentas', { method: 'POST', body: data }),
   editarCuenta: (id, data) => request(`/cuentas/${id}`, { method: 'PUT', body: data }),
   eliminarCuenta: (id) => request(`/cuentas/${id}`, { method: 'DELETE' }),
+  resumenCuentas: () => request('/cuentas/resumen'),
+  detalleCuenta: (id) => request(`/cuentas/${id}/detalle`),
+  ajustarSaldo: (id, saldoReal) => request(`/cuentas/${id}/ajustar-saldo`, { method: 'POST', body: { saldo_real: saldoReal } }),
+
+  consentimientos: () => request('/consentimientos'),
+  historialConsentimientos: () => request('/consentimientos/historial'),
+  guardarConsentimientos: (version, items, origen = 'app') =>
+    request('/consentimientos', { method: 'POST', body: { version, items, origen } }),
 
   movimientos: (limit = 100, offset = 0) => request(`/movimientos?limit=${limit}&offset=${offset}`),
   movimiento: (id) => request(`/movimientos/${id}`),

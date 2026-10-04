@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../lib/AuthContext'
+import ModalConsentimiento from '../components/ModalConsentimiento'
 import { ArrowLeft, Check, ChevronDown, FileText, KeyRound, Mail, RefreshCw, ShieldCheck, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
@@ -55,6 +57,21 @@ export default function Correos() {
   const [claveInput, setClaveInput] = useState('')
   const [mostrarAjustes, setMostrarAjustes] = useState(false)
   const [aviso, setAviso] = useState('')
+  const [pedirConsentimiento, setPedirConsentimiento] = useState(false)
+  const [params] = useSearchParams()
+  const usuario = useAuth()?.usuario
+  // Google devuelve a la app con ?gmail=sin_acceso cuando el correo no está autorizado (modo Pruebas).
+  const sinAcceso = params.get('gmail') === 'sin_acceso'
+  const [copiado, setCopiado] = useState(false)
+
+  async function copiarCorreo() {
+    try {
+      await navigator.clipboard.writeText(usuario?.email || '')
+      setCopiado(true)
+    } catch {
+      /* sin portapapeles: queda el botón de correo */
+    }
+  }
 
   useEffect(() => {
     cargar().then((e) => {
@@ -88,6 +105,11 @@ export default function Correos() {
 
   async function conectarGmail() {
     setError('')
+    // Ley 1581: sin la autorización específica de lectura de correo no se conecta.
+    if (estado?.consentimiento === false) {
+      setPedirConsentimiento(true)
+      return
+    }
     try {
       const { url } = await api.gmailConectar()
       window.location.href = url
@@ -232,6 +254,42 @@ export default function Correos() {
         </button>
         <h1 className="text-xl font-bold">Correos bancarios</h1>
       </header>
+
+      {!estado?.conectado && (sinAcceso || estado?.modo_pruebas) && (
+        <section role="status" className="mx-6 mt-4 rounded-2xl bg-accent-soft border border-accent/30 p-4" data-testid="aviso-invitacion">
+          <p className="text-sm font-semibold">Gmail aún está en acceso por invitación</p>
+          <p className="text-xs text-ink-soft mt-1 leading-relaxed">
+            {sinAcceso
+              ? 'Google no te dejó entrar porque tu correo todavía no está en la lista. '
+              : 'Estamos esperando la verificación de Google, así que por ahora solo entran correos que agregamos a mano. '}
+            Pídenos que agreguemos tu correo{usuario?.email ? ` (${usuario.email})` : ''} y te avisamos cuando esté listo.
+          </p>
+          <div className="flex gap-2 mt-3">
+            <a
+              href={`mailto:${estado?.soporte_email || 'dapxco@gmail.com'}?subject=${encodeURIComponent('Quiero conectar Gmail en CuadraMe')}&body=${encodeURIComponent(`Hola, por favor agreguen mi correo de Gmail para probar CuadraMe: ${usuario?.email || ''}`)}`}
+              className="flex-1 text-center bg-ink text-paper font-semibold rounded-xl py-2.5 text-sm"
+            >
+              Pedir acceso
+            </a>
+            <button onClick={copiarCorreo} className="px-4 rounded-xl border border-line bg-paper text-sm font-medium">
+              {copiado ? 'Copiado' : 'Copiar mi correo'}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {pedirConsentimiento && (
+        <ModalConsentimiento
+          finalidad="lectura_correo"
+          origen="flujo_gmail"
+          onCancelar={() => setPedirConsentimiento(false)}
+          onAceptado={() => {
+            setPedirConsentimiento(false)
+            setEstado((e) => ({ ...e, consentimiento: true }))
+            conectarGmail()
+          }}
+        />
+      )}
 
       <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
         {estado?.conectado ? (

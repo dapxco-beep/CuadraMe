@@ -12,6 +12,8 @@ import MazoCuentas from '../components/MazoCuentas'
 import ArbolFinanciero from '../components/ArbolFinanciero'
 import CarruselDescubrir from '../components/CarruselDescubrir'
 import { etapaPorScore } from '../lib/saludFinanciera'
+import ResumenSaldo from '../components/ResumenSaldo'
+import { textoActualizado } from '../lib/saldos'
 
 // Patrimonio vive en "Más" dentro de la barra; aquí queda a un toque.
 const ACCESOS_RAPIDOS = [
@@ -32,6 +34,7 @@ export default function Inicio() {
   const [reporte, setReporte] = useState(null)
   const [disponible, setDisponible] = useState(null)
   const [bolsillo, setBolsillo] = useState(null)
+  const [resumen, setResumen] = useState(null)
   const [gmailConectado, setGmailConectado] = useState(true)
   const [cargando, setCargando] = useState(true)
   const [errorCarga, setErrorCarga] = useState('')
@@ -51,6 +54,8 @@ export default function Inicio() {
       .finally(() => activo && setCargando(false))
     api.disponibleHoy().then((d) => activo && setDisponible(d)).catch(() => {})
     api.enMiBolsillo().then((b) => activo && setBolsillo(b)).catch(() => {})
+    // Desglose del saldo (disponible / tarjetas / por moneda y tipo). Si falla, el héroe sigue funcionando.
+    Promise.resolve().then(() => api.resumenCuentas()).then((r) => activo && setResumen(r)).catch(() => {})
     api.gmailEstado().then((e) => activo && setGmailConectado(!!e.conectado)).catch(() => {})
     return () => {
       activo = false
@@ -107,11 +112,31 @@ export default function Inicio() {
         <Isotipo mono cuadra={cuadra !== false} size={150} className="absolute -right-6 -bottom-8 opacity-[0.1]" />
         <div className="relative">
           <p className="t-kicker">
-            Saldo total · {cuentas.length} {cuentas.length === 1 ? 'cuenta' : 'cuentas'}
+            Saldo actual · {cuentas.length} {cuentas.length === 1 ? 'cuenta' : 'cuentas'}
           </p>
           <p className="text-[44px] t-display mt-2.5">
             <Monto texto={fmt(saldoTotal)} />
           </p>
+          {resumen && (
+            <p className="text-xs mt-1 opacity-85">
+              En pesos, sumando todas tus cuentas · {textoActualizado(resumen.ultimo_movimiento)}
+            </p>
+          )}
+          {resumen && !resumen.hay_movimientos && (
+            <p className="mt-3 rounded-2xl bg-black/20 px-3.5 py-3 text-xs leading-relaxed" data-testid="guia-saldo">
+              <b>¿Qué es el saldo?</b> Es la plata que tienes hoy en tus cuentas: la que ya pusiste al crearlas más
+              lo que registres. Si no coincide con lo que ves en tu banco, toca «Ajustar saldo» y escribe el real.
+            </p>
+          )}
+          <ResumenSaldo resumen={resumen} bolsillo={bolsillo} className="mt-3" />
+          <div className="mt-3 flex gap-2">
+            <Link to="/cuentas" className="flex-1 text-center rounded-full border border-current px-3 py-2 text-xs font-semibold">
+              Ajustar saldo
+            </Link>
+            <Link to="/conciliacion" className="flex-1 text-center rounded-full border border-current px-3 py-2 text-xs font-semibold">
+              Conciliar con mi banco
+            </Link>
+          </div>
           {bolsillo && (
             <div className="mt-4 flex items-start gap-3 rounded-2xl bg-black/20 px-3.5 py-3">
               {cuadra ? (
@@ -137,7 +162,7 @@ export default function Inicio() {
       </section>
 
       <section className="px-6 mt-4 stagger-item" style={{ '--stagger-i': 1 }}>
-        <MazoCuentas cuentas={cuentas} />
+        <MazoCuentas cuentas={cuentas} ultimos={resumen?.ultimo_por_cuenta} />
       </section>
 
       {/* Carrusel de funciones a descubrir — mismo patrón que la alerta de
@@ -172,7 +197,7 @@ export default function Inicio() {
           <p className="text-xs text-ink-soft mt-1.5">Sin quedar mal el resto del mes</p>
           <div className="mt-3 pt-3 border-t border-line space-y-1.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-ink-soft">Saldo en tus cuentas</span>
+              <span className="text-ink-soft">Saldo actual en tus cuentas</span>
               <span className="font-medium">{fmt(bolsillo.saldo_total)}</span>
             </div>
             <div className="flex items-center justify-between text-xs">

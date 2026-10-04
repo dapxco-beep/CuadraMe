@@ -6,6 +6,7 @@ import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
 import { useDialogos } from '../lib/DialogosContext'
 import SeccionSeguridad from '../components/SeccionSeguridad'
+import SeccionPrivacidad from '../components/SeccionPrivacidad'
 import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../lib/push'
 
 export default function Perfil() {
@@ -332,6 +333,8 @@ export default function Perfil() {
         </div>
       </section>
 
+      <SeccionPrivacidad onEliminarCuenta={eliminarMiCuenta} eliminando={eliminandoCuenta} />
+
       <section className="mx-6 mt-6">
         <h2 className="text-[15px] font-semibold mb-3">Legal</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
@@ -359,16 +362,6 @@ export default function Perfil() {
           className="w-full flex items-center gap-3 rounded-2xl bg-paper-raised border border-line px-4 py-3.5 text-danger font-medium text-sm"
         >
           <LogOut size={18} /> Cerrar sesión
-        </button>
-      </section>
-
-      <section className="mx-6 mt-3">
-        <button
-          onClick={eliminarMiCuenta}
-          disabled={eliminandoCuenta}
-          className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 text-danger/80 text-sm disabled:opacity-60"
-        >
-          <Trash2 size={18} /> {eliminandoCuenta ? 'Eliminando...' : 'Eliminar mi cuenta y mis datos'}
         </button>
       </section>
 

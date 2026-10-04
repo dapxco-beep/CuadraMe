@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { EstadoVacio } from '../brand/Marca'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
+import { useBloqueo } from '../lib/BloqueoContext'
+import { textoActualizado } from '../lib/saldos'
+import DetalleCuenta from '../components/DetalleCuenta'
+import ResumenSaldo from '../components/ResumenSaldo'
 import { ArrowLeft, Pencil, Plus, Trash2, Users, X, Wallet } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
@@ -25,6 +29,23 @@ export default function Cuentas() {
   const { cuentas, cargando, error, recargar } = useCuentas()
   const [mostrarForm, setMostrarForm] = useState(false)
   const [editando, setEditando] = useState(null)
+  const { fmt } = useBloqueo()
+  const [params, setParams] = useSearchParams()
+  const [resumen, setResumen] = useState(null)
+  // El detalle se abre con ?cuenta=<id> (así también se llega desde el mazo de Inicio).
+  const detalleId = params.get('cuenta')
+
+  function cargarResumen() {
+    Promise.resolve().then(() => api.resumenCuentas()).then(setResumen).catch(() => {})
+  }
+  useEffect(cargarResumen, [])
+
+  function abrirDetalle(id) {
+    setParams({ cuenta: id })
+  }
+  function cerrarDetalle() {
+    setParams({})
+  }
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
@@ -48,8 +69,18 @@ export default function Cuentas() {
 
       <p className="mx-6 mt-2 text-xs text-ink-soft">
         Cada cuenta es un lugar donde tienes o debes plata: tu Bancolombia, tu Nequi, el efectivo
-        en tu bolsillo. El saldo de todas juntas es lo que ves como "Saldo total" en Inicio.
+        en tu bolsillo. El saldo de todas juntas es el «Saldo actual» de Inicio. Toca una cuenta
+        para ver su detalle o ajustar su saldo si no coincide con tu banco.
       </p>
+
+      {resumen && cuentas.length > 0 && (
+        <section className="mx-6 mt-3 hero-marca card-marca p-4" aria-label="Saldo actual total">
+          <p className="t-kicker">Saldo actual total</p>
+          <p className="text-3xl t-display mt-1.5">{fmt(resumen.total_cop)}</p>
+          <p className="text-xs mt-1 opacity-85">En pesos · {textoActualizado(resumen.ultimo_movimiento)}</p>
+          <ResumenSaldo resumen={resumen} className="mt-3" />
+        </section>
+      )}
 
       {cargando ? (
         <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
@@ -64,7 +95,14 @@ export default function Cuentas() {
           {cuentas.map((c, i) => (
             <div key={c.id} className="stagger-item" style={{ '--stagger-i': i }}>
               <div className="flex items-center gap-3">
-                <TarjetaCuenta cuenta={c} className="flex-1" />
+                <button
+                  type="button"
+                  onClick={() => abrirDetalle(c.id)}
+                  className="flex-1 min-w-0 text-left"
+                  aria-label={`Ver detalle de ${c.nombre}`}
+                >
+                  <TarjetaCuenta cuenta={c} ultimoMovimiento={resumen ? (resumen.ultimo_por_cuenta?.[c.id] ?? null) : undefined} />
+                </button>
                 <div className="flex flex-col items-center gap-1 shrink-0">
                   <button
                     onClick={() => setEditando(c)}
@@ -88,6 +126,17 @@ export default function Cuentas() {
             <Users size={15} /> Compartir una cuenta con alguien
           </Link>
         </div>
+      )}
+
+      {detalleId && cuentas.some((c) => c.id === detalleId) && (
+        <DetalleCuenta
+          cuentaId={detalleId}
+          onClose={cerrarDetalle}
+          onCambio={() => {
+            recargar()
+            cargarResumen()
+          }}
+        />
       )}
 
       {mostrarForm && (
