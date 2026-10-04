@@ -1,0 +1,280 @@
+"""
+Informe de gasto: periodos, comparación y agregaciones. Funciones PURAS.
+
+Reciben movimientos ya "efectivos": dicts {id, fecha, tipo, monto, categoria,
+descripcion} donde `tipo` ya pasó por la regla contable (contabilidad.py:
+'income' | 'expense' | 'transfer') y `monto` ya está en COP. Así el informe, el
+asistente y los resúmenes cuentan exactamente igual (sin doble conteo de pagos
+de tarjeta ni traslados).
+
+Convención de rangos: [desde, hasta) -- `hasta` es EXCLUSIVO (00:00 del día
+siguiente al último día incluido). Es lo que evita perder los movimientos del
+último día cuando traen hora.
+"""
+import calendar
+import re
+import unicodedata
+from datetime import datetime, timedelta
+
+MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
+         "septiembre", "octubre", "noviembre", "diciembre"]
+PERIODOS = ("este_mes", "mes_pasado", "3_meses", "anio", "semana", "rango", "mes")
+MAX_DIAS_RANGO = 366 * 5
+
+
+class PeriodoInvalido(ValueError):
+    pass
+
+
+def _dia(dt: datetime) -> datetime:
+    return dt.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def inicio_mes(anio: int, mes: int) -> datetime:
+    return datetime(anio, mes, 1)
+
+
+def sumar_meses(anio: int, mes: int, n: int) -> tuple[int, int]:
+    total = anio * 12 + (mes - 1) + n
+    return total // 12, total % 12 + 1
+
+
+def clave_mes(dt: datetime) -> str:
+    return f"{dt.year}-{dt.month:02d}"
+
+
+def nombre_mes(clave: str) -> str:
+    """'2026-07' -> 'julio de 2026'."""
+    a, m = (int(x) for x in clave.split("-"))
+    return f"{MESES[m - 1]} de {a}"
+
+
+def _fecha_corta(dt: datetime) -> str:
+    return f"{dt.day} de {MESES[dt.month - 1]} de {dt.year}"
+
+
+def _parsear_dia(texto: str) -> datetime:
+    try:
+        return _dia(datetime.fromisoformat(texto[:10]))
+    except (ValueError, TypeError):
+        raise PeriodoInvalido("Las fechas deben tener formato AAAA-MM-DD")
+
+
+def _rango(desde: datetime, hasta: datetime, etiqueta: str, periodo: str) -> dict:
+    return {"desde": desde, "hasta": hasta, "etiqueta": etiqueta, "periodo": periodo}
+
+
+def rango_periodo(periodo: str, hoy: datetime, desde: str | None = None, hasta: str | None = None,
+                  mes: str | None = None) -> dict:
+    """{desde, hasta(exclusivo), etiqueta, periodo} para un periodo con nombre.
+
+    este_mes   1 del mes actual -> hoy (inclusive)
+    mes_pasado el mes calendario anterior completo
+    3_meses    1 del mes de hace 2 meses -> hoy (3 meses de calendario)
+    anio       1 de enero -> hoy
+    semana     lunes de esta semana -> hoy
+    mes        un mes concreto 'AAAA-MM' (completo; si es el actual, hasta hoy)
+    rango      desde-hasta personalizado (ambos inclusive, 'AAAA-MM-DD')
+    """
+    manana = _dia(hoy) + timedelta(days=1)
+    if periodo == "este_mes":
+        ini = inicio_mes(hoy.year, hoy.month)
+        return _rango(ini, manana, f"{MESES[hoy.month - 1]} de {hoy.year}", periodo)
+    if periodo == "mes_pasado":
+        a, m = sumar_meses(hoy.year, hoy.month, -1)
+        return _rango(inicio_mes(a, m), inicio_mes(hoy.year, hoy.month), f"{MESES[m - 1]} de {a}", periodo)
+    if periodo == "3_meses":
+        a, m = sumar_meses(hoy.year, hoy.month, -2)
+        return _rango(inicio_mes(a, m), manana, "los últimos 3 meses", periodo)
+    if periodo == "anio":
+        return _rango(datetime(hoy.year, 1, 1), manana, f"el año {hoy.year}", periodo)
+    if periodo == "semana":
+        lunes = _dia(hoy) - timedelta(days=hoy.weekday())
+        return _rango(lunes, manana, "esta semana", periodo)
+    if periodo == "mes":
+        try:
+            a, m = (int(x) for x in (mes or "").split("-"))
+            if not 1 <= m <= 12 or not 1900 < a < 2200:
+                raise ValueError
+        except ValueError:
+            raise PeriodoInvalido("El mes debe tener formato AAAA-MM")
+        ini = inicio_mes(a, m)
+        fin = inicio_mes(*sumar_meses(a, m, 1))
+        if ini <= hoy < fin:
+            fin = manana
+        return _rango(ini, fin, f"{MESES[m - 1]} de {a}", periodo)
+    if periodo == "rango":
+        if not desde or not hasta:
+            raise PeriodoInvalido("Indica las fechas desde y hasta")
+        d, h = _parsear_dia(desde), _parsear_dia(hasta)
+        if h < d:
+            raise PeriodoInvalido("La fecha 'hasta' no puede ser anterior a 'desde'")
+        if (h - d).days > MAX_DIAS_RANGO:
+            raise PeriodoInvalido("El rango es demasiado largo (máximo 5 años)")
+        etiqueta = f"del {_fecha_corta(d)} al {_fecha_corta(h)}" if d != h else f"el {_fecha_corta(d)}"
+        return _rango(d, h + timedelta(days=1), etiqueta, periodo)
+    raise PeriodoInvalido("Periodo no válido")
+
+
+def periodo_anterior(rango: dict) -> dict:
+    """El periodo con el que se compara. Si el rango es (parte de) UN mes
+    calendario que arranca el día 1, se compara con el mismo tramo del mes
+    anterior (el 12 de octubre se compara con el 1-12 de septiembre, no con
+    septiembre completo, para no sugerir una caída falsa). Si no, con el rango
+    de igual duración inmediatamente anterior."""
+    d, h = rango["desde"], rango["hasta"]
+    largo = h - d
+    if d.day == 1 and h <= inicio_mes(*sumar_meses(d.year, d.month, 1)):
+        a, m = sumar_meses(d.year, d.month, -1)
+        ini = inicio_mes(a, m)
+        fin_mes = inicio_mes(d.year, d.month)
+        fin = min(ini + largo, fin_mes)
+        return _rango(ini, fin, f"{MESES[m - 1]} de {a}", "anterior")
+    ini = d - largo
+    fin = d - timedelta(days=1)
+    return _rango(ini, d, f"los {largo.days} días anteriores ({ini.day} {MESES[ini.month - 1][:3]} - "
+                          f"{fin.day} {MESES[fin.month - 1][:3]})", "anterior")
+
+
+def en_rango(m: dict, rango: dict) -> bool:
+    return rango["desde"] <= m["fecha"] < rango["hasta"]
+
+
+def _norm(t: str) -> str:
+    t = unicodedata.normalize("NFD", t or "")
+    return re.sub(r"\s+", " ", "".join(c for c in t if unicodedata.category(c) != "Mn")).strip().lower()
+
+
+def clave_comercio(descripcion: str) -> str:
+    """'  Éxito  Calle 80 ' -> 'exito calle 80' (para agrupar el mismo comercio)."""
+    return _norm(descripcion)
+
+
+def _pct(v: float, total: float) -> float:
+    return round(v / total * 100, 1) if total else 0.0
+
+
+def _variacion(actual: float, previo: float):
+    """% de cambio; None si no hay base de comparación (previo = 0)."""
+    return round((actual - previo) / previo * 100, 1) if previo > 0 else None
+
+
+def _gastos_por_categoria(movs: list[dict], rango: dict) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for m in movs:
+        if m["tipo"] == "expense" and en_rango(m, rango):
+            f = out.setdefault(m.get("categoria") or "Otros", {"monto": 0.0, "num": 0})
+            f["monto"] += m["monto"]
+            f["num"] += 1
+    return out
+
+
+def informe_gasto(movs: list[dict], rango: dict, anterior: dict | None = None, max_comercios: int = 8) -> dict:
+    """Informe 'en qué gasto mi plata' para un rango, con la comparación contra
+    `anterior` (por defecto, el que dicta `periodo_anterior`)."""
+    anterior = anterior or periodo_anterior(rango)
+    actual = _gastos_por_categoria(movs, rango)
+    previo = _gastos_por_categoria(movs, anterior)
+    total = sum(f["monto"] for f in actual.values())
+    total_prev = sum(f["monto"] for f in previo.values())
+    ingresos = sum(m["monto"] for m in movs if m["tipo"] == "income" and en_rango(m, rango))
+
+    categorias = []
+    for cat, f in sorted(actual.items(), key=lambda kv: kv[1]["monto"], reverse=True):
+        prev = previo.get(cat, {"monto": 0.0})["monto"]
+        categorias.append({
+            "categoria": cat,
+            "monto": round(f["monto"]),
+            "pct": _pct(f["monto"], total),
+            "num": f["num"],
+            "anterior": round(prev),
+            "diferencia": round(f["monto"] - prev),
+            "variacion_pct": _variacion(f["monto"], prev),
+        })
+
+    comercios: dict[str, dict] = {}
+    for m in movs:
+        if m["tipo"] == "expense" and en_rango(m, rango):
+            k = clave_comercio(m.get("descripcion", ""))
+            if not k:
+                continue
+            c = comercios.setdefault(k, {"nombre": (m.get("descripcion") or "").strip(), "monto": 0.0, "num": 0})
+            c["monto"] += m["monto"]
+            c["num"] += 1
+    top = sorted(comercios.values(), key=lambda c: c["monto"], reverse=True)[:max_comercios]
+
+    return {
+        "desde": rango["desde"].date().isoformat(),
+        "hasta": (rango["hasta"] - timedelta(days=1)).date().isoformat(),
+        "etiqueta": rango["etiqueta"],
+        "anterior": {
+            "desde": anterior["desde"].date().isoformat(),
+            "hasta": (anterior["hasta"] - timedelta(days=1)).date().isoformat(),
+            "etiqueta": anterior["etiqueta"],
+        },
+        "total": round(total),
+        "ingresos": round(ingresos),
+        "ahorro": round(ingresos - total),
+        "num_movimientos": sum(f["num"] for f in actual.values()),
+        "total_anterior": round(total_prev),
+        "diferencia": round(total - total_prev),
+        "variacion_pct": _variacion(total, total_prev),
+        "categorias": categorias,
+        "comercios": [{"nombre": c["nombre"][:60], "monto": round(c["monto"]), "num": c["num"]} for c in top],
+        "hay_datos": bool(actual),
+    }
+
+
+def meses_con_datos(movs: list[dict]) -> list[dict]:
+    """Meses (de más viejo a más nuevo) que tienen ingresos o gastos efectivos."""
+    por_mes: dict[str, dict] = {}
+    for m in movs:
+        if m["tipo"] not in ("income", "expense"):
+            continue
+        f = por_mes.setdefault(clave_mes(m["fecha"]), {"ingresos": 0.0, "gastos": 0.0, "num": 0})
+        f["num"] += 1
+        f["ingresos" if m["tipo"] == "income" else "gastos"] += m["monto"]
+    return [
+        {"mes": k, "etiqueta": nombre_mes(k), "ingresos": round(v["ingresos"]), "gastos": round(v["gastos"]),
+         "ahorro": round(v["ingresos"] - v["gastos"]), "num": v["num"]}
+        for k, v in sorted(por_mes.items())
+    ]
+
+
+def ultimo_mes_con_datos(movs: list[dict], antes_de: datetime | None = None, tipo: str = "expense") -> str | None:
+    """Clave 'AAAA-MM' del mes más reciente con movimientos del `tipo` dado
+    (opcionalmente anterior al mes de `antes_de`)."""
+    limite = clave_mes(antes_de) if antes_de else None
+    claves = {clave_mes(m["fecha"]) for m in movs if m["tipo"] == tipo and (limite is None or clave_mes(m["fecha"]) < limite)}
+    return max(claves) if claves else None
+
+
+def gasto_diario(movs: list[dict], rango: dict) -> list[dict]:
+    """[{dia 'AAAA-MM-DD', gasto, ingreso}] para CADA día del rango (con ceros)."""
+    gasto: dict[str, float] = {}
+    ingreso: dict[str, float] = {}
+    for m in movs:
+        if en_rango(m, rango) and m["tipo"] in ("income", "expense"):
+            k = m["fecha"].date().isoformat()
+            destino = gasto if m["tipo"] == "expense" else ingreso
+            destino[k] = destino.get(k, 0.0) + m["monto"]
+    dias = []
+    cursor = rango["desde"]
+    while cursor < rango["hasta"]:
+        k = cursor.date().isoformat()
+        dias.append({"dia": k, "gasto": round(gasto.get(k, 0.0)), "ingreso": round(ingreso.get(k, 0.0))})
+        cursor += timedelta(days=1)
+    return dias
+
+
+def resumen_rango(movs: list[dict], rango: dict) -> dict:
+    """Ingresos, gastos, ahorro y top 3 categorías de un rango."""
+    ing = sum(m["monto"] for m in movs if m["tipo"] == "income" and en_rango(m, rango))
+    cats = _gastos_por_categoria(movs, rango)
+    gas = sum(f["monto"] for f in cats.values())
+    top = [{"categoria": c, "monto": v["monto"]} for c, v in sorted(cats.items(), key=lambda kv: kv[1]["monto"], reverse=True)[:3]]
+    return {"ingresos": ing, "gastos": gas, "ahorro": ing - gas, "top_categorias": top}
+
+
+def dias_del_mes(anio: int, mes: int) -> int:
+    return calendar.monthrange(anio, mes)[1]

@@ -15,12 +15,14 @@ from app.asistente_calc import gasto_por_categoria
 from app.compartidos import cuentas_ids_accesibles
 from app.finanzas import calc_progreso_meta
 from app.fx import convertir_a_cop
-from app.models import Cuenta, Deuda, Meta, Movimiento, Presupuesto, Recurrente
+from app.informe_datos import cargar_movs_efectivos
+from app.models import Cuenta, Deuda, Meta, Presupuesto, Recurrente
 from app.tarjetas import calc_tarjeta
 
 TIPOS_LIQUIDOS = ("ahorro", "efectivo")
 MESES_HISTORIAL = 3  # meses completos anteriores para promedios y patrones
-MAX_MOVIMIENTOS = 3000
+MESES_CONSULTA = 12  # meses de movimientos disponibles para preguntas por periodo
+MAX_MOVIMIENTOS = 6000
 
 
 def _inicio_mes_atras(hoy: datetime, atras: int) -> datetime:
@@ -34,33 +36,23 @@ def cargar_datos(db: Session, usuario_id: str, hoy: datetime) -> dict:
     para la IA se usa `contexto_ia`."""
     ids = cuentas_ids_accesibles(db, usuario_id)
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()
-    monedas = {c.id: c.moneda for c in cuentas}
 
-    desde = _inicio_mes_atras(hoy, MESES_HISTORIAL)
-    filas = (
-        db.query(Movimiento)
-        .filter(Movimiento.cuenta_id.in_(ids), Movimiento.fecha >= desde, Movimiento.tipo.in_(("income", "expense")))
-        .order_by(Movimiento.fecha.desc())
-        .limit(MAX_MOVIMIENTOS)
-        .all()
-    )
+    # Un año de historia para poder responder por cualquier mes reciente
+    # ("¿en qué gasté más en julio?"). Los tipos ya son los EFECTIVOS: sin pagos
+    # de tarjeta ni traslados entre cuentas propias (misma regla que los reportes).
+    desde = _inicio_mes_atras(hoy, MESES_CONSULTA)
     movs = [
-        {
-            "fecha": m.fecha,
-            "tipo": m.tipo,
-            "categoria": m.categoria or "Otros",
-            "descripcion": m.descripcion,
-            "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP")),
-        }
-        for m in filas
+        m for m in cargar_movs_efectivos(db, usuario_id, desde, None, MAX_MOVIMIENTOS)
+        if m["tipo"] in ("income", "expense") and m["fecha"] >= desde
     ]
 
-    # Promedios de los meses COMPLETOS anteriores que tienen movimientos
+    # Promedios de los últimos meses COMPLETOS anteriores que tienen movimientos
     por_mes: dict[tuple, dict] = defaultdict(lambda: {"income": 0.0, "expense": 0.0})
     for m in movs:
         por_mes[(m["fecha"].year, m["fecha"].month)][m["tipo"]] += m["monto"]
     actual = (hoy.year, hoy.month)
-    anteriores = [k for k in por_mes if k < actual]
+    ini_hist = _inicio_mes_atras(hoy, MESES_HISTORIAL)
+    anteriores = [k for k in por_mes if (ini_hist.year, ini_hist.month) <= k < actual]
     ingreso_mensual = sum(por_mes[k]["income"] for k in anteriores) / len(anteriores) if anteriores else 0.0
     gasto_mensual = sum(por_mes[k]["expense"] for k in anteriores) / len(anteriores) if anteriores else 0.0
     mes_actual = por_mes.get(actual, {"income": 0.0, "expense": 0.0})

@@ -109,16 +109,19 @@ def tendencias(
     monedas = _monedas_por_cuenta(db, ids_accesibles)
     movimientos = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids_accesibles)).all()
 
+    meses = max(1, min(meses, 24))  # 3/6/12 en la app; tope para no armar series enormes
     te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
     por_mes: dict[str, dict[str, float]] = {}
     for m in movimientos:
         clave = m.fecha.strftime("%Y-%m")
-        por_mes.setdefault(clave, {"ingresos": 0.0, "gastos": 0.0})
+        por_mes.setdefault(clave, {"ingresos": 0.0, "gastos": 0.0, "num": 0})
         monto_cop = _monto_cop(m, monedas)
         if te[m.id] == "income":
             por_mes[clave]["ingresos"] += monto_cop
+            por_mes[clave]["num"] += 1
         elif te[m.id] == "expense":
             por_mes[clave]["gastos"] += monto_cop
+            por_mes[clave]["num"] += 1
 
     hoy = ahora_co()
     claves_ordenadas = []
@@ -136,6 +139,7 @@ def tendencias(
             ingresos=por_mes.get(clave, {}).get("ingresos", 0.0),
             gastos=por_mes.get(clave, {}).get("gastos", 0.0),
             ahorro=por_mes.get(clave, {}).get("ingresos", 0.0) - por_mes.get(clave, {}).get("gastos", 0.0),
+            num_movimientos=por_mes.get(clave, {}).get("num", 0),
         )
         for clave in claves_ordenadas
     ]

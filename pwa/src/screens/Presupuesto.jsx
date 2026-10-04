@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeftRight, CalendarClock, HandCoins, Plus, SlidersHorizontal, TrendingUp, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowLeftRight, CalendarClock, ChevronRight, HandCoins, PieChart, Plus, SlidersHorizontal, TrendingUp, X } from 'lucide-react'
 import { EstadoVacio, CargandoMarca } from '../brand/Marca'
 import { formatCOP } from '../lib/format'
 import { api } from '../lib/api'
@@ -42,7 +43,7 @@ export default function Presupuesto() {
       const [ps, reporte, tend, flujo, proy] = await Promise.all([
         api.presupuestos(),
         api.reporteMensual(),
-        api.tendencias(),
+        api.tendencias(12), // 12 meses una sola vez; la gráfica recorta a 3/6/12 en el cliente
         api.flujoCajaFuturo(),
         // Si la proyección falla, la pantalla sigue funcionando como antes.
         api.proyeccionPresupuestos().catch(() => null),
@@ -108,14 +109,29 @@ export default function Presupuesto() {
         </button>
       </div>
 
-      {!cargando && tendencias && tendencias.meses.some((m) => m.ingresos || m.gastos) && (
-        <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp size={15} className="text-ink-soft" />
-            <p className="text-sm font-semibold">Tendencia (6 meses)</p>
-          </div>
-          <GraficoTendencia meses={tendencias.meses} />
+      <Link
+        to="/informe"
+        className="mx-6 mt-4 card-marca bg-accent-soft border border-accent/20 p-3.5 flex items-center gap-3"
+      >
+        <span className="w-10 h-10 rounded-xl bg-paper-raised flex items-center justify-center shrink-0">
+          <PieChart size={18} className="text-accent" />
+        </span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold">En qué gasto mi plata</p>
+          <p className="text-xs text-ink-soft mt-0.5">Por categoría, comercios y comparación con el periodo anterior</p>
+        </div>
+        <ChevronRight size={16} className="text-ink-soft shrink-0" />
+      </Link>
 
+      {!cargando && tendencias && (
+        <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp size={15} className="text-ink-soft" />
+            <p className="text-sm font-semibold">Tendencia mensual</p>
+          </div>
+          <GraficoTendencia meses={tendencias.meses ?? []} />
+
+          {tendencias.proyeccion && (
           <div className="mt-4 pt-4 border-t border-line">
             <p className="text-xs text-ink-soft">Proyección de gasto este mes</p>
             <p className="text-xl font-bold mt-0.5">
@@ -126,6 +142,7 @@ export default function Presupuesto() {
               {tendencias.proyeccion.dias_restantes_mes} días restantes
             </p>
           </div>
+          )}
         </section>
       )}
 

@@ -3,6 +3,12 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from fastapi import HTTPException
+
+from app import asistente as ia
+from app import asistente_consultas as consultas
+from app import informe as inf
+from app.asistente_datos import cargar_datos
 from app.limites import verificar_limite
 from app.utiles import ahora_co
 from app.alertas_proactivas import detectar_cobros_duplicados, detectar_comisiones
@@ -28,15 +34,28 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 
 @router.get("/resumen-semanal", response_model=ResumenSemanal)
 def resumen_semanal(
-    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+    desde: str | None = None,
+    hasta: str | None = None,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
 ):
+    """Por defecto, los últimos 7 días. Con `desde`/`hasta` (AAAA-MM-DD, ambos
+    inclusive) resume cualquier rango personalizado."""
     hoy = ahora_co()
     hace_7_dias = hoy - timedelta(days=7)
+    fin_rango = None
+    etiqueta = None
+    if desde or hasta:
+        try:
+            rango = inf.rango_periodo("rango", hoy, desde or hasta, hasta or desde)
+        except inf.PeriodoInvalido as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        hace_7_dias, fin_rango, etiqueta = rango["desde"], rango["hasta"], rango["etiqueta"]
 
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
     monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()}
     todos = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids_accesibles)).all()
-    semana = [m for m in todos if m.fecha >= hace_7_dias]
+    semana = [m for m in todos if m.fecha >= hace_7_dias and (fin_rango is None or m.fecha < fin_rango)]
 
     def monto_cop(m):
         return convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
@@ -64,6 +83,7 @@ def resumen_semanal(
         "gastos": gastos,
         "top_categorias": top_categorias,
         "anomalias": anomalias_raw,
+        "periodo": etiqueta,
     })
 
     return ResumenSemanal(
@@ -73,6 +93,9 @@ def resumen_semanal(
         top_categorias=top_categorias,
         anomalias=anomalias_raw,
         texto=texto,
+        desde=(rango["desde"].date().isoformat() if etiqueta else (hoy - timedelta(days=7)).date().isoformat()),
+        hasta=((rango["hasta"] - timedelta(days=1)).date().isoformat() if etiqueta else hoy.date().isoformat()),
+        etiqueta=etiqueta or "los últimos 7 días",
     )
 
 
@@ -153,6 +176,27 @@ def preguntar(
     movimientos, para no exceder el contexto del modelo)."""
     # Cada pregunta cuesta una llamada a la IA: tope por usuario.
     verificar_limite(f"preguntar:{usuario.id}", 20, 3600, "Llegaste al límite de preguntas por hora. Intenta más tarde.")
+
+    # 1) Las preguntas típicas (en qué gasté más, cuánto gasté en X, comparar
+    #    meses, presupuesto...) se resuelven con CÁLCULO del backend, el mismo
+    #    del asistente nuevo y con la regla contable: cifras reales y periodo explícito.
+    from app.routers.asistente import _responder_rapida
+
+    hoy = ahora_co()
+    texto_seguro = ia.redactar_secretos(data.pregunta).replace("<<<", " ").replace(">>>", " ").strip()
+    intento = ia.detectar_intencion(texto_seguro, hoy)
+    if intento["intencion"] in ("consulta", "rapida"):
+        d = cargar_datos(db, usuario.id, hoy)
+        r = (consultas.responder_consulta(intento, d) if intento["intencion"] == "consulta"
+             else _responder_rapida(intento["id"], d, intento.get("periodo")))
+        return PreguntarResponse(respuesta=r["texto"], fuentes=r.get("fuentes", []),
+                                 sugerencias=r.get("sugerencias", []))
+    if intento["intencion"] in ("comprar", "ahorro", "deudas", "registrar"):
+        return PreguntarResponse(
+            respuesta="Eso lo resuelvo mejor en CuadraMe AI (Inicio > Pregúntale a CuadraMe AI): simula, "
+                      "arma el plan y te deja confirmar antes de guardar nada.")
+
+    # 2) Pregunta abierta: IA sobre los últimos 90 días (si no hay IA, se sugieren preguntas útiles).
     hace_90_dias = ahora_co() - timedelta(days=90)
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
 
@@ -186,6 +230,8 @@ def preguntar(
     }
 
     respuesta = responder_pregunta(data.pregunta, contexto)
+    if not respuesta:
+        return PreguntarResponse(respuesta=consultas.texto_no_entendi(), sugerencias=consultas.SUGERENCIAS_UTILES)
     return PreguntarResponse(respuesta=respuesta)
 
 

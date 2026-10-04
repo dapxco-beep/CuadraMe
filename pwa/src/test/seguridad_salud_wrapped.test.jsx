@@ -183,6 +183,7 @@ describe('Wrapped', () => {
 
   it('navega entre diapositivas y comparte (con descarga de respaldo)', async () => {
     api.wrapped = vi.fn().mockResolvedValue(DATOS)
+    api.informeMeses = vi.fn().mockResolvedValue({ meses: [], ultimo_con_datos: null })
     // jsdom no implementa canvas: se simula lo mínimo para generar el PNG
     const ctx = new Proxy({}, { get: (_, p) => (p === 'createLinearGradient' ? () => ({ addColorStop() {} }) : () => {}), set: () => true })
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx)

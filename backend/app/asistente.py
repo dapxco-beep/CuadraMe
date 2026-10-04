@@ -200,13 +200,25 @@ _RAPIDAS = [
 
 def detectar_intencion(texto: str, hoy: datetime) -> dict:
     """Devuelve {'intencion': ..., + datos extraídos}. Intenciones:
-    registrar | comprar | ahorro | deudas | rapida | libre."""
+    registrar | comprar | ahorro | deudas | consulta | rapida | libre."""
     t = _norm(texto)
+
+    # Consultas con periodo (cuánto gasté en X, comparar, presupuesto): cálculo
+    # determinista en asistente_consultas. Import perezoso: ese módulo usa este.
+    from app.asistente_consultas import detectar_consulta, parsear_periodo
+    consulta = detectar_consulta(texto, hoy)
+    if consulta:
+        return consulta
 
     # Preguntas rápidas conocidas (respuesta determinista, sin IA)
     for rid, patron in _RAPIDAS:
         if patron.search(t):
-            return {"intencion": "rapida", "id": rid}
+            salida = {"intencion": "rapida", "id": rid}
+            if rid in ("gasto_mes", "ahorro_mes"):
+                periodo = parsear_periodo(t, hoy)
+                if periodo and periodo["periodo"] != "este_mes":   # sin clave = este mes
+                    salida["periodo"] = periodo
+            return salida
 
     monto = extraer_monto(texto)
 
