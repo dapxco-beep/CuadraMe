@@ -110,6 +110,15 @@ def alias_de(cuenta) -> list[str]:
     return [a for a in (_norm(x) for x in re.split(r"[,;|\n]", bruto)) if a]
 
 
+def coincide_cuenta(cuenta, nombre: str | None) -> bool:
+    """¿El nombre pedido ('Nequi') corresponde a esta cuenta, por nombre o alias?
+    Sirve para avisar cuando el registro cayó en otra cuenta por no encontrar la pedida."""
+    cn = _norm(nombre)
+    if not cn:
+        return True
+    return cn in _norm(cuenta.nombre) or any(cn in a for a in alias_de(cuenta))
+
+
 def mapear_cuenta(cuentas: list, tarjeta: str | None, cuenta_nombre: str | None = None, moneda: str | None = None):
     """Elige la cuenta del usuario a la que corresponde el pago.
 

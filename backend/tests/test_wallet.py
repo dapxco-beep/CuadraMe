@@ -343,3 +343,21 @@ def test_errores_del_atajo_traen_mensaje_legible():
     # Otras rutas conservan la respuesta estándar de FastAPI (sin 'mensaje').
     r = client.post("/movimientos", json={})
     assert r.status_code == 422 and "mensaje" not in r.json()
+
+
+def test_cierre_avisa_si_la_cuenta_pedida_no_existe_y_no_si_existe():
+    """Si el Atajo pide 'Nequi' y no hay tal cuenta, el mensaje lo dice (no cae en silencio)."""
+    clave, _ = _usuario("w-nq", [("Bancolombia", None, 0)])
+    cuerpo = {"Tipo": "Gasto", "monto": 5000, "descripcion": "prueba", "cuenta": "Nequi", "fuente": "cierre_app"}
+    r = client.post("/movimientos/rapido", json=cuerpo, headers={"X-Api-Key": clave})
+    assert r.status_code == 200, r.text
+    m = r.json()["mensaje"]
+    assert "no encontré una cuenta" in m and "Nequi" in m and "Bancolombia" in m
+
+    # Con la cuenta creada, ya no hay aviso y cae donde debe.
+    client.post("/cuentas", json={"nombre": "Nequi", "saldo": 0})
+    cuerpo["monto"] = 6000
+    r = client.post("/movimientos/rapido", json=cuerpo, headers={"X-Api-Key": clave})
+    assert r.status_code == 200, r.text
+    assert r.json()["cuenta_nombre"] == "Nequi"
+    assert "no encontré" not in r.json()["mensaje"]

@@ -31,6 +31,7 @@ from app.wallet import (
     ORIGEN_WALLET,
     fecha_razonable,
     formato_cop,
+    coincide_cuenta,
     mapear_cuenta,
     parse_fecha,
 )
@@ -644,6 +645,13 @@ def crear_movimiento_rapido(
         mensaje = f"Ya lo tenías: {signo.lower()} de {formato_cop(mov.monto)} en {mov.descripcion}."
     else:
         mensaje = f"{signo} de {formato_cop(mov.monto)} en {mov.descripcion} ({cuenta.nombre}). Confírmalo en CuadraMe."
+    # Si el Atajo pidió una cuenta que no existe, el movimiento cayó en otra: se dice,
+    # para que no se registre en silencio en la cuenta equivocada.
+    if data.cuenta and not data.tarjeta and not coincide_cuenta(cuenta, data.cuenta):
+        mensaje += (
+            f" Ojo: no encontré una cuenta que se llame «{data.cuenta}», así que lo guardé en {cuenta.nombre}. "
+            "Crea esa cuenta en CuadraMe o corrige el texto de la automatización."
+        )
     base = MovimientoOut.model_validate(mov, from_attributes=True).model_dump()
     return MovimientoRapidoOut(
         **base,
