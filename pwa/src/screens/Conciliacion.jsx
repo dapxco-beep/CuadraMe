@@ -22,6 +22,8 @@ const estadoLabel = {
   aproximado: 'Ya registrado (aprox.)',
   faltante: 'Falta registrar',
   importado: 'Importado',
+  completado: 'Completado con el banco',
+  sobrante: 'No aparece en el extracto',
 }
 
 const estadoColor = {
@@ -29,6 +31,41 @@ const estadoColor = {
   aproximado: 'text-ink-soft',
   faltante: 'text-danger',
   importado: 'text-accent',
+  completado: 'text-accent',
+  sobrante: 'text-danger',
+}
+
+// Las listas de la revisión, en el orden en que le sirven al usuario.
+export const SECCIONES = [
+  {
+    id: 'completados',
+    estados: ['completado'],
+    titulo: 'Completados con el banco',
+    ayuda: 'Los registraste con tu celular y ya los emparejamos con el extracto: ahora tienen el nombre real del banco.',
+  },
+  {
+    id: 'faltantes',
+    estados: ['faltante'],
+    titulo: 'Faltan en CuadraMe',
+    ayuda: 'Aparecen en el extracto pero no en tu app. Marca los que quieres importar.',
+  },
+  {
+    id: 'sobrantes',
+    estados: ['sobrante'],
+    titulo: 'Registrados que no aparecen en el extracto',
+    ayuda: 'Los anotaste tú, pero el banco no los muestra en este periodo. Revisa si el monto está bien o si el banco aún no los refleja.',
+  },
+  {
+    id: 'ya',
+    estados: ['exacto', 'aproximado', 'importado'],
+    titulo: 'Ya registrados',
+    ayuda: null,
+  },
+]
+
+export function resumenCompletados(n) {
+  if (!n) return null
+  return `Completé ${n} ${n === 1 ? 'movimiento' : 'movimientos'} con tu extracto`
 }
 
 export default function Conciliacion() {
@@ -194,9 +231,16 @@ export default function Conciliacion() {
 
       {resultado && (
         <div className="px-5 mt-4">
+          {resumenCompletados(resultado.completados) && (
+            <div role="status" className="rounded-2xl bg-accent-soft p-3.5 mb-4 flex items-center gap-2.5">
+              <Check size={18} className="text-accent shrink-0" />
+              <p className="text-sm font-semibold text-ink">{resumenCompletados(resultado.completados)}</p>
+            </div>
+          )}
+
           <div className="rounded-2xl bg-paper-raised border border-line p-4 mb-4 grid grid-cols-3 gap-2 text-center">
             <div>
-              <p className="text-lg font-bold text-accent">{resultado.exactos + resultado.aproximados}</p>
+              <p className="text-lg font-bold text-accent">{resultado.exactos + resultado.aproximados + (resultado.completados || 0)}</p>
               <p className="text-xs text-ink-soft">Ya registrados</p>
             </div>
             <div>
@@ -221,8 +265,15 @@ export default function Conciliacion() {
             </div>
           )}
 
-          <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden mb-4">
-            {resultado.review.map((m) => (
+          {SECCIONES.map((sec) => {
+            const items = resultado.review.filter((m) => sec.estados.includes(m.estado))
+            if (items.length === 0) return null
+            return (
+          <section key={sec.id} aria-label={sec.titulo} className="mb-4">
+            <h2 className="text-sm font-semibold">{sec.titulo} ({items.length})</h2>
+            {sec.ayuda && <p className="text-xs text-ink-soft mt-0.5 mb-2">{sec.ayuda}</p>}
+          <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden mt-2">
+            {items.map((m) => (
               <div key={m.fingerprint} className="px-4 py-3.5">
                 <label className="flex items-center gap-3">
                   {m.estado === 'faltante' && (
@@ -237,7 +288,16 @@ export default function Conciliacion() {
                     <p className="text-sm font-medium truncate">{m.descripcion}</p>
                     <p className={`text-xs ${estadoColor[m.estado]}`}>
                       {m.fecha} · {estadoLabel[m.estado]}
+                      {m.estado === 'completado' && m.categoria_sugerida ? ` · ${m.categoria_sugerida}` : ''}
                     </p>
+                    {m.estado === 'completado' && m.descripcion_registrada && m.descripcion_registrada !== m.descripcion && (
+                      <p className="text-xs text-ink-soft truncate">Tú anotaste: {m.descripcion_registrada}</p>
+                    )}
+                    {m.estado === 'completado' && m.monto_registrado != null && m.monto_registrado !== m.monto && (
+                      <p className="text-xs text-danger">
+                        Anotaste {formatCOP(m.monto_registrado)} y el banco dice {formatCOP(m.monto)}: revisa el monto
+                      </p>
+                    )}
                   </div>
                   <p className="text-sm font-semibold shrink-0">
                     {m.tipo === 'income' ? '+' : m.tipo === 'transfer' ? '' : '-'}
@@ -263,6 +323,9 @@ export default function Conciliacion() {
               </div>
             ))}
           </div>
+          </section>
+            )
+          })}
 
           {error && <p className="text-sm text-danger mb-3">{error}</p>}
 

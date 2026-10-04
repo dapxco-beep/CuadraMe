@@ -95,6 +95,14 @@ export const api = {
       headers: { 'X-Api-Key': apiKey },
       body: { comercio: 'Pago de prueba CuadraMe', monto: '1.000', tarjeta: 'Prueba CuadraMe', moneda: 'COP', fuente: 'wallet' },
     }),
+  // Prueba del "registro al cerrar la app": igual que el Atajo (sin comercio, fuente cierre_app).
+  registroRapidoDePrueba: (apiKey) =>
+    request('/movimientos/rapido', {
+      method: 'POST',
+      auth: false,
+      headers: { 'X-Api-Key': apiKey },
+      body: { tipo: 'gasto', monto: '1.000', descripcion: 'Prueba de registro rápido', fuente: 'cierre_app' },
+    }),
   recordatorioDiario: () => request('/perfil/recordatorio-diario'),
   actualizarRecordatorioDiario: (activo) =>
     request('/perfil/recordatorio-diario', { method: 'PUT', body: { activo } }),

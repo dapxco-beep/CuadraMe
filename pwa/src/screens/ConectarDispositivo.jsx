@@ -18,6 +18,14 @@ const JSON_DEL_ATAJO = `{
   "moneda": "COP"
 }`
 
+const JSON_CIERRE_APP = `{
+  "tipo": "<Gasto o Ingreso, el que elegiste>",
+  "monto": "<Monto que escribiste>",
+  "descripcion": "<Nota que escribiste (puede ir vacía)>",
+  "cuenta": "Nequi",
+  "fuente": "cierre_app"
+}`
+
 const SCRIPT_ANDROID = (apiKey) => `// CuadraMe — registro automático de movimientos desde notificaciones bancarias
 // o de Google Pay, para Android vía Tasker.
 //
@@ -176,6 +184,39 @@ function CapturaAutomatizacion() {
   )
 }
 
+function Flecha({ x1, y1, x2, y2 }) {
+  return <line x1={x1} y1={y1} x2={x2} y2={y2} className="stroke-accent" strokeWidth="2" markerEnd="url(#punta)" />
+}
+
+function DiagramaAtajo() {
+  return (
+    <svg viewBox="0 0 320 170" className="w-full h-auto" role="img" aria-label="Diagrama: Apple Pay y el cierre de Nequi llaman al mismo Atajo, que registra en CuadraMe">
+      <defs>
+        <marker id="punta" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" className="fill-accent" />
+        </marker>
+      </defs>
+      <rect x="4" y="14" width="104" height="48" rx="10" className="fill-paper-raised stroke-line" strokeWidth="1.5" />
+      <text x="56" y="34" fontSize="10" fontWeight="700" textAnchor="middle" className="fill-ink">Apple Pay</text>
+      <text x="56" y="49" fontSize="8" textAnchor="middle" className="fill-ink-soft">Transacción</text>
+      <rect x="4" y="108" width="104" height="48" rx="10" className="fill-paper-raised stroke-line" strokeWidth="1.5" />
+      <text x="56" y="128" fontSize="10" fontWeight="700" textAnchor="middle" className="fill-ink">Cierre de Nequi</text>
+      <text x="56" y="143" fontSize="8" textAnchor="middle" className="fill-ink-soft">App → Se cierra</text>
+      <Flecha x1="108" y1="38" x2="136" y2="70" />
+      <Flecha x1="108" y1="132" x2="136" y2="100" />
+      <rect x="138" y="52" width="92" height="66" rx="12" className="fill-accent-soft stroke-accent" strokeWidth="1.5" />
+      <text x="184" y="74" fontSize="10" fontWeight="700" textAnchor="middle" className="fill-ink">Atajo</text>
+      <text x="184" y="87" fontSize="10" fontWeight="700" textAnchor="middle" className="fill-ink">CuadraMe</text>
+      <text x="184" y="102" fontSize="7" textAnchor="middle" className="fill-ink-soft">con datos: registra</text>
+      <text x="184" y="112" fontSize="7" textAnchor="middle" className="fill-ink-soft">sin datos: pregunta</text>
+      <Flecha x1="230" y1="85" x2="252" y2="85" />
+      <rect x="254" y="60" width="62" height="50" rx="10" className="fill-paper-raised stroke-line" strokeWidth="1.5" />
+      <text x="285" y="82" fontSize="9" fontWeight="700" textAnchor="middle" className="fill-ink">CuadraMe</text>
+      <text x="285" y="96" fontSize="7" textAnchor="middle" className="fill-ink-soft">por confirmar</text>
+    </svg>
+  )
+}
+
 function Paso({ n, titulo, children, dibujo }) {
   return (
     <li className="px-4 py-4">
@@ -219,7 +260,33 @@ function BotonCopiar({ texto, etiqueta, disabled, className = '' }) {
 
 /* ---------- Prueba de punta a punta ---------- */
 
-function PruebaConexion({ apiKey }) {
+function PruebaConexion({ apiKey, conRegistroRapido = false }) {
+  return (
+    <section className="mx-6 mt-6" aria-label="Prueba de conexión">
+      <h2 className="text-[15px] font-semibold mb-3">Pruebas</h2>
+      <div className="space-y-3">
+        <BloquePrueba
+          apiKey={apiKey}
+          enviar={api.pagoDePrueba}
+          texto="Enviamos un pago de $1.000 «de prueba» como si viniera de Apple Pay, para comprobar que todo llega. Aparecerá en la bandeja «¿son tuyos?»; puedes descartarlo."
+          boton="Enviar un pago de prueba"
+          exito="¡Funciona!"
+        />
+        {conRegistroRapido && (
+          <BloquePrueba
+            apiKey={apiKey}
+            enviar={api.registroRapidoDePrueba}
+            texto="Crea un movimiento de $1.000 «de prueba» como si hubieras cerrado la app de tu banco y respondido que sí hiciste un movimiento. Queda por confirmar; puedes descartarlo."
+            boton="Probar registro rápido"
+            exito="¡Funciona el registro rápido!"
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+function BloquePrueba({ apiKey, enviar, texto, boton, exito }) {
   const [estado, setEstado] = useState('inicial') // inicial | enviando | ok | error
   const [mensaje, setMensaje] = useState('')
 
@@ -227,7 +294,7 @@ function PruebaConexion({ apiKey }) {
     setEstado('enviando')
     setMensaje('')
     try {
-      const r = await api.pagoDePrueba(apiKey)
+      const r = await enviar(apiKey)
       // Verifica que de verdad llegó a la bandeja "por confirmar".
       const lista = await api.movimientosPorConfirmar()
       if (!lista.some((m) => m.id === r.id)) throw new Error('El pago se envió pero no apareció por confirmar. Intenta de nuevo.')
@@ -241,25 +308,20 @@ function PruebaConexion({ apiKey }) {
   }
 
   return (
-    <section className="mx-6 mt-6" aria-label="Prueba de conexión">
-      <h2 className="text-[15px] font-semibold mb-3">Prueba</h2>
       <div className="rounded-2xl bg-paper-raised border border-line p-4">
-        <p className="text-sm text-ink-soft">
-          Enviamos un pago de $1.000 «de prueba» como si viniera de tu celular, para comprobar que todo llega.
-          Aparecerá en la bandeja «¿son tuyos?»; puedes descartarlo.
-        </p>
+        <p className="text-sm text-ink-soft">{texto}</p>
         <button
           onClick={probar}
           disabled={!apiKey || estado === 'enviando'}
           className="w-full mt-3 flex items-center justify-center gap-2 bg-accent text-white font-semibold rounded-2xl py-3 text-sm disabled:opacity-50"
         >
-          <Send size={15} /> {estado === 'enviando' ? 'Enviando...' : 'Enviar un pago de prueba'}
+          <Send size={15} /> {estado === 'enviando' ? 'Enviando...' : boton}
         </button>
         {estado === 'ok' && (
           <div role="status" className="mt-3 rounded-xl bg-cuadra-soft px-3.5 py-3 flex items-start gap-2.5">
             <CheckCircle2 size={18} className="text-cuadra shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-bold">¡Funciona!</p>
+              <p className="text-sm font-bold">{exito}</p>
               <p className="text-xs text-ink-soft mt-0.5">{mensaje}</p>
             </div>
           </div>
@@ -268,7 +330,6 @@ function PruebaConexion({ apiKey }) {
           <p role="alert" className="text-sm text-danger mt-3">{mensaje}</p>
         )}
       </div>
-    </section>
   )
 }
 
@@ -347,8 +408,29 @@ export default function ConectarDispositivo() {
 
       {plataforma === 'ios' && (
         <>
+          <section className="mx-6 mt-6" aria-label="Un atajo, dos automatizaciones">
+            <h2 className="text-[15px] font-semibold mb-3">Un atajo, dos automatizaciones</h2>
+            <div className="rounded-2xl bg-paper-raised border border-line p-4">
+              <DiagramaAtajo />
+              <ul className="mt-3 space-y-2 text-sm text-ink-soft list-disc pl-5">
+                <li>
+                  <span className="font-semibold text-ink">Pagos con Apple Pay:</span> iOS le entrega al Atajo el comercio, el
+                  monto y la tarjeta; el Atajo los manda solo, sin preguntarte nada.
+                </li>
+                <li>
+                  <span className="font-semibold text-ink">Cierre de la app de tu banco:</span> el Atajo no recibe datos, así
+                  que te pregunta «¿Hiciste algún movimiento?». Si dices que sí, escribes el monto y una nota opcional.
+                </li>
+              </ul>
+              <p className="text-xs text-ink-soft mt-3">
+                Después, cuando subas tu extracto, CuadraMe empareja cada movimiento con el del banco y lo completa con el
+                nombre real del comercio o de quien te pagó.
+              </p>
+            </div>
+          </section>
+
           <section className="mx-6 mt-6" aria-label="Guía para iPhone">
-            <h2 className="text-[15px] font-semibold mb-3">Guía de 2 minutos</h2>
+            <h2 className="text-[15px] font-semibold mb-3">Guía paso a paso</h2>
             <ol className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
               <Paso n={1} titulo="Copia tu clave" dibujo={<CapturaClave />}>
                 <p>Es la llave que le dice al Atajo que los pagos son tuyos.</p>
@@ -397,11 +479,20 @@ export default function ConectarDispositivo() {
                       Añade <b>Obtener valor del diccionario</b> → clave <b>mensaje</b>, y después{' '}
                       <b>Mostrar notificación</b> con ese valor: verás «Gasto de $18.500 en Juan Valdez…» al pagar.
                     </li>
+                    <li>
+                      Para la otra automatización, antes de todo pon un <b>Si</b> sobre la entrada del Atajo. Si trae datos
+                      (viene de Apple Pay) usa lo de arriba. Si no trae nada (viene del cierre de la app), usa{' '}
+                      <b>Elegir del menú</b> «¿Hiciste algún movimiento?» con Gasto / Ingreso / No. En «No» no hagas nada. En
+                      Gasto e Ingreso usa <b>Solicitar entrada</b> (número) para el monto y otra (texto) para la nota, y manda
+                      este cuerpo al mismo URL con los mismos encabezados:
+                      <pre className="mt-1.5 text-[10px] leading-relaxed whitespace-pre-wrap rounded-lg bg-paper p-2.5 border border-line text-ink">{JSON_CIERRE_APP}</pre>
+                      Cambia «Nequi» por el nombre de tu cuenta en CuadraMe. Si dejas la nota vacía, se guarda como «Movimiento en Nequi».
+                    </li>
                   </ol>
                 </details>
               </Paso>
 
-              <Paso n={3} titulo="Crea la automatización" dibujo={<CapturaAutomatizacion />}>
+              <Paso n={3} titulo="Automatización 1: pagos con Apple Pay" dibujo={<CapturaAutomatizacion />}>
                 <p>
                   En <b>Atajos → Automatización → +</b> elige <b>Transacción</b>, selecciona tus tarjetas de Wallet,
                   marca <b>Ejecutar inmediatamente</b> y como acción elige el Atajo «CuadraMe Wallet».
@@ -415,12 +506,42 @@ export default function ConectarDispositivo() {
                 </p>
               </Paso>
 
-              <Paso n={4} titulo="Haz la prueba">
-                <p>Baja a «Prueba» y toca «Enviar un pago de prueba». Si ves «¡Funciona!», ya estás listo.</p>
+              <Paso n={4} titulo="Automatización 2: cierre de la app de tu banco">
+                <p>
+                  En <b>Atajos → Automatización → +</b> elige <b>App</b>, marca <b>Se cierra</b>, elige la app (Nequi,
+                  Daviplata o tu banco), marca <b>Ejecutar inmediatamente</b> y como acción elige el mismo Atajo
+                  «CuadraMe Wallet».
+                </p>
+                <p className="text-xs">
+                  Tip: si usas varias apps, el nombre de la cuenta del cuerpo debe coincidir con la app. Puedes crear una
+                  automatización por app con una copia del Atajo, cada una con su cuenta.
+                </p>
+              </Paso>
+
+              <Paso n={5} titulo="Qué verás">
+                <p>
+                  <span className="font-semibold text-ink">Al pagar con Apple Pay:</span> una notificación «Gasto de $18.500
+                  en Juan Valdez…» y el movimiento queda «por confirmar» en CuadraMe.
+                </p>
+                <p>
+                  <span className="font-semibold text-ink">Al cerrar tu banco:</span> el celular pregunta «¿Hiciste algún
+                  movimiento?». Con «Gasto» o «Ingreso» te pide el monto y una nota opcional; con «No» no pasa nada.
+                </p>
+                <p>
+                  <span className="font-semibold text-ink">Al subir tu extracto:</span> los movimientos se completan con los
+                  datos del banco y los que no aparecen te los mostramos aparte.
+                </p>
+              </Paso>
+
+              <Paso n={6} titulo="Haz las pruebas">
+                <p>
+                  Baja a «Pruebas». «Enviar un pago de prueba» simula Apple Pay y «Probar registro rápido» simula el cierre
+                  de la app. Si ves «¡Funciona!», ya estás listo.
+                </p>
               </Paso>
             </ol>
           </section>
-          <PruebaConexion apiKey={apiKey} />
+          <PruebaConexion apiKey={apiKey} conRegistroRapido />
         </>
       )}
 
