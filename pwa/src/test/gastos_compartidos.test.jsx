@@ -154,7 +154,8 @@ describe('Dividir gasto', () => {
         expect.objectContaining({ total: 100000, modo: 'iguales', pagador_id: 'yo', registro: 'mi_parte', cuenta_id: 'c1' })
       )
     )
-    expect(await screen.findByTestId('ruta')).toHaveTextContent('/amigos')
+    // La navegación ocurre después de que responde la API: se espera, no se comprueba una sola vez.
+    await waitFor(() => expect(screen.getByTestId('ruta')).toHaveTextContent('/amigos'))
   })
 
   it('muestra el error del servidor si los porcentajes no suman 100 y no guarda', async () => {
