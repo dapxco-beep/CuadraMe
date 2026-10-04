@@ -32,7 +32,9 @@ URL del servidor: `https://backend-production-aeab.up.railway.app/movimientos/ra
 ```
 1  Texto                           tu clave (queda VACÍA al compartir; pregunta de importación)
 2  Elegir del menú                 "¿Hiciste algún movimiento?"  →  Gasto · Ingreso · No
-   │  No: Detener este atajo       (Gasto e Ingreso no llevan acciones dentro)
+   │  Gasto:   Texto  gasto
+   │  Ingreso: Texto  ingreso
+   │  No:      Detener este atajo
 3  Pedir entrada (Número)          "¿Cuánto fue?"      →  Establecer variable  monto
 4  Pedir entrada (Texto)           "¿En qué? (opcional)" →  Establecer variable  nota
 5  Obtener contenido de URL        POST …/movimientos/rapido
@@ -46,7 +48,7 @@ URL del servidor: `https://backend-production-aeab.up.railway.app/movimientos/ra
 7  Mostrar notificación
 ```
 
-El backend entiende `Gasto`/`Ingreso` en cualquier mayúscula, así que "Resultado del menú" se usa tal cual.
+**Importante:** "Resultado del menú" no es el nombre de la opción tocada, sino lo que devuelve la última acción dentro de esa opción. Por eso Gasto e Ingreso llevan cada una un **Texto** (`gasto` / `ingreso`). Si quedan vacías, el atajo envía otro valor como `tipo` y el servidor responde "falta o no se entiende el tipo".
 
 ## Las automatizaciones
 
@@ -72,6 +74,7 @@ El texto se busca entre las cuentas del cliente por nombre parcial. Si no coinci
 |---|---|---|
 | 401 | Clave vacía o con espacios | Pégala de nuevo en el Texto |
 | 422 en `monto` | El campo recibió la entrada completa | Toca la burbuja y elige la propiedad (Importe) |
+| "falta o no se entiende el tipo" | Gasto/Ingreso del menú están vacías | Pon un Texto `gasto` / `ingreso` dentro de cada opción |
 | Cae en la cuenta equivocada | El texto no se parece al nombre de la cuenta | Cambia el Texto de la automatización |
 | No corre sola | Quedó con "Preguntar antes de ejecutar" | Desactívalo |
 | Pregunta cada vez que miras el saldo | El disparador salta al cerrar la app | Toca "No" |

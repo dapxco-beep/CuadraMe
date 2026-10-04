@@ -19,7 +19,7 @@ const JSON_DEL_ATAJO = `{
 }`
 
 const JSON_CIERRE_APP = `{
-  "tipo": "<Resultado del menú: Gasto o Ingreso>",
+  "tipo": "<Resultado del menú: gasto o ingreso>",
   "monto": "<variable monto>",
   "descripcion": "<variable nota (puede ir vacía)>",
   "cuenta": "<Entrada del atajo: el nombre de la cuenta>",
@@ -482,7 +482,7 @@ export default function ConectarDispositivo() {
                     <li>
                       Para el cierre de una app crea un <b>segundo Atajo</b>, «CuadraMe Cierre», más corto: acción{' '}
                       <b>Texto</b> con tu clave; <b>Elegir del menú</b> «¿Hiciste algún movimiento?» con Gasto / Ingreso /
-                      No (en «No» pon <b>Detener este atajo</b>; en las otras no pongas nada); <b>Solicitar entrada</b>{' '}
+                      No (en «No» pon <b>Detener este atajo</b>; en «Gasto» pon un <b>Texto</b> «gasto» y en «Ingreso» un <b>Texto</b> «ingreso»: no las dejes vacías); <b>Solicitar entrada</b>{' '}
                       (número) «¿Cuánto fue?» y <b>Establecer variable</b> <b>monto</b>; <b>Solicitar entrada</b> (texto)
                       «¿En qué?» y <b>Establecer variable</b> <b>nota</b>. Luego <b>Obtener contenido de URL</b> igual que
                       arriba, con este cuerpo, y por último <b>Obtener valor del diccionario</b> (mensaje) y{' '}

@@ -163,8 +163,12 @@ th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color:
     <p class="do">Añade <b>Elegir del menú</b>. En “Indicación” escribe <span class="mono">¿Hiciste algún movimiento?</span> y crea 3 opciones:</p>
     <div class="act"><div class="name">Elegir del menú</div>
       <div class="row"><span class="k">Opciones</span><span><span class="chip">Gasto</span> <span class="chip">Ingreso</span> <span class="chip">No</span></span></div></div>
-    <p class="do">Debajo de <b>No</b> añade la acción <b>Detener este atajo</b>. Debajo de Gasto e Ingreso <b>no pongas nada</b>.</p>
-    <p class="see"><b>Debes ver:</b> el menú con tres opciones, y solo “No” tiene una acción dentro.</p>
+    <p class="do">Ahora pon <b>una acción dentro de cada opción</b>. Es lo que hace que el atajo sepa qué elegiste:</p>
+    <div class="act"><div class="name">Dentro de “Gasto”</div><div class="row"><span class="k">Acción</span><span>Texto</span></div><div class="blue mono">gasto</div></div>
+    <div class="act"><div class="name">Dentro de “Ingreso”</div><div class="row"><span class="k">Acción</span><span>Texto</span></div><div class="blue mono">ingreso</div></div>
+    <div class="act"><div class="name">Dentro de “No”</div><div class="row"><span class="k">Acción</span><span>Detener este atajo</span></div></div>
+    <p class="warn"><b>No las dejes vacías.</b> “Resultado del menú” no es el nombre de la opción que tocaste: es lo que devuelve la <u>última acción dentro de esa opción</u>. Si Gasto e Ingreso están vacías, el atajo manda cualquier cosa como tipo y CuadraMe contesta “falta o no se entiende el tipo”.</p>
+    <p class="see"><b>Debes ver:</b> el menú con tres opciones y una acción dentro de cada una: Texto gasto, Texto ingreso y Detener este atajo.</p>
   </div>
 
   <div class="step">
@@ -190,7 +194,7 @@ th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color:
         <div class="row"><span class="k mono">fuente</span><span class="blue">cierre_app</span></div>
       </div>
     </div>
-    <p class="tip">“Resultado del menú” es lo que el cliente tocó: Gasto o Ingreso. CuadraMe entiende las dos palabras. Y <b>cuenta</b> viene del texto que le pasará cada automatización (el nombre de la app).</p>
+    <p class="tip">“Resultado del menú” aquí vale <span class="mono">gasto</span> o <span class="mono">ingreso</span>, por los Textos que pusiste dentro de cada opción (paso 3). Y <b>cuenta</b> viene del texto que le pasará cada automatización (el nombre de la app).</p>
   </div>
 
   <div class="step">
@@ -198,7 +202,7 @@ th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color:
     <p class="do">Igual que el Atajo 1: <b>Obtener valor del diccionario</b> con la clave <span class="mono">mensaje</span>, y <b>Mostrar notificación</b> con ese valor.</p>
     <div class="final"><b>Así queda el Atajo 2 completo:</b>
 <pre>1  Texto                          cm_… (tu clave)
-2  Elegir del menú                Gasto · Ingreso · No (→ Detener)
+2  Elegir del menú                Gasto (Texto gasto) · Ingreso (Texto ingreso) · No (→ Detener)
 3  Pedir entrada (número)  →  Establecer variable monto
 4  Pedir entrada (texto)   →  Establecer variable nota
 5  Obtener contenido de URL       POST · 5 campos
