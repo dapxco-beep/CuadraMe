@@ -95,7 +95,7 @@ class GmailFalso:
     def attachments(self):
         return self
 
-    def list(self, userId, q=None, labelIds=None, maxResults=25):  # noqa: N803
+    def list(self, userId, q=None, labelIds=None, maxResults=25, pageToken=None):  # noqa: N803
         if q is None and labelIds is None:
             return _Llamada({"labels": self.etiquetas})
         if labelIds:
@@ -106,7 +106,13 @@ class GmailFalso:
                 ids = [i for i, m in self.mensajes.items() if not m["payload"]["parts"] and not m["labelIds"]]
             else:
                 ids = [i for i, m in self.mensajes.items() if m["payload"]["parts"]]
-        return _Llamada({"messages": [{"id": i} for i in ids]})
+        # Paginación como Gmail: pageToken = posición de la siguiente página.
+        ini = int(pageToken or 0)
+        pagina = ids[ini:ini + maxResults]
+        resp = {"messages": [{"id": i} for i in pagina], "resultSizeEstimate": len(ids)}
+        if ini + maxResults < len(ids):
+            resp["nextPageToken"] = str(ini + maxResults)
+        return _Llamada(resp)
 
     def get(self, userId, id=None, messageId=None, format=None):  # noqa: N803
         if messageId:  # attachments().get

@@ -30,6 +30,8 @@ class Perfil(Base):
     # Recordatorio nocturno (8pm Colombia) si hoy no registró nada; opcional.
     recordatorio_diario = Column(Boolean, default=False)
     ultimo_recordatorio = Column(String, nullable=True)  # YYYY-MM-DD del último aviso, para no repetir
+    # Última vez que alguien usó la API key (Atajo de iPhone, Tasker...): alimenta el semáforo de "Conexiones".
+    api_key_ultimo_uso = Column(DateTime, nullable=True)
     actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
@@ -264,6 +266,36 @@ class ExtractoCorreo(Base):
     historial_id = Column(String, nullable=True)
     recibido_en = Column(DateTime, nullable=True)
     creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class SyncGmail(Base):
+    """Estado de la sincronización de Gmail por usuario. Permite hacerla por
+    lotes (cada request lee pocos correos para no pasar el timeout) y retomarla
+    donde quedó. Los campos `cursor_*` solo valen mientras `en_curso` es True."""
+    __tablename__ = "sync_gmail"
+
+    usuario_id = Column(String, primary_key=True)
+    en_curso = Column(Boolean, default=False)
+    fase = Column(String, default="etiqueta")  # etiqueta | notificaciones | extractos
+    fase_iniciada = Column(Boolean, default=False)  # ya se pidió la primera página de la fase
+    cursor_token = Column(String, nullable=True)  # nextPageToken de Gmail para la siguiente página
+    cursor_ids = Column(String, default="[]")  # JSON: ids de la página actual que faltan por leer
+    reintento_clave_hecho = Column(Boolean, default=False)
+    desde = Column(DateTime, nullable=True)  # inicio de la ventana de búsqueda de esta corrida
+    iniciada_en = Column(DateTime, nullable=True)
+    # Contadores de la corrida en curso.
+    leidos = Column(Integer, default=0)
+    total_estimado = Column(Integer, default=0)
+    nuevos = Column(Integer, default=0)
+    omitidos = Column(Integer, default=0)
+    extractos_nuevos = Column(Integer, default=0)
+    # Última corrida COMPLETA (es la que ve el tablero de conexiones).
+    ultima_sync = Column(DateTime, nullable=True)
+    ultimo_leidos = Column(Integer, default=0)
+    ultimo_nuevos = Column(Integer, default=0)
+    ultimo_extractos = Column(Integer, default=0)
+    ultimo_error = Column(String, nullable=True)
+    ultimo_error_en = Column(DateTime, nullable=True)
 
 
 class ClavePdf(Base):

@@ -92,16 +92,22 @@ def _grupo_remitentes() -> str:
     return " OR ".join(sorted(DOMINIOS_BANCOS))
 
 
-def construir_query_extractos(dias: int = 180) -> str:
+def _ventana(dias: int, desde: datetime | None) -> str:
+    """Con `desde` se busca desde esa fecha (sincronización incremental);
+    sin ella, los últimos `dias` días."""
+    return f"after:{desde:%Y/%m/%d}" if desde else f"newer_than:{dias}d"
+
+
+def construir_query_extractos(dias: int = 180, desde: datetime | None = None) -> str:
     palabras = " OR ".join(f'"{p}"' if " " in p else p for p in PALABRAS_EXTRACTO)
     return (
-        f"has:attachment filename:pdf newer_than:{dias}d "
+        f"has:attachment filename:pdf {_ventana(dias, desde)} "
         f"(({palabras}) OR from:({_grupo_remitentes()}))"
     )
 
 
-def construir_query_notificaciones(dias: int = 14) -> str:
-    return f"from:({_grupo_remitentes()}) newer_than:{dias}d -has:attachment"
+def construir_query_notificaciones(dias: int = 14, desde: datetime | None = None) -> str:
+    return f"from:({_grupo_remitentes()}) {_ventana(dias, desde)} -has:attachment"
 
 
 # ── Remitente / clasificación de correos ────────────────────────────
