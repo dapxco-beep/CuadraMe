@@ -120,6 +120,11 @@ app = FastAPI(
     openapi_url=None if _es_prod else "/openapi.json",
 )
 
+# Los Atajos de iPhone leen "mensaje" de la respuesta: en /movimientos/rapido* los errores lo traen.
+from app import errores_atajo  # noqa: E402
+
+errores_atajo.registrar(app)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

@@ -313,3 +313,33 @@ def test_rapido_acepta_claves_con_mayusculas_y_en_espanol():
         {"Comercio": "Juan Valdez", "Importe": "45.000,00", "Tarjeta o pase": "Nu Débito"}
     )
     assert m.comercio == "Juan Valdez" and m.monto == 45000 and m.tarjeta == "Nu Débito"
+
+
+def test_errores_del_atajo_traen_mensaje_legible():
+    """El Atajo muestra 'mensaje' como notificación: aun con error debe decir qué pasó."""
+    clave, _ = _usuario("w-err", [("Nequi", None, 0)])
+    url = "/movimientos/rapido"
+
+    # Sin clave: antes salía un 422 mudo.
+    r = client.post(url, json={"monto": 1000, "descripcion": "x"})
+    assert r.status_code == 422
+    assert "clave" in r.json()["mensaje"].lower() and r.json()["ok"] is False
+
+    # Clave inválida.
+    r = client.post(url, json={"monto": 1000, "descripcion": "x"}, headers={"X-Api-Key": "cm_mala"})
+    assert r.status_code == 401
+    assert "clave" in r.json()["mensaje"].lower()
+
+    # Monto ausente o cero, con clave buena: dice que no entendió el monto.
+    for cuerpo in ({"descripcion": "x"}, {"monto": 0, "descripcion": "x"}, {"monto": "abc", "descripcion": "x"}):
+        r = client.post(url, json=cuerpo, headers={"X-Api-Key": clave})
+        assert r.status_code == 422, cuerpo
+        assert "monto" in r.json()["mensaje"].lower(), r.json()
+
+    # El mensaje nunca repite el valor enviado.
+    r = client.post(url, json={"monto": "dato-sensible-123", "descripcion": "x"}, headers={"X-Api-Key": clave})
+    assert "dato-sensible-123" not in r.json()["mensaje"]
+
+    # Otras rutas conservan la respuesta estándar de FastAPI (sin 'mensaje').
+    r = client.post("/movimientos", json={})
+    assert r.status_code == 422 and "mensaje" not in r.json()
