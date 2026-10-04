@@ -11,9 +11,13 @@ import unicodedata
 from datetime import datetime, timedelta, timezone
 
 # Fuentes que nacen de un registro automático y piden "¿es tuyo?" al usuario.
-FUENTES_POR_CONFIRMAR = ("wallet", "apple_pay", "google_pay", "shortcut", "sms")
+FUENTES_POR_CONFIRMAR = ("wallet", "apple_pay", "google_pay", "shortcut", "sms", "cierre_app")
 ORIGEN_WALLET = "wallet"
 ORIGEN_ATAJO = "atajo"
+ORIGEN_CIERRE_APP = "cierre_app"
+# Movimientos que el usuario registró "a mano rápida" y que el extracto debe
+# completar: son los únicos candidatos para el cruce con el banco.
+ORIGENES_RAPIDOS = ("wallet", "atajo", "cierre_app", "voz")
 
 _ZONA_CO = timezone(timedelta(hours=-5))
 

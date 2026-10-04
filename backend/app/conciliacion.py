@@ -327,16 +327,21 @@ def normalize_texto(valor: str) -> str:
     return texto.strip()
 
 
+# Algunos extractos traen la hora pegada a la fecha ("2026-10-03 14:32"); la
+# fecha sigue siendo solo el día (la hora se lee aparte con hora_del_extracto).
+_SUFIJO_HORA = r"(?:[ T]\d{1,2}:\d{2}(?::\d{2})?)?$"
+
+
 def parse_bank_date(valor) -> datetime | None:
     if isinstance(valor, datetime):
         return valor
     if not valor:
         return None
     s = str(valor).strip()
-    iso = re.match(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$", s)
+    iso = re.match(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})" + _SUFIJO_HORA, s)
     if iso:
         return datetime(int(iso.group(1)), int(iso.group(2)), int(iso.group(3)))
-    latam = re.match(r"^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$", s)
+    latam = re.match(r"^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})" + _SUFIJO_HORA, s)
     if latam:
         anio = int(latam.group(3))
         anio = 2000 + anio if anio < 100 else anio
@@ -381,12 +386,149 @@ def find_approx_match(ledger: list[dict], movimiento: dict) -> dict | None:
     return best_match
 
 
-def auditar_movimientos(movimientos_extracto: list[dict], ledger: list[dict]) -> dict:
+def hora_del_extracto(mov: dict) -> tuple[int, int, int] | None:
+    """Hora (h, m, s) de un movimiento del extracto, si el banco la trae: en un
+    campo 'hora' o pegada a la fecha ('2026-10-03 14:32'). None si no hay."""
+    for texto in (mov.get("hora"), mov.get("fecha")):
+        m = re.search(r"(?<!\d)(\d{1,2}):(\d{2})(?::(\d{2}))?(?!\d)", str(texto or ""))
+        if m and int(m.group(1)) < 24 and int(m.group(2)) < 60:
+            return int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
+    return None
+
+
+def emparejar_rapidos(items: list[dict], candidatos: list[dict], excluidos: set | None = None) -> dict[int, dict]:
+    """Cruce 1:1 entre movimientos del extracto y movimientos registrados a mano
+    rápida (Wallet, atajos, cierre de app, voz) que aún no se concilian.
+
+    Cada item del extracto se empareja con UN solo registrado y viceversa. Entre
+    todos los pares posibles gana el de menor puntaje (greedy global), donde
+        puntaje = diferencia de fecha/hora en días + 3 * (diferencia de monto / monto)
+    Un par es posible si: mismo tipo, fecha a ≤3 días y monto dentro de
+    ±5% o $500 (lo que sea mayor). Si el extracto trae hora, la diferencia de
+    fecha se mide en segundos (la hora desempata); si no, en días enteros y el
+    empate lo resuelve el orden (extracto en orden ↔ registrados por hora).
+    Devuelve {posición del item: fila del ledger}."""
+    excluidos = excluidos or set()
+    pares = []
+    for i, it in enumerate(items):
+        fecha = parse_bank_date(it.get("fecha"))
+        if not fecha:
+            continue
+        hora = hora_del_extracto(it)
+        objetivo = fecha.replace(hour=hora[0], minute=hora[1], second=hora[2]) if hora else fecha
+        monto = abs(it.get("monto", 0))
+        tolerancia = max(500, monto * 0.05)
+        for j, row in enumerate(candidatos):
+            if row.get("id") in excluidos or not row.get("fecha") or row.get("tipo") != it.get("tipo"):
+                continue
+            dif_monto = abs(abs(row.get("monto", 0)) - monto)
+            if dif_monto > tolerancia:
+                continue
+            if hora:
+                segundos = abs((row["fecha"] - objetivo).total_seconds())
+            else:
+                segundos = abs((row["fecha"].date() - fecha.date()).days) * 86400
+            if segundos > 3 * 86400:
+                continue
+            puntaje = segundos / 86400 + (dif_monto / max(monto, 1)) * 3
+            pares.append((puntaje, i, row["fecha"], j))
+    pares.sort(key=lambda p: (p[0], p[1], p[2], p[3]))
+    usados_items, usados_filas, resultado = set(), set(), {}
+    for _p, i, _f, j in pares:
+        if i in usados_items or j in usados_filas:
+            continue
+        usados_items.add(i)
+        usados_filas.add(j)
+        resultado[i] = candidatos[j]
+    return resultado
+
+
+def _auditar_con_cruce_rapido(movimientos_extracto: list[dict], ledger: list[dict]) -> dict:
+    """Variante con cruce 1:1 de movimientos rápidos. Orden de prioridad:
+    1) exactos por huella, 2) rápidos pendientes ('completado'), 3) aproximado
+    clásico contra el resto del ledger, 4) faltante. Los ya conciliados no se
+    tocan. Además lista los 'sobrantes': rápidos pendientes del periodo del
+    extracto que el banco no muestra (error de monto o aún no reflejado)."""
+    fingerprints = []
+    for mov in movimientos_extracto:
+        fecha_dt = parse_bank_date(mov.get("fecha"))
+        fingerprints.append(compute_fingerprint(fecha_dt, mov["monto"], mov.get("cuenta", ""), mov["descripcion"], mov["tipo"]))
+
+    estados: dict[int, str] = {}
+    usados: set = set()
+    por_huella: dict[str, list[dict]] = {}
+    for r in ledger:
+        if r.get("fingerprint"):
+            por_huella.setdefault(r["fingerprint"], []).append(r)
+    for i, fp in enumerate(fingerprints):
+        libres = [r for r in por_huella.get(fp, []) if r.get("id") not in usados]
+        if libres:
+            usados.add(libres[0].get("id"))
+            estados[i] = "exacto"
+
+    pendientes = [i for i in range(len(movimientos_extracto)) if i not in estados]
+    candidatos = [r for r in ledger if r.get("rapido") and not r.get("conciliado") and r.get("id") not in usados]
+    cruce = emparejar_rapidos([movimientos_extracto[i] for i in pendientes], candidatos)
+    match_ids: dict[int, str] = {}
+    for pos, row in cruce.items():
+        i = pendientes[pos]
+        estados[i] = "completado"
+        match_ids[i] = row.get("id")
+        usados.add(row.get("id"))
+
+    resto = [r for r in ledger if not r.get("rapido") and not r.get("conciliado") and r.get("id") not in usados]
+    for i, mov in enumerate(movimientos_extracto):
+        if i in estados:
+            continue
+        aprox = find_approx_match(resto, {**mov, "fecha": parse_bank_date(mov.get("fecha"))})
+        if aprox:
+            estados[i] = "aproximado"
+            match_ids[i] = aprox.get("id")
+            resto = [r for r in resto if r is not aprox]  # 1:1
+        else:
+            estados[i] = "faltante"
+
+    review = []
+    for i, mov in enumerate(movimientos_extracto):
+        item = {**mov, "fingerprint": fingerprints[i], "estado": estados[i]}
+        if i in match_ids:
+            item["match_id"] = match_ids[i]
+        review.append(item)
+
+    fechas = [d.date() for d in (parse_bank_date(m.get("fecha")) for m in movimientos_extracto) if d]
+    sobrantes = []
+    if fechas:
+        desde, hasta = min(fechas), max(fechas)
+        for r in candidatos:
+            if r.get("id") in usados or not r.get("fecha") or not (desde <= r["fecha"].date() <= hasta):
+                continue
+            sobrantes.append({
+                "id": r.get("id"), "fecha": r["fecha"].strftime("%Y-%m-%d %H:%M"),
+                "descripcion": r.get("descripcion", ""), "monto": abs(r.get("monto", 0)),
+                "tipo": r.get("tipo", "expense"),
+            })
+    cuenta = lambda e: sum(1 for v in estados.values() if v == e)  # noqa: E731
+    return {
+        "review": review,
+        "total_movimientos": len(movimientos_extracto),
+        "exactos": cuenta("exacto"),
+        "aproximados": cuenta("aproximado"),
+        "faltantes": cuenta("faltante"),
+        "completados": cuenta("completado"),
+        "sobrantes": sobrantes,
+    }
+
+
+def auditar_movimientos(movimientos_extracto: list[dict], ledger: list[dict], cruzar_rapidos: bool = False) -> dict:
     """
     Compara movimientos del extracto contra el ledger existente.
     Clasifica cada uno como: exacto (fingerprint/fecha+monto igual),
     aproximado (dentro de tolerancia), o faltante (no está registrado).
+    Con `cruzar_rapidos=True` aplica el cruce 1:1 de movimientos rápidos
+    (ver _auditar_con_cruce_rapido) y suma el estado 'completado'.
     """
+    if cruzar_rapidos:
+        return _auditar_con_cruce_rapido(movimientos_extracto, ledger)
     review = []
     exactos = aproximados = faltantes = 0
 

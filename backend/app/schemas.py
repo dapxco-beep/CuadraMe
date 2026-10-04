@@ -265,10 +265,15 @@ class MovimientoRapidoCreate(BaseModel):
         for campo in ("descripcion", "comercio", "tarjeta", "cuenta", "moneda", "fecha"):
             v = d.get(campo)
             d[campo] = str(v).strip()[:150] if v not in (None, "") and str(v).strip() else None
-        if not d.get("descripcion") and not d.get("comercio"):
+        import re
+        fuente = re.sub(r"[\s-]+", "_", str(d.get("fuente") or "shortcut").strip().lower())[:30]
+        d["fuente"] = fuente
+        # Al cerrar la app del banco el Atajo manda la nota (opcional): sin ella el
+        # backend pone 'Movimiento en <cuenta>'. En cualquier otra fuente sí se exige.
+        if fuente != "cierre_app" and not d.get("descripcion") and not d.get("comercio"):
             raise ValueError("Falta el comercio o la descripción del movimiento")
         tipo = str(d.get("tipo") or "expense").strip().lower()
-        d["tipo"] = {"gasto": "expense", "ingreso": "income"}.get(tipo, tipo)
+        d["tipo"] = {"gasto": "expense", "egreso": "expense", "ingreso": "income"}.get(tipo, tipo)
         return d
 
 
@@ -752,9 +757,11 @@ class MovimientoReview(BaseModel):
     tipo: str
     referencia: Optional[str] = ""
     fingerprint: str
-    estado: str  # exacto | aproximado | faltante
+    estado: str  # exacto | aproximado | faltante | completado | sobrante | importado
     match_id: Optional[str] = None
     categoria_sugerida: Optional[str] = None
+    descripcion_registrada: Optional[str] = None  # completado: lo que había registrado el usuario
+    monto_registrado: Optional[float] = None  # completado: monto registrado (puede diferir del banco)
 
 
 class ProcesarExtractoResponse(BaseModel):
@@ -769,6 +776,8 @@ class ProcesarExtractoResponse(BaseModel):
     review: list[MovimientoReview] = []
     error: Optional[str] = None
     auto_importados: int = 0  # movimientos que entraron solos (quedan "por revisar")
+    completados: int = 0  # movimientos rápidos completados con los datos del banco
+    sobrantes: int = 0  # registrados en el periodo que no aparecen en el extracto
 
 
 class ImportarFaltantesRequest(BaseModel):

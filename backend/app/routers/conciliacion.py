@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 from app.limites import verificar_limite
 from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
-from app.autocat import datos_auto, movimientos_confirmados, origen_de
+from app.autocat import ajustar_a_categorias_usuario, datos_auto, movimientos_confirmados, origen_de
+from app.wallet import ORIGENES_RAPIDOS
 from app.classifier import build_model, classify
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import cuenta_accesible, puede_editar_cuenta
@@ -14,6 +15,7 @@ from app.conciliacion import (
     auditar_movimientos,
     compute_fingerprint,
     detectar_banco,
+    normalize_texto,
     parse_bank_date,
     fijar_nombre_titular,
     parse_texto_con_regex,
@@ -91,7 +93,7 @@ def procesar_extracto(
         # La huella del ledger (_cargar_ledger) usa el id de la cuenta; con el nombre
         # nunca coincidían y los movimientos ya registrados salían como "aproximados".
         mov["cuenta"] = cuenta.id
-    resultado = auditar_movimientos(movimientos, ledger)
+    resultado = auditar_movimientos(movimientos, ledger, cruzar_rapidos=True)
 
     # Auto-importar los "faltantes" con alta confianza del clasificador aprendido,
     # solo cuando vinieron del parser regex de banco (no del fallback de IA).
@@ -149,11 +151,40 @@ def procesar_extracto(
         descartados=descartados,
         importados=auto_importados,
         estado="pendiente_revision",
-        review_json=json.dumps(resultado["review"], default=str),
     )
     db.add(historial)
+    db.flush()  # para tener historial.id y marcarlo en los movimientos completados
+
+    # Completar con el banco los movimientos rápidos emparejados (1:1).
+    ids_completar = {i["match_id"] for i in resultado["review"] if i["estado"] == "completado"}
+    registrados = (
+        {m.id: m for m in db.query(Movimiento).filter(Movimiento.id.in_(ids_completar), Movimiento.usuario_id == usuario.id).all()}
+        if ids_completar else {}
+    )
+    for item in resultado["review"]:
+        if item["estado"] != "completado":
+            continue
+        mov = registrados.get(item["match_id"])
+        if mov is None or mov.conciliado_en is not None:
+            item["estado"] = "faltante"  # alguien lo concilió entretanto: se trata como nuevo
+            item.pop("match_id", None)
+            item["categoria_sugerida"] = "Otros"
+            resultado["faltantes"] += 1
+            resultado["completados"] -= 1
+            continue
+        _completar_con_extracto(db, mov, item, historial.id, modelo, usuario.id)
+
+    # Registrados que no aparecen en el extracto: se guardan en la revisión.
+    for s in resultado.get("sobrantes", []):
+        resultado["review"].append({
+            "fecha": s["fecha"], "descripcion": s["descripcion"], "monto": s["monto"], "tipo": s["tipo"],
+            "referencia": "", "fingerprint": f"sobrante-{s['id']}", "estado": "sobrante", "match_id": s["id"],
+        })
+
+    historial.review_json = json.dumps(resultado["review"], default=str)
     db.commit()
     db.refresh(historial)
+    completados, sobrantes = _contar_review(resultado["review"])
 
     return ProcesarExtractoResponse(
         ok=True,
@@ -166,6 +197,8 @@ def procesar_extracto(
         descartados=descartados,
         review=resultado["review"],
         auto_importados=auto_importados,
+        completados=completados,
+        sobrantes=sobrantes,
     )
 
 
@@ -195,6 +228,8 @@ def obtener_review(
     if not historial:
         raise HTTPException(status_code=404, detail="Historial no encontrado")
 
+    review = json.loads(historial.review_json or "[]")
+    completados, sobrantes = _contar_review(review)
     return ProcesarExtractoResponse(
         ok=True,
         historial_id=historial.id,
@@ -204,7 +239,9 @@ def obtener_review(
         aproximados=historial.aproximados,
         faltantes=historial.faltantes,
         descartados=historial.descartados or 0,
-        review=json.loads(historial.review_json or "[]"),
+        review=review,
+        completados=completados,
+        sobrantes=sobrantes,
     )
 
 
@@ -303,6 +340,15 @@ def eliminar_historial(
     return {"ok": True}
 
 
+FUENTES_RAPIDAS = ("wallet", "apple_pay", "google_pay", "shortcut", "cierre_app", "voz")
+DESCRIPCION_POR_DEFECTO = "Movimiento en "  # la pone el registro de cierre de app cuando no hay nota
+
+
+def es_movimiento_rapido(m: Movimiento) -> bool:
+    """Registrado por Wallet / atajo / cierre de app / voz (no por el extracto ni a mano en la app)."""
+    return (m.cat_origen in ORIGENES_RAPIDOS) or (m.fuente in FUENTES_RAPIDAS)
+
+
 def _cargar_ledger(db: Session, usuario_id: str, cuenta_id: str) -> list[dict]:
     movimientos = (
         db.query(Movimiento)
@@ -316,8 +362,50 @@ def _cargar_ledger(db: Session, usuario_id: str, cuenta_id: str) -> list[dict]:
             "id": m.id,
             "fecha": m.fecha,
             "monto": m.monto,
+            "tipo": m.tipo,
             "descripcion": m.descripcion,
             "cuenta_origen": cuenta_id,
             "fingerprint": fp,
+            "rapido": es_movimiento_rapido(m),
+            "conciliado": m.conciliado_en is not None,
         })
     return ledger
+
+
+def _completar_con_extracto(db: Session, mov: Movimiento, item: dict, historial_id: str, modelo, usuario_id: str) -> None:
+    """Completa un movimiento rápido con los datos reales del banco.
+
+    - La descripción pasa a ser la del banco; si el usuario había escrito una
+      propia (nota del Atajo, voz) se conserva en `notas`. La descripción de
+      Wallet no cuenta como propia: ya es el comercio.
+    - Categoría: si la nota ya la había clasificado, se respeta; si seguía en
+      'Otros', se sugiere con el clasificador usando el texto del banco.
+    - Queda conciliado (no se vuelve a emparejar) y, si la categoría ya no es
+      'Otros', confirmado (sale de la bandeja 'por confirmar').
+    El monto y el saldo NO se tocan: si difieren, se informa en la revisión."""
+    propia = (mov.descripcion or "").strip()
+    es_propia = bool(propia) and not propia.startswith(DESCRIPCION_POR_DEFECTO) and mov.fuente not in ("wallet", "apple_pay", "google_pay")
+    if es_propia and normalize_texto(propia) != normalize_texto(item["descripcion"]):
+        mov.notas = ((mov.notas + " · ") if mov.notas else "") + f"Nota: {propia}"
+    mov.descripcion = item["descripcion"]
+
+    categoria = mov.categoria or "Otros"
+    if categoria == "Otros":
+        clasif = classify(item["descripcion"], modelo) or clasificar_por_diccionario(item["descripcion"])
+        if clasif:
+            categoria = ajustar_a_categorias_usuario(db, usuario_id, clasif["categoria"])
+    mov.categoria = categoria
+    if categoria != "Otros":
+        mov.cat_confirmada = True
+    mov.conciliado_en = ahora_co()
+    mov.extracto_id = historial_id
+    item["categoria_sugerida"] = categoria
+    item["descripcion_registrada"] = propia
+    item["monto_registrado"] = mov.monto
+
+
+def _contar_review(review: list[dict]) -> tuple[int, int]:
+    return (
+        sum(1 for i in review if i.get("estado") == "completado"),
+        sum(1 for i in review if i.get("estado") == "sobrante"),
+    )

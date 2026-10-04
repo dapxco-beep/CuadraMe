@@ -27,6 +27,7 @@ from app.limites import verificar_limite
 from app.wallet import (
     FUENTES_POR_CONFIRMAR,
     ORIGEN_ATAJO,
+    ORIGEN_CIERRE_APP,
     ORIGEN_WALLET,
     fecha_razonable,
     formato_cop,
@@ -556,24 +557,31 @@ def _registrar_movimiento_rapido(
         if moneda_cuenta == "COP":
             monto = round(convertir_a_cop(monto, moneda_orig), 2)
 
+    es_cierre = origen_auto == ORIGEN_CIERRE_APP
+    nota_usuario = (descripcion or "").strip()
+    if es_cierre and not nota_usuario:
+        descripcion = f"Movimiento en {cuenta.nombre}"
     if detectar_duplicado:
-        ventana = timedelta(minutes=2)
-        existente = (
-            db.query(Movimiento)
-            .filter(
-                Movimiento.cuenta_id == cuenta.id,
-                Movimiento.tipo == tipo,
-                Movimiento.monto == monto,
-                func.lower(Movimiento.descripcion) == descripcion.lower(),
-                Movimiento.fecha >= momento - ventana,
-                Movimiento.fecha <= momento + ventana,
-            )
-            .first()
-        )
+        # Cierre de app: el Atajo no trae comercio, así que un reintento se
+        # reconoce por monto+cuenta+tipo en ±1 min. Wallet/atajo: ±2 min y mismo comercio.
+        ventana = timedelta(minutes=1 if es_cierre else 2)
+        filtros = [
+            Movimiento.cuenta_id == cuenta.id,
+            Movimiento.tipo == tipo,
+            Movimiento.monto == monto,
+            Movimiento.fecha >= momento - ventana,
+            Movimiento.fecha <= momento + ventana,
+        ]
+        if es_cierre:
+            filtros.append(Movimiento.fuente == "cierre_app")
+        else:
+            filtros.append(func.lower(Movimiento.descripcion) == descripcion.lower())
+        existente = db.query(Movimiento).filter(*filtros).first()
         if existente:
             return existente, cuenta, True
 
-    resultado = _clasificar(db, usuario_id, descripcion)
+    # Sin nota no hay nada que clasificar: el cierre de app queda en 'Otros'.
+    resultado = None if (es_cierre and not nota_usuario) else _clasificar(db, usuario_id, descripcion)
     categoria = resultado["categoria"] if resultado else "Otros"
     if origen_auto:
         auto = {"cat_origen": origen_auto, "cat_confirmada": False}
@@ -612,9 +620,11 @@ def crear_movimiento_rapido(
     Tasker y reglas de correo. El movimiento se crea al instante pero queda
     'por confirmar': la app le pregunta al usuario si es suyo. Un reintento del
     mismo pago (±2 min) responde 200 con el movimiento que ya existía."""
-    es_wallet = bool(data.comercio or data.tarjeta) or data.fuente in ("wallet", "apple_pay", "google_pay")
-    descripcion = data.comercio or data.descripcion
+    es_cierre = data.fuente == "cierre_app" and not data.comercio and not data.tarjeta
+    es_wallet = not es_cierre and (bool(data.comercio or data.tarjeta) or data.fuente in ("wallet", "apple_pay", "google_pay"))
+    descripcion = data.comercio or data.descripcion  # en cierre_app puede ser None: la nota es opcional
     fuente = data.fuente if data.fuente in ("apple_pay", "google_pay") else ("wallet" if es_wallet else data.fuente)
+    origen = ORIGEN_CIERRE_APP if es_cierre else (ORIGEN_WALLET if es_wallet else ORIGEN_ATAJO)
     mov, cuenta, duplicado = _registrar_movimiento_rapido(
         db,
         usuario.id,
@@ -626,7 +636,7 @@ def crear_movimiento_rapido(
         tarjeta=data.tarjeta,
         fecha=data.fecha,
         moneda=data.moneda,
-        origen_auto=ORIGEN_WALLET if es_wallet else ORIGEN_ATAJO,
+        origen_auto=origen,
         detectar_duplicado=True,
     )
     signo = "Ingreso" if mov.tipo == "income" else "Gasto"

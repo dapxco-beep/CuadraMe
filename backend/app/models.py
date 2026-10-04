@@ -143,6 +143,10 @@ class Movimiento(Base):
     # similar | sugerida). Lo que escribe el usuario nace confirmado.
     cat_origen = Column(String, nullable=True)
     cat_confirmada = Column(Boolean, default=True)
+    # Cruce con el extracto: un movimiento rápido (Wallet, cierre de app...) se
+    # completa con los datos del banco y queda conciliado (no se vuelve a tocar).
+    conciliado_en = Column(DateTime, nullable=True)
+    extracto_id = Column(String, nullable=True)
 
 
 class Presupuesto(Base):

@@ -86,6 +86,9 @@ if engine.dialect.name == "postgresql":
         conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS alias_tarjeta VARCHAR"))
         conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS recordatorio_diario BOOLEAN DEFAULT FALSE"))
         conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS ultimo_recordatorio VARCHAR"))
+        # Cruce con el extracto (supabase/migraciones/cierre_app_conciliacion.sql).
+        conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS conciliado_en TIMESTAMP NULL"))
+        conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS extracto_id VARCHAR NULL"))
         # Casi toda consulta filtra por cuenta y ordena/filtra por fecha.
         conn.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_movimientos_cuenta_fecha "
