@@ -11,6 +11,7 @@ import { DialogosProvider } from './lib/DialogosContext'
 import { BloqueoProvider, useBloqueo } from './lib/BloqueoContext'
 import PantallaBloqueo from './components/PantallaBloqueo'
 import BottomNav from './components/BottomNav'
+import BandejaPorConfirmar from './components/BandejaPorConfirmar'
 import SplashMarca, { splashPendiente } from './brand/SplashMarca'
 import { CargandoMarca } from './brand/Marca'
 import Login from './screens/Login'
@@ -119,6 +120,8 @@ function AppGate() {
       </Routes>
       </Suspense>
       <BottomNav />
+      {/* "¿Son tuyos?": al abrir y al volver a primer plano, movimientos que llegaron solos */}
+      <BandejaPorConfirmar />
     </>
   )
 }

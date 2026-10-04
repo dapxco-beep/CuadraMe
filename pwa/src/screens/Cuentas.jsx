@@ -175,6 +175,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
   const [icono, setIcono] = useState(cuenta?.icono || '🏦')
   const [moneda, setMoneda] = useState(cuenta?.moneda || 'COP')
   const [saldoInicial, setSaldoInicial] = useState('')
+  const [alias, setAlias] = useState(cuenta?.alias_tarjeta || '')
   const [guardando, setGuardando] = useState(false)
   const [eliminando, setEliminando] = useState(false)
   const [error, setError] = useState('')
@@ -187,9 +188,12 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
     setGuardando(true)
     try {
       if (esEdicion) {
-        await api.editarCuenta(cuenta.id, { nombre: nombre.trim(), tipo, icono })
+        await api.editarCuenta(cuenta.id, { nombre: nombre.trim(), tipo, icono, alias_tarjeta: alias.trim() })
       } else {
-        await api.crearCuenta({ nombre: nombre.trim(), tipo, icono, moneda, saldo: Number(saldoInicial) || 0 })
+        await api.crearCuenta({
+          nombre: nombre.trim(), tipo, icono, moneda, saldo: Number(saldoInicial) || 0,
+          ...(alias.trim() ? { alias_tarjeta: alias.trim() } : {}),
+        })
       }
       onGuardada()
     } catch (err) {
@@ -284,6 +288,22 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
             />
           </>
         )}
+
+        <label className="block mb-4">
+          <span className="text-xs font-medium text-ink-soft">Alias de la tarjeta en Wallet (opcional)</span>
+          <input
+            value={alias}
+            onChange={(e) => setAlias(e.target.value)}
+            maxLength={120}
+            placeholder="ej. Visa Bancolombia, 1234"
+            aria-label="Alias de tarjeta"
+            className="w-full mt-1 rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm outline-none focus:border-accent"
+          />
+          <span className="block text-[11px] text-ink-soft mt-1">
+            Cuando pagues con el celular, asignamos el pago a esta cuenta si el nombre de la tarjeta contiene este texto.
+            Puedes poner varios separados por coma.
+          </span>
+        </label>
 
         {esEdicion && (
           <p className="text-xs text-ink-soft mb-4">

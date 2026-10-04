@@ -1,3 +1,7 @@
+// ALTERNATIVA LEGADA: ya no es la vía recomendada. La app (Perfil → Conectar tu
+// celular) guía ahora el disparador «Transacción» de Atajos de iOS, que entrega
+// comercio y monto exactos sin Scriptable ni leer notificaciones.
+//
 // CuadraMe — registro automático de movimientos desde notificaciones bancarias.
 // Se ejecuta desde un Atajo de iOS (acción "Ejecutar script" de Scriptable)
 // disparado por una automatización personal "cuando llega una notificación

@@ -2,8 +2,8 @@ import { supabase } from './supabase'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-async function request(path, { method = 'GET', body, auth = true } = {}) {
-  const headers = { 'Content-Type': 'application/json' }
+async function request(path, { method = 'GET', body, auth = true, headers: extra } = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(extra || {}) }
   if (auth) {
     const { data } = await supabase.auth.getSession()
     const token = data.session?.access_token
@@ -84,6 +84,20 @@ export const api = {
   movimientos: (limit = 100, offset = 0, { porRevisar = false } = {}) =>
     request(`/movimientos?limit=${limit}&offset=${offset}${porRevisar ? '&por_revisar=true' : ''}`),
   conteoPorRevisar: () => request('/movimientos/por-revisar/conteo'),
+  // Bandeja "¿son tuyos?": movimientos que llegaron solos (Wallet, atajos) sin confirmar.
+  movimientosPorConfirmar: () => request('/movimientos/por-confirmar'),
+  // Pago de prueba del asistente de instalación: usa la API key, igual que el Atajo real,
+  // para comprobar de punta a punta que la clave y la conexión funcionan.
+  pagoDePrueba: (apiKey) =>
+    request('/movimientos/rapido', {
+      method: 'POST',
+      auth: false,
+      headers: { 'X-Api-Key': apiKey },
+      body: { comercio: 'Pago de prueba CuadraMe', monto: '1.000', tarjeta: 'Prueba CuadraMe', moneda: 'COP', fuente: 'wallet' },
+    }),
+  recordatorioDiario: () => request('/perfil/recordatorio-diario'),
+  actualizarRecordatorioDiario: (activo) =>
+    request('/perfil/recordatorio-diario', { method: 'PUT', body: { activo } }),
   confirmarCategorias: (movimientoIds) =>
     request('/movimientos/confirmar-categorias', {
       method: 'POST',

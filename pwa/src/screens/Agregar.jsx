@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Calendar, Camera, Image as ImagenIcono, Sparkles, Users, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { prepararImagen } from '../lib/imagen'
@@ -46,6 +46,13 @@ export default function Agregar() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const carruselRef = useRef(null)
+  const montoRef = useRef(null)
+  const [params] = useSearchParams()
+  // "Registrar gasto" desde la pregunta de Inicio abre aquí con el cursor en el monto
+  // (teclado numérico listo), para registrar en un par de toques.
+  useEffect(() => {
+    if (params.get('foco') === 'monto') montoRef.current?.focus()
+  }, [params])
   const [escaneando, setEscaneando] = useState(false)
   const [factura, setFactura] = useState(null) // datos extra leídos de la foto (solo informativos)
   const [errorFactura, setErrorFactura] = useState('')
@@ -296,6 +303,8 @@ export default function Agregar() {
             onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
             placeholder="0"
             inputMode="numeric"
+            ref={montoRef}
+            aria-label="Monto"
             className="bg-transparent outline-none text-6xl font-semibold text-center w-full tabular-nums placeholder:text-ink-soft/40"
           />
         </div>
