@@ -303,3 +303,13 @@ def test_recordatorio_no_envia_antes_de_las_8pm(monkeypatch):
     monkeypatch.setattr(mod, "ahora_co", lambda: ahora_co().replace(hour=15))
     r = client.post("/push/cron/recordar-registro", headers=CRON).json()
     assert r["enviados"] == 0 and not enviados
+
+
+def test_rapido_acepta_claves_con_mayusculas_y_en_espanol():
+    """El Atajo puede enviar 'Comercio', 'Importe' o 'Tarjeta o pase' tal cual."""
+    from app.schemas import MovimientoRapidoCreate
+
+    m = MovimientoRapidoCreate.model_validate(
+        {"Comercio": "Juan Valdez", "Importe": "45.000,00", "Tarjeta o pase": "Nu Débito"}
+    )
+    assert m.comercio == "Juan Valdez" and m.monto == 45000 and m.tarjeta == "Nu Débito"

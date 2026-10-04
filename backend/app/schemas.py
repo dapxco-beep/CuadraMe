@@ -250,9 +250,13 @@ class MovimientoRapidoCreate(BaseModel):
             return datos
         from app.wallet import parse_monto_co
 
-        d = dict(datos)
-        # Nombres que usa iOS en inglés y variantes del Atajo.
-        for original, destino in (("merchant", "comercio"), ("amount", "monto"), ("card", "tarjeta"),
+        # Las claves llegan como las escribió quien armó el Atajo ("Comercio", "Monto"...):
+        # se pasan a minúsculas para no depender de eso.
+        d = {str(k).strip().lower(): v for k, v in datos.items()}
+        # Nombres que usa iOS (en inglés y en español) y variantes del Atajo.
+        for original, destino in (("comerciante", "comercio"), ("importe", "monto"), ("cantidad", "monto"),
+                                  ("tarjeta_o_pase", "tarjeta"), ("tarjeta o pase", "tarjeta"),
+                                  ("merchant", "comercio"), ("amount", "monto"), ("card", "tarjeta"),
                                   ("nombre_tarjeta", "tarjeta"), ("tarjeta_nombre", "tarjeta"),
                                   ("date", "fecha"), ("currency", "moneda"), ("name", "descripcion")):
             if d.get(destino) in (None, "") and d.get(original) not in (None, ""):
