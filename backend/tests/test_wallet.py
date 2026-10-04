@@ -361,3 +361,20 @@ def test_cierre_avisa_si_la_cuenta_pedida_no_existe_y_no_si_existe():
     assert r.status_code == 200, r.text
     assert r.json()["cuenta_nombre"] == "Nequi"
     assert "no encontré" not in r.json()["mensaje"]
+
+
+def test_cuentas_para_el_atajo_lista_de_textos_con_clave():
+    """GET /movimientos/cuentas-rapido: lista simple de nombres para 'Elegir de la lista'."""
+    clave, _ = _usuario("w-lst", [("Nequi", None, 0), ("Bancolombia", None, 0)])
+    r = client.get("/movimientos/cuentas-rapido", headers={"X-Api-Key": clave})
+    assert r.status_code == 200
+    assert r.json() == ["Bancolombia", "Nequi"]
+
+    # Sin clave o con clave mala, el error trae 'mensaje' legible para la notificación.
+    assert client.get("/movimientos/cuentas-rapido").status_code == 422
+    r = client.get("/movimientos/cuentas-rapido", headers={"X-Api-Key": "cm_mala"})
+    assert r.status_code == 401 and "clave" in r.json()["mensaje"].lower()
+
+    # Solo ve sus propias cuentas.
+    clave2, _ = _usuario("w-lst2", [("Daviplata", None, 0)])
+    assert client.get("/movimientos/cuentas-rapido", headers={"X-Api-Key": clave2}).json() == ["Daviplata"]

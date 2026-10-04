@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
-RUTAS = ("/movimientos/rapido",)
+RUTAS = ("/movimientos/rapido", "/movimientos/cuentas-rapido")
 
 # Nombre del campo tal como lo ve el usuario al armar el Atajo.
 _CAMPOS = {

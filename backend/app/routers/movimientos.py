@@ -264,6 +264,20 @@ def recategorizar_comercio(
     return {"ok": True, "actualizados": actualizados, "patron": patron}
 
 
+# Va antes de "/{movimiento_id}" para que no la confunda con un id.
+@router.get("/cuentas-rapido", response_model=list[str])
+def cuentas_para_atajo(
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user_by_api_key),
+):
+    """Nombres de las cuentas del usuario, autenticado por API key, para que un Atajo
+    de iPhone las muestre en 'Elegir de la lista' en vez de llevar un nombre fijo.
+    Responde una lista simple de textos: Atajos la entiende directo como lista."""
+    verificar_limite(f"cuentas-rapido:{usuario.id}", 60, 3600, "Demasiadas consultas seguidas. Intenta en un rato.")
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).order_by(Cuenta.nombre).all()
+    return [c.nombre for c in cuentas]
+
+
 @router.get("/{movimiento_id}", response_model=MovimientoOut)
 def obtener_movimiento(
     movimiento_id: str,
