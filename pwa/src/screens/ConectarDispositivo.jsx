@@ -19,10 +19,10 @@ const JSON_DEL_ATAJO = `{
 }`
 
 const JSON_CIERRE_APP = `{
-  "tipo": "<Gasto o Ingreso, el que elegiste>",
-  "monto": "<Monto que escribiste>",
-  "descripcion": "<Nota que escribiste (puede ir vacía)>",
-  "cuenta": "Nequi",
+  "tipo": "<Resultado del menú: Gasto o Ingreso>",
+  "monto": "<variable monto>",
+  "descripcion": "<variable nota (puede ir vacía)>",
+  "cuenta": "<Entrada del atajo: el nombre de la cuenta>",
   "fuente": "cierre_app"
 }`
 
@@ -165,7 +165,7 @@ function CapturaClave() {
 function CapturaAtajo() {
   return (
     <Pantalla titulo="Dibujo: el Atajo con la acción Obtener contenido de URL">
-      <text x="14" y="20" fontSize="10" fontWeight="700" className="fill-ink">CuadraMe Wallet</text>
+      <text x="14" y="20" fontSize="10" fontWeight="700" className="fill-ink">CuadraMe Apple Pay</text>
       <Fila y={28} ancho={110} resaltada etiqueta="Obtener contenido de URL" />
       <Fila y={54} ancho={90} etiqueta="POST · JSON" />
       <Fila y={80} ancho={100} etiqueta="X-Api-Key" />
@@ -190,7 +190,7 @@ function Flecha({ x1, y1, x2, y2 }) {
 
 function DiagramaAtajo() {
   return (
-    <svg viewBox="0 0 320 170" className="w-full h-auto" role="img" aria-label="Diagrama: Apple Pay y el cierre de Nequi llaman al mismo Atajo, que registra en CuadraMe">
+    <svg viewBox="0 0 320 170" className="w-full h-auto" role="img" aria-label="Diagrama: Apple Pay y el cierre de cualquier app registran en CuadraMe, cada uno con su Atajo">
       <defs>
         <marker id="punta" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M0 0 L10 5 L0 10 z" className="fill-accent" />
@@ -200,7 +200,7 @@ function DiagramaAtajo() {
       <text x="56" y="34" fontSize="10" fontWeight="700" textAnchor="middle" className="fill-ink">Apple Pay</text>
       <text x="56" y="49" fontSize="8" textAnchor="middle" className="fill-ink-soft">Transacción</text>
       <rect x="4" y="108" width="104" height="48" rx="10" className="fill-paper-raised stroke-line" strokeWidth="1.5" />
-      <text x="56" y="128" fontSize="10" fontWeight="700" textAnchor="middle" className="fill-ink">Cierre de Nequi</text>
+      <text x="56" y="128" fontSize="10" fontWeight="700" textAnchor="middle" className="fill-ink">Cierre de una app</text>
       <text x="56" y="143" fontSize="8" textAnchor="middle" className="fill-ink-soft">App → Se cierra</text>
       <Flecha x1="108" y1="38" x2="136" y2="70" />
       <Flecha x1="108" y1="132" x2="136" y2="100" />
@@ -454,7 +454,7 @@ export default function ConectarDispositivo() {
                   <summary className="text-sm font-semibold text-ink cursor-pointer">Armar el Atajo a mano</summary>
                   <ol className="list-decimal pl-5 mt-2 space-y-2 text-sm">
                     <li>
-                      Abre <b>Atajos</b> → pestaña «Atajos» → <b>+</b>. Nómbralo «CuadraMe Wallet».{' '}
+                      Abre <b>Atajos</b> → pestaña «Atajos» → <b>+</b>. Nómbralo «CuadraMe Apple Pay».{' '}
                       <a href="shortcuts://create-shortcut" className="text-accent font-semibold inline-flex items-center gap-0.5">
                         Abrir Atajos <ExternalLink size={12} />
                       </a>
@@ -480,13 +480,15 @@ export default function ConectarDispositivo() {
                       <b>Mostrar notificación</b> con ese valor: verás «Gasto de $18.500 en Juan Valdez…» al pagar.
                     </li>
                     <li>
-                      Para la otra automatización, antes de todo pon un <b>Si</b> sobre la entrada del Atajo. Si trae datos
-                      (viene de Apple Pay) usa lo de arriba. Si no trae nada (viene del cierre de la app), usa{' '}
-                      <b>Elegir del menú</b> «¿Hiciste algún movimiento?» con Gasto / Ingreso / No. En «No» no hagas nada. En
-                      Gasto e Ingreso usa <b>Solicitar entrada</b> (número) para el monto y otra (texto) para la nota, y manda
-                      este cuerpo al mismo URL con los mismos encabezados:
+                      Para el cierre de una app crea un <b>segundo Atajo</b>, «CuadraMe Cierre», más corto: acción{' '}
+                      <b>Texto</b> con tu clave; <b>Elegir del menú</b> «¿Hiciste algún movimiento?» con Gasto / Ingreso /
+                      No (en «No» pon <b>Detener este atajo</b>; en las otras no pongas nada); <b>Solicitar entrada</b>{' '}
+                      (número) «¿Cuánto fue?» y <b>Establecer variable</b> <b>monto</b>; <b>Solicitar entrada</b> (texto)
+                      «¿En qué?» y <b>Establecer variable</b> <b>nota</b>. Luego <b>Obtener contenido de URL</b> igual que
+                      arriba, con este cuerpo, y por último <b>Obtener valor del diccionario</b> (mensaje) y{' '}
+                      <b>Mostrar notificación</b>:
                       <pre className="mt-1.5 text-[10px] leading-relaxed whitespace-pre-wrap rounded-lg bg-paper p-2.5 border border-line text-ink">{JSON_CIERRE_APP}</pre>
-                      Cambia «Nequi» por el nombre de tu cuenta en CuadraMe. Si dejas la nota vacía, se guarda como «Movimiento en Nequi».
+                      Si dejas la nota vacía, se guarda como «Movimiento en» y el nombre de la cuenta.
                     </li>
                   </ol>
                 </details>
@@ -495,7 +497,7 @@ export default function ConectarDispositivo() {
               <Paso n={3} titulo="Automatización 1: pagos con Apple Pay" dibujo={<CapturaAutomatizacion />}>
                 <p>
                   En <b>Atajos → Automatización → +</b> elige <b>Transacción</b>, selecciona tus tarjetas de Wallet,
-                  marca <b>Ejecutar inmediatamente</b> y como acción elige el Atajo «CuadraMe Wallet».
+                  marca <b>Ejecutar inmediatamente</b> y como acción elige el Atajo «CuadraMe Apple Pay».
                 </p>
                 <a href="shortcuts://" className="text-accent font-semibold text-sm inline-flex items-center gap-1">
                   Abrir Atajos <ExternalLink size={13} />
@@ -506,15 +508,23 @@ export default function ConectarDispositivo() {
                 </p>
               </Paso>
 
-              <Paso n={4} titulo="Automatización 2: cierre de la app de tu banco">
+              <Paso n={4} titulo="Automatización 2: cierre de una app (una por app)">
                 <p>
-                  En <b>Atajos → Automatización → +</b> elige <b>App</b>, marca <b>Se cierra</b>, elige la app (Nequi,
-                  Daviplata o tu banco), marca <b>Ejecutar inmediatamente</b> y como acción elige el mismo Atajo
-                  «CuadraMe Wallet».
+                  En <b>Atajos → Automatización → +</b> elige <b>App</b>, marca <b>Se cierra</b> y elige la app (Nequi,
+                  Daviplata o tu banco). Añade <b>dos acciones</b>:
                 </p>
+                <ol className="list-decimal pl-5 space-y-1 text-sm">
+                  <li>
+                    <b>Texto</b> con el nombre de la cuenta, por ejemplo <b>Nequi</b>. Escríbelo como tienes la cuenta en
+                    CuadraMe.
+                  </li>
+                  <li>
+                    <b>Ejecutar atajo</b> → «CuadraMe Cierre», y en <b>Entrada</b> elige ese Texto.
+                  </li>
+                </ol>
                 <p className="text-xs">
-                  Tip: si usas varias apps, el nombre de la cuenta del cuerpo debe coincidir con la app. Puedes crear una
-                  automatización por app con una copia del Atajo, cada una con su cuenta.
+                  Desactiva «Preguntar antes de ejecutar». Repite esto una vez por cada app que quieras vigilar: el mismo
+                  Atajo sirve para todas y cada movimiento cae en la cuenta correcta.
                 </p>
               </Paso>
 

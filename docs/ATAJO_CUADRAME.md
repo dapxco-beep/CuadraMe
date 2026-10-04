@@ -1,105 +1,91 @@
-# Atajo de CuadraMe para iPhone
+# Atajos de CuadraMe para iPhone
 
-Un solo atajo, llamado desde dos automatizaciones. Esta guía sirve para armarlo una vez (tú) y para entender qué ve el cliente.
+Dos atajos pequeños, en lugar de uno grande, para que sean fáciles de armar en el celular. La versión paso a paso con maquetas está en `docs/crear-atajos-cuadrame.html`.
 
-## Cómo funciona
+| Atajo | Lo llama | Qué recibe | Qué hace |
+|---|---|---|---|
+| **CuadraMe Apple Pay** | Automatización **Transacción** | Comercio, importe y tarjeta | Registra el pago directo, sin preguntar |
+| **CuadraMe Cierre** | Una automatización **App → Se cierra** por cada app | El nombre de la cuenta, como texto | Pregunta "¿Hiciste algún movimiento?" y registra lo que el cliente conteste |
 
-| Quién lo llama | Qué recibe el atajo | Qué hace |
-|---|---|---|
-| Automatización **Transacción** (Apple Pay) | Comercio, importe y tarjeta | Registra el pago directo, sin preguntar |
-| Automatización **App → Se cierra** (Nequi, Daviplata, un banco) | Nada | Pregunta "¿Hiciste algún movimiento?" y registra lo que el cliente conteste |
+iOS no le dice al atajo qué app se cerró. Por eso cada automatización de cierre de app lleva dos acciones: un **Texto** con el nombre de la cuenta (`Nequi`) y **Ejecutar atajo** `CuadraMe Cierre` con ese texto como entrada. El nombre de la cuenta nunca queda fijo dentro del atajo.
 
-En los dos casos el movimiento queda **por confirmar** en CuadraMe. Al abrir la app, el cliente lo confirma, lo edita o lo descarta. Cuando llega el extracto del banco, la conciliación lo cruza por fecha, hora y monto, y lo completa con el destinatario real.
-
-## Estructura del atajo
-
-Nombre: `CuadraMe – registrar pago`
-
-```
-1. Texto                          → tu clave de CuadraMe (queda VACÍO al compartir)
-2. Texto                          → nombre de la cuenta para el cierre de app (por defecto: Nequi)
-3. Si  [Entrada del atajo]  tiene algún valor
-   │
-   │  ── Camino A: Apple Pay ──
-   ├─ 4. Obtener contenido de URL      POST …/movimientos/rapido
-   │      Encabezado   X-Api-Key = Texto (paso 1)
-   │      Cuerpo JSON  comercio = Entrada del atajo › Comercio
-   │                   monto    = Entrada del atajo › Importe
-   │                   tarjeta  = Entrada del atajo › Tarjeta o pase
-   │                   fuente   = wallet
-   ├─ 5. Obtener valor del diccionario  clave: mensaje
-   ├─ 6. Mostrar notificación           (valor del paso 5)
-   │
-   │  ── Camino B: cierre de la app ──
-   └─ Si no
-        7. Elegir del menú  "¿Hiciste algún movimiento?"
-           ├─ Gasto
-           │    8. Pedir entrada  (Número)  "¿Cuánto fue?"
-           │    9. Pedir entrada  (Texto)   "¿En qué? (opcional)"
-           │   10. Obtener contenido de URL   POST …/movimientos/rapido
-           │         Encabezado  X-Api-Key = Texto (paso 1)
-           │         Cuerpo JSON tipo = gasto, monto = (paso 8),
-           │                     descripcion = (paso 9), cuenta = Texto (paso 2),
-           │                     fuente = cierre_app
-           │   11. Obtener valor del diccionario  clave: mensaje
-           │   12. Mostrar notificación
-           ├─ Ingreso   (igual que Gasto, con tipo = ingreso)
-           └─ No        13. Detener este atajo
-   Fin Si
-```
+En todos los casos el movimiento queda **por confirmar**. Al abrir la app, el cliente lo confirma, lo edita o lo descarta. Con el extracto, la conciliación lo cruza por fecha, hora y monto y lo completa con el destinatario real.
 
 URL del servidor: `https://backend-production-aeab.up.railway.app/movimientos/rapido`
 
-## Cómo armarlo en el iPhone
+## Atajo 1 · CuadraMe Apple Pay
 
-1. App **Atajos → Atajos → +**. Nómbralo `CuadraMe – registrar pago`.
-2. Añade **Texto** (paso 1) y pega tu clave (Perfil → Conectar dispositivo → Copiar clave).
-3. Añade otro **Texto** (paso 2) con `Nequi`.
-4. Añade **Si**. En la condición elige **Entrada del atajo** y **tiene algún valor**.
-5. Dentro del "Si", crea el Camino A:
-   - **Obtener contenido de URL**, método POST, encabezado `X-Api-Key`.
-   - Cuerpo **JSON** con los cuatro campos. Para cada valor toca **Seleccionar variable → Entrada del atajo**, vuelve a tocar la burbuja azul y elige la propiedad (Comercio, Importe, Tarjeta o pase).
-   - Si la lista de propiedades no se abre, crea primero la automatización de Transacción y vuelve.
-   - **Obtener valor del diccionario** (clave `mensaje`) y **Mostrar notificación**.
-6. En el "Si no", crea el Camino B con **Elegir del menú** y las tres opciones. Dentro de Gasto e Ingreso usa **Pedir entrada**, tipo Número y tipo Texto.
-7. En cada **Obtener contenido de URL** del Camino B, el campo `monto` debe usar la burbuja del resultado de **Pedir entrada**, no una "Entrada del atajo".
-8. Pregunta de importación para la clave: **⋯ → Configuración → Añadir pregunta de importación**, ligada al texto del paso 1. Pregunta sugerida: `Pega tu clave de CuadraMe (la app ya la copió)`.
-9. Opcional: otra pregunta de importación para el paso 2 (`¿Cómo se llama tu cuenta de Nequi en CuadraMe?`).
+```
+1  Texto                           tu clave (queda VACÍA al compartir; pregunta de importación)
+2  Obtener contenido de URL        POST …/movimientos/rapido
+                                   Encabezado  X-Api-Key = Texto (paso 1)
+                                   Cuerpo JSON comercio = Entrada del atajo › Comercio
+                                               monto    = Entrada del atajo › Importe
+                                               tarjeta  = Entrada del atajo › Tarjeta o pase
+                                               fuente   = wallet
+3  Obtener valor del diccionario   mensaje
+4  Mostrar notificación
+```
 
-## Las dos automatizaciones
+## Atajo 2 · CuadraMe Cierre
 
-**Apple Pay.** Atajos → Automatización → **+** → **Transacción** → elige tus tarjetas → **Siguiente** → ejecuta `CuadraMe – registrar pago` → desactiva "Preguntar antes de ejecutar" → **Ejecutar inmediatamente**.
+```
+1  Texto                           tu clave (queda VACÍA al compartir; pregunta de importación)
+2  Elegir del menú                 "¿Hiciste algún movimiento?"  →  Gasto · Ingreso · No
+   │  No: Detener este atajo       (Gasto e Ingreso no llevan acciones dentro)
+3  Pedir entrada (Número)          "¿Cuánto fue?"      →  Establecer variable  monto
+4  Pedir entrada (Texto)           "¿En qué? (opcional)" →  Establecer variable  nota
+5  Obtener contenido de URL        POST …/movimientos/rapido
+                                   Encabezado  X-Api-Key = Texto (paso 1)
+                                   Cuerpo JSON tipo        = Resultado del menú
+                                               monto       = monto
+                                               descripcion = nota
+                                               cuenta      = Entrada del atajo
+                                               fuente      = cierre_app
+6  Obtener valor del diccionario   mensaje
+7  Mostrar notificación
+```
 
-**Cierre de Nequi.** Atajos → Automatización → **+** → **App** → elige Nequi → marca **Se cierra** (desmarca "Se abre") → **Siguiente** → ejecuta el mismo atajo → **Ejecutar inmediatamente**.
+El backend entiende `Gasto`/`Ingreso` en cualquier mayúscula, así que "Resultado del menú" se usa tal cual.
 
-Para otra app (Daviplata, tu banco), crea otra automatización igual. Si esa app va a una cuenta distinta de Nequi, duplica el atajo y cambia el texto del paso 2.
+## Las automatizaciones
+
+**Apple Pay (una).** Atajos → Automatización → **+** → **Transacción** → tarjetas → **Siguiente** → **Ejecutar atajo** `CuadraMe Apple Pay` → desactiva "Preguntar antes de ejecutar".
+
+**Cierre de una app (una por app).** Atajos → Automatización → **+** → **App** → la app → marca **Se cierra**, desmarca **Se abre** → **Siguiente** y añade dos acciones:
+1. **Texto**: `Nequi` (o `Daviplata`, `Bancolombia`…).
+2. **Ejecutar atajo** `CuadraMe Cierre`, con ese **Texto** como **Entrada**.
+Luego desactiva "Preguntar antes de ejecutar".
+
+El texto se busca entre las cuentas del cliente por nombre parcial. Si no coincide ninguna, cae en la primera cuenta.
 
 ## Cómo probarlo
 
-1. **Conexión.** Ejecuta el atajo a mano con el botón de play. Sin datos, entra por el Camino B y te muestra el menú. Elige Gasto, escribe `1000` y una nota. Debe aparecer la notificación de CuadraMe y, en la app, "Detectamos 1 movimiento".
-2. **Camino A.** Pulsa "Enviar un pago de prueba" en Perfil → Conectar dispositivo. Eso prueba el servidor, no el atajo.
-3. **Real.** Haz una compra pequeña con Apple Pay y mira que llegue el aviso en unos 5 segundos.
-4. **Cierre de app.** Abre Nequi y ciérrala: debe salir el menú de "¿Hiciste algún movimiento?".
+1. **Cierre de app.** Abre y cierra la app configurada: sale el menú. Elige Gasto, `1000` y una nota. Llega la notificación de CuadraMe.
+2. **En CuadraMe.** Aparece "Detectamos 1 movimiento". En **Perfil → Conexiones** el atajo muestra "último uso hace 1 min".
+3. **Apple Pay.** Compra pequeña con Apple Pay: aviso en unos 5 segundos.
+4. "Enviar un pago de prueba" en Conectar dispositivo prueba el servidor, no los atajos.
 
 ## Errores frecuentes
 
 | Síntoma | Causa | Arreglo |
 |---|---|---|
-| Error 401 | Clave vacía o con espacios | Pégala de nuevo en el paso 1 |
-| Error 422, "monto" | El campo recibió la "Entrada del atajo" completa | Toca la burbuja y elige la propiedad (Importe) |
-| La automatización no corre sola | Quedó con "Preguntar antes de ejecutar" | Cámbiala a "Ejecutar inmediatamente" |
-| Se ejecutó sin pedir nada | Entró por el Camino A con datos vacíos | Revisa que la condición sea "tiene algún valor" |
-| Pregunta cada vez que miras el saldo | El disparador salta al cerrar la app | Toca "No": es un toque |
+| 401 | Clave vacía o con espacios | Pégala de nuevo en el Texto |
+| 422 en `monto` | El campo recibió la entrada completa | Toca la burbuja y elige la propiedad (Importe) |
+| Cae en la cuenta equivocada | El texto no se parece al nombre de la cuenta | Cambia el Texto de la automatización |
+| No corre sola | Quedó con "Preguntar antes de ejecutar" | Desactívalo |
+| Pregunta cada vez que miras el saldo | El disparador salta al cerrar la app | Toca "No" |
 
-## Compartirlo con los clientes
+## Compartir con los clientes
 
-1. Vacía el texto de la clave (paso 1).
-2. Mantén pulsado el atajo → **Compartir → Copiar enlace de iCloud**.
-3. Pega el enlace en `ATAJO_ICLOUD_URL` de `pwa/src/screens/ConectarDispositivo.jsx`.
-4. Si cambias el atajo después, el enlace nuevo es otro. Los clientes que ya lo instalaron conservan su versión.
+1. Vacía el Texto de la clave en cada atajo y deja la pregunta de importación.
+2. Mantén pulsado cada atajo → **Compartir → Copiar enlace de iCloud**.
+3. Se revisan por dentro (clave vacía, propiedades elegidas, pregunta de importación) leyendo el enlace de iCloud.
+4. Se pegan los dos enlaces en `pwa/src/screens/ConectarDispositivo.jsx` (hoy solo existe la constante `ATAJO_ICLOUD_URL`, para el de Apple Pay; falta añadir la del cierre).
+5. Si cambias un atajo, el enlace nuevo es otro. Quien ya lo instaló conserva su versión.
 
 ## Lo que Apple no permite
 
 - Leer las notificaciones de otras apps.
-- Crear la automatización por el cliente: cada uno la crea en su Atajos, una vez.
-- Saber si hubo un movimiento al cerrar la app: por eso el atajo pregunta.
+- Crear la automatización por el cliente: cada uno la crea en su Atajos.
+- Saber qué app se cerró o si hubo un movimiento: por eso el Texto con el nombre de la cuenta y la pregunta.
