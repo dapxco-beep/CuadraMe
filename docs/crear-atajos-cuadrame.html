@@ -145,8 +145,8 @@ th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color:
 
 <!-- ========== ATAJO 2 ========== -->
 <section>
-  <div class="band green">Atajo 2 · Cierre de una app · 7 pasos</div>
-  <p class="lead">Cuando cierras Nequi, Daviplata o tu banco, te pregunta si hiciste un movimiento. Sirve para cualquier app.</p>
+  <div class="band green">Atajo 2 · Cierre de una app · 8 pasos</div>
+  <p class="lead">Cuando cierras Nequi, Daviplata o tu banco, te pregunta si hiciste un movimiento y en cuál de tus cuentas. Sirve para cualquier app.</p>
 
   <div class="step">
     <div class="step-top"><span class="n">1</span><h3>Crear el atajo</h3></div>
@@ -172,42 +172,59 @@ th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color:
   </div>
 
   <div class="step">
-    <div class="step-top"><span class="n">4</span><h3>Pedir el monto</h3></div>
+    <div class="step-top"><span class="n">4</span><h3>Elegir la cuenta</h3></div>
+    <p class="do">Debajo del menú (afuera, al final) añade <b>Obtener contenido de URL</b>. Pregunta a CuadraMe qué cuentas tienes:</p>
+    <div class="act"><div class="name">Obtener contenido de URL</div>
+      <div class="row"><span class="k">URL</span><span class="blue mono">https://backend-production-aeab.up.railway.app/movimientos/cuentas-rapido</span></div>
+      <div class="row"><span class="k">Método</span><span class="blue">GET</span></div>
+      <div class="row"><span class="k">Encabezados</span><span><span class="mono">X-Api-Key</span> = <span class="pill">Texto</span> <small>(tu clave)</small></span></div></div>
+    <p class="do">Enseguida añade <b>Elegir de la lista</b>. Debe tomar como entrada el <span class="pill">Contenido de la URL</span> de arriba.</p>
+    <div class="act"><div class="name">Elegir de la lista</div>
+      <div class="row"><span class="k">Indicación</span><span class="blue">¿En qué cuenta?</span></div>
+      <div class="row"><span class="k">Lista</span><span><span class="pill">Contenido de la URL</span></span></div></div>
+    <p class="see"><b>Debes ver al ejecutarlo:</b> una lista con tus cuentas de CuadraMe (Bancolombia, Nequi…) para tocar una.</p>
+    <p class="tip">La dirección termina en <span class="mono">/movimientos/cuentas-rapido</span> (no <span class="mono">/rapido</span>). Es un GET, no un POST.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-top"><span class="n">5</span><h3>Pedir el monto</h3></div>
     <p class="do">Debajo del menú (afuera, al final) añade <b>Pedir entrada</b>. Tipo <b>Número</b>, pregunta <span class="mono">¿Cuánto fue?</span>. Enseguida añade <b>Establecer variable</b> y llámala <span class="pill">monto</span>.</p>
     <p class="tip">Ponerle nombre a la variable evita confundirse después, porque vas a tener dos “Pedir entrada”.</p>
   </div>
 
   <div class="step">
-    <div class="step-top"><span class="n">5</span><h3>Pedir la nota</h3></div>
+    <div class="step-top"><span class="n">6</span><h3>Pedir la nota</h3></div>
     <p class="do">Otro <b>Pedir entrada</b>, tipo <b>Texto</b>, pregunta <span class="mono">¿En qué? (opcional)</span>. Luego <b>Establecer variable</b> llamada <span class="pill">nota</span>.</p>
   </div>
 
   <div class="step">
-    <div class="step-top"><span class="n">6</span><h3>Enviar a CuadraMe</h3></div>
+    <div class="step-top"><span class="n">7</span><h3>Enviar a CuadraMe</h3></div>
     <p class="do">Añade <b>Obtener contenido de URL</b>. Igual que el Atajo 1 (dirección, <b>POST</b>, encabezado <span class="mono">X-Api-Key</span> con el Texto de tu clave, cuerpo <b>JSON</b>), pero con estos campos:</p>
     <div class="act"><div class="name">Cuerpo JSON</div>
       <div class="sub">
         <div class="row"><span class="k mono">tipo</span><span><span class="pill">Resultado del menú</span></span></div>
-        <div class="row"><span class="k mono">monto</span><span><span class="pill">monto</span> <small>(la variable del paso 4)</small></span></div>
-        <div class="row"><span class="k mono">descripcion</span><span><span class="pill">nota</span> <small>(la variable del paso 5)</small></span></div>
-        <div class="row"><span class="k mono">cuenta</span><span><span class="pill">Entrada del atajo</span></span></div>
+        <div class="row"><span class="k mono">monto</span><span><span class="pill">monto</span> <small>(la variable del paso 5)</small></span></div>
+        <div class="row"><span class="k mono">descripcion</span><span><span class="pill">nota</span> <small>(la variable del paso 6)</small></span></div>
+        <div class="row"><span class="k mono">cuenta</span><span><span class="pill">Elemento elegido</span> <small>(de la lista del paso 4)</small></span></div>
         <div class="row"><span class="k mono">fuente</span><span class="blue">cierre_app</span></div>
       </div>
     </div>
-    <p class="tip">“Resultado del menú” aquí vale <span class="mono">gasto</span> o <span class="mono">ingreso</span>, por los Textos que pusiste dentro de cada opción (paso 3). Y <b>cuenta</b> viene del texto que le pasará cada automatización (el nombre de la app).</p>
+    <p class="tip">“Resultado del menú” aquí vale <span class="mono">gasto</span> o <span class="mono">ingreso</span>, por los Textos que pusiste dentro de cada opción (paso 3). Y <b>cuenta</b> es la cuenta que tocaste en la lista del paso 4.</p>
   </div>
 
   <div class="step">
-    <div class="step-top"><span class="n">7</span><h3>Avisarte</h3></div>
+    <div class="step-top"><span class="n">8</span><h3>Avisarte</h3></div>
     <p class="do">Igual que el Atajo 1: <b>Obtener valor del diccionario</b> con la clave <span class="mono">mensaje</span>, y <b>Mostrar notificación</b> con ese valor.</p>
     <div class="final"><b>Así queda el Atajo 2 completo:</b>
 <pre>1  Texto                          cm_… (tu clave)
 2  Elegir del menú                Gasto (Texto gasto) · Ingreso (Texto ingreso) · No (→ Detener)
-3  Pedir entrada (número)  →  Establecer variable monto
-4  Pedir entrada (texto)   →  Establecer variable nota
-5  Obtener contenido de URL       POST · 5 campos
-6  Obtener valor del diccionario  mensaje
-7  Mostrar notificación</pre></div>
+3  Obtener contenido de URL       GET …/cuentas-rapido
+4  Elegir de la lista             ¿En qué cuenta?
+5  Pedir entrada (número)  →  Establecer variable monto
+6  Pedir entrada (texto)   →  Establecer variable nota
+7  Obtener contenido de URL       POST · 5 campos (cuenta = Elemento elegido)
+8  Obtener valor del diccionario  mensaje
+9  Mostrar notificación</pre></div>
   </div>
 </section>
 
@@ -223,22 +240,11 @@ th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color:
   <div class="band green">Automatización 2 · cierre de una app · una por cada app</div>
   <div class="step">
     <p class="do">Atajos → <b>Automatización</b> → <b>+</b> → <b>App</b>. Elige la app (por ejemplo Nequi). Marca <b>Se cierra</b> y desmarca <b>Se abre</b>. <b>Siguiente</b>.</p>
-    <p class="do">Añade dos acciones, en este orden:</p>
-    <div class="act"><div class="name">1 · Texto</div><div class="blue mono">Nequi</div></div>
-    <div class="act"><div class="name">2 · Ejecutar atajo</div>
-      <div class="row"><span class="k">Atajo</span><span class="blue">CuadraMe Cierre</span></div>
-      <div class="row"><span class="k">Entrada</span><span><span class="pill">Texto</span></span></div></div>
+    <p class="do">Añade <b>una sola acción</b>: <b>Ejecutar atajo</b> → <span class="pill">Cuádrame Cierre</span>. Ya no hace falta ningún Texto.</p>
+    <div class="act"><div class="name">Ejecutar atajo</div>
+      <div class="row"><span class="k">Atajo</span><span class="blue">Cuádrame Cierre</span></div></div>
     <p class="do">Desactiva <b>Preguntar antes de ejecutar</b> y toca <b>Listo</b>.</p>
-    <p class="tip">El texto es el nombre de la cuenta como la tienes en CuadraMe. Para otra app repites esta automatización cambiando solo el texto:</p>
-    <div class="scroll"><table>
-      <thead><tr><th>App que cierras</th><th>Texto de la acción 1</th></tr></thead>
-      <tbody>
-        <tr><td>Nequi</td><td class="mono">Nequi</td></tr>
-        <tr><td>Daviplata</td><td class="mono">Daviplata</td></tr>
-        <tr><td>Bancolombia</td><td class="mono">Bancolombia</td></tr>
-      </tbody>
-    </table></div>
-    <p class="warn"><b>Importante:</b> la acción 2 debe ser <b>Ejecutar atajo</b> con el Texto como entrada. Si solo abres el atajo sin pasarle el texto, el movimiento caerá en tu primera cuenta.</p>
+    <p class="tip">Repite esto una vez por cada app que quieras vigilar (Nequi, Daviplata, tu banco). Todas llaman al mismo atajo, que te pregunta la cuenta en el momento.</p>
   </div>
 </section>
 
@@ -246,7 +252,7 @@ th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color:
   <h2>Cómo saber que funciona</h2>
   <div class="step">
     <h3>Prueba del cierre de app</h3>
-    <p class="do">Abre Nequi y ciérrala. Debe salir <b>¿Hiciste algún movimiento?</b>. Toca Gasto, escribe <span class="mono">1000</span> y una nota. Debe llegar una notificación de CuadraMe.</p>
+    <p class="do">Abre Nequi y ciérrala. Debe salir <b>¿Hiciste algún movimiento?</b>. Toca Gasto, elige la cuenta de la lista, escribe <span class="mono">1000</span> y una nota. Debe llegar una notificación de CuadraMe que dice en qué cuenta quedó.</p>
     <p class="see"><b>En CuadraMe:</b> al abrirla sale “Detectamos 1 movimiento”. Descártalo. En <i>Perfil → Conexiones</i> el atajo debe decir “último uso hace 1 min”.</p>
   </div>
   <div class="step">
@@ -258,7 +264,8 @@ th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color:
     <tbody>
       <tr><td>Error 401</td><td>La clave está mal pegada</td><td>Pégala de nuevo en el Texto</td></tr>
       <tr><td>Error 422 en “monto”</td><td>El campo tiene la entrada completa</td><td>Toca la burbuja y elige la propiedad (Importe)</td></tr>
-      <tr><td>Cae en la cuenta equivocada</td><td>El texto no se parece a tu cuenta</td><td>Cambia el Texto de la automatización</td></tr>
+      <tr><td>La lista sale vacía o rara</td><td>El GET devolvió un error (clave mala)</td><td>Revisa la clave del Texto y que la URL termine en /cuentas-rapido</td></tr>
+      <tr><td>No sale tu cuenta en la lista</td><td>Esa cuenta no existe en CuadraMe</td><td>Créala en la app (Cuentas → Nueva cuenta)</td></tr>
       <tr><td>No corre solo</td><td>Quedó “Preguntar antes de ejecutar”</td><td>Desactívalo</td></tr>
       <tr><td>Pregunta aunque solo mirabas el saldo</td><td>Salta cada vez que cierras la app</td><td>Toca “No”: es un toque</td></tr>
     </tbody>

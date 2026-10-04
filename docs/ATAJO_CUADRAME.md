@@ -5,9 +5,9 @@ Dos atajos pequeños, en lugar de uno grande, para que sean fáciles de armar en
 | Atajo | Lo llama | Qué recibe | Qué hace |
 |---|---|---|---|
 | **CuadraMe Apple Pay** | Automatización **Transacción** | Comercio, importe y tarjeta | Registra el pago directo, sin preguntar |
-| **CuadraMe Cierre** | Una automatización **App → Se cierra** por cada app | El nombre de la cuenta, como texto | Pregunta "¿Hiciste algún movimiento?" y registra lo que el cliente conteste |
+| **CuadraMe Cierre** | Una automatización **App → Se cierra** por cada app | Nada | Pregunta "¿Hiciste algún movimiento?" y registra lo que el cliente conteste |
 
-iOS no le dice al atajo qué app se cerró. Por eso cada automatización de cierre de app lleva dos acciones: un **Texto** con el nombre de la cuenta (`Nequi`) y **Ejecutar atajo** `CuadraMe Cierre` con ese texto como entrada. El nombre de la cuenta nunca queda fijo dentro del atajo.
+iOS no le dice al atajo qué app se cerró. Por eso el atajo de cierre le pregunta a CuadraMe qué cuentas tiene el cliente y se las muestra para elegir. Así el nombre de la cuenta nunca queda fijo dentro del atajo y no depende de ningún texto en la automatización.
 
 En todos los casos el movimiento queda **por confirmar**. Al abrir la app, el cliente lo confirma, lo edita o lo descarta. Con el extracto, la conciliación lo cruza por fecha, hora y monto y lo completa con el destinatario real.
 
@@ -35,31 +35,33 @@ URL del servidor: `https://backend-production-aeab.up.railway.app/movimientos/ra
    │  Gasto:   Texto  gasto
    │  Ingreso: Texto  ingreso
    │  No:      Detener este atajo
-3  Pedir entrada (Número)          "¿Cuánto fue?"      →  Establecer variable  monto
-4  Pedir entrada (Texto)           "¿En qué? (opcional)" →  Establecer variable  nota
-5  Obtener contenido de URL        POST …/movimientos/rapido
+3  Obtener contenido de URL        GET …/movimientos/cuentas-rapido
+                                   Encabezado  X-Api-Key = Texto (paso 1)
+4  Elegir de la lista              "¿En qué cuenta?"  (lista = Contenido de la URL del paso 3)
+5  Pedir entrada (Número)          "¿Cuánto fue?"      →  Establecer variable  monto
+6  Pedir entrada (Texto)           "¿En qué? (opcional)" →  Establecer variable  nota
+7  Obtener contenido de URL        POST …/movimientos/rapido
                                    Encabezado  X-Api-Key = Texto (paso 1)
                                    Cuerpo JSON tipo        = Resultado del menú
                                                monto       = monto
                                                descripcion = nota
-                                               cuenta      = Entrada del atajo
+                                               cuenta      = Elemento elegido (paso 4)
                                                fuente      = cierre_app
-6  Obtener valor del diccionario   mensaje
-7  Mostrar notificación
+8  Obtener valor del diccionario   mensaje
+9  Mostrar notificación
 ```
 
 **Importante:** "Resultado del menú" no es el nombre de la opción tocada, sino lo que devuelve la última acción dentro de esa opción. Por eso Gasto e Ingreso llevan cada una un **Texto** (`gasto` / `ingreso`). Si quedan vacías, el atajo envía otro valor como `tipo` y el servidor responde "falta o no se entiende el tipo".
+
+`GET /movimientos/cuentas-rapido` (autenticado por `X-Api-Key`) responde una lista simple de nombres, por ejemplo `["Bancolombia","Nequi"]`, que Atajos entiende directo como lista. Así la cuenta ya no va fija ni depende de un texto en la automatización.
 
 ## Las automatizaciones
 
 **Apple Pay (una).** Atajos → Automatización → **+** → **Transacción** → tarjetas → **Siguiente** → **Ejecutar atajo** `CuadraMe Apple Pay` → desactiva "Preguntar antes de ejecutar".
 
-**Cierre de una app (una por app).** Atajos → Automatización → **+** → **App** → la app → marca **Se cierra**, desmarca **Se abre** → **Siguiente** y añade dos acciones:
-1. **Texto**: `Nequi` (o `Daviplata`, `Bancolombia`…).
-2. **Ejecutar atajo** `CuadraMe Cierre`, con ese **Texto** como **Entrada**.
-Luego desactiva "Preguntar antes de ejecutar".
+**Cierre de una app (una por app).** Atajos → Automatización → **+** → **App** → la app → marca **Se cierra**, desmarca **Se abre** → **Siguiente** → una sola acción: **Ejecutar atajo** `CuadraMe Cierre`. Desactiva "Preguntar antes de ejecutar". El atajo pregunta la cuenta en el momento.
 
-El texto se busca entre las cuentas del cliente por nombre parcial. Si no coincide ninguna, cae en la primera cuenta.
+Si en CuadraMe no existe la cuenta que el cliente elige, no aparece en la lista: se crea en Cuentas → Nueva cuenta.
 
 ## Cómo probarlo
 
@@ -75,7 +77,8 @@ El texto se busca entre las cuentas del cliente por nombre parcial. Si no coinci
 | 401 | Clave vacía o con espacios | Pégala de nuevo en el Texto |
 | 422 en `monto` | El campo recibió la entrada completa | Toca la burbuja y elige la propiedad (Importe) |
 | "falta o no se entiende el tipo" | Gasto/Ingreso del menú están vacías | Pon un Texto `gasto` / `ingreso` dentro de cada opción |
-| Cae en la cuenta equivocada | El texto no se parece al nombre de la cuenta | Cambia el Texto de la automatización |
+| No sale mi cuenta en la lista | La cuenta no existe en CuadraMe | Créala en Cuentas → Nueva cuenta |
+| La lista sale rara o vacía | El GET devolvió un error (clave mala) | Revisa la clave y que la URL termine en `/cuentas-rapido` |
 | No corre sola | Quedó con "Preguntar antes de ejecutar" | Desactívalo |
 | Pregunta cada vez que miras el saldo | El disparador salta al cerrar la app | Toca "No" |
 

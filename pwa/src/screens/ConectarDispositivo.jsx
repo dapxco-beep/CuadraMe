@@ -22,7 +22,7 @@ const JSON_CIERRE_APP = `{
   "tipo": "<Resultado del menú: gasto o ingreso>",
   "monto": "<variable monto>",
   "descripcion": "<variable nota (puede ir vacía)>",
-  "cuenta": "<Entrada del atajo: el nombre de la cuenta>",
+  "cuenta": "<Elemento elegido: la cuenta que tocaste en la lista>",
   "fuente": "cierre_app"
 }`
 
@@ -483,7 +483,7 @@ export default function ConectarDispositivo() {
                       Para el cierre de una app crea un <b>segundo Atajo</b>, «CuadraMe Cierre», más corto: acción{' '}
                       <b>Texto</b> con tu clave; <b>Elegir del menú</b> «¿Hiciste algún movimiento?» con Gasto / Ingreso /
                       No (en «No» pon <b>Detener este atajo</b>; en «Gasto» pon un <b>Texto</b> «gasto» y en «Ingreso» un <b>Texto</b> «ingreso»: no las dejes vacías); <b>Solicitar entrada</b>{' '}
-                      (número) «¿Cuánto fue?» y <b>Establecer variable</b> <b>monto</b>; <b>Solicitar entrada</b> (texto)
+                      (número) «¿Cuánto fue?» y <b>Establecer variable</b> <b>monto</b>; antes de eso, una acción <b>Obtener contenido de URL</b> (método GET, dirección terminada en <b>/movimientos/cuentas-rapido</b>, encabezado X-Api-Key) y <b>Elegir de la lista</b> «¿En qué cuenta?» para escoger tu cuenta; <b>Solicitar entrada</b> (texto)
                       «¿En qué?» y <b>Establecer variable</b> <b>nota</b>. Luego <b>Obtener contenido de URL</b> igual que
                       arriba, con este cuerpo, y por último <b>Obtener valor del diccionario</b> (mensaje) y{' '}
                       <b>Mostrar notificación</b>:
@@ -511,20 +511,12 @@ export default function ConectarDispositivo() {
               <Paso n={4} titulo="Automatización 2: cierre de una app (una por app)">
                 <p>
                   En <b>Atajos → Automatización → +</b> elige <b>App</b>, marca <b>Se cierra</b> y elige la app (Nequi,
-                  Daviplata o tu banco). Añade <b>dos acciones</b>:
+                  Daviplata o tu banco). Añade <b>una sola acción</b>: <b>Ejecutar atajo</b> → «CuadraMe Cierre».
                 </p>
-                <ol className="list-decimal pl-5 space-y-1 text-sm">
-                  <li>
-                    <b>Texto</b> con el nombre de la cuenta, por ejemplo <b>Nequi</b>. Escríbelo como tienes la cuenta en
-                    CuadraMe.
-                  </li>
-                  <li>
-                    <b>Ejecutar atajo</b> → «CuadraMe Cierre», y en <b>Entrada</b> elige ese Texto.
-                  </li>
-                </ol>
                 <p className="text-xs">
                   Desactiva «Preguntar antes de ejecutar». Repite esto una vez por cada app que quieras vigilar: el mismo
-                  Atajo sirve para todas y cada movimiento cae en la cuenta correcta.
+                  Atajo te pregunta en qué cuenta fue el movimiento. Si tu cuenta no sale en la lista, créala primero en
+                  Cuentas.
                 </p>
               </Paso>
 
