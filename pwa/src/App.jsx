@@ -36,6 +36,7 @@ const Ahorcado = lazy(() => import('./screens/Ahorcado'))
 const Compartir = lazy(() => import('./screens/Compartir'))
 const ConectarDispositivo = lazy(() => import('./screens/ConectarDispositivo'))
 const Correos = lazy(() => import('./screens/Correos'))
+const Conexiones = lazy(() => import('./screens/Conexiones'))
 const Insights = lazy(() => import('./screens/Insights'))
 const Asistente = lazy(() => import('./screens/Asistente'))
 const ReglasCategoria = lazy(() => import('./screens/ReglasCategoria'))
@@ -100,6 +101,7 @@ function AppGate() {
         <Route path="/deudas" element={<Deudas />} />
         <Route path="/conciliacion" element={<Conciliacion />} />
         <Route path="/correos" element={<Correos />} />
+        <Route path="/conexiones" element={<Conexiones />} />
         <Route path="/insights" element={<Insights />} />
         <Route path="/asistente" element={<Asistente />} />
         <Route path="/compartir" element={<Compartir />} />

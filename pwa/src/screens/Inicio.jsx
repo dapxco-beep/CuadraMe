@@ -37,6 +37,7 @@ export default function Inicio() {
   const [bolsillo, setBolsillo] = useState(null)
   const [resumen, setResumen] = useState(null)
   const [gmailConectado, setGmailConectado] = useState(true)
+  const [conexionFalla, setConexionFalla] = useState(false)
   const [cargando, setCargando] = useState(true)
   const [errorCarga, setErrorCarga] = useState('')
   const [intento, setIntento] = useState(0)
@@ -58,6 +59,8 @@ export default function Inicio() {
     // Desglose del saldo (disponible / tarjetas / por moneda y tipo). Si falla, el héroe sigue funcionando.
     Promise.resolve().then(() => api.resumenCuentas()).then((r) => activo && setResumen(r)).catch(() => {})
     api.gmailEstado().then((e) => activo && setGmailConectado(!!e.conectado)).catch(() => {})
+    // Aviso solo si algo se rompió (semáforo rojo); si el tablero falla, no se muestra nada.
+    Promise.resolve().then(() => api.conexionesEstado?.()).then((c) => activo && setConexionFalla(!!c?.hay_falla)).catch(() => {})
     return () => {
       activo = false
     }
@@ -107,6 +110,18 @@ export default function Inicio() {
             Reintentar
           </button>
         </div>
+      )}
+
+      {conexionFalla && (
+        <Link
+          to="/conexiones"
+          role="alert"
+          data-testid="aviso-conexiones"
+          className="mx-6 mt-2 rounded-2xl bg-danger-soft border border-danger/30 p-3 flex items-center justify-between gap-3"
+        >
+          <p className="text-xs text-danger">Una de tus conexiones está fallando.</p>
+          <span className="text-xs font-semibold text-danger shrink-0">Ver estado</span>
+        </Link>
       )}
 
       {/* Mazo de cuentas — cada tarjeta con el color real de su entidad, apiladas
