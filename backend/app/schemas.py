@@ -88,6 +88,11 @@ class CuentaOut(BaseModel):
         from_attributes = True
 
 
+class AjusteSaldoRequest(BaseModel):
+    saldo_real: float
+    nota: str = ""
+
+
 class InvitarRequest(BaseModel):
     email: str
     rol: str = "viewer"  # viewer | editor
@@ -488,6 +493,11 @@ class GmailEstado(BaseModel):
     conectado: bool
     email: Optional[str] = None
     etiqueta: str = "gastos"
+    # La app de Google aún no está verificada: solo entran correos agregados como 'test user'.
+    modo_pruebas: bool = False
+    soporte_email: str = ""
+    # ¿Ya dio la autorización específica de lectura de correo?
+    consentimiento: bool = True
 
 
 class CorreoGastoOut(BaseModel):

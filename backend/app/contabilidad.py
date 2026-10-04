@@ -21,8 +21,13 @@ import unicodedata
 from datetime import datetime
 
 FUENTE_TRANSFERENCIA = "transferencia_interna"
+# Ajuste de saldo: el usuario escribe su saldo real y la diferencia se guarda como
+# movimiento para que saldo e historial cuadren, pero NO es plata ganada ni gastada
+# (corrige un descuadre), así que tampoco cuenta como ingreso/gasto en reportes.
+FUENTE_AJUSTE = "ajuste_saldo"
 CATEGORIA_PAGO_TARJETA = "Pago de tarjeta"
-CATEGORIAS_NEUTRAS = {"transferencia", "pago de tarjeta"}
+CATEGORIA_AJUSTE = "Ajuste de saldo"
+CATEGORIAS_NEUTRAS = {"transferencia", "pago de tarjeta", "ajuste de saldo"}
 
 # "pago tarjeta", "pago de tarjeta de crédito", "abono a TC", "pago visa", "pago tarj credito".
 # NO casa con "pago con tarjeta en Éxito" (eso es una COMPRA): después de pago/abono solo
@@ -70,7 +75,7 @@ def tipo_base(m, tipos_cuenta: dict[str, str] | None = None) -> str:
     tipo = _g(m, "tipo")
     if tipo not in ("income", "expense"):
         return "transfer"
-    if _g(m, "fuente") == FUENTE_TRANSFERENCIA:
+    if _g(m, "fuente") in (FUENTE_TRANSFERENCIA, FUENTE_AJUSTE):
         return "transfer"
     if _sin_acentos(_g(m, "categoria", "") or "").strip().lower() in CATEGORIAS_NEUTRAS:
         return "transfer"

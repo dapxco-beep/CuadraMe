@@ -42,6 +42,7 @@ from app.gmail_oauth import (
     url_autorizacion,
 )
 from app.models import ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, Movimiento, Perfil
+from app.routers.consentimientos import exigir_consentimiento, tiene_consentimiento
 from app.routers.conciliacion import procesar_extracto
 from app.schemas import (
     AprobarCorreoRequest,
@@ -82,20 +83,44 @@ def estado_gmail(
         conectado=bool(perfil.gmail_conectado),
         email=perfil.gmail_email,
         etiqueta=perfil.gmail_etiqueta or "gastos",
+        modo_pruebas=settings.gmail_modo_pruebas,
+        soporte_email=settings.soporte_email,
+        consentimiento=tiene_consentimiento(db, usuario.id, "lectura_correo") or not settings.exigir_consentimientos,
     )
 
 
 @router.get("/gmail/conectar")
 def conectar_gmail(
+    db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
     """Devuelve la URL a la que el frontend debe redirigir al usuario para
-    autorizar el acceso de solo lectura a Gmail."""
+    autorizar el acceso de solo lectura a Gmail. Sin la autorización específica
+    de lectura de correo (Ley 1581) no se genera la URL."""
+    exigir_consentimiento(db, usuario.id, "lectura_correo")
     return {"url": url_autorizacion(crear_state(usuario.id))}
 
 
+# Errores que Google devuelve al callback cuando el usuario no completa la autorización.
+_ERRORES_SIN_ACCESO = {"access_denied", "admin_policy_enforced", "org_internal"}
+
+
 @router.get("/oauth/callback")
-def gmail_callback(code: str, state: str, db: Session = Depends(get_db)):
+def gmail_callback(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    db: Session = Depends(get_db),
+):
+    # Google devuelve ?error=access_denied (sin code) cuando el usuario cancela o,
+    # con la app en modo Pruebas, cuando su correo no es 'test user'. En vez de una
+    # pantalla de error, volvemos a la app con un mensaje claro: Correos lo muestra.
+    if error:
+        motivo = "sin_acceso" if error in _ERRORES_SIN_ACCESO else "error"
+        return RedirectResponse(url=f"{settings.pwa_url}/#/correos?gmail={motivo}")
+    if not code or not state:
+        raise HTTPException(status_code=400, detail="Faltan datos de la autorización de Google")
+
     usuario_id = leer_state(state)
     if not usuario_id:
         raise HTTPException(status_code=400, detail="Estado OAuth inválido o expirado")

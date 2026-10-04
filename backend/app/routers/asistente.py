@@ -27,6 +27,7 @@ from app.limites import verificar_limite
 from app.models import Movimiento
 from app.models_asistente import UsoAsistente
 from app.routers import metas as metas_router
+from app.routers.consentimientos import exigir_consentimiento
 from app.routers.movimientos import _clasificar, crear_movimiento
 from app.schemas import MetaCreate, MovimientoCreate
 from app.utiles import ahora_co
@@ -175,6 +176,7 @@ def mensaje(
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
+    exigir_consentimiento(db, usuario.id, "ia")  # Ley 1581: el texto puede ir a un proveedor de IA
     verificar_limite(f"asistente:{usuario.id}", LIMITE_HORA, 3600,
                      "Llegaste al límite de mensajes por hora. Intenta más tarde.")
     hoy = ahora_co()

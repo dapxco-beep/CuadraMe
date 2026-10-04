@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     resend_api_key: str = ""  # vacío = backup por correo desactivado
     resend_from: str = "CuadraMe <backup@resend.dev>"
     backup_email: str = "dapxco@gmail.com"
+    # Correo al que los usuarios piden acceso a Gmail mientras la app de Google está en modo Pruebas.
+    soporte_email: str = "dapxco@gmail.com"
+    # Mientras sea True, Correos avisa que Gmail es "por invitación" (la app de Google aún no está verificada).
+    # Cuando Google apruebe la verificación, poner GMAIL_MODO_PRUEBAS=false en Railway.
+    gmail_modo_pruebas: bool = True
+    # Exigir el consentimiento específico (Gmail / IA) antes de usar esas funciones. Solo se apaga en pruebas.
+    exigir_consentimientos: bool = True
 
     class Config:
         env_file = ".env"

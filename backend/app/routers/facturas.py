@@ -7,6 +7,7 @@ from app.database import get_db
 from app.factura import FacturaError, analizar_factura, validar_imagen
 from app.limites import verificar_limite
 from app.routers.categorias import _asegurar_categorias_base
+from app.routers.consentimientos import exigir_consentimiento
 from app.routers.movimientos import _clasificar
 
 router = APIRouter(prefix="/facturas", tags=["facturas"])
@@ -26,6 +27,7 @@ def escanear(
     """Lee una foto de factura y devuelve campos SUGERIDOS. No guarda nada:
     el usuario los revisa en el formulario y decide si registra el movimiento.
     La imagen se procesa en memoria y se descarta."""
+    exigir_consentimiento(db, usuario.id, "ia")  # Ley 1581: la foto va a un proveedor de IA
     # Cada lectura es una llamada a un modelo de visión: tope por usuario, como la IA de chat.
     verificar_limite(f"factura:{usuario.id}", 10, 3600, "Llegaste al límite de facturas por hora. Intenta más tarde.")
     try:

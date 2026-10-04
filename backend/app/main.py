@@ -14,6 +14,7 @@ from app.routers import (
     cierre,
     compartir,
     conciliacion,
+    consentimientos,
     correos,
     cuentas,
     deudas,
@@ -141,6 +142,7 @@ app.include_router(asistente.router)
 app.include_router(importar.router)
 app.include_router(impuestos.router)
 app.include_router(cierre.router)
+app.include_router(consentimientos.router)
 
 
 @app.get("/health")

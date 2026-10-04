@@ -294,6 +294,23 @@ class HistorialExtracto(Base):
     creado_en = Column(DateTime, default=datetime.utcnow)
 
 
+class Consentimiento(Base):
+    """Registro AUDITABLE de autorizaciones de tratamiento de datos (Ley 1581 de 2012).
+    Solo se INSERTA: nunca se actualiza ni se borra. Revocar = nueva fila con
+    aceptado=False; el estado vigente de una finalidad es su fila más reciente."""
+    __tablename__ = "consentimientos"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    version = Column(String, nullable=False)  # versión de los textos legales aceptada (ej. "1.1")
+    finalidad = Column(String, nullable=False)  # tratamiento_basico | lectura_correo | ia | notificaciones
+    aceptado = Column(Boolean, nullable=False)
+    creado_en_utc = Column(DateTime, nullable=False, default=datetime.utcnow)
+    creado_en_co = Column(DateTime, nullable=False)  # la misma fecha en hora Colombia (UTC-5)
+    ip = Column(String, nullable=True)  # opcional; puede no estar disponible
+    origen = Column(String, default="app")  # app | registro | perfil | flujo_gmail | flujo_ia
+
+
 class Categoria(Base):
     """Categorías de movimientos por usuario. Las 8 base (Comida, Transporte,
     etc.) se crean automáticamente la primera vez que el usuario pide su
