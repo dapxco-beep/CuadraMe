@@ -68,6 +68,7 @@ def regenerar_api_key(
 ):
     perfil = _get_or_create_perfil(db, usuario.id)
     perfil.api_key = gen_api_key()
+    perfil.api_key_ultimo_uso = None  # la clave nueva aún no se ha usado
     db.commit()
     return {"api_key": perfil.api_key}
 

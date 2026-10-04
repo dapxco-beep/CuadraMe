@@ -14,6 +14,7 @@ from app.routers import (
     cierre,
     compartir,
     conciliacion,
+    conexiones,
     consentimientos,
     correos,
     cuentas,
@@ -89,6 +90,9 @@ if engine.dialect.name == "postgresql":
         # Cruce con el extracto (supabase/migraciones/cierre_app_conciliacion.sql).
         conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS conciliado_en TIMESTAMP NULL"))
         conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS extracto_id VARCHAR NULL"))
+        # Tablero "Conexiones": último uso de la API key (Atajo de iPhone).
+        # (Como SQL suelto: supabase/migraciones/sync_gmail_conexiones.sql.)
+        conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS api_key_ultimo_uso TIMESTAMP"))
         # Casi toda consulta filtra por cuenta y ordena/filtra por fecha.
         conn.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_movimientos_cuenta_fecha "
@@ -160,6 +164,7 @@ app.include_router(impuestos.router)
 app.include_router(cierre.router)
 app.include_router(consentimientos.router)
 app.include_router(informes.router)
+app.include_router(conexiones.router)
 
 
 @app.get("/health")

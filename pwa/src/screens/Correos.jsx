@@ -5,6 +5,7 @@ import ModalConsentimiento from '../components/ModalConsentimiento'
 import { ArrowLeft, Check, ChevronDown, FileText, KeyRound, Mail, RefreshCw, ShieldCheck, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
+import { resumenSync, sincronizarTodo } from '../lib/sincronizarGmail'
 import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
 
@@ -18,6 +19,42 @@ const ESTADOS = {
 function EtiquetaEstado({ estado }) {
   const e = ESTADOS[estado] || ESTADOS.nuevo
   return <span className={`text-[11px] font-semibold rounded-full px-2 py-0.5 shrink-0 ${e.clase}`}>{e.texto}</span>
+}
+
+const POR_PAGINA = 30
+const POR_PAGINA_EXT = 50 // el backend devuelve 50 extractos por página
+const FILTROS = [
+  { id: 'todo', texto: 'Todo' },
+  { id: 'nuevos', texto: 'Nuevos' },
+  { id: 'extractos', texto: 'Extractos' },
+  { id: 'falta_clave', texto: 'Falta clave' },
+  { id: 'ignorados', texto: 'Ignorados' },
+]
+
+function Pasos({ paso }) {
+  const items = ['Conecta Gmail', 'Sincroniza', 'Revisa']
+  return (
+    <ol className="flex items-center gap-2 mx-6 mt-3 text-xs" aria-label="Pasos" data-testid="pasos">
+      {items.map((t, i) => {
+        const n = i + 1
+        const hecho = n < paso
+        const actual = n === paso
+        return (
+          <li key={t} className="flex items-center gap-1.5 min-w-0" aria-current={actual ? 'step' : undefined}>
+            <span
+              className={`w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 ${
+                hecho ? 'bg-cuadra text-white' : actual ? 'bg-accent text-white' : 'bg-line text-ink-soft'
+              }`}
+            >
+              {hecho ? <Check size={11} /> : n}
+            </span>
+            <span className={`truncate ${actual ? 'font-semibold' : 'text-ink-soft'}`}>{t}</span>
+            {n < items.length && <span className="text-ink-soft" aria-hidden="true">·</span>}
+          </li>
+        )
+      })}
+    </ol>
+  )
 }
 
 const CLAVE_SYNC = 'cuadrame_gmail_sync'
@@ -58,6 +95,11 @@ export default function Correos() {
   const [mostrarAjustes, setMostrarAjustes] = useState(false)
   const [aviso, setAviso] = useState('')
   const [pedirConsentimiento, setPedirConsentimiento] = useState(false)
+  const [progreso, setProgreso] = useState(null)
+  const [filtro, setFiltro] = useState('todo')
+  const [ignorados, setIgnorados] = useState([])
+  const [hayMasIgn, setHayMasIgn] = useState(false)
+  const [hayMasExt, setHayMasExt] = useState(false)
   const [params] = useSearchParams()
   const usuario = useAuth()?.usuario
   // Google devuelve a la app con ?gmail=sin_acceso cuando el correo no está autorizado (modo Pruebas).
@@ -93,6 +135,7 @@ export default function Correos() {
           api.clavePdfEstado().catch(() => ({})),
         ])
         setExtractos(Array.isArray(ex) ? ex : [])
+        setHayMasExt(Array.isArray(ex) && ex.length >= POR_PAGINA_EXT)
         setClaveConfigurada(Boolean(clave?.configurada))
       }
       return e
@@ -132,26 +175,57 @@ export default function Correos() {
   async function sincronizar(silencioso = false) {
     setSincronizando(true)
     setError('')
+    setAviso('')
+    setProgreso({ leidos: 0, total_estimado: 0 })
     try {
-      const r = await api.sincronizarCorreos()
-      if (!r.ok) {
-        if (!silencioso) setError(r.error || 'No se pudo sincronizar')
+      // Por lotes: repite la llamada hasta terminar, mostrando "Leí X de Y".
+      const r = await sincronizarTodo({
+        onProgreso: (p) => setProgreso({ leidos: p.leidos, total_estimado: p.total_estimado }),
+      })
+      if (!r?.ok) {
+        if (!silencioso) setError(r?.error || 'No se pudo sincronizar')
       } else {
         marcarSincronizado()
         await cargar()
-        if (!silencioso) {
-          setAviso(
-            r.nuevos || r.extractos_nuevos
-              ? `Encontramos ${r.nuevos} movimiento(s) por revisar y ${r.extractos_nuevos} extracto(s).`
-              : 'No hay nada nuevo en tu correo.'
-          )
-        }
+        if (!silencioso) setAviso(resumenSync(r))
       }
     } catch (err) {
       if (!silencioso) setError(err.message || 'Error al sincronizar')
     } finally {
       setSincronizando(false)
+      setProgreso(null)
     }
+  }
+
+  const MOSTRAR_EXTRACTOS = ['todo', 'extractos', 'falta_clave']
+
+  async function cambiarFiltro(f) {
+    setFiltro(f)
+    try {
+      if (f === 'ignorados') {
+        const lista = await api.correosLista('ignorados', 0, POR_PAGINA)
+        setIgnorados(lista)
+        setHayMasIgn(lista.length >= POR_PAGINA)
+      } else if (MOSTRAR_EXTRACTOS.includes(f)) {
+        const ex = await api.extractosCorreo(f === 'falta_clave' ? 'falta_clave' : undefined)
+        setExtractos(Array.isArray(ex) ? ex : [])
+        setHayMasExt((ex || []).length >= POR_PAGINA_EXT)
+      }
+    } catch (err) {
+      setError(err.message || 'No se pudo cargar la lista')
+    }
+  }
+
+  async function cargarMasIgnorados() {
+    const mas = await api.correosLista('ignorados', ignorados.length, POR_PAGINA)
+    setIgnorados((prev) => [...prev, ...mas])
+    setHayMasIgn(mas.length >= POR_PAGINA)
+  }
+
+  async function cargarMasExtractos() {
+    const mas = await api.extractosCorreo(filtro === 'falta_clave' ? 'falta_clave' : undefined, extractos.length)
+    setExtractos((prev) => [...prev, ...mas])
+    setHayMasExt(mas.length >= POR_PAGINA_EXT)
   }
 
   async function aprobar(correo) {
@@ -238,6 +312,15 @@ export default function Correos() {
     setClaveConfigurada(false)
   }
 
+  let yaSincronizo = pendientes.length > 0 || extractos.length > 0
+  try {
+    yaSincronizo = yaSincronizo || Number(localStorage.getItem(CLAVE_SYNC) || 0) > 0
+  } catch {
+    /* sin almacenamiento */
+  }
+  const verExtractos = MOSTRAR_EXTRACTOS.includes(filtro)
+  const verNuevos = filtro === 'todo' || filtro === 'nuevos'
+
   if (cargando) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -252,8 +335,13 @@ export default function Correos() {
         <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-xl font-bold">Correos bancarios</h1>
+        <h1 className="text-xl font-bold flex-1">Correos bancarios</h1>
+        <button onClick={() => navigate('/conexiones')} className="text-xs font-semibold text-accent">
+          Ver estado
+        </button>
       </header>
+
+      <Pasos paso={!estado?.conectado ? 1 : yaSincronizo ? 3 : 2} />
 
       {!estado?.conectado && (sinAcceso || estado?.modo_pruebas) && (
         <section role="status" className="mx-6 mt-4 rounded-2xl bg-accent-soft border border-accent/30 p-4" data-testid="aviso-invitacion">
@@ -334,8 +422,21 @@ export default function Correos() {
             </button>
           </>
         )}
+        {progreso && (
+          <div className="mt-3" role="status">
+            <div className="h-2 rounded-full bg-line overflow-hidden">
+              <div
+                className="h-full bg-accent transition-all duration-300"
+                style={{ width: `${progreso.total_estimado ? Math.min(100, Math.round((progreso.leidos / progreso.total_estimado) * 100)) : 0}%` }}
+              />
+            </div>
+            <p className="text-xs text-ink-soft mt-1.5">
+              {progreso.total_estimado ? `Leí ${progreso.leidos} de ${progreso.total_estimado}` : 'Empezando...'}
+            </p>
+          </div>
+        )}
         {error && <p className="text-xs text-danger mt-2">{error}</p>}
-        {aviso && !error && <p className="text-xs text-ink-soft mt-2">{aviso}</p>}
+        {aviso && !error && <p className="text-sm font-semibold mt-2" role="status">{aviso}</p>}
         <p className="flex items-start gap-1.5 text-[11px] text-ink-soft mt-3">
           <ShieldCheck size={13} className="shrink-0 mt-0.5 text-accent" />
           <span>
@@ -375,6 +476,51 @@ export default function Correos() {
       </section>
 
       {estado?.conectado && (
+        <div className="mx-6 mt-5 flex gap-2 overflow-x-auto" role="group" aria-label="Filtrar correos">
+          {FILTROS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => cambiarFiltro(f.id)}
+              aria-pressed={filtro === f.id}
+              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold border ${
+                filtro === f.id ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
+              }`}
+            >
+              {f.texto}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {estado?.conectado && filtro === 'ignorados' && (
+        <section className="mx-6 mt-6" aria-label="Correos ignorados">
+          <h2 className="text-[15px] font-semibold mb-1">Ignorados ({ignorados.length}{hayMasIgn ? '+' : ''})</h2>
+          <p className="text-xs text-ink-soft mb-3">
+            Correos de tus bancos que no parecían una transacción (publicidad, avisos). No los volvemos a leer.
+          </p>
+          {ignorados.length === 0 ? (
+            <div className="rounded-2xl bg-paper-raised border border-line p-6 text-center">
+              <p className="text-sm text-ink-soft">No hay correos ignorados</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
+              {ignorados.map((c) => (
+                <div key={c.id} className="px-4 py-3">
+                  <p className="text-sm font-medium truncate">{c.asunto || c.comercio}</p>
+                  <p className="text-xs text-ink-soft truncate">{c.remitente}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {hayMasIgn && (
+            <button onClick={cargarMasIgnorados} className="w-full mt-3 border border-line rounded-xl py-2.5 text-sm font-semibold">
+              Cargar más
+            </button>
+          )}
+        </section>
+      )}
+
+      {estado?.conectado && verExtractos && (
         <section className="mx-6 mt-6" aria-label="Extractos encontrados">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-[15px] font-semibold">
@@ -493,10 +639,15 @@ export default function Correos() {
               ))}
             </div>
           )}
+          {hayMasExt && (
+            <button onClick={cargarMasExtractos} className="w-full mt-3 border border-line rounded-xl py-2.5 text-sm font-semibold">
+              Cargar más extractos
+            </button>
+          )}
         </section>
       )}
 
-      {estado?.conectado && (
+      {estado?.conectado && verNuevos && (
         <section className="mx-6 mt-6">
           <h2 className="text-[15px] font-semibold mb-3">
             Pendientes de revisar {pendientes.length > 0 && `(${pendientes.length})`}

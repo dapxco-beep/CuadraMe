@@ -224,12 +224,18 @@ export const api = {
   gmailConectar: () => request('/correos/gmail/conectar'),
   gmailDesconectar: () => request('/correos/gmail/desconectar', { method: 'POST' }),
   gmailEtiqueta: (etiqueta) => request(`/correos/gmail/etiqueta?etiqueta=${encodeURIComponent(etiqueta)}`, { method: 'POST' }),
-  sincronizarCorreos: () => request('/correos/sincronizar', { method: 'POST' }),
+  // params: { completa: true } fuerza la ventana larga (90 días); cada llamada procesa un lote.
+  sincronizarCorreos: (params) =>
+    request(`/correos/sincronizar${params?.completa ? '?completa=true' : ''}`, { method: 'POST' }),
+  correosLista: (filtro = 'nuevos', offset = 0, limite = 30) =>
+    request(`/correos/lista?filtro=${filtro}&limite=${limite}&offset=${offset}`),
+  conexionesEstado: () => request('/conexiones/estado'),
   correosPendientes: () => request('/correos/pendientes'),
   editarCorreo: (id, data) => request(`/correos/${id}`, { method: 'PATCH', body: data }),
   aprobarCorreo: (id, cuentaId) => request(`/correos/${id}/aprobar`, { method: 'POST', body: { cuenta_id: cuentaId } }),
   descartarCorreo: (id) => request(`/correos/${id}/descartar`, { method: 'POST' }),
-  extractosCorreo: () => request('/correos/extractos'),
+  extractosCorreo: (estado, offset = 0, limite = 50) =>
+    request(`/correos/extractos?limite=${limite}&offset=${offset}${estado ? `&estado=${estado}` : ''}`),
   conciliarExtractoCorreo: (id, cuentaId) =>
     request(`/correos/extractos/${id}/conciliar`, { method: 'POST', body: { cuenta_id: cuentaId } }),
   descartarExtractoCorreo: (id) => request(`/correos/extractos/${id}/descartar`, { method: 'POST' }),

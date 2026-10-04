@@ -66,7 +66,8 @@ describe('Correos: extractos encontrados', () => {
     montar()
     expect(await screen.findByText('Extractos encontrados (3)')).toBeTruthy()
     expect(screen.getByText('Nuevo')).toBeTruthy()
-    expect(screen.getByText('Falta clave')).toBeTruthy()
+    // "Falta clave" es la etiqueta del extracto y también un filtro de la lista.
+    expect(screen.getAllByText('Falta clave').length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText('Procesado')).toBeTruthy()
     expect(screen.getByText(/solo tiene permiso de/i)).toBeTruthy()
     expect(screen.getByText(/No guardamos tus correos ni los PDF/i)).toBeTruthy()

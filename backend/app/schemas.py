@@ -651,6 +651,13 @@ class SincronizarCorreosResponse(BaseModel):
     omitidos: int
     extractos_nuevos: int = 0
     error: Optional[str] = None
+    # Progreso de la sincronización por lotes: el cliente repite la llamada
+    # mientras `completado` sea False. Los contadores son de toda la corrida.
+    leidos: int = 0
+    total_estimado: int = 0
+    pendientes: int = 0
+    completado: bool = True
+    extractos_encontrados: int = 0
 
 
 class ExtractoCorreoOut(BaseModel):
