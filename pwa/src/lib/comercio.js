@@ -20,6 +20,8 @@ export const RAZON_AUTO = {
   comercio: 'por comercio conocido',
   similar: 'similar a movimientos tuyos',
   sugerida: 'sugerida por tu correo',
+  wallet: 'por tu pago con el celular',
+  atajo: 'por tu atajo',
 }
 
 // Un movimiento "espera revisión" si la app lo categorizó sola sin confirmar,

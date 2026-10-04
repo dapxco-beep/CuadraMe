@@ -27,6 +27,9 @@ class Perfil(Base):
     gmail_email = Column(String, nullable=True)
     gmail_etiqueta = Column(String, default="gastos")
     confianza_autoimport = Column(Float, default=0.75)  # 0.5-0.95: qué tan segura debe estar la categorización antes de auto-importar un movimiento sin preguntar
+    # Recordatorio nocturno (8pm Colombia) si hoy no registró nada; opcional.
+    recordatorio_diario = Column(Boolean, default=False)
+    ultimo_recordatorio = Column(String, nullable=True)  # YYYY-MM-DD del último aviso, para no repetir
     actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
@@ -47,6 +50,9 @@ class Cuenta(Base):
     dia_pago = Column(Integer, nullable=True)  # 1-31
     tasa_ea = Column(Float, nullable=True)  # tasa efectiva anual en %
     ultima_alerta_pago = Column(String, nullable=True)  # fecha de pago ya avisada (YYYY-MM-DD)
+    # Cómo se llama esta cuenta/tarjeta en Apple Wallet ("Visa Bancolombia, 1234").
+    # Varios alias separados por coma; el pago con el celular se asigna por coincidencia parcial.
+    alias_tarjeta = Column(String, nullable=True)
 
 
 class CuentaCompartida(Base):

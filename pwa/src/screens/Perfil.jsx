@@ -17,6 +17,7 @@ export default function Perfil() {
   const [copiado, setCopiado] = useState(false)
   const [permisoPush, setPermisoPush] = useState('default')
   const [cargandoPush, setCargandoPush] = useState(false)
+  const [recordatorio, setRecordatorio] = useState(false)
   const [confianza, setConfianza] = useState(0.75)
   const [guardandoConfianza, setGuardandoConfianza] = useState(false)
   const [eliminandoCuenta, setEliminandoCuenta] = useState(false)
@@ -25,7 +26,26 @@ export default function Perfil() {
     api.apiKey().then((r) => setApiKey(r.api_key)).catch(() => {})
     estadoPermiso().then(setPermisoPush)
     api.confianzaAutoimport().then((r) => setConfianza(r.confianza_autoimport)).catch(() => {})
+    Promise.resolve().then(() => api.recordatorioDiario()).then((r) => setRecordatorio(!!r.activo)).catch(() => {})
   }, [])
+
+  async function toggleRecordatorio() {
+    const nuevo = !recordatorio
+    setRecordatorio(nuevo)
+    try {
+      await api.actualizarRecordatorioDiario(nuevo)
+      // El aviso viaja por push: si aún no hay permiso, se pide al activarlo.
+      if (nuevo && permisoPush !== 'granted') {
+        await activarPush()
+        setPermisoPush('granted')
+      }
+    } catch (err) {
+      if (err?.message && !/permiso|soporta/i.test(err.message)) {
+        setRecordatorio(!nuevo)
+      }
+      avisar(err.message || 'No se pudo cambiar el recordatorio')
+    }
+  }
 
   async function cambiarConfianza(valor) {
     setConfianza(valor)
@@ -252,6 +272,29 @@ export default function Perfil() {
               <span
                 className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
                   permisoPush === 'granted' ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3 mt-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium">Recordatorio diario</p>
+              <p className="text-xs text-ink-soft mt-0.5">
+                A las 8 p. m. te avisamos solo si hoy no registraste nada
+                {permisoPush !== 'granted' ? ' (activa primero las alertas de arriba)' : ''}
+              </p>
+            </div>
+            <button
+              onClick={toggleRecordatorio}
+              role="switch"
+              aria-checked={recordatorio}
+              aria-label="Recordatorio diario"
+              className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${recordatorio ? 'bg-accent' : 'bg-line'}`}
+            >
+              <span
+                className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                  recordatorio ? 'translate-x-5' : 'translate-x-0.5'
                 }`}
               />
             </button>

@@ -13,7 +13,7 @@ from app.config import settings
 from app.database import get_db
 from app.finanzas import calc_estado_recurrente
 from app.fx import convertir_a_cop
-from app.models import Cuenta, Meta, Movimiento, Presupuesto, PushSubscription, Recurrente
+from app.models import Cuenta, Meta, Movimiento, Perfil, Presupuesto, PushSubscription, Recurrente
 from app.push import enviar_push
 from app.rachas import otorgar_vida_si_nueva
 from app.tarjetas import tarjetas_por_avisar
@@ -330,6 +330,60 @@ def cron_resumen_semanal(
             "/insights",
         )
         enviados += 1
+
+    return {"ok": True, "enviados": enviados}
+
+
+HORA_RECORDATORIO_REGISTRO = 20  # 8pm Colombia
+
+
+@router.post("/cron/recordar-registro")
+def cron_recordar_registro(
+    forzar: bool = False,
+    db: Session = Depends(get_db),
+    x_cron_secret: str = Header(default=""),
+):
+    """Recordatorio nocturno opcional: avisa por push SOLO a quien activó el
+    'recordatorio diario' en Perfil y hoy (hora Colombia) no registró nada.
+    Programarlo 1 vez al día a las 20:00 hora Colombia. Está blindado contra
+    un cron mal programado: antes de las 8pm no hace nada (salvo ?forzar=true)
+    y no repite el aviso el mismo día (perfiles.ultimo_recordatorio)."""
+    if not cron_autorizado(x_cron_secret):
+        raise HTTPException(status_code=401, detail="No autorizado")
+
+    ahora = ahora_co()
+    if ahora.hour < HORA_RECORDATORIO_REGISTRO and not forzar:
+        return {"ok": True, "enviados": 0, "motivo": "aún no son las 8pm en Colombia"}
+
+    hoy = ahora.strftime("%Y-%m-%d")
+    inicio_dia = ahora.replace(hour=0, minute=0, second=0, microsecond=0)
+    perfiles = (
+        db.query(Perfil)
+        .filter(Perfil.recordatorio_diario.is_(True))
+        .filter((Perfil.ultimo_recordatorio.is_(None)) | (Perfil.ultimo_recordatorio != hoy))
+        .all()
+    )
+    enviados = 0
+    for perfil in perfiles:
+        ids = cuentas_ids_accesibles(db, perfil.usuario_id)
+        registro_hoy = (
+            db.query(Movimiento.id)
+            .filter(Movimiento.cuenta_id.in_(ids), Movimiento.fecha >= inicio_dia)
+            .first()
+        )
+        if registro_hoy:
+            continue
+        n = enviar_push(
+            db,
+            perfil.usuario_id,
+            "¿Hiciste algún movimiento hoy?",
+            "Aún no registras nada hoy. Anótalo en 10 segundos y tus cuentas seguirán cuadrando.",
+            "/agregar",
+        )
+        if n:
+            perfil.ultimo_recordatorio = hoy
+            db.commit()
+            enviados += 1
 
     return {"ok": True, "enviados": enviados}
 

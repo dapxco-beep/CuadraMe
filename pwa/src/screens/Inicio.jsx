@@ -13,6 +13,7 @@ import ArbolFinanciero from '../components/ArbolFinanciero'
 import CarruselDescubrir from '../components/CarruselDescubrir'
 import { etapaPorScore } from '../lib/saludFinanciera'
 import ResumenSaldo from '../components/ResumenSaldo'
+import PreguntaMovimiento from '../components/PreguntaMovimiento'
 import { textoActualizado } from '../lib/saldos'
 
 // Patrimonio vive en "Más" dentro de la barra; aquí queda a un toque.
@@ -61,6 +62,13 @@ export default function Inicio() {
       activo = false
     }
   }, [intento])
+
+  // La bandeja "por confirmar" avisa cuando confirma/edita/descarta algo: se recargan los datos.
+  useEffect(() => {
+    const recargar = () => setIntento((n) => n + 1)
+    window.addEventListener('cuadrame:movimientos-cambio', recargar)
+    return () => window.removeEventListener('cuadrame:movimientos-cambio', recargar)
+  }, [])
 
   // El total viene convertido a COP desde el backend (cuentas en USD, etc.);
   // mientras llega, se suma solo lo que ya está en pesos para no mezclar monedas.
@@ -160,6 +168,9 @@ export default function Inicio() {
           )}
         </div>
       </section>
+
+      {/* Tras la bandeja de "por confirmar": una pregunta rápida si hoy no hay movimientos */}
+      <PreguntaMovimiento ultimaFecha={movimientos[0]?.fecha} />
 
       <section className="px-6 mt-4 stagger-item" style={{ '--stagger-i': 1 }}>
         <MazoCuentas cuentas={cuentas} ultimos={resumen?.ultimo_por_cuenta} />

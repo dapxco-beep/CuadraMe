@@ -2,6 +2,7 @@ import logging
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
@@ -34,6 +35,31 @@ def obtener_api_key(
 ):
     perfil = _get_or_create_perfil(db, usuario.id)
     return {"api_key": perfil.api_key}
+
+
+class RecordatorioUpdate(BaseModel):
+    activo: bool
+
+
+@router.get("/recordatorio-diario")
+def obtener_recordatorio_diario(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    perfil = _get_or_create_perfil(db, usuario.id)
+    return {"activo": bool(perfil.recordatorio_diario)}
+
+
+@router.put("/recordatorio-diario")
+def actualizar_recordatorio_diario(
+    data: RecordatorioUpdate,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Activa o apaga el aviso de las 8pm 'hoy no has registrado nada'."""
+    perfil = _get_or_create_perfil(db, usuario.id)
+    perfil.recordatorio_diario = data.activo
+    db.commit()
+    return {"activo": bool(perfil.recordatorio_diario)}
 
 
 @router.post("/api-key/regenerar")

@@ -18,6 +18,16 @@
 
 ---
 
+## 🆕 Registro con Apple Wallet, bandeja "¿son tuyos?" y recordatorio nocturno (pendiente de tu aprobación)
+
+- **Cómo funciona:** el disparador personal «Transacción» de Atajos de iOS hace POST a `/movimientos/rapido` (header `X-Api-Key`) con comercio, monto, tarjeta, fecha y moneda. El movimiento se crea al instante (los saldos quedan bien) pero marcado «por confirmar» (`cat_confirmada=false`, `cat_origen='wallet'`), así sale en «Por revisar» y en la bandeja. Acepta montos colombianos (`45.000,00`), mapea la tarjeta a la cuenta por **alias de tarjeta** (editable en cada cuenta) o por nombre, y ignora duplicados (mismo comercio+monto+cuenta en ±2 min, responde 200 con el existente).
+- **PWA:** hoja «Detectamos N movimientos: ¿son tuyos?» al abrir y al volver a primer plano (no repite en 1 h salvo nuevos); pregunta «¿Hiciste algún movimiento?» en Inicio; asistente «Conectar tu celular» (`/conectar-dispositivo`) con guía iPhone/Android y botón de prueba. Scriptable ya no es parte de la guía (`scriptable_registro_rapido.js` queda como alternativa legada).
+- ⏳ **Enlace del Atajo:** cuando armes el Atajo y lo compartas por iCloud, pega el enlace en `ATAJO_ICLOUD_URL` (`pwa/src/screens/ConectarDispositivo.jsx`). Mientras esté vacío la app muestra «llega pronto» y las instrucciones para armarlo a mano.
+- ⏳ **SQL sin ejecutar:** `backend/supabase/migraciones/wallet_recordatorio.sql` (3 columnas, idempotente: `cuentas.alias_tarjeta`, `perfiles.recordatorio_diario`, `perfiles.ultimo_recordatorio`). `main.py` también las agrega al arrancar en Postgres.
+- ⏳ **Cron del recordatorio nocturno (NO creado):** `POST /push/cron/recordar-registro` con header `X-Cron-Secret`. Programarlo en cron-job.org **1 vez al día a las 20:00 hora Colombia** (mismo método de `backend/cronjobs/crear_crons.py`). Solo avisa a quien activó «Recordatorio diario» en Perfil y hoy no registró nada; antes de las 8 p. m. (hora Colombia) no hace nada y no repite el mismo día, así que un horario mal puesto no genera spam. `?forzar=true` salta la comprobación de hora (para probar).
+
+---
+
 ## 🆕 Importar Excel/CSV, regla contable, Impuestos y Cierre de mes (pendiente de tu aprobación)
 
 - ⏳ **SQL sin ejecutar:** `backend/supabase/migraciones/impuestos_cierre_mes.sql` (3 tablas + RLS, idempotente). Correrlo en Supabase antes de desplegar; si no, el backend las crea al arrancar pero sin RLS. Importar CSV/Excel no necesita SQL.
