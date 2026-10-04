@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class CuentaCreate(BaseModel):
@@ -24,15 +24,63 @@ class ConfianzaAutoimportUpdate(BaseModel):
     confianza_autoimport: float = Field(ge=0.5, le=0.95)
 
 
+def _validar_icono(v):
+    from app.autocat import es_emoji
+    if v is None:
+        return v
+    v = v.strip()
+    if not es_emoji(v):
+        raise ValueError("El ícono debe ser un emoji (máximo 16 caracteres)")
+    return v
+
+
+def _validar_color(v):
+    import re
+    if v is None or v == "":
+        return None
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", v):
+        raise ValueError("El color debe tener el formato #RRGGBB")
+    return v.lower()
+
+
 class CategoriaCreate(BaseModel):
     nombre: str = Field(min_length=1, max_length=30)
     icono: str = "🏷️"
+    color: Optional[str] = None
+    tipo: Literal["gasto", "ingreso", "ambos"] = "ambos"
+
+    @field_validator("icono")
+    @classmethod
+    def _v_icono(cls, v):
+        return _validar_icono(v)
+
+    @field_validator("color")
+    @classmethod
+    def _v_color(cls, v):
+        return _validar_color(v)
 
 
 class CategoriaUpdate(BaseModel):
     nombre: Optional[str] = Field(default=None, min_length=1, max_length=30)
     icono: Optional[str] = None
     activa: Optional[bool] = None
+    color: Optional[str] = None  # "" quita el color
+    tipo: Optional[Literal["gasto", "ingreso", "ambos"]] = None
+
+    @field_validator("icono")
+    @classmethod
+    def _v_icono(cls, v):
+        return _validar_icono(v)
+
+    @field_validator("color")
+    @classmethod
+    def _v_color(cls, v):
+        # "" significa "quitar el color": se conserva para distinguirlo de "no tocar".
+        return "" if v == "" else _validar_color(v)
+
+
+class CategoriasOrden(BaseModel):
+    ids: list[str] = Field(min_length=1, max_length=200)
 
 
 class CategoriaOut(BaseModel):
@@ -42,6 +90,9 @@ class CategoriaOut(BaseModel):
     orden: int
     activa: bool
     es_base: bool
+    color: Optional[str] = None
+    tipo: Optional[str] = "ambos"
+    movimientos: int = 0  # cuántos movimientos usan esta categoría
 
     class Config:
         from_attributes = True
@@ -153,9 +204,21 @@ class MovimientoOut(BaseModel):
     monto: float
     fuente: str
     notas: str
+    cat_origen: Optional[str] = None
+    cat_confirmada: Optional[bool] = True
 
     class Config:
         from_attributes = True
+
+
+class RecategorizarComercioRequest(BaseModel):
+    categoria: str = Field(min_length=1)
+    patron: Optional[str] = Field(default=None, max_length=60)  # si no viene, se deduce de la descripción
+    aplicar_a_todos: bool = True
+
+
+class ConfirmarCategoriasRequest(BaseModel):
+    movimiento_ids: Optional[list[str]] = None  # None = todos los pendientes de revisión
 
 
 class MovimientoRapidoCreate(BaseModel):
@@ -643,6 +706,7 @@ class ProcesarExtractoResponse(BaseModel):
     descartados: int = 0
     review: list[MovimientoReview] = []
     error: Optional[str] = None
+    auto_importados: int = 0  # movimientos que entraron solos (quedan "por revisar")
 
 
 class ImportarFaltantesRequest(BaseModel):

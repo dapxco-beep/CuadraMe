@@ -18,7 +18,18 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
-    throw new Error(data.detail || `Error ${res.status}`)
+    // detail puede ser texto, un objeto (409 con datos) o la lista de errores de validación.
+    const detail = data.detail
+    const mensaje =
+      typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? String(detail[0]?.msg || '').replace(/^Value error, /, '')
+          : detail?.mensaje
+    const err = new Error(mensaje || `Error ${res.status}`)
+    err.status = res.status
+    err.detalle = detail
+    throw err
   }
   return res.json()
 }
@@ -46,7 +57,16 @@ export const api = {
   editarCuenta: (id, data) => request(`/cuentas/${id}`, { method: 'PUT', body: data }),
   eliminarCuenta: (id) => request(`/cuentas/${id}`, { method: 'DELETE' }),
 
-  movimientos: (limit = 100, offset = 0) => request(`/movimientos?limit=${limit}&offset=${offset}`),
+  movimientos: (limit = 100, offset = 0, { porRevisar = false } = {}) =>
+    request(`/movimientos?limit=${limit}&offset=${offset}${porRevisar ? '&por_revisar=true' : ''}`),
+  conteoPorRevisar: () => request('/movimientos/por-revisar/conteo'),
+  confirmarCategorias: (movimientoIds) =>
+    request('/movimientos/confirmar-categorias', {
+      method: 'POST',
+      body: { movimiento_ids: movimientoIds ?? null },
+    }),
+  recategorizarComercio: (id, data) =>
+    request(`/movimientos/${id}/recategorizar-comercio`, { method: 'POST', body: data }),
   movimiento: (id) => request(`/movimientos/${id}`),
   editarMovimiento: (id, data) => request(`/movimientos/${id}`, { method: 'PUT', body: data }),
   crearTransferencia: (data) => request('/movimientos/transferencia', { method: 'POST', body: data }),
@@ -143,7 +163,9 @@ export const api = {
     request(`/categorias${incluirInactivas ? '?incluir_inactivas=true' : ''}`),
   crearCategoria: (data) => request('/categorias', { method: 'POST', body: data }),
   editarCategoria: (id, data) => request(`/categorias/${id}`, { method: 'PUT', body: data }),
-  eliminarCategoria: (id) => request(`/categorias/${id}`, { method: 'DELETE' }),
+  eliminarCategoria: (id, moverA) =>
+    request(`/categorias/${id}${moverA ? '?mover_a=' + encodeURIComponent(moverA) : ''}`, { method: 'DELETE' }),
+  reordenarCategorias: (ids) => request('/categorias/orden', { method: 'PUT', body: { ids } }),
 
   eliminarMiCuenta: () => request('/perfil/eliminar-cuenta', { method: 'POST', body: { confirmacion: 'ELIMINAR' } }),
   apiKey: () => request('/perfil/api-key'),

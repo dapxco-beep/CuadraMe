@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
-from app.classifier import aplicar_reglas, build_model, classify
+from app.autocat import clasificar_lote_detalle, datos_auto
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, puede_editar_cuenta
 from app.conciliacion import auditar_movimientos, compute_fingerprint
@@ -88,25 +88,9 @@ def _cuenta_editable(db: Session, usuario: UsuarioActual, cuenta_id: str):
 
 
 def clasificar_lote(db: Session, usuario_id: str, descripciones: list[str]) -> list[str]:
-    """Categoría sugerida para cada descripción. El modelo aprendido se arma UNA
-    vez (en _clasificar de movimientos se rearma por llamada, inviable con miles
-    de filas). Orden: pago de tarjeta -> reglas del usuario -> aprendido -> diccionario."""
-    reglas = (
-        db.query(ReglaCategoria).filter(ReglaCategoria.usuario_id == usuario_id)
-        .order_by(ReglaCategoria.prioridad.desc()).all()
-    )
-    hist = (
-        db.query(Movimiento).filter(Movimiento.usuario_id == usuario_id, Movimiento.categoria != "Otros").all()
-    )
-    modelo = build_model([{"descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo} for m in hist])
-    salida = []
-    for d in descripciones:
-        if es_pago_tarjeta(d):
-            salida.append(CATEGORIA_PAGO_TARJETA)
-            continue
-        r = aplicar_reglas(d, reglas) or classify(d, modelo) or clasificar_por_diccionario(d)
-        salida.append(r["categoria"] if r else "Otros")
-    return salida
+    """Categoría sugerida para cada descripción (el modelo aprendido se arma UNA vez).
+    Orden: pago de tarjeta -> reglas del usuario -> aprendido -> diccionario."""
+    return [cat for cat, _ in clasificar_lote_detalle(db, usuario_id, descripciones)]
 
 
 def _ledger_del_rango(db: Session, usuario_id: str, cuenta_id: str, movs: list[dict]) -> list[dict]:
@@ -197,7 +181,7 @@ def confirmar(
     huellas_existentes = {r["fingerprint"] for r in ledger if r.get("fingerprint")}
     categorias_auto = None
 
-    importados = omitidos = 0
+    importados = omitidos = auto_categorizados = 0
     neto = 0.0
     for i, f in enumerate(data.filas):
         fp = compute_fingerprint(f.fecha, f.monto, cuenta.id, f.descripcion, f.tipo)
@@ -205,14 +189,20 @@ def confirmar(
             omitidos += 1  # ya está: importar el mismo archivo dos veces no duplica
             continue
         categoria = (f.categoria or "").strip()
+        if categorias_auto is None:
+            categorias_auto = clasificar_lote_detalle(db, usuario.id, [x.descripcion for x in data.filas])
+        sugerida, origen = categorias_auto[i]
         if not categoria:
-            if categorias_auto is None:
-                categorias_auto = clasificar_lote(db, usuario.id, [x.descripcion for x in data.filas])
-            categoria = categorias_auto[i]
+            categoria = sugerida
+        # Si la categoría que llega es la misma que sugirió la app (la vista previa
+        # la muestra), sigue siendo "automática"; si el usuario la cambió, es suya.
+        auto = datos_auto(origen if categoria == sugerida else None)
+        if not auto["cat_confirmada"]:
+            auto_categorizados += 1
         db.add(Movimiento(
             usuario_id=usuario.id, cuenta_id=cuenta.id, fecha=datetime.fromisoformat(f.fecha),
             descripcion=f.descripcion.strip(), categoria=categoria, tipo=f.tipo, monto=f.monto,
-            fuente=FUENTE_IMPORTACION, notas=f"Importado de {data.nombre_archivo[:80]}",
+            fuente=FUENTE_IMPORTACION, notas=f"Importado de {data.nombre_archivo[:80]}", **auto,
         ))
         neto += f.monto if f.tipo == "income" else -f.monto
         importados += 1
@@ -229,4 +219,5 @@ def confirmar(
     if importados:
         registrar_actividad_hoy(db, usuario.id)
     return {"ok": True, "importados": importados, "duplicados_omitidos": omitidos,
+            "categorizados_auto": auto_categorizados,
             "saldo": cuenta.saldo, "saldo_ajustado": bool(data.ajustar_saldo and importados)}

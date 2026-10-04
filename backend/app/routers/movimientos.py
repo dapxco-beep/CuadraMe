@@ -6,23 +6,34 @@ from sqlalchemy.orm import Session
 
 from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user, get_current_user_by_api_key
+from sqlalchemy import and_, or_
+
+from app.autocat import (
+    ajustar_a_categorias_usuario,
+    datos_auto,
+    movimientos_confirmados,
+    origen_de,
+    patron_de_comercio,
+)
 from app.classifier import aplicar_reglas, build_model, classify
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, cuentas_ids_accesibles, puede_editar_cuenta
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, es_pago_tarjeta
 from app.database import get_db
 from app.limites import verificar_limite
-from app.models import Cuenta, Movimiento, ReglaCategoria
+from app.models import Categoria, Cuenta, Movimiento, ReglaCategoria
 from app.rachas import registrar_actividad_hoy
 from app.schemas import (
     ClasificarRequest,
     ClasificarResponse,
+    ConfirmarCategoriasRequest,
     MovimientoCreate,
     MovimientoOut,
     MovimientoPorVozCreate,
     MovimientoPorVozResponse,
     MovimientoRapidoCreate,
     MovimientoUpdate,
+    RecategorizarComercioRequest,
     RecategorizarMasivoRequest,
     RecategorizarMasivoResponse,
     TransferenciaCreate,
@@ -36,6 +47,12 @@ router = APIRouter(prefix="/movimientos", tags=["movimientos"])
 # Se distinguen de las transferencias importadas de un extracto (tipo
 # "transfer" sin efecto en saldo) por esta fuente.
 FUENTE_TRANSFERENCIA = "transferencia_interna"
+
+# "Por revisar": categorizados automáticamente sin confirmar, o en 'Otros'.
+_PENDIENTE_REVISION = or_(
+    Movimiento.cat_confirmada.is_(False),
+    and_(Movimiento.categoria == "Otros", Movimiento.fuente != FUENTE_TRANSFERENCIA),
+)
 
 
 def _delta_saldo(tipo: str, monto: float) -> float:
@@ -67,6 +84,7 @@ def listar_movimientos(
     hasta: str | None = None,
     monto_min: float | None = None,
     monto_max: float | None = None,
+    por_revisar: bool = False,
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
@@ -91,8 +109,119 @@ def listar_movimientos(
         query = query.filter(Movimiento.monto >= monto_min)
     if monto_max is not None:
         query = query.filter(Movimiento.monto <= monto_max)
+    if por_revisar:
+        query = query.filter(_PENDIENTE_REVISION)
 
     return query.order_by(Movimiento.fecha.desc()).offset(offset).limit(limit).all()
+
+
+@router.get("/por-revisar/conteo")
+def conteo_por_revisar(
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Cuántos movimientos esperan revisión: los que la app categorizó sola y
+    nadie confirmó, más los que quedaron en 'Otros'. Los traslados propios no cuentan."""
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    base = db.query(Movimiento).filter(
+        Movimiento.cuenta_id.in_(ids_accesibles), Movimiento.fuente != FUENTE_TRANSFERENCIA
+    )
+    auto = base.filter(Movimiento.cat_confirmada.is_(False)).count()
+    otros = base.filter(Movimiento.categoria == "Otros", Movimiento.cat_confirmada.isnot(False)).count()
+    return {"auto": auto, "otros": otros, "total": auto + otros}
+
+
+@router.post("/confirmar-categorias")
+def confirmar_categorias(
+    data: ConfirmarCategoriasRequest,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Confirma con un toque la categoría que puso la app (uno, varios o todos
+    los pendientes). No cambia la categoría: solo deja de ser 'Auto'."""
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    q = db.query(Movimiento).filter(
+        Movimiento.cuenta_id.in_(ids_accesibles), Movimiento.cat_confirmada.is_(False)
+    )
+    if data.movimiento_ids is not None:
+        q = q.filter(Movimiento.id.in_(data.movimiento_ids))
+    n = q.update({"cat_confirmada": True}, synchronize_session=False)
+    db.commit()
+    return {"ok": True, "confirmados": n}
+
+
+@router.post("/{movimiento_id}/recategorizar-comercio")
+def recategorizar_comercio(
+    movimiento_id: str,
+    data: RecategorizarComercioRequest,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Cambia la categoría de este movimiento y, si `aplicar_a_todos`, crea una
+    regla de categoría para el comercio y la aplica a todos los movimientos tuyos
+    que lo contengan (los confirma). Las compras futuras de ese comercio quedan
+    categorizadas 'por tu regla'."""
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    mov = (
+        db.query(Movimiento)
+        .filter(Movimiento.id == movimiento_id, Movimiento.cuenta_id.in_(ids_accesibles))
+        .first()
+    )
+    if not mov:
+        raise HTTPException(status_code=404, detail="Movimiento no encontrado")
+    cuenta = cuenta_accesible(db, usuario.id, mov.cuenta_id)
+    if not cuenta or not puede_editar_cuenta(db, usuario.id, cuenta):
+        raise HTTPException(status_code=403, detail="No tienes permiso para editar esta cuenta")
+
+    categoria = data.categoria.strip()
+    existe = db.query(Categoria.id).filter(Categoria.usuario_id == usuario.id).first()
+    if existe and not db.query(Categoria.id).filter(
+        Categoria.usuario_id == usuario.id, Categoria.nombre == categoria
+    ).first():
+        raise HTTPException(status_code=400, detail="Esa categoría no existe en tu lista")
+
+    mov.categoria = categoria
+    mov.cat_confirmada = True
+    mov.cat_origen = None
+    actualizados = 1
+    patron = None
+
+    if data.aplicar_a_todos:
+        patron = (data.patron or "").strip() or patron_de_comercio(mov.descripcion)
+        if patron.lower() not in mov.descripcion.lower():
+            raise HTTPException(status_code=400, detail="El comercio debe aparecer en la descripción del movimiento")
+        regla = (
+            db.query(ReglaCategoria)
+            .filter(ReglaCategoria.usuario_id == usuario.id, ReglaCategoria.patron.ilike(patron))
+            .first()
+        )
+        if regla:
+            regla.categoria = categoria
+        else:
+            db.add(ReglaCategoria(usuario_id=usuario.id, patron=patron, categoria=categoria, tipo=None, prioridad=0))
+        # Escapa % y _ para que el patrón se trate como texto literal.
+        literal = patron.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        otros = (
+            db.query(Movimiento)
+            .filter(
+                Movimiento.cuenta_id.in_(ids_accesibles),
+                Movimiento.id != mov.id,
+                Movimiento.fuente != FUENTE_TRANSFERENCIA,
+                Movimiento.tipo != "transfer",
+                Movimiento.descripcion.ilike(f"%{literal}%", escape="\\"),
+            )
+            .all()
+        )
+        for o in otros:
+            c = cuenta_accesible(db, usuario.id, o.cuenta_id)
+            if c and puede_editar_cuenta(db, usuario.id, c):
+                o.categoria = categoria
+                o.cat_confirmada = True
+                o.cat_origen = None
+                actualizados += 1
+
+    db.commit()
+    return {"ok": True, "actualizados": actualizados, "patron": patron}
 
 
 @router.get("/{movimiento_id}", response_model=MovimientoOut)
@@ -124,9 +253,12 @@ def crear_movimiento(
     cuenta = bloquear_cuenta(db, cuenta.id)  # saldo consistente si llegan dos registros a la vez
 
     categoria = data.categoria
+    auto = datos_auto(None)
     if not categoria:
         resultado = _clasificar(db, usuario.id, data.descripcion)
         categoria = resultado["categoria"] if resultado else "Otros"
+        if resultado:
+            auto = datos_auto(origen_de(resultado.get("fuente")))
 
     movimiento = Movimiento(
         usuario_id=usuario.id,
@@ -138,6 +270,7 @@ def crear_movimiento(
         fecha=data.fecha or ahora_co(),
         notas=data.notas or "",
         fuente="manual",
+        **auto,
     )
     db.add(movimiento)
     cuenta.saldo += _delta_saldo(data.tipo, data.monto)
@@ -238,6 +371,10 @@ def editar_movimiento(
             setattr(mov, campo, cambios[campo])
     mov.cuenta_id = cuenta_nueva.id
     cuenta_nueva.saldo += _delta_saldo(mov.tipo, mov.monto)
+    if "categoria" in cambios:
+        # El usuario eligió la categoría: deja de ser una suposición de la app.
+        mov.cat_confirmada = True
+        mov.cat_origen = None
 
     db.commit()
     db.refresh(mov)
@@ -272,6 +409,8 @@ def recategorizar_masivo(
         if mov.cuenta_id not in cuentas_editables:
             continue
         mov.categoria = data.categoria
+        mov.cat_confirmada = True
+        mov.cat_origen = None
         actualizados += 1
 
     db.commit()
@@ -358,6 +497,7 @@ def _registrar_movimiento_rapido(
 
     resultado = _clasificar(db, usuario_id, descripcion)
     categoria = resultado["categoria"] if resultado else "Otros"
+    auto = datos_auto(origen_de(resultado.get("fuente")) if resultado else None)
 
     movimiento = Movimiento(
         usuario_id=usuario_id,
@@ -368,6 +508,7 @@ def _registrar_movimiento_rapido(
         monto=monto,
         fecha=ahora_co(),
         fuente=fuente,
+        **auto,
     )
     db.add(movimiento)
     cuenta = bloquear_cuenta(db, cuenta.id)
@@ -448,12 +589,8 @@ def clasificar_movimiento(
 
 
 def _movimientos_categorizados(db: Session, usuario_id: str) -> list[dict]:
-    movs = (
-        db.query(Movimiento)
-        .filter(Movimiento.usuario_id == usuario_id, Movimiento.categoria != "Otros")
-        .all()
-    )
-    return [{"descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo} for m in movs]
+    # Solo lo confirmado por el usuario alimenta el aprendizaje (ver autocat).
+    return movimientos_confirmados(db, usuario_id)
 
 
 def _clasificar(db: Session, usuario_id: str, descripcion: str) -> dict | None:
@@ -477,4 +614,9 @@ def _clasificar(db: Session, usuario_id: str, descripcion: str) -> dict | None:
     if resultado:
         return resultado
 
-    return clasificar_por_diccionario(descripcion)
+    resultado = clasificar_por_diccionario(descripcion)
+    if resultado:
+        # Si el usuario renombró/ocultó la categoría base que sugiere el
+        # diccionario, no se crea un movimiento huérfano.
+        resultado = {**resultado, "categoria": ajustar_a_categorias_usuario(db, usuario_id, resultado["categoria"])}
+    return resultado

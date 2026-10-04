@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.limites import verificar_limite
 from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
+from app.autocat import datos_auto, movimientos_confirmados, origen_de
 from app.classifier import build_model, classify
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import cuenta_accesible, puede_editar_cuenta
@@ -95,14 +96,8 @@ def procesar_extracto(
     # Auto-importar los "faltantes" con alta confianza del clasificador aprendido,
     # solo cuando vinieron del parser regex de banco (no del fallback de IA).
     auto_importados = 0
-    historial_mov = (
-        db.query(Movimiento)
-        .filter(Movimiento.usuario_id == usuario.id, Movimiento.categoria != "Otros")
-        .all()
-    )
-    modelo = build_model(
-        [{"descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo} for m in historial_mov]
-    )
+    # Solo lo confirmado por el usuario alimenta el aprendizaje.
+    modelo = build_model(movimientos_confirmados(db, usuario.id))
     umbral = _umbral_autoimport(db, usuario.id)
 
     for item in resultado["review"]:
@@ -122,6 +117,7 @@ def procesar_extracto(
                 fecha=fecha_dt or ahora_co(),
                 fuente="conciliacion_auto",
                 notas=f"Auto-importado desde extracto {banco} (confianza {clasif['confianza']})",
+                **datos_auto(origen_de(clasif.get("fuente")) or "similar"),
             )
             db.add(movimiento)
 
@@ -169,6 +165,7 @@ def procesar_extracto(
         faltantes=resultado["faltantes"],
         descartados=descartados,
         review=resultado["review"],
+        auto_importados=auto_importados,
     )
 
 
@@ -234,17 +231,11 @@ def importar_faltantes(
     fingerprints = set(data.fingerprints)
     importados = 0
 
-    historial_mov = (
-        db.query(Movimiento)
-        .filter(Movimiento.usuario_id == usuario.id, Movimiento.categoria != "Otros")
-        .all()
-    )
-    modelo = build_model(
-        [{"descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo} for m in historial_mov]
-    )
+    modelo = build_model(movimientos_confirmados(db, usuario.id))
 
     categorias_elegidas = data.categorias or {}
     sin_categoria_clara = 0
+    categorizados_auto = 0
 
     for item in review:
         fp = item.get("fingerprint")
@@ -253,11 +244,15 @@ def importar_faltantes(
 
         if fp in categorias_elegidas and categorias_elegidas[fp]:
             categoria = categorias_elegidas[fp]
+            auto = datos_auto(None)  # la eligió el usuario
         else:
             clasif = classify(item["descripcion"], modelo) or clasificar_por_diccionario(item["descripcion"])
             categoria = clasif["categoria"] if clasif else "Otros"
+            auto = datos_auto(origen_de(clasif.get("fuente")) if clasif else None)
             if categoria == "Otros":
                 sin_categoria_clara += 1
+            else:
+                categorizados_auto += 1
 
         movimiento = Movimiento(
             usuario_id=usuario.id,
@@ -269,6 +264,7 @@ def importar_faltantes(
             fecha=parse_bank_date(item["fecha"]) or historial.creado_en,
             fuente="conciliacion_extracto",
             notas=f"Importado desde extracto {historial.banco_detectado}",
+            **auto,
         )
         db.add(movimiento)
 
@@ -286,7 +282,7 @@ def importar_faltantes(
         historial.estado = "conciliado"
 
     db.commit()
-    return {"ok": True, "importados": importados, "sin_categoria_clara": sin_categoria_clara}
+    return {"ok": True, "importados": importados, "sin_categoria_clara": sin_categoria_clara, "categorizados_auto": categorizados_auto}
 
 
 @router.delete("/historial/{historial_id}")
