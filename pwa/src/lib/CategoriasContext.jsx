@@ -13,7 +13,11 @@ export function CategoriasProvider({ children }) {
     if (!usuario) return
     setCargando(true)
     try {
-      const cs = await api.categorias()
+      // Siempre se piden TAMBIÉN las ocultas: la pantalla de Categorías las
+      // necesita para poder reactivarlas, y los íconos de movimientos viejos
+      // siguen resolviéndose aunque la categoría esté oculta. Los selectores
+      // usan `nombres` / `activas`, que ya vienen filtrados.
+      const cs = await api.categorias(true)
       setCategorias(cs)
     } catch {
       // si falla, se sigue usando lo que ya había en memoria — las pantallas
@@ -28,13 +32,18 @@ export function CategoriasProvider({ children }) {
     if (usuario) recargar()
   }, [usuario, recargar])
 
-  const nombres = categorias.map((c) => c.nombre)
+  const activas = categorias.filter((c) => c.activa)
+  const nombres = activas.map((c) => c.nombre)
   // nombre de categoría -> emoji, para mostrar el ícono real en listas y detalles
   const iconos = Object.fromEntries(categorias.map((c) => [c.nombre, c.icono]))
   const iconoDe = (nombre) => iconos[nombre] || '💳'
+  const colores = Object.fromEntries(categorias.filter((c) => c.color).map((c) => [c.nombre, c.color]))
+  const colorDe = (nombre) => colores[nombre] || null
 
   return (
-    <CategoriasContext.Provider value={{ categorias, nombres, iconoDe, cargando, recargar }}>
+    <CategoriasContext.Provider
+      value={{ categorias, activas, nombres, iconoDe, colorDe, cargando, recargar }}
+    >
       {children}
     </CategoriasContext.Provider>
   )

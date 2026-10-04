@@ -132,6 +132,11 @@ class Movimiento(Base):
     monto = Column(Float, nullable=False)
     fuente = Column(String, default="manual")  # manual | csv_import | ai | sms
     notas = Column(String, default="")
+    # Categorización automática transparente: si la app puso la categoría sola
+    # queda cat_confirmada=False y cat_origen dice por qué (regla | comercio |
+    # similar | sugerida). Lo que escribe el usuario nace confirmado.
+    cat_origen = Column(String, nullable=True)
+    cat_confirmada = Column(Boolean, default=True)
 
 
 class Presupuesto(Base):
@@ -325,4 +330,6 @@ class Categoria(Base):
     orden = Column(Integer, default=0)
     activa = Column(Boolean, default=True)  # oculta en vez de borrar, para no perder el historial de movimientos ya categorizados con ella
     es_base = Column(Boolean, default=False)  # una de las 8 originales — no se puede eliminar, solo ocultar o renombrar
+    color = Column(String, nullable=True)  # opcional, "#RRGGBB"
+    tipo = Column(String, default="ambos")  # gasto | ingreso | ambos
     creado_en = Column(DateTime, default=datetime.utcnow)

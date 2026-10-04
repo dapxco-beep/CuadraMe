@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { EstadoVacio } from '../brand/Marca'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Check, Download, Search, SlidersHorizontal, Upload, X } from 'lucide-react'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
@@ -8,6 +8,8 @@ import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { tipoEfectivo } from '../lib/contabilidad'
+import { esAuto, porRevisar } from '../lib/comercio'
+import { HojaCambiarCategoria, InsigniaAuto } from '../components/CategorizacionAuto'
 
 const TAMANO_PAGINA = 200
 
@@ -26,7 +28,7 @@ function etiquetaDia(fechaISO) {
 export default function Movimientos() {
   const { cuentas } = useCuentas()
   const { nombres: CATEGORIAS, iconoDe } = useCategorias()
-  const { avisar } = useDialogos()
+  const { avisar, confirmar } = useDialogos()
   const monedaDe = Object.fromEntries(cuentas.map((c) => [c.id, c.moneda]))
   const [movimientos, setMovimientos] = useState([])
   const [busqueda, setBusqueda] = useState('')
@@ -43,22 +45,96 @@ export default function Movimientos() {
   const [hayMas, setHayMas] = useState(false)
   const [cargandoMas, setCargandoMas] = useState(false)
   const [errorCarga, setErrorCarga] = useState('')
+  // "Por revisar": lo que la app categorizó sola sin confirmar + lo que quedó en 'Otros'.
+  const [params, setParams] = useSearchParams()
+  const soloRevisar = params.get('revisar') === '1'
+  const [conteo, setConteo] = useState({ auto: 0, otros: 0, total: 0 })
+  const [cambiando, setCambiando] = useState(null)
+
+  // En la vista normal se llama como siempre; "Por revisar" agrega el filtro.
+  function pedirMovimientos(offset) {
+    return soloRevisar
+      ? api.movimientos(TAMANO_PAGINA, offset, { porRevisar: true })
+      : api.movimientos(TAMANO_PAGINA, offset)
+  }
+
+  function recargarConteo() {
+    Promise.resolve(api.conteoPorRevisar?.())
+      .then((c) => c && setConteo(c))
+      .catch(() => {})
+  }
 
   useEffect(() => {
-    api
-      .movimientos(TAMANO_PAGINA, 0)
+    setCargando(true)
+    setErrorCarga('')
+    pedirMovimientos(0)
       .then((movs) => {
         setMovimientos(movs)
         setHayMas(movs.length === TAMANO_PAGINA)
       })
       .catch((err) => setErrorCarga(err.message || 'No se pudieron cargar los movimientos'))
       .finally(() => setCargando(false))
-  }, [])
+    recargarConteo()
+  }, [soloRevisar])
+
+  function alternarRevisar() {
+    setFiltro('Todos')
+    setParams(soloRevisar ? {} : { revisar: '1' }, { replace: true })
+  }
+
+  async function confirmarUno(m) {
+    try {
+      await api.confirmarCategorias([m.id])
+      setMovimientos((prev) =>
+        soloRevisar && m.categoria !== 'Otros'
+          ? prev.filter((x) => x.id !== m.id)
+          : prev.map((x) => (x.id === m.id ? { ...x, cat_confirmada: true, cat_origen: null } : x))
+      )
+      recargarConteo()
+    } catch {
+      avisar('No se pudo confirmar la categoría')
+    }
+  }
+
+  async function confirmarTodas() {
+    const ok = await confirmar(
+      'Se dejarán como correctas las categorías que la app puso sola. Los de "Otros" siguen pendientes.',
+      { titulo: `¿Confirmar ${conteo.auto} categorías?`, confirmarTexto: 'Confirmar todas' }
+    )
+    if (!ok) return
+    try {
+      await api.confirmarCategorias(null)
+      const movs = await pedirMovimientos(0)
+      setMovimientos(movs)
+      setHayMas(movs.length === TAMANO_PAGINA)
+      recargarConteo()
+    } catch {
+      avisar('No se pudieron confirmar')
+    }
+  }
+
+  async function alCambiarCategoria(r) {
+    setCambiando(null)
+    avisar(
+      r.actualizados > 1
+        ? `Listo: ${r.actualizados} movimientos movidos y regla creada para "${r.patron}"`
+        : 'Categoría actualizada',
+      'ok'
+    )
+    try {
+      const movs = await pedirMovimientos(0)
+      setMovimientos(movs)
+      setHayMas(movs.length === TAMANO_PAGINA)
+    } catch {
+      /* se queda con lo que había */
+    }
+    recargarConteo()
+  }
 
   async function cargarMas() {
     setCargandoMas(true)
     try {
-      const siguientes = await api.movimientos(TAMANO_PAGINA, movimientos.length)
+      const siguientes = await pedirMovimientos(movimientos.length)
       setMovimientos((prev) => [...prev, ...siguientes])
       setHayMas(siguientes.length === TAMANO_PAGINA)
     } catch {
@@ -127,9 +203,10 @@ export default function Movimientos() {
     try {
       await api.recategorizarMasivo([...seleccionados], categoria)
       setMovimientos((prev) =>
-        prev.map((m) => (seleccionados.has(m.id) ? { ...m, categoria } : m))
+        prev.map((m) => (seleccionados.has(m.id) ? { ...m, categoria, cat_confirmada: true, cat_origen: null } : m))
       )
       salirModoSeleccion()
+      recargarConteo()
     } catch {
       avisar('No se pudo actualizar la categoría')
     } finally {
@@ -245,7 +322,26 @@ export default function Movimientos() {
         </div>
       </div>
 
-      {categorias.length > 1 && (
+      {(conteo.total > 0 || soloRevisar) && (
+        <div className="px-5 mb-3 flex items-center gap-2">
+          <button
+            onClick={alternarRevisar}
+            aria-pressed={soloRevisar}
+            className={`text-sm px-4 py-1.5 rounded-full border font-medium ${
+              soloRevisar ? 'bg-accent text-white border-accent' : 'border-accent text-accent'
+            }`}
+          >
+            Por revisar{conteo.total > 0 ? ` (${conteo.total})` : ''}
+          </button>
+          {soloRevisar && conteo.auto > 0 && (
+            <button onClick={confirmarTodas} className="text-xs text-ink-soft font-medium underline">
+              Confirmar las {conteo.auto} automáticas
+            </button>
+          )}
+        </div>
+      )}
+
+      {!soloRevisar && categorias.length > 1 && (
         <div className="px-5 flex gap-2 mb-4 overflow-x-auto no-scrollbar">
           {categorias.map((f) => (
             <button
@@ -268,7 +364,16 @@ export default function Movimientos() {
           <p className="text-sm text-danger">{errorCarga}</p>
         </div>
       ) : filtrados.length === 0 ? (
-        <EstadoVacio icono={Search} titulo="No hay movimientos que coincidan" texto="Prueba con otro filtro o búsqueda." className="mx-5" />
+        <EstadoVacio
+          icono={Search}
+          titulo={soloRevisar && !hayFiltrosActivos ? 'Todo está revisado' : 'No hay movimientos que coincidan'}
+          texto={
+            soloRevisar && !hayFiltrosActivos
+              ? 'No hay categorías automáticas pendientes ni movimientos en "Otros".'
+              : 'Prueba con otro filtro o búsqueda.'
+          }
+          className="mx-5"
+        />
       ) : (
         <div className="mx-5 relative pl-5">
           <div className="absolute left-[9px] top-1.5 bottom-1.5 w-0.5 bg-line" />
@@ -302,6 +407,7 @@ export default function Movimientos() {
                         <p className="text-sm font-semibold truncate">{m.descripcion}</p>
                         <p className="text-xs text-ink-soft mt-0.5">
                           <span aria-hidden="true">{m.tipo === 'transfer' ? '🔁' : iconoDe(m.categoria)}</span> {m.categoria}
+                          {esAuto(m) && <InsigniaAuto movimiento={m} />}
                         </p>
                       </div>
                       <span className={`text-[15px] font-bold shrink-0 ${m.tipo === 'income' ? 'text-accent-2' : m.tipo === 'transfer' ? 'text-ink-soft' : 'text-ink'}`}>
@@ -321,14 +427,31 @@ export default function Movimientos() {
                     {contenido}
                   </button>
                 ) : (
-                  <Link
-                    key={m.id}
-                    to={`/movimientos/${m.id}`}
-                    className="relative block py-2.5 stagger-item"
-                    style={{ '--stagger-i': staggerI }}
-                  >
-                    {contenido}
-                  </Link>
+                  <div key={m.id} className="relative stagger-item" style={{ '--stagger-i': staggerI }}>
+                    <Link to={`/movimientos/${m.id}`} className="relative block py-2.5">
+                      {contenido}
+                    </Link>
+                    {soloRevisar && porRevisar(m) && (
+                      <div className="flex gap-2 pb-2.5 -mt-1">
+                        {esAuto(m) && (
+                          <button
+                            onClick={() => confirmarUno(m)}
+                            aria-label={`Confirmar categoría de ${m.descripcion}`}
+                            className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-accent text-white"
+                          >
+                            <Check size={13} /> Confirmar
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setCambiando(m)}
+                          aria-label={`Cambiar categoría de ${m.descripcion}`}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-full border border-line text-ink-soft"
+                        >
+                          Cambiar categoría
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )
               })}
             </div>
@@ -347,6 +470,10 @@ export default function Movimientos() {
             {cargandoMas ? 'Cargando...' : 'Cargar movimientos anteriores'}
           </button>
         </div>
+      )}
+
+      {cambiando && (
+        <HojaCambiarCategoria movimiento={cambiando} onClose={() => setCambiando(null)} onHecho={alCambiarCategoria} />
       )}
 
       {modoSeleccion && seleccionados.size > 0 && (

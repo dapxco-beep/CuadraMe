@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
+import { AvisoCategorizados } from '../components/CategorizacionAuto'
 import {
   CAMPOS_MAPEO,
   ETIQUETA_ESTADO,
@@ -178,6 +179,7 @@ export default function ImportarArchivo() {
               Omitimos {resultado.duplicados_omitidos} que ya estaban registrados.
             </p>
           )}
+          <AvisoCategorizados n={resultado.categorizados_auto} className="mt-4 text-left" />
           <div className="flex gap-2 mt-6">
             <button onClick={reiniciar} className="flex-1 rounded-2xl border border-line py-3.5 text-sm font-semibold">
               Importar otro

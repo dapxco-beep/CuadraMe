@@ -73,6 +73,13 @@ if engine.dialect.name == "postgresql":
         conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS dia_pago INTEGER"))
         conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS tasa_ea FLOAT"))
         conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS ultima_alerta_pago VARCHAR"))
+        # Categorías libres y categorización automática transparente.
+        # DEFAULT TRUE deja los movimientos existentes como "confirmados".
+        # (Como SQL suelto: supabase/migraciones/categorias_auto.sql.)
+        conn.execute(text("ALTER TABLE categorias ADD COLUMN IF NOT EXISTS color VARCHAR"))
+        conn.execute(text("ALTER TABLE categorias ADD COLUMN IF NOT EXISTS tipo VARCHAR DEFAULT 'ambos'"))
+        conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS cat_origen VARCHAR"))
+        conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS cat_confirmada BOOLEAN DEFAULT TRUE"))
         # Casi toda consulta filtra por cuenta y ordena/filtra por fecha.
         conn.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_movimientos_cuenta_fecha "

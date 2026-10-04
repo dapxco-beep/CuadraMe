@@ -595,6 +595,10 @@ def aprobar_correo(
         monto=correo.monto,
         fecha=correo.recibido_en or correo.creado_en,
         fuente="email",
+        # La categoría la sugirió la app al leer el correo: queda por revisar
+        # salvo que sea 'Otros' (que ya aparece en la vista por revisar).
+        cat_origen="sugerida" if correo.categoria_sugerida != "Otros" else None,
+        cat_confirmada=correo.categoria_sugerida == "Otros",
     )
     db.add(movimiento)
 

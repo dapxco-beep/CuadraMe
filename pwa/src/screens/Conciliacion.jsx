@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
+import { AvisoCategorizados } from '../components/CategorizacionAuto'
 import { useDialogos } from '../lib/DialogosContext'
 
 function fileToBase64(file) {
@@ -110,7 +111,13 @@ export default function Conciliacion() {
           'ok'
         )
       }
-      navigate('/')
+      if (r.categorizados_auto > 0 || r.sin_categoria_clara > 0) {
+        // Lleva a la vista "Por revisar" para que confirme lo que categorizó la app.
+        if (r.categorizados_auto > 0) avisar(`Categoricé ${r.categorizados_auto} movimientos: revísalos`, 'ok')
+        navigate('/movimientos?revisar=1')
+      } else {
+        navigate('/')
+      }
     } catch (err) {
       setError(err.message || 'No se pudo importar')
     } finally {
@@ -201,6 +208,8 @@ export default function Conciliacion() {
               <p className="text-xs text-ink-soft">Total</p>
             </div>
           </div>
+
+          <AvisoCategorizados n={resultado.auto_importados} className="mb-4" />
 
           {resultado.descartados > 0 && (
             <div className="rounded-2xl bg-accent-soft p-3.5 mb-4">

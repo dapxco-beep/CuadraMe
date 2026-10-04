@@ -6,6 +6,8 @@ import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
+import { esAuto } from '../lib/comercio'
+import { HojaCambiarCategoria, InsigniaAuto } from '../components/CategorizacionAuto'
 
 const ETIQUETA_TIPO = { income: 'Ingreso', expense: 'Gasto', transfer: 'Transferencia' }
 
@@ -32,6 +34,17 @@ export default function DetalleMovimiento() {
       .then(setMovimiento)
       .catch(() => setNoEncontrado(true))
   }, [id])
+
+  const [cambiandoCategoria, setCambiandoCategoria] = useState(false)
+
+  async function confirmarCategoria() {
+    try {
+      await api.confirmarCategorias([id])
+      setMovimiento({ ...movimiento, cat_confirmada: true, cat_origen: null })
+    } catch (err) {
+      avisar(err.message || 'No se pudo confirmar')
+    }
+  }
 
   const cuenta = cuentas.find((c) => c.id === movimiento?.cuenta_id)
   const esTransferencia = movimiento?.fuente === 'transferencia_interna'
@@ -258,12 +271,48 @@ export default function DetalleMovimiento() {
       ) : (
         <div className="mx-5 rounded-2xl bg-paper-raised border border-line divide-y divide-line">
           <Fila label="Categoría" valor={movimiento.categoria} />
+          {esAuto(movimiento) && (
+            <div className="px-4 py-3.5">
+              <p className="text-sm">
+                La app puso esta categoría sola <InsigniaAuto movimiento={movimiento} />
+              </p>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={confirmarCategoria}
+                  className="flex-1 rounded-xl bg-accent text-white py-2.5 text-sm font-semibold"
+                >
+                  Está bien
+                </button>
+                <button
+                  onClick={() => setCambiandoCategoria(true)}
+                  className="flex-1 rounded-xl border border-line py-2.5 text-sm font-semibold"
+                >
+                  Cambiar
+                </button>
+              </div>
+            </div>
+          )}
           {cuenta && <Fila label="Cuenta" valor={cuenta.nombre} />}
           <Fila label="Fecha" valor={new Date(movimiento.fecha).toLocaleString('es-CO')} />
           <Fila label="Tipo" valor={ETIQUETA_TIPO[movimiento.tipo] || movimiento.tipo} />
           <Fila label="Origen" valor={movimiento.fuente} />
           {movimiento.notas && !esTransferencia && <Fila label="Notas" valor={movimiento.notas} />}
         </div>
+      )}
+
+      {cambiandoCategoria && (
+        <HojaCambiarCategoria
+          movimiento={movimiento}
+          onClose={() => setCambiandoCategoria(false)}
+          onHecho={(r, categoria) => {
+            setCambiandoCategoria(false)
+            setMovimiento({ ...movimiento, categoria, cat_confirmada: true, cat_origen: null })
+            avisar(
+              r.actualizados > 1 ? `Listo: ${r.actualizados} movimientos movidos y regla creada` : 'Categoría actualizada',
+              'ok'
+            )
+          }}
+        />
       )}
 
       {!editando && (
