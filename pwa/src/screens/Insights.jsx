@@ -1,45 +1,33 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, Clock, Send, Sparkles, TrendingUp, Zap } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { AlertTriangle, ArrowLeft, ChevronRight, Clock, PieChart, Send, Sparkles, TrendingUp, Zap } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
-import { tipoEfectivo } from '../lib/contabilidad'
+import { rangoPeriodo } from '../lib/informe'
+import MapaActividad from '../components/MapaActividad'
+import SelectorPeriodo from '../components/SelectorPeriodo'
 
-function construirMapaCalor(movimientos) {
-  const gastoPorDia = {}
-  for (const m of movimientos) {
-    if (tipoEfectivo(m) !== 'expense') continue
-    const dia = m.fecha.slice(0, 10)
-    gastoPorDia[dia] = (gastoPorDia[dia] || 0) + m.monto
-  }
+const PERIODOS_RESUMEN = [
+  { id: '7_dias', label: 'Semana' },
+  { id: '30_dias', label: '30 días' },
+  { id: 'este_mes', label: 'Este mes' },
+  { id: 'mes_pasado', label: 'Mes pasado' },
+  { id: 'rango', label: 'Personalizado' },
+]
 
-  const hoy = new Date()
-  const dias = []
-  for (let i = 34; i >= 0; i--) {
-    const fecha = new Date(hoy)
-    fecha.setDate(hoy.getDate() - i)
-    const key = fecha.toISOString().slice(0, 10)
-    dias.push({ key, monto: gastoPorDia[key] || 0 })
-  }
-
-  const max = Math.max(1, ...dias.map((d) => d.monto))
-  return dias.map((d) => ({ ...d, intensidad: d.monto / max }))
-}
-
-function colorIntensidad(intensidad) {
-  if (intensidad === 0) return 'var(--color-line)'
-  if (intensidad < 0.25) return 'color-mix(in srgb, var(--color-accent) 30%, var(--color-paper-raised))'
-  if (intensidad < 0.55) return 'color-mix(in srgb, var(--color-accent) 60%, var(--color-paper-raised))'
-  if (intensidad < 0.85) return 'var(--color-accent)'
-  return 'var(--color-danger)'
-}
+const PREGUNTAS_SUGERIDAS = [
+  '¿En qué gasté más este mes?',
+  '¿Cuánto gasté en comida el mes pasado?',
+  '¿Gasté más o menos que el mes pasado?',
+  '¿Voy bien con mi presupuesto?',
+]
 
 export default function Insights() {
   const navigate = useNavigate()
   const [resumen, setResumen] = useState(null)
   const [edadDinero, setEdadDinero] = useState(null)
   const [alertas, setAlertas] = useState(null)
-  const [mapaCalor, setMapaCalor] = useState(null)
+  const [periodoResumen, setPeriodoResumen] = useState({ periodo: '7_dias', ...rangoPeriodo('7_dias') })
   const [cargando, setCargando] = useState(true)
   const [mensajes, setMensajes] = useState([])
   const [pregunta, setPregunta] = useState('')
@@ -47,26 +35,35 @@ export default function Insights() {
   const scrollRef = useRef(null)
 
   useEffect(() => {
-    api.resumenSemanal().then(setResumen).catch(() => {}).finally(() => setCargando(false))
     api.edadDelDinero().then(setEdadDinero).catch(() => {})
     api.alertasProactivas().then(setAlertas).catch(() => {})
-    api.movimientos(200).then((movs) => setMapaCalor(construirMapaCalor(movs))).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    let activo = true
+    api.resumenSemanal(periodoResumen.desde, periodoResumen.hasta)
+      .then((r) => activo && setResumen(r))
+      .catch(() => {})
+      .finally(() => activo && setCargando(false))
+    return () => {
+      activo = false
+    }
+  }, [periodoResumen.desde, periodoResumen.hasta])
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [mensajes])
 
-  async function enviarPregunta(e) {
-    e.preventDefault()
-    const texto = pregunta.trim()
+  async function enviarPregunta(e, forzada) {
+    e?.preventDefault()
+    const texto = (forzada ?? pregunta).trim()
     if (!texto || enviando) return
     setPregunta('')
     setMensajes((prev) => [...prev, { rol: 'usuario', texto }])
     setEnviando(true)
     try {
-      const { respuesta } = await api.preguntar(texto)
-      setMensajes((prev) => [...prev, { rol: 'asistente', texto: respuesta }])
+      const { respuesta, sugerencias } = await api.preguntar(texto)
+      setMensajes((prev) => [...prev, { rol: 'asistente', texto: respuesta, sugerencias }])
     } catch (err) {
       setMensajes((prev) => [
         ...prev,
@@ -86,39 +83,37 @@ export default function Insights() {
         <h1 className="text-xl font-bold">Insights</h1>
       </header>
 
-      {mapaCalor && (
-        <section className="mx-6 mt-4">
-          <p className="text-[11px] font-bold text-ink-soft uppercase tracking-wide mb-2.5">
-            Tu gasto día a día (últimas 5 semanas)
-          </p>
-          <div className="grid grid-cols-7 gap-1.5">
-            {mapaCalor.map((d, i) => (
-              <div
-                key={d.key}
-                className="aspect-square rounded-[6px] pop-in"
-                style={{ background: colorIntensidad(d.intensidad), animationDelay: `${Math.min(i, 20) * 12}ms` }}
-                title={`${d.key}: ${formatCOP(d.monto)}`}
-              />
-            ))}
-          </div>
-          <div className="flex items-center gap-1.5 mt-2.5 text-[10px] text-ink-soft">
-            <span>Menos</span>
-            <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: 'var(--color-line)' }} />
-            <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: 'color-mix(in srgb, var(--color-accent) 30%, var(--color-paper-raised))' }} />
-            <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: 'color-mix(in srgb, var(--color-accent) 60%, var(--color-paper-raised))' }} />
-            <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: 'var(--color-accent)' }} />
-            <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: 'var(--color-danger)' }} />
-            <span>Más</span>
-          </div>
-        </section>
-      )}
+      <Link
+        to="/informe"
+        className="mx-6 mt-4 card-marca bg-accent-soft border border-accent/20 p-3.5 flex items-center gap-3"
+      >
+        <span className="w-10 h-10 rounded-xl bg-paper-raised flex items-center justify-center shrink-0">
+          <PieChart size={18} className="text-accent" />
+        </span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold">En qué gasto mi plata</p>
+          <p className="text-xs text-ink-soft mt-0.5">Informe por categoría y comercio, con el periodo que elijas</p>
+        </div>
+        <ChevronRight size={16} className="text-ink-soft shrink-0" />
+      </Link>
+
+      <MapaActividad />
+
+      <section className="mx-6 mt-5">
+        <SelectorPeriodo
+          opciones={PERIODOS_RESUMEN}
+          valor={periodoResumen}
+          onChange={setPeriodoResumen}
+          etiqueta="Periodo del resumen"
+        />
+      </section>
 
       {!cargando && resumen && (
         <>
           <section className="mx-6 mt-4 rounded-2xl bg-accent-soft p-4">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles size={16} className="text-accent" />
-              <p className="text-xs font-semibold text-accent">Resumen de la semana</p>
+              <p className="text-xs font-semibold text-accent">{`Resumen ${(resumen.etiqueta || "de la semana").startsWith("del ") ? "" : "de "}${resumen.etiqueta || "la semana"}`}</p>
             </div>
             <p className="text-sm text-ink leading-relaxed">{resumen.texto}</p>
             <div className="flex items-center gap-4 mt-3 text-xs text-ink-soft">
@@ -205,9 +200,16 @@ export default function Insights() {
 
         <div className="rounded-2xl bg-paper-raised border border-line p-4 min-h-[120px] flex flex-col gap-3">
           {mensajes.length === 0 && (
-            <p className="text-xs text-ink-soft">
-              Ej: "¿Cuánto gasté en comida este mes?" o "¿Voy bien con mi presupuesto?"
-            </p>
+            <div>
+              <p className="text-xs text-ink-soft mb-2">Respondo con tus cifras reales y te digo el periodo. Prueba:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {PREGUNTAS_SUGERIDAS.map((q) => (
+                  <button key={q} type="button" onClick={() => enviarPregunta(null, q)} className="text-xs rounded-full border border-line bg-paper px-3 py-1.5 min-h-[34px]">
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           {mensajes.map((m, i) => (
             <div
@@ -219,6 +221,15 @@ export default function Insights() {
               }`}
             >
               {m.texto}
+              {m.sugerencias?.length > 0 && (
+                <span className="flex flex-wrap gap-1.5 mt-2">
+                  {m.sugerencias.map((q) => (
+                    <button key={q} type="button" onClick={() => enviarPregunta(null, q)} className="text-xs rounded-full border border-line bg-paper-raised px-3 py-1.5 min-h-[32px]">
+                      {q}
+                    </button>
+                  ))}
+                </span>
+              )}
             </div>
           ))}
           {enviando && <p className="text-xs text-ink-soft self-start">Pensando...</p>}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeftRight, Bot, ChevronRight, CreditCard, Gift, Landmark, PiggyBank, Repeat, Sparkles } from 'lucide-react'
+import { ArrowLeftRight, Bot, ChevronRight, CreditCard, Gift, Landmark, PieChart, PiggyBank, Repeat, Sparkles } from 'lucide-react'
 import { CargandoMarca, IlustracionVacia, Isotipo, Monto, SelloCuadre } from '../brand/Marca'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
@@ -224,6 +224,22 @@ export default function Inicio() {
         </Link>
       )}
 
+      {/* Informe "En qué gasto": categorías, comercios y comparación por periodo */}
+      <Link
+        to="/informe"
+        className="mx-6 mt-5 card-marca bg-paper-raised border border-line p-4 flex items-center gap-3 stagger-item"
+        style={{ '--stagger-i': 4 }}
+      >
+        <span className="w-10 h-10 rounded-xl bg-accent-soft flex items-center justify-center shrink-0">
+          <PieChart size={18} className="text-accent" />
+        </span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold">En qué gasto mi plata</p>
+          <p className="text-xs text-ink-soft mt-0.5">Por categoría, comercios y periodo a tu medida</p>
+        </div>
+        <ChevronRight size={16} className="text-ink-soft shrink-0" />
+      </Link>
+
       {/* CuadraMe AI: entrada al asistente (registra por texto, simula compras, arma planes) */}
       <Link
         to="/asistente"
@@ -264,6 +280,9 @@ export default function Inicio() {
         <section className="mx-6 mt-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-[15px] font-semibold">Gastos por categoría</h2>
+            <Link to="/informe" className="text-sm text-accent font-medium flex items-center">
+              Ver informe <ChevronRight size={15} />
+            </Link>
           </div>
           <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line">
             {reporte.top_categorias.map((c) => (

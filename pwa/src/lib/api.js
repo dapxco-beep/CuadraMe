@@ -40,6 +40,11 @@ async function descargarArchivo(path, nombreArchivo) {
   URL.revokeObjectURL(url)
 }
 
+// Quita los parámetros vacíos (desde/hasta/mes) antes de armar la query.
+function limpiar(p) {
+  return Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined && v !== null && v !== ''))
+}
+
 export const api = {
   cuentas: () => request('/cuentas'),
   crearCuenta: (data) => request('/cuentas', { method: 'POST', body: data }),
@@ -169,7 +174,14 @@ export const api = {
   guardarClavePdf: (clave) => request('/correos/clave-pdf', { method: 'PUT', body: { clave } }),
   borrarClavePdf: () => request('/correos/clave-pdf', { method: 'DELETE' }),
 
-  resumenSemanal: () => request('/insights/resumen-semanal'),
+  resumenSemanal: (desde, hasta) =>
+    request(`/insights/resumen-semanal${desde && hasta ? `?desde=${desde}&hasta=${hasta}` : ''}`),
+  // Informe "en qué gasto": p = { periodo, desde, hasta, mes }
+  informeGasto: (p = {}) => request(`/informes/gasto?${new URLSearchParams(limpiar(p)).toString()}`),
+  informeMovimientos: (p = {}) => request(`/informes/gasto/movimientos?${new URLSearchParams(limpiar(p)).toString()}`),
+  informeMeses: () => request('/informes/meses'),
+  gastoDiario: (desde, hasta) =>
+    request(`/informes/diario${desde && hasta ? `?desde=${desde}&hasta=${hasta}` : ''}`),
   edadDelDinero: () => request('/insights/edad-del-dinero'),
   saludFinanciera: () => request('/insights/salud-financiera'),
   wrapped: (mes) => request(`/reportes/wrapped${mes ? `?mes=${mes}` : ''}`),

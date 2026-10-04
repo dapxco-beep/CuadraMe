@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, ChevronLeft, ChevronRight, Share2 } from 'lucide-react'
+import { nombreMesLargo } from '../lib/informe'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useDialogos } from '../lib/DialogosContext'
@@ -18,14 +19,35 @@ export default function Wrapped() {
   const navigate = useNavigate()
   const { fmt } = useBloqueo()
   const { avisar } = useDialogos()
-  const [mes, setMes] = useState(mesRelativo(0))
+  const [mes, setMes] = useState(null) // se decide al saber qué meses tienen datos
+  const [meses, setMeses] = useState([]) // claves AAAA-MM con movimientos
+  const [ultimo, setUltimo] = useState(null)
   const [datos, setDatos] = useState(null)
   const [error, setError] = useState('')
   const [i, setI] = useState(0)
   const [dir, setDir] = useState(1)
   const [compartiendo, setCompartiendo] = useState(false)
 
+  // Meses con movimientos: por defecto el actual si tiene datos; si no, el último que sí.
   useEffect(() => {
+    let activo = true
+    api.informeMeses()
+      .then((r) => {
+        if (!activo) return
+        const claves = (r?.meses ?? []).map((m) => m.mes)
+        setMeses(claves)
+        setUltimo(r?.ultimo_con_datos ?? null)
+        const actual = mesRelativo(0)
+        setMes(claves.includes(actual) || !r?.ultimo_con_datos ? actual : r.ultimo_con_datos)
+      })
+      .catch(() => activo && setMes(mesRelativo(0)))
+    return () => {
+      activo = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!mes) return undefined
     let activo = true
     setDatos(null)
     setError('')
@@ -38,7 +60,13 @@ export default function Wrapped() {
     }
   }, [mes])
 
-  const diapos = datos ? construirDiapositivas(datos, fmt) : []
+  const diapos = datos && datos.num_movimientos > 0 ? construirDiapositivas(datos, fmt) : []
+
+  // Lista del selector: meses con datos + el actual, ordenados.
+  const opciones = [...new Set([...meses, mesRelativo(0), ...(mes ? [mes] : [])])].sort()
+  const indice = opciones.indexOf(mes)
+  const hayAnterior = indice > 0
+  const haySiguiente = indice >= 0 && indice < opciones.length - 1
 
   function ir(n) {
     if (n < 0 || n >= diapos.length) return
@@ -67,25 +95,41 @@ export default function Wrapped() {
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold flex-1">Tu resumen</h1>
-        <div className="flex gap-1.5" role="group" aria-label="Mes del resumen">
-          {[0, -1].map((delta) => (
-            <button
-              key={delta}
-              type="button"
-              aria-pressed={mes === mesRelativo(delta)}
-              onClick={() => setMes(mesRelativo(delta))}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
-                mes === mesRelativo(delta) ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
-              }`}
-            >
-              {delta === 0 ? 'Este mes' : 'Mes pasado'}
-            </button>
-          ))}
+            </header>
+
+      {mes && (
+        <div className="px-6 pb-1 flex items-center gap-2" role="group" aria-label="Mes del resumen">
+          <button type="button" aria-label="Mes anterior" disabled={!hayAnterior} onClick={() => setMes(opciones[indice - 1])}
+            className="w-10 h-10 rounded-full bg-paper-raised border border-line flex items-center justify-center disabled:opacity-40">
+            <ChevronLeft size={16} />
+          </button>
+          <select value={mes} onChange={(e) => setMes(e.target.value)} aria-label="Elegir mes"
+            className="flex-1 min-h-[40px] rounded-full border border-line bg-paper-raised px-4 text-sm font-semibold text-center capitalize">
+            {opciones.map((m) => (
+              <option key={m} value={m}>{nombreMesLargo(m)}{meses.includes(m) ? '' : ' (sin datos)'}</option>
+            ))}
+          </select>
+          <button type="button" aria-label="Mes siguiente" disabled={!haySiguiente} onClick={() => setMes(opciones[indice + 1])}
+            className="w-10 h-10 rounded-full bg-paper-raised border border-line flex items-center justify-center disabled:opacity-40">
+            <ChevronRight size={16} />
+          </button>
         </div>
-      </header>
+      )}
+
+      {datos && datos.num_movimientos === 0 && (
+        <div className="mx-6 mt-8 text-center">
+          <p className="text-sm font-semibold">No hay movimientos en {nombreMesLargo(mes)}</p>
+          <p className="text-xs text-ink-soft mt-1">Elige otro mes con las flechas o la lista.</p>
+          {ultimo && ultimo !== mes && (
+            <button type="button" onClick={() => setMes(ultimo)} className="mt-3 text-sm text-accent font-semibold min-h-[44px] px-3">
+              Ver {nombreMesLargo(ultimo)}
+            </button>
+          )}
+        </div>
+      )}
 
       {error && <p role="alert" className="mx-6 mt-6 text-sm text-danger text-center">{error}</p>}
-      {!datos && !error && <p className="text-sm text-ink-soft text-center mt-10">Cargando...</p>}
+      {mes && !datos && !error && <p className="text-sm text-ink-soft text-center mt-10">Cargando...</p>}
 
       {d && (
         <>

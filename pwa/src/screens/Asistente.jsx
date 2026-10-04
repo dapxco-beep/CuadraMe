@@ -344,6 +344,15 @@ export default function Asistente() {
               {m.tipo === 'simulacion' && <TarjetaSimulacion c={m.calculo} />}
               {m.tipo === 'propuesta_movimiento' && <TarjetaPropuesta msg={m} onResuelto={(e) => resolver(i, e)} />}
               {m.tipo === 'plan' && <TarjetaPlan msg={m} onResuelto={(e) => resolver(i, e)} />}
+              {m.sugerencias?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2.5">
+                  {m.sugerencias.map((q) => (
+                    <button key={q} type="button" onClick={() => enviar(q)} className="text-xs rounded-full border border-line bg-paper px-3 py-1.5 min-h-[34px]">
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              )}
               <Fuentes fuentes={m.fuentes} />
             </div>
           )

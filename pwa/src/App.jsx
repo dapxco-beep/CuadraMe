@@ -40,6 +40,7 @@ const ImportarArchivo = lazy(() => import('./screens/ImportarArchivo'))
 const Impuestos = lazy(() => import('./screens/Impuestos'))
 const CierreMes = lazy(() => import('./screens/CierreMes'))
 const Wrapped = lazy(() => import('./screens/Wrapped'))
+const Informe = lazy(() => import('./screens/Informe'))
 const Perfil = lazy(() => import('./screens/Perfil'))
 const TerminosCondiciones = lazy(() => import('./screens/legal/TerminosCondiciones'))
 const PoliticaPrivacidad = lazy(() => import('./screens/legal/PoliticaPrivacidad'))
@@ -103,6 +104,7 @@ function AppGate() {
         <Route path="/reglas-categoria" element={<ReglasCategoria />} />
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/resumen" element={<Wrapped />} />
+        <Route path="/informe" element={<Informe />} />
         <Route path="/importar" element={<ImportarArchivo />} />
         <Route path="/impuestos" element={<Impuestos />} />
         <Route path="/cierre-mes" element={<CierreMes />} />
