@@ -1,7 +1,9 @@
+import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.utiles import ahora_co
@@ -20,7 +22,17 @@ from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, cuentas_ids_accesibles, puede_editar_cuenta
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, es_pago_tarjeta
 from app.database import get_db
+from app.fx import convertir_a_cop
 from app.limites import verificar_limite
+from app.wallet import (
+    FUENTES_POR_CONFIRMAR,
+    ORIGEN_ATAJO,
+    ORIGEN_WALLET,
+    fecha_razonable,
+    formato_cop,
+    mapear_cuenta,
+    parse_fecha,
+)
 from app.models import Categoria, Cuenta, Movimiento, ReglaCategoria
 from app.rachas import registrar_actividad_hoy
 from app.schemas import (
@@ -32,6 +44,7 @@ from app.schemas import (
     MovimientoPorVozCreate,
     MovimientoPorVozResponse,
     MovimientoRapidoCreate,
+    MovimientoRapidoOut,
     MovimientoUpdate,
     RecategorizarComercioRequest,
     RecategorizarMasivoRequest,
@@ -129,6 +142,31 @@ def conteo_por_revisar(
     auto = base.filter(Movimiento.cat_confirmada.is_(False)).count()
     otros = base.filter(Movimiento.categoria == "Otros", Movimiento.cat_confirmada.isnot(False)).count()
     return {"auto": auto, "otros": otros, "total": auto + otros}
+
+
+@router.get("/por-confirmar", response_model=list[MovimientoOut])
+def listar_por_confirmar(
+    dias: int = Query(14, ge=1, le=60),
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Bandeja '¿son tuyos?': movimientos que llegaron solos (Wallet, atajos,
+    SMS) y el usuario aún no confirmó. Ya cuentan en los saldos; confirmar los
+    deja como están y descartar (DELETE) revierte el saldo."""
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    desde = ahora_co() - timedelta(days=dias)
+    return (
+        db.query(Movimiento)
+        .filter(
+            Movimiento.cuenta_id.in_(ids_accesibles),
+            Movimiento.cat_confirmada.is_(False),
+            Movimiento.fuente.in_(FUENTES_POR_CONFIRMAR),
+            Movimiento.fecha >= desde,
+        )
+        .order_by(Movimiento.fecha.desc())
+        .limit(100)
+        .all()
+    )
 
 
 @router.post("/confirmar-categorias")
@@ -479,25 +517,68 @@ def _registrar_movimiento_rapido(
     descripcion: str,
     cuenta_nombre: str | None,
     fuente: str,
-) -> Movimiento:
+    *,
+    tarjeta: str | None = None,
+    fecha: str | None = None,
+    moneda: str | None = None,
+    origen_auto: str | None = None,
+    detectar_duplicado: bool = False,
+) -> tuple[Movimiento, Cuenta, bool]:
+    """Crea el movimiento de un registro automático y devuelve (movimiento,
+    cuenta, duplicado).
+
+    - La cuenta sale del alias/nombre de la tarjeta (ver wallet.mapear_cuenta).
+    - Con `origen_auto` ('wallet' | 'atajo') el movimiento se crea de inmediato
+      (los saldos quedan bien) pero marcado "por confirmar", con el mismo
+      mecanismo de la categorización automática (cat_confirmada=False).
+    - Con `detectar_duplicado`, el mismo comercio+monto+cuenta dentro de ±2
+      minutos devuelve el movimiento ya existente en vez de crear otro: así
+      un reintento del Atajo no cuenta el pago dos veces."""
     # Estos endpoints se autentican solo con API key: se limita para frenar
     # tanto abusos como un atajo mal configurado que se quede en bucle.
     verificar_limite(f"rapido:{usuario_id}", 120, 3600, "Demasiados registros rápidos seguidos. Intenta en un rato.")
-    cuenta = None
-    if cuenta_nombre:
-        cuenta = (
-            db.query(Cuenta)
-            .filter(Cuenta.usuario_id == usuario_id, Cuenta.nombre.ilike(f"%{cuenta_nombre}%"))
-            .first()
-        )
-    if not cuenta:
-        cuenta = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).first()
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).order_by(Cuenta.nombre).all()
+    cuenta, _como = mapear_cuenta(cuentas, tarjeta, cuenta_nombre, moneda)
     if not cuenta:
         raise HTTPException(status_code=404, detail="El usuario no tiene ninguna cuenta creada")
 
+    cuenta = bloquear_cuenta(db, cuenta.id)  # serializa reintentos simultáneos del mismo pago
+    ahora = ahora_co()
+    momento = fecha_razonable(parse_fecha(fecha), ahora)
+
+    notas = ""
+    if tarjeta:
+        notas = f"Tarjeta: {tarjeta[:60]}"
+    moneda_orig = re.sub(r"[^A-Z]", "", (moneda or "").upper())[:3]
+    moneda_cuenta = (cuenta.moneda or "COP").upper()
+    if moneda_orig and moneda_orig != moneda_cuenta:
+        notas = (notas + " · " if notas else "") + f"Original: {monto:g} {moneda_orig}"
+        if moneda_cuenta == "COP":
+            monto = round(convertir_a_cop(monto, moneda_orig), 2)
+
+    if detectar_duplicado:
+        ventana = timedelta(minutes=2)
+        existente = (
+            db.query(Movimiento)
+            .filter(
+                Movimiento.cuenta_id == cuenta.id,
+                Movimiento.tipo == tipo,
+                Movimiento.monto == monto,
+                func.lower(Movimiento.descripcion) == descripcion.lower(),
+                Movimiento.fecha >= momento - ventana,
+                Movimiento.fecha <= momento + ventana,
+            )
+            .first()
+        )
+        if existente:
+            return existente, cuenta, True
+
     resultado = _clasificar(db, usuario_id, descripcion)
     categoria = resultado["categoria"] if resultado else "Otros"
-    auto = datos_auto(origen_de(resultado.get("fuente")) if resultado else None)
+    if origen_auto:
+        auto = {"cat_origen": origen_auto, "cat_confirmada": False}
+    else:
+        auto = datos_auto(origen_de(resultado.get("fuente")) if resultado else None)
 
     movimiento = Movimiento(
         usuario_id=usuario_id,
@@ -506,30 +587,60 @@ def _registrar_movimiento_rapido(
         categoria=categoria,
         tipo=tipo,
         monto=monto,
-        fecha=ahora_co(),
+        fecha=momento,
+        notas=notas,
         fuente=fuente,
         **auto,
     )
     db.add(movimiento)
-    cuenta = bloquear_cuenta(db, cuenta.id)
     cuenta.saldo += _delta_saldo(tipo, monto)
 
     db.commit()
     db.refresh(movimiento)
     registrar_actividad_hoy(db, usuario_id)
-    return movimiento
+    return movimiento, cuenta, False
 
 
-@router.post("/rapido", response_model=MovimientoOut)
+@router.post("/rapido", response_model=MovimientoRapidoOut)
 def crear_movimiento_rapido(
     data: MovimientoRapidoCreate,
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user_by_api_key),
 ):
     """Registro sin login, autenticado por API key (header X-Api-Key).
-    Pensado para Atajos de iOS / Scriptable / Tasker / reglas de correo."""
-    return _registrar_movimiento_rapido(
-        db, usuario.id, data.monto, data.tipo, data.descripcion, data.cuenta, data.fuente
+    Pensado para el disparador 'Transacción' de Atajos de iOS (Apple Wallet),
+    Tasker y reglas de correo. El movimiento se crea al instante pero queda
+    'por confirmar': la app le pregunta al usuario si es suyo. Un reintento del
+    mismo pago (±2 min) responde 200 con el movimiento que ya existía."""
+    es_wallet = bool(data.comercio or data.tarjeta) or data.fuente in ("wallet", "apple_pay", "google_pay")
+    descripcion = data.comercio or data.descripcion
+    fuente = data.fuente if data.fuente in ("apple_pay", "google_pay") else ("wallet" if es_wallet else data.fuente)
+    mov, cuenta, duplicado = _registrar_movimiento_rapido(
+        db,
+        usuario.id,
+        data.monto,
+        data.tipo,
+        descripcion,
+        data.cuenta,
+        fuente,
+        tarjeta=data.tarjeta,
+        fecha=data.fecha,
+        moneda=data.moneda,
+        origen_auto=ORIGEN_WALLET if es_wallet else ORIGEN_ATAJO,
+        detectar_duplicado=True,
+    )
+    signo = "Ingreso" if mov.tipo == "income" else "Gasto"
+    if duplicado:
+        mensaje = f"Ya lo tenías: {signo.lower()} de {formato_cop(mov.monto)} en {mov.descripcion}."
+    else:
+        mensaje = f"{signo} de {formato_cop(mov.monto)} en {mov.descripcion} ({cuenta.nombre}). Confírmalo en CuadraMe."
+    base = MovimientoOut.model_validate(mov, from_attributes=True).model_dump()
+    return MovimientoRapidoOut(
+        **base,
+        mensaje=mensaje,
+        duplicado=duplicado,
+        por_confirmar=mov.cat_confirmada is False,
+        cuenta_nombre=cuenta.nombre,
     )
 
 
@@ -552,7 +663,7 @@ def crear_movimiento_por_voz(
             mensaje="No logré entender el monto. Intenta decir algo como 'gasté 20 mil en el almuerzo'.",
         )
 
-    movimiento = _registrar_movimiento_rapido(
+    movimiento, _cuenta, _dup = _registrar_movimiento_rapido(
         db,
         usuario.id,
         interpretado["monto"],
@@ -560,6 +671,7 @@ def crear_movimiento_por_voz(
         interpretado["descripcion"],
         data.cuenta,
         "voz",
+        tarjeta=data.tarjeta,
     )
     return MovimientoPorVozResponse(
         ok=True,

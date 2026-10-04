@@ -30,6 +30,7 @@ def _serializar(cuenta: Cuenta) -> dict:
         "dia_corte": cuenta.dia_corte,
         "dia_pago": cuenta.dia_pago,
         "tasa_ea": cuenta.tasa_ea,
+        "alias_tarjeta": cuenta.alias_tarjeta,
         "tarjeta": calc_tarjeta(cuenta) if cuenta.tipo == "credito" else None,
     }
 

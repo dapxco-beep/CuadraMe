@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class CuentaCreate(BaseModel):
@@ -14,6 +14,7 @@ class CuentaCreate(BaseModel):
     dia_corte: Optional[int] = Field(default=None, ge=1, le=31)
     dia_pago: Optional[int] = Field(default=None, ge=1, le=31)
     tasa_ea: Optional[float] = Field(default=None, ge=0, le=200)
+    alias_tarjeta: Optional[str] = Field(default=None, max_length=120)
 
 
 class EliminarCuentaRequest(BaseModel):
@@ -106,6 +107,7 @@ class CuentaUpdate(BaseModel):
     dia_corte: Optional[int] = Field(default=None, ge=1, le=31)
     dia_pago: Optional[int] = Field(default=None, ge=1, le=31)
     tasa_ea: Optional[float] = Field(default=None, ge=0, le=200)
+    alias_tarjeta: Optional[str] = Field(default=None, max_length=120)
 
 
 class TarjetaInfo(BaseModel):
@@ -133,6 +135,7 @@ class CuentaOut(BaseModel):
     dia_corte: Optional[int] = None
     dia_pago: Optional[int] = None
     tasa_ea: Optional[float] = None
+    alias_tarjeta: Optional[str] = None
     tarjeta: Optional[TarjetaInfo] = None
 
     class Config:
@@ -227,12 +230,50 @@ class ConfirmarCategoriasRequest(BaseModel):
 
 
 class MovimientoRapidoCreate(BaseModel):
-    """Para registro sin login: Atajos de iOS, Scriptable, Tasker, reglas de correo."""
+    """Para registro sin login: Atajos de iOS (disparador 'Transacción' de Wallet),
+    Tasker, reglas de correo. Acepta lo que entrega iOS tal cual: comercio, monto
+    (número o texto colombiano como '45.000,00'), tarjeta, fecha y moneda."""
     monto: float = Field(gt=0)
-    tipo: Literal["income", "expense"]
-    descripcion: str
+    tipo: Literal["income", "expense"] = "expense"
+    descripcion: Optional[str] = Field(default=None, max_length=150)  # si falta, se usa el comercio
+    comercio: Optional[str] = Field(default=None, max_length=150)
+    tarjeta: Optional[str] = Field(default=None, max_length=120)  # nombre de la tarjeta en Wallet
     cuenta: Optional[str] = None  # nombre de cuenta a buscar (ej. "Nequi"); si no hay match usa la primera del usuario
-    fuente: str = "shortcut"  # shortcut | sms | email
+    fecha: Optional[str] = None  # ISO o dd/mm/aaaa; si no se entiende se usa la hora actual
+    moneda: Optional[str] = Field(default=None, max_length=5)
+    fuente: str = Field(default="shortcut", max_length=30)  # shortcut | wallet | sms | email
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalizar(cls, datos):
+        if not isinstance(datos, dict):
+            return datos
+        from app.wallet import parse_monto_co
+
+        d = dict(datos)
+        # Nombres que usa iOS en inglés y variantes del Atajo.
+        for original, destino in (("merchant", "comercio"), ("amount", "monto"), ("card", "tarjeta"),
+                                  ("nombre_tarjeta", "tarjeta"), ("tarjeta_nombre", "tarjeta"),
+                                  ("date", "fecha"), ("currency", "moneda"), ("name", "descripcion")):
+            if d.get(destino) in (None, "") and d.get(original) not in (None, ""):
+                d[destino] = d[original]
+        d["monto"] = parse_monto_co(d.get("monto"))
+        for campo in ("descripcion", "comercio", "tarjeta", "cuenta", "moneda", "fecha"):
+            v = d.get(campo)
+            d[campo] = str(v).strip()[:150] if v not in (None, "") and str(v).strip() else None
+        if not d.get("descripcion") and not d.get("comercio"):
+            raise ValueError("Falta el comercio o la descripción del movimiento")
+        tipo = str(d.get("tipo") or "expense").strip().lower()
+        d["tipo"] = {"gasto": "expense", "ingreso": "income"}.get(tipo, tipo)
+        return d
+
+
+class MovimientoRapidoOut(MovimientoOut):
+    """Respuesta corta para que el Atajo muestre una notificación local."""
+    mensaje: str
+    duplicado: bool = False
+    por_confirmar: bool = False
+    cuenta_nombre: Optional[str] = None
 
 
 class RecategorizarMasivoRequest(BaseModel):
@@ -250,6 +291,7 @@ class MovimientoPorVozCreate(BaseModel):
     estructurar. El backend interpreta monto/tipo/descripción."""
     texto: str
     cuenta: Optional[str] = None
+    tarjeta: Optional[str] = Field(default=None, max_length=120)
 
 
 class MovimientoPorVozResponse(BaseModel):
