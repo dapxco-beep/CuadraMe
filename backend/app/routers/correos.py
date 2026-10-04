@@ -136,7 +136,12 @@ def gmail_callback(
             "myaccount.google.com/permissions y vuelve a intentar.",
         )
 
-    email = obtener_email(tokens["access_token"])
+    # El correo es solo informativo: si Google no lo entrega, la conexión sigue valiendo.
+    try:
+        email = obtener_email(tokens["access_token"])
+    except Exception:
+        logger.warning("No se pudo leer el correo de la cuenta de Gmail conectada")
+        email = ""
 
     perfil = _get_or_create_perfil(db, usuario_id)
     perfil.gmail_conectado = True
