@@ -43,7 +43,7 @@ describe('guía de los dos atajos', () => {
     expect(screen.getByText('Dos atajos, dos tipos de automatización')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: /Apple Pay y el cierre de cualquier app/ })).toBeInTheDocument()
     expect(screen.getByText(/Automatización 1: pagos con Apple Pay/)).toBeInTheDocument()
-    expect(screen.getByText(/Automatización 2: cierre de la app de tu banco/)).toBeInTheDocument()
+    expect(screen.getByText(/Automatización 2: cierre de una app/)).toBeInTheDocument()
     expect(screen.getByText(/Se cierra/, { selector: 'b' })).toBeInTheDocument()
     expect(screen.getAllByText(/¿Hiciste algún movimiento\?/).length).toBeGreaterThan(0)
     expect(screen.getByText(/llega pronto/)).toBeInTheDocument()
