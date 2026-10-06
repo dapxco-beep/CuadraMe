@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
+import { useEstadoLista } from '../lib/useEstadoLista'
 import {
   ArrowLeft, CheckCheck, CheckCircle2, FileCheck2, FileText, KeyRound, Mail, RefreshCw, Tag, Wallet, X,
 } from 'lucide-react'
@@ -60,6 +61,8 @@ export default function Sincronizacion() {
   const [verTodos, setVerTodos] = useState(false)
   const [cola, setCola] = useState({ items: [], total: 0 })
   const [cargando, setCargando] = useState(true)
+  const raiz = useRef(null)
+  useEstadoLista('/sincronizacion', { contenedorRef: raiz, listo: !cargando }) // al volver de Conciliación, misma posición
   const [error, setError] = useState('')
   const [progreso, setProgreso] = useState(null)
   const [resumen, setResumen] = useState('')
@@ -274,7 +277,7 @@ export default function Sincronizacion() {
   const visibles = verTodos ? pendientes : pendientes.slice(0, EXTRACTOS_VISIBLES)
 
   return (
-    <div className="flex-1 overflow-y-auto pb-8 screen-enter pantalla-ancha">
+    <div ref={raiz} className="flex-1 overflow-y-auto pb-8 screen-enter pantalla-ancha">
       {/* a) Encabezado: una línea de resumen y el botón principal */}
       <header className="px-6 pantalla-top pb-1 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">

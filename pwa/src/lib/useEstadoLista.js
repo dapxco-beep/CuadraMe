@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useNavigationType } from 'react-router-dom'
 
 // Recordar dónde estaba el usuario en una lista al navegar a un detalle y volver.
 //
@@ -41,8 +42,11 @@ export function guardarEstadoLista(clave, estado) {
  * Devuelve el estado guardado al montar ({ scroll, ventana, cantidad } o null).
  */
 export function useEstadoLista(clave, { contenedorRef, cantidad = 0, listo = true } = {}) {
+  // Solo se restaura al VOLVER (atrás/adelante o recarga: 'POP'). Entrar a la pantalla tocando el
+  // menú (PUSH) debe abrirla desde arriba, como cualquier pantalla nueva.
+  const vuelve = useNavigationType() === 'POP'
   const guardado = useRef(undefined)
-  if (guardado.current === undefined) guardado.current = leerEstadoLista(clave)
+  if (guardado.current === undefined) guardado.current = vuelve ? leerEstadoLista(clave) : null
 
   const listoRef = useRef(listo)
   const cantidadRef = useRef(cantidad)

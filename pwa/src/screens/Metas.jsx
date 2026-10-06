@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { EstadoVacio } from '../brand/Marca'
 import { useVolver } from '../lib/useVolver'
+import { useEstadoLista } from '../lib/useEstadoLista'
 import { ArrowLeft, Plus, Repeat, X, PiggyBank, Sparkles } from 'lucide-react'
 import PlanificadorMeta from '../components/PlanificadorMeta'
 import { api } from '../lib/api'
@@ -13,6 +14,8 @@ export default function Metas() {
   const volver = useVolver('/perfil')
   const [metas, setMetas] = useState([])
   const [cargando, setCargando] = useState(true)
+  const raiz = useRef(null)
+  useEstadoLista('/metas', { contenedorRef: raiz, listo: !cargando }) // al volver, misma posición
   const [mostrarForm, setMostrarForm] = useState(false)
   const [aportando, setAportando] = useState(null)
   const [planeando, setPlaneando] = useState(false)
@@ -34,7 +37,7 @@ export default function Metas() {
   }, [])
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
+    <div ref={raiz} className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button

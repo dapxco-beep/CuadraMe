@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Link, MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 const MOVS = [
   { id: 'm1', cuenta_id: 'c1', fecha: '2026-10-04T12:00:00', descripcion: 'Compra PANADERIA LA 80 0105', categoria: 'Otros', tipo: 'expense', monto: 12000, fuente: 'manual', notas: '', cat_origen: null, cat_confirmada: true },
@@ -287,6 +287,23 @@ describe('volver respeta filtros y scroll', () => {
     expect(chipDe('PANADERIA LA 80 BOGOTA')).toHaveTextContent('Hogar')
     expect(container.querySelector('.screen-enter').scrollTop).toBe(640)
     expect(screen.getByLabelText('Buscar movimiento')).toHaveValue('panaderia')
+  })
+
+  it('al entrar desde el menú (no es volver) la lista abre desde arriba', async () => {
+    window.sessionStorage.setItem('cuadrame:lista:/movimientos', JSON.stringify({ scroll: 900, ventana: 0, cantidad: 4 }))
+    const { container } = render(
+      <DialogosProvider>
+        <MemoryRouter initialEntries={['/inicio']}>
+          <Routes>
+            <Route path="/inicio" element={<Link to="/movimientos">Ir a movimientos</Link>} />
+            <Route path="/movimientos" element={<Movimientos />} />
+          </Routes>
+        </MemoryRouter>
+      </DialogosProvider>
+    )
+    await userEvent.click(screen.getByText('Ir a movimientos'))
+    await screen.findByText('Netflix')
+    expect(container.querySelector('.screen-enter').scrollTop).toBe(0)
   })
 
   it('tras recargar la pestaña (sin caché) vuelve a pedir lo que había cargado y restaura el scroll', async () => {

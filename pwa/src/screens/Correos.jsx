@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useEstadoLista } from '../lib/useEstadoLista'
 import { useVolver } from '../lib/useVolver'
 import { useAuth } from '../lib/AuthContext'
 import ModalConsentimiento from '../components/ModalConsentimiento'
@@ -95,6 +96,8 @@ export default function Correos() {
   const [estado, setEstado] = useState(null)
   const [pendientes, setPendientes] = useState([])
   const [cargando, setCargando] = useState(true)
+  const raiz = useRef(null)
+  useEstadoLista('/correos', { contenedorRef: raiz, listo: !cargando }) // al volver de Conciliación, misma posición
   const [sincronizando, setSincronizando] = useState(false)
   const [error, setError] = useState('')
   const [mostrarGuia, setMostrarGuia] = useState(false)
@@ -367,7 +370,7 @@ export default function Correos() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
+    <div ref={raiz} className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />

@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EstadoVacio } from '../brand/Marca'
-import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigationType, useSearchParams } from 'react-router-dom'
 import { Check, ChevronDown, Download, Search, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
@@ -208,7 +208,8 @@ export default function Movimientos() {
   const consultaKey = JSON.stringify(consulta)
 
   // --- Datos: arrancan del caché si se vuelve a una lista ya vista (pinta al instante) ---
-  const [cacheInicial] = useState(() => leerCacheLista(claveLista))
+  const vuelve = useNavigationType() === 'POP' // al entrar tocando el menú se parte de cero
+  const [cacheInicial] = useState(() => (vuelve ? leerCacheLista(claveLista) : null))
   const [movimientos, setMovimientos] = useState(cacheInicial?.items || [])
   const [hayMas, setHayMas] = useState(!!cacheInicial?.hayMas)
   const [cargando, setCargando] = useState(!cacheInicial)

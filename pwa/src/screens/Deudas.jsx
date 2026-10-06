@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useVolver } from '../lib/useVolver'
+import { useEstadoLista } from '../lib/useEstadoLista'
 import { ArrowLeft, Plus, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
@@ -19,6 +20,8 @@ export default function Deudas() {
   const { recargar: recargarCuentas } = useCuentas()
   const [deudas, setDeudas] = useState([])
   const [cargando, setCargando] = useState(true)
+  const raiz = useRef(null)
+  useEstadoLista('/deudas', { contenedorRef: raiz, listo: !cargando }) // al volver, misma posición
   const [mostrarForm, setMostrarForm] = useState(false)
   const [pagando, setPagando] = useState(null)
   const [error, setError] = useState('')
@@ -41,7 +44,7 @@ export default function Deudas() {
   const totalDeuda = deudas.reduce((s, d) => s + d.saldo_actual, 0)
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
+    <div ref={raiz} className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
