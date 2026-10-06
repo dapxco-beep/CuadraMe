@@ -294,7 +294,7 @@ export const api = {
     request(`/sincronizacion/por-categorizar?limite=${limite}&offset=${offset}`),
   correosPendientes: () => request('/correos/pendientes'),
   editarCorreo: (id, data) => request(`/correos/${id}`, { method: 'PATCH', body: data }),
-  aprobarCorreo: (id, cuentaId) => request(`/correos/${id}/aprobar`, { method: 'POST', body: { cuenta_id: cuentaId } }),
+  aprobarCorreo: (id, cuentaId, extra = {}) => request(`/correos/${id}/aprobar`, { method: 'POST', body: { cuenta_id: cuentaId, ...extra } }),
   descartarCorreo: (id) => request(`/correos/${id}/descartar`, { method: 'POST' }),
   extractosCorreo: (estado, offset = 0, limite = 50) =>
     request(`/correos/extractos?limite=${limite}&offset=${offset}${estado ? `&estado=${estado}` : ''}`),

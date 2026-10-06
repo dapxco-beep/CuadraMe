@@ -23,13 +23,27 @@ export function resumenTareas(tareas) {
   return `Tienes ${n} ${n === 1 ? 'cosa' : 'cosas'} por resolver`
 }
 
+// Un extracto ya conciliado (por Gmail o porque ese periodo se concilió por otro lado)
+// nunca es pendiente: se muestra aparte, plegado, y no cuenta en las tareas.
+export const ESTADOS_CONCILIADO = ['procesado', 'ya_conciliado']
+export const esConciliado = (ex) => ESTADOS_CONCILIADO.includes(ex?.estado)
+
+// { pendientes, conciliados }: lo que hay que atender y lo que ya quedó listo.
+export function separarExtractos(lista) {
+  const todos = Array.isArray(lista) ? lista : []
+  return { pendientes: todos.filter((e) => !esConciliado(e)), conciliados: todos.filter(esConciliado) }
+}
+
+export function textoCruzados(n) {
+  return `${n} ${n === 1 ? 'movimiento cruzado' : 'movimientos cruzados'}`
+}
+
 // Estado de un extracto de Gmail dicho en palabras.
 export function textoEstadoExtracto(ex) {
   switch (ex?.estado) {
     case 'procesado':
-      return ex.cruzados != null
-        ? `Conciliado · ${ex.cruzados} ${ex.cruzados === 1 ? 'movimiento cruzado' : 'movimientos cruzados'}`
-        : 'Conciliado'
+    case 'ya_conciliado':
+      return ex.cruzados != null ? `Conciliado · ${textoCruzados(ex.cruzados)}` : 'Conciliado'
     case 'nuevo':
       return 'Nuevo · listo para conciliar'
     case 'falta_clave':

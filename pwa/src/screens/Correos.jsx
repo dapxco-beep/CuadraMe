@@ -8,9 +8,12 @@ import { ArrowLeft, Check, ChevronDown, FileText, KeyRound, Mail, RefreshCw, Shi
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { resumenSync, sincronizarTodo } from '../lib/sincronizarGmail'
-import { conciliarExtracto } from '../lib/sincronizacion'
+import { conciliarExtracto, separarExtractos } from '../lib/sincronizacion'
 import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
+import { useCategorias } from '../lib/CategoriasContext'
+import RecordarRegla, { RECORDAR_INICIAL } from '../components/RecordarRegla'
+import ExtractosYaConciliados from '../components/ExtractosYaConciliados'
 
 const ESTADOS = {
   nuevo: { texto: 'Nuevo', clase: 'bg-accent-soft text-accent' },
@@ -31,6 +34,7 @@ const FILTROS = [
   { id: 'nuevos', texto: 'Nuevos' },
   { id: 'extractos', texto: 'Extractos' },
   { id: 'falta_clave', texto: 'Falta clave' },
+  { id: 'conciliados', texto: 'Ya conciliados' },
   { id: 'ignorados', texto: 'Ignorados' },
 ]
 
@@ -84,6 +88,9 @@ export default function Correos() {
   const volver = useVolver('/')
   const { cuentas } = useCuentas()
   const { confirmar } = useDialogos()
+  const { nombres = [], iconoDe = () => '' } = useCategorias() || {}
+  const [categoriaPorCorreo, setCategoriaPorCorreo] = useState({}) // id -> categoría elegida por el usuario
+  const [recordarPorCorreo, setRecordarPorCorreo] = useState({}) // id -> { recordar, anteriores }
   const [estado, setEstado] = useState(null)
   const [pendientes, setPendientes] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -202,7 +209,7 @@ export default function Correos() {
     }
   }
 
-  const MOSTRAR_EXTRACTOS = ['todo', 'extractos', 'falta_clave']
+  const MOSTRAR_EXTRACTOS = ['todo', 'extractos', 'falta_clave', 'conciliados']
 
   async function cambiarFiltro(f) {
     setFiltro(f)
@@ -242,7 +249,16 @@ export default function Correos() {
     setProcesando((prev) => new Set(prev).add(correo.id))
     setError('')
     try {
-      await api.aprobarCorreo(correo.id, cuentaId)
+      // Si el usuario cambió la categoría, esa manda y (con «Recordar» marcado, por
+      // defecto) se guarda la regla del comercio para la próxima vez.
+      const elegida = categoriaPorCorreo[correo.id]
+      const cambio = elegida && elegida !== correo.categoria_sugerida
+      const rec = recordarPorCorreo[correo.id] || RECORDAR_INICIAL
+      const extra = elegida
+        ? { categoria: elegida, ...(cambio && elegida !== 'Otros' ? { recordar: !!rec.recordar, aplicar_anteriores: !!rec.recordar && !!rec.anteriores } : {}) }
+        : {}
+      if (Object.keys(extra).length) await api.aprobarCorreo(correo.id, cuentaId, extra)
+      else await api.aprobarCorreo(correo.id, cuentaId)
       setPendientes((prev) => prev.filter((c) => c.id !== correo.id))
     } catch (err) {
       setError(err.message || 'No se pudo aprobar el movimiento')
@@ -336,6 +352,10 @@ export default function Correos() {
   }
   const verExtractos = MOSTRAR_EXTRACTOS.includes(filtro)
   const verNuevos = filtro === 'todo' || filtro === 'nuevos'
+  // Lo ya conciliado no aparece como pendiente ni cuenta: va en su sección plegada.
+  const { pendientes: extPend, conciliados } = separarExtractos(extractos)
+  const soloConciliados = filtro === 'conciliados'
+  const nombreCuenta = (id) => cuentas.find((c) => c.id === id)?.nombre || ''
 
   if (cargando) {
     return (
@@ -560,7 +580,8 @@ export default function Correos() {
         <section className="mx-6 mt-6" aria-label="Extractos encontrados">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-[15px] font-semibold">
-              Extractos encontrados {extractos.length > 0 && `(${extractos.length})`}
+              {soloConciliados ? 'Extractos ya conciliados' : 'Extractos encontrados'}{' '}
+              {!soloConciliados && extPend.length > 0 && `(${extPend.length})`}
             </h2>
             <button
               onClick={() => setMostrarAjustes((v) => !v)}
@@ -607,13 +628,15 @@ export default function Correos() {
             </div>
           )}
 
-          {extractos.length === 0 ? (
+          {soloConciliados ? null : extPend.length === 0 ? (
             <div className="rounded-2xl bg-paper-raised border border-line p-6 text-center">
-              <p className="text-sm text-ink-soft">Aún no encontramos extractos en tu correo</p>
+              <p className="text-sm text-ink-soft">
+                {conciliados.length > 0 ? 'No tienes extractos pendientes' : 'Aún no encontramos extractos en tu correo'}
+              </p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {extractos.map((ex) => (
+              {extPend.map((ex) => (
                 <div key={ex.id} className="rounded-2xl bg-paper-raised border border-line p-4">
                   <div className="flex items-start gap-3">
                     <FileText size={18} className="text-accent shrink-0 mt-0.5" />
@@ -681,6 +704,22 @@ export default function Correos() {
               Cargar más extractos
             </button>
           )}
+          {filtro !== 'falta_clave' && (
+            <ExtractosYaConciliados
+              key={soloConciliados ? 'abierto' : 'plegado'}
+              abiertoInicial={soloConciliados}
+              items={conciliados}
+              nombreCuenta={nombreCuenta}
+              ocupados={procesando}
+              onVer={(ex) => navigate('/conciliacion', { state: { historialId: ex.historial_id } })}
+              onRevisar={conciliar}
+            />
+          )}
+          {soloConciliados && conciliados.length === 0 && (
+            <div className="rounded-2xl bg-paper-raised border border-line p-6 text-center">
+              <p className="text-sm text-ink-soft">Todavía no hay extractos conciliados</p>
+            </div>
+          )}
         </section>
       )}
 
@@ -708,9 +747,43 @@ export default function Correos() {
                     </p>
                   </div>
                   <p className="text-xs text-ink-soft mt-1">
-                    {c.categoria_sugerida}
+                    {c.preguntar_categoria && !categoriaPorCorreo[c.id]
+                      ? 'Sin categoría clara'
+                      : `${c.categoria_sugerida}${c.razon_categoria && !categoriaPorCorreo[c.id] ? ` · ${c.razon_categoria}` : ''}`}
                     {c.banco_detectado ? ` · ${c.banco_detectado}` : ''}
                   </p>
+
+                  {c.preguntar_categoria && !categoriaPorCorreo[c.id] && (
+                    <p className="text-xs font-medium text-accent mt-1" data-testid={`pregunta-cat-${c.id}`}>
+                      No supe qué categoría es. ¿Cuál es? La recuerdo para la próxima.
+                    </p>
+                  )}
+                  <select
+                    value={categoriaPorCorreo[c.id] || (c.preguntar_categoria ? '' : c.categoria_sugerida)}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setCategoriaPorCorreo((prev) => ({ ...prev, [c.id]: v }))
+                      setRecordarPorCorreo((prev) => ({ ...prev, [c.id]: prev[c.id] || RECORDAR_INICIAL }))
+                    }}
+                    aria-label={`Categoría de ${c.comercio}`}
+                    className="w-full mt-2 rounded-xl border border-line bg-paper px-3 py-2 text-xs"
+                  >
+                    <option value="">{c.preguntar_categoria ? 'Elige la categoría' : `Categoría (${c.categoria_sugerida})`}</option>
+                    {!c.preguntar_categoria && !nombres.includes(c.categoria_sugerida) && (
+                      <option value={c.categoria_sugerida}>{c.categoria_sugerida}</option>
+                    )}
+                    {nombres.map((n) => (
+                      <option key={n} value={n}>{iconoDe(n)} {n}</option>
+                    ))}
+                  </select>
+                  {categoriaPorCorreo[c.id] && categoriaPorCorreo[c.id] !== c.categoria_sugerida && categoriaPorCorreo[c.id] !== 'Otros' && (
+                    <RecordarRegla
+                      descripcion={c.comercio}
+                      valor={recordarPorCorreo[c.id]}
+                      onChange={(v) => setRecordarPorCorreo((prev) => ({ ...prev, [c.id]: v }))}
+                      className="mt-2"
+                    />
+                  )}
 
                   <select
                     value={cuentaElegidaCorreo(c)}

@@ -11,9 +11,10 @@ import { useCuentas } from '../lib/CuentasContext'
 import { haceCuanto, resumenSync, sincronizarTodo } from '../lib/sincronizarGmail'
 import {
   BANCO_SIN_IDENTIFICAR, agruparPorBanco, conciliarExtracto, estadoCelda, ESTADOS_CELDA, nombreMes,
-  resumenTareas, textoEstadoExtracto,
+  resumenTareas, separarExtractos, textoEstadoExtracto,
 } from '../lib/sincronizacion'
 import CrearCuentaBanco from '../components/CrearCuentaBanco'
+import ExtractosYaConciliados from '../components/ExtractosYaConciliados'
 
 // Una sola pantalla para saber qué ya se concilió, qué falta y qué hay que preguntar.
 // Todo lo que muestra viene de GET /sincronizacion/estado (una llamada); cada acción
@@ -268,7 +269,9 @@ export default function Sincronizacion() {
     : null
   const cuentaDetalle = detalle ? filasCuentas.find((c) => c.id === detalle.cuentaId) : null
 
-  const visibles = verTodos ? extractos : extractos.slice(0, EXTRACTOS_VISIBLES)
+  // Lo ya conciliado no es pendiente: va aparte, plegado.
+  const { pendientes, conciliados } = separarExtractos(extractos)
+  const visibles = verTodos ? pendientes : pendientes.slice(0, EXTRACTOS_VISIBLES)
 
   return (
     <div className="flex-1 overflow-y-auto pb-8 screen-enter">
@@ -483,9 +486,11 @@ export default function Sincronizacion() {
             <p className="text-sm font-semibold">Conecta Gmail para traer tus extractos</p>
             <button onClick={() => navigate('/correos')} className="mt-3 rounded-xl bg-ink text-paper text-sm font-semibold px-5 py-2.5">Conectar Gmail</button>
           </div>
-        ) : extractos.length === 0 ? (
+        ) : pendientes.length === 0 ? (
           <div className="rounded-2xl bg-paper-raised border border-line p-5 text-center">
-            <p className="text-sm text-ink-soft">Aún no encontré extractos en tu correo.</p>
+            <p className="text-sm text-ink-soft">
+              {conciliados.length ? 'No tienes extractos pendientes.' : 'Aún no encontré extractos en tu correo.'}
+            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
@@ -513,12 +518,22 @@ export default function Sincronizacion() {
                 </div>
               </div>
             ))}
-            {extractos.length > EXTRACTOS_VISIBLES && (
+            {pendientes.length > EXTRACTOS_VISIBLES && (
               <button onClick={() => setVerTodos((v) => !v)} className="border border-line rounded-xl py-2.5 text-sm font-semibold">
-                {verTodos ? 'Ver menos' : `Ver los ${extractos.length} extractos`}
+                {verTodos ? 'Ver menos' : `Ver los ${pendientes.length} extractos`}
               </button>
             )}
           </div>
+        )}
+
+        {conectado && (
+          <ExtractosYaConciliados
+            items={conciliados}
+            nombreCuenta={nombreCuenta}
+            ocupados={ocupados}
+            onVer={(ex) => navigate('/conciliacion', { state: { historialId: ex.historial_id } })}
+            onRevisar={conciliar}
+          />
         )}
 
         {conectado && (

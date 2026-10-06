@@ -189,7 +189,10 @@ describe('pantalla Sincronización', () => {
     const nuevo = screen.getByTestId('extracto-e1')
     expect(within(nuevo).getByText('Nuevo · listo para conciliar')).toBeTruthy()
     expect(within(nuevo).getByText('Cuenta: Bancolombia Ahorros')).toBeTruthy()
-    expect(screen.getByText('Conciliado · 18 movimientos cruzados')).toBeTruthy()
+    // Lo ya conciliado no es pendiente: va en una sección plegada 'Ya conciliados (N)'.
+    expect(screen.queryByText('Conciliado · 18 movimientos cruzados')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Ya conciliados \(1\)/ }))
+    expect(screen.getByText(/18 movimientos cruzados/)).toBeTruthy()
     expect(within(screen.getByTestId('extracto-e4')).getByText('Falta la clave del PDF')).toBeTruthy()
 
     // Sin banco detectado: se dice, y la cuenta es obligatoria.
