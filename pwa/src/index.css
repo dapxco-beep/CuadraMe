@@ -448,11 +448,12 @@ button, a {
   .dos-grid {
     display: grid;
     grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    grid-template-rows: auto 1fr; /* el bloque que ocupa 2 filas estira solo la 2.ª, sin huecos */
     column-gap: 1.25rem;
     align-items: start;
   }
   .dos-col.dos-col-4-7 {
-    grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+    grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
   }
   .dos-col > .col {
     display: block;

@@ -97,7 +97,7 @@ export default function Presupuesto() {
       </header>
 
       {/* ≥1024 px: resumen/proyección a la izquierda, categorías a la derecha */}
-      <div className="dos-col dos-col-5-6">
+      <div className="dos-col dos-col-6-5">
       <div className="col">
       <div className="px-6 pt-2 flex gap-2">
         <button

@@ -99,7 +99,7 @@ export default function GraficoTendencia({ meses = [], rangoInicial = 6 }) {
         </div>
       ) : (
         <div className="relative">
-          <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" role="img" aria-label={resumenAria}>
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block md:max-w-[560px] md:mx-auto" role="img" aria-label={resumenAria}>
             {eje.ticks.map((t) => (
               <g key={t}>
                 <line x1={M.izq} x2={W - M.der} y1={y(t)} y2={y(t)} stroke="var(--color-line)" strokeWidth={t === 0 ? 1.2 : 0.7} strokeDasharray={t === 0 ? undefined : '2 3'} />
