@@ -20,7 +20,7 @@ from app.autocat import (
 from app.classifier import aplicar_reglas, build_model, classify
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, cuentas_ids_accesibles, puede_editar_cuenta
-from app.contabilidad import CATEGORIA_PAGO_TARJETA, es_pago_tarjeta
+from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_IMPORTADO_SIN_SALDO, es_pago_tarjeta
 from app.database import get_db
 from app.fx import convertir_a_cop
 from app.limites import verificar_limite
@@ -78,6 +78,14 @@ def _delta_saldo(tipo: str, monto: float) -> float:
     if tipo == "expense":
         return -monto
     return 0.0
+
+
+def _delta_de(mov: Movimiento) -> float:
+    """Como _delta_saldo pero respetando los importados 'sin saldo': nunca tocaron
+    el saldo al crearse, así que editarlos o borrarlos tampoco debe tocarlo."""
+    if mov.fuente == FUENTE_IMPORTADO_SIN_SALDO:
+        return 0.0
+    return _delta_saldo(mov.tipo, mov.monto)
 
 
 def _fecha_o_400(valor: str, campo: str) -> datetime:
@@ -419,12 +427,12 @@ def editar_movimiento(
             raise HTTPException(status_code=404, detail="Cuenta no encontrada")
         cuenta_nueva = bloquear_cuenta(db, destino.id)
 
-    cuenta_actual.saldo -= _delta_saldo(mov.tipo, mov.monto)
+    cuenta_actual.saldo -= _delta_de(mov)
     for campo in ("descripcion", "monto", "tipo", "categoria", "fecha", "notas"):
         if campo in cambios:
             setattr(mov, campo, cambios[campo])
     mov.cuenta_id = cuenta_nueva.id
-    cuenta_nueva.saldo += _delta_saldo(mov.tipo, mov.monto)
+    cuenta_nueva.saldo += _delta_de(mov)
     if "categoria" in cambios:
         # El usuario eligió la categoría: deja de ser una suposición de la app.
         mov.cat_confirmada = True
@@ -495,7 +503,7 @@ def eliminar_movimiento(
         raise HTTPException(status_code=403, detail="No tienes permiso para editar esta cuenta")
 
     if cuenta:
-        cuenta.saldo -= _delta_saldo(mov.tipo, mov.monto)
+        cuenta.saldo -= _delta_de(mov)
 
     db.delete(mov)
     db.commit()
@@ -519,7 +527,22 @@ def _eliminar_transferencia(db: Session, usuario: UsuarioActual, mov: Movimiento
             raise HTTPException(status_code=403, detail="No tienes permiso para editar las cuentas de esta transferencia")
     for p in patas:
         c = db.query(Cuenta).filter(Cuenta.id == p.cuenta_id).first()
-        sale = (p.notas or "").endswith(":out")
+        notas = p.notas or ""
+        if notas.endswith(":out"):
+            sale = True
+        elif notas.endswith(":in"):
+            sale = False
+        elif p.tipo in ("income", "expense"):
+            # Transferencia antigua sin notas 'TRF:': el tipo dice hacia dónde movió el saldo
+            # (expense = salió de esta cuenta; income = entró). Solo se borra esta pata.
+            sale = p.tipo == "expense"
+        else:
+            db.rollback()
+            raise HTTPException(
+                status_code=400,
+                detail="Esta transferencia antigua no se puede borrar automáticamente: "
+                       "ajusta el saldo de la cuenta a mano y deja el movimiento como está.",
+            )
         c.saldo += p.monto if sale else -p.monto
         db.delete(p)
     db.commit()

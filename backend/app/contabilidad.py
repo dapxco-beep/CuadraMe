@@ -25,7 +25,10 @@ FUENTE_TRANSFERENCIA = "transferencia_interna"
 # movimiento para que saldo e historial cuadren, pero NO es plata ganada ni gastada
 # (corrige un descuadre), así que tampoco cuenta como ingreso/gasto en reportes.
 FUENTE_AJUSTE = "ajuste_saldo"
-CATEGORIA_PAGO_TARJETA = "Pago de tarjeta"
+# Importado de un archivo SIN ajustar el saldo (el banco ya lo reflejaba): el movimiento
+# cuenta en reportes, pero editarlo o borrarlo NO debe mover el saldo de la cuenta.
+FUENTE_IMPORTADO_SIN_SALDO = "importado_sin_saldo"
+CATEGORIA_PAGO_TARJETA ="Pago de tarjeta"
 CATEGORIA_AJUSTE = "Ajuste de saldo"
 CATEGORIAS_NEUTRAS = {"transferencia", "pago de tarjeta", "ajuste de saldo"}
 

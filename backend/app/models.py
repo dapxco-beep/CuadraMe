@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy import Column, String, Float, DateTime, Boolean, Integer, UniqueConstraint
 
 from app.database import Base
+from app.utiles import ahora_co
 
 
 def gen_uuid():
@@ -133,7 +134,7 @@ class Movimiento(Base):
     id = Column(String, primary_key=True, default=gen_uuid)
     usuario_id = Column(String, nullable=False, index=True)
     cuenta_id = Column(String, index=True, nullable=False)
-    fecha = Column(DateTime, default=datetime.utcnow, index=True)
+    fecha = Column(DateTime, default=ahora_co, index=True)  # hora Colombia (naive), no UTC
     descripcion = Column(String, nullable=False)
     categoria = Column(String, default="Otros")
     tipo = Column(String, nullable=False)  # income | expense | transfer

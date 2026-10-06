@@ -47,6 +47,7 @@ from app.gmail_oauth import (
 from app.models import ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, Movimiento, Perfil, SyncGmail
 from app.routers.consentimientos import exigir_consentimiento, tiene_consentimiento
 from app.routers.conciliacion import procesar_extracto
+from app.utiles import utc_a_co
 from app.schemas import (
     AprobarCorreoRequest,
     ClavePdfIn,
@@ -748,7 +749,8 @@ def aprobar_correo(
         categoria=correo.categoria_sugerida,
         tipo=correo.tipo_sugerido,
         monto=correo.monto,
-        fecha=correo.recibido_en or correo.creado_en,
+        # recibido_en y creado_en están en UTC: el movimiento va en hora Colombia.
+        fecha=utc_a_co(correo.recibido_en or correo.creado_en),
         fuente="email",
         # La categoría la sugirió la app al leer el correo: queda por revisar
         # salvo que sea 'Otros' (que ya aparece en la vista por revisar).

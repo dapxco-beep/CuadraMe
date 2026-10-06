@@ -40,9 +40,14 @@ def rentabilidad(valor_actual: float, costo: float) -> dict:
     return {"ganancia": ganancia, "rentabilidad_pct": pct}
 
 
-def xnpv(tasa: float, flujos: list) -> float:
+def xnpv(tasa: float, flujos: list) -> Optional[float]:
+    """VPN con fechas irregulares. None si la cuenta se desborda (tasas enormes con
+    flujos de décadas) o la tasa hace 1+tasa = 0."""
     t0 = min(f for f, _ in flujos)
-    return sum(m / (1 + tasa) ** (_dias(t0, f) / DIAS_ANIO) for f, m in flujos)
+    try:
+        return sum(m / (1 + tasa) ** (_dias(t0, f) / DIAS_ANIO) for f, m in flujos)
+    except (OverflowError, ZeroDivisionError):
+        return None
 
 
 def xirr(flujos: list) -> Optional[float]:
@@ -60,14 +65,20 @@ def xirr(flujos: list) -> Optional[float]:
     bajo, alto = -0.9999, 1.0
     f_bajo = xnpv(bajo, flujos)
     f_alto = xnpv(alto, flujos)
+    if f_bajo is None or f_alto is None:
+        return None
     while f_bajo * f_alto > 0 and alto < 1e6:  # rendimientos enormes: ampliar el techo
         alto *= 10
         f_alto = xnpv(alto, flujos)
+        if f_alto is None:  # desbordó: sin solución numérica
+            return None
     if f_bajo * f_alto > 0:
         return None
     for _ in range(300):
         medio = (bajo + alto) / 2
         f_medio = xnpv(medio, flujos)
+        if f_medio is None:
+            return None
         if abs(f_medio) < 1e-9 or (alto - bajo) < 1e-13:
             return medio
         if f_bajo * f_medio < 0:
