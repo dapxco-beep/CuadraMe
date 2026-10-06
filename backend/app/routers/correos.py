@@ -594,7 +594,7 @@ def conciliar_extracto(
     """Vuelve a descargar el PDF desde Gmail y lo pasa por la conciliación
     existente (/conciliacion/procesar). Devuelve la misma respuesta, con el
     historial_id para abrir la revisión."""
-    verificar_limite(f"conciliar-gmail:{usuario.id}", 20, 3600, "Conciliaste muchos extractos seguidos. Intenta en un rato.")
+    verificar_limite(f"conciliar-gmail:{usuario.id}", 60, 3600, "Conciliaste muchos extractos seguidos. Podrás seguir en {espera}.")
     fila = (
         db.query(ExtractoCorreo)
         .filter(ExtractoCorreo.id == extracto_id, ExtractoCorreo.usuario_id == usuario.id)

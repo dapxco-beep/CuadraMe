@@ -58,7 +58,8 @@ def procesar_extracto(
     if not cuenta or not puede_editar_cuenta(db, usuario.id, cuenta):
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
 
-    verificar_limite(f"extracto:{usuario.id}", 10, 3600, "Subiste muchos extractos seguidos. Intenta en un rato.")
+    # 60 por hora: la subida múltiple procesa hasta 10 archivos de golpe.
+    verificar_limite(f"extracto:{usuario.id}", 60, 3600, "Subiste muchos extractos seguidos. Podrás subir más en {espera}.")
     texto_plano = pdf_a_texto(data.pdf_base64, data.password)
     banco = detectar_banco(texto_plano) if texto_plano else "desconocido"
 

@@ -20,8 +20,17 @@ _lock = threading.Lock()
 _eventos: dict[str, deque] = defaultdict(deque)
 
 
+def _texto_espera(segundos: int) -> str:
+    """'45 segundos', '1 minuto', '12 minutos': para decirle al usuario cuándo reintentar."""
+    if segundos < 60:
+        return f"{max(segundos, 1)} segundos"
+    minutos = (segundos + 59) // 60
+    return "1 minuto" if minutos == 1 else f"{minutos} minutos"
+
+
 def verificar_limite(clave: str, maximo: int, ventana_segundos: int, mensaje: str | None = None) -> None:
-    """Registra un uso de `clave` y lanza 429 si ya hubo `maximo` en la ventana."""
+    """Registra un uso de `clave` y lanza 429 si ya hubo `maximo` en la ventana.
+    Si `mensaje` contiene "{espera}", se reemplaza por cuánto falta ('12 minutos')."""
     ahora = time.monotonic()
     with _lock:
         cola = _eventos[clave]
@@ -31,7 +40,9 @@ def verificar_limite(clave: str, maximo: int, ventana_segundos: int, mensaje: st
             espera = int(ventana_segundos - (ahora - cola[0])) + 1
             raise HTTPException(
                 status_code=429,
-                detail=mensaje or f"Demasiadas solicitudes. Intenta de nuevo en {espera} segundos.",
+                detail=(mensaje or "Demasiadas solicitudes. Intenta de nuevo en {espera}.").replace(
+                    "{espera}", _texto_espera(espera)
+                ),
                 headers={"Retry-After": str(espera)},
             )
         cola.append(ahora)

@@ -113,7 +113,7 @@ def vista_previa(
     usuario: UsuarioActual = Depends(get_current_user),
 ):
     cuenta = _cuenta_editable(db, usuario, data.cuenta_id)
-    verificar_limite(f"importar:{usuario.id}", 30, 3600, "Subiste muchos archivos seguidos. Intenta en un rato.")
+    verificar_limite(f"importar:{usuario.id}", 60, 3600, "Subiste muchos archivos seguidos. Podrás subir más en {espera}.")
     contenido = _decodificar(data.archivo_base64)
 
     mapeo = None

@@ -29,7 +29,7 @@ def escanear(
     La imagen se procesa en memoria y se descarta."""
     exigir_consentimiento(db, usuario.id, "ia")  # Ley 1581: la foto va a un proveedor de IA
     # Cada lectura es una llamada a un modelo de visión: tope por usuario, como la IA de chat.
-    verificar_limite(f"factura:{usuario.id}", 10, 3600, "Llegaste al límite de facturas por hora. Intenta más tarde.")
+    verificar_limite(f"factura:{usuario.id}", 10, 3600, "Llegaste al límite de facturas por hora. Podrás escanear otra en {espera}.")
     try:
         datos = validar_imagen(data.imagen_base64, data.mime)
         categorias = [c.nombre for c in _asegurar_categorias_base(db, usuario.id) if c.activa]
