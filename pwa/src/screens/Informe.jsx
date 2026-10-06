@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowDownRight, ArrowLeft, ArrowUpRight, ChevronDown, PieChart, Store } from 'lucide-react'
 import { CargandoMarca, EstadoVacio } from '../brand/Marca'
 import { api } from '../lib/api'
@@ -71,7 +71,10 @@ export default function Informe() {
   const { fmt } = useBloqueo()
   const { iconoDe } = useCategorias()
   const [valor, setValor] = useState({ periodo: 'este_mes', ...rangoPeriodo('este_mes') })
-  const [mes, setMes] = useState(null) // salto a un mes concreto (desde el estado vacío)
+  const [consulta] = useSearchParams()
+  const mesPedido = consulta.get('mes')
+  // Salto a un mes concreto: desde el estado vacío o desde el enlace del resumen (?mes=2026-09).
+  const [mes, setMes] = useState(/^\d{4}-(0[1-9]|1[0-2])$/.test(mesPedido || '') ? mesPedido : null)
   const [informe, setInforme] = useState(null)
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(true)

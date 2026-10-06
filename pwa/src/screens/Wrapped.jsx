@@ -1,13 +1,52 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowLeft, ChevronLeft, ChevronRight, Share2 } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, PieChart, Share2 } from 'lucide-react'
 import { nombreMesLargo } from '../lib/informe'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { Isotipo } from '../brand/Marca'
 import { compartirImagen, construirDiapositivas, nombreMes } from '../lib/wrappedImagen'
+
+// Desglose del mes por categoría: la diapositiva solo cuenta cuánto gastaste, esto dice en qué.
+function DetalleCategorias({ datos, fmt, onVerInforme }) {
+  const lista = datos.categorias || []
+  if (lista.length === 0) return null
+  const mayor = Math.max(...lista.map((c) => c.monto), 1)
+  return (
+    <section className="mx-6 mb-6 card-marca bg-paper-raised border border-line p-4" aria-label="Gasto por categoría">
+      <h2 className="text-[15px] font-bold">En qué gastaste en {nombreMesLargo(datos.mes)}</h2>
+      <p className="text-xs text-ink-soft mt-0.5">Total: {fmt(datos.gasto_total)}</p>
+      <ul className="mt-3 space-y-3">
+        {lista.map((c) => {
+          const sube = c.variacion_pct !== null && c.variacion_pct > 0
+          return (
+            <li key={c.categoria}>
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="font-medium truncate">{c.categoria}</span>
+                <span className="font-semibold shrink-0">{fmt(c.monto)}</span>
+              </div>
+              <div className="mt-1 h-2 rounded-full bg-line overflow-hidden" aria-hidden="true">
+                <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(3, (c.monto / mayor) * 100)}%` }} />
+              </div>
+              <p className="mt-1 text-xs text-ink-soft">
+                {c.pct}% del gasto
+                {c.variacion_pct === null
+                  ? ' · sin gasto el mes anterior'
+                  : ` · ${sube ? '↑' : c.variacion_pct < 0 ? '↓' : '='} ${Math.abs(c.variacion_pct)}% frente al mes anterior`}
+              </p>
+            </li>
+          )
+        })}
+      </ul>
+      <button type="button" onClick={onVerInforme}
+        className="mt-4 w-full min-h-[44px] rounded-2xl border border-line text-sm font-semibold text-accent flex items-center justify-center gap-2">
+        <PieChart size={16} /> Ver informe completo de este mes
+      </button>
+    </section>
+  )
+}
 
 function mesRelativo(delta) {
   const h = new Date()
@@ -89,7 +128,7 @@ export default function Wrapped() {
   const d = diapos[i]
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden screen-enter">
+    <div className="flex-1 flex flex-col overflow-y-auto screen-enter">
       <header className="px-6 pt-14 pb-2 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
@@ -192,6 +231,8 @@ export default function Wrapped() {
               <ChevronRight size={18} />
             </button>
           </div>
+
+          <DetalleCategorias datos={datos} fmt={fmt} onVerInforme={() => navigate(`/informe?mes=${datos.mes}`)} />
         </>
       )}
     </div>

@@ -344,3 +344,49 @@ def test_extractos_y_clave_son_por_usuario(monkeypatch):
     app.dependency_overrides[get_current_user] = lambda: UsuarioActual(id="u-privado-a", email="a@t.com", nombre="A")
     assert client.delete("/correos/clave-pdf").json() == {"ok": True, "configurada": False}
     assert client.get("/correos/clave-pdf").json() == {"configurada": False}
+
+
+def test_correo_sin_monto_no_se_ofrece_ni_con_etiqueta():
+    """Publicidad y avisos sin monto no deben aparecer como pendientes en $0."""
+    from types import SimpleNamespace
+
+    from app.classifier import build_model
+    from app.routers import correos as r
+
+    modelo = build_model([])
+
+    class _Msg:
+        def __init__(self, asunto, snippet, etiquetas):
+            self.msg = {
+                "id": "m-" + asunto[:6], "snippet": snippet, "labelIds": etiquetas,
+                "internalDate": "1790000000000",
+                "payload": {"headers": [{"name": "From", "value": "Nu <nu@nu.com.co>"}, {"name": "Subject", "value": asunto}]},
+            }
+
+        def execute(self):
+            return self.msg
+
+    def gmail_con(asunto, snippet, etiquetas):
+        msg = _Msg(asunto, snippet, etiquetas)
+        mensajes = SimpleNamespace(get=lambda **kw: msg)
+        return SimpleNamespace(users=lambda: SimpleNamespace(messages=lambda: mensajes))
+
+    class _Db:
+        def __init__(self):
+            self.filas = []
+
+        def add(self, fila):
+            self.filas.append(fila)
+
+    for etiqueta in (None, "L1"):
+        db = _Db()
+        g = gmail_con("Lo que tu Tarjeta NuControl hace por ti", "Descubre todo lo que puedes hacer", ["L1"])
+        candidato = r._procesar_transaccion(g, db, "u1", "x1", modelo, etiqueta, set())
+        assert candidato is False
+        assert db.filas[0].estado == "ignorado"
+
+    # Con monto y etiqueta sí queda pendiente.
+    db = _Db()
+    g = gmail_con("Compra aprobada", "Compraste por $45.000 en Juan Valdez", ["L1"])
+    assert r._procesar_transaccion(g, db, "u1", "x2", modelo, "L1", set()) is True
+    assert db.filas[0].estado == "pendiente" and db.filas[0].monto == 45000

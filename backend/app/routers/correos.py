@@ -334,10 +334,13 @@ def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, exist
     msg = gmail.users().messages().get(userId="me", id=ref_id, format="full").execute()
     correo = _crear_correo(msg, usuario_id, modelo)
     con_etiqueta = bool(label_id) and label_id in (msg.get("labelIds") or [])
-    # Los de la etiqueta los eligió el usuario: entran siempre. Los detectados
-    # solos deben parecer una transacción real (con monto) para no llenar la
-    # bandeja de publicidad; los descartados se guardan 'ignorado' y no se releen.
-    candidato = con_etiqueta or (correo.monto > 0 and es_notificacion_transaccion(correo.asunto, correo.snippet))
+    # Un correo sin monto no es un movimiento (publicidad, "tu pedido fue entregado",
+    # "llegó tu extracto"): no se ofrece para revisar ni para conciliar, aunque lo
+    # haya marcado la etiqueta del usuario. Con monto entran los de la etiqueta, y los
+    # detectados solos solo si además parecen una transacción real. Los descartados se
+    # guardan 'ignorado' y no se releen.
+    tiene_monto = (correo.monto or 0) > 0
+    candidato = tiene_monto and (con_etiqueta or es_notificacion_transaccion(correo.asunto, correo.snippet))
     if not candidato:
         correo.estado = "ignorado"
     db.add(correo)
@@ -674,7 +677,11 @@ def listar_pendientes(
 ):
     return (
         db.query(CorreoGasto)
-        .filter(CorreoGasto.usuario_id == usuario.id, CorreoGasto.estado == "pendiente")
+        .filter(
+            CorreoGasto.usuario_id == usuario.id,
+            CorreoGasto.estado == "pendiente",
+            CorreoGasto.monto > 0,  # sin monto no hay nada que registrar ni conciliar
+        )
         .order_by(CorreoGasto.creado_en.desc())
         .all()
     )

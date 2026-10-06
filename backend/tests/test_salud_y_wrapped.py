@@ -88,3 +88,35 @@ def test_wrapped_mes_vacio_no_revienta():
     w = calcular_wrapped("2026-09", [], [])
     assert w["categoria_top"] is None and w["variacion_gasto_pct"] is None
     assert w["gasto_total"] == 0 and w["mejor_racha"] == 0
+
+
+def test_wrapped_trae_el_desglose_por_categoria_con_cambio_vs_mes_anterior():
+    from datetime import datetime
+
+    from app.wrapped import calcular_wrapped
+
+    def mov(tipo, monto, cat, dia, mes=10):
+        return {"tipo": tipo, "monto": monto, "categoria": cat, "fecha": datetime(2026, mes, dia)}
+
+    actual = [mov("expense", 600_000, "Comida", 2), mov("expense", 300_000, "Transporte", 3),
+              mov("expense", 100_000, "Ocio", 4), mov("income", 2_000_000, "Salario", 1)]
+    anterior = [mov("expense", 400_000, "Comida", 2, 9), mov("expense", 300_000, "Transporte", 3, 9)]
+    cats = calcular_wrapped("2026-10", actual, anterior)["categorias"]
+    assert [c["categoria"] for c in cats] == ["Comida", "Transporte", "Ocio"]   # de mayor a menor
+    assert [c["pct"] for c in cats] == [60.0, 30.0, 10.0]                       # sobre 1.000.000
+    assert cats[0]["variacion_pct"] == 50.0                                     # 400k -> 600k
+    assert cats[1]["variacion_pct"] == 0.0                                      # igual
+    assert cats[2]["variacion_pct"] is None                                     # sin gasto el mes anterior
+    assert round(sum(c["pct"] for c in cats), 1) == 100.0
+
+
+def test_wrapped_agrupa_las_categorias_pequenas_en_otras():
+    from datetime import datetime
+
+    from app.wrapped import MAX_CATEGORIAS, calcular_wrapped
+
+    movs = [{"tipo": "expense", "monto": 1000 - i, "categoria": f"C{i}", "fecha": datetime(2026, 10, 2)}
+            for i in range(MAX_CATEGORIAS + 3)]
+    cats = calcular_wrapped("2026-10", movs, [])["categorias"]
+    assert len(cats) == MAX_CATEGORIAS + 1 and cats[-1]["categoria"] == "Otras"
+    assert cats[-1]["monto"] == sum(m["monto"] for m in movs[MAX_CATEGORIAS:])

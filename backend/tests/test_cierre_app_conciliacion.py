@@ -279,3 +279,21 @@ def test_flujo_categoria_conocida_se_confirma(monkeypatch):
     if m["categoria"] != "Otros":  # el diccionario de comercios reconoce Netflix
         assert m["cat_confirmada"] is True
         assert a["id"] not in [x["id"] for x in client.get("/movimientos/por-confirmar").json()]
+
+
+def test_las_lineas_de_cero_pesos_no_aparecen_para_conciliar():
+    """Cuota de manejo exenta, intereses en $0, etc. no son movimientos: se descartan y se cuentan."""
+    from app.conciliacion import auditar_movimientos
+
+    extracto = [
+        {"fecha": "2026-10-02", "descripcion": "Compra Juan Valdez", "monto": 45000, "tipo": "expense", "cuenta": "Nu"},
+        {"fecha": "2026-10-02", "descripcion": "Cuota de manejo exenta", "monto": 0, "tipo": "expense", "cuenta": "Nu"},
+        {"fecha": "2026-10-03", "descripcion": "Intereses", "monto": 0.0, "tipo": "expense", "cuenta": "Nu"},
+        {"fecha": "2026-10-03", "descripcion": "Sin monto", "monto": None, "tipo": "expense", "cuenta": "Nu"},
+    ]
+    for cruzar in (False, True):
+        r = auditar_movimientos(extracto, [], cruzar_rapidos=cruzar)
+        descripciones = [m["descripcion"] for m in r["review"]]
+        assert descripciones == ["Compra Juan Valdez"], (cruzar, descripciones)
+        assert r["ignorados_en_cero"] == 3
+        assert all(abs(m["monto"]) >= 1 for m in r["review"])

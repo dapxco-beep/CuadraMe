@@ -526,9 +526,17 @@ def auditar_movimientos(movimientos_extracto: list[dict], ledger: list[dict], cr
     aproximado (dentro de tolerancia), o faltante (no está registrado).
     Con `cruzar_rapidos=True` aplica el cruce 1:1 de movimientos rápidos
     (ver _auditar_con_cruce_rapido) y suma el estado 'completado'.
+    Las líneas de $0 (cuota de manejo exenta, intereses en cero, saldos) no son
+    movimientos: se descartan aquí, para todos los lectores de extractos, y se
+    cuentan en `ignorados_en_cero` para poder decírselo al usuario.
     """
+    con_valor = [m for m in movimientos_extracto if abs(m.get("monto") or 0) >= 1]
+    ignorados = len(movimientos_extracto) - len(con_valor)
+    movimientos_extracto = con_valor
     if cruzar_rapidos:
-        return _auditar_con_cruce_rapido(movimientos_extracto, ledger)
+        resultado = _auditar_con_cruce_rapido(movimientos_extracto, ledger)
+        resultado["ignorados_en_cero"] = ignorados
+        return resultado
     review = []
     exactos = aproximados = faltantes = 0
 
@@ -557,4 +565,5 @@ def auditar_movimientos(movimientos_extracto: list[dict], ledger: list[dict], cr
         "exactos": exactos,
         "aproximados": aproximados,
         "faltantes": faltantes,
+        "ignorados_en_cero": ignorados,
     }
