@@ -315,6 +315,7 @@ export default function Movimientos() {
           <input
             value={busqueda}
             aria-label="Buscar movimiento"
+            data-atajo-buscar
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar movimiento"
             className="bg-transparent outline-none text-sm flex-1 placeholder:text-ink-soft"

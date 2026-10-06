@@ -10,7 +10,7 @@ import { CategoriasProvider } from './lib/CategoriasContext'
 import { DialogosProvider } from './lib/DialogosContext'
 import { BloqueoProvider, useBloqueo } from './lib/BloqueoContext'
 import PantallaBloqueo from './components/PantallaBloqueo'
-import BottomNav from './components/BottomNav'
+import ShellApp from './components/ShellApp'
 import BandejaPorConfirmar from './components/BandejaPorConfirmar'
 import SplashMarca, { splashPendiente } from './brand/SplashMarca'
 import { CargandoMarca } from './brand/Marca'
@@ -87,6 +87,7 @@ function AppGate() {
 
   return (
     <>
+      <ShellApp>
       <Suspense fallback={<Cargando />}>
       <Routes>
         <Route path="/" element={<Inicio />} />
@@ -125,7 +126,7 @@ function AppGate() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>
-      <BottomNav />
+      </ShellApp>
       {/* "¿Son tuyos?": al abrir y al volver a primer plano, movimientos que llegaron solos */}
       <BandejaPorConfirmar />
     </>

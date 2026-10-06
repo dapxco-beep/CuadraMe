@@ -40,7 +40,7 @@ export const ITEMS_MAS = [
 // "Más" se ve activo cuando estás en cualquiera de sus pantallas (o parientes).
 const RUTAS_MAS = [...ITEMS_MAS.map((i) => i.to), '/compartir', '/importar', '/reglas-categoria', '/conectar-dispositivo', '/legal']
 
-function estaEnMas(pathname) {
+export function estaEnMas(pathname) {
   return RUTAS_MAS.some((r) => pathname === r || pathname.startsWith(`${r}/`))
 }
 
@@ -129,7 +129,7 @@ function Pestana({ Icon, label, activa }) {
   )
 }
 
-function HojaMas({ onCerrar, pathname }) {
+export function HojaMas({ onCerrar, pathname }) {
   const navigate = useNavigate()
 
   // Ir a una pantalla desde la hoja: primero se cierra la hoja con "atrás" (así se retira su
