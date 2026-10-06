@@ -3,10 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { useAuth } from '../lib/AuthContext'
 import ModalConsentimiento from '../components/ModalConsentimiento'
+import CrearCuentaBanco from '../components/CrearCuentaBanco'
 import { ArrowLeft, Check, ChevronDown, FileText, KeyRound, Mail, RefreshCw, ShieldCheck, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { resumenSync, sincronizarTodo } from '../lib/sincronizarGmail'
+import { conciliarExtracto } from '../lib/sincronizacion'
 import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
 
@@ -97,6 +99,7 @@ export default function Correos() {
   const [mostrarAjustes, setMostrarAjustes] = useState(false)
   const [aviso, setAviso] = useState('')
   const [pedirConsentimiento, setPedirConsentimiento] = useState(false)
+  const [crearCuenta, setCrearCuenta] = useState(null) // { banco, correoId }
   const [progreso, setProgreso] = useState(null)
   const [filtro, setFiltro] = useState('todo')
   const [ignorados, setIgnorados] = useState([])
@@ -232,12 +235,17 @@ export default function Correos() {
 
   async function aprobar(correo) {
     if (procesando.has(correo.id)) return
-    const cuentaId = cuentaPorCorreo[correo.id] || cuentas[0]?.id
+    // Nunca se asume una cuenta (antes caía en la primera): sale de quién envió el
+    // correo o de lo que elija el usuario.
+    const cuentaId = cuentaElegidaCorreo(correo)
     if (!cuentaId) return
     setProcesando((prev) => new Set(prev).add(correo.id))
+    setError('')
     try {
       await api.aprobarCorreo(correo.id, cuentaId)
       setPendientes((prev) => prev.filter((c) => c.id !== correo.id))
+    } catch (err) {
+      setError(err.message || 'No se pudo aprobar el movimiento')
     } finally {
       setProcesando((prev) => {
         const next = new Set(prev)
@@ -262,8 +270,14 @@ export default function Correos() {
     }
   }
 
+  // Solo vale una cuenta que exista: la elegida a mano o la que el servidor dedujo del banco.
+  const existe = (id) => (id && cuentas.some((c) => c.id === id) ? id : '')
+  function cuentaElegidaCorreo(c) {
+    return existe(cuentaPorCorreo[c.id]) || existe(c.cuenta_sugerida_id)
+  }
+
   function cuentaElegida(ex) {
-    return cuentaPorExtracto[ex.id] || ex.cuenta_sugerida_id || cuentas[0]?.id
+    return existe(cuentaPorExtracto[ex.id]) || existe(ex.cuenta_sugerida_id)
   }
 
   async function conciliar(ex) {
@@ -273,12 +287,12 @@ export default function Correos() {
     setProcesando((prev) => new Set(prev).add(ex.id))
     setError('')
     try {
-      const r = await api.conciliarExtractoCorreo(ex.id, cuentaId)
+      const r = await conciliarExtracto(ex, cuentaId)
       if (!r.ok) {
-        setError(r.error || 'No se pudo conciliar el extracto')
+        setError(r.error)
         await cargar()
       } else {
-        navigate('/conciliacion', { state: { historialId: r.historial_id } })
+        navigate('/conciliacion', { state: { historialId: r.historialId } })
       }
     } catch (err) {
       setError(err.message || 'No se pudo conciliar el extracto')
@@ -338,6 +352,9 @@ export default function Correos() {
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold flex-1">Correos bancarios</h1>
+        <button onClick={() => navigate('/sincronizacion')} className="text-xs font-semibold text-accent">
+          Qué falta
+        </button>
         <button onClick={() => navigate('/conexiones')} className="text-xs font-semibold text-accent">
           Ver estado
         </button>
@@ -366,6 +383,23 @@ export default function Correos() {
             </button>
           </div>
         </section>
+      )}
+
+      {crearCuenta && (
+        <CrearCuentaBanco
+          banco={crearCuenta.banco}
+          onClose={() => setCrearCuenta(null)}
+          onCreada={(cuenta) => {
+            // La cuenta nueva queda elegida para ese correo y para los demás del mismo banco.
+            setCuentaPorCorreo((prev) => {
+              const sig = { ...prev }
+              for (const p of pendientes) if (p.banco_detectado === crearCuenta.banco && p.falta_cuenta) sig[p.id] = cuenta?.id
+              return sig
+            })
+            setCrearCuenta(null)
+            cargar()
+          }}
+        />
       )}
 
       {pedirConsentimiento && (
@@ -584,7 +618,7 @@ export default function Correos() {
                   <div className="flex items-start gap-3">
                     <FileText size={18} className="text-accent shrink-0 mt-0.5" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold truncate">{ex.banco || 'Extracto'}</p>
+                      <p className="text-sm font-semibold truncate">{ex.banco || 'Banco sin identificar'}</p>
                       <p className="text-xs text-ink-soft truncate">{ex.periodo || ex.asunto}</p>
                     </div>
                     <EtiquetaEstado estado={ex.estado} />
@@ -603,6 +637,7 @@ export default function Correos() {
                       aria-label="Cuenta del extracto"
                       className="w-full mt-3 rounded-xl border border-line bg-paper px-3 py-2 text-xs"
                     >
+                      <option value="">Elige la cuenta</option>
                       {cuentas.map((cu) => (
                         <option key={cu.id} value={cu.id}>
                           {cu.nombre}
@@ -623,7 +658,7 @@ export default function Correos() {
                     ) : (
                       <button
                         onClick={() => conciliar(ex)}
-                        disabled={procesando.has(ex.id) || ex.estado === 'falta_clave' || ex.estado === 'error'}
+                        disabled={procesando.has(ex.id) || ex.estado === 'falta_clave' || ex.estado === 'error' || !cuentaElegida(ex)}
                         className="flex-1 bg-accent text-white font-semibold rounded-xl py-2.5 text-sm disabled:opacity-50"
                       >
                         {procesando.has(ex.id) ? 'Conciliando...' : 'Conciliar'}
@@ -672,24 +707,37 @@ export default function Correos() {
                       {formatCOP(c.monto)}
                     </p>
                   </div>
-                  <p className="text-xs text-ink-soft mt-1">{c.categoria_sugerida}</p>
+                  <p className="text-xs text-ink-soft mt-1">
+                    {c.categoria_sugerida}
+                    {c.banco_detectado ? ` · ${c.banco_detectado}` : ''}
+                  </p>
 
-                  {cuentas.length > 1 && (
-                    <select
-                      value={cuentaPorCorreo[c.id] || cuentas[0]?.id}
-                      onChange={(e) => setCuentaPorCorreo((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                      className="w-full mt-3 rounded-xl border border-line bg-paper px-3 py-2 text-xs"
+                  <select
+                    value={cuentaElegidaCorreo(c)}
+                    onChange={(e) => setCuentaPorCorreo((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                    aria-label={`Cuenta de ${c.comercio}`}
+                    className="w-full mt-3 rounded-xl border border-line bg-paper px-3 py-2 text-xs"
+                  >
+                    <option value="">
+                      {c.falta_cuenta ? `No tienes cuenta ${c.banco_detectado}` : 'Elige la cuenta'}
+                    </option>
+                    {cuentas.map((cu) => (
+                      <option key={cu.id} value={cu.id}>{cu.nombre}</option>
+                    ))}
+                  </select>
+                  {c.falta_cuenta && (
+                    <button
+                      onClick={() => setCrearCuenta({ banco: c.banco_detectado, correoId: c.id })}
+                      className="mt-2 text-xs font-semibold text-accent"
                     >
-                      {cuentas.map((cu) => (
-                        <option key={cu.id} value={cu.id}>{cu.nombre}</option>
-                      ))}
-                    </select>
+                      Crear cuenta {c.banco_detectado}
+                    </button>
                   )}
 
                   <div className="flex gap-2 mt-3">
                     <button
                       onClick={() => aprobar(c)}
-                      disabled={procesando.has(c.id)}
+                      disabled={procesando.has(c.id) || !cuentaElegidaCorreo(c)}
                       className="flex-1 flex items-center justify-center gap-1.5 bg-accent text-white font-semibold rounded-xl py-2.5 text-sm disabled:opacity-50"
                     >
                       <Check size={14} /> Aprobar

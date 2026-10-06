@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeftRight, Bot, ChevronRight, CreditCard, Gift, Landmark, PieChart, PiggyBank, Repeat, Sparkles } from 'lucide-react'
+import { ArrowLeftRight, Bot, ChevronRight, CreditCard, Gift, Landmark, PieChart, PiggyBank, RefreshCw, Repeat, Sparkles } from 'lucide-react'
 import { CargandoMarca, IlustracionVacia, Isotipo, Monto, SelloCuadre } from '../brand/Marca'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
@@ -38,6 +38,7 @@ export default function Inicio() {
   const [resumen, setResumen] = useState(null)
   const [gmailConectado, setGmailConectado] = useState(true)
   const [conexionFalla, setConexionFalla] = useState(false)
+  const [tareasSync, setTareasSync] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [errorCarga, setErrorCarga] = useState('')
   const [intento, setIntento] = useState(0)
@@ -61,6 +62,8 @@ export default function Inicio() {
     api.gmailEstado().then((e) => activo && setGmailConectado(!!e.conectado)).catch(() => {})
     // Aviso solo si algo se rompió (semáforo rojo); si el tablero falla, no se muestra nada.
     Promise.resolve().then(() => api.conexionesEstado?.()).then((c) => activo && setConexionFalla(!!c?.hay_falla)).catch(() => {})
+    // Cuántas cosas esperan en Sincronización (si falla, el acceso se muestra sin número).
+    Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && setTareasSync(s?.tareas?.length ?? null)).catch(() => {})
     return () => {
       activo = false
     }
@@ -123,6 +126,19 @@ export default function Inicio() {
           <span className="text-xs font-semibold text-danger shrink-0">Ver estado</span>
         </Link>
       )}
+
+      <Link
+        to="/sincronizacion"
+        data-testid="acceso-sincronizacion"
+        className="mx-6 mt-2 rounded-2xl bg-paper-raised border border-line px-4 py-2.5 flex items-center gap-3"
+      >
+        <RefreshCw size={16} className="text-accent shrink-0" aria-hidden="true" />
+        <p className="flex-1 text-sm font-medium">Sincronización</p>
+        <span className={`text-xs font-semibold ${tareasSync ? 'text-accent' : 'text-ink-soft'}`}>
+          {tareasSync === null ? '' : tareasSync === 0 ? 'Todo al día' : `${tareasSync} por resolver`}
+        </span>
+        <ChevronRight size={16} className="text-ink-soft" aria-hidden="true" />
+      </Link>
 
       {/* Mazo de cuentas — cada tarjeta con el color real de su entidad, apiladas
           como en una billetera física, para que multi-cuenta se entienda de un vistazo */}

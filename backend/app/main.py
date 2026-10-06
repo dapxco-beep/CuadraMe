@@ -174,6 +174,9 @@ app.include_router(cierre.router)
 app.include_router(consentimientos.router)
 app.include_router(informes.router)
 app.include_router(conexiones.router)
+from app.routers import sincronizacion  # noqa: E402
+
+app.include_router(sincronizacion.router)
 
 
 @app.get("/health")

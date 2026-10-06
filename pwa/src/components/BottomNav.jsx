@@ -3,7 +3,7 @@ import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import Hoja from './Hoja'
 import {
   Bot, CalendarCheck, CreditCard, FileCheck, Receipt, Gift, Home, Landmark, LayoutGrid, List, Mail, PieChart, PiggyBank,
-  Plus, Repeat, Sparkles, Sprout, Tag, User, Wallet, X,
+  Plus, RefreshCw, Repeat, Sparkles, Sprout, Tag, User, Wallet, X,
 } from 'lucide-react'
 
 // Barra inferior: Inicio · Movimientos · (+) · Presupuesto · Más.
@@ -29,6 +29,7 @@ export const ITEMS_MAS = [
   { to: '/resumen', icon: Gift, label: 'Resumen del mes' },
   { to: '/cierre-mes', icon: CalendarCheck, label: 'Cierre de mes' },
   { to: '/impuestos', icon: Receipt, label: 'Impuestos' },
+  { to: '/sincronizacion', icon: RefreshCw, label: 'Sincronización' },
   { to: '/correos', icon: Mail, label: 'Correos' },
   { to: '/conciliacion', icon: FileCheck, label: 'Conciliar extracto' },
   { to: '/categorias', icon: Tag, label: 'Categorías' },
