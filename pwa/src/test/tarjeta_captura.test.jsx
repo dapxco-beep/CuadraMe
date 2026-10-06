@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -73,12 +73,12 @@ describe('Formulario de cuenta nueva con tarjeta de crédito', () => {
     expect(screen.queryByLabelText('Saldo actual')).not.toBeInTheDocument()
     expect(screen.getByText('¿Cuánto debes hoy?')).toBeInTheDocument()
 
-    await userEvent.type(screen.getByLabelText('Nombre de la cuenta'), 'Nu Crédito')
-    await userEvent.type(screen.getByLabelText('Cupo total'), '5.000.000')
-    await userEvent.type(screen.getByLabelText('Cuánto debes hoy'), '1.200.000')
-    await userEvent.type(screen.getByLabelText('Día de corte'), '15')
-    await userEvent.type(screen.getByLabelText('Día de pago'), '30')
-    await userEvent.type(screen.getByLabelText('Tasa efectiva anual'), '28.5')
+    fireEvent.change(screen.getByLabelText('Nombre de la cuenta'), { target: { value: 'Nu Crédito' } })
+    fireEvent.change(screen.getByLabelText('Cupo total'), { target: { value: '5.000.000' } })
+    fireEvent.change(screen.getByLabelText('Cuánto debes hoy'), { target: { value: '1.200.000' } })
+    fireEvent.change(screen.getByLabelText('Día de corte'), { target: { value: '15' } })
+    fireEvent.change(screen.getByLabelText('Día de pago'), { target: { value: '30' } })
+    fireEvent.change(screen.getByLabelText('Tasa efectiva anual'), { target: { value: '28.5' } })
     await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }))
 
     await waitFor(() => expect(api.crearCuenta).toHaveBeenCalled())
@@ -91,8 +91,8 @@ describe('Formulario de cuenta nueva con tarjeta de crédito', () => {
     montar(<Cuentas />)
     await userEvent.click(await screen.findByLabelText('Nueva cuenta'))
     await userEvent.click(screen.getByRole('button', { name: /Tarjeta de crédito/ }))
-    await userEvent.type(screen.getByLabelText('Día de corte'), '45')
-    await userEvent.type(screen.getByLabelText('Nombre de la cuenta'), 'Mi tarjeta')
+    fireEvent.change(screen.getByLabelText('Día de corte'), { target: { value: '45' } })
+    fireEvent.change(screen.getByLabelText('Nombre de la cuenta'), { target: { value: 'Mi tarjeta' } })
     await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }))
     expect(api.crearCuenta).not.toHaveBeenCalled()
   })

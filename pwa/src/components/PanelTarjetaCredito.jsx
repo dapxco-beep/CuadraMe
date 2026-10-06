@@ -3,6 +3,7 @@ import { Pencil, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatMoneda } from '../lib/format'
 import Hoja from './Hoja'
+import ComprasACuotas from './ComprasACuotas'
 
 const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
@@ -166,6 +167,8 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
           )}
         </>
       )}
+
+      <ComprasACuotas cuenta={cuenta} />
 
       <button
         onClick={() => setEditando(true)}

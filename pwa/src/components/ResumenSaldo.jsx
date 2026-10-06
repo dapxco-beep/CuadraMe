@@ -43,6 +43,9 @@ export default function ResumenSaldo({ resumen, bolsillo, className = '' }) {
             <Fila k="Disponible hoy (cuentas, sin tarjetas)" v={fmt(resumen.disponible_cop)} />
             {comprometido !== null && <Fila k="Comprometido este mes (fijos y metas)" v={`− ${fmt(comprometido)}`} />}
             <Fila k="Deudas de tarjeta de crédito" v={`− ${fmt(resumen.deudas_tarjeta_cop)}`} />
+            {bolsillo?.cuotas_tarjeta_mes > 0 && (
+              <Fila k="De eso, en cuotas este mes" v={fmt(bolsillo.cuotas_tarjeta_mes)} />
+            )}
             <p className="pt-1 opacity-80 leading-snug">
               Saldo actual = lo que tienes en cuentas menos lo que debes en tarjetas.
               {comprometido !== null ? ' Lo comprometido aún no se descuenta de tu saldo: es lo que ya sabes que vas a pagar.' : ''}

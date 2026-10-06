@@ -429,6 +429,9 @@ class EnMiBolsillo(BaseModel):
     saldo_total: float
     recurrentes_pendientes_mes: float
     aportes_comprometidos_mes: float
+    # Cuotas de compras a cuotas con tarjeta que vencen este mes. La deuda de la tarjeta
+    # ya está restada en el saldo, así que solo se descuenta de disponible_real si se pide.
+    cuotas_tarjeta_mes: float = 0
     disponible_real: float
     disponible_real_por_dia: float
     dias_restantes_mes: int
@@ -467,6 +470,7 @@ class FlujoCajaMes(BaseModel):
     saldo_proyectado: float
     ingresos_esperados: float
     gastos_esperados: float
+    cuotas_tarjeta: float = 0  # cuotas de compras diferidas que vencen ese mes (informativo)
 
 
 class FlujoCajaFuturo(BaseModel):
