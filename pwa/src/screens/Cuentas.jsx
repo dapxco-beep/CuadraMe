@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { EstadoVacio } from '../brand/Marca'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { Link } from 'react-router-dom'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { textoActualizado } from '../lib/saldos'
@@ -25,7 +26,7 @@ const tipos = [
 const tipoLabel = Object.fromEntries(tipos.map((t) => [t.id, t.label]))
 
 export default function Cuentas() {
-  const navigate = useNavigate()
+  const volver = useVolver('/')
   const { cuentas, cargando, error, recargar } = useCuentas()
   const [mostrarForm, setMostrarForm] = useState(false)
   const [editando, setEditando] = useState(null)
@@ -49,9 +50,9 @@ export default function Cuentas() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pt-14 pb-2 flex items-center justify-between">
+      <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+          <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-bold">Tus cuentas</h1>
@@ -60,7 +61,7 @@ export default function Cuentas() {
           <BotonOjo />
           <button
             onClick={() => setMostrarForm(true)}
-            className="w-9 h-9 rounded-full bg-accent text-white flex items-center justify-center"
+            className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
            aria-label="Nueva cuenta">
             <Plus size={18} />
           </button>
@@ -226,7 +227,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
       <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 max-h-[90vh] overflow-y-auto sheet-content">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">{esEdicion ? 'Editar cuenta' : 'Nueva cuenta'}</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
             <X size={16} />
           </button>
         </div>

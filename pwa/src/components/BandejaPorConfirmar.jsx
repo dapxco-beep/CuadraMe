@@ -193,7 +193,7 @@ export default function BandejaPorConfirmar() {
           </div>
           <button
             onClick={() => cerrar()}
-            className="w-8 h-8 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+            className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center"
             aria-label="Cerrar"
           >
             <X size={16} />

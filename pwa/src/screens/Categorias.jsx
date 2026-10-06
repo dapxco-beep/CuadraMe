@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { ArrowDown, ArrowLeft, ArrowUp, Check, Eye, EyeOff, Plus, Trash2, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCategorias } from '../lib/CategoriasContext'
@@ -16,7 +16,7 @@ const ETIQUETA_TIPO = { gasto: 'Gasto', ingreso: 'Ingreso', ambos: 'Gasto e ingr
 const COLORES = ['#d9622b', '#d9a441', '#2f6b3f', '#2f7f9a', '#6a5acd', '#b0447a', '#7a6a55']
 
 export default function Categorias() {
-  const navigate = useNavigate()
+  const volver = useVolver('/perfil')
   const { categorias, cargando, recargar } = useCategorias()
   const [mostrarOcultas, setMostrarOcultas] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -51,16 +51,16 @@ export default function Categorias() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pt-14 pb-2 flex items-center justify-between">
+      <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+          <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-bold">Categorías</h1>
         </div>
         <button
           onClick={() => setMostrarForm(true)}
-          className="w-9 h-9 rounded-full bg-accent text-white flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
           aria-label="Nueva categoría"
         >
           <Plus size={18} />
@@ -205,7 +205,7 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
       {c.activa ? (
         <button
           onClick={onToggle}
-          className="w-9 h-9 shrink-0 flex items-center justify-center text-ink-soft"
+          className="w-11 h-11 shrink-0 flex items-center justify-center text-ink-soft"
           aria-label={`Ocultar ${c.nombre}`}
         >
           <Eye size={16} />
@@ -300,7 +300,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
       <div className="w-full max-w-[480px] max-h-[92vh] overflow-y-auto bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">{esEdicion ? 'Editar categoría' : 'Nueva categoría'}</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
             <X size={16} />
           </button>
         </div>

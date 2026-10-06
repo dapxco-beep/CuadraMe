@@ -73,7 +73,7 @@ export default function Presupuesto() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pt-14 pb-2 flex items-center justify-between">
+      <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Presupuesto</h1>
         <div className="flex items-center gap-2">
           {presupuestos.length > 1 && (
@@ -244,7 +244,7 @@ export default function Presupuesto() {
                           <p className="text-xs text-ink-soft">
                             {formatCOP(p.gastado)} / {formatCOP(p.limite)}
                           </p>
-                          <button onClick={() => eliminar(p.id)} className="w-8 h-8 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label="Cerrar">
+                          <button onClick={() => eliminar(p.id)} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label="Cerrar">
                             <X size={14} />
                           </button>
                         </div>
@@ -366,7 +366,7 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
       <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Nuevo presupuesto</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
             <X size={16} />
           </button>
         </div>
@@ -451,7 +451,7 @@ function FormMoverSobre({ presupuestos, onClose, onMovido }) {
       <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Mover plata entre categorías</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
             <X size={16} />
           </button>
         </div>

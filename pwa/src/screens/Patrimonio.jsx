@@ -50,7 +50,7 @@ export default function Patrimonio() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-5 pt-14 pb-2 flex items-center justify-between">
+      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Patrimonio</h1>
         <button
           onClick={() => setFormulario({})}
@@ -364,7 +364,7 @@ function FormActivo({ activo, onClose, onGuardado }) {
       <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">{editando ? 'Editar activo' : 'Nuevo activo'}</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
             <X size={16} />
           </button>
         </div>

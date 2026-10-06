@@ -191,11 +191,11 @@ export default function Agregar() {
 
   return (
     <div className="flex-1 flex flex-col pb-6">
-      <header className="px-5 pt-14 pb-2 flex items-center justify-between">
+      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Nuevo movimiento</h1>
         <button
           onClick={() => navigate('/')}
-          className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
           aria-label="Cerrar"
         >
           <X size={18} />

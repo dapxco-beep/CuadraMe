@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { EstadoVacio } from '../brand/Marca'
-import { useNavigate } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Plus, Trash2, X, Tag } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCategorias } from '../lib/CategoriasContext'
 
 export default function ReglasCategoria() {
-  const navigate = useNavigate()
+  const volver = useVolver('/perfil')
   const [reglas, setReglas] = useState([])
   const [cargando, setCargando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -34,16 +34,16 @@ export default function ReglasCategoria() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pt-14 pb-2 flex items-center justify-between">
+      <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+          <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-bold">Reglas de categorización</h1>
         </div>
         <button
           onClick={() => setMostrarForm(true)}
-          className="w-9 h-9 rounded-full bg-accent text-white flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
          aria-label="Nueva regla">
           <Plus size={18} />
         </button>
@@ -73,7 +73,7 @@ export default function ReglasCategoria() {
                 <p className="text-sm font-medium truncate">"{r.patron}"</p>
                 <p className="text-xs text-ink-soft">→ {r.categoria}{r.tipo ? ` · ${r.tipo}` : ''}</p>
               </div>
-              <button onClick={() => eliminar(r.id)} className="w-9 h-9 -mr-1.5 flex items-center justify-center text-danger shrink-0" aria-label="Eliminar">
+              <button onClick={() => eliminar(r.id)} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-danger shrink-0" aria-label="Eliminar">
                 <Trash2 size={16} />
               </button>
             </div>
@@ -122,7 +122,7 @@ function FormRegla({ onClose, onGuardado }) {
       <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Nueva regla</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
             <X size={16} />
           </button>
         </div>

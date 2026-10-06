@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, ChevronLeft, ChevronRight, PieChart, Share2 } from 'lucide-react'
 import { nombreMesLargo } from '../lib/informe'
@@ -56,6 +57,7 @@ function mesRelativo(delta) {
 
 export default function Wrapped() {
   const navigate = useNavigate()
+  const volver = useVolver('/')
   const { fmt } = useBloqueo()
   const { avisar } = useDialogos()
   const [mes, setMes] = useState(null) // se decide al saber qué meses tienen datos
@@ -129,8 +131,8 @@ export default function Wrapped() {
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto screen-enter">
-      <header className="px-6 pt-14 pb-2 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold flex-1">Tu resumen</h1>

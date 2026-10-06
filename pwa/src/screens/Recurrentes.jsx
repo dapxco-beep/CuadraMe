@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { EstadoVacio } from '../brand/Marca'
-import { useNavigate } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Check, Plus, Sparkles, X, Repeat } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
@@ -21,7 +21,7 @@ const estadoLabel = {
 }
 
 export default function Recurrentes() {
-  const navigate = useNavigate()
+  const volver = useVolver('/perfil')
   const { recargar: recargarCuentas } = useCuentas()
   const [recs, setRecs] = useState([])
   const [sugerencias, setSugerencias] = useState([])
@@ -72,11 +72,11 @@ export default function Recurrentes() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-5 pt-14 pb-2 flex items-center justify-between">
+      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/perfil')}
-            className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+            onClick={volver}
+            className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
            aria-label="Volver">
             <ArrowLeft size={18} />
           </button>
@@ -211,7 +211,7 @@ function FormRecurrente({ onClose, onGuardado }) {
       <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Nuevo recurrente</h2>
-          <button onClick={onClose} aria-label="Cerrar" className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center">
+          <button onClick={onClose} aria-label="Cerrar" className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center">
             <X size={16} />
           </button>
         </div>

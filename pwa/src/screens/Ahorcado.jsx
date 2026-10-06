@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Lightbulb } from 'lucide-react'
 import { api } from '../lib/api'
 import ArbolFinanciero from '../components/ArbolFinanciero'
 import { etapaPorScore, MENSAJE_POR_ETAPA } from '../lib/saludFinanciera'
 
 export default function Ahorcado() {
-  const navigate = useNavigate()
+  const volver = useVolver('/')
   const [reporte, setReporte] = useState(null)
   const [cargando, setCargando] = useState(true)
 
@@ -18,8 +18,8 @@ export default function Ahorcado() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pt-14 pb-2 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Tu árbol financiero</h1>

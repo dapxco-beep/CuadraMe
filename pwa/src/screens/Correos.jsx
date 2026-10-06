@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { useAuth } from '../lib/AuthContext'
 import ModalConsentimiento from '../components/ModalConsentimiento'
 import { ArrowLeft, Check, ChevronDown, FileText, KeyRound, Mail, RefreshCw, ShieldCheck, X } from 'lucide-react'
@@ -78,6 +79,7 @@ function marcarSincronizado() {
 
 export default function Correos() {
   const navigate = useNavigate()
+  const volver = useVolver('/')
   const { cuentas } = useCuentas()
   const { confirmar } = useDialogos()
   const [estado, setEstado] = useState(null)
@@ -331,8 +333,8 @@ export default function Correos() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pt-14 pb-2 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold flex-1">Correos bancarios</h1>
