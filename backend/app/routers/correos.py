@@ -16,6 +16,13 @@ from app.config import settings
 from app.limites import verificar_limite
 from app.database import get_db
 from app.conciliacion import detectar_banco
+from app.extractos_conciliados import (
+    ESTADO_YA_CONCILIADO,
+    depurar_conciliados,
+    evidencia_conciliado,
+    mes_del_extracto,
+    periodo_en_asunto,
+)
 from app.extractos_gmail import (
     MAX_PDF_BYTES,
     abrir_pdf,
@@ -24,6 +31,7 @@ from app.extractos_gmail import (
     construir_query_extractos,
     construir_query_notificaciones,
     contiene_palabra_extracto,
+    cuentas_del_banco,
     descargar_adjunto,
     detectar_periodo,
     detectar_ultimos4,
@@ -65,8 +73,9 @@ from app.schemas import (
 router = APIRouter(prefix="/correos", tags=["correos"])
 logger = logging.getLogger(__name__)
 
-# Estados que se muestran en "Extractos encontrados" (los demás son marcas internas).
-ESTADOS_VISIBLES = ("nuevo", "falta_clave", "procesado", "error")
+# Estados que devuelve "Extractos encontrados" (los demás son marcas internas).
+# 'ya_conciliado' viaja aparte de lo pendiente: la pantalla lo muestra plegado.
+ESTADOS_VISIBLES = ("nuevo", "falta_clave", "procesado", "error", ESTADO_YA_CONCILIADO)
 
 
 def _get_or_create_perfil(db: Session, usuario_id: str) -> Perfil:
@@ -234,7 +243,22 @@ def _crear_correo(msg: dict, usuario_id: str, modelo) -> CorreoGasto:
     )
 
 
-def _analizar_adjunto(gmail, fila: ExtractoCorreo, adjunto: dict, cuentas: list, clave: str | None) -> None:
+def _marcar_si_conciliado(db: Session, fila: ExtractoCorreo) -> bool:
+    """Si el banco+cuenta+periodo de este extracto ya quedó conciliado (por Gmail
+    o por subida manual) se guarda como 'ya_conciliado': no se muestra como
+    pendiente ni cuenta en las tareas. Solo con periodo explícito (nunca se
+    adivina por la fecha del correo) y cuenta conocida."""
+    if not fila.periodo or not fila.cuenta_sugerida_id:
+        return False
+    ev = evidencia_conciliado(db, fila.usuario_id, fila.cuenta_sugerida_id, mes_del_extracto(fila.periodo, None))
+    if not ev:
+        return False
+    fila.estado = ESTADO_YA_CONCILIADO
+    fila.historial_id = fila.historial_id or ev["historial_id"]
+    return True
+
+
+def _analizar_adjunto(gmail, db: Session, fila: ExtractoCorreo, adjunto: dict, cuentas: list, clave: str | None) -> None:
     """Descarga el PDF, intenta abrirlo y rellena banco/periodo/cuenta/estado.
     El PDF no se guarda en ningún lado."""
     try:
@@ -251,6 +275,7 @@ def _analizar_adjunto(gmail, fila: ExtractoCorreo, adjunto: dict, cuentas: list,
         fila.periodo = detectar_periodo(texto, f"{fila.archivo} {fila.asunto}")
         fila.cuenta_sugerida_id = sugerir_cuenta(fila.banco, detectar_ultimos4(texto), cuentas)
         fila.estado = "nuevo"
+        _marcar_si_conciliado(db, fila)
     else:
         # Sin texto no hay periodo ni cuenta; el banco sale del remitente.
         fila.periodo = detectar_periodo("", f"{fila.archivo} {fila.asunto}")
@@ -324,12 +349,22 @@ def _iniciar_corrida(gmail, sync: SyncGmail, label_id: str | None, completa: boo
 
 
 def _reintentar_claves(gmail, db: Session, usuario_id: str, cuentas: list, clave: str | None) -> None:
-    """Los extractos que esperaban clave se reintentan una vez por corrida."""
+    """Los extractos que esperaban clave se reintentan SOLO si el usuario guardó
+    una clave nueva después del último intento (así una clave que no sirve no
+    obliga a descargar los mismos PDF en cada sincronización). `creado_en` hace
+    de marca del último intento: se actualiza si la clave volvió a fallar."""
     if not clave:
+        return
+    fila_clave = db.query(ClavePdf).filter(ClavePdf.usuario_id == usuario_id).first()
+    if not fila_clave:
         return
     filas = (
         db.query(ExtractoCorreo)
-        .filter(ExtractoCorreo.usuario_id == usuario_id, ExtractoCorreo.estado == "falta_clave")
+        .filter(
+            ExtractoCorreo.usuario_id == usuario_id,
+            ExtractoCorreo.estado == "falta_clave",
+            ExtractoCorreo.creado_en < (fila_clave.actualizado_en or datetime.min),
+        )
         .limit(MAX_REINTENTOS_CLAVE)
         .all()
     )
@@ -340,7 +375,9 @@ def _reintentar_claves(gmail, db: Session, usuario_id: str, cuentas: list, clave
             continue
         adj = next((a for a in listar_adjuntos_pdf(msg) if a["archivo"] == fila.archivo), None)
         if adj:
-            _analizar_adjunto(gmail, fila, adj, cuentas, clave)
+            _analizar_adjunto(gmail, db, fila, adj, cuentas, clave)
+            if fila.estado == "falta_clave":
+                fila.creado_en = datetime.utcnow()
 
 
 def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, existentes: set) -> bool:
@@ -362,8 +399,11 @@ def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, exist
     return candidato
 
 
-def _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos: set) -> int:
-    """Lee un correo con posible extracto. Devuelve cuántos PDF analizó."""
+def _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos: set) -> tuple[int, int]:
+    """Lee un correo con posible extracto. Devuelve (PDF descargados, extractos
+    nuevos para el usuario). Si el asunto ya dice el periodo ('extracto de
+    septiembre') y ese periodo de esa cuenta ya está conciliado, se guarda como
+    'ya_conciliado' SIN descargar el PDF."""
     msg = gmail.users().messages().get(userId="me", id=ref_id, format="full").execute()
     h = encabezados(msg)
     remitente, asunto = h.get("From", ""), h.get("Subject", "")
@@ -380,15 +420,30 @@ def _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos: se
             usuario_id=usuario_id, gmail_msg_id=ref_id, archivo="",
             remitente=remitente, asunto=asunto, estado="ignorado",
         ))
-        return 0
+        return 0, 0
+    recibido = fecha_mensaje(msg)
+    # ¿Se puede saber el periodo y la cuenta sin abrir el PDF?
+    cuenta_unica = cuentas_del_banco(banco, cuentas) if banco else []
+    periodo_previo = periodo_en_asunto(asunto, recibido)
+    ev = (
+        evidencia_conciliado(db, usuario_id, cuenta_unica[0].id, mes_del_extracto(periodo_previo, None))
+        if len(cuenta_unica) == 1 and periodo_previo else None
+    )
+    descargados = nuevos = 0
     for adj in adjuntos:
         fila = ExtractoCorreo(
             usuario_id=usuario_id, gmail_msg_id=ref_id, archivo=adj["archivo"],
-            remitente=remitente, asunto=asunto, banco=banco, recibido_en=fecha_mensaje(msg),
+            remitente=remitente, asunto=asunto, banco=banco, recibido_en=recibido,
         )
-        _analizar_adjunto(gmail, fila, adj, cuentas, clave)
+        if ev:
+            fila.periodo, fila.cuenta_sugerida_id = periodo_previo, cuenta_unica[0].id
+            fila.estado, fila.historial_id = ESTADO_YA_CONCILIADO, ev["historial_id"]
+        else:
+            _analizar_adjunto(gmail, db, fila, adj, cuentas, clave)
+            descargados += 1
+            nuevos += fila.estado != ESTADO_YA_CONCILIADO
         db.add(fila)
-    return len(adjuntos)
+    return descargados, nuevos
 
 
 def _correr_lote(gmail, db: Session, usuario_id: str, sync: SyncGmail, label_id: str | None, modelo, cuentas, clave) -> None:
@@ -433,9 +488,9 @@ def _correr_lote(gmail, db: Session, usuario_id: str, sync: SyncGmail, label_id:
                 return  # se acabó el presupuesto: el resto queda para el siguiente lote
             gets -= 1
             if sync.fase == "extractos":
-                n = _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos_ext)
-                pdfs -= n
-                sync.extractos_nuevos += n
+                descargados, n_nuevos = _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos_ext)
+                pdfs -= descargados
+                sync.extractos_nuevos += n_nuevos
             elif _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, existentes):
                 sync.nuevos += 1
         else:
@@ -555,13 +610,16 @@ def listar_correos(
 
 @router.get("/extractos", response_model=list[ExtractoCorreoOut])
 def listar_extractos(
-    estado: str | None = Query(None, pattern="^(nuevo|falta_clave|procesado|error|descartado)$"),
+    estado: str | None = Query(None, pattern="^(nuevo|falta_clave|procesado|error|descartado|ya_conciliado)$"),
     limite: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
-    """Extractos encontrados; `estado` filtra y `limite`/`offset` paginan."""
+    """Extractos encontrados; `estado` filtra y `limite`/`offset` paginan. Los de
+    un periodo que ya se concilió salen como 'ya_conciliado' (con sus movimientos
+    cruzados) y nunca como 'nuevo'."""
+    depurar_conciliados(db, usuario.id)
     q = db.query(ExtractoCorreo).filter(
         ExtractoCorreo.usuario_id == usuario.id,
         ExtractoCorreo.estado == estado if estado else ExtractoCorreo.estado.in_(ESTADOS_VISIBLES),
@@ -580,6 +638,9 @@ def listar_extractos(
         # Extractos viejos pueden no traer el banco guardado: se deduce del remitente.
         o.banco = o.banco or banco_por_remitente(f.remitente) or ""
         o.cruzados = cruzados.get(f.historial_id)
+        if f.estado == ESTADO_YA_CONCILIADO and o.cruzados is None:
+            ev = evidencia_conciliado(db, usuario.id, f.cuenta_sugerida_id, mes_del_extracto(f.periodo, None))
+            o.cruzados = ev["cruzados"] if ev else None
         salida.append(o)
     return salida
 
