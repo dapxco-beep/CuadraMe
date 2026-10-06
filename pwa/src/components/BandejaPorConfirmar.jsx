@@ -5,6 +5,7 @@ import { useBloqueo } from '../lib/BloqueoContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
+import Hoja from './Hoja'
 import {
   debeMostrarBandeja,
   estadoBandejaGuardado,
@@ -175,111 +176,104 @@ export default function BandejaPorConfirmar() {
 
   const n = pendientes.length
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-[45] sheet-backdrop" data-testid="bandeja-por-confirmar">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Movimientos por confirmar"
-        className="w-full max-w-[480px] max-h-[85vh] overflow-y-auto bg-paper rounded-t-[28px] p-6 pb-8 sheet-content"
-      >
-        <div className="flex items-start justify-between gap-3 mb-1">
-          <div className="flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-xl bg-accent-soft flex items-center justify-center shrink-0">
-              <Smartphone size={17} className="text-accent" />
-            </span>
-            <h2 className="text-lg font-semibold leading-tight">
-              Detectamos {n} {n === 1 ? 'movimiento' : 'movimientos'}: ¿son tuyos?
-            </h2>
-          </div>
-          <button
-            onClick={() => cerrar()}
-            className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center"
-            aria-label="Cerrar"
-          >
-            <X size={16} />
-          </button>
+    <Hoja onCerrar={() => cerrar()} capa="z-[45]" testId="bandeja-por-confirmar" ariaLabel="Movimientos por confirmar">
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <div className="flex items-center gap-2.5">
+          <span className="w-9 h-9 rounded-xl bg-accent-soft flex items-center justify-center shrink-0">
+            <Smartphone size={17} className="text-accent" />
+          </span>
+          <h2 className="text-lg font-semibold leading-tight">
+            Detectamos {n} {n === 1 ? 'movimiento' : 'movimientos'}: ¿son tuyos?
+          </h2>
         </div>
-        <p className="text-xs text-ink-soft mb-4">
-          Ya los sumamos a tus saldos. Confírmalos, corrígelos o descártalos si no los reconoces.
-        </p>
-
-        <ul className="space-y-2.5">
-          {pendientes.map((m) =>
-            editandoId === m.id ? (
-              <FormEdicion
-                key={m.id}
-                m={m}
-                cuentas={cuentas}
-                ocupado={ocupado}
-                onCancelar={() => setEditandoId(null)}
-                onGuardar={(cambios) => guardarEdicion(m, cambios)}
-              />
-            ) : (
-              <li key={m.id} className="rounded-2xl border border-line bg-paper-raised p-3.5" data-testid="tarjeta-por-confirmar">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{m.descripcion}</p>
-                    <p className="text-xs text-ink-soft mt-0.5 truncate">
-                      {cuentas.find((c) => c.id === m.cuenta_id)?.nombre || 'Cuenta'} · {m.categoria}
-                      {hora(m.fecha) ? ` · ${hora(m.fecha)}` : ''}
-                    </p>
-                  </div>
-                  <p className="text-sm font-bold shrink-0">
-                    {m.tipo === 'income' ? '+' : '-'}
-                    {fmt(m.monto)}
-                  </p>
-                </div>
-                <div className="grid grid-cols-3 gap-2 mt-3">
-                  <button
-                    onClick={() => confirmarUno(m)}
-                    disabled={ocupado}
-                    className="flex items-center justify-center gap-1.5 rounded-xl bg-accent text-white text-xs font-semibold py-2.5 disabled:opacity-60"
-                  >
-                    <Check size={14} /> Es mío
-                  </button>
-                  <button
-                    onClick={() => setEditandoId(m.id)}
-                    disabled={ocupado}
-                    className="flex items-center justify-center gap-1.5 rounded-xl border border-line text-xs font-semibold py-2.5 disabled:opacity-60"
-                  >
-                    <Pencil size={13} /> Editar
-                  </button>
-                  <button
-                    onClick={() => descartarUno(m)}
-                    disabled={ocupado}
-                    className="flex items-center justify-center gap-1.5 rounded-xl border border-line text-danger text-xs font-semibold py-2.5 disabled:opacity-60"
-                  >
-                    <Trash2 size={13} /> No es mío
-                  </button>
-                </div>
-              </li>
-            )
-          )}
-        </ul>
-
-        {n > 1 && (
-          <div className="flex gap-2 mt-4">
-            <button
-              onClick={confirmarTodos}
-              disabled={ocupado}
-              className="flex-1 bg-ink text-paper font-semibold rounded-2xl py-3.5 text-sm disabled:opacity-60"
-            >
-              Confirmar todos ({n})
-            </button>
-            <button
-              onClick={descartarTodos}
-              disabled={ocupado}
-              className="rounded-2xl border border-line text-danger font-semibold px-4 text-sm disabled:opacity-60"
-            >
-              Descartar todos
-            </button>
-          </div>
-        )}
-        <button onClick={() => cerrar()} className="w-full mt-3 text-sm text-ink-soft font-medium py-2">
-          Ahora no
+        <button
+          onClick={() => cerrar()}
+          className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+          aria-label="Cerrar"
+        >
+          <X size={16} />
         </button>
       </div>
-    </div>
+      <p className="text-xs text-ink-soft mb-4">
+        Ya los sumamos a tus saldos. Confírmalos, corrígelos o descártalos si no los reconoces.
+      </p>
+
+      <ul className="space-y-2.5">
+        {pendientes.map((m) =>
+          editandoId === m.id ? (
+            <FormEdicion
+              key={m.id}
+              m={m}
+              cuentas={cuentas}
+              ocupado={ocupado}
+              onCancelar={() => setEditandoId(null)}
+              onGuardar={(cambios) => guardarEdicion(m, cambios)}
+            />
+          ) : (
+            <li key={m.id} className="rounded-2xl border border-line bg-paper-raised p-3.5" data-testid="tarjeta-por-confirmar">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate">{m.descripcion}</p>
+                  <p className="text-xs text-ink-soft mt-0.5 truncate">
+                    {cuentas.find((c) => c.id === m.cuenta_id)?.nombre || 'Cuenta'} · {m.categoria}
+                    {hora(m.fecha) ? ` · ${hora(m.fecha)}` : ''}
+                  </p>
+                </div>
+                <p className="text-sm font-bold shrink-0">
+                  {m.tipo === 'income' ? '+' : '-'}
+                  {fmt(m.monto)}
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                <button
+                  onClick={() => confirmarUno(m)}
+                  disabled={ocupado}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-accent text-white text-xs font-semibold py-2.5 disabled:opacity-60"
+                >
+                  <Check size={14} /> Es mío
+                </button>
+                <button
+                  onClick={() => setEditandoId(m.id)}
+                  disabled={ocupado}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-line text-xs font-semibold py-2.5 disabled:opacity-60"
+                >
+                  <Pencil size={13} /> Editar
+                </button>
+                <button
+                  onClick={() => descartarUno(m)}
+                  disabled={ocupado}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-line text-danger text-xs font-semibold py-2.5 disabled:opacity-60"
+                >
+                  <Trash2 size={13} /> No es mío
+                </button>
+              </div>
+            </li>
+          )
+        )}
+      </ul>
+
+      {n > 1 && (
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={confirmarTodos}
+            disabled={ocupado}
+            className="flex-1 bg-ink text-paper font-semibold rounded-2xl py-3.5 text-sm disabled:opacity-60"
+          >
+            Confirmar todos ({n})
+          </button>
+          <button
+            onClick={descartarTodos}
+            disabled={ocupado}
+            className="rounded-2xl border border-line text-danger font-semibold px-4 text-sm disabled:opacity-60"
+          >
+            Descartar todos
+          </button>
+        </div>
+      )}
+      <button onClick={() => cerrar()} className="w-full mt-3 text-sm text-ink-soft font-medium py-2">
+        Ahora no
+      </button>
+    </Hoja>
   )
 }
 
