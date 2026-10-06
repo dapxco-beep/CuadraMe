@@ -10,8 +10,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
-from app.classifier import build_model, classify
-from app.comercios_conocidos import clasificar_por_diccionario
+from app.autocat import ClasificadorUsuario, aplicar_a_anteriores, guardar_regla_aprendida
 from app.config import settings
 from app.limites import verificar_limite
 from app.database import get_db
@@ -53,7 +52,7 @@ from app.gmail_oauth import (
     obtener_email,
     url_autorizacion,
 )
-from app.models import ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil, SyncGmail
+from app.models import Categoria, ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil, SyncGmail
 from app.routers.consentimientos import exigir_consentimiento, tiene_consentimiento
 from app.routers.conciliacion import procesar_extracto
 from app.utiles import utc_a_co
@@ -92,10 +91,16 @@ def _con_cuenta(db: Session, usuario_id: str, correos: list[CorreoGasto]) -> lis
     """Agrega a cada correo el banco del remitente y la cuenta que le corresponde
     (o `falta_cuenta` si el usuario no tiene una de ese banco)."""
     cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).all()
+    clasificador = ClasificadorUsuario(db, usuario_id) if any(c.estado == "pendiente" for c in correos) else None
     salida = []
     for c in correos:
         o = CorreoGastoOut.model_validate(c)
         o.banco_detectado, o.cuenta_sugerida_id, o.falta_cuenta = inferir_cuenta_por_remitente(c.remitente, cuentas)
+        if c.estado == "pendiente":
+            o.preguntar_categoria = c.categoria_sugerida == "Otros"
+            # La razón se recalcula: solo vale si la categoría sigue siendo la que sugirió el clasificador.
+            r = clasificador.clasificar(c.comercio, f"{c.asunto} {c.snippet}") if clasificador else None
+            o.razon_categoria = r.get("razon") if r and r["categoria"] == c.categoria_sugerida else None
         salida.append(o)
     return salida
 
@@ -216,16 +221,17 @@ def _clave_pdf(db: Session, usuario_id: str) -> str | None:
         return None
 
 
-def _crear_correo(msg: dict, usuario_id: str, modelo) -> CorreoGasto:
+def _crear_correo(msg: dict, usuario_id: str, modelo: ClasificadorUsuario) -> CorreoGasto:
     """Convierte un mensaje de Gmail en un CorreoGasto 'pendiente' (sugerencia
-    que el usuario debe aprobar; nunca crea movimientos)."""
+    que el usuario debe aprobar; nunca crea movimientos). La categoría la decide
+    el clasificador del usuario (reglas -> aprendido -> diccionario -> 'Otros')."""
     h = encabezados(msg)
     remitente = h.get("From", "")
     asunto = h.get("Subject", "")
     snippet = msg.get("snippet", "")
     texto = f"{asunto} {snippet}"
     comercio = extraer_comercio(remitente, asunto)
-    resultado = classify(comercio, modelo) or clasificar_por_diccionario(f"{comercio} {texto}")
+    resultado = modelo.clasificar(comercio, texto)
     return CorreoGasto(
         usuario_id=usuario_id,
         gmail_msg_id=msg["id"],
@@ -547,14 +553,9 @@ def sincronizar(
         if sync.fase == "etiqueta" and not label_id:
             sync.fase, sync.fase_iniciada, sync.cursor_token, sync.cursor_ids = "notificaciones", False, None, "[]"
 
-        historial = (
-            db.query(Movimiento)
-            .filter(Movimiento.usuario_id == usuario.id, Movimiento.categoria != "Otros")
-            .all()
-        )
-        modelo = build_model(
-            [{"descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo} for m in historial]
-        )
+        # Mismo clasificador que la conciliación: reglas del usuario, lo que aprendió
+        # de sus movimientos confirmados, diccionario y, si nada sirve, 'Otros'.
+        modelo = ClasificadorUsuario(db, usuario.id)
         cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
         _correr_lote(gmail, db, usuario.id, sync, label_id, modelo, cuentas, _clave_pdf(db, usuario.id))
         db.commit()
@@ -777,6 +778,32 @@ def listar_pendientes(
     ))
 
 
+def _validar_categoria(db: Session, usuario_id: str, categoria: str) -> None:
+    """La categoría elegida tiene que estar en la lista del usuario (si ya tiene una)."""
+    hay_lista = db.query(Categoria.id).filter(Categoria.usuario_id == usuario_id).first()
+    if hay_lista and not db.query(Categoria.id).filter(
+        Categoria.usuario_id == usuario_id, Categoria.nombre == categoria
+    ).first():
+        raise HTTPException(status_code=400, detail="Esa categoría no existe en tu lista")
+
+
+def _aprender_de_correo(db: Session, usuario_id: str, correo: CorreoGasto, categoria: str, anteriores: bool) -> dict:
+    """Guarda la regla del comercio del correo (misma huella que en la conciliación:
+    una por comercio, si ya hay se actualiza) y, si se pide, recategoriza los
+    movimientos anteriores. Sin commit. 'Otros' nunca se aprende."""
+    if not categoria or categoria == "Otros":
+        return {}
+    r = guardar_regla_aprendida(db, usuario_id, correo.comercio, categoria, tipo=correo.tipo_sugerido)
+    n = aplicar_a_anteriores(db, usuario_id, r["huella"], categoria) if r["guardada"] and anteriores else 0
+    return {"regla_guardada": r["guardada"], "regla_omitida": r.get("motivo"), "anteriores_actualizados": n}
+
+
+def _con_aprendizaje(o: CorreoGastoOut, aprendido: dict) -> CorreoGastoOut:
+    for k, v in aprendido.items():
+        setattr(o, k, v)
+    return o
+
+
 @router.patch("/{correo_id}", response_model=CorreoGastoOut)
 def editar_correo(
     correo_id: str,
@@ -796,14 +823,19 @@ def editar_correo(
         correo.monto = data.monto
     if data.comercio is not None:
         correo.comercio = data.comercio
-    if data.categoria is not None:
-        correo.categoria_sugerida = data.categoria
     if data.tipo is not None:
         correo.tipo_sugerido = data.tipo
+    aprendido: dict = {}
+    if data.categoria is not None:
+        _validar_categoria(db, usuario.id, data.categoria)
+        cambio = data.categoria != correo.categoria_sugerida
+        correo.categoria_sugerida = data.categoria
+        if cambio and data.recordar:
+            aprendido = _aprender_de_correo(db, usuario.id, correo, data.categoria, data.aplicar_anteriores)
 
     db.commit()
     db.refresh(correo)
-    return correo
+    return _con_aprendizaje(_con_cuenta(db, usuario.id, [correo])[0], aprendido)
 
 
 @router.post("/{correo_id}/aprobar", response_model=CorreoGastoOut)
@@ -838,6 +870,15 @@ def aprobar_correo(
             raise HTTPException(status_code=400, detail=f"No tienes una cuenta {banco}: créala o elige otra")
         raise HTTPException(status_code=400, detail="Elige la cuenta a la que pertenece este movimiento")
 
+    # Si el usuario eligió otra categoría al aprobar, esa manda (y queda confirmada).
+    eligio = data.categoria is not None and data.categoria != correo.categoria_sugerida
+    aprendido: dict = {}
+    if data.categoria is not None:
+        _validar_categoria(db, usuario.id, data.categoria)
+        correo.categoria_sugerida = data.categoria
+        if eligio and data.recordar:
+            aprendido = _aprender_de_correo(db, usuario.id, correo, data.categoria, data.aplicar_anteriores)
+
     movimiento = Movimiento(
         usuario_id=usuario.id,
         cuenta_id=cuenta.id,
@@ -850,8 +891,8 @@ def aprobar_correo(
         fuente="email",
         # La categoría la sugirió la app al leer el correo: queda por revisar
         # salvo que sea 'Otros' (que ya aparece en la vista por revisar).
-        cat_origen="sugerida" if correo.categoria_sugerida != "Otros" else None,
-        cat_confirmada=correo.categoria_sugerida == "Otros",
+        cat_origen="sugerida" if correo.categoria_sugerida != "Otros" and not data.categoria else None,
+        cat_confirmada=correo.categoria_sugerida == "Otros" or bool(data.categoria),
     )
     db.add(movimiento)
 
@@ -866,7 +907,7 @@ def aprobar_correo(
     correo.movimiento_id = movimiento.id
     db.commit()
     db.refresh(correo)
-    return correo
+    return _con_aprendizaje(_con_cuenta(db, usuario.id, [correo])[0], aprendido)
 
 
 @router.post("/{correo_id}/descartar", response_model=CorreoGastoOut)

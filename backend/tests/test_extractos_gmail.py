@@ -350,10 +350,9 @@ def test_correo_sin_monto_no_se_ofrece_ni_con_etiqueta():
     """Publicidad y avisos sin monto no deben aparecer como pendientes en $0."""
     from types import SimpleNamespace
 
-    from app.classifier import build_model
     from app.routers import correos as r
 
-    modelo = build_model([])
+    modelo = SimpleNamespace(clasificar=lambda descripcion, texto="": None)  # clasificador sin reglas ni historial
 
     class _Msg:
         def __init__(self, asunto, snippet, etiquetas):

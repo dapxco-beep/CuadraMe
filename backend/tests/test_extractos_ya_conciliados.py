@@ -14,6 +14,7 @@ import pytest  # noqa: E402
 from app.database import SessionLocal  # noqa: E402
 from app.extractos_conciliados import mes_del_extracto, periodo_en_asunto  # noqa: E402
 from app.models import ExtractoCorreo, Movimiento  # noqa: E402
+from app.routers import correos as router_correos  # noqa: E402
 from tests.test_extractos_gmail import (  # noqa: E402
     CLAVE,
     TEXTO_EXTRACTO,
@@ -210,3 +211,68 @@ def _entorno(monkeypatch):
 
     monkeypatch.setattr(settings, "fernet_key", Fernet.generate_key().decode())
     yield
+
+
+# ── Aprender y usar reglas al aprobar correos ───────────────────────
+
+def _compra(id_, monto=15000):
+    return mensaje(id_, "Zafiro Quimera <no-reply@zafiroquimera.co>", "Compra aprobada", f"Compra por ${monto} en Zafiro con tu tarjeta")
+
+
+def _sync_compras(uid, ids, monkeypatch):
+    gmail = GmailContador([_compra(i) for i in ids], {})
+    conectar_usuario(uid, gmail, monkeypatch)
+    cuenta = client.post("/cuentas", json={"nombre": "Nu", "saldo": 100000}).json()
+    client.post("/correos/sincronizar")
+    return cuenta, client.get("/correos/pendientes").json()
+
+
+def test_aprobar_correo_con_categoria_cambiada_crea_la_regla_y_la_siguiente_la_usa(monkeypatch):
+    uid = "yc-regla"
+    cuenta, pendientes = _sync_compras(uid, ["r1"], monkeypatch)
+    c = pendientes[0]
+    assert c["categoria_sugerida"] == "Otros" and c["preguntar_categoria"] is True
+
+    # Un movimiento anterior del mismo comercio, en 'Otros': 'aplicar a los anteriores' lo corrige.
+    db = SessionLocal()
+    try:
+        db.add(Movimiento(usuario_id=uid, cuenta_id=cuenta["id"], fecha=datetime(2026, 9, 1), descripcion=c["comercio"],
+                          categoria="Otros", tipo="expense", monto=9000, fuente="manual", cat_confirmada=True))
+        db.commit()
+    finally:
+        db.close()
+
+    r = client.post(f"/correos/{c['id']}/aprobar", json={
+        "cuenta_id": cuenta["id"], "categoria": "Hogar", "recordar": True, "aplicar_anteriores": True,
+    })
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["regla_guardada"] is True and out["anteriores_actualizados"] == 1
+    assert [x["categoria"] for x in client.get("/reglas-categoria").json()] == ["Hogar"]
+    movs = client.get("/movimientos").json()
+    movs = movs["items"] if isinstance(movs, dict) else movs
+    assert {m["descripcion"]: m["categoria"] for m in movs}[c["comercio"]] == "Hogar"
+    nuevo = next(m for m in movs if m["descripcion"].endswith("(correo)"))
+    assert nuevo["categoria"] == "Hogar" and nuevo["cat_confirmada"] is True
+
+    # El siguiente correo del mismo comercio ya llega categorizado por la regla, con su razón.
+    monkeypatch.setattr(router_correos, "cliente_gmail", lambda _t: GmailContador([_compra("r2", 22000)], {}))
+    client.post("/correos/sincronizar", params={"completa": True})
+    sig = next(p for p in client.get("/correos/pendientes").json() if p["monto"] == 22000)
+    assert sig["categoria_sugerida"] == "Hogar" and sig["preguntar_categoria"] is False
+    assert "regla" in sig["razon_categoria"]
+
+
+def test_aprobar_sin_recordar_no_crea_regla(monkeypatch):
+    cuenta, pendientes = _sync_compras("yc-sin-regla", ["s1"], monkeypatch)
+    r = client.post(f"/correos/{pendientes[0]['id']}/aprobar", json={"cuenta_id": cuenta["id"], "categoria": "Comida"})
+    assert r.status_code == 200 and r.json()["regla_guardada"] is None
+    assert client.get("/reglas-categoria").json() == []
+
+
+def test_editar_correo_con_recordar_guarda_la_regla(monkeypatch):
+    _cuenta, pendientes = _sync_compras("yc-patch", ["p1"], monkeypatch)
+    r = client.patch(f"/correos/{pendientes[0]['id']}", json={"categoria": "Transporte", "recordar": True})
+    assert r.status_code == 200 and r.json()["regla_guardada"] is True
+    assert r.json()["categoria_sugerida"] == "Transporte"
+    assert [x["categoria"] for x in client.get("/reglas-categoria").json()] == ["Transporte"]
