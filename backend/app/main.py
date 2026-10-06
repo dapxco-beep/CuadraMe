@@ -5,6 +5,7 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import Base, engine
+from app.rls import asegurar_rls
 from app import models_asistente  # noqa: F401  (registra la tabla uso_asistente para create_all)
 from app.routers import (
     ahorcado,
@@ -98,6 +99,9 @@ if engine.dialect.name == "postgresql":
             "CREATE INDEX IF NOT EXISTS ix_movimientos_cuenta_fecha "
             "ON movimientos (cuenta_id, fecha DESC)"
         ))
+    # Las tablas recién creadas por create_all nacen sin RLS: se activa aquí
+    # (tolerante a fallos; ver app/rls.py).
+    asegurar_rls(engine)
 
 if settings.sentry_dsn:
     sentry_sdk.init(
