@@ -19,6 +19,8 @@ _PREFIJOS = {
     "credito", "internacional", "nacional", "cargo", "consignacion", "envio", "giro",
     "recibiste", "enviaste", "cuota", "avance", "pos", "app", "nequi", "daviplata",
     "bancolombia", "davivienda", "bre", "b", "movimiento", "mov",
+    # pasarela de pagos ('BOLD*Cafe Luna') y 'EDS' (estación de servicio): el comercio es lo que sigue
+    "bold", "eds", "qr", "recibi", "envio",
 }
 # Se cortan en cuanto aparecen: lo que sigue es detalle de la operación.
 _CORTES = {"con", "terminacion", "term", "ref", "referencia", "nro", "numero", "cuenta", "cta", "tarjeta", "autorizacion", "aut", "cod", "codigo"}
@@ -35,6 +37,7 @@ _RUIDO = {
 _RE_JURIDICA = re.compile(r"\b(s\s*\.\s*a\s*\.\s*s|s\s*\.\s*a|s\s*\.\s*en\s*c|e\s*\.\s*s\s*\.\s*p|ltda)\b\.?", re.IGNORECASE)
 _RE_FECHA = re.compile(r"\b\d{1,4}[/\-.]\d{1,2}([/\-.]\d{1,4})?\b")
 MAX_PALABRAS = 3
+_RE_CODIGO_TIENDA = re.compile(r"^[a-z]{1,2}\d{1,3}$")
 _COLA = {"de", "del", "la", "el", "los", "las", "en", "y", "e", "a", "al", "por", "para", "and"}
 
 # Una huella con SOLO estas palabras (o muy corta) abarcaría demasiado.
@@ -83,6 +86,8 @@ def clave_comercio(descripcion: str | None) -> str:
         if tok.isdigit():
             continue
         if any(ch.isdigit() for ch in tok) and len(tok) > 3:  # referencias/códigos; se conserva 'd1'
+            continue
+        if _RE_CODIGO_TIENDA.match(tok) and tok != "d1":  # 'r46', 'h11': código del local, no del comercio
             continue
         if len(tok) == 1:  # restos de siglas ('s', 'a')
             continue

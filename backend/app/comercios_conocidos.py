@@ -11,7 +11,9 @@ import re
 import unicodedata
 
 from app.diccionario_categorias import (
+    INVERSION_PRIORITARIA,
     TRANSFERENCIA_ENTRADA,
+    TRANSFERENCIA_PERSONA_INICIO,
     TRANSFERENCIA_PERSONA_DEBIL,
     TRANSFERENCIA_PERSONA_FUERTE,
     entradas,
@@ -58,10 +60,33 @@ def _transferencia(texto_pad: str, frases: list[str]) -> dict | None:
     return None
 
 
+def _inversion_prioritaria(texto_pad: str) -> dict | None:
+    for frase in INVERSION_PRIORITARIA:
+        pat = normalizar(frase.rstrip("*"))
+        if _coincide(texto_pad, pat, frase.endswith("*")):
+            return {
+                "categoria": "Ahorro e inversión", "tipo": "expense", "confianza": 0.75, "fuente": "diccionario",
+                "palabra": frase.rstrip("*"), "razon": f"por palabra clave «{frase.rstrip('*')}»",
+            }
+    return None
+
+
+def _transferencia_al_inicio(texto_pad: str) -> dict | None:
+    """'Para <persona>' / 'De <persona>' al comienzo de la línea (extractos tipo Nequi)."""
+    for palabra, tipo in TRANSFERENCIA_PERSONA_INICIO.items():
+        if texto_pad.startswith(f" {palabra} ") and len(texto_pad.split()) >= 2:
+            return {
+                "categoria": "Transferencias", "tipo": tipo, "confianza": 0.5, "fuente": "diccionario",
+                "palabra": palabra, "razon": f"por palabra clave «{palabra}»",
+            }
+    return None
+
+
 def clasificar_por_diccionario(descripcion: str) -> dict | None:
     texto_pad = f" {normalizar(descripcion)} "
 
-    r = _transferencia(texto_pad, TRANSFERENCIA_PERSONA_FUERTE)
+    r = _inversion_prioritaria(texto_pad) or _transferencia(texto_pad, TRANSFERENCIA_PERSONA_FUERTE) \
+        or _transferencia_al_inicio(texto_pad)
     if r:
         return r
 
