@@ -299,3 +299,23 @@ def test_por_categorizar_pagina_y_aprende_la_regla_del_comercio():
     assert despues["total"] == 1 and despues["items"][0]["descripcion"] == "Uber"
     tarea = next(t for t in client.get("/sincronizacion/estado").json()["tareas"] if t["id"] == "movimientos_por_categorizar")
     assert tarea["cantidad"] == 1
+
+
+def test_lista_de_extractos_trae_banco_del_remitente_y_movimientos_cruzados():
+    uid = "s-ext"
+    _usuario(uid, ["Nequi"])
+    db = SessionLocal()
+    try:
+        h = HistorialExtracto(usuario_id=uid, cuenta_id="x", estado="conciliado", exactos=5, aproximados=2)
+        db.add(h)
+        db.flush()
+        # Sin banco guardado: se deduce del remitente (antes salía 'Extracto · junio 2026' sin banco).
+        db.add(_ext(uid, 10, "procesado", "junio 2026", historial_id=h.id, banco="", remitente="Nequi <a@mail.nequi.com.co>"))
+        db.add(_ext(uid, 11, "descartado", "mayo 2026", banco="Nu Colombia"))
+        db.commit()
+    finally:
+        db.close()
+    visibles = client.get("/correos/extractos").json()
+    assert [(e["banco"], e["cruzados"]) for e in visibles] == [("Nequi", 7)]
+    ignorados = client.get("/correos/extractos?estado=descartado").json()
+    assert [(e["banco"], e["cruzados"]) for e in ignorados] == [("Nu Colombia", None)]

@@ -257,7 +257,7 @@ def estado(
         ("movimientos_por_categorizar", "Movimientos por categorizar",
          "Dime la categoría y la recuerdo para la próxima.", n_categorizar, "/sincronizacion#categorizar"),
         ("movimientos_por_confirmar", "Movimientos por confirmar",
-         "Llegaron solos: confirma que son tuyos.", n_confirmar, "/sincronizacion#confirmar"),
+         "Llegaron solos: confirma que son tuyos.", n_confirmar, "/movimientos?revisar=1"),
         ("correos_por_revisar", "Correos por revisar",
          "Aprueba o descarta lo que leí en tu correo.", n_correos, "/correos"),
     ]

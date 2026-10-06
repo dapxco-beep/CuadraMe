@@ -45,7 +45,7 @@ from app.gmail_oauth import (
     obtener_email,
     url_autorizacion,
 )
-from app.models import ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, Movimiento, Perfil, SyncGmail
+from app.models import ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil, SyncGmail
 from app.routers.consentimientos import exigir_consentimiento, tiene_consentimiento
 from app.routers.conciliacion import procesar_extracto
 from app.schemas import (
@@ -554,7 +554,7 @@ def listar_correos(
 
 @router.get("/extractos", response_model=list[ExtractoCorreoOut])
 def listar_extractos(
-    estado: str | None = Query(None, pattern="^(nuevo|falta_clave|procesado|error)$"),
+    estado: str | None = Query(None, pattern="^(nuevo|falta_clave|procesado|error|descartado)$"),
     limite: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
@@ -566,11 +566,19 @@ def listar_extractos(
         ExtractoCorreo.estado == estado if estado else ExtractoCorreo.estado.in_(ESTADOS_VISIBLES),
     )
     filas = q.order_by(ExtractoCorreo.recibido_en.desc(), ExtractoCorreo.id).offset(offset).limit(limite).all()
+    cruzados = {
+        h.id: (h.exactos or 0) + (h.aproximados or 0)
+        for h in db.query(HistorialExtracto).filter(
+            HistorialExtracto.usuario_id == usuario.id,
+            HistorialExtracto.id.in_([f.historial_id for f in filas if f.historial_id] or [""]),
+        )
+    }
     salida = []
     for f in filas:
         o = ExtractoCorreoOut.model_validate(f)
         # Extractos viejos pueden no traer el banco guardado: se deduce del remitente.
         o.banco = o.banco or banco_por_remitente(f.remitente) or ""
+        o.cruzados = cruzados.get(f.historial_id)
         salida.append(o)
     return salida
 

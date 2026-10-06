@@ -676,6 +676,8 @@ class ExtractoCorreoOut(BaseModel):
     estado: str
     historial_id: Optional[str]
     recibido_en: Optional[datetime]
+    # Solo en extractos procesados: movimientos que se cruzaron (exactos + aproximados).
+    cruzados: Optional[int] = None
 
     class Config:
         from_attributes = True
