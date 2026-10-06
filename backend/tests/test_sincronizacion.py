@@ -291,7 +291,8 @@ def test_por_categorizar_pagina_y_aprende_la_regla_del_comercio():
     db = SessionLocal()
     try:
         regla = db.query(ReglaCategoria).filter(ReglaCategoria.usuario_id == uid).one()
-        assert (regla.patron, regla.categoria) == ("PANADERIA LA 80", "Comida")
+        # La regla se guarda con la huella del comercio (minúsculas, sin números ni artículos), no con el texto literal.
+        assert (regla.patron, regla.categoria) == ("panaderia", "Comida")
     finally:
         db.close()
     # La cola bajó de 4 a 1 (solo queda el Uber por confirmar).

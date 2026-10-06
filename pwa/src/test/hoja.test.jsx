@@ -50,7 +50,8 @@ describe('Hoja', () => {
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(alCerrar).toHaveBeenCalledTimes(1)
-    expect(abrir).toHaveFocus()
+    // El foco vuelve un instante después de que desaparece la hoja: se espera, no se mide de golpe.
+    await waitFor(() => expect(abrir).toHaveFocus())
     // y su entrada de historial se retira
     await waitFor(() => expect(marca()).toBeFalsy())
   })
