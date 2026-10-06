@@ -3,6 +3,7 @@ import { Pencil, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatMoneda } from '../lib/format'
 import Hoja from './Hoja'
+import ComprasACuotas from './ComprasACuotas'
 
 const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
@@ -33,6 +34,57 @@ const NIVELES = {
     aviso: 'Uso muy alto (más del 80%): te deja sin margen y puede afectar tu historial crediticio.',
   },
   sin_cupo: { barra: 'var(--color-line)', texto: 'text-ink-soft', aviso: '' },
+}
+
+// "Para no pagar intereses": lo que hay que pagar es la deuda al último corte (el
+// extracto), no el cupo usado de hoy; las compras nuevas van al siguiente extracto.
+export function BloqueExtracto({ t, moneda }) {
+  if (t.total_extracto == null || t.total_extracto <= 0) return null
+  const pct = Math.min(100, t.pagado_pct || 0)
+  const pagado = t.falta_para_evitar_intereses <= 0
+  return (
+    <div className="mt-3 rounded-xl border border-line bg-paper p-3 text-xs" data-testid="bloque-extracto">
+      <p className="font-semibold text-sm">
+        {pagado ? (
+          <span className="text-accent">Extracto pagado: no pagas intereses</span>
+        ) : t.fecha_limite_pago ? (
+          <>
+            Para no pagar intereses: {formatMoneda(t.falta_para_evitar_intereses, moneda)}{' '}
+            <span className="font-normal text-ink-soft">antes del {fechaCorta(t.fecha_limite_pago)}</span>
+          </>
+        ) : (
+          <>Para no pagar intereses: {formatMoneda(t.falta_para_evitar_intereses, moneda)}</>
+        )}
+      </p>
+      {t.vencido && <p className="text-danger mt-1">El plazo ya pasó: paga cuanto antes para frenar los intereses.</p>}
+      {!pagado && !t.vencido && t.dias_para_limite != null && t.dias_para_limite <= 7 && (
+        <p className={`mt-1 font-medium ${t.dias_para_limite <= 3 ? 'text-danger' : 'text-accent-2'}`} data-testid="aviso-dias-pago">
+          {t.dias_para_limite === 0 ? 'Hoy vence tu pago.' : `Te quedan ${t.dias_para_limite} ${t.dias_para_limite === 1 ? 'día' : 'días'} para el pago.`}
+          {t.pago_minimo_del_extracto && t.pago_minimo != null && ` Pago mínimo de tu extracto: ${formatMoneda(t.pago_minimo, moneda)}.`}
+        </p>
+      )}
+      {t.total_del_banco && <p className="text-[11px] text-ink-soft mt-1">Total tomado de tu extracto del banco.</p>}
+      <div
+        className="h-2 rounded-full bg-paper-raised overflow-hidden mt-2"
+        role="progressbar"
+        aria-label="Pagado del extracto"
+        aria-valuenow={Math.round(pct)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'var(--color-accent)', transition: 'width 600ms ease-out' }} />
+      </div>
+      <div className="flex justify-between text-[11px] text-ink-soft mt-1.5">
+        <span>Total del extracto {formatMoneda(t.total_extracto, moneda)}</span>
+        <span>Pagado {formatMoneda(t.pagado_desde_corte || 0, moneda)}</span>
+      </div>
+      {t.compras_despues_corte > 0 && (
+        <p className="text-[11px] text-ink-soft mt-1.5">
+          Compras después del corte: {formatMoneda(t.compras_despues_corte, moneda)} (van en el próximo extracto).
+        </p>
+      )}
+    </div>
+  )
 }
 
 // Detalle de una cuenta de crédito: barra de utilización, fechas de corte y
@@ -76,8 +128,8 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
                 />
               </div>
               <div className="flex justify-between text-[11px] text-ink-soft mt-1.5">
-                <span>Usado {formatMoneda(t.cupo_usado, cuenta.moneda)}</span>
-                <span>Disponible {formatMoneda(t.cupo_disponible, cuenta.moneda)}</span>
+                <span>Debes {formatMoneda(t.cupo_usado, cuenta.moneda)}</span>
+                <span>Disponible del cupo: {formatMoneda(t.cupo_disponible, cuenta.moneda)}</span>
               </div>
               {nivel.aviso && <p className={`text-xs mt-2 ${nivel.texto}`}>{nivel.aviso}</p>}
             </>
@@ -98,11 +150,13 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
             </div>
           </div>
 
+          <BloqueExtracto t={t} moneda={cuenta.moneda} />
+
           {t.cupo_usado > 0 && (
             <div className="mt-3 rounded-xl bg-paper p-3 text-xs space-y-1">
               <p>
-                <span className="text-ink-soft">Pago mínimo estimado: </span>
-                <span className="font-semibold">{formatMoneda(t.pago_minimo_estimado, cuenta.moneda)}</span>
+                <span className="text-ink-soft">{t.pago_minimo_del_extracto ? 'Pago mínimo (de tu extracto): ' : 'Pago mínimo estimado: '}</span>
+                <span className="font-semibold">{formatMoneda(t.pago_minimo ?? t.pago_minimo_estimado, cuenta.moneda)}</span>
               </p>
               {t.interes_estimado != null ? (
                 <p>
@@ -112,13 +166,15 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
               ) : (
                 <p className="text-ink-soft">Agrega la tasa efectiva anual para estimar los intereses.</p>
               )}
-              {t.proximo_pago && (
+              {t.proximo_pago && t.total_extracto == null && (
                 <p className="text-ink-soft">Paga el total antes del {fechaCorta(t.proximo_pago)} para no pagar intereses.</p>
               )}
             </div>
           )}
         </>
       )}
+
+      <ComprasACuotas cuenta={cuenta} />
 
       <button
         onClick={() => setEditando(true)}

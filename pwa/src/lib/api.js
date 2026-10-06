@@ -131,6 +131,10 @@ export const api = {
   eliminarCuenta: (id) => request(`/cuentas/${id}`, { method: 'DELETE' }),
   resumenCuentas: () => request('/cuentas/resumen'),
   detalleCuenta: (id) => request(`/cuentas/${id}/detalle`),
+  cuotasTarjeta: (cuentaId) => request(`/cuotas-tarjeta${cuentaId ? `?cuenta_id=${encodeURIComponent(cuentaId)}` : ''}`),
+  crearCuotaTarjeta: (data) => request('/cuotas-tarjeta', { method: 'POST', body: data }),
+  pagarCuotaTarjeta: (id) => request(`/cuotas-tarjeta/${id}/pagar-cuota`, { method: 'POST' }),
+  eliminarCuotaTarjeta: (id) => request(`/cuotas-tarjeta/${id}`, { method: 'DELETE' }),
   ajustarSaldo: (id, saldoReal) => request(`/cuentas/${id}/ajustar-saldo`, { method: 'POST', body: { saldo_real: saldoReal } }),
 
   consentimientos: () => request('/consentimientos'),
@@ -248,6 +252,8 @@ export const api = {
   registrarFlujoActivo: (id, monto, fecha, nota = '') =>
     request(`/patrimonio/activos/${id}/flujos`, { method: 'POST', body: { monto, fecha, nota } }),
 
+  aplicarExtractoTarjeta: (cuentaId, datos) =>
+    request(`/tarjetas/${cuentaId}/aplicar-extracto`, { method: 'POST', body: datos }),
   procesarExtracto: (pdfBase64, cuentaId, password = '') =>
     request('/conciliacion/procesar', {
       method: 'POST',

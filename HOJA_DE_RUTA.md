@@ -18,6 +18,17 @@
 
 ---
 
+## 🆕 Tarjetas de crédito: captura, extracto, cuotas y lectura del extracto (pendiente de tu aprobación)
+
+- **Crear tarjeta:** pide cupo total, «¿Cuánto debes hoy?» (se guarda como saldo negativo), día de corte, día de pago y tasa. Antes un valor positivo se leía como saldo a favor.
+- **Pago para no pagar intereses = deuda al último corte** (`backend/app/tarjetas.py` `estado_extracto`): total del extracto, pagado desde el corte, falta, compras después del corte. El aviso push usa lo que FALTA y no avisa si ya está pagado.
+- **Compras a cuotas:** vista de compromiso (no cambia saldos). `GET/POST/PUT/DELETE /cuotas-tarjeta`. «Comprometido en cuotas este mes» se informa en `/presupuestos/en-mi-bolsillo` y `/reportes/flujo-caja-futuro`; solo resta del disponible/flujo con `?incluir_cuotas=true` (la deuda de la tarjeta ya está restada en el saldo).
+- **Leer el extracto:** `backend/app/extracto_tarjeta.py` propone (nunca aplica solo) actualizar cupo, corte, pago y tasa; en Conciliación aparece «Tu extracto dice… ¿Actualizar tu tarjeta?». Probado solo con textos inventados, no con extractos reales.
+- ⏳ **SQL sin ejecutar:** `backend/supabase/migraciones/cuotas_tarjeta.sql` (tablas `cuotas_tarjeta` y `extractos_tarjeta` + RLS, idempotente). El arranque las crea y activa RLS en Postgres.
+- ⏳ **Pendiente de montar:** el componente `PropuestaTarjeta` en `Sincronizacion.jsx`/`Correos.jsx` (otro frente de trabajo); la respuesta de `/conciliacion/procesar` ya trae `propuesta_tarjeta`.
+
+---
+
 ## 🆕 Registro con Apple Wallet, bandeja "¿son tuyos?" y recordatorio nocturno (pendiente de tu aprobación)
 
 - **Cómo funciona:** el disparador personal «Transacción» de Atajos de iOS hace POST a `/movimientos/rapido` (header `X-Api-Key`) con comercio, monto, tarjeta, fecha y moneda. El movimiento se crea al instante (los saldos quedan bien) pero marcado «por confirmar» (`cat_confirmada=false`, `cat_origen='wallet'`), así sale en «Por revisar» y en la bandeja. Acepta montos colombianos (`45.000,00`), mapea la tarjeta a la cuenta por **alias de tarjeta** (editable en cada cuenta) o por nombre, y ignora duplicados (mismo comercio+monto+cuenta en ±2 min, responde 200 con el existente).

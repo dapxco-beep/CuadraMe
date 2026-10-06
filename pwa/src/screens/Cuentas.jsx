@@ -15,6 +15,8 @@ import { ENTIDADES_FINANCIERAS_CO } from '../lib/entidadesFinancierasCO'
 import TarjetaCuenta from '../components/TarjetaCuenta'
 import SelectorCuenta from '../components/SelectorCuenta'
 import PanelTarjetaCredito from '../components/PanelTarjetaCredito'
+import CamposCuentaNueva, { CAMPOS_VACIOS } from '../components/CamposCuentaNueva'
+import { datosCuentaNueva, validarTarjetaNueva } from '../lib/cuentaNueva'
 import BotonOjo from '../components/BotonOjo'
 import Hoja from '../components/Hoja'
 
@@ -182,7 +184,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
   const [tipo, setTipo] = useState(cuenta?.tipo || 'ahorro')
   const [icono, setIcono] = useState(cuenta?.icono || '🏦')
   const [moneda, setMoneda] = useState(cuenta?.moneda || 'COP')
-  const [saldoInicial, setSaldoInicial] = useState('')
+  const [campos, setCampos] = useState(CAMPOS_VACIOS)
   const [alias, setAlias] = useState(cuenta?.alias_tarjeta || '')
   const [guardando, setGuardando] = useState(false)
   const [eliminando, setEliminando] = useState(false)
@@ -192,16 +194,17 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
   async function guardar() {
     setError('')
     if (!nombre.trim()) return setError('Ponle un nombre a tu cuenta')
+    if (!esEdicion && tipo === 'credito') {
+      const problema = validarTarjetaNueva(campos)
+      if (problema) return setError(problema)
+    }
 
     setGuardando(true)
     try {
       if (esEdicion) {
         await api.editarCuenta(cuenta.id, { nombre: nombre.trim(), tipo, icono, alias_tarjeta: alias.trim() })
       } else {
-        await api.crearCuenta({
-          nombre: nombre.trim(), tipo, icono, moneda, saldo: Number(saldoInicial) || 0,
-          ...(alias.trim() ? { alias_tarjeta: alias.trim() } : {}),
-        })
+        await api.crearCuenta(datosCuentaNueva({ nombre, tipo, icono, moneda, alias, ...campos }))
       }
       onGuardada()
     } catch (err) {
@@ -284,16 +287,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
       )}
 
       {!esEdicion && (
-        <>
-          <input
-            value={saldoInicial}
-            onChange={(e) => setSaldoInicial(e.target.value.replace(/[^\d.]/g, ''))}
-            inputMode="decimal"
-            placeholder="Saldo actual (opcional)"
-            aria-label="Saldo actual"
-            className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
-          />
-        </>
+        <CamposCuentaNueva tipo={tipo} valores={campos} onCambio={setCampos} />
       )}
 
       <label className="block mb-4">

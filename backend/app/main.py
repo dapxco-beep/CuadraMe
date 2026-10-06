@@ -19,8 +19,10 @@ from app.routers import (
     consentimientos,
     correos,
     cuentas,
+    cuotas_tarjeta,
     deudas,
     exportar,
+    extracto_tarjeta,
     facturas,
     gastos_compartidos,
     importar,
@@ -174,6 +176,8 @@ app.include_router(cierre.router)
 app.include_router(consentimientos.router)
 app.include_router(informes.router)
 app.include_router(conexiones.router)
+app.include_router(cuotas_tarjeta.router)
+app.include_router(extracto_tarjeta.router)
 from app.routers import sincronizacion  # noqa: E402
 
 app.include_router(sincronizacion.router)

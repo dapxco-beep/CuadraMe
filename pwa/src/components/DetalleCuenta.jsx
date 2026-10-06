@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { cupoDisponible, deudaTarjeta, esCredito, textoActualizado } from '../lib/saldos'
 import Hoja from './Hoja'
+import { leerMonto } from '../lib/cuentaNueva'
 
 // Detalle de UNA cuenta: saldo actual sin ambigüedad, cómo va el mes, últimos
 // movimientos y las dos acciones para que el saldo coincida con el banco:
@@ -141,7 +142,8 @@ function FormAjuste({ cuenta, onHecho }) {
   const { fmt } = useBloqueo()
 
   // En tarjetas se escribe lo que se DEBE (positivo); el backend guarda el saldo en negativo.
-  const nuevoSaldo = valor === '' ? null : credito ? -Number(valor) : Number(valor)
+  const monto = leerMonto(valor)
+  const nuevoSaldo = valor === '' ? null : credito ? -Math.abs(monto) : valor.trim().startsWith('-') ? -monto : monto
   const diferencia = nuevoSaldo === null ? null : nuevoSaldo - (cuenta.saldo || 0)
 
   async function guardar() {
@@ -166,7 +168,7 @@ function FormAjuste({ cuenta, onHecho }) {
         </span>
         <input
           value={valor}
-          onChange={(e) => setValor(e.target.value.replace(/[^\d.-]/g, ''))}
+          onChange={(e) => setValor(e.target.value.replace(/[^\d.,-]/g, ''))}
           inputMode="decimal"
           placeholder="Ej. 1500000"
           aria-label={credito ? 'Lo que debes hoy' : 'Saldo real'}

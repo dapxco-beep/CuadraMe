@@ -7,6 +7,7 @@ from app import presupuesto_servicio as srv
 from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import cuentas_ids_accesibles
+from app.cuotas_servicio import comprometido_cuotas
 from app.database import get_db
 from app.fx import convertir_a_cop
 from app.models import Cuenta, Meta, Presupuesto, Recurrente
@@ -94,6 +95,7 @@ def disponible_hoy(
 
 @router.get("/en-mi-bolsillo", response_model=EnMiBolsillo)
 def en_mi_bolsillo(
+    incluir_cuotas: bool = False,
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
     """Estilo PocketGuard 'In My Pocket': el saldo de tus cuentas menos lo que
@@ -130,12 +132,19 @@ def en_mi_bolsillo(
         meses_para_meta = max(dias_para_meta / 30, 1 / 30)  # nunca diluir a menos de "1 día de plazo"
         aportes_comprometidos += faltante / meses_para_meta
 
+    # Cuotas de compras diferidas con tarjeta que vencen este mes. El saldo de la tarjeta
+    # ya refleja la deuda completa, así que por defecto solo se informan; con
+    # ?incluir_cuotas=true también se restan del disponible (para quien prefiere verlo así).
+    cuotas_tarjeta = comprometido_cuotas(db, usuario.id, ahora.year, ahora.month, ahora.date())
     disponible_real = saldo_total - recurrentes_pendientes - aportes_comprometidos
+    if incluir_cuotas:
+        disponible_real -= cuotas_tarjeta
 
     return EnMiBolsillo(
         saldo_total=saldo_total,
         recurrentes_pendientes_mes=recurrentes_pendientes,
         aportes_comprometidos_mes=round(aportes_comprometidos),
+        cuotas_tarjeta_mes=cuotas_tarjeta,
         disponible_real=round(disponible_real),
         disponible_real_por_dia=round(disponible_real / dias_restantes),
         dias_restantes_mes=dias_restantes,

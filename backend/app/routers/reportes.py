@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import cuentas_ids_accesibles
+from app.cuotas_servicio import comprometido_cuotas
 from app.contabilidad import tipo_efectivo_receta, tipos_cuenta_de, tipos_efectivos
 from app.database import get_db
 from app.fx import convertir_a_cop
@@ -166,6 +167,7 @@ def tendencias(
 @router.get("/flujo-caja-futuro", response_model=FlujoCajaFuturo)
 def flujo_caja_futuro(
     meses: int = 3,
+    incluir_cuotas: bool = False,
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
@@ -215,7 +217,11 @@ def flujo_caja_futuro(
         mes_siguiente = mes_siguiente if mes_siguiente <= 12 else 1
         cursor = cursor.replace(year=anio, month=mes_siguiente, day=1)
 
-        gastos_esperados = gastos_recurrentes + gasto_variable_promedio_mes
+        # Cuotas de compras diferidas que vencen ese mes. El promedio variable ya incluye
+        # esas compras a su precio completo cuando se hicieron, así que por defecto solo
+        # se informan; con ?incluir_cuotas=true se suman a los gastos esperados.
+        cuotas_mes = comprometido_cuotas(db, usuario.id, cursor.year, cursor.month, hoy.date())
+        gastos_esperados = gastos_recurrentes + gasto_variable_promedio_mes + (cuotas_mes if incluir_cuotas else 0)
         saldo_corrido = saldo_corrido + ingresos_recurrentes - gastos_esperados
 
         meses_proyeccion.append(
@@ -224,6 +230,7 @@ def flujo_caja_futuro(
                 saldo_proyectado=round(saldo_corrido),
                 ingresos_esperados=round(ingresos_recurrentes),
                 gastos_esperados=round(gastos_esperados),
+                cuotas_tarjeta=cuotas_mes,
             )
         )
 

@@ -122,6 +122,22 @@ class TarjetaInfo(BaseModel):
     dias_para_pago: Optional[int]
     pago_minimo_estimado: float
     interes_estimado: Optional[float]
+    # Extracto (None si la tarjeta no tiene día de corte): lo que hay que pagar para no pagar intereses
+    total_extracto: Optional[float] = None
+    pagado_desde_corte: Optional[float] = None
+    falta_para_evitar_intereses: Optional[float] = None
+    compras_despues_corte: Optional[float] = None
+    fecha_limite_pago: Optional[str] = None
+    fecha_ultimo_corte: Optional[str] = None
+    dias_para_limite: Optional[int] = None
+    pagado_pct: Optional[float] = None
+    vencido: bool = False
+    # Datos del extracto real aplicados por el cliente (ver app/extracto_tarjeta.py)
+    total_del_banco: bool = False
+    pago_minimo_extracto: Optional[float] = None
+    pago_total_extracto: Optional[float] = None
+    pago_minimo: Optional[float] = None  # el del extracto si se conoce; si no, la estimación
+    pago_minimo_del_extracto: bool = False
 
 
 class CuentaOut(BaseModel):
@@ -419,6 +435,9 @@ class EnMiBolsillo(BaseModel):
     saldo_total: float
     recurrentes_pendientes_mes: float
     aportes_comprometidos_mes: float
+    # Cuotas de compras a cuotas con tarjeta que vencen este mes. La deuda de la tarjeta
+    # ya está restada en el saldo, así que solo se descuenta de disponible_real si se pide.
+    cuotas_tarjeta_mes: float = 0
     disponible_real: float
     disponible_real_por_dia: float
     dias_restantes_mes: int
@@ -457,6 +476,7 @@ class FlujoCajaMes(BaseModel):
     saldo_proyectado: float
     ingresos_esperados: float
     gastos_esperados: float
+    cuotas_tarjeta: float = 0  # cuotas de compras diferidas que vencen ese mes (informativo)
 
 
 class FlujoCajaFuturo(BaseModel):
@@ -821,6 +841,9 @@ class ProcesarExtractoResponse(BaseModel):
     requiere_clave: bool = False  # el PDF está protegido y falta (o es incorrecta) la clave
     # Aviso (no bloquea): ese mes de esa cuenta ya estaba conciliado antes de subir este archivo.
     ya_conciliado: Optional[dict] = None  # {"mes": "2026-09", "cruzados": n}
+    # Solo si la cuenta es una tarjeta de crédito y el extracto trae datos legibles:
+    # {cambios, datos, texto}. Es una PROPUESTA: se aplica solo si el cliente pulsa 'Aplicar'.
+    propuesta_tarjeta: Optional[dict] = None
 
 
 class ImportarFaltantesRequest(BaseModel):

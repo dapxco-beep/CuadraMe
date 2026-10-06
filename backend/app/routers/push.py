@@ -23,7 +23,7 @@ from app.fx import convertir_a_cop
 from app.models import Cuenta, Meta, Movimiento, Perfil, Presupuesto, PushSubscription, Recurrente
 from app.push import enviar_push
 from app.rachas import otorgar_vida_si_nueva
-from app.tarjetas import tarjetas_por_avisar
+from app.tarjetas import extractos_guardados, movimientos_tras_corte, tarjetas_por_avisar
 from app.utiles import ahora_co
 from app.schemas import PushSubscribeRequest, VapidPublicKeyResponse
 
@@ -516,7 +516,9 @@ def cron_recordar_recurrentes(
             .filter(Cuenta.usuario_id.in_(usuarios_con_push), Cuenta.tipo == "credito")
             .all()
         )
-        for cuenta, info in tarjetas_por_avisar(tarjetas, hoy):
+        movs = {t.id: movimientos_tras_corte(db, t, hoy) for t in tarjetas if t.dia_corte}
+        guardados = extractos_guardados(db, [t.id for t in tarjetas])
+        for cuenta, info in tarjetas_por_avisar(tarjetas, hoy, movs, guardados):
             with corrida.aislar(cuenta.usuario_id):
                 _avisar_pago_tarjeta(db, cuenta, info)
                 tarjetas_avisadas += 1
@@ -557,15 +559,17 @@ def _avisar_recurrente(db: Session, rec, hoy) -> bool:
 
 
 def _avisar_pago_tarjeta(db: Session, cuenta, info: dict) -> None:
-    dias = info["dias_para_pago"]
-    cuando = "hoy" if dias == 0 else f"en {dias} {'día' if dias == 1 else 'días'}"
+    # monto_aviso = lo que FALTA para no pagar intereses (total del extracto menos
+    # lo ya abonado); si no se conoce el corte, la deuda actual como antes.
+    dias = info["dias_aviso"]
+    inicio = f"Te quedan {dias} {'día' if dias == 1 else 'días'} para el pago" if dias > 0 else "Hoy vence el pago"
+    minimo = f". Pago mínimo del extracto: {info['pago_minimo']:,.0f}" if info.get("pago_minimo_del_extracto") else ""
     enviar_push(
         db,
         cuenta.usuario_id,
         f"Paga tu {cuenta.nombre}",
-        f"Paga antes del {info['proximo_pago']} ({cuando}) para no pagar intereses — "
-        f"debes {info['cupo_usado']:,.0f}",
+        f"{inicio}: paga {info['monto_aviso']:,.0f} antes del {info['fecha_aviso']} para no pagar intereses{minimo}",
         "/cuentas",
     )
-    cuenta.ultima_alerta_pago = info["proximo_pago"]
+    cuenta.ultima_alerta_pago = info["fecha_aviso"]
     db.commit()

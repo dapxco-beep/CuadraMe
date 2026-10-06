@@ -24,6 +24,7 @@ from app.conciliacion import (
 from app.database import get_db
 from app.extractos_conciliados import evidencia_conciliado
 from app.models import Cuenta, HistorialExtracto, Movimiento, Perfil
+from app.extracto_tarjeta import leer_datos_tarjeta, proponer_actualizacion
 from app.pdf_extract import extraer_via_ia, pdf_a_texto, pdf_pide_clave
 from app.schemas import (
     HistorialExtractoOut,
@@ -200,6 +201,7 @@ def procesar_extracto(
     completados, sobrantes = _contar_review(resultado["review"])
 
     return ProcesarExtractoResponse(
+        propuesta_tarjeta=_propuesta_tarjeta(cuenta, texto_plano),
         ok=True,
         historial_id=historial.id,
         banco_detectado=banco,
@@ -225,6 +227,18 @@ def _periodo_ya_conciliado(db: Session, usuario_id: str, cuenta_id: str, review:
     mes = f"{ultimo.year:04d}-{ultimo.month:02d}"
     ev = evidencia_conciliado(db, usuario_id, cuenta_id, mes)
     return {"mes": mes, "cruzados": ev["cruzados"]} if ev else None
+
+
+def _propuesta_tarjeta(cuenta, texto: str) -> dict | None:
+    """Si la cuenta es una tarjeta de crédito, lee cupo, pago, fechas y tasa del extracto y
+    PROPONE actualizar la tarjeta (nunca la modifica). Cualquier fallo se ignora: leer el
+    extracto de más no puede romper la conciliación."""
+    if cuenta.tipo != "credito" or not texto:
+        return None
+    try:
+        return proponer_actualizacion(cuenta, leer_datos_tarjeta(texto))
+    except Exception:
+        return None
 
 
 def _periodo(review: list[dict]) -> dict:
