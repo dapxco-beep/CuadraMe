@@ -28,9 +28,14 @@ FUENTE_AJUSTE = "ajuste_saldo"
 # Importado de un archivo SIN ajustar el saldo (el banco ya lo reflejaba): el movimiento
 # cuenta en reportes, pero editarlo o borrarlo NO debe mover el saldo de la cuenta.
 FUENTE_IMPORTADO_SIN_SALDO = "importado_sin_saldo"
+# Aporte automático a una meta: la plata sale de la cuenta (el saldo baja y el
+# movimiento queda en el historial) pero NO es un gasto: sigue siendo del usuario,
+# solo cambió de bolsillo (cuenta -> meta). En `notas` guarda "META:<id de la meta>".
+FUENTE_APORTE_META = "aporte_meta"
 CATEGORIA_PAGO_TARJETA ="Pago de tarjeta"
 CATEGORIA_AJUSTE = "Ajuste de saldo"
-CATEGORIAS_NEUTRAS = {"transferencia", "pago de tarjeta", "ajuste de saldo"}
+CATEGORIA_APORTE_META = "Aporte a meta"
+CATEGORIAS_NEUTRAS = {"transferencia", "pago de tarjeta", "ajuste de saldo", "aporte a meta"}
 
 # "pago tarjeta", "pago de tarjeta de crédito", "abono a TC", "pago visa", "pago tarj credito".
 # NO casa con "pago con tarjeta en Éxito" (eso es una COMPRA): después de pago/abono solo
@@ -78,7 +83,7 @@ def tipo_base(m, tipos_cuenta: dict[str, str] | None = None) -> str:
     tipo = _g(m, "tipo")
     if tipo not in ("income", "expense"):
         return "transfer"
-    if _g(m, "fuente") in (FUENTE_TRANSFERENCIA, FUENTE_AJUSTE):
+    if _g(m, "fuente") in (FUENTE_TRANSFERENCIA, FUENTE_AJUSTE, FUENTE_APORTE_META):
         return "transfer"
     if _sin_acentos(_g(m, "categoria", "") or "").strip().lower() in CATEGORIAS_NEUTRAS:
         return "transfer"
