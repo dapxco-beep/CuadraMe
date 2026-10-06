@@ -374,16 +374,16 @@ export default function Sincronizacion() {
                     const e = estadoCelda(m.estado)
                     const activa = detalle?.cuentaId === c.id && detalle?.mes === m.mes
                     return (
-                      <button
-                        key={m.mes}
-                        role="cell"
-                        onClick={() => setDetalle(activa ? null : { cuentaId: c.id, mes: m.mes })}
-                        aria-pressed={activa}
-                        aria-label={`${c.nombre}, ${nombreMes(m.mes)}: ${e.texto}`}
-                        className={`h-10 rounded-lg border text-sm font-semibold flex items-center justify-center ${e.clase} ${activa ? 'ring-2 ring-ink' : ''}`}
-                      >
-                        <span aria-hidden="true">{e.simbolo}</span>
-                      </button>
+                      <div key={m.mes} role="cell" className="contents">
+                        <button
+                          onClick={() => setDetalle(activa ? null : { cuentaId: c.id, mes: m.mes })}
+                          aria-pressed={activa}
+                          aria-label={`${c.nombre}, ${nombreMes(m.mes)}: ${e.texto}`}
+                          className={`h-10 rounded-lg border text-sm font-semibold flex items-center justify-center ${e.clase} ${activa ? 'ring-2 ring-ink' : ''}`}
+                        >
+                          <span aria-hidden="true">{e.simbolo}</span>
+                        </button>
+                      </div>
                     )
                   })}
                 </div>
