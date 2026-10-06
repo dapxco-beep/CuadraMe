@@ -527,7 +527,22 @@ def _eliminar_transferencia(db: Session, usuario: UsuarioActual, mov: Movimiento
             raise HTTPException(status_code=403, detail="No tienes permiso para editar las cuentas de esta transferencia")
     for p in patas:
         c = db.query(Cuenta).filter(Cuenta.id == p.cuenta_id).first()
-        sale = (p.notas or "").endswith(":out")
+        notas = p.notas or ""
+        if notas.endswith(":out"):
+            sale = True
+        elif notas.endswith(":in"):
+            sale = False
+        elif p.tipo in ("income", "expense"):
+            # Transferencia antigua sin notas 'TRF:': el tipo dice hacia dónde movió el saldo
+            # (expense = salió de esta cuenta; income = entró). Solo se borra esta pata.
+            sale = p.tipo == "expense"
+        else:
+            db.rollback()
+            raise HTTPException(
+                status_code=400,
+                detail="Esta transferencia antigua no se puede borrar automáticamente: "
+                       "ajusta el saldo de la cuenta a mano y deja el movimiento como está.",
+            )
         c.saldo += p.monto if sale else -p.monto
         db.delete(p)
     db.commit()
