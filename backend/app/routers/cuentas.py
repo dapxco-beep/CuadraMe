@@ -12,13 +12,18 @@ from app.fx import convertir_a_cop
 from app.models import Cuenta, Movimiento
 from app.schemas import AjusteSaldoRequest, CuentaCreate, CuentaOut, CuentaUpdate
 from app.utiles import ahora_co
-from app.tarjetas import calc_tarjeta
+from app.tarjetas import calc_tarjeta, movimientos_tras_corte
 
 router = APIRouter(prefix="/cuentas", tags=["cuentas"])
 
 
-def _serializar(cuenta: Cuenta) -> dict:
-    """Cuenta + (si es tarjeta de crédito) los cálculos de cupo y fechas."""
+def _serializar(cuenta: Cuenta, db: Session | None = None) -> dict:
+    """Cuenta + (si es tarjeta de crédito) los cálculos de cupo y fechas. Con `db`
+    también el extracto (total a pagar al corte, pagado, falta)."""
+    tarjeta = None
+    if cuenta.tipo == "credito":
+        movs = movimientos_tras_corte(db, cuenta) if db is not None and cuenta.dia_corte else None
+        tarjeta = calc_tarjeta(cuenta, None, movs)
     return {
         "id": cuenta.id,
         "nombre": cuenta.nombre,
@@ -31,7 +36,7 @@ def _serializar(cuenta: Cuenta) -> dict:
         "dia_pago": cuenta.dia_pago,
         "tasa_ea": cuenta.tasa_ea,
         "alias_tarjeta": cuenta.alias_tarjeta,
-        "tarjeta": calc_tarjeta(cuenta) if cuenta.tipo == "credito" else None,
+        "tarjeta": tarjeta,
     }
 
 
@@ -40,7 +45,7 @@ def listar_cuentas(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
     ids = cuentas_ids_accesibles(db, usuario.id)
-    return [_serializar(c) for c in db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()]
+    return [_serializar(c, db) for c in db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()]
 
 
 @router.post("", response_model=CuentaOut)
@@ -53,7 +58,7 @@ def crear_cuenta(
     db.add(cuenta)
     db.commit()
     db.refresh(cuenta)
-    return _serializar(cuenta)
+    return _serializar(cuenta, db)
 
 
 @router.put("/{cuenta_id}", response_model=CuentaOut)
@@ -76,7 +81,7 @@ def editar_cuenta(
 
     db.commit()
     db.refresh(cuenta)
-    return _serializar(cuenta)
+    return _serializar(cuenta, db)
 
 
 @router.delete("/{cuenta_id}")
@@ -187,7 +192,7 @@ def detalle_cuenta(
         .all()
     )
     return {
-        "cuenta": _serializar(cuenta),
+        "cuenta": _serializar(cuenta, db),
         "saldo_actual": cuenta.saldo,
         "ingresos_mes": round(ingresos, 2),
         "gastos_mes": round(gastos, 2),

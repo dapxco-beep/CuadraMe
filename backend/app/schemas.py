@@ -122,6 +122,16 @@ class TarjetaInfo(BaseModel):
     dias_para_pago: Optional[int]
     pago_minimo_estimado: float
     interes_estimado: Optional[float]
+    # Extracto (None si la tarjeta no tiene día de corte): lo que hay que pagar para no pagar intereses
+    total_extracto: Optional[float] = None
+    pagado_desde_corte: Optional[float] = None
+    falta_para_evitar_intereses: Optional[float] = None
+    compras_despues_corte: Optional[float] = None
+    fecha_limite_pago: Optional[str] = None
+    fecha_ultimo_corte: Optional[str] = None
+    dias_para_limite: Optional[int] = None
+    pagado_pct: Optional[float] = None
+    vencido: bool = False
 
 
 class CuentaOut(BaseModel):
