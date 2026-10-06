@@ -108,7 +108,7 @@ export default function DetalleMovimiento() {
     try {
       await api.eliminarMovimiento(id)
       await recargarCuentas()
-      navigate('/movimientos')
+      navigate('/movimientos', { replace: true })
     } catch (err) {
       setEliminando(false)
       avisar(err.message || 'No se pudo eliminar')
@@ -119,7 +119,7 @@ export default function DetalleMovimiento() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">
         <p className="text-sm text-ink-soft">No encontramos este movimiento.</p>
-        <button onClick={() => navigate('/movimientos')} className="text-sm text-accent font-medium">
+        <button onClick={() => navigate('/movimientos', { replace: true })} className="text-sm text-accent font-medium">
           Volver a movimientos
         </button>
       </div>

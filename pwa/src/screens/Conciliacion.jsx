@@ -153,9 +153,9 @@ export default function Conciliacion() {
       if (r.categorizados_auto > 0 || r.sin_categoria_clara > 0) {
         // Lleva a la vista "Por revisar" para que confirme lo que categorizó la app.
         if (r.categorizados_auto > 0) avisar(`Categoricé ${r.categorizados_auto} movimientos: revísalos`, 'ok')
-        navigate('/movimientos?revisar=1')
+        navigate('/movimientos?revisar=1', { replace: true })
       } else {
-        navigate('/')
+        navigate('/', { replace: true })
       }
     } catch (err) {
       setError(err.message || 'No se pudo importar')

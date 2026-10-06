@@ -187,7 +187,7 @@ export default function ImportarArchivo() {
               Importar otro
             </button>
             <button
-              onClick={() => navigate('/movimientos')}
+              onClick={() => navigate('/movimientos', { replace: true })}
               className="flex-1 bg-ink text-paper rounded-2xl py-3.5 text-sm font-semibold"
             >
               Ver movimientos

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { EstadoVacio } from '../brand/Marca'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { Link } from 'react-router-dom'
 import { useBloqueo } from '../lib/BloqueoContext'
@@ -42,11 +42,17 @@ export default function Cuentas() {
   }
   useEffect(cargarResumen, [])
 
+  // Abrir el detalle desde la lista agrega una entrada de historial (atrás lo cierra, como
+  // en cualquier hoja); cerrarlo con X/Escape/tocar fuera deshace esa entrada. Si se llegó
+  // directo con ?cuenta= (mazo de Inicio, enlace) no hay entrada propia: se reemplaza.
+  const navigate = useNavigate()
+  const location = useLocation()
   function abrirDetalle(id) {
-    setParams({ cuenta: id })
+    setParams({ cuenta: id }, { state: { detalleDesdeLista: true } })
   }
   function cerrarDetalle() {
-    setParams({})
+    if (location.state?.detalleDesdeLista) navigate(-1)
+    else setParams({}, { replace: true })
   }
 
   return (

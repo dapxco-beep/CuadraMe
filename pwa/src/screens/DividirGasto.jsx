@@ -145,7 +145,7 @@ export default function DividirGasto() {
         fecha: state?.fecha ? `${state.fecha}T12:00:00` : undefined,
       })
       await recargarCuentas()
-      navigate('/amigos')
+      navigate('/amigos', { replace: true })
     } catch (e) {
       setError(e.message || 'No se pudo guardar')
     } finally {

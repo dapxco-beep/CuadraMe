@@ -34,7 +34,7 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
   const credito = c && esCredito(c)
 
   return (
-    <Hoja onCerrar={onClose}>
+    <Hoja onCerrar={onClose} historial={false}>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold">{c?.nombre || 'Cuenta'}</h2>
         <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">

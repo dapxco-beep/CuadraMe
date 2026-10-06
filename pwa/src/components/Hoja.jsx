@@ -53,6 +53,7 @@ export default function Hoja({
   clasePanel = 'p-6 pb-[max(2rem,env(safe-area-inset-bottom))]',
   capa = 'z-50', // capa (z-index) del fondo; las hojas sobre otras hojas usan una mayor
   testId,
+  historial = true, // false si la hoja ya vive en su propia entrada de historial
   children,
 }) {
   const id = useId()
@@ -105,12 +106,19 @@ export default function Hoja({
   // Historial: una entrada por hoja abierta
   useEffect(() => {
     if (!abierta) return undefined
+    if (!pila.includes(id)) pila.push(id)
+    const quitarDePila = () => {
+      const i = pila.indexOf(id)
+      if (i >= 0) pila.splice(i, 1)
+    }
+    // historial={false}: la hoja ya tiene su propia entrada (p. ej. una ruta con ?cuenta=id);
+    // atrás cambia la ubicación y la pantalla la desmonta sola.
+    if (!historial) return quitarDePila
     clearTimeout(retiradas.get(id))
     retiradas.delete(id)
     if (window.history.state?.__hoja !== id) {
       window.history.pushState({ ...(window.history.state || {}), __hoja: id }, '')
     }
-    if (!pila.includes(id)) pila.push(id)
 
     function alRetroceder() {
       if (window.history.state?.__hoja !== id) {
@@ -122,8 +130,7 @@ export default function Hoja({
 
     return () => {
       window.removeEventListener('popstate', alRetroceder)
-      const i = pila.indexOf(id)
-      if (i >= 0) pila.splice(i, 1)
+      quitarDePila()
       if (desdeHistorial.current) {
         desdeHistorial.current = false
         return
@@ -139,12 +146,13 @@ export default function Hoja({
         }, 0)
       )
     }
-  }, [abierta, id, cerrar])
+  }, [abierta, id, cerrar, historial])
 
   // Escape: solo la hoja de más arriba
   useEffect(() => {
     if (!abierta) return undefined
     function alTeclear(e) {
+      if (panel.current?.closest('[inert]')) return // detrás de la pantalla de bloqueo
       if (e.key === 'Escape' && pila[pila.length - 1] === id && !e.defaultPrevented) {
         e.preventDefault()
         cerrar()
