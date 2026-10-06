@@ -629,6 +629,10 @@ class CorreoGastoOut(BaseModel):
     confianza: float
     estado: str
     movimiento_id: Optional[str]
+    # Calculados al leer (no son columnas): quién envió el correo y qué cuenta le corresponde.
+    banco_detectado: Optional[str] = None
+    cuenta_sugerida_id: Optional[str] = None
+    falta_cuenta: bool = False
 
     class Config:
         from_attributes = True
@@ -642,7 +646,8 @@ class CorreoGastoUpdate(BaseModel):
 
 
 class AprobarCorreoRequest(BaseModel):
-    cuenta_id: str
+    # Opcional a propósito: sin cuenta elegida se responde 400 claro en vez de 422.
+    cuenta_id: Optional[str] = None
 
 
 class SincronizarCorreosResponse(BaseModel):

@@ -30,6 +30,7 @@ from app.extractos_gmail import (
     encabezados,
     es_notificacion_transaccion,
     fecha_mensaje,
+    inferir_cuenta_por_remitente,
     listar_adjuntos_pdf,
     sugerir_cuenta,
 )
@@ -75,6 +76,18 @@ def _get_or_create_perfil(db: Session, usuario_id: str) -> Perfil:
         db.commit()
         db.refresh(perfil)
     return perfil
+
+
+def _con_cuenta(db: Session, usuario_id: str, correos: list[CorreoGasto]) -> list[CorreoGastoOut]:
+    """Agrega a cada correo el banco del remitente y la cuenta que le corresponde
+    (o `falta_cuenta` si el usuario no tiene una de ese banco)."""
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).all()
+    salida = []
+    for c in correos:
+        o = CorreoGastoOut.model_validate(c)
+        o.banco_detectado, o.cuenta_sugerida_id, o.falta_cuenta = inferir_cuenta_por_remitente(c.remitente, cuentas)
+        salida.append(o)
+    return salida
 
 
 @router.get("/gmail/estado", response_model=GmailEstado)
@@ -534,7 +547,7 @@ def listar_correos(
     q = db.query(CorreoGasto).filter(CorreoGasto.usuario_id == usuario.id)
     if filtro != "todos":
         q = q.filter(CorreoGasto.estado == estados[filtro])
-    return q.order_by(CorreoGasto.creado_en.desc(), CorreoGasto.id).offset(offset).limit(limite).all()
+    return _con_cuenta(db, usuario.id, q.order_by(CorreoGasto.creado_en.desc(), CorreoGasto.id).offset(offset).limit(limite).all())
 
 
 # ── Extractos encontrados ──────────────────────────────────────────
@@ -552,7 +565,14 @@ def listar_extractos(
         ExtractoCorreo.usuario_id == usuario.id,
         ExtractoCorreo.estado == estado if estado else ExtractoCorreo.estado.in_(ESTADOS_VISIBLES),
     )
-    return q.order_by(ExtractoCorreo.recibido_en.desc(), ExtractoCorreo.id).offset(offset).limit(limite).all()
+    filas = q.order_by(ExtractoCorreo.recibido_en.desc(), ExtractoCorreo.id).offset(offset).limit(limite).all()
+    salida = []
+    for f in filas:
+        o = ExtractoCorreoOut.model_validate(f)
+        # Extractos viejos pueden no traer el banco guardado: se deduce del remitente.
+        o.banco = o.banco or banco_por_remitente(f.remitente) or ""
+        salida.append(o)
+    return salida
 
 
 @router.post("/extractos/{extracto_id}/conciliar", response_model=ProcesarExtractoResponse)
@@ -675,7 +695,7 @@ def borrar_clave_pdf(
 def listar_pendientes(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
-    return (
+    return _con_cuenta(db, usuario.id, (
         db.query(CorreoGasto)
         .filter(
             CorreoGasto.usuario_id == usuario.id,
@@ -684,7 +704,7 @@ def listar_pendientes(
         )
         .order_by(CorreoGasto.creado_en.desc())
         .all()
-    )
+    ))
 
 
 @router.patch("/{correo_id}", response_model=CorreoGastoOut)
@@ -737,9 +757,16 @@ def aprobar_correo(
         db.query(Cuenta)
         .filter(Cuenta.id == data.cuenta_id, Cuenta.usuario_id == usuario.id)
         .first()
+        if data.cuenta_id else None
     )
     if not cuenta:
-        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+        # Nunca se asume una cuenta: si el correo es de un banco que el usuario
+        # no tiene como cuenta, se le dice cuál crear.
+        cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
+        banco, _sug, falta = inferir_cuenta_por_remitente(correo.remitente, cuentas)
+        if falta:
+            raise HTTPException(status_code=400, detail=f"No tienes una cuenta {banco}: créala o elige otra")
+        raise HTTPException(status_code=400, detail="Elige la cuenta a la que pertenece este movimiento")
 
     movimiento = Movimiento(
         usuario_id=usuario.id,

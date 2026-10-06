@@ -59,6 +59,33 @@ DOMINIOS_BANCOS: dict[str, str] = {
     "bancow.com.co": "Banco W",
     "finandina.com": "Finandina",
     "uala.com.co": "Ualá",
+    # Remitentes reales que NO son subdominio del dominio principal del banco.
+    "notificacionesbancolombia.com.co": "Bancolombia",
+    "bancolombia.com": "Bancolombia",
+    "nequi.co": "Nequi",
+    "nu.com": "Nu Colombia",
+    "nubank.com": "Nu Colombia",
+    "daviplata.com.co": "Daviplata",
+    "davibank.com": "Davivienda",
+    "rappicard.co": "RappiPay",
+    "rappicard.com.co": "RappiPay",
+    "bancodeoccidente.com": "Banco de Occidente",
+    "bbvanet.com.co": "BBVA Colombia",
+    "scotiabank.com.co": "Scotiabank Colpatria",
+    "movii.com": "Movii",
+}
+
+# Palabras con las que el usuario suele nombrar su cuenta de cada banco o
+# billetera (además del nombre completo). Las cortas se buscan como palabra
+# entera: "nu" encuentra "Nu" y "Mi Nu", no "menú".
+ALIAS_BANCOS: dict[str, tuple[str, ...]] = {
+    "nu colombia": ("nu", "nubank"),
+    "rappipay": ("rappi", "rappicard", "rappipay"),
+    "lulo bank": ("lulo", "lulobank"),
+    "bbva colombia": ("bbva",),
+    "scotiabank colpatria": ("scotiabank", "colpatria"),
+    "banco de bogota": ("bogota",),
+    "banco falabella": ("falabella",),
 }
 
 # Palabras que identifican un extracto en el asunto o en el nombre del adjunto.
@@ -252,20 +279,53 @@ def detectar_ultimos4(texto: str) -> str:
     return ""
 
 
+def _claves_banco(banco: str) -> tuple[str, list[str]]:
+    """(nombre normalizado, palabras con las que se busca en el nombre de la cuenta)."""
+    banco_n = _sin_acentos(banco)
+    palabras = [p for p in re.split(r"\W+", banco_n) if len(p) >= 4 and p not in ("banco", "colombia")]
+    return banco_n, palabras + list(ALIAS_BANCOS.get(banco_n, ()))
+
+
+def _puntaje_banco(banco_n: str, palabras: list[str], nombre: str) -> int:
+    if not banco_n:
+        return 0
+    if banco_n in nombre:
+        return 2
+    for p in palabras:
+        if re.search(rf"\b{re.escape(p)}\b", nombre) or (len(p) >= 4 and p in nombre):
+            return 2
+    return 0
+
+
+def cuentas_del_banco(banco: str, cuentas: list) -> list:
+    """Cuentas del usuario cuyo nombre corresponde al banco/billetera (puede
+    haber varias). Vacío si no tiene ninguna: ahí hay que crearla, no adivinar."""
+    banco_n, palabras = _claves_banco(banco)
+    return [c for c in cuentas if _puntaje_banco(banco_n, palabras, _sin_acentos(getattr(c, "nombre", "")))]
+
+
+def inferir_cuenta_por_remitente(remitente: str, cuentas: list) -> tuple[str | None, str | None, bool]:
+    """(banco, cuenta_sugerida_id, falta_cuenta) para una notificación de correo.
+    Sin banco reconocido no se adivina nada: el usuario debe elegir. Si el
+    banco se reconoce pero el usuario no tiene cuenta de ese banco,
+    `falta_cuenta` es True (hay que crearla, no asignar otra)."""
+    banco = banco_por_remitente(remitente)
+    if not banco:
+        return None, None, False
+    if not cuentas_del_banco(banco, cuentas):
+        return banco, None, True
+    return banco, sugerir_cuenta(banco, "", cuentas), False
+
+
 def sugerir_cuenta(banco: str, ultimos4: str, cuentas: list) -> str | None:
     """Elige la cuenta del usuario que mejor encaja con el extracto. Compara
     el nombre del banco (sin acentos) y, si lo hay, los últimos 4 dígitos con
     el nombre de la cuenta. Solo devuelve algo si hay un ganador claro."""
-    banco_n = _sin_acentos(banco)
-    palabras = [p for p in re.split(r"\W+", banco_n) if len(p) >= 4 and p not in ("banco", "colombia")]
+    banco_n, palabras = _claves_banco(banco)
     puntajes: list[tuple[int, object]] = []
     for c in cuentas:
         nombre = _sin_acentos(getattr(c, "nombre", ""))
-        puntaje = 0
-        if banco_n and banco_n in nombre:
-            puntaje += 2
-        elif any(p in nombre for p in palabras):
-            puntaje += 2
+        puntaje = _puntaje_banco(banco_n, palabras, nombre)
         if ultimos4 and ultimos4 in nombre:
             puntaje += 3
         if puntaje:
