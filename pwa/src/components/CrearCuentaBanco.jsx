@@ -4,6 +4,8 @@ import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
 import SelectorCuenta from './SelectorCuenta'
 import Hoja from './Hoja'
+import CamposCuentaNueva, { CAMPOS_VACIOS } from './CamposCuentaNueva'
+import { datosCuentaNueva, validarTarjetaNueva } from '../lib/cuentaNueva'
 
 // Hoja para crear la cuenta de un banco detectado ("Crear cuenta Nequi"): usa el
 // mismo selector de cuenta de siempre, con el banco ya elegido.
@@ -14,16 +16,20 @@ export default function CrearCuentaBanco({ banco, onClose, onCreada }) {
   const [tipo, setTipo] = useState('ahorro')
   const [icono, setIcono] = useState('🏦')
   const [moneda, setMoneda] = useState('COP')
-  const [saldo, setSaldo] = useState('')
+  const [campos, setCampos] = useState(CAMPOS_VACIOS)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
   async function crear() {
     setError('')
     if (!nombre.trim()) return setError('Ponle un nombre a tu cuenta')
+    if (tipo === 'credito') {
+      const problema = validarTarjetaNueva(campos)
+      if (problema) return setError(problema)
+    }
     setGuardando(true)
     try {
-      const cuenta = await api.crearCuenta({ nombre: nombre.trim(), tipo, icono, moneda, saldo: Number(saldo) || 0 })
+      const cuenta = await api.crearCuenta(datosCuentaNueva({ nombre, tipo, icono, moneda, ...campos }))
       await recargar?.()
       onCreada?.(cuenta)
     } catch (err) {
@@ -52,14 +58,7 @@ export default function CrearCuentaBanco({ banco, onClose, onCreada }) {
             bancoInicial={banco || ''}
           />
         </div>
-        <input
-          value={saldo}
-          onChange={(e) => setSaldo(e.target.value.replace(/[^\d.]/g, ''))}
-          inputMode="decimal"
-          placeholder="Saldo actual (opcional)"
-          aria-label="Saldo actual"
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
-        />
+        <CamposCuentaNueva tipo={tipo} valores={campos} onCambio={setCampos} />
         {error && <p className="text-sm text-danger mb-3" role="alert">{error}</p>}
         <button
           onClick={crear}

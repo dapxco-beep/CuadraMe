@@ -3,6 +3,8 @@ import { Mail, Sparkles, Wallet } from 'lucide-react'
 import { api } from '../lib/api'
 import { EncabezadoMarca } from '../brand/Marca'
 import SelectorCuenta from '../components/SelectorCuenta'
+import CamposCuentaNueva, { CAMPOS_VACIOS } from '../components/CamposCuentaNueva'
+import { datosCuentaNueva, validarTarjetaNueva } from '../lib/cuentaNueva'
 
 const PASOS_BIENVENIDA = [
   {
@@ -60,7 +62,7 @@ export default function CrearCuenta({ onCreada }) {
   const [nombre, setNombre] = useState('')
   const [tipo, setTipo] = useState('ahorro')
   const [icono, setIcono] = useState('🏦')
-  const [saldo, setSaldo] = useState('')
+  const [campos, setCampos] = useState(CAMPOS_VACIOS)
   const [moneda, setMoneda] = useState('COP')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
@@ -69,15 +71,13 @@ export default function CrearCuenta({ onCreada }) {
     setError('')
     if (!nombre.trim()) return setError('Ponle un nombre a tu cuenta')
 
+    if (tipo === 'credito') {
+      const problema = validarTarjetaNueva(campos)
+      if (problema) return setError(problema)
+    }
     setGuardando(true)
     try {
-      const cuenta = await api.crearCuenta({
-        nombre: nombre.trim(),
-        tipo,
-        icono,
-        moneda,
-        saldo: Number(saldo) || 0,
-      })
+      const cuenta = await api.crearCuenta(datosCuentaNueva({ nombre, tipo, icono, moneda, ...campos }))
       onCreada(cuenta)
     } catch (err) {
       setError(err.message || 'No se pudo crear la cuenta')
@@ -110,13 +110,7 @@ export default function CrearCuenta({ onCreada }) {
         />
       </div>
 
-      <input
-        value={saldo}
-        onChange={(e) => setSaldo(e.target.value.replace(/[^\d.]/g, ''))}
-        inputMode="decimal"
-        placeholder="Saldo actual (opcional)"
-        className="rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
-      />
+      <CamposCuentaNueva tipo={tipo} valores={campos} onCambio={setCampos} />
 
       <div className="flex gap-2 mb-5" role="group" aria-label="Moneda de la cuenta">
         {['COP', 'USD', 'EUR'].map((m) => (
