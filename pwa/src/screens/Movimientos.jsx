@@ -216,7 +216,7 @@ export default function Movimientos() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-5 pt-14 pb-4 flex items-center justify-between">
+      <header className="px-5 pantalla-top pb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Movimientos</h1>
         {modoSeleccion ? (
           <button onClick={salirModoSeleccion} className="text-sm text-accent font-medium">
@@ -243,14 +243,14 @@ export default function Movimientos() {
             <button
               onClick={() => exportar('csv')}
               disabled={exportando}
-              className="w-9 h-9 rounded-full border border-line text-ink-soft flex items-center justify-center disabled:opacity-50"
+              className="w-11 h-11 rounded-full border border-line text-ink-soft flex items-center justify-center disabled:opacity-50"
               aria-label="Exportar CSV"
             >
               <Download size={16} />
             </button>
             <Link
               to="/importar"
-              className="w-9 h-9 rounded-full border border-line text-ink-soft flex items-center justify-center"
+              className="w-11 h-11 rounded-full border border-line text-ink-soft flex items-center justify-center"
               aria-label="Importar desde Excel o CSV"
             >
               <Upload size={16} />

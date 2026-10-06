@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { NavLink, Link, useLocation } from 'react-router-dom'
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
+import Hoja from './Hoja'
 import {
   Bot, CalendarCheck, CreditCard, FileCheck, Receipt, Gift, Home, Landmark, LayoutGrid, List, Mail, PieChart, PiggyBank,
   Plus, Repeat, Sparkles, Sprout, Tag, User, Wallet, X,
@@ -78,6 +79,7 @@ export default function BottomNav() {
               <NavLink
                 key={to}
                 to={to}
+                replace
                 end={to === '/'}
                 className={({ isActive }) =>
                   `flex flex-col items-center gap-1 px-1 py-1 min-w-[64px] transition-colors duration-200 ${
@@ -105,7 +107,7 @@ export default function BottomNav() {
         </div>
       </nav>
 
-      {abierto && <HojaMas onCerrar={cerrar} devolverFoco={botonMas} pathname={pathname} />}
+      {abierto && <HojaMas onCerrar={cerrar} pathname={pathname} />}
     </>
   )
 }
@@ -126,69 +128,68 @@ function Pestana({ Icon, label, activa }) {
   )
 }
 
-function HojaMas({ onCerrar, devolverFoco, pathname }) {
-  const cerrarRef = useRef(null)
+function HojaMas({ onCerrar, pathname }) {
+  const navigate = useNavigate()
 
-  useEffect(() => {
-    cerrarRef.current?.focus()
-    const alTeclear = (e) => {
-      if (e.key === 'Escape') onCerrar()
+  // Ir a una pantalla desde la hoja: primero se cierra la hoja con "atrás" (así se retira su
+  // entrada de historial) y luego se navega con push normal. Si se navegara con la hoja
+  // abierta, "atrás" desde la pantalla nueva caería en una entrada fantasma de la anterior.
+  function irA(e, to) {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return // nueva pestaña: comportamiento normal
+    e.preventDefault()
+    if (window.history.state?.__hoja) {
+      const alRetroceder = () => {
+        window.removeEventListener('popstate', alRetroceder)
+        navigate(to)
+      }
+      window.addEventListener('popstate', alRetroceder)
+      window.history.back()
+    } else {
+      navigate(to)
     }
-    document.addEventListener('keydown', alTeclear)
-    const boton = devolverFoco.current
-    return () => {
-      document.removeEventListener('keydown', alTeclear)
-      boton?.focus()
-    }
-  }, [onCerrar, devolverFoco])
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
-      <button
-        type="button"
-        aria-label="Cerrar menú"
-        tabIndex={-1}
-        onClick={onCerrar}
-        className="absolute inset-0 bg-ink/40 sheet-backdrop"
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Más opciones"
-        className="relative w-full max-w-[480px] bg-paper rounded-t-[28px] px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] sheet-content max-h-[88vh] overflow-y-auto"
-      >
-        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" aria-hidden="true" />
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="t-title text-lg">Más</h2>
-          <button
-            ref={cerrarRef}
-            type="button"
-            onClick={onCerrar}
-            aria-label="Cerrar"
-            className="w-11 h-11 -mr-2 rounded-full flex items-center justify-center text-ink-soft"
-          >
-            <X size={20} />
-          </button>
-        </div>
-        <ul className="grid grid-cols-3 gap-2.5">
-          {ITEMS_MAS.map(({ to, icon: Icon, label }) => {
-            const activo = pathname === to || pathname.startsWith(`${to}/`)
-            return (
-              <li key={to}>
-                <Link
-                  to={to}
-                  className={`h-full min-h-[84px] flex flex-col items-center justify-center gap-2 px-1.5 py-3 text-center border card-marca-sm ${
-                    activo ? 'bg-accent-soft border-accent text-accent' : 'bg-paper-raised border-line text-ink'
-                  }`}
-                >
-                  <Icon size={22} strokeWidth={2} className={activo ? '' : 'text-accent'} />
-                  <span className="text-[12px] font-medium leading-tight">{label}</span>
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
-    </div>
+    <Hoja
+      onCerrar={onCerrar}
+      ariaLabel="Más opciones"
+      clasePanel="px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+    >
+      {({ cerrar }) => (
+        <>
+          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" aria-hidden="true" />
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="t-title text-lg">Más</h2>
+            <button
+              type="button"
+              onClick={cerrar}
+              aria-label="Cerrar"
+              className="w-11 h-11 -mr-2 rounded-full flex items-center justify-center text-ink-soft"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <ul className="grid grid-cols-3 gap-2.5">
+            {ITEMS_MAS.map(({ to, icon: Icon, label }) => {
+              const activo = pathname === to || pathname.startsWith(`${to}/`)
+              return (
+                <li key={to}>
+                  <Link
+                    to={to}
+                    onClick={(e) => irA(e, to)}
+                    className={`h-full min-h-[84px] flex flex-col items-center justify-center gap-2 px-1.5 py-3 text-center border card-marca-sm ${
+                      activo ? 'bg-accent-soft border-accent text-accent' : 'bg-paper-raised border-line text-ink'
+                    }`}
+                  >
+                    <Icon size={22} strokeWidth={2} className={activo ? '' : 'text-accent'} />
+                    <span className="text-[12px] font-medium leading-tight">{label}</span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+    </Hoja>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Lightbulb, TrendingUp } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
@@ -22,7 +22,7 @@ function Fila({ etiqueta, valor, fuerte }) {
 }
 
 export default function CierreMes() {
-  const navigate = useNavigate()
+  const volver = useVolver('/')
   const { avisar } = useDialogos()
   const [lista, setLista] = useState(null)
   const [mes, setMes] = useState(null)
@@ -75,8 +75,8 @@ export default function CierreMes() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-8 screen-enter">
-      <header className="px-5 pt-14 pb-2 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
+      <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
+        <button onClick={volver} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
           <ArrowLeft size={18} />
         </button>
         <h1 className="text-xl font-semibold flex-1">Cierre de mes</h1>

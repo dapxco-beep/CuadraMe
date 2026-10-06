@@ -149,11 +149,7 @@ function AppRoutes() {
     )
   }
 
-  // Con PIN activo y la app bloqueada no se monta nada de las pantallas: así
-  // tampoco se hacen llamadas al backend ni se renderizan saldos detrás del candado.
-  if (bloqueado) return <PantallaBloqueo />
-
-  return (
+  const arbol = (
     <PuertaAutorizacion>
       <CuentasProvider>
         <CategoriasProvider>
@@ -162,6 +158,30 @@ function AppRoutes() {
       </CuentasProvider>
       <ConsentimientoGlobal />
     </PuertaAutorizacion>
+  )
+  return <ArbolConBloqueo bloqueado={bloqueado}>{arbol}</ArbolConBloqueo>
+}
+
+// Con PIN activo, la pantalla de bloqueo va ENCIMA del árbol ya montado en vez de reemplazarlo:
+// así un formulario a medias (Agregar, factura, una hoja abierta) sobrevive al bloqueo
+// automático cuando la app vuelve de segundo plano. El resto queda inerte (sin foco, sin
+// lectores de pantalla) mientras está bloqueada.
+// La PRIMERA vez que se abre la app bloqueada no se monta nada detrás: así no se hacen llamadas
+// al backend ni se renderizan saldos detrás del candado antes de que el usuario ponga su PIN.
+export function ArbolConBloqueo({ bloqueado, children }) {
+  const [montado, setMontado] = useState(!bloqueado)
+  useEffect(() => {
+    if (!bloqueado) setMontado(true)
+  }, [bloqueado])
+
+  if (bloqueado && !montado) return <PantallaBloqueo />
+  return (
+    <>
+      <div className="contents" inert={bloqueado} aria-hidden={bloqueado || undefined} data-testid="arbol-app">
+        {children}
+      </div>
+      {bloqueado && <PantallaBloqueo />}
+    </>
   )
 }
 

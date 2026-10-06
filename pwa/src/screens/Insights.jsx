@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { AlertTriangle, ArrowLeft, ChevronRight, Clock, PieChart, Send, Sparkles, TrendingUp, Zap } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
@@ -23,7 +24,7 @@ const PREGUNTAS_SUGERIDAS = [
 ]
 
 export default function Insights() {
-  const navigate = useNavigate()
+  const volver = useVolver('/')
   const [resumen, setResumen] = useState(null)
   const [edadDinero, setEdadDinero] = useState(null)
   const [alertas, setAlertas] = useState(null)
@@ -76,8 +77,8 @@ export default function Insights() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 flex flex-col">
-      <header className="px-6 pt-14 pb-2 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Insights</h1>

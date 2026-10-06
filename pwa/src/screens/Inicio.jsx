@@ -89,7 +89,7 @@ export default function Inicio() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pt-14 pb-2 flex items-center justify-between">
+      <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Isotipo size={30} cuadra={cuadra !== false} />
           <p className="t-title text-lg">{primerNombre ? `Hola, ${primerNombre}` : 'Hola'}</p>

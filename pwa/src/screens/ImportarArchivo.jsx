@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Check, FileSpreadsheet, RefreshCw } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
@@ -35,6 +36,7 @@ const colorEstado = {
 
 export default function ImportarArchivo() {
   const navigate = useNavigate()
+  const volver = useVolver('/movimientos')
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: CATEGORIAS } = useCategorias()
   const [cuentaId, setCuentaId] = useState(cuentas[0]?.id || '')
@@ -155,10 +157,10 @@ export default function ImportarArchivo() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-8 screen-enter">
-      <header className="px-5 pt-14 pb-2 flex items-center gap-3">
+      <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
         <button
-          onClick={() => navigate(-1)}
-          className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+          onClick={volver}
+          className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
           aria-label="Volver"
         >
           <ArrowLeft size={18} />
@@ -185,7 +187,7 @@ export default function ImportarArchivo() {
               Importar otro
             </button>
             <button
-              onClick={() => navigate('/movimientos')}
+              onClick={() => navigate('/movimientos', { replace: true })}
               className="flex-1 bg-ink text-paper rounded-2xl py-3.5 text-sm font-semibold"
             >
               Ver movimientos

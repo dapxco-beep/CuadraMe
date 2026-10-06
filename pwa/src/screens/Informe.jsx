@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { ArrowDownRight, ArrowLeft, ArrowUpRight, ChevronDown, PieChart, Store } from 'lucide-react'
 import { CargandoMarca, EstadoVacio } from '../brand/Marca'
 import { api } from '../lib/api'
@@ -67,7 +68,7 @@ function Variacion({ pct, anteriorLabel }) {
 }
 
 export default function Informe() {
-  const navigate = useNavigate()
+  const volver = useVolver('/')
   const { fmt } = useBloqueo()
   const { iconoDe } = useCategorias()
   const [valor, setValor] = useState({ periodo: 'este_mes', ...rangoPeriodo('este_mes') })
@@ -117,8 +118,8 @@ export default function Informe() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-8 screen-enter">
-      <header className="px-6 pt-14 pb-2 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">En qué gasto mi plata</h1>

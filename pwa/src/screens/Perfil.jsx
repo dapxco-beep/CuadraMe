@@ -113,7 +113,7 @@ export default function Perfil() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pt-14 pb-2">
+      <header className="px-6 pantalla-top pb-2">
         <h1 className="text-2xl font-bold">Perfil</h1>
       </header>
 
@@ -371,7 +371,7 @@ export default function Perfil() {
               className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
             >
               <span
-                className="w-9 h-9 rounded-full shrink-0 border border-line"
+                className="w-11 h-11 rounded-full shrink-0 border border-line"
                 style={{ background: themePreview[t.id] }}
               />
               <div className="flex-1 min-w-0">

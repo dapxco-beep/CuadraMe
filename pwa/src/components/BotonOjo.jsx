@@ -12,7 +12,7 @@ export default function BotonOjo({ className = '' }) {
       onClick={alternarOcultar}
       aria-pressed={ocultarSaldos}
       aria-label={ocultarSaldos ? 'Mostrar saldos' : 'Ocultar saldos'}
-      className={`w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center ${className}`}
+      className={`w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center ${className}`}
     >
       <Icono size={17} className="text-ink-soft" />
     </button>

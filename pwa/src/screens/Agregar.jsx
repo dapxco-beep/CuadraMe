@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { Calendar, Camera, Image as ImagenIcono, Sparkles, Users, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { prepararImagen } from '../lib/imagen'
@@ -30,6 +31,9 @@ function calcularFrecuentes(movimientos) {
 
 export default function Agregar() {
   const navigate = useNavigate()
+  // Cerrar o guardar vuelve a donde estaba el usuario (o a Inicio si entró directo, p. ej. desde el atajo);
+  // así "atrás" nunca reabre el formulario ya guardado.
+  const volver = useVolver('/')
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: categoriasRapidas } = useCategorias()
   const [cuentaElegidaId, setCuentaId] = useState('')
@@ -152,7 +156,7 @@ export default function Agregar() {
           fecha: fecha ? `${fecha}T12:00:00` : undefined,
         })
         await recargarCuentas()
-        navigate('/')
+        volver()
         return
       }
       await api.crearMovimiento({
@@ -170,7 +174,7 @@ export default function Agregar() {
         setSugerirIngreso({ monto: Number(monto), cuentaId })
         return
       }
-      navigate('/')
+      volver()
     } catch (err) {
       setError(err.message || 'No se pudo guardar')
     } finally {
@@ -183,7 +187,7 @@ export default function Agregar() {
       <SugerenciaIngreso
         monto={sugerirIngreso.monto}
         cuentaId={sugerirIngreso.cuentaId}
-        onClose={() => navigate('/')}
+        onClose={volver}
         onAplicado={recargarCuentas}
       />
     )
@@ -191,11 +195,11 @@ export default function Agregar() {
 
   return (
     <div className="flex-1 flex flex-col pb-6">
-      <header className="px-5 pt-14 pb-2 flex items-center justify-between">
+      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Nuevo movimiento</h1>
         <button
-          onClick={() => navigate('/')}
-          className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+          onClick={volver}
+          className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
           aria-label="Cerrar"
         >
           <X size={18} />

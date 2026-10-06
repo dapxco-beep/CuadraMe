@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
 import { formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
@@ -18,6 +19,7 @@ function fechaParaInput(fechaISO) {
 export default function DetalleMovimiento() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const volver = useVolver('/movimientos')
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: categorias, iconoDe } = useCategorias()
   const { confirmar, avisar } = useDialogos()
@@ -106,7 +108,7 @@ export default function DetalleMovimiento() {
     try {
       await api.eliminarMovimiento(id)
       await recargarCuentas()
-      navigate('/movimientos')
+      navigate('/movimientos', { replace: true })
     } catch (err) {
       setEliminando(false)
       avisar(err.message || 'No se pudo eliminar')
@@ -117,7 +119,7 @@ export default function DetalleMovimiento() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">
         <p className="text-sm text-ink-soft">No encontramos este movimiento.</p>
-        <button onClick={() => navigate('/movimientos')} className="text-sm text-accent font-medium">
+        <button onClick={() => navigate('/movimientos', { replace: true })} className="text-sm text-accent font-medium">
           Volver a movimientos
         </button>
       </div>
@@ -138,11 +140,11 @@ export default function DetalleMovimiento() {
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col pb-6 screen-enter">
-      <header className="px-5 pt-14 pb-2 flex items-center gap-3">
+      <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
         <button
-          onClick={() => navigate(-1)}
+          onClick={volver}
           aria-label="Volver"
-          className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
         >
           <ArrowLeft size={18} />
         </button>
@@ -151,7 +153,7 @@ export default function DetalleMovimiento() {
           <button
             onClick={empezarEdicion}
             aria-label="Editar movimiento"
-            className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+            className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
           >
             <Pencil size={16} />
           </button>

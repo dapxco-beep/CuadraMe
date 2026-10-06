@@ -8,6 +8,7 @@ import GraficoPatrimonio from '../components/GraficoPatrimonio'
 import DonaDistribucion from '../components/DonaDistribucion'
 import GraficoDescomposicion from '../components/GraficoDescomposicion'
 import { Isotipo, Monto, IlustracionVacia } from '../brand/Marca'
+import Hoja from '../components/Hoja'
 
 const MONEDAS = ['COP', 'USD', 'EUR']
 const CLASES_ACTIVO = ['cdt', 'fondo', 'etf', 'accion', 'cripto', 'inmueble', 'vehiculo']
@@ -50,7 +51,7 @@ export default function Patrimonio() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-5 pt-14 pb-2 flex items-center justify-between">
+      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Patrimonio</h1>
         <button
           onClick={() => setFormulario({})}
@@ -360,130 +361,128 @@ function FormActivo({ activo, onClose, onGuardado }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 overflow-y-auto sheet-backdrop">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content max-h-[92vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">{editando ? 'Editar activo' : 'Nuevo activo'}</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
-            <X size={16} />
-          </button>
-        </div>
-
-        {!editando && (
-          <p className="text-xs text-ink-soft mb-3">
-            Si ya tienes una cuenta de tipo inversión, no la registres aquí: ya se cuenta en tu patrimonio.
-          </p>
-        )}
-        {!editando && (
-          <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Clase de activo">
-            {CLASES_ACTIVO.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setClase(c)}
-                aria-pressed={clase === c}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                  clase === c ? 'bg-accent text-white border-accent' : 'bg-paper-raised border-line text-ink-soft'
-                }`}
-              >
-                {CLASES[c].emoji} {CLASES[c].label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <Campo etiqueta="Nombre">
-          <input
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            placeholder={esCDT ? 'Ej. CDT Bancolombia 360 días' : esBien ? 'Ej. Apartamento Chicó' : 'Ej. S&P 500 ETF'}
-            className={claseInput}
-          />
-        </Campo>
-
-        <Campo etiqueta="Moneda">
-          <select value={moneda} onChange={(e) => setMoneda(e.target.value)} className={claseInput}>
-            {MONEDAS.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-        </Campo>
-
-        {esCDT && (
-          <>
-            <Campo etiqueta="Capital invertido">
-              <input value={capital} onChange={(e) => setCapital(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
-            </Campo>
-            <Campo etiqueta="Tasa efectiva anual (%)">
-              <input value={tasaEA} onChange={(e) => setTasaEA(soloNumero(e.target.value))} inputMode="decimal" placeholder="Ej. 12.5" className={claseInput} />
-            </Campo>
-            <div className="grid grid-cols-2 gap-3">
-              <Campo etiqueta="Fecha de inicio">
-                <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} className={claseInput} />
-              </Campo>
-              <Campo etiqueta="Vencimiento">
-                <input type="date" value={vencimiento} onChange={(e) => setVencimiento(e.target.value)} className={claseInput} />
-              </Campo>
-            </div>
-            {vistaCDT && (
-              <div className="rounded-2xl bg-accent-soft p-3 mb-3 text-xs">
-                <p>Valor hoy: <strong>{formatMoneda(vistaCDT.hoy, moneda)}</strong></p>
-                <p>Al vencimiento: <strong>{formatMoneda(vistaCDT.final, moneda)}</strong></p>
-              </div>
-            )}
-          </>
-        )}
-
-        {esMercado && (
-          <>
-            <Campo etiqueta="Ticker o código (opcional, para precios automáticos futuros)">
-              <input value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} placeholder="Ej. VOO, BTC" className={claseInput} />
-            </Campo>
-            <div className="grid grid-cols-2 gap-3">
-              <Campo etiqueta="Unidades">
-                <input value={unidades} onChange={(e) => setUnidades(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
-              </Campo>
-              <Campo etiqueta="Costo promedio por unidad">
-                <input value={costoPromedio} onChange={(e) => setCostoPromedio(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
-              </Campo>
-            </div>
-            <Campo etiqueta="Precio actual por unidad (manual)">
-              <input value={precio} onChange={(e) => setPrecio(soloNumero(e.target.value))} inputMode="decimal" placeholder="Si lo dejas vacío se usa el costo" className={claseInput} />
-            </Campo>
-          </>
-        )}
-
-        {esBien && (
-          <>
-            <Campo etiqueta="Valor estimado actual">
-              <input value={precio} onChange={(e) => setPrecio(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
-            </Campo>
-            <div className="grid grid-cols-2 gap-3">
-              <Campo etiqueta="Costo de compra (opcional)">
-                <input value={costoAdq} onChange={(e) => setCostoAdq(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
-              </Campo>
-              <Campo etiqueta="Fecha de compra (opcional)">
-                <input type="date" value={fechaAdq} onChange={(e) => setFechaAdq(e.target.value)} className={claseInput} />
-              </Campo>
-            </div>
-          </>
-        )}
-
-        {error && <p className="text-sm text-danger mb-3" role="alert">{error}</p>}
-
-        <button
-          onClick={guardar}
-          disabled={guardando}
-          className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
-        >
-          {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Agregar activo'}
+    <Hoja onCerrar={onClose}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">{editando ? 'Editar activo' : 'Nuevo activo'}</h2>
+        <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <X size={16} />
         </button>
-        {editando && (
-          <button onClick={eliminar} disabled={guardando} className="w-full mt-3 text-sm font-semibold text-danger py-2">
-            Eliminar activo
-          </button>
-        )}
       </div>
-    </div>
+
+      {!editando && (
+        <p className="text-xs text-ink-soft mb-3">
+          Si ya tienes una cuenta de tipo inversión, no la registres aquí: ya se cuenta en tu patrimonio.
+        </p>
+      )}
+      {!editando && (
+        <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Clase de activo">
+          {CLASES_ACTIVO.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setClase(c)}
+              aria-pressed={clase === c}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                clase === c ? 'bg-accent text-white border-accent' : 'bg-paper-raised border-line text-ink-soft'
+              }`}
+            >
+              {CLASES[c].emoji} {CLASES[c].label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <Campo etiqueta="Nombre">
+        <input
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          placeholder={esCDT ? 'Ej. CDT Bancolombia 360 días' : esBien ? 'Ej. Apartamento Chicó' : 'Ej. S&P 500 ETF'}
+          className={claseInput}
+        />
+      </Campo>
+
+      <Campo etiqueta="Moneda">
+        <select value={moneda} onChange={(e) => setMoneda(e.target.value)} className={claseInput}>
+          {MONEDAS.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+      </Campo>
+
+      {esCDT && (
+        <>
+          <Campo etiqueta="Capital invertido">
+            <input value={capital} onChange={(e) => setCapital(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
+          </Campo>
+          <Campo etiqueta="Tasa efectiva anual (%)">
+            <input value={tasaEA} onChange={(e) => setTasaEA(soloNumero(e.target.value))} inputMode="decimal" placeholder="Ej. 12.5" className={claseInput} />
+          </Campo>
+          <div className="grid grid-cols-2 gap-3">
+            <Campo etiqueta="Fecha de inicio">
+              <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} className={claseInput} />
+            </Campo>
+            <Campo etiqueta="Vencimiento">
+              <input type="date" value={vencimiento} onChange={(e) => setVencimiento(e.target.value)} className={claseInput} />
+            </Campo>
+          </div>
+          {vistaCDT && (
+            <div className="rounded-2xl bg-accent-soft p-3 mb-3 text-xs">
+              <p>Valor hoy: <strong>{formatMoneda(vistaCDT.hoy, moneda)}</strong></p>
+              <p>Al vencimiento: <strong>{formatMoneda(vistaCDT.final, moneda)}</strong></p>
+            </div>
+          )}
+        </>
+      )}
+
+      {esMercado && (
+        <>
+          <Campo etiqueta="Ticker o código (opcional, para precios automáticos futuros)">
+            <input value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} placeholder="Ej. VOO, BTC" className={claseInput} />
+          </Campo>
+          <div className="grid grid-cols-2 gap-3">
+            <Campo etiqueta="Unidades">
+              <input value={unidades} onChange={(e) => setUnidades(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
+            </Campo>
+            <Campo etiqueta="Costo promedio por unidad">
+              <input value={costoPromedio} onChange={(e) => setCostoPromedio(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
+            </Campo>
+          </div>
+          <Campo etiqueta="Precio actual por unidad (manual)">
+            <input value={precio} onChange={(e) => setPrecio(soloNumero(e.target.value))} inputMode="decimal" placeholder="Si lo dejas vacío se usa el costo" className={claseInput} />
+          </Campo>
+        </>
+      )}
+
+      {esBien && (
+        <>
+          <Campo etiqueta="Valor estimado actual">
+            <input value={precio} onChange={(e) => setPrecio(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
+          </Campo>
+          <div className="grid grid-cols-2 gap-3">
+            <Campo etiqueta="Costo de compra (opcional)">
+              <input value={costoAdq} onChange={(e) => setCostoAdq(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
+            </Campo>
+            <Campo etiqueta="Fecha de compra (opcional)">
+              <input type="date" value={fechaAdq} onChange={(e) => setFechaAdq(e.target.value)} className={claseInput} />
+            </Campo>
+          </div>
+        </>
+      )}
+
+      {error && <p className="text-sm text-danger mb-3" role="alert">{error}</p>}
+
+      <button
+        onClick={guardar}
+        disabled={guardando}
+        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+      >
+        {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Agregar activo'}
+      </button>
+      {editando && (
+        <button onClick={eliminar} disabled={guardando} className="w-full mt-3 text-sm font-semibold text-danger py-2">
+          Eliminar activo
+        </button>
+      )}
+    </Hoja>
   )
 }

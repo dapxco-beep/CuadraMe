@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Check, FileSpreadsheet, FileUp, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
@@ -70,6 +71,7 @@ export function resumenCompletados(n) {
 
 export default function Conciliacion() {
   const navigate = useNavigate()
+  const volver = useVolver('/perfil')
   const location = useLocation()
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: CATEGORIAS } = useCategorias()
@@ -151,9 +153,9 @@ export default function Conciliacion() {
       if (r.categorizados_auto > 0 || r.sin_categoria_clara > 0) {
         // Lleva a la vista "Por revisar" para que confirme lo que categorizó la app.
         if (r.categorizados_auto > 0) avisar(`Categoricé ${r.categorizados_auto} movimientos: revísalos`, 'ok')
-        navigate('/movimientos?revisar=1')
+        navigate('/movimientos?revisar=1', { replace: true })
       } else {
-        navigate('/')
+        navigate('/', { replace: true })
       }
     } catch (err) {
       setError(err.message || 'No se pudo importar')
@@ -164,10 +166,10 @@ export default function Conciliacion() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-5 pt-14 pb-2 flex items-center gap-3">
+      <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
         <button
-          onClick={() => navigate('/perfil')}
-          className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+          onClick={volver}
+          className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
          aria-label="Volver">
           <ArrowLeft size={18} />
         </button>

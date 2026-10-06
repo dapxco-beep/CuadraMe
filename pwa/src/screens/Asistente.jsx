@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { AlertTriangle, ArrowLeft, Check, Info, Send, Sparkles, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
@@ -240,7 +240,7 @@ function TarjetaPlan({ msg, onResuelto }) {
 }
 
 export default function Asistente() {
-  const navigate = useNavigate()
+  const volver = useVolver('/')
   const [mensajes, setMensajes] = useState([])
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -277,8 +277,8 @@ export default function Asistente() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden screen-enter">
-      <header className="px-6 pt-14 pb-2 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <Isotipo size={26} />

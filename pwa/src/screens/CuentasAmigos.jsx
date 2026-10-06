@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, MessageCircle, Plus } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatMoneda } from '../lib/format'
@@ -8,6 +9,7 @@ import { useDialogos } from '../lib/DialogosContext'
 
 export default function CuentasAmigos() {
   const navigate = useNavigate()
+  const volver = useVolver('/')
   const { confirmar, avisar } = useDialogos()
   const [grupos, setGrupos] = useState([])
   const [grupoId, setGrupoId] = useState('')
@@ -64,11 +66,11 @@ export default function CuentasAmigos() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-8 screen-enter">
-      <header className="px-5 pt-14 pb-2 flex items-center justify-between">
+      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/agregar')}
-            className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+            className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
             aria-label="Volver"
           >
             <ArrowLeft size={18} />
@@ -77,7 +79,7 @@ export default function CuentasAmigos() {
         </div>
         <button
           onClick={() => navigate('/dividir')}
-          className="w-9 h-9 rounded-full bg-ink text-paper flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-ink text-paper flex items-center justify-center"
           aria-label="Nuevo gasto dividido"
         >
           <Plus size={18} />

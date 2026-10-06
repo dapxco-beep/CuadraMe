@@ -47,7 +47,7 @@ export default function AutorizacionTratamiento({ onListo }) {
 
   return (
     <div className="flex-1 overflow-y-auto pb-10 screen-enter">
-      <header className="px-6 pt-14 pb-2">
+      <header className="px-6 pantalla-top pb-2">
         <h1 className="text-xl font-bold flex items-center gap-2">
           <ShieldCheck size={20} className="text-accent" /> Autorización de tratamiento de datos
         </h1>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Plus, Users } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatMoneda } from '../lib/format'
@@ -22,6 +23,7 @@ const AYUDA_MODO = {
 // y la cuenta ya escritos (router state); aquí solo se decide con quién y cómo se reparte.
 export default function DividirGasto() {
   const navigate = useNavigate()
+  const volver = useVolver('/amigos')
   const { state } = useLocation()
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const [monto, setMonto] = useState(String(state?.monto || ''))
@@ -143,7 +145,7 @@ export default function DividirGasto() {
         fecha: state?.fecha ? `${state.fecha}T12:00:00` : undefined,
       })
       await recargarCuentas()
-      navigate('/amigos')
+      navigate('/amigos', { replace: true })
     } catch (e) {
       setError(e.message || 'No se pudo guardar')
     } finally {
@@ -157,10 +159,10 @@ export default function DividirGasto() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-8 screen-enter">
-      <header className="px-5 pt-14 pb-2 flex items-center gap-3">
+      <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
         <button
-          onClick={() => navigate(-1)}
-          className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+          onClick={volver}
+          className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
           aria-label="Volver"
         >
           <ArrowLeft size={18} />
