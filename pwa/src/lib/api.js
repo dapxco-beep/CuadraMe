@@ -142,8 +142,33 @@ export const api = {
   guardarConsentimientos: (version, items, origen = 'app') =>
     request('/consentimientos', { method: 'POST', body: { version, items, origen } }),
 
-  movimientos: (limit = 100, offset = 0, { porRevisar = false } = {}) =>
-    request(`/movimientos?limit=${limit}&offset=${offset}${porRevisar ? '&por_revisar=true' : ''}`),
+  // Filtros opcionales (los resuelve el servidor, así cubren TODO el historial y no solo lo cargado):
+  // { porRevisar, q, categoria, tipo, cuentaId, desde, hasta } (fechas AAAA-MM-DD).
+  movimientos: (limit = 100, offset = 0, { porRevisar = false, q, categoria, tipo, cuentaId, desde, hasta } = {}) => {
+    const extra = new URLSearchParams()
+    if (q) extra.set('q', q)
+    if (categoria) extra.set('categoria', categoria)
+    if (tipo) extra.set('tipo', tipo)
+    if (cuentaId) extra.set('cuenta_id', cuentaId)
+    if (desde) extra.set('desde', desde)
+    if (hasta) extra.set('hasta', `${hasta}T23:59:59`) // incluye todo el día "hasta"
+    const resto = extra.toString()
+    return request(
+      `/movimientos?limit=${limit}&offset=${offset}${porRevisar ? '&por_revisar=true' : ''}${resto ? `&${resto}` : ''}`
+    )
+  },
+  // Cuántos OTROS movimientos son del mismo comercio (misma huella): "Aplicar a los 12 anteriores".
+  similaresConteo: (descripcion, excluirId) =>
+    request(
+      `/movimientos/similares/conteo?${new URLSearchParams({ descripcion, ...(excluirId ? { excluir_id: excluirId } : {}) })}`
+    ),
+  moverMovimientosMasivo: (movimientoIds, cuentaId) =>
+    request('/movimientos/mover-masivo', {
+      method: 'POST',
+      body: { movimiento_ids: movimientoIds, cuenta_id: cuentaId },
+    }),
+  eliminarMovimientosMasivo: (movimientoIds) =>
+    request('/movimientos/eliminar-masivo', { method: 'POST', body: { movimiento_ids: movimientoIds } }),
   conteoPorRevisar: () => request('/movimientos/por-revisar/conteo'),
   // Bandeja "¿son tuyos?": movimientos que llegaron solos (Wallet, atajos) sin confirmar.
   movimientosPorConfirmar: () => request('/movimientos/por-confirmar'),

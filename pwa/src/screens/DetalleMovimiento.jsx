@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, X } from 'lucide-react'
 import { formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
@@ -9,6 +9,7 @@ import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { esAuto } from '../lib/comercio'
 import { HojaCambiarCategoria, InsigniaAuto } from '../components/CategorizacionAuto'
+import { parchearEnCaches, quitarDeCaches } from '../lib/useEstadoLista'
 
 const ETIQUETA_TIPO = { income: 'Ingreso', expense: 'Gasto', transfer: 'Transferencia' }
 
@@ -16,9 +17,12 @@ function fechaParaInput(fechaISO) {
   return fechaISO.slice(0, 10)
 }
 
-export default function DetalleMovimiento() {
-  const { id } = useParams()
-  const navigate = useNavigate()
+// Como pantalla (ruta /movimientos/:id) o, en pantallas anchas, como panel dentro de la lista
+// (`embebido`): ahí no cambia de ruta, la lista sigue montada y `onCambio(actualizado | null,
+// idEliminado)` le avisa de lo que se guardó o eliminó.
+export default function DetalleMovimiento({ id: idProp, embebido = false, onCerrar, onCambio } = {}) {
+  const params = useParams()
+  const id = idProp ?? params.id
   const volver = useVolver('/movimientos')
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: categorias, iconoDe } = useCategorias()
@@ -42,7 +46,10 @@ export default function DetalleMovimiento() {
   async function confirmarCategoria() {
     try {
       await api.confirmarCategorias([id])
-      setMovimiento({ ...movimiento, cat_confirmada: true, cat_origen: null })
+      const nuevo = { ...movimiento, cat_confirmada: true, cat_origen: null }
+      setMovimiento(nuevo)
+      parchearEnCaches(nuevo)
+      onCambio?.(nuevo)
     } catch (err) {
       avisar(err.message || 'No se pudo confirmar')
     }
@@ -85,6 +92,8 @@ export default function DetalleMovimiento() {
 
       const actualizado = await api.editarMovimiento(id, cambios)
       setMovimiento(actualizado)
+      parchearEnCaches(actualizado) // la lista, al volver, ya muestra el cambio sin recargarse
+      onCambio?.(actualizado)
       await recargarCuentas()
       setEditando(false)
       avisar('Movimiento actualizado', 'ok')
@@ -107,8 +116,12 @@ export default function DetalleMovimiento() {
     setEliminando(true)
     try {
       await api.eliminarMovimiento(id)
+      quitarDeCaches(id)
+      onCambio?.(null, id)
       await recargarCuentas()
-      navigate('/movimientos', { replace: true })
+      // Volver a la lista tal como estaba (filtros y scroll), no a una lista nueva
+      if (embebido) onCerrar?.()
+      else volver()
     } catch (err) {
       setEliminando(false)
       avisar(err.message || 'No se pudo eliminar')
@@ -119,7 +132,7 @@ export default function DetalleMovimiento() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">
         <p className="text-sm text-ink-soft">No encontramos este movimiento.</p>
-        <button onClick={() => navigate('/movimientos', { replace: true })} className="text-sm text-accent font-medium">
+        <button onClick={embebido ? onCerrar : volver} className="text-sm text-accent font-medium">
           Volver a movimientos
         </button>
       </div>
@@ -139,14 +152,14 @@ export default function DetalleMovimiento() {
     'w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm outline-none focus:border-accent'
 
   return (
-    <div className="flex-1 overflow-y-auto flex flex-col pb-6 screen-enter">
-      <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
+    <div className={embebido ? 'flex flex-col pb-4' : 'flex-1 overflow-y-auto flex flex-col pb-6 screen-enter'}>
+      <header className={`px-5 pb-2 flex items-center gap-3 ${embebido ? 'pt-1' : 'pantalla-top'}`}>
         <button
-          onClick={volver}
-          aria-label="Volver"
+          onClick={embebido ? onCerrar : volver}
+          aria-label={embebido ? 'Cerrar detalle' : 'Volver'}
           className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
         >
-          <ArrowLeft size={18} />
+          {embebido ? <X size={18} /> : <ArrowLeft size={18} />}
         </button>
         <h1 className="text-lg font-semibold flex-1">Detalle del movimiento</h1>
         {!esTransferencia && !editando && (
@@ -308,7 +321,10 @@ export default function DetalleMovimiento() {
           onClose={() => setCambiandoCategoria(false)}
           onHecho={(r, categoria) => {
             setCambiandoCategoria(false)
-            setMovimiento({ ...movimiento, categoria, cat_confirmada: true, cat_origen: null })
+            const nuevo = { ...movimiento, categoria, cat_confirmada: true, cat_origen: null }
+            setMovimiento(nuevo)
+            parchearEnCaches(nuevo)
+            onCambio?.(nuevo)
             avisar(
               r.actualizados > 1 ? `Listo: ${r.actualizados} movimientos movidos y regla creada` : 'Categoría actualizada',
               'ok'

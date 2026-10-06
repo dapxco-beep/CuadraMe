@@ -165,6 +165,13 @@ body {
   animation-delay: calc(min(var(--stagger-i, 0), 8) * 35ms);
 }
 
+/* Listas largas (Movimientos con miles de filas): el navegador no pinta lo que está fuera de
+   pantalla, así el scroll sigue fluido sin virtualizar a mano. */
+.grupo-dia {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 260px;
+}
+
 .pop-in {
   animation: scale-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

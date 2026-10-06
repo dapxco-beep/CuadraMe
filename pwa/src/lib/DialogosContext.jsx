@@ -18,10 +18,12 @@ export function DialogosProvider({ children }) {
     })
   }, [])
 
-  const avisar = useCallback((mensaje, tipo = 'error') => {
+  // avisar(mensaje, tipo, { accion: { texto, onClick }, duracion }): con `accion` el aviso trae un
+  // botón (p. ej. "Deshacer") y dura 5 s para dar tiempo a pulsarlo.
+  const avisar = useCallback((mensaje, tipo = 'error', opciones = {}) => {
     clearTimeout(temporizador.current)
-    setToast({ mensaje, tipo })
-    temporizador.current = setTimeout(() => setToast(null), 4000)
+    setToast({ mensaje, tipo, accion: opciones.accion || null })
+    temporizador.current = setTimeout(() => setToast(null), opciones.duracion || (opciones.accion ? 5000 : 4000))
   }, [])
 
   useEffect(() => () => clearTimeout(temporizador.current), [])
@@ -53,7 +55,21 @@ export function DialogosProvider({ children }) {
               toast.tipo === 'error' ? 'bg-danger text-white' : 'bg-ink text-paper'
             }`}
           >
-            {toast.mensaje}
+            <div className="flex items-center justify-between gap-3">
+              <span>{toast.mensaje}</span>
+              {toast.accion && (
+                <button
+                  onClick={() => {
+                    clearTimeout(temporizador.current)
+                    setToast(null)
+                    toast.accion.onClick()
+                  }}
+                  className="shrink-0 font-bold underline underline-offset-2 px-2 py-1 -my-1 -mr-1"
+                >
+                  {toast.accion.texto}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
