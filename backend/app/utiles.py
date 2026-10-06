@@ -13,3 +13,17 @@ def ahora_co() -> datetime:
     punto de vista del usuario. Con utcnow() las 7pm del último día del mes
     ya contarían como el mes siguiente."""
     return datetime.now(_ZONA_CO).replace(tzinfo=None)
+
+
+def utc_a_co(dt: datetime | None) -> datetime | None:
+    """Convierte un datetime 'naive' en UTC (p. ej. internalDate de Gmail o
+    datetime.utcnow()) a hora de Colombia, también naive. Usa zoneinfo con
+    respaldo al offset fijo UTC-5 (Colombia no tiene horario de verano)."""
+    if dt is None:
+        return None
+    try:
+        from zoneinfo import ZoneInfo
+        zona = ZoneInfo("America/Bogota")
+    except Exception:  # sin tzdata en el contenedor
+        zona = _ZONA_CO
+    return dt.replace(tzinfo=timezone.utc).astimezone(zona).replace(tzinfo=None)
