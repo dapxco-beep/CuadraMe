@@ -819,6 +819,8 @@ class ProcesarExtractoResponse(BaseModel):
     periodo_desde: Optional[str] = None  # ISO, primer movimiento del extracto
     periodo_hasta: Optional[str] = None
     requiere_clave: bool = False  # el PDF está protegido y falta (o es incorrecta) la clave
+    # Aviso (no bloquea): ese mes de esa cuenta ya estaba conciliado antes de subir este archivo.
+    ya_conciliado: Optional[dict] = None  # {"mes": "2026-09", "cruzados": n}
 
 
 class ImportarFaltantesRequest(BaseModel):

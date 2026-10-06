@@ -213,6 +213,25 @@ def _entorno(monkeypatch):
     yield
 
 
+def test_subir_extracto_de_un_periodo_conciliado_avisa_sin_bloquear(monkeypatch):
+    from app.routers import conciliacion as mod
+
+    conectar_usuario("yc-subida", GmailContador([], {}), monkeypatch)
+    cuenta = client.post("/cuentas", json={"nombre": "Nu", "saldo": 0}).json()
+    items = [{"fecha": "2026-09-15", "descripcion": "Netflix", "monto": 33000, "tipo": "expense", "referencia": ""}]
+    monkeypatch.setattr(mod, "pdf_a_texto", lambda *a, **k: "texto del extracto")
+    monkeypatch.setattr(mod, "detectar_banco", lambda t: "nu")
+    monkeypatch.setattr(mod, "parse_texto_con_regex", lambda t: (items, 0))
+
+    antes = client.post("/conciliacion/procesar", json={"cuenta_id": cuenta["id"], "pdf_base64": "x"}).json()
+    assert antes["ok"] and antes["ya_conciliado"] is None
+
+    _conciliar_mes("yc-subida", cuenta["id"])
+    r = client.post("/conciliacion/procesar", json={"cuenta_id": cuenta["id"], "pdf_base64": "x"}).json()
+    assert r["ok"] and r["ya_conciliado"]["mes"] == "2026-09" and r["ya_conciliado"]["cruzados"] >= 1
+    assert r["review"]  # no se bloquea: la revisión llega completa
+
+
 # ── Aprender y usar reglas al aprobar correos ───────────────────────
 
 def _compra(id_, monto=15000):

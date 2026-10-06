@@ -22,6 +22,7 @@ from app.conciliacion import (
     parse_texto_con_regex,
 )
 from app.database import get_db
+from app.extractos_conciliados import evidencia_conciliado
 from app.models import Cuenta, HistorialExtracto, Movimiento, Perfil
 from app.pdf_extract import extraer_via_ia, pdf_a_texto, pdf_pide_clave
 from app.schemas import (
@@ -101,6 +102,9 @@ def procesar_extracto(
         # nunca coincidían y los movimientos ya registrados salían como "aproximados".
         mov["cuenta"] = cuenta.id
     resultado = auditar_movimientos(movimientos, ledger, cruzar_rapidos=True)
+    # ¿Ese mes de esa cuenta ya estaba conciliado? Se mira ANTES de auto-importar o completar
+    # nada (si no, este mismo archivo contaría). Solo avisa: no bloquea ni duplica (hay huella).
+    ya_conciliado = _periodo_ya_conciliado(db, usuario.id, cuenta.id, resultado["review"])
 
     # Auto-importar los "faltantes" con alta confianza del clasificador aprendido,
     # solo cuando vinieron del parser regex de banco (no del fallback de IA).
@@ -207,8 +211,19 @@ def procesar_extracto(
         auto_importados=auto_importados,
         completados=completados,
         sobrantes=sobrantes,
+        ya_conciliado=ya_conciliado,
         **_periodo(resultado["review"]),
     )
+
+
+def _periodo_ya_conciliado(db: Session, usuario_id: str, cuenta_id: str, review: list[dict]) -> dict | None:
+    fechas = [d for d in (parse_bank_date(i.get("fecha")) for i in review if i.get("estado") != "sobrante") if d]
+    if not fechas:
+        return None
+    ultimo = max(fechas)  # el mes del corte, igual que en los extractos de Gmail
+    mes = f"{ultimo.year:04d}-{ultimo.month:02d}"
+    ev = evidencia_conciliado(db, usuario_id, cuenta_id, mes)
+    return {"mes": mes, "cruzados": ev["cruzados"]} if ev else None
 
 
 def _periodo(review: list[dict]) -> dict:

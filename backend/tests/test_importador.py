@@ -308,3 +308,23 @@ def test_errores_de_archivo_y_cuenta_ajena():
     assert _previa(cuenta).status_code == 404
     assert client.post("/importar/confirmar", json={"cuenta_id": cuenta, "filas": [
         {"fecha": "2026-10-01", "descripcion": "x", "monto": 1, "tipo": "expense"}]}).status_code == 404
+
+
+def test_vista_previa_avisa_si_el_mes_de_la_cuenta_ya_esta_conciliado_sin_bloquear():
+    from app.database import SessionLocal
+    from app.models import Movimiento
+
+    cuenta = _preparar("imp-ya-conc")
+    assert _previa(cuenta).json()["ya_conciliado"] is None
+    # El mes (octubre 2026) se concilió antes: un movimiento de esa cuenta quedó cruzado con el extracto.
+    db = SessionLocal()
+    try:
+        m = db.query(Movimiento).filter(Movimiento.cuenta_id == cuenta).first()
+        m.conciliado_en = datetime(2026, 10, 5)
+        db.commit()
+    finally:
+        db.close()
+    j = _previa(cuenta).json()
+    assert j["ya_conciliado"] == {"mes": "2026-10", "cruzados": 1}
+    # Solo avisa: la vista previa sigue completa y los duplicados se siguen detectando por huella.
+    assert j["resumen"]["duplicados"] == 1 and len(j["propuesta"]) == 3
