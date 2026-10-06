@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
-from app.autocat import clasificar_lote_detalle, datos_auto
+from app.autocat import ClasificadorUsuario, aplicar_a_anteriores, clasificar_lote_detalle, datos_auto, guardar_regla_aprendida
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, puede_editar_cuenta
 from app.conciliacion import auditar_movimientos, compute_fingerprint
@@ -62,6 +62,8 @@ class FilaImportar(BaseModel):
     monto: float = Field(gt=0, lt=1e13)
     tipo: Literal["income", "expense"]
     categoria: Optional[str] = Field(default=None, max_length=60)
+    recordar: bool = False  # guardar la categoría elegida como regla del comercio
+    aplicar_anteriores: bool = False  # además, recategorizar movimientos pasados de ese comercio
 
 
 class ConfirmarRequest(BaseModel):
@@ -135,12 +137,15 @@ def vista_previa(
     for m in movs:
         m["cuenta"] = cuenta.id  # la huella del ledger usa el id de la cuenta (ver _cargar_ledger)
     auditoria = auditar_movimientos(movs, _ledger_del_rango(db, usuario.id, cuenta.id, movs))
-    categorias = clasificar_lote(db, usuario.id, [m["descripcion"] for m in movs])
+    clf = ClasificadorUsuario(db, usuario.id)
+    clasifs = [clf.clasificar(m["descripcion"]) for m in movs]
 
     ESTADO = {"faltante": "nuevo", "exacto": "duplicado", "aproximado": "posible_duplicado"}
     propuesta = []
-    for item, cat in zip(auditoria["review"], categorias):
+    for item, r in zip(auditoria["review"], clasifs):
+        cat = r["categoria"] if r else "Otros"
         propuesta.append({
+            "razon_categoria": r.get("razon") if r else None,
             "fila": item["fila"],
             "fecha": item["fecha"],
             "descripcion": item["descripcion"],
@@ -182,6 +187,8 @@ def confirmar(
     categorias_auto = None
 
     importados = omitidos = auto_categorizados = 0
+    reglas_guardadas = anteriores_actualizados = 0
+    reglas_omitidas: list[dict] = []
     neto = 0.0
     for i, f in enumerate(data.filas):
         fp = compute_fingerprint(f.fecha, f.monto, cuenta.id, f.descripcion, f.tipo)
@@ -208,6 +215,14 @@ def confirmar(
         ))
         neto += f.monto if f.tipo == "income" else -f.monto
         importados += 1
+        if f.recordar and categoria and categoria != "Otros":
+            r = guardar_regla_aprendida(db, usuario.id, f.descripcion, categoria)
+            if r["guardada"]:
+                reglas_guardadas += 1
+                if f.aplicar_anteriores:
+                    anteriores_actualizados += aplicar_a_anteriores(db, usuario.id, r["huella"], categoria)
+            else:
+                reglas_omitidas.append({"huella": r["huella"], "motivo": r["motivo"], "descripcion": f.descripcion, "categoria": categoria})
 
     if data.ajustar_saldo and importados:
         cuenta.saldo = (cuenta.saldo or 0) + neto
@@ -221,5 +236,6 @@ def confirmar(
     if importados:
         registrar_actividad_hoy(db, usuario.id)
     return {"ok": True, "importados": importados, "duplicados_omitidos": omitidos,
-            "categorizados_auto": auto_categorizados,
+            "categorizados_auto": auto_categorizados, "reglas_guardadas": reglas_guardadas,
+            "anteriores_actualizados": anteriores_actualizados, "reglas_omitidas": reglas_omitidas,
             "saldo": cuenta.saldo, "saldo_ajustado": bool(data.ajustar_saldo and importados)}

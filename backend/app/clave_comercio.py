@@ -10,6 +10,7 @@ descripción del mismo comercio. No toca la base de datos (es pura y barata).
 """
 import re
 import unicodedata
+from functools import lru_cache
 
 # Palabras genéricas de la operación bancaria: se quitan SOLO al inicio.
 _PREFIJOS = {
@@ -29,11 +30,12 @@ _RUIDO = {
     "armenia", "villavicencio", "neiva", "pasto", "monteria", "valledupar", "popayan", "tunja",
     "envigado", "itagui", "sabaneta", "bello", "soacha", "chia", "cajica", "zipaquira", "rionegro",
     "floridablanca", "giron", "piedecuesta", "dosquebradas", "palmira", "tulua", "buenaventura",
-    "cundinamarca", "antioquia", "valle", "atlantico", "santander", "sucursal", "suc",
+    "amzn", "esp", "cundinamarca", "antioquia", "valle", "atlantico", "santander", "sucursal", "suc",
 }
 _RE_JURIDICA = re.compile(r"\b(s\s*\.\s*a\s*\.\s*s|s\s*\.\s*a|s\s*\.\s*en\s*c|e\s*\.\s*s\s*\.\s*p|ltda)\b\.?", re.IGNORECASE)
 _RE_FECHA = re.compile(r"\b\d{1,4}[/\-.]\d{1,2}([/\-.]\d{1,4})?\b")
 MAX_PALABRAS = 3
+_COLA = {"de", "del", "la", "el", "los", "las", "en", "y", "e", "a", "al", "por", "para", "and"}
 
 # Una huella con SOLO estas palabras (o muy corta) abarcaría demasiado.
 PALABRAS_VACIAS = {
@@ -49,6 +51,7 @@ def _sin_tildes(texto: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn")
 
 
+@lru_cache(maxsize=16384)
 def clave_comercio(descripcion: str | None) -> str:
     """Huella normalizada del comercio. Devuelve '' si no queda nada útil."""
     if not descripcion:
@@ -84,6 +87,10 @@ def clave_comercio(descripcion: str | None) -> str:
         if len(tok) == 1:  # restos de siglas ('s', 'a')
             continue
         resultado.append(tok)
+    while resultado and resultado[-1] in _COLA:
+        resultado.pop()
+    while resultado and resultado[0] in _COLA:
+        resultado.pop(0)
     return " ".join(resultado[:MAX_PALABRAS])
 
 

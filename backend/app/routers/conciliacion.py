@@ -6,10 +6,11 @@ from sqlalchemy.orm import Session
 from app.limites import verificar_limite
 from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
-from app.autocat import ajustar_a_categorias_usuario, datos_auto, movimientos_confirmados, origen_de
+from app.autocat import (
+    ClasificadorUsuario, aplicar_a_anteriores, ajustar_a_categorias_usuario, datos_auto,
+    guardar_regla_aprendida, origen_de,
+)
 from app.wallet import ORIGENES_RAPIDOS
-from app.classifier import build_model, classify
-from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import cuenta_accesible, puede_editar_cuenta
 from app.conciliacion import (
     auditar_movimientos,
@@ -99,13 +100,13 @@ def procesar_extracto(
     # solo cuando vinieron del parser regex de banco (no del fallback de IA).
     auto_importados = 0
     # Solo lo confirmado por el usuario alimenta el aprendizaje.
-    modelo = build_model(movimientos_confirmados(db, usuario.id))
+    modelo = ClasificadorUsuario(db, usuario.id)
     umbral = _umbral_autoimport(db, usuario.id)
 
     for item in resultado["review"]:
         if item["estado"] != "faltante":
             continue
-        clasif = classify(item["descripcion"], modelo) or clasificar_por_diccionario(item["descripcion"])
+        clasif = modelo.clasificar(item["descripcion"])
 
         if not via_ia and clasif and clasif["confianza"] >= umbral:
             fecha_dt = parse_bank_date(item["fecha"])
@@ -136,6 +137,7 @@ def procesar_extracto(
             # usuario la vea y pueda corregirla ANTES de importar manualmente,
             # en vez de que quede oculta y todo termine en "Otros" en silencio.
             item["categoria_sugerida"] = clasif["categoria"] if clasif else "Otros"
+            item["razon_categoria"] = clasif.get("razon") if clasif else None
 
     if auto_importados:
         resultado["faltantes"] -= auto_importados
@@ -268,11 +270,14 @@ def importar_faltantes(
     fingerprints = set(data.fingerprints)
     importados = 0
 
-    modelo = build_model(movimientos_confirmados(db, usuario.id))
+    modelo = ClasificadorUsuario(db, usuario.id)
 
     categorias_elegidas = data.categorias or {}
     sin_categoria_clara = 0
     categorizados_auto = 0
+    recordar, anteriores = set(data.recordar), set(data.aplicar_anteriores)
+    reglas_guardadas = anteriores_actualizados = 0
+    reglas_omitidas: list[dict] = []
 
     for item in review:
         fp = item.get("fingerprint")
@@ -283,7 +288,7 @@ def importar_faltantes(
             categoria = categorias_elegidas[fp]
             auto = datos_auto(None)  # la eligió el usuario
         else:
-            clasif = classify(item["descripcion"], modelo) or clasificar_por_diccionario(item["descripcion"])
+            clasif = modelo.clasificar(item["descripcion"])
             categoria = clasif["categoria"] if clasif else "Otros"
             auto = datos_auto(origen_de(clasif.get("fuente")) if clasif else None)
             if categoria == "Otros":
@@ -313,13 +318,26 @@ def importar_faltantes(
         item["estado"] = "importado"
         importados += 1
 
+        if fp in recordar and categoria and categoria != "Otros":
+            r = guardar_regla_aprendida(db, usuario.id, item["descripcion"], categoria)
+            if r["guardada"]:
+                reglas_guardadas += 1
+                if fp in anteriores:
+                    anteriores_actualizados += aplicar_a_anteriores(db, usuario.id, r["huella"], categoria)
+            else:
+                reglas_omitidas.append({"huella": r["huella"], "motivo": r["motivo"], "descripcion": item["descripcion"], "categoria": categoria})
+
     historial.review_json = json.dumps(review, default=str)
     historial.importados = (historial.importados or 0) + importados
     if all(i["estado"] != "faltante" for i in review):
         historial.estado = "conciliado"
 
     db.commit()
-    return {"ok": True, "importados": importados, "sin_categoria_clara": sin_categoria_clara, "categorizados_auto": categorizados_auto}
+    return {
+        "ok": True, "importados": importados, "sin_categoria_clara": sin_categoria_clara,
+        "categorizados_auto": categorizados_auto, "reglas_guardadas": reglas_guardadas,
+        "anteriores_actualizados": anteriores_actualizados, "reglas_omitidas": reglas_omitidas,
+    }
 
 
 @router.delete("/historial/{historial_id}")
@@ -391,7 +409,7 @@ def _completar_con_extracto(db: Session, mov: Movimiento, item: dict, historial_
 
     categoria = mov.categoria or "Otros"
     if categoria == "Otros":
-        clasif = classify(item["descripcion"], modelo) or clasificar_por_diccionario(item["descripcion"])
+        clasif = modelo.clasificar(item["descripcion"])
         if clasif:
             categoria = ajustar_a_categorias_usuario(db, usuario_id, clasif["categoria"])
     mov.categoria = categoria

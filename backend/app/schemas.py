@@ -223,6 +223,7 @@ class RecategorizarComercioRequest(BaseModel):
     categoria: str = Field(min_length=1)
     patron: Optional[str] = Field(default=None, max_length=60)  # si no viene, se deduce de la descripción
     aplicar_a_todos: bool = True
+    confirmar_peligrosa: bool = False  # guardar aunque la huella sea muy corta o genérica
 
 
 class ConfirmarCategoriasRequest(BaseModel):
@@ -790,6 +791,8 @@ class ProcesarExtractoResponse(BaseModel):
 class ImportarFaltantesRequest(BaseModel):
     fingerprints: list[str]
     categorias: Optional[dict[str, str]] = None  # fingerprint -> categoría elegida por el usuario, si la cambió
+    recordar: list[str] = []  # fingerprints cuya categoría elegida se guarda como regla del comercio
+    aplicar_anteriores: list[str] = []  # subconjunto de `recordar`: además recategoriza movimientos pasados
 
 
 class HistorialExtractoOut(BaseModel):
