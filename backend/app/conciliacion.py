@@ -35,6 +35,32 @@ def _patron_nombre_propio() -> re.Pattern | None:
     return re.compile(r"\b(?:" + "|".join(re.escape(p) for p in partes) + r")\b", re.IGNORECASE)
 
 
+# Palabras que, junto al nombre, no cambian de quién es la cuenta: "Daniel nequi".
+_PALABRAS_DE_ENTIDAD = {"nequi", "nu", "daviplata", "bancolombia", "davivienda", "bbva", "cuenta", "ahorros", "bre", "b"}
+
+
+def _nombre_es_del_titular(desc: str) -> bool:
+    """¿La contraparte del movimiento es el propio titular? Con el nombre completo
+    (o dos de sus palabras) sí; con solo el primer nombre, solo si ese es TODO lo que
+    dice la contraparte ('Enviaste a Daniel nequi'): 'Enviaste a Daniel Gómez' es otra
+    persona y debe contar como gasto."""
+    palabras = [p for p in re.split(r"\s+", _nombre_titular.get().lower()) if len(p) >= 3]
+    if not palabras:
+        return False
+    desc_n = _sin_tildes_simple(desc).lower()
+    contraparte = re.split(r"(?i)\b(?:enviaste a|recibiste de|bre-?b(?: a| de)?:?|para|de)\b", desc_n)[-1]
+    tokens = re.findall(r"[a-z]+", contraparte)
+    propios = [t for t in tokens if t in {_sin_tildes_simple(p) for p in palabras}]
+    if len(set(propios)) >= 2:
+        return True
+    resto = [t for t in tokens if t not in propios and t not in _PALABRAS_DE_ENTIDAD]
+    return bool(propios) and not resto
+
+
+def _sin_tildes_simple(s: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+
+
 
 # Entidades financieras colombianas reconocidas, mapeadas a la "familia" de
 # parser cuyo formato de extracto más se les parece. No es necesario un
@@ -74,20 +100,37 @@ _BANCOS_FAMILIA_TABULAR = (
 )
 
 
-def detectar_banco(texto: str) -> str:
-    t = texto.lower()
+# Entre las marcas de la familia Nequi hay nombres cortos ("dale", "uala") que
+# aparecen DENTRO de otras palabras: se buscan como palabra completa.
+_RE_FAMILIA_NEQUI = re.compile(r"\b(?:" + "|".join(_BANCOS_FAMILIA_NEQUI) + r")\b")
+# Encabezados propios del extracto de cada marca. Valen más que cualquier mención
+# suelta: en la lista de movimientos aparecen otros bancos ("Enviaste a ... nequi").
+_FIRMA_NEQUI = re.compile(r"dep[oó]sito de bajo monto|extracto de dep[oó]sito")
+_FIRMA_NU = re.compile(r"tu dinero al inicio del mes|nu placa\s+n[uú]mero de cuenta|nu financiera")
+
+
+def _banco_en(t: str) -> str | None:
     if re.search(r"nequi.*bancolombia|bancolombia.*nequi", t):
         return "nequi"
-    for clave in _BANCOS_FAMILIA_NEQUI:
-        if clave in t:
-            return "nequi"
+    if _RE_FAMILIA_NEQUI.search(t):
+        return "nequi"
     for clave in _BANCOS_FAMILIA_NU:
         if clave in t:
             return "nu"
     for clave, nombre in _BANCOS_FAMILIA_TABULAR:
         if clave in t:
             return nombre
-    return "generico"
+    return None
+
+
+def detectar_banco(texto: str) -> str:
+    t = texto.lower()
+    if _FIRMA_NEQUI.search(t[:1500]):
+        return "nequi"
+    if _FIRMA_NU.search(t[:2500]):
+        return "nu"
+    # Primero el encabezado (donde el banco se identifica); si no, todo el texto.
+    return _banco_en(t[:1500]) or _banco_en(t) or "generico"
 
 
 # Bancos cuyo extracto sigue el patrón tabular de Davivienda/BBVA/etc.
@@ -111,10 +154,9 @@ def parse_monto_cop(valor: str) -> float:
 def es_transferencia_propia(desc: str) -> bool:
     nombre = _patron_nombre_propio()
     if nombre:
-        if re.search(r"BRE-?B", desc, re.IGNORECASE) and nombre.search(desc):
-            return True
-        if re.search(r"enviaste\s+a\s+", desc, re.IGNORECASE) and nombre.search(desc):
-            return True
+        if re.search(r"BRE-?B|enviaste\s+a\s+|recibiste\s+de\s+|\bde:|\bpara\b", desc, re.IGNORECASE):
+            # Con el nombre del titular conocido, solo es propia si la contraparte ES el titular.
+            return nombre.search(desc) is not None and _nombre_es_del_titular(desc)
     if re.search(r"\b(nequi|nu|daviplata)\b", desc, re.IGNORECASE) and re.search(
         r"\b(enviaste\s+a|recibiste\s+de|traslado|desde|hacia)\b", desc, re.IGNORECASE
     ):
@@ -128,6 +170,44 @@ def _tipo_por_signo(monto: float, desc: str) -> str:
     if re.search(r"gravamen", desc, re.IGNORECASE):
         return "expense"
     return "income" if monto > 0 else "expense"
+
+
+def _num_es(s: str) -> float:  # 1.234,56
+    return float(s.replace(".", "").replace(",", "."))
+
+
+def _num_en(s: str) -> float:  # 1,234.56
+    return float(s.replace(",", ""))
+
+
+def total_impreso_del_extracto(texto: str) -> float | None:
+    """Lo que el propio extracto dice que se movió (entradas + salidas), si trae el
+    resumen de Nu ('Lo que entró / salió') o el de Nequi ('Total abonos / cargos').
+    None si el extracto no trae un resumen que sepamos leer."""
+    try:
+        ent = re.search(r"Lo que entró a tu cuenta\s+\+?\$([\d.,]+)", texto)
+        sal = re.search(r"Lo que salió de tu cuenta\s+-?\$([\d.,]+)", texto)
+        if ent and sal:
+            return _num_es(ent.group(1)) + _num_es(sal.group(1))
+        ab = re.search(r"Total abonos\s+\$([\d.,]+)", texto)
+        ca = re.search(r"Total cargos\s+\$([\d.,]+)", texto)
+        if ab and ca:
+            return _num_en(ab.group(1)) + _num_en(ca.group(1))
+    except ValueError:
+        pass
+    return None
+
+
+def cuadra_con_el_resumen(texto: str, movimientos: list[dict]) -> bool | None:
+    """¿Lo leído suma lo mismo que dice el resumen del extracto? True/False, o None si el
+    extracto no trae resumen. Detecta líneas que se perdieron (o se leyeron de más) sin
+    que nadie lo note. Compara entradas + salidas en valor absoluto: no depende de cómo se
+    clasificó cada movimiento (transferencia propia, ingreso o gasto)."""
+    esperado = total_impreso_del_extracto(texto)
+    if esperado is None:
+        return None
+    leido = sum(abs(m["monto"]) for m in movimientos)
+    return abs(leido - esperado) < 1
 
 
 def parse_texto_con_regex(texto: str) -> tuple[list[dict], int]:
@@ -159,6 +239,11 @@ def parse_texto_con_regex(texto: str) -> tuple[list[dict], int]:
 
     if not movimientos:
         movimientos = _parse_generico(texto)
+
+    # Si el extracto trae su propio resumen y lo leído no suma lo mismo, falta (o sobra)
+    # algo: se avisa con el contador de "descartados" en vez de dejarlo pasar en silencio.
+    if movimientos and cuadra_con_el_resumen(texto, movimientos) is False:
+        descartados += 1
 
     return movimientos, descartados
 
@@ -222,7 +307,71 @@ def _parse_nequi(texto: str) -> list[dict]:
     return movimientos
 
 
+_MES_RE = r"(?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)"
+# "01 - 31 OCT 2025" (encabezado "Período"): de ahí sale el año, no de la primera
+# cifra de 4 dígitos del texto (podría ser parte de una dirección o un NIT).
+_RE_PERIODO_NU = re.compile(r"\b\d{1,2}\s*-\s*\d{1,2}\s+(" + _MES_RE + r")[a-z]*\.?\s+(20\d{2})\b", re.IGNORECASE)
+# Línea de movimiento de Nu: "01 oct <descripción> -$1.234,00". El monto va SIEMPRE
+# al final de la línea, con signo y $. La descripción puede traer números sueltos
+# ("OXXO NAVARRA 114", "ALKOSTO AVX 68") que NO son el monto.
+_RE_LINEA_NU = re.compile(
+    r"^\s*(\d{1,2})\s+(" + _MES_RE + r")\.?\s+(.+?)\s+([+\-])\s*\$\s*(\d[\d.,]*)\s*$", re.IGNORECASE
+)
+_RE_INICIA_FECHA_NU = re.compile(r"^\s*\d{1,2}\s+" + _MES_RE + r"\.?\s+\S", re.IGNORECASE)
+
+
+def _anio_del_periodo(texto: str) -> str | None:
+    m = _RE_PERIODO_NU.search(texto)
+    return m.group(2) if m else None
+
+
+def _parse_nu_por_lineas(texto: str, anio: str) -> list[dict]:
+    """Lector estricto por líneas del extracto de Nu. Si la descripción de un movimiento
+    se parte en dos líneas, se une con las siguientes hasta encontrar el monto."""
+    lineas = texto.split("\n")
+    movimientos = []
+    i = 0
+    while i < len(lineas):
+        linea = lineas[i]
+        if not _RE_INICIA_FECHA_NU.match(linea):
+            i += 1
+            continue
+        m = _RE_LINEA_NU.match(linea)
+        usadas = 1
+        if not m:
+            # ¿La descripción continúa en la(s) línea(s) siguiente(s)? (máx. 2)
+            acumulada = linea.strip()
+            for extra in range(1, 3):
+                if i + extra >= len(lineas) or _RE_INICIA_FECHA_NU.match(lineas[i + extra]) or not lineas[i + extra].strip():
+                    break
+                acumulada += " " + lineas[i + extra].strip()
+                m = _RE_LINEA_NU.match(acumulada)
+                if m:
+                    usadas = extra + 1
+                    break
+        i += usadas
+        if not m:
+            continue
+        monto = parse_monto_cop(m.group(5))
+        desc = re.sub(r"\s+", " ", m.group(3)).strip()
+        if monto != monto or monto < 1 or re.search(r"saldo|total|per[ií]odo|extracto|n[uú]mero de cuenta|^cuenta\b", desc, re.IGNORECASE):
+            continue
+        mes = MESES[m.group(2).lower()]
+        positivo = m.group(4) == "+"
+        movimientos.append({
+            "fecha": f"{anio}-{mes:02d}-{int(m.group(1)):02d}",
+            "descripcion": desc, "monto": monto,
+            "tipo": "transfer" if es_transferencia_propia(desc) else ("income" if positivo else "expense"),
+            "referencia": "", "saldo": None,
+        })
+    return movimientos
+
+
 def _parse_nu(texto: str, anio: str) -> tuple[list[dict], int]:
+    anio = _anio_del_periodo(texto) or anio
+    estrictos = _parse_nu_por_lineas(texto, anio)
+    if estrictos:
+        return estrictos, 0
     movimientos = []
     descartados = 0
     patron = re.compile(

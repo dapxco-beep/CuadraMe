@@ -41,7 +41,7 @@ CATEGORIAS_NEUTRAS = {"transferencia", "pago de tarjeta", "ajuste de saldo", "ap
 # NO casa con "pago con tarjeta en Éxito" (eso es una COMPRA): después de pago/abono solo
 # se admiten conectores (de, a, la, mi, total, mínimo), no "con".
 PATRON_PAGO_TARJETA = re.compile(
-    r"\b(?:pagos?|abonos?)\s+(?:(?:de|a|la|mi|total|minimo|del)\s+)*"
+    r"\b(?:pagos?|abonos?|pagaste|abonaste)\s+(?:(?:de|a|la|mi|tu|total|minimo|del)\s+)*"
     r"(?:tarjeta|tarj\.?|tc|tdc|t\.c\.?|visa|master\s?card|amex|american\s+express|diners)\b",
     re.IGNORECASE,
 )

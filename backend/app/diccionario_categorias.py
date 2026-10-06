@@ -26,7 +26,7 @@ CATEGORIA_RESPALDO: dict[str, str] = {
     "Educación": "Otros",
     "Seguros": "Otros",
     "Impuestos": "Otros",
-    "Ahorro e inversión": "Otros",
+    "Ahorro e inversión": "Transferencias",  # es plata que cambia de bolsillo, no un gasto de consumo
     COMISIONES: "Otros",
 }
 
@@ -85,6 +85,11 @@ SECCIONES: dict[str, dict[str, str]] = {
         "pizza": "Comida", "pizzeria": "Comida", "hamburguesa": "Comida", "hamburguesas": "Comida",
         "asadero": "Comida", "pollo": "Comida", "sushi": "Comida", "parrilla": "Comida", "comidas rapidas": "Comida",
         "corrientazo": "Comida", "bogota beer": "Comida", "cervezeria": "Comida", "bar": "Comida", "cerveza": "Comida",
+        # tiendas de conveniencia y comida que se repite en los extractos
+        "oxxo": "Comida", "tiendas ya": "Comida", "crepesywaffles": "Comida", "polleria*": "Comida",
+        "cantina": "Comida", "tamales": "Comida", "yogurt": "Comida", "goyurt": "Comida", "burger": "Comida",
+        "butchery": "Comida", "rossopomodoro": "Comida", "empanadas": "Comida", "arepas": "Comida",
+        "sandwich": "Comida", "parrilla*": "Comida", "brasa": "Comida", "tostadas": "Comida", "rustica": "Comida",
     },
 
     # ── Transporte ──────────────────────────────────────────────────
@@ -106,6 +111,9 @@ SECCIONES: dict[str, dict[str, str]] = {
         "lavadero": "Transporte", "soat": "Transporte", "revision tecnomecanica": "Transporte",
         "tecnomecanica": "Transporte", "multa transito": "Transporte", "comparendo": "Transporte",
         "grua": "Transporte", "bicicleta": "Transporte",
+        # estaciones de servicio ("EDS" = estación de servicio) y bicicletas compartidas
+        "eds": "Transporte", "servicentro": "Transporte", "autocombustibles": "Transporte",
+        "combustibles": "Transporte", "gasolinera": "Transporte", "tembici": "Transporte", "bicicletas": "Transporte",
     },
 
     # ── Salud y bienestar ───────────────────────────────────────────
@@ -172,9 +180,16 @@ SECCIONES: dict[str, dict[str, str]] = {
         "studio f": "Compras", "arturo calle": "Compras", "bogota outlets": "Compras",
         "linio": "Compras", "ikea": "Compras", "decathlon": "Compras", "juguetes": "Compras", "zapateria": "Compras",
         "ropa": "Compras", "calzado": "Compras", "joyeria": "Compras", "perfumeria": "Compras",
+        "novaventa": "Compras", "dollarcity": "Compras", "dollar city": "Compras", "miniso": "Compras",
+        "mallplaza": "Compras", "mall plaza": "Compras", "hym": "Compras", "koaj": "Compras",
+        "centro comercial": "Compras",
     },
 
     # ── Seguros, impuestos, ahorro ──────────────────────────────────
+    "Cuidado personal": {
+        "barberia*": "Salud", "peluqueria*": "Salud", "salon de belleza": "Salud", "spa": "Salud",
+        "manicure": "Salud", "estetica": "Salud",
+    },
     "Seguros": {
         "seguro": "Seguros", "seguros": "Seguros", "seguros bolivar": "Seguros", "seguros sura": "Seguros",
         "mapfre": "Seguros", "liberty": "Seguros", "axa colpatria": "Seguros", "prima de seguro": "Seguros",
@@ -220,16 +235,32 @@ INGRESOS: dict[str, str] = {
     "liquidacion": "Ingresos", "abono intereses": "Ingresos", "rendimientos": "Ingresos",
     "rendimientos financieros": "Ingresos", "devolucion": "Ingresos", "reembolso": "Ingresos",
     "reintegro": "Ingresos", "nota credito": "Ingresos", "dividendos": "Ingresos", "comisiones ganadas": "Ingresos",
+    # intereses A FAVOR (Nu, Nequi, bancos): ganarlos no es una comisión ni un costo
+    "pago de intereses": "Ingresos", "intereses ganados": "Ingresos", "intereses de ahorro": "Ingresos",
+    "intereses abonados": "Ingresos", "rendimiento*": "Ingresos", "reembolso realizado": "Ingresos",
+    "cashback": "Ingresos",
 }
+
+# Inversión y ahorro: se evalúan ANTES que las frases de transferencia, porque lo que
+# parece "Enviaste a <entidad>" es plata que se invierte, no un giro a una persona.
+INVERSION_PRIORITARIA = [
+    "fondo de inversion", "fondo de inversion colectiva", "fondo voluntario", "fondo de pensiones",
+    "acciones y valores", "comisionista de bolsa", "fiduciaria*", "fiducia", "cdt", "cajita", "cajitas",
+    "aportes voluntarios", "bolsa de valores", "trii", "tyba", "finaccess",
+]
 
 # Frases de transferencia entre personas (se evalúan antes que el diccionario).
 TRANSFERENCIA_PERSONA_FUERTE = [
     "enviaste a", "recibiste de", "transferencia a", "transferencia de", "envio a",
     "giro a", "giro de", "trf a", "trf de", "traslado entre cuentas", "traslado a cuenta",
+    "recarga desde", "otros bancos de",
 ]
+# Extractos tipo Nequi: la línea EMPIEZA con "Para <persona>" (salida) o "De <persona>"
+# (entrada). Solo al inicio: 'COSAS PARA TI' en medio de una compra no es una transferencia.
+TRANSFERENCIA_PERSONA_INICIO = {"para": "expense", "de": "income"}
 # ...y estas solo si ninguna palabra clave del diccionario aplica.
 TRANSFERENCIA_PERSONA_DEBIL = ["pago a", "transferencia", "transf"]
-TRANSFERENCIA_ENTRADA = {"recibiste de", "giro de", "trf de", "transferencia de"}
+TRANSFERENCIA_ENTRADA = {"recibiste de", "giro de", "trf de", "transferencia de", "recarga desde", "otros bancos de"}
 
 
 def entradas() -> list[tuple[str, str, str]]:
