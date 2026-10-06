@@ -7,6 +7,7 @@ import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { AvisoCategorizados } from '../components/CategorizacionAuto'
+import AvisoYaConciliado from '../components/AvisoYaConciliado'
 import RecordarRegla, { RECORDAR_INICIAL } from '../components/RecordarRegla'
 import SubidaMultiple from '../components/SubidaMultiple'
 import ZonaSubida from '../components/ZonaSubida'
@@ -287,6 +288,7 @@ export default function Conciliacion() {
             </div>
           </div>
 
+          <AvisoYaConciliado info={resultado.ya_conciliado} cuenta={cuentas.find((c) => c.id === cuentaId)?.nombre} className="mb-4" />
           <AvisoCategorizados n={resultado.auto_importados} className="mb-4" />
 
           {resultado.descartados > 0 && (

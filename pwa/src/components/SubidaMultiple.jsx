@@ -6,6 +6,7 @@ import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { AvisoCategorizados } from './CategorizacionAuto'
+import AvisoYaConciliado from './AvisoYaConciliado'
 import RecordarRegla, { RECORDAR_INICIAL } from './RecordarRegla'
 import ZonaSubida from './ZonaSubida'
 import { opcionesCategoria } from '../lib/importar'
@@ -415,6 +416,7 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
                       {a.banco} · {periodoTexto(a.periodo)} · {a.nMov} {a.nMov === 1 ? 'movimiento' : 'movimientos'}
                     </p>
                   )}
+                  {a.estado === 'listo' && <AvisoYaConciliado info={a.yaConciliado} cuenta={nombreCuenta(a.cuentaId)} className="mt-2" />}
                   {(a.estado === 'error' || a.estado === 'falta_clave') && a.error && (
                     <p className="text-xs text-danger mt-1" role="alert">{a.error}</p>
                   )}

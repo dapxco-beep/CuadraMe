@@ -7,6 +7,7 @@ import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { AvisoCategorizados } from '../components/CategorizacionAuto'
+import AvisoYaConciliado from '../components/AvisoYaConciliado'
 import RecordarRegla, { RECORDAR_INICIAL } from '../components/RecordarRegla'
 import SubidaMultiple from '../components/SubidaMultiple'
 import ZonaSubida from '../components/ZonaSubida'
@@ -270,6 +271,7 @@ export default function ImportarArchivo() {
           <p className="text-xs text-ink-soft mb-3">
             {archivo?.nombre} · cuenta {cuenta?.nombre} · {analisis.total_filas} filas leídas
           </p>
+          <AvisoYaConciliado info={analisis.ya_conciliado} cuenta={cuenta?.nombre} className="mb-4" />
 
           <section className="rounded-2xl bg-paper-raised border border-line p-4 mb-4">
             <h2 className="text-sm font-semibold mb-1">1. Revisa las columnas</h2>
