@@ -9,6 +9,7 @@ from app.auth import UsuarioActual, get_current_user
 from app.config import settings
 from app.database import Base, get_db
 from app.models import Cuenta, CuentaCompartida, HistorialExtracto, InvitacionCuenta, Movimiento, Perfil, gen_api_key
+from app.models_gastos import GastoCompartido, GrupoGasto, MiembroGrupoGasto, ParteGasto
 from app.schemas import ConfianzaAutoimportUpdate, EliminarCuentaRequest
 
 router = APIRouter(prefix="/perfil", tags=["perfil"])
@@ -138,7 +139,15 @@ def eliminar_cuenta(
             InvitacionCuenta.email_invitado == usuario.email.lower()
         ).delete(synchronize_session=False)
 
-    # 4) Cualquier tabla con columna usuario_id (perfil, cuentas, presupuestos, metas,
+    # 4) Tablas hijas SIN usuario_id: cuelgan de grupos y gastos compartidos del
+    #    usuario y quedarían huérfanas (con nombres/montos de terceros) si solo se
+    #    borrara por usuario_id. Se borran por sus padres, antes que ellos.
+    mis_grupos = db.query(GrupoGasto.id).filter(GrupoGasto.usuario_id == uid)
+    mis_gastos = db.query(GastoCompartido.id).filter(GastoCompartido.usuario_id == uid)
+    db.query(MiembroGrupoGasto).filter(MiembroGrupoGasto.grupo_id.in_(mis_grupos)).delete(synchronize_session=False)
+    db.query(ParteGasto).filter(ParteGasto.gasto_id.in_(mis_gastos)).delete(synchronize_session=False)
+
+    # 5) Cualquier tabla con columna usuario_id (perfil, cuentas, presupuestos, metas,
     #    deudas, rachas, push...). Recorrer el metadata evita olvidar una tabla nueva.
     for tabla in Base.metadata.sorted_tables:
         if "usuario_id" in tabla.c:
@@ -146,6 +155,7 @@ def eliminar_cuenta(
     db.commit()
 
     auth_eliminado = False
+    aviso = None
     if settings.supabase_service_role_key:
         try:
             resp = httpx.delete(
@@ -157,7 +167,15 @@ def eliminar_cuenta(
                 timeout=15,
             )
             auth_eliminado = resp.status_code in (200, 204)
+            if not auth_eliminado:
+                logger.error("Supabase Auth respondió %s al borrar el usuario %s", resp.status_code, uid)
         except httpx.HTTPError:
             logger.exception("No se pudo borrar el usuario %s de Supabase Auth", uid)
+        if not auth_eliminado:
+            # Los datos ya se borraron (commit arriba): no se pierde ese avance.
+            aviso = "Tus datos se borraron, pero no pudimos cerrar tu acceso; escríbenos a soporte"
 
-    return {"ok": True, "auth_eliminado": auth_eliminado}
+    respuesta = {"ok": True, "auth_eliminado": auth_eliminado}
+    if aviso:
+        respuesta["aviso"] = aviso
+    return respuesta
