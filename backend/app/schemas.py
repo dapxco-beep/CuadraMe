@@ -45,7 +45,7 @@ def _validar_color(v):
 
 
 class CategoriaCreate(BaseModel):
-    nombre: str = Field(min_length=1, max_length=30)
+    nombre: str = Field(min_length=1, max_length=40)
     icono: str = "🏷️"
     color: Optional[str] = None
     tipo: Literal["gasto", "ingreso", "ambos"] = "ambos"
@@ -62,7 +62,7 @@ class CategoriaCreate(BaseModel):
 
 
 class CategoriaUpdate(BaseModel):
-    nombre: Optional[str] = Field(default=None, min_length=1, max_length=30)
+    nombre: Optional[str] = Field(default=None, min_length=1, max_length=40)
     icono: Optional[str] = None
     activa: Optional[bool] = None
     color: Optional[str] = None  # "" quita el color
@@ -336,6 +336,14 @@ class ReglaCategoriaCreate(BaseModel):
     categoria: str
     tipo: Optional[str] = None
     prioridad: int = 0
+
+
+class AprenderReglaRequest(BaseModel):
+    descripcion: str = Field(min_length=1, max_length=200)  # de ahí se saca la huella del comercio
+    categoria: str = Field(min_length=1, max_length=60)
+    tipo: Optional[str] = None
+    aplicar_anteriores: bool = False
+    confirmar_peligrosa: bool = False
 
 
 class ReglaCategoriaOut(BaseModel):

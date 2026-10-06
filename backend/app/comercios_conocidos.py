@@ -33,7 +33,8 @@ def _indexar():
             continue
         indice.append((len(pat.split()), len(pat), pat, prefijo, categoria, tipo, palabra.rstrip("*")))
     # más palabras primero, luego más largo: 'uber eats' antes que 'uber'
-    indice.sort(key=lambda e: (-e[0], -e[1]))
+    # a igualdad, un ingreso explícito ('nomina') gana: 'NOMINA SKANDIA' es ingreso, no inversión
+    indice.sort(key=lambda e: (-e[0], e[5] != "income", -e[1]))
     return indice
 
 

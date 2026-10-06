@@ -149,7 +149,6 @@ def aplicar_a_anteriores(
             Movimiento.cuenta_id.in_(ids_cuentas),
             Movimiento.tipo != "transfer",
             Movimiento.fuente != "transferencia_interna",
-            Movimiento.categoria != categoria,
         )
         .all()
     )
@@ -158,6 +157,8 @@ def aplicar_a_anteriores(
     for m in movs:
         if m.id in excluir_ids or not huella_en_descripcion(huella, m.descripcion or ""):
             continue
+        if m.categoria == categoria and m.cat_confirmada is not False:
+            continue  # ya está así y confirmada
         if m.cuenta_id not in editables:
             c = db.query(Cuenta).filter(Cuenta.id == m.cuenta_id).first()
             editables[m.cuenta_id] = bool(c and puede_editar_cuenta(db, usuario_id, c))
