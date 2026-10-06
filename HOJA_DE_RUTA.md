@@ -74,6 +74,8 @@ Estas funciones ya están en el código y desplegadas, pero apagadas hasta que c
   1. Depende de la misma `RESEND_API_KEY` de arriba
   2. Programar el endpoint en cron-job.org (semanal, header `X-Cron-Secret`)
 
+**Límites de uso en memoria — Railway debe quedarse en 1 réplica.** El contador de `backend/app/limites.py` (IA, PDF, Gmail, API key y el tope de 30 intentos fallidos de API key por IP cada 10 min) vive en la memoria de cada proceso. Con 2 o más réplicas cada una cuenta aparte (el límite real se multiplica) y se reinicia en cada despliegue. Mientras no haya un almacén compartido (Redis), no escalar a más de 1 réplica.
+
 **Crons que YA deberían estar programados en cron-job.org** (revisar si faltan):
 - `/push/cron/revisar-presupuestos` (diario)
 - `/push/cron/aportes-automaticos` (diario)

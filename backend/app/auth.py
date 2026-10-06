@@ -10,12 +10,13 @@ import hmac
 from datetime import datetime, timedelta
 
 import jwt
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
+from app.limites import bloquear_si_demasiados_fallos, ip_cliente, registrar_fallo_api_key
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="noop", auto_error=False)
 
@@ -70,12 +71,16 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> UsuarioActual:
 
 
 def get_current_user_by_api_key(
-    x_api_key: str = Header(...), db: Session = Depends(get_db)
+    request: Request, x_api_key: str = Header(...), db: Session = Depends(get_db)
 ) -> UsuarioActual:
     from app.models import Perfil
 
+    # Tope de intentos con clave inválida por IP (ver limites.py): 30 cada 10 min.
+    ip = ip_cliente(request)
+    bloquear_si_demasiados_fallos(ip)
     perfil = db.query(Perfil).filter(Perfil.api_key == x_api_key).first()
     if not perfil:
+        registrar_fallo_api_key(ip)
         raise HTTPException(status_code=401, detail="API key inválida")
     # Guarda cuándo se usó por última vez (alimenta el semáforo de "Conexiones").
     # Se escribe como mucho una vez por minuto para no sumar una escritura a
