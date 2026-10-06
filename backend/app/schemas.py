@@ -312,6 +312,21 @@ class RecategorizarMasivoResponse(BaseModel):
     actualizados: int
 
 
+class MoverMasivoRequest(BaseModel):
+    movimiento_ids: list[str] = Field(min_length=1, max_length=500)
+    cuenta_id: str
+
+
+class EliminarMasivoRequest(BaseModel):
+    movimiento_ids: list[str] = Field(min_length=1, max_length=500)
+
+
+class MasivoResponse(BaseModel):
+    ok: bool
+    actualizados: int = 0
+    omitidos: int = 0
+
+
 class MovimientoPorVozCreate(BaseModel):
     """Para registro por voz/Siri: se manda la frase dicha tal cual, sin
     estructurar. El backend interpreta monto/tipo/descripción."""

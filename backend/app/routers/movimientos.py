@@ -10,6 +10,7 @@ from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user, get_current_user_by_api_key
 from sqlalchemy import and_, or_
 
+from app.clave_comercio import clave_comercio, huella_en_descripcion
 from app.autocat import (
     ClasificadorUsuario,
     ajustar_a_categorias_usuario,
@@ -44,6 +45,9 @@ from app.schemas import (
     ClasificarRequest,
     ClasificarResponse,
     ConfirmarCategoriasRequest,
+    EliminarMasivoRequest,
+    MasivoResponse,
+    MoverMasivoRequest,
     MovimientoCreate,
     MovimientoOut,
     MovimientoPorVozCreate,
@@ -469,6 +473,100 @@ def recategorizar_masivo(
     return RecategorizarMasivoResponse(ok=True, actualizados=actualizados)
 
 
+@router.post("/mover-masivo", response_model=MasivoResponse)
+def mover_masivo(
+    data: MoverMasivoRequest,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Pasa varios movimientos a otra cuenta y corrige los saldos de ambas (como editar uno
+    por uno, pero en una sola transacción). Se omiten las transferencias internas, los aportes
+    a metas y los de una cuenta en otra moneda que la de destino."""
+    destino = cuenta_accesible(db, usuario.id, data.cuenta_id)
+    if not destino or not puede_editar_cuenta(db, usuario.id, destino):
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    pedidos = set(data.movimiento_ids)
+    movs = (
+        db.query(Movimiento)
+        .filter(Movimiento.id.in_(pedidos), Movimiento.cuenta_id.in_(ids_accesibles))
+        .all()
+    )
+    # Se bloquean todas las cuentas implicadas siempre en el mismo orden (por id).
+    cuentas = {cid: bloquear_cuenta(db, cid) for cid in sorted({m.cuenta_id for m in movs} | {destino.id})}
+    destino = cuentas[destino.id]
+    actualizados = 0
+    for mov in movs:
+        origen = cuentas.get(mov.cuenta_id)
+        if (
+            mov.fuente in (FUENTE_TRANSFERENCIA, FUENTE_APORTE_META)
+            or mov.cuenta_id == destino.id
+            or not origen
+            or not puede_editar_cuenta(db, usuario.id, origen)
+            or (origen.moneda or "COP") != (destino.moneda or "COP")
+        ):
+            continue
+        origen.saldo -= _delta_de(mov)
+        destino.saldo += _delta_de(mov)
+        mov.cuenta_id = destino.id
+        actualizados += 1
+    db.commit()
+    return MasivoResponse(ok=True, actualizados=actualizados, omitidos=len(pedidos) - actualizados)
+
+
+@router.post("/eliminar-masivo", response_model=MasivoResponse)
+def eliminar_masivo(
+    data: EliminarMasivoRequest,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Elimina varios movimientos y revierte sus saldos (y los aportes a metas) en una sola
+    transacción. Las transferencias internas se omiten: se borran de a una porque afectan
+    dos cuentas. Si falta permiso sobre alguna cuenta, no se borra nada."""
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    pedidos = set(data.movimiento_ids)
+    movs = (
+        db.query(Movimiento)
+        .filter(Movimiento.id.in_(pedidos), Movimiento.cuenta_id.in_(ids_accesibles))
+        .all()
+    )
+    borrables = sorted((m for m in movs if m.fuente != FUENTE_TRANSFERENCIA), key=lambda m: m.cuenta_id)
+    try:
+        for mov in borrables:
+            _borrar_normal(db, usuario, mov)
+    except HTTPException:
+        db.rollback()
+        raise
+    db.commit()
+    return MasivoResponse(ok=True, actualizados=len(borrables), omitidos=len(pedidos) - len(borrables))
+
+
+@router.get("/similares/conteo")
+def conteo_similares(
+    descripcion: str = Query(..., min_length=1, max_length=200),
+    excluir_id: str | None = None,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Cuántos OTROS movimientos tuyos son del mismo comercio (misma huella): sirve para
+    mostrar 'Aplicar a los 12 anteriores' antes de decidir."""
+    huella = clave_comercio(descripcion)
+    if not huella:
+        return {"huella": "", "conteo": 0}
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    movs = (
+        db.query(Movimiento.id, Movimiento.descripcion)
+        .filter(
+            Movimiento.cuenta_id.in_(ids_accesibles),
+            Movimiento.tipo != "transfer",
+            Movimiento.fuente != FUENTE_TRANSFERENCIA,
+        )
+        .all()
+    )
+    n = sum(1 for i, d in movs if i != excluir_id and huella_en_descripcion(huella, d or ""))
+    return {"huella": huella, "conteo": n}
+
+
 @router.delete("/{movimiento_id}")
 def eliminar_movimiento(
     movimiento_id: str,
@@ -488,6 +586,17 @@ def eliminar_movimiento(
         _eliminar_transferencia(db, usuario, mov)
         return {"ok": True}
 
+    _borrar_normal(db, usuario, mov)
+    db.commit()
+    return {"ok": True}
+
+
+def _borrar_normal(db: Session, usuario: UsuarioActual, mov: Movimiento) -> None:
+    """Borra un movimiento común y revierte su efecto en la cuenta (y en la meta si era un
+    aporte). Sin commit: quien llama decide cuándo confirmar."""
+    # bloquear_cuenta relee la fila (populate_existing): sin este flush, al borrar varios de la
+    # misma cuenta seguidos se perdería el ajuste de saldo pendiente del anterior.
+    db.flush()
     cuenta = bloquear_cuenta(db, mov.cuenta_id)
     if cuenta and not puede_editar_cuenta(db, usuario.id, cuenta):
         raise HTTPException(status_code=403, detail="No tienes permiso para editar esta cuenta")
@@ -510,8 +619,6 @@ def eliminar_movimiento(
             meta.monto_actual = max(0.0, (meta.monto_actual or 0) - mov.monto)
 
     db.delete(mov)
-    db.commit()
-    return {"ok": True}
 
 
 def _eliminar_transferencia(db: Session, usuario: UsuarioActual, mov: Movimiento) -> None:
