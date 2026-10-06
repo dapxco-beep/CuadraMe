@@ -12,7 +12,7 @@ from app.fx import convertir_a_cop
 from app.models import Cuenta, Movimiento
 from app.schemas import AjusteSaldoRequest, CuentaCreate, CuentaOut, CuentaUpdate
 from app.utiles import ahora_co
-from app.tarjetas import calc_tarjeta, movimientos_tras_corte
+from app.tarjetas import calc_tarjeta, extractos_guardados, movimientos_tras_corte
 
 router = APIRouter(prefix="/cuentas", tags=["cuentas"])
 
@@ -23,7 +23,8 @@ def _serializar(cuenta: Cuenta, db: Session | None = None) -> dict:
     tarjeta = None
     if cuenta.tipo == "credito":
         movs = movimientos_tras_corte(db, cuenta) if db is not None and cuenta.dia_corte else None
-        tarjeta = calc_tarjeta(cuenta, None, movs)
+        guardado = extractos_guardados(db, [cuenta.id]).get(cuenta.id) if db is not None else None
+        tarjeta = calc_tarjeta(cuenta, None, movs, guardado)
     return {
         "id": cuenta.id,
         "nombre": cuenta.nombre,

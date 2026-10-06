@@ -191,10 +191,22 @@ def calcular_resumen(db: Session, uid: str, hoy: Optional[datetime] = None) -> d
     cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == uid).all()
     total_cuentas = sum(convertir_a_cop(c.saldo or 0, c.moneda or "COP") for c in cuentas)
 
+    # La deuda de una tarjeta de crédito ya está restada dentro de `total_cuentas` (su saldo es
+    # negativo). Si además se registró como Deuda de tipo 'tarjeta', se cuenta UNA sola vez:
+    # esa Deuda queda fuera de los pasivos (y se avisa en `pasivos_duplicados`).
+    tarjetas_con_deuda = [{"nombre": c.nombre} for c in cuentas if c.tipo == "credito" and (c.saldo or 0) < 0]
     deudas_db = db.query(Deuda).filter(Deuda.usuario_id == uid, Deuda.activa.is_(True)).all()
+    duplicadas = set(calc.deudas_duplicadas_de_tarjetas(
+        [{"id": d.id, "tipo": d.tipo, "nombre": d.nombre, "entidad": d.entidad} for d in deudas_db],
+        tarjetas_con_deuda,
+    ))
     pasivos = [{"id": d.id, "nombre": d.nombre, "entidad": d.entidad, "saldo": d.saldo_actual or 0}
-               for d in deudas_db]
+               for d in deudas_db if d.id not in duplicadas]
+    pasivos_duplicados = [{"id": d.id, "nombre": d.nombre} for d in deudas_db if d.id in duplicadas]
     total_deudas = sum(p["saldo"] for p in pasivos)
+    deudas_tarjeta = sum(
+        max(0.0, -convertir_a_cop(c.saldo or 0, c.moneda or "COP")) for c in cuentas if c.tipo == "credito"
+    )
 
     # La dona incluye las cuentas como una "clase" más: es el efectivo/líquido.
     dist_valores = dict(por_clase)
@@ -207,6 +219,9 @@ def calcular_resumen(db: Session, uid: str, hoy: Optional[datetime] = None) -> d
         "total_activos": total_activos,
         "total_cuentas": total_cuentas,
         "total_deudas": total_deudas,
+        # Informativo: lo que debes en tarjetas ya viene restado dentro de total_cuentas.
+        "deudas_tarjeta": deudas_tarjeta,
+        "pasivos_duplicados": pasivos_duplicados,
         "distribucion": calc.distribucion(dist_valores),
         "activos": activos,
         "pasivos": pasivos,

@@ -252,6 +252,8 @@ export const api = {
   registrarFlujoActivo: (id, monto, fecha, nota = '') =>
     request(`/patrimonio/activos/${id}/flujos`, { method: 'POST', body: { monto, fecha, nota } }),
 
+  aplicarExtractoTarjeta: (cuentaId, datos) =>
+    request(`/tarjetas/${cuentaId}/aplicar-extracto`, { method: 'POST', body: datos }),
   procesarExtracto: (pdfBase64, cuentaId, password = '') =>
     request('/conciliacion/procesar', {
       method: 'POST',

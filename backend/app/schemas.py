@@ -132,6 +132,12 @@ class TarjetaInfo(BaseModel):
     dias_para_limite: Optional[int] = None
     pagado_pct: Optional[float] = None
     vencido: bool = False
+    # Datos del extracto real aplicados por el cliente (ver app/extracto_tarjeta.py)
+    total_del_banco: bool = False
+    pago_minimo_extracto: Optional[float] = None
+    pago_total_extracto: Optional[float] = None
+    pago_minimo: Optional[float] = None  # el del extracto si se conoce; si no, la estimación
+    pago_minimo_del_extracto: bool = False
 
 
 class CuentaOut(BaseModel):
@@ -818,6 +824,9 @@ class ProcesarExtractoResponse(BaseModel):
     periodo_desde: Optional[str] = None  # ISO, primer movimiento del extracto
     periodo_hasta: Optional[str] = None
     requiere_clave: bool = False  # el PDF está protegido y falta (o es incorrecta) la clave
+    # Solo si la cuenta es una tarjeta de crédito y el extracto trae datos legibles:
+    # {cambios, datos, texto}. Es una PROPUESTA: se aplica solo si el cliente pulsa 'Aplicar'.
+    propuesta_tarjeta: Optional[dict] = None
 
 
 class ImportarFaltantesRequest(BaseModel):

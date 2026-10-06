@@ -101,3 +101,34 @@ def distribucion(valores_por_clase: dict) -> list:
 
 def patrimonio_neto(activos: float, cuentas: float, deudas: float) -> float:
     return activos + cuentas - deudas
+
+
+_GENERICAS = {
+    "tarjeta", "tarjetas", "credito", "creditos", "cuenta", "visa", "mastercard", "master", "amex", "banco",
+    "colombia", "debito", "de", "del", "la", "el", "mi", "tc", "diners", "platinum", "gold", "classic",
+}
+
+
+def _palabras(texto: str) -> set:
+    import re
+    import unicodedata
+    t = "".join(c for c in unicodedata.normalize("NFD", (texto or "").lower()) if unicodedata.category(c) != "Mn")
+    return {p for p in re.findall(r"[a-z0-9]{2,}", t) if p not in _GENERICAS}
+
+
+def deudas_duplicadas_de_tarjetas(deudas: list, tarjetas_con_deuda: list) -> list:
+    """Ids de las deudas de tipo 'tarjeta' que en realidad son una tarjeta de crédito que ya
+    existe como CUENTA con saldo negativo. Esa deuda ya está restada en 'cuentas'; contarla
+    otra vez en 'deudas' la sumaría dos veces al patrimonio.
+
+    deudas: [{"id", "tipo", "nombre", "entidad"}]; tarjetas_con_deuda: [{"nombre"}] (solo
+    las que deben algo). Coincide si comparten una palabra distintiva (p. ej. 'bancolombia',
+    'nu', 'falabella'); las palabras genéricas (tarjeta, visa, crédito...) no cuentan."""
+    ids = []
+    for d in deudas:
+        if (d.get("tipo") or "") != "tarjeta":
+            continue
+        propias = _palabras(d.get("entidad", "")) | _palabras(d.get("nombre", ""))
+        if any(propias & _palabras(t.get("nombre", "")) for t in tarjetas_con_deuda):
+            ids.append(d["id"])
+    return ids

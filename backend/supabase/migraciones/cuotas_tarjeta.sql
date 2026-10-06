@@ -19,3 +19,18 @@ CREATE TABLE IF NOT EXISTS cuotas_tarjeta (
 CREATE INDEX IF NOT EXISTS ix_cuotas_tarjeta_usuario_id ON cuotas_tarjeta (usuario_id);
 CREATE INDEX IF NOT EXISTS ix_cuotas_tarjeta_cuenta_id ON cuotas_tarjeta (cuenta_id);
 ALTER TABLE cuotas_tarjeta ENABLE ROW LEVEL SECURITY;
+
+-- Ultimo extracto real aplicado por el cliente a su tarjeta (pago total/minimo y fecha limite).
+CREATE TABLE IF NOT EXISTS extractos_tarjeta (
+    id VARCHAR PRIMARY KEY,
+    usuario_id VARCHAR NOT NULL,
+    cuenta_id VARCHAR NOT NULL UNIQUE,
+    cupo_disponible DOUBLE PRECISION,
+    pago_total DOUBLE PRECISION,
+    pago_minimo DOUBLE PRECISION,
+    fecha_limite_pago VARCHAR,
+    fecha_corte VARCHAR,
+    actualizado_en TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS ix_extractos_tarjeta_usuario_id ON extractos_tarjeta (usuario_id);
+ALTER TABLE extractos_tarjeta ENABLE ROW LEVEL SECURITY;

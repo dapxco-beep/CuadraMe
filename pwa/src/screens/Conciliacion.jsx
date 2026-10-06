@@ -8,6 +8,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { AvisoCategorizados } from '../components/CategorizacionAuto'
 import RecordarRegla, { RECORDAR_INICIAL } from '../components/RecordarRegla'
+import PropuestaTarjeta from '../components/PropuestaTarjeta'
 import SubidaMultiple from '../components/SubidaMultiple'
 import ZonaSubida from '../components/ZonaSubida'
 import { useDialogos } from '../lib/DialogosContext'
@@ -286,6 +287,8 @@ export default function Conciliacion() {
               <p className="text-xs text-ink-soft">Total</p>
             </div>
           </div>
+
+          <PropuestaTarjeta propuesta={resultado.propuesta_tarjeta} cuentaId={cuentaId} className="mb-4" />
 
           <AvisoCategorizados n={resultado.auto_importados} className="mb-4" />
 

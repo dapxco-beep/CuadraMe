@@ -57,6 +57,13 @@ export function BloqueExtracto({ t, moneda }) {
         )}
       </p>
       {t.vencido && <p className="text-danger mt-1">El plazo ya pasó: paga cuanto antes para frenar los intereses.</p>}
+      {!pagado && !t.vencido && t.dias_para_limite != null && t.dias_para_limite <= 7 && (
+        <p className={`mt-1 font-medium ${t.dias_para_limite <= 3 ? 'text-danger' : 'text-accent-2'}`} data-testid="aviso-dias-pago">
+          {t.dias_para_limite === 0 ? 'Hoy vence tu pago.' : `Te quedan ${t.dias_para_limite} ${t.dias_para_limite === 1 ? 'día' : 'días'} para el pago.`}
+          {t.pago_minimo_del_extracto && t.pago_minimo != null && ` Pago mínimo de tu extracto: ${formatMoneda(t.pago_minimo, moneda)}.`}
+        </p>
+      )}
+      {t.total_del_banco && <p className="text-[11px] text-ink-soft mt-1">Total tomado de tu extracto del banco.</p>}
       <div
         className="h-2 rounded-full bg-paper-raised overflow-hidden mt-2"
         role="progressbar"
@@ -122,8 +129,8 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
                 />
               </div>
               <div className="flex justify-between text-[11px] text-ink-soft mt-1.5">
-                <span>Usado {formatMoneda(t.cupo_usado, cuenta.moneda)}</span>
-                <span>Disponible {formatMoneda(t.cupo_disponible, cuenta.moneda)}</span>
+                <span>Debes {formatMoneda(t.cupo_usado, cuenta.moneda)}</span>
+                <span>Disponible del cupo: {formatMoneda(t.cupo_disponible, cuenta.moneda)}</span>
               </div>
               {nivel.aviso && <p className={`text-xs mt-2 ${nivel.texto}`}>{nivel.aviso}</p>}
             </>
@@ -149,8 +156,8 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
           {t.cupo_usado > 0 && (
             <div className="mt-3 rounded-xl bg-paper p-3 text-xs space-y-1">
               <p>
-                <span className="text-ink-soft">Pago mínimo estimado: </span>
-                <span className="font-semibold">{formatMoneda(t.pago_minimo_estimado, cuenta.moneda)}</span>
+                <span className="text-ink-soft">{t.pago_minimo_del_extracto ? 'Pago mínimo (de tu extracto): ' : 'Pago mínimo estimado: '}</span>
+                <span className="font-semibold">{formatMoneda(t.pago_minimo ?? t.pago_minimo_estimado, cuenta.moneda)}</span>
               </p>
               {t.interes_estimado != null ? (
                 <p>

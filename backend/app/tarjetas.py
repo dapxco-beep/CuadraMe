@@ -83,6 +83,22 @@ def movimientos_tras_corte(db, cuenta, hoy: datetime | None = None) -> list:
     return db.query(Movimiento).filter(Movimiento.cuenta_id == cuenta.id, Movimiento.fecha >= desde).all()
 
 
+def extractos_guardados(db, cuenta_ids: list[str]) -> dict[str, dict]:
+    """{cuenta_id: extracto real aplicado por el cliente} (solo las tarjetas que tengan uno)."""
+    from app.models_cuotas import ExtractoTarjeta  # import local: evita ciclos al cargar el módulo
+
+    if not cuenta_ids:
+        return {}
+    filas = db.query(ExtractoTarjeta).filter(ExtractoTarjeta.cuenta_id.in_(cuenta_ids)).all()
+    return {
+        f.cuenta_id: {
+            "pago_total": f.pago_total, "pago_minimo": f.pago_minimo, "cupo_disponible": f.cupo_disponible,
+            "fecha_limite_pago": f.fecha_limite_pago, "fecha_corte": f.fecha_corte,
+        }
+        for f in filas
+    }
+
+
 def delta_saldo_movimiento(m) -> float:
     """Cuánto movió el saldo de la tarjeta este movimiento (compra < 0, abono > 0).
     Misma regla que el módulo de movimientos: los importados 'sin saldo' y los
@@ -101,7 +117,8 @@ def delta_saldo_movimiento(m) -> float:
     return 0.0
 
 
-def estado_extracto(saldo: float, movimientos, dia_corte: int | None, dia_pago: int | None, hoy: date) -> dict:
+def estado_extracto(saldo: float, movimientos, dia_corte: int | None, dia_pago: int | None, hoy: date,
+                    guardado: dict | None = None) -> dict:
     """Lo que hay que pagar para NO pagar intereses: la deuda al último corte.
 
     deuda al corte = deuda de hoy menos lo que se movió DESPUÉS del corte
@@ -109,11 +126,16 @@ def estado_extracto(saldo: float, movimientos, dia_corte: int | None, dia_pago: 
     fecha posterior al corte (los anteriores no hacen falta: ya están en el saldo).
     Lo pagado desde el corte se descuenta del total del extracto, y las compras
     posteriores van al próximo extracto. Función pura (recibe `hoy`).
+
+    `guardado` = lo que el cliente aplicó de su extracto real ({pago_total, pago_minimo,
+    fecha_limite_pago}). Si su fecha límite es la de este ciclo, el total del banco
+    (que incluye intereses y cargos que no vemos) manda sobre el que calculamos.
     """
     vacio = {
         "total_extracto": None, "pagado_desde_corte": None, "falta_para_evitar_intereses": None,
         "compras_despues_corte": None, "fecha_limite_pago": None, "fecha_ultimo_corte": None,
-        "dias_para_limite": None, "pagado_pct": None, "vencido": False,
+        "dias_para_limite": None, "pagado_pct": None, "vencido": False, "total_del_banco": False,
+        "pago_minimo_extracto": None, "pago_total_extracto": None,
     }
     if not dia_corte:
         return vacio
@@ -130,9 +152,21 @@ def estado_extracto(saldo: float, movimientos, dia_corte: int | None, dia_pago: 
 
     saldo_al_corte = (saldo or 0) - movido
     total = round(max(0.0, -saldo_al_corte), 2)
-    falta = round(max(0.0, total - pagado), 2)
     limite = limite_pago_del_corte(corte, dia_pago) if dia_pago else None
+
+    # Extracto real aplicado por el cliente: vale mientras su fecha límite no haya pasado.
+    vigente = bool(guardado and guardado.get("fecha_limite_pago") and guardado["fecha_limite_pago"] >= hoy.isoformat())
+    del_banco = bool(
+        vigente and guardado.get("pago_total") is not None and limite is not None
+        and guardado["fecha_limite_pago"] == limite.isoformat()
+    )
+    if del_banco:
+        total = round(float(guardado["pago_total"]), 2)
+    falta = round(max(0.0, total - pagado), 2)
     return {
+        "total_del_banco": del_banco,
+        "pago_minimo_extracto": guardado.get("pago_minimo") if vigente else None,
+        "pago_total_extracto": guardado.get("pago_total") if vigente else None,
         "total_extracto": total,
         "pagado_desde_corte": min(pagado, total) if total else 0.0,
         "falta_para_evitar_intereses": falta,
@@ -155,7 +189,7 @@ def nivel_utilizacion(pct: float | None) -> str:
     return "ok"
 
 
-def calc_tarjeta(cuenta, hoy: datetime | None = None, movimientos=None) -> dict:
+def calc_tarjeta(cuenta, hoy: datetime | None = None, movimientos=None, guardado: dict | None = None) -> dict:
     """Devuelve cupo usado/disponible, % de utilización, próximas fechas de
     corte y pago (hora Colombia), pago mínimo e interés estimados. Si se pasan
     los `movimientos` posteriores al último corte (ver inicio_despues_corte),
@@ -179,7 +213,7 @@ def calc_tarjeta(cuenta, hoy: datetime | None = None, movimientos=None) -> dict:
     minimo = min(usado, usado * PCT_PAGO_MINIMO + (interes or 0))
 
     if movimientos is not None:
-        extracto = estado_extracto(cuenta.saldo, movimientos, cuenta.dia_corte, cuenta.dia_pago, hoy_d)
+        extracto = estado_extracto(cuenta.saldo, movimientos, cuenta.dia_corte, cuenta.dia_pago, hoy_d, guardado)
     else:
         extracto = estado_extracto(0, [], None, None, hoy_d)  # todo en None
 
@@ -194,11 +228,15 @@ def calc_tarjeta(cuenta, hoy: datetime | None = None, movimientos=None) -> dict:
         "dias_para_corte": (corte - hoy_d).days if corte else None,
         "dias_para_pago": (pago - hoy_d).days if pago else None,
         "pago_minimo_estimado": round(minimo),
+        # El del extracto real (si el cliente lo aplicó y sigue vigente) manda sobre la estimación.
+        "pago_minimo": extracto["pago_minimo_extracto"] if extracto["pago_minimo_extracto"] is not None else round(minimo),
+        "pago_minimo_del_extracto": extracto["pago_minimo_extracto"] is not None,
         "interes_estimado": interes,
     }
 
 
-def tarjetas_por_avisar(cuentas, hoy: datetime | None = None, movs_por_cuenta: dict | None = None):
+def tarjetas_por_avisar(cuentas, hoy: datetime | None = None, movs_por_cuenta: dict | None = None,
+                        guardados: dict | None = None):
     """Filtra las tarjetas a las que hoy toca avisar 'paga antes del X':
     el pago es en <= DIAS_AVISO_PAGO días y ese pago aún no se avisó
     (ultima_alerta_pago guarda la fecha ya notificada, así el cron diario no
@@ -215,7 +253,7 @@ def tarjetas_por_avisar(cuentas, hoy: datetime | None = None, movs_por_cuenta: d
             continue
         usar_extracto = movs_por_cuenta is not None and bool(c.dia_corte)
         movs = (movs_por_cuenta.get(getattr(c, "id", None)) or []) if usar_extracto else None
-        info = calc_tarjeta(c, hoy, movs)
+        info = calc_tarjeta(c, hoy, movs, (guardados or {}).get(getattr(c, "id", None)))
         if info["falta_para_evitar_intereses"] is not None:
             monto, fecha, dias = info["falta_para_evitar_intereses"], info["fecha_limite_pago"], info["dias_para_limite"]
             if monto <= 0 or dias < 0:
