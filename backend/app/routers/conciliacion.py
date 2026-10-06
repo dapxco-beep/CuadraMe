@@ -23,7 +23,7 @@ from app.conciliacion import (
 )
 from app.database import get_db
 from app.models import Cuenta, HistorialExtracto, Movimiento, Perfil
-from app.pdf_extract import extraer_via_ia, pdf_a_texto
+from app.pdf_extract import extraer_via_ia, pdf_a_texto, pdf_pide_clave
 from app.schemas import (
     HistorialExtractoOut,
     ImportarFaltantesRequest,
@@ -78,6 +78,12 @@ def procesar_extracto(
         )
         db.add(historial)
         db.commit()
+        if not texto_plano and pdf_pide_clave(data.pdf_base64, data.password):
+            return ProcesarExtractoResponse(
+                ok=False, requiere_clave=True, banco_detectado=banco,
+                error="El PDF tiene clave: escríbela e inténtalo de nuevo." if not data.password
+                else "La clave del PDF no es correcta.",
+            )
         detalle = (
             f"Texto extraído del PDF ({len(texto_plano)} chars): {texto_plano[:300]}"
             if texto_plano and len(texto_plano) > 10
@@ -201,10 +207,20 @@ def procesar_extracto(
         auto_importados=auto_importados,
         completados=completados,
         sobrantes=sobrantes,
+        **_periodo(resultado["review"]),
     )
 
 
-@router.get("/historial", response_model=list[HistorialExtractoOut])
+def _periodo(review: list[dict]) -> dict:
+    """Primer y último día (ISO) de los movimientos del extracto, para mostrar el periodo
+    de cada archivo cuando se suben varios."""
+    fechas = [d for d in (parse_bank_date(i.get("fecha")) for i in review if i.get("estado") != "sobrante") if d]
+    if not fechas:
+        return {"periodo_desde": None, "periodo_hasta": None}
+    return {"periodo_desde": min(fechas).date().isoformat(), "periodo_hasta": max(fechas).date().isoformat()}
+
+
+@router.get("/historial",response_model=list[HistorialExtractoOut])
 def listar_historial(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
@@ -244,6 +260,7 @@ def obtener_review(
         review=review,
         completados=completados,
         sobrantes=sobrantes,
+        **_periodo(review),
     )
 
 
@@ -278,10 +295,18 @@ def importar_faltantes(
     recordar, anteriores = set(data.recordar), set(data.aplicar_anteriores)
     reglas_guardadas = anteriores_actualizados = 0
     reglas_omitidas: list[dict] = []
+    # Varios extractos con periodos que se solapan comparten movimientos: si otro archivo (o
+    # el usuario) ya los registró, aquí no se duplican.
+    ya_registrados = {r["fingerprint"] for r in _cargar_ledger(db, usuario.id, cuenta.id)}
+    duplicados_omitidos = 0
 
     for item in review:
         fp = item.get("fingerprint")
         if fp not in fingerprints or item.get("estado") != "faltante":
+            continue
+        if fp in ya_registrados:
+            item["estado"] = "exacto"
+            duplicados_omitidos += 1
             continue
 
         if fp in categorias_elegidas and categorias_elegidas[fp]:
@@ -337,6 +362,7 @@ def importar_faltantes(
         "ok": True, "importados": importados, "sin_categoria_clara": sin_categoria_clara,
         "categorizados_auto": categorizados_auto, "reglas_guardadas": reglas_guardadas,
         "anteriores_actualizados": anteriores_actualizados, "reglas_omitidas": reglas_omitidas,
+        "duplicados_omitidos": duplicados_omitidos,
     }
 
 

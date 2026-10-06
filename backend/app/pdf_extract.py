@@ -27,6 +27,15 @@ def pdf_a_texto(pdf_base64: str, password: str = "") -> str:
         return ""
 
 
+def pdf_pide_clave(pdf_base64: str, password: str = "") -> bool:
+    """True si el PDF no se pudo abrir por estar protegido (falta la clave o es incorrecta)."""
+    try:
+        with pdfplumber.open(io.BytesIO(base64.b64decode(pdf_base64)), password=password or None):
+            return False
+    except Exception as e:  # pdfminer envuelve PDFPasswordIncorrect
+        return "password" in repr(e).lower()
+
+
 def _build_prompt_extraccion(cuenta: str, banco: str) -> str:
     banco_hint = f"Banco/entidad: {banco.capitalize()}. " if banco not in ("generico", "desconocido") else ""
     return "\n".join([

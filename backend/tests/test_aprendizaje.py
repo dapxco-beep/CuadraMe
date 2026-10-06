@@ -170,3 +170,33 @@ def test_importar_confirmar_recuerda_la_categoria_elegida(usuario, cuenta):
     r = client.post("/importar/confirmar", json={"cuenta_id": cuenta["id"], "nombre_archivo": "x.csv", "filas": filas}).json()
     assert r["importados"] == 2 and r["reglas_guardadas"] == 1 and len(r["reglas_omitidas"]) == 1
     assert _clasificar(usuario, "COMPRA VENTO COLIVING BOGOTA")["categoria"] == "Hogar"
+
+
+def test_importar_faltantes_recuerda_y_no_duplica_si_otro_archivo_ya_lo_registro(usuario, cuenta):
+    import json
+    from datetime import datetime
+
+    from app.conciliacion import compute_fingerprint
+    from app.models import HistorialExtracto
+
+    ya = _mov(cuenta, "PAGO EN VENTO COLIVING 0105", "Hogar", monto=900000)
+    fp_ya = compute_fingerprint(datetime.fromisoformat(ya["fecha"]), 900000, cuenta["id"], "PAGO EN VENTO COLIVING 0105", "expense")
+    review = [
+        {"fecha": ya["fecha"][:10], "descripcion": "PAGO EN VENTO COLIVING 0105", "monto": 900000, "tipo": "expense",
+         "referencia": "", "fingerprint": fp_ya, "estado": "faltante"},
+        {"fecha": "2025-10-03", "descripcion": "COMPRA EN OLIMPICA BOGOTA", "monto": 120000, "tipo": "expense",
+         "referencia": "", "fingerprint": "fp-olimpica", "estado": "faltante"},
+    ]
+    with SessionLocal() as db:
+        h = HistorialExtracto(usuario_id=usuario, cuenta_id=cuenta["id"], banco_detectado="nu", total_movimientos=2,
+                              exactos=0, aproximados=0, faltantes=2, importados=0, estado="pendiente_revision",
+                              review_json=json.dumps(review))
+        db.add(h)
+        db.commit()
+        hid = h.id
+    r = client.post(f"/conciliacion/historial/{hid}/importar", json={
+        "fingerprints": [fp_ya, "fp-olimpica"], "categorias": {"fp-olimpica": "Comida"},
+        "recordar": ["fp-olimpica"], "aplicar_anteriores": [],
+    }).json()
+    assert r["importados"] == 1 and r["duplicados_omitidos"] == 1 and r["reglas_guardadas"] == 1
+    assert _clasificar(usuario, "PAGO OLIMPICA SUPERSTORE")["categoria"] == "Comida"

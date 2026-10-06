@@ -794,6 +794,9 @@ class ProcesarExtractoResponse(BaseModel):
     auto_importados: int = 0  # movimientos que entraron solos (quedan "por revisar")
     completados: int = 0  # movimientos rápidos completados con los datos del banco
     sobrantes: int = 0  # registrados en el periodo que no aparecen en el extracto
+    periodo_desde: Optional[str] = None  # ISO, primer movimiento del extracto
+    periodo_hasta: Optional[str] = None
+    requiere_clave: bool = False  # el PDF está protegido y falta (o es incorrecta) la clave
 
 
 class ImportarFaltantesRequest(BaseModel):
