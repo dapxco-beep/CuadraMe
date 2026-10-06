@@ -15,7 +15,7 @@ from app import presupuesto_servicio as srv
 from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
 from app.fx import convertir_a_cop
-from app.models import Meta, Movimiento, Presupuesto, Recurrente
+from app.models import Meta, Presupuesto, Recurrente
 from app.models_patrimonio import ActivoPatrimonio, FlujoActivo, SnapshotPatrimonio
 from app.utiles import ahora_co
 
@@ -107,31 +107,24 @@ def proyeccion(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(g
 
 def _promedios_historicos(db: Session, uid: str, hoy, meses: int = 3) -> dict:
     """Ingreso y gasto promedio mensual de los últimos `meses` meses COMPLETOS."""
-    from app.compartidos import cuentas_ids_accesibles
-    from app.models import Cuenta
+    from app.informe_datos import cargar_movs_efectivos
 
-    ids = cuentas_ids_accesibles(db, uid)
-    monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()}
     fin = datetime(hoy.year, hoy.month, 1)
     ini_y, ini_m = hoy.year, hoy.month
     for _ in range(meses):
         ini_y, ini_m = plan._mes_anterior(ini_y, ini_m)
     inicio = datetime(ini_y, ini_m, 1)
-    filas = (
-        db.query(Movimiento.monto, Movimiento.cuenta_id, Movimiento.tipo, Movimiento.fecha)
-        .filter(Movimiento.cuenta_id.in_(ids), Movimiento.fecha >= inicio, Movimiento.fecha < fin,
-                Movimiento.tipo.in_(("income", "expense")))
-        .all()
-    )
+    # Regla contable central: pagos de tarjeta, traslados propios y ajustes de saldo no cuentan.
+    filas = [m for m in cargar_movs_efectivos(db, uid, inicio, fin)
+             if inicio <= m["fecha"] < fin and m["tipo"] in ("income", "expense")]
     ingresos = gastos = 0.0
     meses_con_datos = set()
-    for monto, cuenta_id, tipo, fecha in filas:
-        v = convertir_a_cop(monto, monedas.get(cuenta_id, "COP"))
-        meses_con_datos.add(fecha.strftime("%Y-%m"))
-        if tipo == "income":
-            ingresos += v
+    for m in filas:
+        meses_con_datos.add(m["fecha"].strftime("%Y-%m"))
+        if m["tipo"] == "income":
+            ingresos += m["monto"]
         else:
-            gastos += v
+            gastos += m["monto"]
     n = max(1, len(meses_con_datos))
     return {"ingreso": ingresos / n, "gasto": gastos / n, "ahorro": (ingresos - gastos) / n,
             "meses_con_datos": len(meses_con_datos)}
