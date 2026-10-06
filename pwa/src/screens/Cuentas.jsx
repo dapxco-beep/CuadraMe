@@ -16,6 +16,7 @@ import TarjetaCuenta from '../components/TarjetaCuenta'
 import SelectorCuenta from '../components/SelectorCuenta'
 import PanelTarjetaCredito from '../components/PanelTarjetaCredito'
 import BotonOjo from '../components/BotonOjo'
+import Hoja from '../components/Hoja'
 
 const tipos = [
   { id: 'ahorro', label: 'Ahorros' },
@@ -223,115 +224,113 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 max-h-[90vh] overflow-y-auto sheet-content">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">{esEdicion ? 'Editar cuenta' : 'Nueva cuenta'}</h2>
-          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
-            <X size={16} />
-          </button>
-        </div>
-
-        {esEdicion ? (
-          <>
-            <input
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Nombre de la cuenta (ej. Bancolombia Ahorro)"
-              aria-label="Nombre de la cuenta"
-              list="entidades-financieras-co-cuentas"
-              className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
-            />
-            <datalist id="entidades-financieras-co-cuentas">
-              {ENTIDADES_FINANCIERAS_CO.map((e) => (
-                <option key={e} value={e} />
-              ))}
-            </datalist>
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              {tipos.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  aria-pressed={tipo === t.id}
-                  onClick={() => setTipo(t.id)}
-                  className={`rounded-2xl border py-3 text-sm font-medium min-h-[44px] ${
-                    tipo === t.id ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="mb-4">
-            <SelectorCuenta
-              nombre={nombre}
-              setNombre={setNombre}
-              tipo={tipo}
-              setTipo={setTipo}
-              setIcono={setIcono}
-              moneda={moneda}
-              setMoneda={setMoneda}
-            />
-          </div>
-        )}
-
-        {!esEdicion && (
-          <>
-            <input
-              value={saldoInicial}
-              onChange={(e) => setSaldoInicial(e.target.value.replace(/[^\d.]/g, ''))}
-              inputMode="decimal"
-              placeholder="Saldo actual (opcional)"
-              aria-label="Saldo actual"
-              className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
-            />
-          </>
-        )}
-
-        <label className="block mb-4">
-          <span className="text-xs font-medium text-ink-soft">Alias de la tarjeta en Wallet (opcional)</span>
-          <input
-            value={alias}
-            onChange={(e) => setAlias(e.target.value)}
-            maxLength={120}
-            placeholder="ej. Visa Bancolombia, 1234"
-            aria-label="Alias de tarjeta"
-            className="w-full mt-1 rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm outline-none focus:border-accent"
-          />
-          <span className="block text-[11px] text-ink-soft mt-1">
-            Cuando pagues con el celular, asignamos el pago a esta cuenta si el nombre de la tarjeta contiene este texto.
-            Puedes poner varios separados por coma.
-          </span>
-        </label>
-
-        {esEdicion && (
-          <p className="text-xs text-ink-soft mb-4">
-            El saldo se ajusta solo registrando movimientos, no se edita aquí directamente.
-          </p>
-        )}
-
-        {error && <p className="text-sm text-danger mb-3">{error}</p>}
-
-        <button
-          onClick={guardar}
-          disabled={guardando}
-          className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
-        >
-          {guardando ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Crear cuenta'}
+    <Hoja onCerrar={onClose}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">{esEdicion ? 'Editar cuenta' : 'Nueva cuenta'}</h2>
+        <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <X size={16} />
         </button>
-
-        {esEdicion && (
-          <button
-            onClick={eliminar}
-            disabled={eliminando}
-            className="w-full flex items-center justify-center gap-1.5 mt-3 text-sm text-danger font-medium disabled:opacity-60"
-          >
-            <Trash2 size={14} /> {eliminando ? 'Eliminando...' : 'Eliminar cuenta'}
-          </button>
-        )}
       </div>
-    </div>
+
+      {esEdicion ? (
+        <>
+          <input
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder="Nombre de la cuenta (ej. Bancolombia Ahorro)"
+            aria-label="Nombre de la cuenta"
+            list="entidades-financieras-co-cuentas"
+            className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
+          />
+          <datalist id="entidades-financieras-co-cuentas">
+            {ENTIDADES_FINANCIERAS_CO.map((e) => (
+              <option key={e} value={e} />
+            ))}
+          </datalist>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {tipos.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                aria-pressed={tipo === t.id}
+                onClick={() => setTipo(t.id)}
+                className={`rounded-2xl border py-3 text-sm font-medium min-h-[44px] ${
+                  tipo === t.id ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="mb-4">
+          <SelectorCuenta
+            nombre={nombre}
+            setNombre={setNombre}
+            tipo={tipo}
+            setTipo={setTipo}
+            setIcono={setIcono}
+            moneda={moneda}
+            setMoneda={setMoneda}
+          />
+        </div>
+      )}
+
+      {!esEdicion && (
+        <>
+          <input
+            value={saldoInicial}
+            onChange={(e) => setSaldoInicial(e.target.value.replace(/[^\d.]/g, ''))}
+            inputMode="decimal"
+            placeholder="Saldo actual (opcional)"
+            aria-label="Saldo actual"
+            className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
+          />
+        </>
+      )}
+
+      <label className="block mb-4">
+        <span className="text-xs font-medium text-ink-soft">Alias de la tarjeta en Wallet (opcional)</span>
+        <input
+          value={alias}
+          onChange={(e) => setAlias(e.target.value)}
+          maxLength={120}
+          placeholder="ej. Visa Bancolombia, 1234"
+          aria-label="Alias de tarjeta"
+          className="w-full mt-1 rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm outline-none focus:border-accent"
+        />
+        <span className="block text-[11px] text-ink-soft mt-1">
+          Cuando pagues con el celular, asignamos el pago a esta cuenta si el nombre de la tarjeta contiene este texto.
+          Puedes poner varios separados por coma.
+        </span>
+      </label>
+
+      {esEdicion && (
+        <p className="text-xs text-ink-soft mb-4">
+          El saldo se ajusta solo registrando movimientos, no se edita aquí directamente.
+        </p>
+      )}
+
+      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+
+      <button
+        onClick={guardar}
+        disabled={guardando}
+        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+      >
+        {guardando ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Crear cuenta'}
+      </button>
+
+      {esEdicion && (
+        <button
+          onClick={eliminar}
+          disabled={eliminando}
+          className="w-full flex items-center justify-center gap-1.5 mt-3 text-sm text-danger font-medium disabled:opacity-60"
+        >
+          <Trash2 size={14} /> {eliminando ? 'Eliminando...' : 'Eliminar cuenta'}
+        </button>
+      )}
+    </Hoja>
   )
 }

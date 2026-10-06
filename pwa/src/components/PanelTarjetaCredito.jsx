@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Pencil, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatMoneda } from '../lib/format'
+import Hoja from './Hoja'
 
 const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
@@ -177,75 +178,73 @@ function FormTarjeta({ cuenta, onClose, onGuardada }) {
   const campo = 'w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent'
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 max-h-[90vh] overflow-y-auto sheet-content">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Datos de "{cuenta.nombre}"</h2>
-          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
-            <X size={16} />
-          </button>
-        </div>
-
-        <label className="block mb-3">
-          <span className="text-xs text-ink-soft">Cupo total</span>
-          <input
-            value={cupo}
-            onChange={(e) => setCupo(e.target.value.replace(/[^\d.]/g, ''))}
-            inputMode="decimal"
-            placeholder="Ej. 5000000"
-            aria-label="Cupo total"
-            className={`${campo} mt-1`}
-          />
-        </label>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <label className="block">
-            <span className="text-xs text-ink-soft">Día de corte</span>
-            <input
-              value={corte}
-              onChange={(e) => setCorte(e.target.value.replace(/\D/g, '').slice(0, 2))}
-              inputMode="numeric"
-              placeholder="1-31"
-              aria-label="Día de corte"
-              className={`${campo} mt-1`}
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs text-ink-soft">Día de pago</span>
-            <input
-              value={pago}
-              onChange={(e) => setPago(e.target.value.replace(/\D/g, '').slice(0, 2))}
-              inputMode="numeric"
-              placeholder="1-31"
-              aria-label="Día de pago"
-              className={`${campo} mt-1`}
-            />
-          </label>
-        </div>
-        <label className="block mb-2">
-          <span className="text-xs text-ink-soft">Tasa efectiva anual % (opcional)</span>
-          <input
-            value={tasa}
-            onChange={(e) => setTasa(e.target.value.replace(/[^\d.]/g, ''))}
-            inputMode="decimal"
-            placeholder="Ej. 28.5"
-            aria-label="Tasa efectiva anual"
-            className={`${campo} mt-1`}
-          />
-        </label>
-        <p className="text-xs text-ink-soft mb-4">
-          Lo usamos para calcular tu utilización, el pago mínimo y los intereses estimados, y para avisarte antes de la fecha de pago.
-        </p>
-
-        {error && <p role="alert" className="text-sm text-danger mb-3">{error}</p>}
-
-        <button
-          onClick={guardar}
-          disabled={guardando}
-          className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
-        >
-          {guardando ? 'Guardando...' : 'Guardar'}
+    <Hoja onCerrar={onClose}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Datos de "{cuenta.nombre}"</h2>
+        <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <X size={16} />
         </button>
       </div>
-    </div>
+
+      <label className="block mb-3">
+        <span className="text-xs text-ink-soft">Cupo total</span>
+        <input
+          value={cupo}
+          onChange={(e) => setCupo(e.target.value.replace(/[^\d.]/g, ''))}
+          inputMode="decimal"
+          placeholder="Ej. 5000000"
+          aria-label="Cupo total"
+          className={`${campo} mt-1`}
+        />
+      </label>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <label className="block">
+          <span className="text-xs text-ink-soft">Día de corte</span>
+          <input
+            value={corte}
+            onChange={(e) => setCorte(e.target.value.replace(/\D/g, '').slice(0, 2))}
+            inputMode="numeric"
+            placeholder="1-31"
+            aria-label="Día de corte"
+            className={`${campo} mt-1`}
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-ink-soft">Día de pago</span>
+          <input
+            value={pago}
+            onChange={(e) => setPago(e.target.value.replace(/\D/g, '').slice(0, 2))}
+            inputMode="numeric"
+            placeholder="1-31"
+            aria-label="Día de pago"
+            className={`${campo} mt-1`}
+          />
+        </label>
+      </div>
+      <label className="block mb-2">
+        <span className="text-xs text-ink-soft">Tasa efectiva anual % (opcional)</span>
+        <input
+          value={tasa}
+          onChange={(e) => setTasa(e.target.value.replace(/[^\d.]/g, ''))}
+          inputMode="decimal"
+          placeholder="Ej. 28.5"
+          aria-label="Tasa efectiva anual"
+          className={`${campo} mt-1`}
+        />
+      </label>
+      <p className="text-xs text-ink-soft mb-4">
+        Lo usamos para calcular tu utilización, el pago mínimo y los intereses estimados, y para avisarte antes de la fecha de pago.
+      </p>
+
+      {error && <p role="alert" className="text-sm text-danger mb-3">{error}</p>}
+
+      <button
+        onClick={guardar}
+        disabled={guardando}
+        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+      >
+        {guardando ? 'Guardando...' : 'Guardar'}
+      </button>
+    </Hoja>
   )
 }

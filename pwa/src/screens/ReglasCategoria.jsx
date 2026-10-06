@@ -4,6 +4,7 @@ import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Plus, Trash2, X, Tag } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCategorias } from '../lib/CategoriasContext'
+import Hoja from '../components/Hoja'
 
 export default function ReglasCategoria() {
   const volver = useVolver('/perfil')
@@ -118,47 +119,45 @@ function FormRegla({ onClose, onGuardado }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Nueva regla</h2>
-          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
-            <X size={16} />
-          </button>
-        </div>
-
-        <input
-          value={patron}
-          onChange={(e) => setPatron(e.target.value)}
-          placeholder="Texto a buscar (ej. Netflix, Uber)"
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
-        />
-
-        <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Categoría</p>
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {categoriasSugeridas.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategoria(c)}
-              className={`rounded-2xl border py-3 text-sm font-medium ${
-                categoria === c ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-
-        {error && <p className="text-sm text-danger mb-3">{error}</p>}
-
-        <button
-          onClick={guardar}
-          disabled={guardando}
-          className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
-        >
-          {guardando ? 'Guardando...' : 'Guardar regla'}
+    <Hoja onCerrar={onClose}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Nueva regla</h2>
+        <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <X size={16} />
         </button>
       </div>
-    </div>
+
+      <input
+        value={patron}
+        onChange={(e) => setPatron(e.target.value)}
+        placeholder="Texto a buscar (ej. Netflix, Uber)"
+        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
+      />
+
+      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Categoría</p>
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {categoriasSugeridas.map((c) => (
+          <button
+            key={c}
+            onClick={() => setCategoria(c)}
+            className={`rounded-2xl border py-3 text-sm font-medium ${
+              categoria === c ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
+            }`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+
+      <button
+        onClick={guardar}
+        disabled={guardando}
+        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+      >
+        {guardando ? 'Guardando...' : 'Guardar regla'}
+      </button>
+    </Hoja>
   )
 }

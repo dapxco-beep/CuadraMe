@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import SelectorEmoji from '../components/SelectorEmoji'
+import Hoja from '../components/Hoja'
 
 const TIPOS = [
   { id: 'gasto', etiqueta: 'Gasto' },
@@ -296,144 +297,142 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
   const opcionesDestino = activas.filter((c) => c.id !== categoria?.id)
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
-      <div className="w-full max-w-[480px] max-h-[92vh] overflow-y-auto bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">{esEdicion ? 'Editar categoría' : 'Nueva categoría'}</h2>
-          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
-            <X size={16} />
-          </button>
-        </div>
-
-        {moverDe ? (
-          <div role="alert" className="rounded-2xl bg-accent-soft border border-line p-4">
-            <p className="text-sm font-semibold">Esta categoría está en uso</p>
-            <p className="text-xs text-ink-soft mt-1">
-              {[
-                moverDe.movimientos ? `${moverDe.movimientos} movimientos` : null,
-                moverDe.reglas ? `${moverDe.reglas} reglas` : null,
-                moverDe.presupuestos ? `${moverDe.presupuestos} presupuesto` : null,
-                moverDe.recurrentes ? `${moverDe.recurrentes} recurrentes` : null,
-              ]
-                .filter(Boolean)
-                .join(', ')}
-              . Elige a qué categoría pasarlos antes de eliminarla:
-            </p>
-            <select
-              value={destino}
-              onChange={(e) => setDestino(e.target.value)}
-              aria-label="Pasar los movimientos a"
-              className="w-full mt-3 rounded-xl border border-line bg-paper px-3 py-2.5 text-sm outline-none focus:border-accent"
-            >
-              {opcionesDestino.map((c) => (
-                <option key={c.id} value={c.nombre}>
-                  {c.icono} {c.nombre}
-                </option>
-              ))}
-            </select>
-            {error && <p className="text-sm text-danger mt-2">{error}</p>}
-            <div className="flex gap-2 mt-3">
-              <button onClick={() => setMoverDe(null)} className="flex-1 rounded-xl border border-line py-3 text-sm font-semibold">
-                Cancelar
-              </button>
-              <button
-                onClick={eliminarMoviendo}
-                disabled={eliminando}
-                className="flex-1 rounded-xl bg-danger text-white py-3 text-sm font-semibold disabled:opacity-60"
-              >
-                {eliminando ? 'Moviendo...' : 'Mover y eliminar'}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="mb-4">
-              <SelectorEmoji valor={icono} onChange={setIcono} />
-            </div>
-
-            <input
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Nombre (ej. Mascotas, Freelance)"
-              aria-label="Nombre de la categoría"
-              maxLength={30}
-              className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
-            />
-
-            <p className="text-xs text-ink-soft mb-1.5">Para qué la usarás</p>
-            <div className="flex gap-2 mb-4" role="group" aria-label="Tipo de categoría">
-              {TIPOS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  aria-pressed={tipo === t.id}
-                  onClick={() => setTipo(t.id)}
-                  className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border ${
-                    tipo === t.id ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
-                  }`}
-                >
-                  {t.etiqueta}
-                </button>
-              ))}
-            </div>
-
-            <p className="text-xs text-ink-soft mb-1.5">Color (opcional)</p>
-            <div className="flex gap-2 mb-5 flex-wrap" role="group" aria-label="Color de la categoría">
-              <button
-                type="button"
-                onClick={() => setColor('')}
-                aria-pressed={!color}
-                aria-label="Sin color"
-                className={`w-8 h-8 rounded-full border-2 text-[10px] text-ink-soft ${!color ? 'border-accent' : 'border-line'}`}
-              >
-                ∅
-              </button>
-              {COLORES.map((col) => (
-                <button
-                  key={col}
-                  type="button"
-                  onClick={() => setColor(col)}
-                  aria-pressed={color === col}
-                  aria-label={`Color ${col}`}
-                  className={`w-8 h-8 rounded-full border-2 ${color === col ? 'border-ink' : 'border-transparent'}`}
-                  style={{ backgroundColor: col }}
-                />
-              ))}
-            </div>
-
-            {esEdicion && categoria.es_base && (
-              <p className="text-xs text-ink-soft mb-4">
-                Esta es una categoría base de la app — puedes cambiarle el nombre, el emoji o el color, o
-                esconderla, pero no eliminarla del todo.
-              </p>
-            )}
-
-            {error && <p className="text-sm text-danger mb-3">{error}</p>}
-
-            <button
-              onClick={guardar}
-              disabled={guardando}
-              className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {guardando ? 'Guardando...' : (
-                <>
-                  <Check size={16} /> {esEdicion ? 'Guardar cambios' : 'Crear categoría'}
-                </>
-              )}
-            </button>
-
-            {esEdicion && !categoria.es_base && (
-              <button
-                onClick={eliminar}
-                disabled={eliminando}
-                className="w-full flex items-center justify-center gap-1.5 mt-3 text-sm text-danger font-medium disabled:opacity-60"
-              >
-                <Trash2 size={14} /> {eliminando ? 'Eliminando...' : 'Eliminar categoría'}
-              </button>
-            )}
-          </>
-        )}
+    <Hoja onCerrar={onClose}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">{esEdicion ? 'Editar categoría' : 'Nueva categoría'}</h2>
+        <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <X size={16} />
+        </button>
       </div>
-    </div>
+
+      {moverDe ? (
+        <div role="alert" className="rounded-2xl bg-accent-soft border border-line p-4">
+          <p className="text-sm font-semibold">Esta categoría está en uso</p>
+          <p className="text-xs text-ink-soft mt-1">
+            {[
+              moverDe.movimientos ? `${moverDe.movimientos} movimientos` : null,
+              moverDe.reglas ? `${moverDe.reglas} reglas` : null,
+              moverDe.presupuestos ? `${moverDe.presupuestos} presupuesto` : null,
+              moverDe.recurrentes ? `${moverDe.recurrentes} recurrentes` : null,
+            ]
+              .filter(Boolean)
+              .join(', ')}
+            . Elige a qué categoría pasarlos antes de eliminarla:
+          </p>
+          <select
+            value={destino}
+            onChange={(e) => setDestino(e.target.value)}
+            aria-label="Pasar los movimientos a"
+            className="w-full mt-3 rounded-xl border border-line bg-paper px-3 py-2.5 text-sm outline-none focus:border-accent"
+          >
+            {opcionesDestino.map((c) => (
+              <option key={c.id} value={c.nombre}>
+                {c.icono} {c.nombre}
+              </option>
+            ))}
+          </select>
+          {error && <p className="text-sm text-danger mt-2">{error}</p>}
+          <div className="flex gap-2 mt-3">
+            <button onClick={() => setMoverDe(null)} className="flex-1 rounded-xl border border-line py-3 text-sm font-semibold">
+              Cancelar
+            </button>
+            <button
+              onClick={eliminarMoviendo}
+              disabled={eliminando}
+              className="flex-1 rounded-xl bg-danger text-white py-3 text-sm font-semibold disabled:opacity-60"
+            >
+              {eliminando ? 'Moviendo...' : 'Mover y eliminar'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="mb-4">
+            <SelectorEmoji valor={icono} onChange={setIcono} />
+          </div>
+
+          <input
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder="Nombre (ej. Mascotas, Freelance)"
+            aria-label="Nombre de la categoría"
+            maxLength={30}
+            className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
+          />
+
+          <p className="text-xs text-ink-soft mb-1.5">Para qué la usarás</p>
+          <div className="flex gap-2 mb-4" role="group" aria-label="Tipo de categoría">
+            {TIPOS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                aria-pressed={tipo === t.id}
+                onClick={() => setTipo(t.id)}
+                className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border ${
+                  tipo === t.id ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
+                }`}
+              >
+                {t.etiqueta}
+              </button>
+            ))}
+          </div>
+
+          <p className="text-xs text-ink-soft mb-1.5">Color (opcional)</p>
+          <div className="flex gap-2 mb-5 flex-wrap" role="group" aria-label="Color de la categoría">
+            <button
+              type="button"
+              onClick={() => setColor('')}
+              aria-pressed={!color}
+              aria-label="Sin color"
+              className={`w-8 h-8 rounded-full border-2 text-[10px] text-ink-soft ${!color ? 'border-accent' : 'border-line'}`}
+            >
+              ∅
+            </button>
+            {COLORES.map((col) => (
+              <button
+                key={col}
+                type="button"
+                onClick={() => setColor(col)}
+                aria-pressed={color === col}
+                aria-label={`Color ${col}`}
+                className={`w-8 h-8 rounded-full border-2 ${color === col ? 'border-ink' : 'border-transparent'}`}
+                style={{ backgroundColor: col }}
+              />
+            ))}
+          </div>
+
+          {esEdicion && categoria.es_base && (
+            <p className="text-xs text-ink-soft mb-4">
+              Esta es una categoría base de la app — puedes cambiarle el nombre, el emoji o el color, o
+              esconderla, pero no eliminarla del todo.
+            </p>
+          )}
+
+          {error && <p className="text-sm text-danger mb-3">{error}</p>}
+
+          <button
+            onClick={guardar}
+            disabled={guardando}
+            className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {guardando ? 'Guardando...' : (
+              <>
+                <Check size={16} /> {esEdicion ? 'Guardar cambios' : 'Crear categoría'}
+              </>
+            )}
+          </button>
+
+          {esEdicion && !categoria.es_base && (
+            <button
+              onClick={eliminar}
+              disabled={eliminando}
+              className="w-full flex items-center justify-center gap-1.5 mt-3 text-sm text-danger font-medium disabled:opacity-60"
+            >
+              <Trash2 size={14} /> {eliminando ? 'Eliminando...' : 'Eliminar categoría'}
+            </button>
+          )}
+        </>
+      )}
+    </Hoja>
   )
 }

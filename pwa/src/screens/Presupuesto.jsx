@@ -10,6 +10,7 @@ import BarraProyeccion from '../components/BarraProyeccion'
 import ConfigPlanificacion from '../components/ConfigPlanificacion'
 import SugerenciaIngreso from '../components/SugerenciaIngreso'
 import { PERIODOS, etiquetaPeriodo, textoRango } from '../lib/planificacion'
+import Hoja from '../components/Hoja'
 
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -362,64 +363,62 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Nuevo presupuesto</h2>
-          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
-            <X size={16} />
-          </button>
-        </div>
-
-        <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Categoría</p>
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {categoriasSugeridas.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategoria(c)}
-              className={`rounded-2xl border py-3 text-sm font-medium ${
-                categoria === c ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-
-        <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Periodo</p>
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {PERIODOS.map((pe) => (
-            <button
-              key={pe.valor}
-              onClick={() => setPeriodo(pe.valor)}
-              className={`rounded-2xl border py-2.5 text-sm font-medium ${
-                periodo === pe.valor ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
-              }`}
-            >
-              {pe.etiqueta}
-            </button>
-          ))}
-        </div>
-
-        <input
-          value={limite}
-          onChange={(e) => setLimite(e.target.value.replace(/\D/g, ''))}
-          inputMode="numeric"
-          placeholder={`Límite ${etiquetaPeriodo(periodo).toLowerCase()} (ej. 500000)`}
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
-        />
-
-        {error && <p className="text-sm text-danger mb-3">{error}</p>}
-
-        <button
-          onClick={guardar}
-          disabled={guardando}
-          className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
-        >
-          {guardando ? 'Guardando...' : 'Guardar presupuesto'}
+    <Hoja onCerrar={onClose}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Nuevo presupuesto</h2>
+        <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <X size={16} />
         </button>
       </div>
-    </div>
+
+      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Categoría</p>
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {categoriasSugeridas.map((c) => (
+          <button
+            key={c}
+            onClick={() => setCategoria(c)}
+            className={`rounded-2xl border py-3 text-sm font-medium ${
+              categoria === c ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
+            }`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
+      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Periodo</p>
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {PERIODOS.map((pe) => (
+          <button
+            key={pe.valor}
+            onClick={() => setPeriodo(pe.valor)}
+            className={`rounded-2xl border py-2.5 text-sm font-medium ${
+              periodo === pe.valor ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
+            }`}
+          >
+            {pe.etiqueta}
+          </button>
+        ))}
+      </div>
+
+      <input
+        value={limite}
+        onChange={(e) => setLimite(e.target.value.replace(/\D/g, ''))}
+        inputMode="numeric"
+        placeholder={`Límite ${etiquetaPeriodo(periodo).toLowerCase()} (ej. 500000)`}
+        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
+      />
+
+      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+
+      <button
+        onClick={guardar}
+        disabled={guardando}
+        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+      >
+        {guardando ? 'Guardando...' : 'Guardar presupuesto'}
+      </button>
+    </Hoja>
   )
 }
 
@@ -447,60 +446,58 @@ function FormMoverSobre({ presupuestos, onClose, onMovido }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Mover plata entre categorías</h2>
-          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
-            <X size={16} />
-          </button>
-        </div>
-
-        <p className="text-xs text-ink-soft mb-4">
-          Lo que te sobró en una categoría lo puedes pasar a otra que se quedó corta,
-          en vez de perderlo cada mes.
-        </p>
-
-        <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Desde</p>
-        <select
-          value={origenId}
-          onChange={(e) => setOrigenId(e.target.value)}
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm mb-3"
-        >
-          {presupuestos.map((p) => (
-            <option key={p.id} value={p.id}>{p.categoria}</option>
-          ))}
-        </select>
-
-        <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Hacia</p>
-        <select
-          value={destinoId}
-          onChange={(e) => setDestinoId(e.target.value)}
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm mb-3"
-        >
-          {presupuestos.map((p) => (
-            <option key={p.id} value={p.id}>{p.categoria}</option>
-          ))}
-        </select>
-
-        <input
-          value={monto}
-          onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
-          inputMode="numeric"
-          placeholder="Monto a mover"
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
-        />
-
-        {error && <p className="text-sm text-danger mb-3">{error}</p>}
-
-        <button
-          onClick={guardar}
-          disabled={guardando}
-          className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
-        >
-          {guardando ? 'Moviendo...' : 'Mover plata'}
+    <Hoja onCerrar={onClose}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Mover plata entre categorías</h2>
+        <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <X size={16} />
         </button>
       </div>
-    </div>
+
+      <p className="text-xs text-ink-soft mb-4">
+        Lo que te sobró en una categoría lo puedes pasar a otra que se quedó corta,
+        en vez de perderlo cada mes.
+      </p>
+
+      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Desde</p>
+      <select
+        value={origenId}
+        onChange={(e) => setOrigenId(e.target.value)}
+        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm mb-3"
+      >
+        {presupuestos.map((p) => (
+          <option key={p.id} value={p.id}>{p.categoria}</option>
+        ))}
+      </select>
+
+      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Hacia</p>
+      <select
+        value={destinoId}
+        onChange={(e) => setDestinoId(e.target.value)}
+        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm mb-3"
+      >
+        {presupuestos.map((p) => (
+          <option key={p.id} value={p.id}>{p.categoria}</option>
+        ))}
+      </select>
+
+      <input
+        value={monto}
+        onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
+        inputMode="numeric"
+        placeholder="Monto a mover"
+        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
+      />
+
+      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+
+      <button
+        onClick={guardar}
+        disabled={guardando}
+        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+      >
+        {guardando ? 'Moviendo...' : 'Mover plata'}
+      </button>
+    </Hoja>
   )
 }

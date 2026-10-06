@@ -51,6 +51,8 @@ export default function Hoja({
   role = 'dialog',
   claseFondo = '',
   clasePanel = 'p-6 pb-[max(2rem,env(safe-area-inset-bottom))]',
+  capa = 'z-50', // capa (z-index) del fondo; las hojas sobre otras hojas usan una mayor
+  testId,
   children,
 }) {
   const id = useId()
@@ -162,6 +164,17 @@ export default function Hoja({
     }
   }, [abierta])
 
+  // Nombre accesible: si no se pasó titulo/ariaLabel, se toma del primer encabezado de la hoja
+  useEffect(() => {
+    const el = panel.current
+    if (!abierta || !el || ariaLabel || titulo) return
+    const h = el.querySelector('h1,h2,h3')
+    if (h) {
+      if (!h.id) h.id = `${id}-titulo`
+      el.setAttribute('aria-labelledby', h.id)
+    }
+  })
+
   // Trampa de foco: Tab y Shift+Tab no salen de la hoja
   function alTeclearPanel(e) {
     if (e.key !== 'Tab' || !panel.current) return
@@ -192,7 +205,8 @@ export default function Hoja({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end md:items-center justify-center bg-ink/40 sheet-backdrop ${
+      data-testid={testId}
+      className={`fixed inset-0 ${capa} flex items-end md:items-center justify-center bg-ink/40 sheet-backdrop ${
         fase === 'saliendo' ? 'hoja-saliendo' : ''
       } ${claseFondo}`}
       onPointerDown={(e) => {

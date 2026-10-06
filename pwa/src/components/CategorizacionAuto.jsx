@@ -4,6 +4,7 @@ import { Check, ChevronRight, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCategorias } from '../lib/CategoriasContext'
 import { patronDeComercio, RAZON_AUTO } from '../lib/comercio'
+import Hoja from './Hoja'
 
 /** Insignia discreta que dice que la app puso la categoría sola, y por qué. */
 export function InsigniaAuto({ movimiento }) {
@@ -70,66 +71,64 @@ export function HojaCambiarCategoria({ movimiento, onClose, onHecho }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
-      <div className="w-full max-w-[480px] max-h-[90vh] overflow-y-auto bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-lg font-semibold">Cambiar categoría</h2>
-          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
-            <X size={16} />
-          </button>
-        </div>
-        <p className="text-xs text-ink-soft mb-4 truncate">{movimiento.descripcion}</p>
-
-        <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Categorías">
-          {opciones.map((n) => (
-            <button
-              key={n}
-              type="button"
-              aria-pressed={categoria === n}
-              onClick={() => setCategoria(n)}
-              className={`text-sm px-3 py-2 rounded-full border ${
-                categoria === n ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
-              }`}
-            >
-              <span aria-hidden="true">{iconoDe(n)}</span> {n}
-            </button>
-          ))}
-        </div>
-
-        <label className="flex items-start gap-3 rounded-2xl border border-line bg-paper-raised p-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={aplicarATodos}
-            onChange={(e) => setAplicarATodos(e.target.checked)}
-            className="mt-0.5 w-4 h-4 accent-[var(--c-accent)]"
-          />
-          <span className="text-sm">
-            <span className="font-medium">Aplicar a todos los de este comercio</span>
-            <span className="block text-xs text-ink-soft mt-0.5">
-              Crea una regla: los movimientos que contengan este texto, de hoy y de los próximos, quedarán en esta categoría.
-            </span>
-          </span>
-        </label>
-        {aplicarATodos && (
-          <input
-            value={patron}
-            onChange={(e) => setPatron(e.target.value)}
-            aria-label="Comercio de la regla"
-            maxLength={60}
-            className="w-full mt-2 rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-sm outline-none focus:border-accent"
-          />
-        )}
-
-        {error && <p className="text-sm text-danger mt-3">{error}</p>}
-
-        <button
-          onClick={guardar}
-          disabled={guardando}
-          className="w-full mt-4 bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60 flex items-center justify-center gap-2"
-        >
-          <Check size={16} /> {guardando ? 'Guardando...' : 'Guardar'}
+    <Hoja onCerrar={onClose}>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-lg font-semibold">Cambiar categoría</h2>
+        <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <X size={16} />
         </button>
       </div>
-    </div>
+      <p className="text-xs text-ink-soft mb-4 truncate">{movimiento.descripcion}</p>
+
+      <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Categorías">
+        {opciones.map((n) => (
+          <button
+            key={n}
+            type="button"
+            aria-pressed={categoria === n}
+            onClick={() => setCategoria(n)}
+            className={`text-sm px-3 py-2 rounded-full border ${
+              categoria === n ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
+            }`}
+          >
+            <span aria-hidden="true">{iconoDe(n)}</span> {n}
+          </button>
+        ))}
+      </div>
+
+      <label className="flex items-start gap-3 rounded-2xl border border-line bg-paper-raised p-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={aplicarATodos}
+          onChange={(e) => setAplicarATodos(e.target.checked)}
+          className="mt-0.5 w-4 h-4 accent-[var(--c-accent)]"
+        />
+        <span className="text-sm">
+          <span className="font-medium">Aplicar a todos los de este comercio</span>
+          <span className="block text-xs text-ink-soft mt-0.5">
+            Crea una regla: los movimientos que contengan este texto, de hoy y de los próximos, quedarán en esta categoría.
+          </span>
+        </span>
+      </label>
+      {aplicarATodos && (
+        <input
+          value={patron}
+          onChange={(e) => setPatron(e.target.value)}
+          aria-label="Comercio de la regla"
+          maxLength={60}
+          className="w-full mt-2 rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-sm outline-none focus:border-accent"
+        />
+      )}
+
+      {error && <p className="text-sm text-danger mt-3">{error}</p>}
+
+      <button
+        onClick={guardar}
+        disabled={guardando}
+        className="w-full mt-4 bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60 flex items-center justify-center gap-2"
+      >
+        <Check size={16} /> {guardando ? 'Guardando...' : 'Guardar'}
+      </button>
+    </Hoja>
   )
 }
