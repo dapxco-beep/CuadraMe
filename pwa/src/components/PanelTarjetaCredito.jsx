@@ -68,11 +68,10 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
                 aria-valuemax={100}
               >
                 <div
-                  className="h-full rounded-full"
+                  className="h-full w-full rounded-full barra-fill"
                   style={{
-                    width: `${Math.min(100, t.utilizacion_pct)}%`,
+                    transform: `scaleX(${Math.min(100, t.utilizacion_pct) / 100})`,
                     background: nivel.barra,
-                    transition: 'width 600ms ease-out',
                   }}
                 />
               </div>

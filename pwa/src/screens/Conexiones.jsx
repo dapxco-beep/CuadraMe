@@ -113,8 +113,8 @@ function TarjetaGmail({ g, navigate, recargar }) {
         <div className="mt-3" role="status">
           <div className="h-2 rounded-full bg-line overflow-hidden">
             <div
-              className="h-full bg-accent transition-all duration-300"
-              style={{ width: `${pct}%` }}
+              className="h-full w-full bg-accent barra-fill"
+              style={{ transform: `scaleX(${pct / 100})` }}
               role="progressbar"
               aria-valuenow={pct}
               aria-valuemin={0}

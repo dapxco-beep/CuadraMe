@@ -36,7 +36,7 @@ export default function GraficoDescomposicion({ meses }) {
       </div>
       <div className="flex gap-2 mt-1.5">
         {ultimos.map((m) => (
-          <p key={m.mes} className="flex-1 text-center text-[10px] text-ink-soft">{etiquetaMes(m.mes)}</p>
+          <p key={m.mes} className="flex-1 text-center text-[11px] text-ink-soft">{etiquetaMes(m.mes)}</p>
         ))}
       </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown, HeartPulse, Lightbulb } from 'lucide-react'
 import { api } from '../lib/api'
+import BarraProgreso from './BarraProgreso'
 
 export function colorPuntaje(p) {
   if (p >= 70) return 'var(--c-accent)'
@@ -20,12 +21,21 @@ export function AnilloPuntaje({ score, size = 96 }) {
   const circ = 2 * Math.PI * r
   const offset = circ * (1 - (lleno ? score : 0) / 100)
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <div
+      className="relative shrink-0"
+      style={{ width: size, height: size }}
+      role="progressbar"
+      aria-valuenow={score}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label="Puntaje de salud financiera"
+    >
       <svg viewBox="0 0 100 100" width={size} height={size} className="-rotate-90" aria-hidden="true">
         <circle cx="50" cy="50" r={r} fill="none" stroke="var(--c-line)" strokeWidth="9" />
         <circle
           cx="50" cy="50" r={r} fill="none" strokeWidth="9" strokeLinecap="round"
           stroke={colorPuntaje(score)}
+          className="anillo-trazo"
           strokeDasharray={circ}
           strokeDashoffset={offset}
           style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.22, 1, 0.36, 1)' }}
@@ -33,7 +43,7 @@ export function AnilloPuntaje({ score, size = 96 }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-2xl font-extrabold leading-none">{score}</span>
-        <span className="text-[10px] text-ink-soft">de 100</span>
+        <span className="text-[11px] text-ink-soft">de 100</span>
       </div>
     </div>
   )
@@ -96,16 +106,12 @@ export default function TarjetaSalud() {
                 <span className="font-medium">{c.nombre}</span>
                 <span className="text-ink-soft">{c.disponible ? `${c.puntaje}/100` : 'Sin datos aún'}</span>
               </div>
-              <div className="h-1.5 rounded-full bg-line overflow-hidden">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${c.disponible ? c.puntaje : 0}%`,
-                    background: colorPuntaje(c.puntaje ?? 0),
-                    transition: 'width 0.8s cubic-bezier(0.22, 1, 0.36, 1)',
-                  }}
-                />
-              </div>
+              <BarraProgreso
+                pct={c.disponible ? c.puntaje : 0}
+                color={colorPuntaje(c.puntaje ?? 0)}
+                label={c.nombre}
+                className="h-1.5 rounded-full bg-line overflow-hidden"
+              />
             </div>
           ))}
           {datos.consejos.length > 0 && (

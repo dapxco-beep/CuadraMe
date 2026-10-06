@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { MotionConfig } from 'framer-motion'
 import { api } from './lib/api'
 import AutorizacionTratamiento from './screens/AutorizacionTratamiento'
 import ConsentimientoGlobal from './components/ConsentimientoGlobal'
@@ -233,6 +234,9 @@ export default function App() {
   const [splash, setSplash] = useState(splashPendiente)
   const terminarSplash = useCallback(() => setSplash(false), [])
   return (
+    // reducedMotion="user": con "reducir movimiento" del sistema, framer-motion desactiva
+    // los desplazamientos/escalas (conserva solo fundidos de opacidad)
+    <MotionConfig reducedMotion="user">
     <ThemeProvider>
       {splash && <SplashMarca onFin={terminarSplash} />}
       <AuthProvider>
@@ -245,5 +249,6 @@ export default function App() {
         </BloqueoProvider>
       </AuthProvider>
     </ThemeProvider>
+    </MotionConfig>
   )
 }

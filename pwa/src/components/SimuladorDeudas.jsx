@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
+import BarraProgreso from './BarraProgreso'
 
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
@@ -42,12 +43,7 @@ function GraficoComparativo({ resultado }) {
               <span className="font-medium">{m.titulo}</span>
               <span className="text-ink-soft">{formatCOP(r.intereses_totales)}</span>
             </div>
-            <div className="h-3 rounded-full bg-paper overflow-hidden">
-              <div
-                className="h-full rounded-full"
-                style={{ width: `${pct}%`, background: m.color, transition: 'width 600ms ease-out' }}
-              />
-            </div>
+            <BarraProgreso pct={pct} color={m.color} label={`Intereses con ${m.titulo}`} className="h-3 rounded-full bg-paper overflow-hidden" />
           </div>
         )
       })}
@@ -60,7 +56,7 @@ function TarjetaMetodo({ titulo, descripcion, r, mejor }) {
     <div className={`rounded-2xl border p-3 ${mejor ? 'border-accent bg-accent-soft' : 'border-line bg-paper-raised'}`}>
       <div className="flex items-center justify-between mb-0.5">
         <p className="text-sm font-semibold">{titulo}</p>
-        {mejor && <span className="text-[10px] font-semibold text-accent">Menos intereses</span>}
+        {mejor && <span className="text-[11px] font-semibold text-accent">Menos intereses</span>}
       </div>
       <p className="text-[11px] text-ink-soft mb-2">{descripcion}</p>
       <p className="text-xs text-ink-soft">Libre de deudas</p>

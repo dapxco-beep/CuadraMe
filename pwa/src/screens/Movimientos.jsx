@@ -234,7 +234,7 @@ export default function Movimientos() {
               onClick={() => setMostrarFiltrosFecha((v) => !v)}
               aria-label="Filtros de fecha y cuenta"
               aria-expanded={mostrarFiltrosFecha}
-              className={`w-9 h-9 rounded-full border flex items-center justify-center ${
+              className={`w-11 h-11 rounded-full border flex items-center justify-center ${
                 mostrarFiltrosFecha || desde || hasta ? 'bg-accent-soft border-accent text-accent' : 'border-line text-ink-soft'
               }`}
             >
@@ -302,11 +302,11 @@ export default function Movimientos() {
       {hayFiltrosActivos && filtrados.length > 0 && (
         <div className="px-5 mb-4 flex gap-3">
           <div className="flex-1 rounded-2xl bg-paper-raised border border-line p-3">
-            <p className="text-[10px] text-ink-soft uppercase tracking-wide">Ingresos</p>
+            <p className="text-[11px] text-ink-soft uppercase tracking-wide">Ingresos</p>
             <p className="text-sm font-bold text-accent-2 mt-0.5">{formatCOP(totalIngresos)}</p>
           </div>
           <div className="flex-1 rounded-2xl bg-paper-raised border border-line p-3">
-            <p className="text-[10px] text-ink-soft uppercase tracking-wide">Gastos</p>
+            <p className="text-[11px] text-ink-soft uppercase tracking-wide">Gastos</p>
             <p className="text-sm font-bold text-ink mt-0.5">{formatCOP(totalGastos)}</p>
           </div>
         </div>
@@ -508,7 +508,7 @@ export default function Movimientos() {
           </select>
           <button
             onClick={salirModoSeleccion}
-            className="w-9 h-9 shrink-0 rounded-xl bg-paper flex items-center justify-center"
+            className="w-11 h-11 shrink-0 rounded-xl bg-paper flex items-center justify-center"
             aria-label="Cerrar"
           >
             <X size={16} className="text-ink" />

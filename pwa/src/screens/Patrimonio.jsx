@@ -55,7 +55,7 @@ export default function Patrimonio() {
         <h1 className="text-xl font-semibold">Patrimonio</h1>
         <button
           onClick={() => setFormulario({})}
-          className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
           aria-label="Agregar activo"
         >
           <Plus size={20} />

@@ -159,7 +159,7 @@ export default function Wrapped() {
       {mes && (
         <div className="px-6 pb-1 flex items-center gap-2" role="group" aria-label="Mes del resumen">
           <button type="button" aria-label="Mes anterior" disabled={!hayAnterior} onClick={() => setMes(opciones[indice - 1])}
-            className="w-10 h-10 rounded-full bg-paper-raised border border-line flex items-center justify-center disabled:opacity-40">
+            className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center disabled:opacity-40">
             <ChevronLeft size={16} />
           </button>
           <select value={mes} onChange={(e) => setMes(e.target.value)} aria-label="Elegir mes"
@@ -169,7 +169,7 @@ export default function Wrapped() {
             ))}
           </select>
           <button type="button" aria-label="Mes siguiente" disabled={!haySiguiente} onClick={() => setMes(opciones[indice + 1])}
-            className="w-10 h-10 rounded-full bg-paper-raised border border-line flex items-center justify-center disabled:opacity-40">
+            className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center disabled:opacity-40">
             <ChevronRight size={16} />
           </button>
         </div>

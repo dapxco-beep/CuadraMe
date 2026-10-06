@@ -85,7 +85,7 @@ export default function Compartir() {
                 </p>
                 <button
                   onClick={() => responderInvitacion(inv.id, true)}
-                  className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center shrink-0"
+                  className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center shrink-0"
                  aria-label="Aceptar invitación">
                   <Check size={14} />
                 </button>

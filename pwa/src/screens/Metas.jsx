@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import Hoja from '../components/Hoja'
+import BarraProgreso from '../components/BarraProgreso'
 
 export default function Metas() {
   const volver = useVolver('/perfil')
@@ -47,13 +48,13 @@ export default function Metas() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setPlaneando(true)}
-            className="w-10 h-10 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+            className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
             aria-label="Planear una meta">
             <Sparkles size={17} className="text-accent" />
           </button>
           <button
             onClick={() => setMostrarForm(true)}
-            className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center"
+            className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
            aria-label="Nueva meta">
             <Plus size={20} />
           </button>
@@ -79,12 +80,7 @@ export default function Metas() {
                 <p className="text-sm font-semibold">{m.nombre}</p>
                 <p className="text-xs text-ink-soft">{m.progreso_pct}%</p>
               </div>
-              <div className="h-2 rounded-full bg-line overflow-hidden mb-2">
-                <div
-                  className="h-full bg-accent rounded-full"
-                  style={{ width: `${Math.min(100, m.progreso_pct)}%` }}
-                />
-              </div>
+              <BarraProgreso pct={m.progreso_pct} label={`Progreso de ${m.nombre}`} className="h-2 rounded-full bg-line overflow-hidden mb-2" />
               <div className="flex items-center justify-between text-xs text-ink-soft mb-3">
                 <span>{formatCOP(m.monto_actual)}</span>
                 <span>{formatCOP(m.monto_objetivo)}</span>

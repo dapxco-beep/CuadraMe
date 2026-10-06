@@ -161,7 +161,8 @@ body {
    el delay, o usar .stagger-N para los primeros índices sin variables. */
 .stagger-item {
   animation: slide-up-sm 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: calc(var(--stagger-i, 0) * 35ms);
+  /* Tope de 8 pasos: en listas largas el retraso no crece sin límite (350 ms máx.) */
+  animation-delay: calc(min(var(--stagger-i, 0), 8) * 35ms);
 }
 
 .pop-in {

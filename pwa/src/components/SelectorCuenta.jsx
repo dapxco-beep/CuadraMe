@@ -54,7 +54,7 @@ function ChipBanco({ nombre, activo, onClick }) {
     >
       <span
         aria-hidden="true"
-        className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-[10px] font-extrabold"
+        className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-[11px] font-extrabold"
         style={{ background: marca.bg, color: marca.fg }}
       >
         {marca.mono}

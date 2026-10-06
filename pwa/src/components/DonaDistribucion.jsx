@@ -29,6 +29,7 @@ export default function DonaDistribucion({ distribucion }) {
             r={RADIO}
             fill="none"
             stroke={a.color}
+            className="dona-trazo"
             strokeWidth="14"
             strokeDasharray={`${listo ? a.largo : 0} ${listo ? a.resto : 2 * Math.PI * RADIO}`}
             strokeDashoffset={a.desplazamiento}

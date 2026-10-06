@@ -81,7 +81,7 @@ export default function Presupuesto() {
           {presupuestos.length > 1 && (
             <button
               onClick={() => setMostrarMover(true)}
-              className="w-10 h-10 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+              className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
               aria-label="Mover plata entre categorías"
             >
               <ArrowLeftRight size={17} className="text-ink-soft" />
@@ -89,7 +89,7 @@ export default function Presupuesto() {
           )}
           <button
             onClick={() => setMostrarForm(true)}
-            className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center"
+            className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
            aria-label="Nuevo presupuesto">
             <Plus size={20} />
           </button>
@@ -240,12 +240,12 @@ export default function Presupuesto() {
                         <p className="text-sm font-semibold">
                           {p.categoria}
                           {p.proy && p.proy.periodo !== 'monthly' && (
-                            <span className="ml-1.5 text-[10px] font-bold text-ink-soft" data-testid="chip-periodo">
+                            <span className="ml-1.5 text-[11px] font-bold text-ink-soft" data-testid="chip-periodo">
                               {etiquetaPeriodo(p.proy.periodo)} · {textoRango(p.proy.inicio, p.proy.fin)}
                             </span>
                           )}
                           {p.sobre_ajuste !== 0 && (
-                            <span className={`ml-1.5 text-[10px] font-bold ${p.sobre_ajuste > 0 ? 'text-accent-2' : 'text-ink-soft'}`}>
+                            <span className={`ml-1.5 text-[11px] font-bold ${p.sobre_ajuste > 0 ? 'text-accent-2' : 'text-ink-soft'}`}>
                               {p.sobre_ajuste > 0 ? '+' : ''}{formatCOP(p.sobre_ajuste)}
                             </span>
                           )}

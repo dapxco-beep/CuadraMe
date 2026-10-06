@@ -305,8 +305,8 @@ export default function Sincronizacion() {
         )}
         {progreso && (
           <div className="mt-3" role="status">
-            <div className="h-2 rounded-full bg-line overflow-hidden">
-              <div className="h-full bg-accent transition-all duration-300" style={{ width: `${pct}%` }} />
+            <div className="h-2 rounded-full bg-line overflow-hidden" role="progressbar" aria-label="Progreso de la sincronización" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+              <div className="h-full w-full bg-accent barra-fill" style={{ transform: `scaleX(${pct / 100})` }} />
             </div>
             <p className="text-xs text-ink-soft mt-1.5">
               {progreso.total_estimado ? `Leí ${progreso.leidos} de ${progreso.total_estimado}` : 'Empezando...'}
@@ -368,9 +368,9 @@ export default function Sincronizacion() {
           <div className="rounded-2xl bg-paper-raised border border-line p-3">
             <div role="table" aria-label="Estado de cada cuenta en los últimos meses">
               <div role="row" className="grid grid-cols-[minmax(0,1.5fr)_repeat(6,minmax(0,1fr))] gap-1 items-end mb-1.5">
-                <span role="columnheader" className="text-[10px] text-ink-soft">Cuenta</span>
+                <span role="columnheader" className="text-[11px] text-ink-soft">Cuenta</span>
                 {meses.map((m) => (
-                  <span key={m.clave} role="columnheader" className="text-[10px] text-ink-soft text-center capitalize">{m.etiqueta}</span>
+                  <span key={m.clave} role="columnheader" className="text-[11px] text-ink-soft text-center capitalize">{m.etiqueta}</span>
                 ))}
               </div>
               {filasCuentas.map((c) => (
@@ -425,7 +425,7 @@ export default function Sincronizacion() {
                       <span aria-hidden="true">{estadoCelda(celdaDetalle.estado).simbolo}</span> {estadoCelda(celdaDetalle.estado).texto}
                     </p>
                   </div>
-                  <button onClick={() => setDetalle(null)} aria-label="Cerrar detalle" className="w-8 h-8 flex items-center justify-center text-ink-soft">
+                  <button onClick={() => setDetalle(null)} aria-label="Cerrar detalle" className="w-11 h-11 flex items-center justify-center text-ink-soft">
                     <X size={16} />
                   </button>
                 </div>

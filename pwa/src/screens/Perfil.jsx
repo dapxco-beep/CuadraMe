@@ -329,7 +329,7 @@ export default function Perfil() {
         <div className="flex items-center gap-2 mb-3">
           <Link2 size={16} className="text-ink-soft" />
           <h2 className="text-[15px] font-semibold">Conectar dispositivos</h2>
-          <span className="text-[10px] font-bold text-ink-soft bg-line px-2 py-0.5 rounded-full uppercase tracking-wide">
+          <span className="text-[11px] font-bold text-ink-soft bg-line px-2 py-0.5 rounded-full uppercase tracking-wide">
             Avanzado
           </span>
         </div>
@@ -346,7 +346,7 @@ export default function Perfil() {
             <button
               onClick={copiarApiKey}
               disabled={!apiKey}
-              className="shrink-0 w-9 h-9 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
+              className="shrink-0 w-11 h-11 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
               aria-label="Copiar"
             >
               <Copy size={15} className={copiado ? 'text-accent' : 'text-ink-soft'} />
@@ -354,7 +354,7 @@ export default function Perfil() {
             <button
               onClick={regenerarApiKey}
               disabled={!apiKey}
-              className="shrink-0 w-9 h-9 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
+              className="shrink-0 w-11 h-11 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
               aria-label="Regenerar"
             >
               <RefreshCw size={15} className="text-ink-soft" />

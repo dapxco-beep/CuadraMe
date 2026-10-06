@@ -469,7 +469,7 @@ export default function ConectarDispositivo() {
                       Agrega estos campos de texto y, en cada valor, toca la variable <b>Entrada de atajo</b> y elige la
                       propiedad que corresponde (Comercio, Importe, Tarjeta o pase, Fecha; los nombres pueden variar un
                       poco según tu iOS):
-                      <pre className="mt-1.5 text-[10px] leading-relaxed whitespace-pre-wrap rounded-lg bg-paper p-2.5 border border-line text-ink">{JSON_DEL_ATAJO}</pre>
+                      <pre className="mt-1.5 text-[11px] leading-relaxed whitespace-pre-wrap rounded-lg bg-paper p-2.5 border border-line text-ink">{JSON_DEL_ATAJO}</pre>
                     </li>
                     <li>
                       En <b>Encabezados</b> agrega <b>X-Api-Key</b> = tu clave (la del paso 1) y{' '}
@@ -487,7 +487,7 @@ export default function ConectarDispositivo() {
                       «¿En qué?» y <b>Establecer variable</b> <b>nota</b>. Luego <b>Obtener contenido de URL</b> igual que
                       arriba, con este cuerpo, y por último <b>Obtener valor del diccionario</b> (mensaje) y{' '}
                       <b>Mostrar notificación</b>:
-                      <pre className="mt-1.5 text-[10px] leading-relaxed whitespace-pre-wrap rounded-lg bg-paper p-2.5 border border-line text-ink">{JSON_CIERRE_APP}</pre>
+                      <pre className="mt-1.5 text-[11px] leading-relaxed whitespace-pre-wrap rounded-lg bg-paper p-2.5 border border-line text-ink">{JSON_CIERRE_APP}</pre>
                       Si dejas la nota vacía, se guarda como «Movimiento en» y el nombre de la cuenta.
                     </li>
                   </ol>
@@ -566,7 +566,7 @@ export default function ConectarDispositivo() {
           <section className="mx-6 mt-6">
             <h2 className="text-[15px] font-semibold mb-3">Script (Tasker JavaScriptlet)</h2>
             <div className="rounded-2xl bg-paper-raised border border-line p-3">
-              <pre className="text-[10px] leading-relaxed overflow-x-auto whitespace-pre text-ink-soft max-h-64 overflow-y-auto">
+              <pre className="text-[11px] leading-relaxed overflow-x-auto whitespace-pre text-ink-soft max-h-64 overflow-y-auto">
                 {scriptAndroid || 'Cargando tu clave personal...'}
               </pre>
             </div>
@@ -611,12 +611,12 @@ export default function ConectarDispositivo() {
             <p className="text-xs text-ink-soft mb-1.5 font-medium uppercase tracking-wide">URL</p>
             <div className="rounded-2xl bg-paper-raised border border-line p-3 flex items-center gap-2 mb-3">
               <p className="text-xs flex-1 truncate">{API_URL_VOZ}</p>
-              <BotonCopiar texto={API_URL_VOZ} etiqueta="" className="w-8 h-8 shrink-0 bg-paper !p-0" />
+              <BotonCopiar texto={API_URL_VOZ} etiqueta="" className="w-11 h-11 shrink-0 bg-paper !p-0" />
             </div>
             <p className="text-xs text-ink-soft mb-1.5 font-medium uppercase tracking-wide">Tu clave (X-Api-Key)</p>
             <div className="rounded-2xl bg-paper-raised border border-line p-3 flex items-center gap-2">
               <p className="text-xs flex-1 truncate">{apiKey || 'Cargando...'}</p>
-              <BotonCopiar texto={apiKey || ''} etiqueta="" disabled={!apiKey} className="w-8 h-8 shrink-0 bg-paper !p-0" />
+              <BotonCopiar texto={apiKey || ''} etiqueta="" disabled={!apiKey} className="w-11 h-11 shrink-0 bg-paper !p-0" />
             </div>
             <p className="text-xs text-ink-soft mt-3">
               Todo se configura con acciones visuales dentro de la app «Atajos» de Apple, sin instalar nada más.
