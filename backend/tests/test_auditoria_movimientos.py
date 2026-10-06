@@ -1,7 +1,6 @@
 """Regresiones de la auditoría: transferencias antiguas y fecha por defecto en hora Colombia."""
 import os
 import tempfile
-from datetime import datetime
 
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{os.path.join(tempfile.mkdtemp(), 'audmov.db')}")
 
@@ -12,8 +11,7 @@ from app.auth import UsuarioActual, get_current_user  # noqa: E402
 from app.contabilidad import FUENTE_TRANSFERENCIA  # noqa: E402
 from app.database import SessionLocal  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import Cuenta, Movimiento  # noqa: E402
-from app.utiles import ahora_co  # noqa: E402
+from app.models import Movimiento  # noqa: E402
 
 client = TestClient(app)
 
