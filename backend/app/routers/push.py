@@ -7,12 +7,18 @@ from sqlalchemy.orm import Session
 
 from app import presupuesto_servicio as srv
 from app.auth import UsuarioActual, cron_autorizado, get_current_user
-from app.compartidos import cuentas_ids_accesibles
-from app.contabilidad import gastos_por_categoria, tipos_cuenta_de, tipos_efectivos
+from app.compartidos import bloquear_cuenta, cuentas_ids_accesibles
+from app.contabilidad import (
+    CATEGORIA_APORTE_META,
+    FUENTE_APORTE_META,
+    gastos_por_categoria,
+    tipos_cuenta_de,
+    tipos_efectivos,
+)
 from app.config import settings
-from app.crons import Corrida
+from app.crons import Corrida, liberar_marca, reclamar_marca
 from app.database import get_db
-from app.finanzas import calc_estado_recurrente
+from app.finanzas import _dia_valido_del_mes, calc_estado_recurrente
 from app.fx import convertir_a_cop
 from app.models import Cuenta, Meta, Movimiento, Perfil, Presupuesto, PushSubscription, Recurrente
 from app.push import enviar_push
@@ -161,10 +167,11 @@ def _revisar_presupuestos_de(db: Session, usuario_id: str, ahora, resultado: dic
 def cron_aportes_automaticos(
     db: Session = Depends(get_db), x_cron_secret: str = Header(default="")
 ):
-    """Cron diario: para cada meta con aporte_automatico configurado, si hoy
-    es el día indicado y no se ha aportado ya este mes, mueve el dinero de la
-    cuenta de origen hacia la meta (resta saldo, suma monto_actual) y avisa
-    por push. Pensado para llamarse una vez al día desde el mismo cron externo."""
+    """Cron diario: para cada meta con aporte_automatico configurado, si ya llegó
+    el día del aporte (hoy >= día efectivo) y no se ha aportado este mes, mueve el
+    dinero de la cuenta de origen hacia la meta: crea un movimiento neutro
+    'Aporte a meta «X»', baja el saldo, suma monto_actual y avisa por push. Si el
+    cron falla un día, el siguiente lo recupera; ejecutarlo dos veces no duplica."""
     if not cron_autorizado(x_cron_secret):
         raise HTTPException(status_code=401, detail="No autorizado")
 
@@ -188,16 +195,29 @@ def cron_aportes_automaticos(
 
 
 def _aportar_meta_automatico(db: Session, meta, hoy, ultimo_dia_mes_actual: int) -> bool:
-    """Aporte automático de UNA meta. True si se aportó."""
+    """Aporte automático de UNA meta. True si se aportó.
+
+    - Recuperación: dispara si el día efectivo (día configurado, o el último del mes
+      si no existe, ej. 31 en febrero) ya llegó (<= hoy) y aún no se aportó este mes.
+      Si el cron falla un día, el siguiente lo recupera.
+    - Idempotente: `ultimo_aporte_automatico` + el bloqueo de la fila impiden doble aporte.
+    - Con cuenta de origen crea un Movimiento NEUTRO ('aporte_meta': ni gasto ni
+      ingreso, ver contabilidad.FUENTE_APORTE_META) y baja el saldo bajo bloqueo.
+      Si no alcanza el saldo NO aporta parcialmente: avisa una sola vez al mes."""
+    # Se relee la meta bloqueándola: dos ejecuciones simultáneas no aportan dos veces.
+    meta = (
+        db.query(Meta).filter(Meta.id == meta.id).with_for_update().populate_existing().first()
+    )
+    if meta is None or not meta.activa or not meta.aporte_automatico or meta.aporte_automatico <= 0:
+        return False
+
     # Si la meta ya alcanzó su objetivo, no debe seguir recibiendo aportes
     # automáticos mes a mes (el usuario no la desactivó, solo la cumplió).
     if (meta.monto_actual or 0) >= (meta.monto_objetivo or 0):
         return False
 
-    # Si el día configurado no existe este mes (ej. 31 en un mes de 30),
-    # se dispara el último día del mes en su lugar.
-    dia_efectivo = min(meta.dia_aporte, ultimo_dia_mes_actual)
-    if dia_efectivo != hoy.day:
+    dia_efectivo = min(meta.dia_aporte or 1, ultimo_dia_mes_actual)
+    if hoy.day < dia_efectivo:
         return False
     ya_este_mes = (
         meta.ultimo_aporte_automatico
@@ -207,25 +227,48 @@ def _aportar_meta_automatico(db: Session, meta, hoy, ultimo_dia_mes_actual: int)
     if ya_este_mes:
         return False
 
+    monto = meta.aporte_automatico
     cuenta = None
     if meta.cuenta_origen_id:
         # Defensa en profundidad: aunque la API ya valida al guardar la meta, el cron
-        # solo toca cuentas que pertenecen al dueño de la meta.
+        # solo toca cuentas que pertenecen al dueño de la meta. Se bloquea la fila
+        # (mismo mecanismo que el registro de movimientos) para dejar el saldo consistente.
         cuenta = (
             db.query(Cuenta)
             .filter(Cuenta.id == meta.cuenta_origen_id, Cuenta.usuario_id == meta.usuario_id)
             .first()
         )
+        if not cuenta:
+            return False  # la cuenta de origen ya no existe/no es suya: no se aporta plata de la nada
+        cuenta = bloquear_cuenta(db, cuenta.id)
 
-    monto = meta.aporte_automatico
-    # Si la cuenta de origen no tiene saldo suficiente, no dejar el saldo
-    # en negativo silenciosamente: se aparta solo lo disponible (igual que
-    # aportar_meta valida en el endpoint manual). Si no hay nada disponible,
-    # se salta el aporte este mes.
     if cuenta:
-        if cuenta.saldo <= 0:
+        if (cuenta.saldo or 0) < monto:
+            # Sin saldo suficiente: no se aporta parcialmente. Aviso amable, una
+            # sola vez al mes por meta (el cron sigue reintentando cada día).
+            if reclamar_marca(db, meta.usuario_id, f"aporte_sin_saldo:{meta.id}", hoy.strftime("%Y-%m")):
+                enviar_push(
+                    db,
+                    meta.usuario_id,
+                    "Tu aporte automático",
+                    f"No alcanzó para tu aporte a «{meta.nombre}». "
+                    "Cuando tengas saldo en la cuenta, lo intentamos de nuevo.",
+                    "/metas",
+                )
             return False
-        monto = min(monto, cuenta.saldo)
+        db.add(
+            Movimiento(
+                usuario_id=meta.usuario_id,
+                cuenta_id=cuenta.id,
+                fecha=hoy,
+                descripcion=f"Aporte a meta «{meta.nombre}»",
+                categoria=CATEGORIA_APORTE_META,
+                tipo="expense",  # mueve el saldo como una salida; la regla contable lo trata como neutro
+                monto=monto,
+                fuente=FUENTE_APORTE_META,
+                notas=f"META:{meta.id}",
+            )
+        )
         cuenta.saldo -= monto
     meta.monto_actual = (meta.monto_actual or 0) + monto
     meta.ultimo_aporte_automatico = hoy
@@ -257,7 +300,8 @@ def cron_premiar_presupuestos_mes(
     # gastos— todos cumplirían "ningún presupuesto se pasó" y ganarían la vida
     # de ese mes sin haber cumplido nada. Solo se premia el último día del mes.
     if hoy.day != calendar.monthrange(hoy.year, hoy.month)[1]:
-        return {"ok": True, "premiados": 0, "motivo": "hoy no es el último día del mes"}
+        return {"ok": True, "premiados": 0, "procesados": 0, "fallidos": 0,
+                "motivo": "hoy no es el último día del mes"}
     inicio_mes = hoy.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     clave_mes = hoy.strftime("%Y-%m")
 
@@ -316,7 +360,10 @@ def cron_resumen_semanal(
     if not cron_autorizado(x_cron_secret):
         raise HTTPException(status_code=401, detail="No autorizado")
 
-    hace_7_dias = ahora_co() - timedelta(days=7)
+    ahora = ahora_co()
+    hace_7_dias = ahora - timedelta(days=7)
+    iso = ahora.isocalendar()
+    semana_iso = f"{iso[0]}-W{iso[1]:02d}"  # marca de idempotencia: una vez por usuario y semana ISO
     usuarios_con_push = {
         s[0] for s in db.query(PushSubscription.usuario_id).distinct().all()
     }
@@ -325,14 +372,15 @@ def cron_resumen_semanal(
 
     for usuario_id in usuarios_con_push:
         with corrida.aislar(usuario_id):
-            if _resumen_semanal_de(db, usuario_id, hace_7_dias):
+            if _resumen_semanal_de(db, usuario_id, hace_7_dias, semana_iso):
                 enviados += 1
 
     return {"ok": True, "enviados": enviados, **corrida.resumen()}
 
 
-def _resumen_semanal_de(db: Session, usuario_id: str, hace_7_dias) -> bool:
-    """Resumen semanal de UN usuario. True si se envió."""
+def _resumen_semanal_de(db: Session, usuario_id: str, hace_7_dias, semana_iso: str) -> bool:
+    """Resumen semanal de UN usuario. True si se envió. Idempotente: la marca
+    'resumen_semanal' guarda la semana ISO ya avisada (dos ejecuciones = un push)."""
     ids_accesibles = cuentas_ids_accesibles(db, usuario_id)
     if not ids_accesibles:
         return False
@@ -352,13 +400,24 @@ def _resumen_semanal_de(db: Session, usuario_id: str, hace_7_dias) -> bool:
     gastos = sum(monto_cop(m) for m in semana if te[m.id] == "expense")
     ingresos = sum(monto_cop(m) for m in semana if te[m.id] == "income")
 
-    enviar_push(
-        db,
-        usuario_id,
-        "Tu semana en números",
-        f"Gastaste {gastos:,.0f} COP e ingresaste {ingresos:,.0f} COP — mira el detalle",
-        "/insights",
-    )
+    # Se reclama la marca ANTES de enviar (dos ejecuciones simultáneas: pasa una sola).
+    if not reclamar_marca(db, usuario_id, "resumen_semanal", semana_iso):
+        return False
+    try:
+        n = enviar_push(
+            db,
+            usuario_id,
+            "Tu semana en números",
+            f"Gastaste {gastos:,.0f} COP e ingresaste {ingresos:,.0f} COP — mira el detalle",
+            "/insights",
+        )
+    except Exception:
+        liberar_marca(db, usuario_id, "resumen_semanal")  # que el siguiente cron lo reintente
+        raise
+    if not n:
+        # Nada llegó (sin VAPID o todas las suscripciones fallaron): se libera la marca.
+        liberar_marca(db, usuario_id, "resumen_semanal")
+        return False
     return True
 
 
@@ -381,7 +440,8 @@ def cron_recordar_registro(
 
     ahora = ahora_co()
     if ahora.hour < HORA_RECORDATORIO_REGISTRO and not forzar:
-        return {"ok": True, "enviados": 0, "motivo": "aún no son las 8pm en Colombia"}
+        return {"ok": True, "enviados": 0, "procesados": 0, "fallidos": 0,
+                "motivo": "aún no son las 8pm en Colombia"}
 
     hoy = ahora.strftime("%Y-%m-%d")
     inicio_dia = ahora.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -471,12 +531,16 @@ def _avisar_recurrente(db: Session, rec, hoy) -> bool:
     if estado_info["estado"] != "proximo":
         return False
 
-    ya_notificado_este_ciclo = (
-        rec.ultima_notificacion_vencimiento is not None
-        and rec.ultima_notificacion_vencimiento.year == hoy.year
-        and rec.ultima_notificacion_vencimiento.month == hoy.month
+    # Una vez por OCURRENCIA (no por mes calendario): el aviso de esta ocurrencia
+    # solo puede haberse enviado dentro de su ventana [vencimiento - alerta_dias,
+    # vencimiento]. Si la última notificación cae antes del inicio de esa ventana,
+    # era de una ocurrencia anterior y toca avisar de nuevo.
+    fecha_esperada = hoy.replace(day=_dia_valido_del_mes(hoy.year, hoy.month, rec.dia_del_mes or 1))
+    inicio_ventana = (fecha_esperada - timedelta(days=rec.alerta_dias_antes or 2)).replace(
+        hour=0, minute=0, second=0, microsecond=0
     )
-    if ya_notificado_este_ciclo:
+    ultima = rec.ultima_notificacion_vencimiento
+    if ultima is not None and ultima >= inicio_ventana:
         return False
 
     dias = estado_info["dias_para_vencer"]

@@ -92,10 +92,11 @@ def cron_revisar_uso_semanal(
 
     uso = _calcular_uso(db)
     if not uso["alertas"]:
-        return {"ok": True, "enviado": False, **uso}
+        return {"ok": True, "enviado": False, "procesados": 1, "fallidos": 0, **uso}
 
     if not settings.resend_api_key:
-        return {"ok": False, "enviado": False, "error": "Resend no configurado", **uso}
+        return {"ok": False, "enviado": False, "error": "Resend no configurado",
+                "procesados": 0, "fallidos": 1, **uso}
 
     cuerpo = "Uso actual de CuadraMe que vale la pena revisar:\n\n" + "\n\n".join(
         f"• {a}" for a in uso["alertas"]
@@ -117,4 +118,4 @@ def cron_revisar_uso_semanal(
         timeout=30,
     )
     resp.raise_for_status()
-    return {"ok": True, "enviado": True, **uso}
+    return {"ok": True, "enviado": True, "procesados": 1, "fallidos": 0, **uso}

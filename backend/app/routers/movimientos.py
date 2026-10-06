@@ -23,7 +23,7 @@ from app.autocat import (
 from app.classifier import aplicar_reglas, build_model, classify
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, cuentas_ids_accesibles, puede_editar_cuenta
-from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_IMPORTADO_SIN_SALDO, es_pago_tarjeta
+from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_APORTE_META, FUENTE_IMPORTADO_SIN_SALDO, es_pago_tarjeta
 from app.database import get_db
 from app.fx import convertir_a_cop
 from app.limites import verificar_limite
@@ -38,7 +38,7 @@ from app.wallet import (
     mapear_cuenta,
     parse_fecha,
 )
-from app.models import Categoria, Cuenta, Movimiento, ReglaCategoria
+from app.models import Categoria, Cuenta, Meta, Movimiento, ReglaCategoria
 from app.rachas import registrar_actividad_hoy
 from app.schemas import (
     ClasificarRequest,
@@ -395,6 +395,15 @@ def editar_movimiento(
             detail="Las transferencias entre cuentas no se editan: elimínala y créala de nuevo",
         )
 
+    if mov.fuente == FUENTE_APORTE_META:
+        # Decisión simple y segura: editarlo desalinearía la meta (su monto_actual
+        # ya sumó este aporte). Para deshacerlo se elimina (eso sí revierte la meta).
+        raise HTTPException(
+            status_code=400,
+            detail="Este movimiento es un aporte a una meta y no se edita: "
+                   "elimínalo para devolver el dinero a la cuenta y descontarlo de la meta",
+        )
+
     cambios = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None}
 
     cuenta_actual = bloquear_cuenta(db, mov.cuenta_id)
@@ -485,6 +494,20 @@ def eliminar_movimiento(
 
     if cuenta:
         cuenta.saldo -= _delta_de(mov)
+
+    if mov.fuente == FUENTE_APORTE_META and (mov.notas or "").startswith("META:"):
+        # Revierte el aporte: el dinero vuelve a la cuenta (línea de arriba) y se
+        # descuenta de la meta (sin bajar de 0). El cron no re-aporta este mes porque
+        # la meta conserva su marca de "ya aportado" (borrarlo es decisión del usuario).
+        meta = (
+            db.query(Meta)
+            .filter(Meta.id == mov.notas[5:], Meta.usuario_id == mov.usuario_id)
+            .with_for_update()
+            .populate_existing()
+            .first()
+        )
+        if meta:
+            meta.monto_actual = max(0.0, (meta.monto_actual or 0) - mov.monto)
 
     db.delete(mov)
     db.commit()
