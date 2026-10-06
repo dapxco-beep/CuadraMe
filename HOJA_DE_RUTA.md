@@ -76,14 +76,22 @@ Estas funciones ya están en el código y desplegadas, pero apagadas hasta que c
 
 **Límites de uso en memoria — Railway debe quedarse en 1 réplica.** El contador de `backend/app/limites.py` (IA, PDF, Gmail, API key y el tope de 30 intentos fallidos de API key por IP cada 10 min) vive en la memoria de cada proceso. Con 2 o más réplicas cada una cuenta aparte (el límite real se multiplica) y se reinicia en cada despliegue. Mientras no haya un almacén compartido (Redis), no escalar a más de 1 réplica.
 
-**Crons que YA deberían estar programados en cron-job.org** (revisar si faltan):
-- `/push/cron/revisar-presupuestos` (diario)
-- `/push/cron/aportes-automaticos` (diario)
-- `/push/cron/premiar-presupuestos-mes` (mensual, último día)
-- `/push/cron/resumen-semanal` (semanal)
-- `/push/cron/recordar-recurrentes` (diario)
-- `/backup/cron/enviar` (diario) — nuevo
-- `/metricas/cron/revisar-uso-semanal` (semanal) — nuevo
+**Crons que YA deberían estar programados en cron-job.org** (revisar si faltan). Todos van por `POST` con header `X-Cron-Secret`, devuelven `{ok, procesados, fallidos, ...}`, aíslan los fallos por usuario (`app/crons.py` `Corrida`) y son idempotentes (ejecutarlos dos veces no duplica nada). Horarios en hora Colombia:
+
+| Endpoint | Horario recomendado | Idempotencia |
+|---|---|---|
+| `/push/cron/revisar-presupuestos` | 1 vez al día, 08:00 | marca por presupuesto y periodo |
+| `/push/cron/aportes-automaticos` | 1 vez al día, 06:00 | `ultimo_aporte_automatico` + bloqueo de fila; si el cron falla un día, el siguiente recupera (dispara si ya llegó el día del aporte y no se aportó este mes) |
+| `/push/cron/premiar-presupuestos-mes` | 1 vez al día, 21:00 (solo actúa el último día del mes) | vida única por mes |
+| `/push/cron/resumen-semanal` | 1 vez por semana, domingo 19:00 | marca `resumen_semanal` por usuario y semana ISO (tabla `marcas_cron`) |
+| `/push/cron/recordar-recurrentes` | 1 vez al día, 08:30 (también avisa tarjetas) | una vez por ocurrencia (ventana vencimiento − `alerta_dias_antes`) |
+| `/push/cron/recordar-registro` | 1 vez al día, 20:00 | `perfiles.ultimo_recordatorio` |
+| `/backup/cron/enviar` | 1 vez al día, 03:00 | marca `backup_diario` por día; si ya se envió responde `enviado=false` |
+| `/metricas/cron/revisar-uso-semanal` | 1 vez por semana, lunes 08:00 | solo manda correo si hay alerta |
+| `/cierre-mes/cron/cerrar-mes` | 1 vez al día, 07:00 | una fila por usuario y mes |
+| `/patrimonio/cron/snapshot-mensual` | 1 vez al día (opcional) | sobrescribe la foto del mes |
+
+**Aportes automáticos a metas:** cada aporte crea un movimiento «Aporte a meta «X»» (`fuente='aporte_meta'`, categoría «Aporte a meta», `notas='META:<id>'`) que el saldo sí refleja pero que `contabilidad.tipos_efectivos` trata como neutro (ni gasto ni ingreso, igual que traslados y ajustes). Si la cuenta no tiene saldo suficiente no se aporta parcialmente: se avisa por push una sola vez al mes por meta y se reintenta cada día. El movimiento no se edita (400); borrarlo devuelve el dinero a la cuenta y lo descuenta de la meta. Tabla nueva `marcas_cron` (la crea `create_all`; SQL opcional en `backend/supabase/migraciones/marcas_cron.sql`, NO ejecutado).
 
 ---
 
