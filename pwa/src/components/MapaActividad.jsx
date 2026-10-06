@@ -59,7 +59,7 @@ export default function MapaActividad() {
         <div className="mt-4 card-marca bg-paper-raised border border-line p-3.5">
           <div className="grid grid-cols-7 gap-1.5 mb-1.5" aria-hidden="true">
             {DIAS.map((d) => (
-              <span key={d} className="text-center text-[10px] font-semibold text-ink-soft">{d}</span>
+              <span key={d} className="text-center text-[11px] font-semibold text-ink-soft">{d}</span>
             ))}
           </div>
           <div className="grid grid-cols-7 gap-1.5" role="group" aria-label="Gasto por día">
@@ -94,7 +94,7 @@ export default function MapaActividad() {
               <span className="text-ink-soft">Total del periodo: <b className="text-ink">{fmt(datos.total)}</b> · toca un día para ver su gasto</span>
             )}
           </p>
-          <div className="flex items-center gap-1.5 mt-2 text-[10px] text-ink-soft">
+          <div className="flex items-center gap-1.5 mt-2 text-[11px] text-ink-soft">
             <span>Menos</span>
             {[0, 0.2, 0.4, 0.7, 1].map((v) => (
               <span key={v} className="w-3 h-3 rounded-[3px]" style={{ background: colorIntensidad(v) }} />

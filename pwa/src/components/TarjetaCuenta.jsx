@@ -29,7 +29,7 @@ export default function TarjetaCuenta({ cuenta, style, className = '', ultimoMov
           {marca.mono}
         </span>
       </div>
-      <p className="text-[10px] font-semibold uppercase tracking-wide opacity-75 mt-3">{credito ? 'Debes' : 'Saldo actual'}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide opacity-75 mt-3">{credito ? 'Debes' : 'Saldo actual'}</p>
       <p className="text-xl font-extrabold truncate">{fmt(credito ? deudaTarjeta(cuenta) : cuenta.saldo, cuenta.moneda)}</p>
       {!compacta && (
         <p className="text-[11px] opacity-80 mt-0.5">

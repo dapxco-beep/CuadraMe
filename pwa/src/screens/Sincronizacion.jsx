@@ -271,7 +271,7 @@ export default function Sincronizacion() {
   const visibles = verTodos ? extractos : extractos.slice(0, EXTRACTOS_VISIBLES)
 
   return (
-    <div className="flex-1 overflow-y-auto pb-8 screen-enter">
+    <div className="flex-1 overflow-y-auto pb-8 screen-enter pantalla-ancha">
       {/* a) Encabezado: una línea de resumen y el botón principal */}
       <header className="px-6 pantalla-top pb-1 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
@@ -283,6 +283,8 @@ export default function Sincronizacion() {
         </div>
       </header>
 
+      <div className="dos-col dos-col-4-7">
+      <div className="col">
       <section className="mx-6 mt-3">
         {conectado ? (
           <button
@@ -303,8 +305,8 @@ export default function Sincronizacion() {
         )}
         {progreso && (
           <div className="mt-3" role="status">
-            <div className="h-2 rounded-full bg-line overflow-hidden">
-              <div className="h-full bg-accent transition-all duration-300" style={{ width: `${pct}%` }} />
+            <div className="h-2 rounded-full bg-line overflow-hidden" role="progressbar" aria-label="Progreso de la sincronización" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+              <div className="h-full w-full bg-accent barra-fill" style={{ transform: `scaleX(${pct / 100})` }} />
             </div>
             <p className="text-xs text-ink-soft mt-1.5">
               {progreso.total_estimado ? `Leí ${progreso.leidos} de ${progreso.total_estimado}` : 'Empezando...'}
@@ -356,6 +358,8 @@ export default function Sincronizacion() {
         )}
       </Seccion>
 
+      </div>
+      <div className="col">
       {/* c) Cuentas por mes */}
       <Seccion id="sinc-cuentas" titulo="Cuentas por mes" ayuda="Toca un mes para ver el detalle.">
         {filasCuentas.length === 0 ? (
@@ -364,9 +368,9 @@ export default function Sincronizacion() {
           <div className="rounded-2xl bg-paper-raised border border-line p-3">
             <div role="table" aria-label="Estado de cada cuenta en los últimos meses">
               <div role="row" className="grid grid-cols-[minmax(0,1.5fr)_repeat(6,minmax(0,1fr))] gap-1 items-end mb-1.5">
-                <span role="columnheader" className="text-[10px] text-ink-soft">Cuenta</span>
+                <span role="columnheader" className="text-[11px] text-ink-soft">Cuenta</span>
                 {meses.map((m) => (
-                  <span key={m.clave} role="columnheader" className="text-[10px] text-ink-soft text-center capitalize">{m.etiqueta}</span>
+                  <span key={m.clave} role="columnheader" className="text-[11px] text-ink-soft text-center capitalize">{m.etiqueta}</span>
                 ))}
               </div>
               {filasCuentas.map((c) => (
@@ -421,7 +425,7 @@ export default function Sincronizacion() {
                       <span aria-hidden="true">{estadoCelda(celdaDetalle.estado).simbolo}</span> {estadoCelda(celdaDetalle.estado).texto}
                     </p>
                   </div>
-                  <button onClick={() => setDetalle(null)} aria-label="Cerrar detalle" className="w-8 h-8 flex items-center justify-center text-ink-soft">
+                  <button onClick={() => setDetalle(null)} aria-label="Cerrar detalle" className="w-11 h-11 flex items-center justify-center text-ink-soft">
                     <X size={16} />
                   </button>
                 </div>
@@ -590,6 +594,9 @@ export default function Sincronizacion() {
           </div>
         )}
       </Seccion>
+
+      </div>
+      </div>
 
       <p className="mx-6 mt-8 text-xs text-ink-soft text-center">
         <button onClick={() => navigate('/correos')} className="underline">Correos bancarios</button>

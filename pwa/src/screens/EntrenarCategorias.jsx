@@ -163,7 +163,7 @@ export default function EntrenarCategorias() {
             aria-valuemax={100}
             aria-label="Movimientos con categoría"
           >
-            <div className="h-full bg-accent rounded-full" style={{ width: `${datos.progreso.porcentaje}%` }} />
+            <div className="h-full w-full bg-accent rounded-full barra-fill" style={{ transform: `scaleX(${datos.progreso.porcentaje / 100})` }} />
           </div>
         </div>
       )}

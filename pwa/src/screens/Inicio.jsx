@@ -91,7 +91,7 @@ export default function Inicio() {
   const cuadra = diferencia === null ? null : diferencia >= 0
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
+    <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
       <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Isotipo size={30} cuadra={cuadra !== false} />
@@ -99,6 +99,11 @@ export default function Inicio() {
         </div>
         <BotonOjo />
       </header>
+
+      {/* ≥1024 px: dos columnas (cuentas y "gastar hoy" | salud, informes y movimientos).
+          En teléfono los wrappers no existen visualmente y el orden es el de siempre. */}
+      <div className="dos-col">
+      <div className="col">
 
       {errorCarga && (
         <div role="alert" className="mx-6 mt-2 rounded-2xl bg-danger-soft border border-danger/30 p-3 flex items-center justify-between gap-3">
@@ -275,6 +280,8 @@ export default function Inicio() {
         </section>
       )}
 
+      </div>
+      <div className="col">
       {/* Salud financiera — mini preview del árbol que crece con tus decisiones */}
       {reporte && (
         <Link to="/ahorcado" className="block mx-6 mt-5 card-marca bg-accent-soft p-4 flex items-center gap-4 stagger-item" style={{ '--stagger-i': 4 }}>
@@ -404,6 +411,8 @@ export default function Inicio() {
           </div>
         )}
       </section>
+      </div>
+      </div>
     </div>
   )
 }

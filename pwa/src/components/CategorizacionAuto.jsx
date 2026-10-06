@@ -11,7 +11,7 @@ export function InsigniaAuto({ movimiento }) {
   const razon = RAZON_AUTO[movimiento.cat_origen]
   return (
     <span
-      className="inline-flex items-center gap-1 text-[10px] font-semibold leading-none px-1.5 py-1 rounded-full bg-accent-soft text-accent ml-1.5 align-middle"
+      className="inline-flex items-center gap-1 text-[11px] font-semibold leading-none px-1.5 py-1 rounded-full bg-accent-soft text-accent ml-1.5 align-middle"
       title={razon ? `Categoría puesta automáticamente ${razon}` : 'Categoría puesta automáticamente'}
     >
       Auto{razon ? ` · ${razon}` : ''}

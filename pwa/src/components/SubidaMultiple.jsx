@@ -420,7 +420,7 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
                   )}
                 </div>
                 {a.estado !== 'procesando' && (
-                  <button onClick={() => quitar(a.id)} aria-label={`Quitar ${a.nombre}`} className="w-9 h-9 -mr-1 flex items-center justify-center text-ink-soft shrink-0">
+                  <button onClick={() => quitar(a.id)} aria-label={`Quitar ${a.nombre}`} className="w-11 h-11 -mr-1 flex items-center justify-center text-ink-soft shrink-0">
                     <X size={16} />
                   </button>
                 )}

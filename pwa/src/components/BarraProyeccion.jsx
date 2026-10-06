@@ -1,3 +1,4 @@
+import BarraProgreso from './BarraProgreso'
 import { colorEstado, posicionesBarra } from '../lib/planificacion'
 
 // Barra de gasto del periodo con un marcador (▼) donde cerrarías al ritmo actual.
@@ -7,12 +8,7 @@ export default function BarraProyeccion({ item, animar = true }) {
   const color = colorEstado(item.estado)
   return (
     <div className="relative pt-2" data-testid="barra-proyeccion">
-      <div className="h-2 rounded-full bg-line overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700 ease-out"
-          style={{ width: `${animar ? usado : 0}%`, background: color }}
-        />
-      </div>
+      <BarraProgreso pct={animar ? usado : 0} color={color} label={`Gasto del periodo en ${item.categoria || 'la categoría'}`} />
       {marcador !== null && item.proyectado > item.gastado && (
         <div
           className="absolute top-0 -translate-x-1/2 flex flex-col items-center pointer-events-none"

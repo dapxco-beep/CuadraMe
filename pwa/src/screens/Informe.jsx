@@ -8,6 +8,7 @@ import { useBloqueo } from '../lib/BloqueoContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { nombreMesLargo, pctTexto, rangoPeriodo } from '../lib/informe'
 import SelectorPeriodo from '../components/SelectorPeriodo'
+import BarraProgreso from '../components/BarraProgreso'
 
 // Colores distintos para la dona (cada segmento también lleva su nombre y % en la
 // lista, así que el color nunca es la única señal).
@@ -117,7 +118,7 @@ export default function Informe() {
   const segmentos = informe?.categorias ? segmentosDona(informe.categorias) : []
 
   return (
-    <div className="flex-1 overflow-y-auto pb-8 screen-enter">
+    <div className="flex-1 overflow-y-auto pb-8 screen-enter pantalla-ancha">
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
@@ -155,8 +156,8 @@ export default function Informe() {
       )}
 
       {!cargando && informe?.hay_datos && (
-        <>
-          <section className="mx-6 mt-4 card-marca bg-paper-raised border border-line p-4">
+        <div className="dos-grid">
+          <section className="mx-6 mt-4 card-marca bg-paper-raised border border-line p-4 lg:col-start-1 lg:row-start-1">
             <p className="t-kicker text-ink-soft capitalize">Gastaste en {informe.etiqueta}</p>
             <p className="text-[32px] t-display mt-1">{fmt(informe.total)}</p>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
@@ -172,7 +173,7 @@ export default function Informe() {
             )}
           </section>
 
-          <section className="mx-6 mt-4 card-marca bg-paper-raised border border-line p-4">
+          <section className="mx-6 mt-4 card-marca bg-paper-raised border border-line p-4 lg:col-start-2 lg:row-start-1 lg:row-span-2">
             <h2 className="text-[15px] font-semibold mb-3">Por categoría</h2>
             <div className="flex items-center gap-4">
               <Dona segmentos={segmentos} total={informe.total} fmt={fmt} />
@@ -205,9 +206,13 @@ export default function Informe() {
                         </span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{c.categoria}</p>
-                          <div className="h-1.5 rounded-full bg-line mt-1.5 overflow-hidden" aria-hidden="true">
-                            <div className="h-full rounded-full bg-brand" style={{ width: `${Math.max(c.pct, 1.5)}%` }} />
-                          </div>
+                          <BarraProgreso
+                            pct={Math.max(c.pct, 1.5)}
+                            label={`Participación de ${c.categoria}`}
+                            className="h-1.5 rounded-full bg-line mt-1.5 overflow-hidden"
+                            fillClass="rounded-full bg-brand"
+                            color="var(--color-brand)"
+                          />
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-sm font-semibold">{fmt(c.monto)}</p>
@@ -245,7 +250,7 @@ export default function Informe() {
           </section>
 
           {informe.comercios.length > 0 && (
-            <section className="mx-6 mt-4 card-marca bg-paper-raised border border-line p-4">
+            <section className="mx-6 mt-4 card-marca bg-paper-raised border border-line p-4 lg:col-start-1 lg:row-start-2">
               <div className="flex items-center gap-2 mb-2">
                 <Store size={15} className="text-ink-soft" aria-hidden="true" />
                 <h2 className="text-[15px] font-semibold">Dónde más gastas</h2>
@@ -262,7 +267,7 @@ export default function Informe() {
               </ol>
             </section>
           )}
-        </>
+        </div>
       )}
     </div>
   )

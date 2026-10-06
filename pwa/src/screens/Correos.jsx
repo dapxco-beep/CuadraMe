@@ -11,6 +11,7 @@ import { resumenSync, sincronizarTodo } from '../lib/sincronizarGmail'
 import { conciliarExtracto } from '../lib/sincronizacion'
 import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
+import BarraProgreso from '../components/BarraProgreso'
 
 const ESTADOS = {
   nuevo: { texto: 'Nuevo', clase: 'bg-accent-soft text-accent' },
@@ -460,12 +461,12 @@ export default function Correos() {
         )}
         {progreso && (
           <div className="mt-3" role="status">
-            <div className="h-2 rounded-full bg-line overflow-hidden">
-              <div
-                className="h-full bg-accent transition-all duration-300"
-                style={{ width: `${progreso.total_estimado ? Math.min(100, Math.round((progreso.leidos / progreso.total_estimado) * 100)) : 0}%` }}
-              />
-            </div>
+            <BarraProgreso
+              pct={progreso.total_estimado ? Math.min(100, Math.round((progreso.leidos / progreso.total_estimado) * 100)) : 0}
+              label="Lectura de correos"
+              className="h-2 rounded-full bg-line overflow-hidden"
+              fillClass=""
+            />
             <p className="text-xs text-ink-soft mt-1.5">
               {progreso.total_estimado ? `Leí ${progreso.leidos} de ${progreso.total_estimado}` : 'Empezando...'}
             </p>

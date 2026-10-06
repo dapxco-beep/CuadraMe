@@ -384,7 +384,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
               onClick={() => setColor('')}
               aria-pressed={!color}
               aria-label="Sin color"
-              className={`w-8 h-8 rounded-full border-2 text-[10px] text-ink-soft ${!color ? 'border-accent' : 'border-line'}`}
+              className={`w-8 h-8 rounded-full border-2 text-[11px] text-ink-soft ${!color ? 'border-accent' : 'border-line'}`}
             >
               ∅
             </button>

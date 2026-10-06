@@ -161,7 +161,8 @@ body {
    el delay, o usar .stagger-N para los primeros índices sin variables. */
 .stagger-item {
   animation: slide-up-sm 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: calc(var(--stagger-i, 0) * 35ms);
+  /* Tope de 8 pasos: en listas largas el retraso no crece sin límite (350 ms máx.) */
+  animation-delay: calc(min(var(--stagger-i, 0), 8) * 35ms);
 }
 
 .pop-in {
@@ -242,7 +243,26 @@ body {
   animation: dibujar-linea 1s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Barras de progreso: se animan con transform (no con width/height) para no
+   disparar layout; el relleno nace en el borde izquierdo (o inferior si es vertical). */
+.barra-fill {
+  transform-origin: left center;
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.barra-fill-v {
+  transform-origin: center bottom;
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  /* Sin animaciones de barras, anillo de salud ni dona: el valor final aparece de golpe */
+  .barra-fill,
+  .barra-fill-v,
+  [role='progressbar'] > *,
+  .anillo-trazo,
+  .dona-trazo {
+    transition: none !important;
+  }
   .linea-patrimonio,
   .screen-enter,
   .stagger-item,
@@ -260,12 +280,15 @@ body {
   }
 }
 
-/* Botones y filas interactivas: feedback táctil consistente en toda la app */
+/* Botones y filas interactivas: feedback consistente en toda la app */
 button, a {
-  transition: transform 0.15s ease, opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.15s ease, opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
-button:active:not(:disabled), a:active {
-  transform: scale(0.97);
+/* El "se hunde al tocar" solo tiene sentido con el dedo; con ratón se siente raro */
+@media (hover: none) {
+  button:active:not(:disabled), a:active {
+    transform: scale(0.97);
+  }
 }
 
 /* Foco visible para navegación con teclado (antes solo se veía el borde por
@@ -275,15 +298,170 @@ button:active:not(:disabled), a:active {
   outline-offset: 2px;
 }
 
-/* En pantallas anchas (escritorio/tablet) la app sigue siendo una columna
-   móvil, pero se enmarca para que no parezca una página rota con bordes vacíos. */
-@media (min-width: 640px) {
+/* ── Puntero (ratón / trackpad): hover solo donde existe hover, para no dejar
+   estados "pegados" en pantallas táctiles ───────────────────────────────── */
+@media (hover: hover) {
+  button:not(:disabled), a, summary, [role='button'], label[for], select {
+    cursor: pointer;
+  }
+  button:disabled { cursor: not-allowed; }
+
+  /* Tarjetas y filas que son enlaces o botones */
+  a.bg-paper-raised:hover,
+  button.bg-paper-raised:hover {
+    border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-line));
+    box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--color-ink) 35%, transparent);
+  }
+  a.bg-accent-soft:hover,
+  button.bg-accent-soft:hover {
+    filter: brightness(0.97);
+  }
+  /* Filas de lista (Movimientos, categorías, cuentas…) */
+  a.px-4.py-3\.5:hover,
+  a.px-4.py-3:hover,
+  button.px-4.py-3\.5:hover {
+    background: color-mix(in srgb, var(--color-accent-soft) 55%, transparent);
+  }
+  /* Botones llenos */
+  button.bg-accent:hover:not(:disabled),
+  a.bg-accent:hover,
+  .boton-hover:hover {
+    filter: brightness(1.08);
+  }
+  button.bg-ink:hover:not(:disabled),
+  a.bg-ink:hover {
+    opacity: 0.88;
+  }
+  a.text-accent:hover,
+  button.text-accent:hover:not(:disabled) {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  /* Navegación lateral */
+  .nav-item:hover:not(.bg-accent-soft) {
+    background: color-mix(in srgb, var(--color-accent-soft) 60%, transparent);
+    color: var(--color-ink);
+  }
+}
+
+/* ═══ Pantallas anchas ═══════════════════════════════════════════════════
+   <768 px (teléfono): nada cambia, el shell y su contenedor son transparentes
+   (display: contents) y la app sigue siendo la columna de 480 px de #root.
+   ≥768 px: riel lateral de 72 px. ≥1024 px: barra lateral de 240 px.
+   Los puntos de corte deben coincidir con lib/useAncho.js. */
+.app-shell,
+.app-contenido {
+  display: contents;
+}
+.atajo-kbd {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--color-line);
+  background: var(--color-paper);
+  color: var(--color-ink-soft);
+}
+
+/* Grid de dos columnas solo en ≥1024 px. En móvil/iPad vertical los wrappers
+   son transparentes, así el orden y el aspecto del teléfono no cambian. */
+.dos-col,
+.dos-col > .col,
+.dos-grid {
+  display: contents;
+}
+
+/* Entre 640 y 767 px (teléfono grande) se conserva el marco de siempre */
+@media (min-width: 640px) and (max-width: 767.98px) {
   body {
     background: color-mix(in srgb, var(--color-paper) 88%, var(--color-ink));
   }
   #root {
     background: var(--color-paper);
     box-shadow: 0 0 0 1px var(--color-line), 0 20px 60px -20px rgb(0 0 0 / 0.25);
+  }
+}
+
+@media (min-width: 768px) {
+  #root {
+    max-width: none;
+    margin: 0;
+  }
+  .app-shell {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    min-height: 100svh;
+  }
+  .app-contenido {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+  .barra-lateral {
+    position: sticky;
+    top: 0;
+    flex: none;
+    align-self: flex-start;
+    height: 100svh;
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    z-index: 5;
+  }
+  .barra-riel {
+    width: calc(72px + env(safe-area-inset-left));
+    padding-left: env(safe-area-inset-left);
+  }
+  .barra-completa {
+    width: calc(240px + env(safe-area-inset-left));
+    padding-left: calc(0.75rem + env(safe-area-inset-left));
+  }
+
+  /* Pantallas de una columna: centradas y con ancho cómodo (no estiradas) */
+  .app-contenido > .screen-enter {
+    width: 100%;
+    max-width: 720px;
+    margin-inline: auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-contenido > .screen-enter.pantalla-ancha {
+    max-width: 1180px;
+  }
+  .dos-col {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 1.25rem;
+    align-items: start;
+  }
+  .dos-col.dos-col-6-5 {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  }
+  .dos-col.dos-col-5-6 {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  }
+  /* Variante donde cada bloque se coloca con col-start/row-start (para no cambiar el orden móvil) */
+  .dos-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    grid-template-rows: auto 1fr; /* el bloque que ocupa 2 filas estira solo la 2.ª, sin huecos */
+    column-gap: 1.25rem;
+    align-items: start;
+  }
+  .dos-col.dos-col-4-7 {
+    grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
+  }
+  .dos-col > .col {
+    display: block;
+    min-width: 0;
+  }
+  .dos-col .col-sticky {
+    position: sticky;
+    top: 1rem;
   }
 }
 

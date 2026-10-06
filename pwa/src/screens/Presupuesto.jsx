@@ -6,6 +6,7 @@ import { formatCOP } from '../lib/format'
 import { api } from '../lib/api'
 import GraficoTendencia from '../components/GraficoTendencia'
 import { useCategorias } from '../lib/CategoriasContext'
+import BarraProgreso from '../components/BarraProgreso'
 import BarraProyeccion from '../components/BarraProyeccion'
 import ConfigPlanificacion from '../components/ConfigPlanificacion'
 import SugerenciaIngreso from '../components/SugerenciaIngreso'
@@ -73,14 +74,14 @@ export default function Presupuesto() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
+    <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
       <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Presupuesto</h1>
         <div className="flex items-center gap-2">
           {presupuestos.length > 1 && (
             <button
               onClick={() => setMostrarMover(true)}
-              className="w-10 h-10 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+              className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
               aria-label="Mover plata entre categorías"
             >
               <ArrowLeftRight size={17} className="text-ink-soft" />
@@ -88,13 +89,16 @@ export default function Presupuesto() {
           )}
           <button
             onClick={() => setMostrarForm(true)}
-            className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center"
+            className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
            aria-label="Nuevo presupuesto">
             <Plus size={20} />
           </button>
         </div>
       </header>
 
+      {/* ≥1024 px: resumen/proyección a la izquierda, categorías a la derecha */}
+      <div className="dos-col dos-col-6-5">
+      <div className="col">
       <div className="px-6 pt-2 flex gap-2">
         <button
           onClick={() => setMostrarIngreso(true)}
@@ -173,6 +177,8 @@ export default function Presupuesto() {
         </section>
       )}
 
+      </div>
+      <div className="col">
       {cargando ? (
         <CargandoMarca className="py-16" />
       ) : presupuestos.length === 0 ? (
@@ -209,13 +215,16 @@ export default function Presupuesto() {
             <div className="mx-6 mt-4 flex gap-4">
               {/* Termómetro: nivel general del mes de un vistazo */}
               <div className="flex flex-col items-center pt-1 shrink-0">
-                <div className="w-8 rounded-full bg-line overflow-hidden relative" style={{ height: `${Math.max(180, conDatos.length * 76)}px` }}>
-                  <div
-                    className="absolute bottom-0 left-0 right-0 rounded-full transition-all duration-700 ease-out"
-                    style={{ height: `${animarBarras ? pctGeneral : 0}%`, background: colorNivel }}
-                  />
-                </div>
-                <p className="text-[10px] text-ink-soft text-center mt-2.5 leading-tight font-medium">
+                <BarraProgreso
+                  vertical
+                  pct={animarBarras ? pctGeneral : 0}
+                  color={colorNivel}
+                  label="Uso general del presupuesto del mes"
+                  className="w-8 rounded-full bg-line overflow-hidden relative flex items-end"
+                  fillClass="rounded-full"
+                  style={{ height: `${Math.max(180, conDatos.length * 76)}px` }}
+                />
+                <p className="text-[11px] text-ink-soft text-center mt-2.5 leading-tight font-medium">
                   {pctGeneral}% del<br />mes usado
                 </p>
               </div>
@@ -231,12 +240,12 @@ export default function Presupuesto() {
                         <p className="text-sm font-semibold">
                           {p.categoria}
                           {p.proy && p.proy.periodo !== 'monthly' && (
-                            <span className="ml-1.5 text-[10px] font-bold text-ink-soft" data-testid="chip-periodo">
+                            <span className="ml-1.5 text-[11px] font-bold text-ink-soft" data-testid="chip-periodo">
                               {etiquetaPeriodo(p.proy.periodo)} · {textoRango(p.proy.inicio, p.proy.fin)}
                             </span>
                           )}
                           {p.sobre_ajuste !== 0 && (
-                            <span className={`ml-1.5 text-[10px] font-bold ${p.sobre_ajuste > 0 ? 'text-accent-2' : 'text-ink-soft'}`}>
+                            <span className={`ml-1.5 text-[11px] font-bold ${p.sobre_ajuste > 0 ? 'text-accent-2' : 'text-ink-soft'}`}>
                               {p.sobre_ajuste > 0 ? '+' : ''}{formatCOP(p.sobre_ajuste)}
                             </span>
                           )}
@@ -253,19 +262,18 @@ export default function Presupuesto() {
                       {p.proy && p.proy.estado !== 'sin_limite' ? (
                         <BarraProyeccion item={p.proy} animar={animarBarras} />
                       ) : (
-                        <div className="h-2 rounded-full bg-line overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-700 ease-out"
-                            style={{
-                              width: `${animarBarras ? p.pct : 0}%`,
-                              background: sobrepasado
-                                ? 'var(--color-danger)'
-                                : cercaDelLimite
-                                ? 'var(--color-accent-2)'
-                                : 'var(--color-accent)',
-                            }}
-                          />
-                        </div>
+                        <BarraProgreso
+                          pct={animarBarras ? p.pct : 0}
+                          label={`Gastado en ${p.categoria}`}
+                          texto={`${p.pct}% del límite`}
+                          color={
+                            sobrepasado
+                              ? 'var(--color-danger)'
+                              : cercaDelLimite
+                              ? 'var(--color-accent-2)'
+                              : 'var(--color-accent)'
+                          }
+                        />
                       )}
                       {p.proy && p.proy.arrastre > 0 && (
                         <p className="text-[11px] text-accent-2 mt-1.5">
@@ -298,6 +306,8 @@ export default function Presupuesto() {
           )
         })()
       )}
+      </div>
+      </div>
 
       {mostrarConfig && (
         <ConfigPlanificacion

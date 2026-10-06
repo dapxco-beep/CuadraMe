@@ -146,8 +146,15 @@ export default function Impuestos() {
                   {gmf.meses.map((m) => (
                     <li key={m.mes} className="flex items-center gap-2 text-xs">
                       <span className="w-16 shrink-0 text-ink-soft">{etiquetaMes(m.mes)}</span>
-                      <span className="flex-1 h-2 rounded-full bg-line overflow-hidden">
-                        <span className="block h-full bg-accent" style={{ width: `${(m.gmf_estimado / maxMes) * 100}%` }} />
+                      <span
+                        className="flex-1 h-2 rounded-full bg-line overflow-hidden"
+                        role="progressbar"
+                        aria-label={`4x1000 de ${etiquetaMes(m.mes)}`}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={Math.round((m.gmf_estimado / maxMes) * 100)}
+                      >
+                        <span className="block h-full w-full bg-accent barra-fill" style={{ transform: `scaleX(${m.gmf_estimado / maxMes})` }} />
                       </span>
                       <span className="w-20 text-right font-medium">{formatCOP(m.gmf_estimado)}</span>
                     </li>

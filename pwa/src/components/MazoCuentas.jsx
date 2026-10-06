@@ -45,6 +45,22 @@ function Mazo({ cuentas, ultimos }) {
         style={{ height: `${alto}px`, touchAction: 'pan-y' }}
         role="group"
         aria-label={`Tus cuentas, ${cuentas.length}. Desliza la tarjeta para ver la siguiente.`}
+        aria-roledescription="mazo de tarjetas"
+        aria-keyshortcuts="ArrowLeft ArrowRight Enter"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget || e.ctrlKey || e.metaKey || e.altKey) return
+          if (e.key === 'ArrowRight' && cuentas.length > 1) {
+            e.preventDefault()
+            pasarAlFondo()
+          } else if (e.key === 'ArrowLeft' && cuentas.length > 1) {
+            e.preventDefault()
+            setOrden((o) => [o[o.length - 1], ...o.slice(0, -1)])
+          } else if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            navegar(`/cuentas?cuenta=${cuentas[frente]?.id}`)
+          }
+        }}
       >
         {orden.map((idx, pos) => {
           const c = cuentas[idx]
@@ -82,7 +98,7 @@ function Mazo({ cuentas, ultimos }) {
               aria-label={`Ver ${c.nombre}`}
               aria-current={i === frente ? 'true' : undefined}
               onClick={() => traerAlFrente(orden.indexOf(i))}
-              className="w-6 h-8 flex items-center justify-center"
+              className="w-6 h-8 relative flex items-center justify-center before:absolute before:-inset-x-2 before:-inset-y-1.5 before:content-['']"
             >
               <span className={`h-1.5 rounded-full transition-all ${i === frente ? 'w-4 bg-accent' : 'w-1.5 bg-line'}`} />
             </button>

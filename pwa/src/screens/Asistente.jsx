@@ -47,7 +47,7 @@ function TarjetaSimulacion({ c }) {
           </span>
         </div>
       ))}
-      <p className="text-[10px] text-ink-soft">Cuotas con {c.tasa_mensual_referencia_pct} % mensual de referencia; tu tarjeta real puede variar.</p>
+      <p className="text-[11px] text-ink-soft">Cuotas con {c.tasa_mensual_referencia_pct} % mensual de referencia; tu tarjeta real puede variar.</p>
     </div>
   )
 }
@@ -385,7 +385,7 @@ export default function Asistente() {
           <Send size={16} />
         </button>
       </form>
-      <p className="px-6 pb-2 text-[10px] text-ink-soft text-center">
+      <p className="px-6 pb-2 text-[11px] text-ink-soft text-center">
         <X size={9} className="inline -mt-0.5" aria-hidden="true" /> No guardamos tus conversaciones. Nunca escribas claves ni PIN.
       </p>
     </div>

@@ -85,7 +85,7 @@ export default function Recurrentes() {
         </div>
         <button
           onClick={() => setMostrarForm(true)}
-          className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
          aria-label="Nuevo recurrente">
           <Plus size={20} />
         </button>
@@ -108,13 +108,13 @@ export default function Recurrentes() {
                 </div>
                 <button
                   onClick={() => aceptarSugerencia(s)}
-                  className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center shrink-0"
+                  className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center shrink-0"
                  aria-label="Aceptar sugerencia">
                   <Check size={15} />
                 </button>
                 <button
                   onClick={() => descartarSugerencia(s)}
-                  className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center shrink-0"
+                  className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center shrink-0"
                  aria-label="Descartar sugerencia">
                   <X size={15} />
                 </button>
@@ -152,7 +152,7 @@ export default function Recurrentes() {
               {r.estado !== 'pagado' && (
                 <button
                   onClick={() => marcarPagado(r.id)}
-                  className="w-8 h-8 rounded-full bg-accent-soft text-accent flex items-center justify-center shrink-0"
+                  className="w-11 h-11 rounded-full bg-accent-soft text-accent flex items-center justify-center shrink-0"
                  aria-label="Marcar como pagado">
                   <Check size={16} />
                 </button>
