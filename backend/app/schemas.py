@@ -642,6 +642,14 @@ class CorreoGastoOut(BaseModel):
     banco_detectado: Optional[str] = None
     cuenta_sugerida_id: Optional[str] = None
     falta_cuenta: bool = False
+    # Por qué se sugirió esa categoría ('por tu regla «rappi»'); None si la eligió el usuario
+    # o no se pudo decidir. `preguntar_categoria`: quedó en 'Otros', hay que preguntarle.
+    razon_categoria: Optional[str] = None
+    preguntar_categoria: bool = False
+    # Solo al aprobar/editar con 'Recordar': qué pasó con la regla del comercio.
+    regla_guardada: Optional[bool] = None
+    regla_omitida: Optional[str] = None
+    anteriores_actualizados: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -652,11 +660,18 @@ class CorreoGastoUpdate(BaseModel):
     comercio: Optional[str] = None
     categoria: Optional[str] = None
     tipo: Optional[str] = None
+    # Con categoría nueva: guarda la regla del comercio (y, opcional, recategoriza los anteriores).
+    recordar: bool = False
+    aplicar_anteriores: bool = False
 
 
 class AprobarCorreoRequest(BaseModel):
     # Opcional a propósito: sin cuenta elegida se responde 400 claro en vez de 422.
     cuenta_id: Optional[str] = None
+    # Categoría elegida por el usuario al aprobar (si cambió la sugerida).
+    categoria: Optional[str] = None
+    recordar: bool = False
+    aplicar_anteriores: bool = False
 
 
 class SincronizarCorreosResponse(BaseModel):
@@ -804,6 +819,8 @@ class ProcesarExtractoResponse(BaseModel):
     periodo_desde: Optional[str] = None  # ISO, primer movimiento del extracto
     periodo_hasta: Optional[str] = None
     requiere_clave: bool = False  # el PDF está protegido y falta (o es incorrecta) la clave
+    # Aviso (no bloquea): ese mes de esa cuenta ya estaba conciliado antes de subir este archivo.
+    ya_conciliado: Optional[dict] = None  # {"mes": "2026-09", "cruzados": n}
 
 
 class ImportarFaltantesRequest(BaseModel):

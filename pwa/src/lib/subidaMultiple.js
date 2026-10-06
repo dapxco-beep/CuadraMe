@@ -87,6 +87,7 @@ export function normalizarPdf(r) {
     items,
     historialId: r.historial_id,
     autoImportados: r.auto_importados || 0,
+    yaConciliado: r.ya_conciliado || null,
   }
 }
 
@@ -103,7 +104,7 @@ export function normalizarTabular(r) {
     razon: p.razon_categoria || null,
     estado: p.estado === 'duplicado' ? 'ya' : p.estado === 'posible_duplicado' ? 'posible' : 'nuevo',
   }))
-  return { banco: 'Excel / CSV', periodo: periodoDe(items), items }
+  return { banco: 'Excel / CSV', periodo: periodoDe(items), items, yaConciliado: r.ya_conciliado || null }
 }
 
 /**

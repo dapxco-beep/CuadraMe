@@ -33,7 +33,7 @@ from app.importador_tabular import MAX_BYTES, MAX_FILAS, CAMPOS, ErrorArchivo, a
 from app.limites import verificar_limite
 from app.models import HistorialExtracto, Movimiento, ReglaCategoria
 from app.rachas import registrar_actividad_hoy
-from app.routers.conciliacion import _cargar_ledger
+from app.routers.conciliacion import _cargar_ledger, _periodo_ya_conciliado
 
 router = APIRouter(prefix="/importar", tags=["importar"])
 
@@ -159,6 +159,8 @@ def vista_previa(
         "cuenta": {"id": cuenta.id, "nombre": cuenta.nombre, "moneda": cuenta.moneda, "saldo": cuenta.saldo},
         **analisis,
         "propuesta": propuesta,
+        # Aviso, no bloqueo: ese mes de esa cuenta ya estaba conciliado (los duplicados se detectan por huella).
+        "ya_conciliado": _periodo_ya_conciliado(db, usuario.id, cuenta.id, auditoria["review"]),
         "resumen": {
             "nuevos": auditoria["faltantes"],
             "duplicados": auditoria["exactos"],

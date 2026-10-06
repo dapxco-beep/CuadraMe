@@ -6,7 +6,6 @@ columnas nuevas y ninguna regla se duplica (la bandeja y 'por revisar' se
 importan de movimientos.py). Solo se cuentan filas, no se suma dinero; donde
 se sume, debe usarse contabilidad.py.
 """
-import re
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query
@@ -17,7 +16,8 @@ from app.auth import UsuarioActual, get_current_user
 from app.autocat import patron_de_comercio
 from app.compartidos import cuentas_ids_accesibles
 from app.database import get_db
-from app.extractos_gmail import _sin_acentos, banco_por_remitente, cuentas_del_banco
+from app.extractos_conciliados import ESTADO_YA_CONCILIADO, depurar_conciliados, mes_del_extracto  # noqa: F401
+from app.extractos_gmail import banco_por_remitente, cuentas_del_banco
 from app.models import CorreoGasto, Cuenta, ExtractoCorreo, HistorialExtracto, Movimiento, SyncGmail
 from app.routers.movimientos import _PENDIENTE_REVISION
 from app.schemas import MovimientoOut
@@ -30,13 +30,6 @@ MESES_GRILLA = 6
 DIAS_BANDEJA = 14  # la misma ventana de GET /movimientos/por-confirmar
 
 _NOMBRES_MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
-_MES_NUM = {
-    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 6, "julio": 7,
-    "agosto": 8, "septiembre": 9, "setiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12,
-}
-_FECHA_DMY = re.compile(r"(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})")
-_FECHA_YMD = re.compile(r"(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})")
-_MES_ANIO = re.compile(r"\b(" + "|".join(_MES_NUM) + r")\s+(?:de\s+)?(20\d{2})\b")
 
 
 def _clave(anio: int, mes: int) -> str:
@@ -61,33 +54,6 @@ def _inicio_mes(a: int, m: int) -> datetime:
 
 def _siguiente(a: int, m: int) -> tuple[int, int]:
     return (a + 1, 1) if m == 12 else (a, m + 1)
-
-
-def mes_del_extracto(periodo: str, recibido_en: datetime | None) -> str | None:
-    """Mes ('AAAA-MM') al que pertenece un extracto. Con rango de fechas vale el
-    mes en que TERMINA (el corte); 'junio 2026' vale junio. Sin periodo se
-    supone el mes anterior a la fecha en que llegó el correo (los extractos
-    llegan al cerrar el periodo). None si no hay con qué decidir."""
-    texto = _sin_acentos(periodo or "")
-    fechas = []
-    for m in _FECHA_DMY.finditer(texto):
-        fechas.append((int(m.group(3)), int(m.group(2))))
-    if not fechas:
-        for m in _FECHA_YMD.finditer(texto):
-            fechas.append((int(m.group(1)), int(m.group(2))))
-    if fechas:
-        a, mes = fechas[-1]
-        if 1 <= mes <= 12:
-            return _clave(a, mes)
-    m = _MES_ANIO.search(texto)
-    if m:
-        return _clave(int(m.group(2)), _MES_NUM[m.group(1)])
-    if recibido_en:
-        a, mes = recibido_en.year, recibido_en.month - 1
-        if mes == 0:
-            a, mes = a - 1, 12
-        return _clave(a, mes)
-    return None
 
 
 def estado_celda(*, movimientos: int, conciliados: int, extractos_procesados: int,
@@ -195,9 +161,15 @@ def estado(
                 conteo[(cuenta_id, clave)] = {"movimientos": int(total), "conciliados": int(conc), "por_confirmar": int(por_conf)}
 
     # ── Extractos de Gmail (solo metadatos, pocos): a qué cuenta y mes pertenecen.
+    # Si el periodo ya se concilió (p. ej. subiste el archivo a mano), el extracto de
+    # Gmail deja de ser pendiente antes de contar nada.
+    depurar_conciliados(db, usuario.id)
     extractos = (
         db.query(ExtractoCorreo)
-        .filter(ExtractoCorreo.usuario_id == usuario.id, ExtractoCorreo.estado.in_(("nuevo", "falta_clave", "procesado")))
+        .filter(
+            ExtractoCorreo.usuario_id == usuario.id,
+            ExtractoCorreo.estado.in_(("nuevo", "falta_clave", "procesado", ESTADO_YA_CONCILIADO)),
+        )
         .all()
     )
     historiales = {
@@ -214,7 +186,8 @@ def estado(
         if not cuenta_id or not clave:
             continue
         d = ext_celda.setdefault((cuenta_id, clave), {"procesado": 0, "nuevo": 0, "falta_clave": 0})
-        d[e.estado] += 1
+        # Un extracto 'ya conciliado' cuenta como procesado en la grilla, nunca como pendiente.
+        d["procesado" if e.estado == ESTADO_YA_CONCILIADO else e.estado] += 1
 
     filas_cuentas = []
     for c in cuentas:

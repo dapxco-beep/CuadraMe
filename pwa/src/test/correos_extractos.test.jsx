@@ -64,11 +64,14 @@ beforeEach(() => {
 describe('Correos: extractos encontrados', () => {
   it('lista los extractos con su estado y el mensaje de privacidad', async () => {
     montar()
-    expect(await screen.findByText('Extractos encontrados (3)')).toBeTruthy()
+    // El conciliado (Nequi) no cuenta como pendiente: queda en su sección plegada.
+    expect(await screen.findByText('Extractos encontrados (2)')).toBeTruthy()
     expect(screen.getByText('Nuevo')).toBeTruthy()
     // "Falta clave" es la etiqueta del extracto y también un filtro de la lista.
     expect(screen.getAllByText('Falta clave').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByText('Procesado')).toBeTruthy()
+    expect(screen.queryByText('Nequi')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Ya conciliados \(1\)/ }))
+    expect(screen.getByText(/Nequi · julio 2026/)).toBeTruthy()
     expect(screen.getByText(/solo tiene permiso de/i)).toBeTruthy()
     expect(screen.getByText(/No guardamos tus correos ni los PDF/i)).toBeTruthy()
   })
@@ -123,7 +126,7 @@ describe('Correos: extractos encontrados', () => {
   it('no vuelve a sincronizar si ya se hizo hace poco', async () => {
     localStorage.setItem('cuadrame_gmail_sync', String(Date.now()))
     montar()
-    await screen.findByText('Extractos encontrados (3)')
+    await screen.findByText('Extractos encontrados (2)')
     expect(api.sincronizarCorreos).not.toHaveBeenCalled()
   })
 })
