@@ -255,10 +255,11 @@ export const api = {
     }),
   historialExtractos: () => request('/conciliacion/historial'),
   obtenerReviewExtracto: (id) => request(`/conciliacion/historial/${id}`),
-  importarFaltantes: (id, fingerprints, categorias) =>
+  // `aprender` (opcional): { recordar: [fingerprint], aplicar_anteriores: [fingerprint] }
+  importarFaltantes: (id, fingerprints, categorias, aprender) =>
     request(`/conciliacion/historial/${id}/importar`, {
       method: 'POST',
-      body: { fingerprints, categorias },
+      body: aprender ? { fingerprints, categorias, ...aprender } : { fingerprints, categorias },
     }),
   eliminarHistorialExtracto: (id) => request(`/conciliacion/historial/${id}`, { method: 'DELETE' }),
 
@@ -340,6 +341,10 @@ export const api = {
   reglasCategoria: () => request('/reglas-categoria'),
   crearReglaCategoria: (data) => request('/reglas-categoria', { method: 'POST', body: data }),
   eliminarReglaCategoria: (id) => request(`/reglas-categoria/${id}`, { method: 'DELETE' }),
+  // Aprendizaje: guarda la regla del comercio de una descripción (una por huella) y, si se pide, recategoriza los anteriores.
+  aprenderRegla: (data) => request('/reglas-categoria/aprender', { method: 'POST', body: data }),
+  vocabularioCategorias: () => request('/categorias/vocabulario'),
+  explicarCategoria: (q) => request(`/categorias/explicar?q=${encodeURIComponent(q)}`),
 
   flujoCajaFuturo: (meses = 3) => request(`/reportes/flujo-caja-futuro?meses=${meses}`),
 

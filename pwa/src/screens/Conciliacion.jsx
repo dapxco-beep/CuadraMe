@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
-import { ArrowLeft, Check, FileSpreadsheet, FileUp, X } from 'lucide-react'
+import { ArrowLeft, Check, FileSpreadsheet, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { AvisoCategorizados } from '../components/CategorizacionAuto'
+import RecordarRegla, { RECORDAR_INICIAL } from '../components/RecordarRegla'
+import SubidaMultiple from '../components/SubidaMultiple'
+import ZonaSubida from '../components/ZonaSubida'
 import { useDialogos } from '../lib/DialogosContext'
+import { tipoDeArchivo } from '../lib/subidaMultiple'
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -84,6 +88,9 @@ export default function Conciliacion() {
   const [seleccionados, setSeleccionados] = useState(new Set())
   const [categorias, setCategorias] = useState({}) // fingerprint -> categoría elegida
   const [importando, setImportando] = useState(false)
+  const [sugeridas, setSugeridas] = useState({}) // fingerprint -> categoría que propuso la app
+  const [aprender, setAprender] = useState({}) // fingerprint -> { recordar, anteriores } (solo filas editadas)
+  const [multiples, setMultiples] = useState(null) // File[] cuando se suben varios archivos a la vez
 
   // Si llegamos desde "Extractos encontrados" (Correos), el PDF ya se procesó en
   // el servidor: solo hay que abrir su revisión.
@@ -101,12 +108,18 @@ export default function Conciliacion() {
       if (m.estado === 'faltante') inicial[m.fingerprint] = m.categoria_sugerida || 'Otros'
     })
     setCategorias(inicial)
+    setSugeridas(inicial)
+    setAprender({})
   }
 
-  async function onFile(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
+  // Un solo PDF: el flujo de siempre. Varios archivos (o un Excel/CSV): cola con revisión consolidada.
+  async function onArchivos(files) {
     setError('')
+    if (files.length > 1 || tipoDeArchivo(files[0]?.name) !== 'pdf') {
+      setMultiples(files)
+      return
+    }
+    const file = files[0]
     setResultado(null)
     setProcesando(true)
     try {
@@ -121,7 +134,6 @@ export default function Conciliacion() {
       setError(err.message || 'Error al procesar el PDF')
     } finally {
       setProcesando(false)
-      e.target.value = ''
     }
   }
 
@@ -136,14 +148,30 @@ export default function Conciliacion() {
 
   function cambiarCategoria(fp, categoria) {
     setCategorias((prev) => ({ ...prev, [fp]: categoria }))
+    // Si el usuario corrigió lo que sugirió la app, se ofrece recordarlo (marcado por defecto).
+    setAprender((prev) => {
+      const next = { ...prev }
+      if (categoria === (sugeridas[fp] || 'Otros')) delete next[fp]
+      else next[fp] = next[fp] || RECORDAR_INICIAL
+      return next
+    })
   }
 
   async function importar() {
     if (!resultado?.historial_id || seleccionados.size === 0) return
     setImportando(true)
     try {
-      const r = await api.importarFaltantes(resultado.historial_id, [...seleccionados], categorias)
+      const marcadas = [...seleccionados].filter((fp) => aprender[fp]?.recordar)
+      const r = await api.importarFaltantes(
+        resultado.historial_id,
+        [...seleccionados],
+        categorias,
+        marcadas.length
+          ? { recordar: marcadas, aplicar_anteriores: marcadas.filter((fp) => aprender[fp]?.anteriores) }
+          : undefined
+      )
       await recargarCuentas()
+      if (r.reglas_guardadas > 0) avisar(`Aprendí ${r.reglas_guardadas} ${r.reglas_guardadas === 1 ? 'comercio' : 'comercios'}: la próxima vez ya sabré qué son`, 'ok')
       if (r.sin_categoria_clara > 0) {
         avisar(
           `Listo. ${r.sin_categoria_clara} de ${r.importados} movimientos quedaron en "Otros" porque no reconocimos de qué se trataban — puedes recategorizarlos desde Movimientos.`,
@@ -176,10 +204,15 @@ export default function Conciliacion() {
         <h1 className="text-xl font-semibold">Conciliar extracto</h1>
       </header>
 
-      {!resultado && (
+      {!resultado && multiples && (
+        <SubidaMultiple archivosIniciales={multiples} cuentaInicial={cuentaId} onCancelar={() => setMultiples(null)} />
+      )}
+
+      {!resultado && !multiples && (
         <div className="px-5 mt-4">
           <p className="text-sm text-ink-soft mb-4">
-            Sube el PDF de tu extracto bancario y compáralo con tus movimientos registrados. Detectamos automáticamente lo que falta por registrar.
+            Sube el PDF de tu extracto bancario (o varios a la vez, también Excel o CSV) y compáralo con tus movimientos registrados.
+            Detectamos automáticamente lo que falta por registrar.
           </p>
 
           {cuentas.length > 1 && (
@@ -208,13 +241,12 @@ export default function Conciliacion() {
             className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
           />
 
-          <label className="w-full flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line bg-paper-raised py-10 cursor-pointer">
-            <FileUp size={28} className="text-accent" />
-            <span className="text-sm font-medium">
-              {procesando ? 'Procesando...' : 'Toca para subir el PDF'}
-            </span>
-            <input type="file" accept="application/pdf" onChange={onFile} disabled={procesando} className="hidden" />
-          </label>
+          <ZonaSubida
+            onArchivos={onArchivos}
+            disabled={procesando}
+            titulo={procesando ? 'Procesando...' : 'Toca para subir tus extractos'}
+            ariaLabel="Extractos a conciliar"
+          />
 
           {error && <p className="text-sm text-danger mt-4">{error}</p>}
 
@@ -308,6 +340,7 @@ export default function Conciliacion() {
                 </label>
                 {m.estado === 'faltante' && seleccionados.has(m.fingerprint) && (
                   <select
+                    aria-label={`Categoría de ${m.descripcion}`}
                     value={categorias[m.fingerprint] || 'Otros'}
                     onChange={(e) => cambiarCategoria(m.fingerprint, e.target.value)}
                     className={`w-full mt-2.5 ml-8 rounded-xl border px-3 py-2 text-xs ${
@@ -321,6 +354,20 @@ export default function Conciliacion() {
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
+                )}
+                {m.estado === 'faltante' && seleccionados.has(m.fingerprint) && (
+                  <div className="ml-8 mt-1.5">
+                    {m.razon_categoria && !aprender[m.fingerprint] && (
+                      <p className="text-[11px] text-ink-soft">Auto · {m.razon_categoria}</p>
+                    )}
+                    {aprender[m.fingerprint] && (
+                      <RecordarRegla
+                        descripcion={m.descripcion}
+                        valor={aprender[m.fingerprint]}
+                        onChange={(v) => setAprender((p) => ({ ...p, [m.fingerprint]: v }))}
+                      />
+                    )}
+                  </div>
                 )}
               </div>
             ))}

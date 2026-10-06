@@ -7,6 +7,9 @@ import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { AvisoCategorizados } from '../components/CategorizacionAuto'
+import RecordarRegla, { RECORDAR_INICIAL } from '../components/RecordarRegla'
+import SubidaMultiple from '../components/SubidaMultiple'
+import ZonaSubida from '../components/ZonaSubida'
 import {
   CAMPOS_MAPEO,
   ETIQUETA_ESTADO,
@@ -51,8 +54,11 @@ export default function ImportarArchivo() {
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
   const [resultado, setResultado] = useState(null)
+  const [multiples, setMultiples] = useState(null) // File[] cuando se suben varios archivos a la vez
+  const [aprender, setAprender] = useState({}) // fila -> { recordar, anteriores } (solo filas editadas)
 
   function mostrar(r) {
+    setAprender({})
     setAnalisis(r)
     setMapeo(r.mapeo)
     setOpciones(r.opciones)
@@ -79,11 +85,15 @@ export default function ImportarArchivo() {
     }
   }
 
-  async function onArchivo(e) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
+  // Un archivo: el flujo de siempre (con mapeo de columnas). Varios: cola con revisión consolidada.
+  async function onArchivos(files) {
     setError('')
+    if (files.length > 1) {
+      setMultiples(files)
+      return
+    }
+    const file = files[0]
+    if (!file) return
     if (!extensionValida(file.name)) {
       setError('Formato no soportado. Sube un archivo .csv, .xlsx o .xls.')
       return
@@ -126,7 +136,17 @@ export default function ImportarArchivo() {
     })
   }
 
-  const filas = analisis ? construirFilas(analisis.propuesta, seleccion, categorias) : []
+  const filas = analisis ? construirFilas(analisis.propuesta, seleccion, categorias, aprender) : []
+
+  function cambiarCategoria(p, categoria) {
+    setCategorias((c) => ({ ...c, [p.fila]: categoria }))
+    setAprender((prev) => {
+      const next = { ...prev }
+      if (categoria === (p.categoria || 'Otros')) delete next[p.fila]
+      else next[p.fila] = next[p.fila] || RECORDAR_INICIAL // «Recordar» marcado por defecto
+      return next
+    })
+  }
   const cuenta = cuentas.find((c) => c.id === cuentaId)
 
   async function importar() {
@@ -196,7 +216,11 @@ export default function ImportarArchivo() {
         </div>
       )}
 
-      {!analisis && !resultado && (
+      {!analisis && !resultado && multiples && (
+        <SubidaMultiple archivosIniciales={multiples} cuentaInicial={cuentaId} onCancelar={() => setMultiples(null)} />
+      )}
+
+      {!analisis && !resultado && !multiples && (
         <div className="px-5 mt-4">
           <p className="text-sm text-ink-soft mb-4">
             Sube el Excel o CSV que te da tu banco, o uno tuyo. Detectamos las columnas, tú las revisas y
@@ -222,19 +246,14 @@ export default function ImportarArchivo() {
             </div>
           )}
 
-          <label className="w-full flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line bg-paper-raised py-10 cursor-pointer">
-            <FileSpreadsheet size={28} className="text-accent" />
-            <span className="text-sm font-medium">{cargando ? 'Leyendo archivo...' : 'Toca para elegir el archivo'}</span>
-            <span className="text-xs text-ink-soft">.csv, .xlsx o .xls · hasta 5 MB y 3.000 movimientos</span>
-            <input
-              type="file"
-              accept=".csv,.txt,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              onChange={onArchivo}
-              disabled={cargando}
-              className="hidden"
-              aria-label="Archivo a importar"
-            />
-          </label>
+          <ZonaSubida
+            onArchivos={onArchivos}
+            disabled={cargando}
+            icono={FileSpreadsheet}
+            titulo={cargando ? 'Leyendo archivo...' : 'Toca para elegir los archivos'}
+            ayuda=".csv, .xlsx o .xls · hasta 10 a la vez (con varios puedes incluir PDF), 5 MB cada uno"
+            ariaLabel="Archivo a importar"
+          />
 
           <ul className="text-xs text-ink-soft mt-4 space-y-1 list-disc pl-4">
             <li>Entendemos montos como 1.234.567,89 o 1,234,567.89 y fechas dd/mm/aaaa.</li>
@@ -403,17 +422,31 @@ export default function ImportarArchivo() {
                       </p>
                     </label>
                     {seleccion.has(p.fila) && p.estado !== 'duplicado' && (
-                      <select
-                        aria-label={`Categoría de ${p.descripcion}`}
-                        value={categorias[p.fila] || 'Otros'}
-                        onChange={(e) => setCategorias((c) => ({ ...c, [p.fila]: e.target.value }))}
-                        className="mt-2 ml-8 rounded-xl border border-line bg-paper px-3 py-2 text-xs"
-                        style={{ width: 'calc(100% - 2rem)' }}
-                      >
-                        {opcionesCategoria(CATEGORIAS, categorias[p.fila]).map((c) => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
+                      <>
+                        <select
+                          aria-label={`Categoría de ${p.descripcion}`}
+                          value={categorias[p.fila] || 'Otros'}
+                          onChange={(e) => cambiarCategoria(p, e.target.value)}
+                          className="mt-2 ml-8 rounded-xl border border-line bg-paper px-3 py-2 text-xs"
+                          style={{ width: 'calc(100% - 2rem)' }}
+                        >
+                          {opcionesCategoria(CATEGORIAS, categorias[p.fila]).map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                        <div className="ml-8 mt-1.5">
+                          {p.razon_categoria && !aprender[p.fila] && (
+                            <p className="text-[11px] text-ink-soft">Auto · {p.razon_categoria}</p>
+                          )}
+                          {aprender[p.fila] && (
+                            <RecordarRegla
+                              descripcion={p.descripcion}
+                              valor={aprender[p.fila]}
+                              onChange={(v) => setAprender((prev) => ({ ...prev, [p.fila]: v }))}
+                            />
+                          )}
+                        </div>
+                      </>
                     )}
                   </div>
                 ))}
