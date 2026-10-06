@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
 import SelectorCuenta from './SelectorCuenta'
+import Hoja from './Hoja'
 
 // Hoja para crear la cuenta de un banco detectado ("Crear cuenta Nequi"): usa el
 // mismo selector de cuenta de siempre, con el banco ya elegido.
@@ -32,16 +33,10 @@ export default function CrearCuentaBanco({ banco, onClose, onCreada }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Crear cuenta ${banco || ''}`.trim()}
-        className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 max-h-[90vh] overflow-y-auto sheet-content"
-      >
+    <Hoja onCerrar={onClose} ariaLabel={`Crear cuenta ${banco || ""}`.trim()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">{banco ? `Crear cuenta ${banco}` : 'Nueva cuenta'}</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
             <X size={16} />
           </button>
         </div>
@@ -73,7 +68,6 @@ export default function CrearCuentaBanco({ banco, onClose, onCreada }) {
         >
           {guardando ? 'Creando...' : 'Crear cuenta'}
         </button>
-      </div>
-    </div>
+    </Hoja>
   )
 }
