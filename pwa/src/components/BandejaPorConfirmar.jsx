@@ -6,6 +6,7 @@ import { useCategorias } from '../lib/CategoriasContext'
 import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import Hoja from './Hoja'
+import RecordarRegla, { RECORDAR_INICIAL } from './RecordarRegla'
 import {
   debeMostrarBandeja,
   estadoBandejaGuardado,
@@ -158,10 +159,20 @@ export default function BandejaPorConfirmar() {
     }
   }
 
-  async function guardarEdicion(m, cambios) {
+  async function guardarEdicion(m, cambios, aprender) {
     setOcupado(true)
     try {
       await api.editarMovimiento(m.id, cambios) // al enviar categoría, el backend lo da por confirmado
+      if (aprender?.recordar) {
+        // Aprende el comercio: la próxima vez ya sabrá la categoría. Si falla, no se pierde la edición.
+        try {
+          await api.aprenderRegla({
+            descripcion: m.descripcion, categoria: cambios.categoria, aplicar_anteriores: !!aprender.anteriores,
+          })
+        } catch {
+          /* la regla es un extra: el movimiento ya quedó guardado */
+        }
+      }
       setEditandoId(null)
       quitar([m.id])
       avisarCambio()
@@ -207,7 +218,7 @@ export default function BandejaPorConfirmar() {
               cuentas={cuentas}
               ocupado={ocupado}
               onCancelar={() => setEditandoId(null)}
-              onGuardar={(cambios) => guardarEdicion(m, cambios)}
+              onGuardar={(cambios, aprender) => guardarEdicion(m, cambios, aprender)}
             />
           ) : (
             <li key={m.id} className="rounded-2xl border border-line bg-paper-raised p-3.5" data-testid="tarjeta-por-confirmar">
@@ -282,13 +293,14 @@ function FormEdicion({ m, cuentas, ocupado, onCancelar, onGuardar }) {
   const [monto, setMonto] = useState(String(Math.round(m.monto * 100) / 100))
   const [categoria, setCategoria] = useState(m.categoria)
   const [cuentaId, setCuentaId] = useState(m.cuenta_id)
+  const [aprender, setAprender] = useState(RECORDAR_INICIAL) // «Recordar» va marcado si cambia la categoría
   const [error, setError] = useState('')
   const opciones = [...new Set([...nombres, m.categoria])].filter((c) => c !== 'Transferencias')
 
   function guardar() {
     const valor = Number(String(monto).replace(',', '.'))
     if (!valor || valor <= 0) return setError('Escribe un monto válido')
-    onGuardar({ monto: valor, categoria, cuenta_id: cuentaId })
+    onGuardar({ monto: valor, categoria, cuenta_id: cuentaId }, categoria !== m.categoria ? aprender : null)
   }
 
   const campo = 'w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm outline-none focus:border-accent'
@@ -313,6 +325,7 @@ function FormEdicion({ m, cuentas, ocupado, onCancelar, onGuardar }) {
           ))}
         </select>
       </label>
+      {categoria !== m.categoria && <RecordarRegla descripcion={m.descripcion} valor={aprender} onChange={setAprender} />}
       <label className="block">
         <span className="text-[11px] text-ink-soft">Cuenta</span>
         <select value={cuentaId} onChange={(e) => setCuentaId(e.target.value)} aria-label="Cuenta" className={campo}>

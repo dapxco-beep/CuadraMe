@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Receipt, Check, ChevronRight, Copy, CreditCard, FileText, FileUp, Landmark, Link2, List, LogOut, Mail, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2 } from 'lucide-react'
+import { Bell, Receipt, Check, ChevronRight, Copy, CreditCard, FileText, FileUp, GraduationCap, Landmark, Link2, List, LogOut, Mail, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2 } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -223,6 +223,11 @@ export default function Perfil() {
           <Link to="/reglas-categoria" className="flex items-center gap-3 px-4 py-3.5">
             <Wand2 size={18} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Reglas de categorización</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/entrenar-categorias" className="flex items-center gap-3 px-4 py-3.5">
+            <GraduationCap size={18} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Entrenar categorías</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/categorias" className="flex items-center gap-3 px-4 py-3.5">

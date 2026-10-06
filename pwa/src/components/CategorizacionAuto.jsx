@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Check, ChevronRight, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCategorias } from '../lib/CategoriasContext'
-import { patronDeComercio, RAZON_AUTO } from '../lib/comercio'
+import { claveComercio, huellaPeligrosa, patronDeComercio, RAZON_AUTO } from '../lib/comercio'
 import Hoja from './Hoja'
 
 /** Insignia discreta que dice que la app puso la categoría sola, y por qué. */
@@ -49,6 +49,10 @@ export function HojaCambiarCategoria({ movimiento, onClose, onHecho }) {
   )
   const [aplicarATodos, setAplicarATodos] = useState(true)
   const [patron, setPatron] = useState(patronDeComercio(movimiento.descripcion))
+  const [forzar, setForzar] = useState(false)
+  // La regla se guarda por la «huella» del comercio (igual que en el servidor): 'JUAN VALDEZ SKANDIA' -> 'juan valdez skandia'.
+  const huella = claveComercio(patron)
+  const peligro = huellaPeligrosa(huella)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
@@ -62,6 +66,7 @@ export function HojaCambiarCategoria({ movimiento, onClose, onHecho }) {
         categoria,
         aplicar_a_todos: aplicarATodos,
         patron: aplicarATodos ? patron.trim() : null,
+        ...(aplicarATodos && peligro && forzar ? { confirmar_peligrosa: true } : {}),
       })
       onHecho(r, categoria)
     } catch (err) {
@@ -118,6 +123,15 @@ export function HojaCambiarCategoria({ movimiento, onClose, onHecho }) {
           maxLength={60}
           className="w-full mt-2 rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-sm outline-none focus:border-accent"
         />
+      )}
+      {aplicarATodos && huella && !peligro && (
+        <p className="text-xs text-ink-soft mt-1.5">Recordaré este comercio como «{huella}»: también sirve cuando el banco lo escriba distinto.</p>
+      )}
+      {aplicarATodos && peligro && (
+        <label className="flex items-start gap-2 mt-2 text-xs text-ink-soft">
+          <input type="checkbox" checked={forzar} onChange={(e) => setForzar(e.target.checked)} className="w-4 h-4 mt-0.5 accent-[var(--c-accent)]" />
+          <span>{peligro}. Marca esta casilla para guardar la regla de todos modos; si no, solo cambio este movimiento.</span>
+        </label>
       )}
 
       {error && <p className="text-sm text-danger mt-3">{error}</p>}

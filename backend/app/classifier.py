@@ -139,7 +139,9 @@ def aplicar_reglas(descripcion: str, reglas: list) -> dict | None:
         patron = regla.patron.strip()
         if not patron:
             continue
-        if patron.lower() in desc_lower:
+        # Patrones cortos ('d1', 'kfc') solo cuentan como palabra completa (vía huella): 'd1' no debe
+        # activarse dentro de 'cod12345'.
+        if len(patron) >= 4 and patron.lower() in desc_lower:
             return _resultado_regla(regla, clave_comercio(patron) or patron.lower())
         hp = clave_comercio(patron)
         if hp and huella_en_descripcion(hp, descripcion):
