@@ -230,6 +230,10 @@ export const api = {
   correosLista: (filtro = 'nuevos', offset = 0, limite = 30) =>
     request(`/correos/lista?filtro=${filtro}&limite=${limite}&offset=${offset}`),
   conexionesEstado: () => request('/conexiones/estado'),
+  // Pantalla Sincronización: grilla cuentas x meses, tareas y cola de categorías por preguntar.
+  sincronizacionEstado: () => request('/sincronizacion/estado'),
+  sincronizacionPorCategorizar: (offset = 0, limite = 10) =>
+    request(`/sincronizacion/por-categorizar?limite=${limite}&offset=${offset}`),
   correosPendientes: () => request('/correos/pendientes'),
   editarCorreo: (id, data) => request(`/correos/${id}`, { method: 'PATCH', body: data }),
   aprobarCorreo: (id, cuentaId) => request(`/correos/${id}/aprobar`, { method: 'POST', body: { cuenta_id: cuentaId } }),

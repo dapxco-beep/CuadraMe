@@ -151,6 +151,14 @@ export default function Perfil() {
       <section className="mx-6 mt-6">
         <h2 className="text-[15px] font-semibold mb-3">Registro automático</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
+          <Link to="/sincronizacion" className="flex items-center gap-3 px-4 py-3.5">
+            <RefreshCw size={18} className="text-accent shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Sincronización</p>
+              <p className="text-xs text-ink-soft mt-0.5">Qué falta conciliar, subir o categorizar</p>
+            </div>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
           <Link to="/conexiones" className="flex items-center gap-3 px-4 py-3.5">
             <RefreshCw size={18} className="text-accent shrink-0" />
             <div className="flex-1">

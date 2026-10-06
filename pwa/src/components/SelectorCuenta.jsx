@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import { ENTIDADES_FINANCIERAS_CO, marcaDeEntidad } from '../lib/entidadesFinancierasCO'
 
@@ -65,17 +65,24 @@ function ChipBanco({ nombre, activo, onClick }) {
 }
 
 export default function SelectorCuenta({
-  nombre, setNombre, tipo, setTipo, setIcono, moneda, setMoneda, mostrarMoneda = true,
+  nombre, setNombre, tipo, setTipo, setIcono, moneda, setMoneda, mostrarMoneda = true, bancoInicial = '',
 }) {
   const [pais, setPais] = useState('CO')
   const [verTodas, setVerTodas] = useState(false)
   const [busqueda, setBusqueda] = useState('')
-  const [banco, setBanco] = useState('')
+  // `bancoInicial` deja el banco ya elegido (p. ej. "Crear cuenta Nequi" desde Sincronización).
+  const [banco, setBanco] = useState(bancoInicial)
 
   const tipoActual = TIPOS_CUENTA.find((t) => t.id === tipo) || TIPOS_CUENTA[0]
 
+  useEffect(() => {
+    if (bancoInicial) setNombre(`${bancoInicial}${tipoActual.sufijo}`)
+    // Solo al montar: después manda lo que el usuario toque.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const lista = useMemo(() => {
-    if (!verTodas) return POPULARES
+    if (!verTodas) return bancoInicial && !POPULARES.includes(bancoInicial) ? [bancoInicial, ...POPULARES] : POPULARES
     const q = busqueda.trim().toLowerCase()
     return ENTIDADES_FINANCIERAS_CO.filter((e) => e.toLowerCase().includes(q))
   }, [verTodas, busqueda])

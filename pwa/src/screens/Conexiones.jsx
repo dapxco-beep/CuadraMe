@@ -356,7 +356,10 @@ export default function Conexiones() {
         <h1 className="text-xl font-bold">Conexiones y estado</h1>
       </header>
       <p className="px-6 text-xs text-ink-soft">
-        Aquí ves de un vistazo si todo lo que te registra los movimientos solo está funcionando.
+        Aquí ves de un vistazo si todo lo que te registra los movimientos solo está funcionando.{' '}
+        <button onClick={() => navigate('/sincronizacion')} className="underline font-semibold text-accent">
+          Ver qué falta por resolver
+        </button>
       </p>
       {error && (
         <p role="alert" className="mx-6 mt-3 text-xs text-danger">
