@@ -1,24 +1,77 @@
 import { supabase } from './supabase'
+import { borrarSeguridad } from './seguridad'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+export const MSG_SIN_CONEXION = 'Sin conexión. Revisa tu internet e intenta de nuevo.'
+export const MSG_ERROR_SERVIDOR = 'Tuvimos un problema. Intenta de nuevo en un momento.'
+export const MSG_SESION_VENCIDA = 'Tu sesión venció. Vuelve a iniciar sesión para continuar.'
+
+// fetch() falla con un TypeError ("Failed to fetch", "Load failed", "NetworkError...")
+// cuando no hay red o el servidor no responde. Ese texto en inglés no le sirve a nadie.
+async function fetchSeguro(url, opciones) {
+  try {
+    return await fetch(url, opciones)
+  } catch (e) {
+    if (e?.name === 'AbortError') throw e
+    const err = new Error(MSG_SIN_CONEXION)
+    err.sinConexion = true
+    throw err
+  }
+}
+
+// Un 401 con sesión significa que el token ya no vale (venció o la revocaron):
+// se cierra la sesión de forma limpia y se avisa, en vez de dejar la app a medias.
+let cerrandoSesion = false
+async function cerrarSesionVencida() {
+  if (cerrandoSesion) return
+  cerrandoSesion = true
+  try {
+    borrarSeguridad()
+    await supabase.auth.signOut()
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cuadrame:sesion-vencida', { detail: { mensaje: MSG_SESION_VENCIDA } }))
+    }
+  } catch {
+    // sin red el signOut puede fallar; el token ya no servía de todos modos
+  } finally {
+    cerrandoSesion = false
+  }
+}
+
 async function request(path, { method = 'GET', body, auth = true, headers: extra } = {}) {
   const headers = { 'Content-Type': 'application/json', ...(extra || {}) }
+  let conSesion = false
   if (auth) {
     const { data } = await supabase.auth.getSession()
     const token = data.session?.access_token
-    if (token) headers.Authorization = `Bearer ${token}`
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+      conSesion = true
+    }
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetchSeguro(`${API_URL}${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
   })
 
   if (!res.ok) {
+    if (res.status === 401 && conSesion) {
+      await cerrarSesionVencida()
+      const err = new Error(MSG_SESION_VENCIDA)
+      err.status = 401
+      throw err
+    }
     const data = await res.json().catch(() => ({}))
     const d = data.detail
+    if (res.status >= 500) {
+      const err = new Error(MSG_ERROR_SERVIDOR)
+      err.status = res.status
+      err.detalle = d
+      throw err
+    }
     // Autorización pendiente (Ley 1581): el backend responde con un objeto {codigo, finalidad, mensaje}.
     // Se avisa a la app para que muestre el consentimiento específico en vez de un error crudo.
     if (d && typeof d === 'object' && d.codigo === 'consentimiento_requerido') {
@@ -48,10 +101,14 @@ async function request(path, { method = 'GET', body, auth = true, headers: extra
 async function descargarArchivo(path, nombreArchivo) {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetchSeguro(`${API_URL}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
-  if (!res.ok) throw new Error(`Error ${res.status}`)
+  if (res.status === 401 && token) {
+    await cerrarSesionVencida()
+    throw new Error(MSG_SESION_VENCIDA)
+  }
+  if (!res.ok) throw new Error(res.status >= 500 ? MSG_ERROR_SERVIDOR : `Error ${res.status}`)
 
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)
