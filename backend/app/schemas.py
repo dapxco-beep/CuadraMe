@@ -45,7 +45,7 @@ def _validar_color(v):
 
 
 class CategoriaCreate(BaseModel):
-    nombre: str = Field(min_length=1, max_length=30)
+    nombre: str = Field(min_length=1, max_length=40)
     icono: str = "🏷️"
     color: Optional[str] = None
     tipo: Literal["gasto", "ingreso", "ambos"] = "ambos"
@@ -62,7 +62,7 @@ class CategoriaCreate(BaseModel):
 
 
 class CategoriaUpdate(BaseModel):
-    nombre: Optional[str] = Field(default=None, min_length=1, max_length=30)
+    nombre: Optional[str] = Field(default=None, min_length=1, max_length=40)
     icono: Optional[str] = None
     activa: Optional[bool] = None
     color: Optional[str] = None  # "" quita el color
@@ -223,6 +223,7 @@ class RecategorizarComercioRequest(BaseModel):
     categoria: str = Field(min_length=1)
     patron: Optional[str] = Field(default=None, max_length=60)  # si no viene, se deduce de la descripción
     aplicar_a_todos: bool = True
+    confirmar_peligrosa: bool = False  # guardar aunque la huella sea muy corta o genérica
 
 
 class ConfirmarCategoriasRequest(BaseModel):
@@ -335,6 +336,14 @@ class ReglaCategoriaCreate(BaseModel):
     categoria: str
     tipo: Optional[str] = None
     prioridad: int = 0
+
+
+class AprenderReglaRequest(BaseModel):
+    descripcion: str = Field(min_length=1, max_length=200)  # de ahí se saca la huella del comercio
+    categoria: str = Field(min_length=1, max_length=60)
+    tipo: Optional[str] = None
+    aplicar_anteriores: bool = False
+    confirmar_peligrosa: bool = False
 
 
 class ReglaCategoriaOut(BaseModel):
@@ -792,11 +801,16 @@ class ProcesarExtractoResponse(BaseModel):
     auto_importados: int = 0  # movimientos que entraron solos (quedan "por revisar")
     completados: int = 0  # movimientos rápidos completados con los datos del banco
     sobrantes: int = 0  # registrados en el periodo que no aparecen en el extracto
+    periodo_desde: Optional[str] = None  # ISO, primer movimiento del extracto
+    periodo_hasta: Optional[str] = None
+    requiere_clave: bool = False  # el PDF está protegido y falta (o es incorrecta) la clave
 
 
 class ImportarFaltantesRequest(BaseModel):
     fingerprints: list[str]
     categorias: Optional[dict[str, str]] = None  # fingerprint -> categoría elegida por el usuario, si la cambió
+    recordar: list[str] = []  # fingerprints cuya categoría elegida se guarda como regla del comercio
+    aplicar_anteriores: list[str] = []  # subconjunto de `recordar`: además recategoriza movimientos pasados
 
 
 class HistorialExtractoOut(BaseModel):

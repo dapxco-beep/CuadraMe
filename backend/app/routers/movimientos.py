@@ -11,7 +11,10 @@ from app.auth import UsuarioActual, get_current_user, get_current_user_by_api_ke
 from sqlalchemy import and_, or_
 
 from app.autocat import (
+    ClasificadorUsuario,
     ajustar_a_categorias_usuario,
+    aplicar_a_anteriores,
+    guardar_regla_aprendida,
     datos_auto,
     movimientos_confirmados,
     origen_de,
@@ -233,43 +236,21 @@ def recategorizar_comercio(
     mov.cat_origen = None
     actualizados = 1
     patron = None
+    regla_omitida = None
 
     if data.aplicar_a_todos:
-        patron = (data.patron or "").strip() or patron_de_comercio(mov.descripcion)
-        if patron.lower() not in mov.descripcion.lower():
-            raise HTTPException(status_code=400, detail="El comercio debe aparecer en la descripción del movimiento")
-        regla = (
-            db.query(ReglaCategoria)
-            .filter(ReglaCategoria.usuario_id == usuario.id, ReglaCategoria.patron.ilike(patron))
-            .first()
+        origen_regla = (data.patron or "").strip() or mov.descripcion
+        r = guardar_regla_aprendida(
+            db, usuario.id, origen_regla, categoria, confirmar_peligrosa=data.confirmar_peligrosa
         )
-        if regla:
-            regla.categoria = categoria
+        patron = r["huella"]
+        if r["guardada"]:
+            actualizados += aplicar_a_anteriores(db, usuario.id, r["huella"], categoria, {mov.id})
         else:
-            db.add(ReglaCategoria(usuario_id=usuario.id, patron=patron, categoria=categoria, tipo=None, prioridad=0))
-        # Escapa % y _ para que el patrón se trate como texto literal.
-        literal = patron.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        otros = (
-            db.query(Movimiento)
-            .filter(
-                Movimiento.cuenta_id.in_(ids_accesibles),
-                Movimiento.id != mov.id,
-                Movimiento.fuente != FUENTE_TRANSFERENCIA,
-                Movimiento.tipo != "transfer",
-                Movimiento.descripcion.ilike(f"%{literal}%", escape="\\"),
-            )
-            .all()
-        )
-        for o in otros:
-            c = cuenta_accesible(db, usuario.id, o.cuenta_id)
-            if c and puede_editar_cuenta(db, usuario.id, c):
-                o.categoria = categoria
-                o.cat_confirmada = True
-                o.cat_origen = None
-                actualizados += 1
+            regla_omitida = r["motivo"]  # solo este movimiento; la regla pide confirmación
 
     db.commit()
-    return {"ok": True, "actualizados": actualizados, "patron": patron}
+    return {"ok": True, "actualizados": actualizados, "patron": patron, "regla_omitida": regla_omitida}
 
 
 # Va antes de "/{movimiento_id}" para que no la confunda con un id.
@@ -761,29 +742,6 @@ def _movimientos_categorizados(db: Session, usuario_id: str) -> list[dict]:
 
 
 def _clasificar(db: Session, usuario_id: str, descripcion: str) -> dict | None:
-    """Reglas del usuario primero (control explícito), modelo aprendido después."""
-    if es_pago_tarjeta(descripcion):
-        # El pago de una tarjeta no es un gasto (las compras ya se contaron).
-        return {"categoria": CATEGORIA_PAGO_TARJETA, "tipo": "expense", "confianza": 1.0, "fuente": "regla_tarjeta"}
-    reglas = (
-        db.query(ReglaCategoria)
-        .filter(ReglaCategoria.usuario_id == usuario_id)
-        .order_by(ReglaCategoria.prioridad.desc())
-        .all()
-    )
-    resultado = aplicar_reglas(descripcion, reglas)
-    if resultado:
-        return resultado
-
-    historial = _movimientos_categorizados(db, usuario_id)
-    modelo = build_model(historial)
-    resultado = classify(descripcion, modelo)
-    if resultado:
-        return resultado
-
-    resultado = clasificar_por_diccionario(descripcion)
-    if resultado:
-        # Si el usuario renombró/ocultó la categoría base que sugiere el
-        # diccionario, no se crea un movimiento huérfano.
-        resultado = {**resultado, "categoria": ajustar_a_categorias_usuario(db, usuario_id, resultado["categoria"])}
-    return resultado
+    """Reglas del usuario > modelo aprendido > palabras clave (ver autocat.ClasificadorUsuario).
+    El resultado incluye la 'razon' que se le muestra al usuario."""
+    return ClasificadorUsuario(db, usuario_id).clasificar(descripcion)

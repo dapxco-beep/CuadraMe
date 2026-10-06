@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { EstadoVacio } from '../brand/Marca'
 import { useVolver } from '../lib/useVolver'
-import { ArrowLeft, Plus, Trash2, X, Tag } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowLeft, ChevronRight, GraduationCap, Plus, Trash2, X, Tag } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCategorias } from '../lib/CategoriasContext'
 import Hoja from '../components/Hoja'
@@ -54,6 +55,17 @@ export default function ReglasCategoria() {
         Cuando un movimiento contenga este texto, se categoriza automáticamente al instante.
         Tienen prioridad sobre la categorización que aprende de tu historial.
       </p>
+      <Link
+        to="/entrenar-categorias"
+        className="mx-6 mt-3 flex items-center gap-3 rounded-2xl bg-accent-soft border border-accent/30 px-4 py-3"
+      >
+        <GraduationCap size={18} className="text-accent shrink-0" />
+        <span className="flex-1 text-sm">
+          <b>Entrenar categorías</b>
+          <span className="block text-xs text-ink-soft">Enséñame los comercios que más se repiten y los clasifico solos.</span>
+        </span>
+        <ChevronRight size={16} className="text-accent" />
+      </Link>
 
       {cargando ? (
         <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>

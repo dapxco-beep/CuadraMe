@@ -34,16 +34,26 @@ export function categoriasIniciales(propuesta) {
   return Object.fromEntries(propuesta.map((p) => [p.fila, p.categoria || 'Otros']))
 }
 
-export function construirFilas(propuesta, seleccion, categorias) {
+// `aprender` (opcional): fila -> { recordar, anteriores }. Solo las filas con «Recordar» marcado
+// llevan los indicadores; el servidor guarda la regla del comercio y, si se pide, recategoriza los anteriores.
+export function construirFilas(propuesta, seleccion, categorias, aprender = {}) {
   return propuesta
     .filter((p) => seleccion.has(p.fila) && p.estado !== 'duplicado')
-    .map((p) => ({
-      fecha: p.fecha,
-      descripcion: p.descripcion,
-      monto: p.monto,
-      tipo: p.tipo,
-      categoria: categorias[p.fila] || p.categoria || 'Otros',
-    }))
+    .map((p) => {
+      const fila = {
+        fecha: p.fecha,
+        descripcion: p.descripcion,
+        monto: p.monto,
+        tipo: p.tipo,
+        categoria: categorias[p.fila] || p.categoria || 'Otros',
+      }
+      const a = aprender[p.fila]
+      if (a?.recordar) {
+        fila.recordar = true
+        if (a.anteriores) fila.aplicar_anteriores = true
+      }
+      return fila
+    })
 }
 
 // Cuánto cambiaría el saldo de la cuenta si se importan estas filas.

@@ -5,6 +5,9 @@ from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
 from sqlalchemy import func
 
+from app.autocat import ClasificadorUsuario
+from app.clave_comercio import clave_comercio, es_huella_peligrosa
+from app.classifier import tokenize
 from app.models import Categoria, CorreoGasto, Movimiento, Presupuesto, Recurrente, ReglaCategoria
 from app.schemas import CategoriaCreate, CategoriaOut, CategoriasOrden, CategoriaUpdate
 
@@ -178,6 +181,126 @@ def crear_categoria(
 
 
 # Debe ir antes de "/{categoria_id}" para que "orden" no se tome como un id.
+@router.get("/vocabulario")
+def vocabulario(
+    limite: int = 40,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Qué le falta aprender al sistema: comercios (por huella) y palabras sueltas de
+    TUS movimientos que están en 'Otros' o con categoría automática sin confirmar,
+    ordenados por impacto (monto total = monto promedio x frecuencia)."""
+    limite = max(5, min(limite, 100))
+    movs = (
+        db.query(Movimiento)
+        .filter(Movimiento.usuario_id == usuario.id, Movimiento.tipo != "transfer",
+                Movimiento.fuente != "transferencia_interna")
+        .all()
+    )
+    reglas = db.query(ReglaCategoria).filter(ReglaCategoria.usuario_id == usuario.id).all()
+    huellas_con_regla = {clave_comercio(r.patron) for r in reglas}
+    con_categoria = sum(1 for m in movs if (m.categoria or "Otros") != "Otros")
+
+    grupos: dict[str, dict] = {}
+    palabras: dict[str, dict] = {}
+    for m in movs:
+        pendiente = (m.categoria or "Otros") == "Otros" or m.cat_confirmada is False
+        if not pendiente:
+            continue
+        h = clave_comercio(m.descripcion)
+        if not h or h in huellas_con_regla:
+            continue
+        g = grupos.setdefault(h, {"clave": h, "tipo": "comercio", "conteo": 0, "monto_total": 0.0,
+                                  "ejemplo": m.descripcion, "movimiento_id": m.id, "categorias": {}, "auto": False})
+        g["conteo"] += 1
+        g["monto_total"] += abs(m.monto or 0)
+        cat = m.categoria or "Otros"
+        g["categorias"][cat] = g["categorias"].get(cat, 0) + 1
+        g["auto"] = g["auto"] or m.cat_confirmada is False
+        if (m.categoria or "Otros") == "Otros":
+            for tok in set(tokenize(m.descripcion)):
+                if tok in huellas_con_regla:
+                    continue
+                p = palabras.setdefault(tok, {"clave": tok, "tipo": "palabra", "conteo": 0, "monto_total": 0.0,
+                                              "ejemplo": m.descripcion, "movimiento_id": m.id, "huellas": set()})
+                p["conteo"] += 1
+                p["monto_total"] += abs(m.monto or 0)
+                p["huellas"].add(h)
+
+    def _fila(g):
+        cats = g.pop("categorias", {})
+        g["categoria_actual"] = max(cats, key=cats.get) if cats else "Otros"
+        g["monto_total"] = round(g["monto_total"], 2)
+        g["peligrosa"] = es_huella_peligrosa(g["clave"])
+        return g
+
+    comercios = sorted(grupos.values(), key=lambda g: (-g["monto_total"], -g["conteo"]))[:limite]
+    comercios = [_fila(g) for g in comercios]
+    # una palabra solo aporta si aparece en varios comercios distintos (si no, ya es el comercio)
+    sueltas = [p for p in palabras.values() if len(p["huellas"]) >= 2 and p["clave"] not in grupos]
+    sueltas.sort(key=lambda p: (-p["monto_total"], -p["conteo"]))
+    salida_palabras = []
+    for p in sueltas[: max(5, limite // 2)]:
+        p.pop("huellas")
+        p["categoria_actual"] = "Otros"
+        p["monto_total"] = round(p["monto_total"], 2)
+        p["peligrosa"] = es_huella_peligrosa(p["clave"])
+        salida_palabras.append(p)
+
+    total = len(movs)
+    return {
+        "progreso": {
+            "reglas": len(reglas),
+            "comercios_entrenados": len(huellas_con_regla),
+            "movimientos": total,
+            "con_categoria": con_categoria,
+            "porcentaje": round(100 * con_categoria / total) if total else 100,
+            "pendientes_comercios": len(grupos),
+        },
+        "comercios": comercios,
+        "palabras": salida_palabras,
+    }
+
+
+@router.get("/explicar")
+def explicar(
+    q: str,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """'¿Por qué se categorizó así?': busca movimientos tuyos que contengan el texto y
+    muestra qué categoría les daría el sistema hoy y por qué. Si no hay ninguno, trata
+    el texto como una descripción de ejemplo."""
+    q = (q or "").strip()
+    if len(q) < 2:
+        raise HTTPException(status_code=400, detail="Escribe al menos 2 letras")
+    literal = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    movs = (
+        db.query(Movimiento)
+        .filter(Movimiento.usuario_id == usuario.id, Movimiento.descripcion.ilike(f"%{literal}%", escape="\\"))
+        .order_by(Movimiento.fecha.desc())
+        .limit(8)
+        .all()
+    )
+    clf = ClasificadorUsuario(db, usuario.id)
+    muestras = [(m.descripcion, m) for m in movs] or [(q, None)]
+    salida = []
+    for desc, m in muestras:
+        r = clf.clasificar(desc)
+        salida.append({
+            "descripcion": desc,
+            "huella": clave_comercio(desc),
+            "movimiento_id": m.id if m else None,
+            "categoria_guardada": m.categoria if m else None,
+            "confirmada": (m.cat_confirmada is not False) if m else None,
+            "categoria_sugerida": r["categoria"] if r else "Otros",
+            "razon": r["razon"] if r else "No lo reconozco todavía: enséñame qué es",
+            "origen": r["origen"] if r else None,
+            "es_ejemplo": m is None,
+        })
+    return {"resultados": salida}
+
+
 @router.put("/orden")
 def reordenar_categorias(
     data: CategoriasOrden,

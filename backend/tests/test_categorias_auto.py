@@ -209,7 +209,7 @@ def test_aplicar_a_todos_los_de_este_comercio_crea_regla(usuario, cuenta):
 
     r = client.post(f"/movimientos/{a['id']}/recategorizar-comercio", json={"categoria": "Ocio"})
     assert r.status_code == 200, r.text
-    assert r.json()["patron"] == "JUAN VALDEZ SKANDIA" and r.json()["actualizados"] == 2
+    assert r.json()["patron"] == "juan valdez skandia" and r.json()["actualizados"] == 2
 
     por_id = {m["id"]: m for m in client.get("/movimientos").json()}
     assert por_id[a["id"]]["categoria"] == "Ocio" and por_id[a["id"]]["cat_confirmada"] is True
@@ -218,7 +218,7 @@ def test_aplicar_a_todos_los_de_este_comercio_crea_regla(usuario, cuenta):
     assert por_id[d["id"]]["categoria"] == "Ocio"
 
     reglas = client.get("/reglas-categoria").json()
-    assert any(x["patron"] == "JUAN VALDEZ SKANDIA" and x["categoria"] == "Ocio" for x in reglas)
+    assert any(x["patron"] == "juan valdez skandia" and x["categoria"] == "Ocio" for x in reglas)
 
     # a futuro, el mismo comercio queda "por tu regla"
     nuevo = _mov(cuenta, "Compra en JUAN VALDEZ SKANDIA con tarjeta débito")

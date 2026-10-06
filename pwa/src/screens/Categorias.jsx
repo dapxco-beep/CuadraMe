@@ -356,7 +356,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
             onChange={(e) => setNombre(e.target.value)}
             placeholder="Nombre (ej. Mascotas, Freelance)"
             aria-label="Nombre de la categoría"
-            maxLength={30}
+            maxLength={40}
             className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
           />
 

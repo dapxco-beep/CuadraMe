@@ -1,381 +1,75 @@
 """
-Diccionario base de comercios y patrones conocidos en Colombia.
-Última capa de clasificación: se usa solo si el usuario no tiene reglas
-propias ni historial suficiente para que el modelo aprendido decida.
-Así un movimiento nuevo como "Compra en UBER RIDES" ya cae bien categorizado
-desde el primer día, sin que el usuario tenga que enseñarle nada al sistema.
+Última capa de clasificación: palabras clave de comercios y conceptos
+bancarios de Colombia. Se usa solo si el usuario no tiene una regla propia ni
+historial suficiente para que el modelo aprendido decida.
+
+Los DATOS viven en diccionario_categorias.py; aquí solo está el motor que los
+busca. Coincide por palabras completas (así 'ara' no se activa dentro de
+'para') y gana la entrada más específica.
 """
-from app.classifier import tokenize
+import re
+import unicodedata
 
-# orden importa: la primera coincidencia gana, por eso los patrones más
-# específicos (ej. "uber eats") van antes que los genéricos (ej. "uber").
-# Los patrones van en minúscula y sin tildes (se normalizan igual que en
-# classifier.tokenize).
-PATRONES_CONOCIDOS: list[tuple[str, str, str]] = [
-    # ── Transporte ──────────────────────────────────────────────────
-    ("uber rides", "Transporte", "expense"),
-    ("uber eats", "Comida", "expense"),
-    ("uber", "Transporte", "expense"),
-    ("didi food", "Comida", "expense"),
-    ("didi", "Transporte", "expense"),
-    ("cabify", "Transporte", "expense"),
-    ("beat", "Transporte", "expense"),
-    ("indriver", "Transporte", "expense"),
-    ("picap", "Transporte", "expense"),
-    ("taxis libres", "Transporte", "expense"),
-    ("taxi", "Transporte", "expense"),
-    ("terpel", "Transporte", "expense"),
-    ("primax", "Transporte", "expense"),
-    ("biomax", "Transporte", "expense"),
-    ("texaco", "Transporte", "expense"),
-    ("esso", "Transporte", "expense"),
-    ("zeuss", "Transporte", "expense"),
-    ("gasolina", "Transporte", "expense"),
-    ("combustible", "Transporte", "expense"),
-    ("parqueadero", "Transporte", "expense"),
-    ("parking", "Transporte", "expense"),
-    ("peaje", "Transporte", "expense"),
-    ("sitp", "Transporte", "expense"),
-    ("transmilenio", "Transporte", "expense"),
-    ("metro de medellin", "Transporte", "expense"),
-    ("mio cali", "Transporte", "expense"),
-    ("megabus", "Transporte", "expense"),
-    ("transcaribe", "Transporte", "expense"),
-    ("tullave", "Transporte", "expense"),
-    ("civica", "Transporte", "expense"),
-    ("recarga tarjeta", "Transporte", "expense"),
-    ("avianca", "Transporte", "expense"),
-    ("latam", "Transporte", "expense"),
-    ("wingo", "Transporte", "expense"),
-    ("easyfly", "Transporte", "expense"),
-    ("satena", "Transporte", "expense"),
-    ("viva air", "Transporte", "expense"),
-    ("aerolinea", "Transporte", "expense"),
-    ("tiquete aereo", "Transporte", "expense"),
-    ("rentacar", "Transporte", "expense"),
-    ("rent a car", "Transporte", "expense"),
-    ("alquiler vehiculo", "Transporte", "expense"),
-    ("taller mecanico", "Transporte", "expense"),
-    ("llantas", "Transporte", "expense"),
-    ("lavado de carro", "Transporte", "expense"),
-    ("lavadero", "Transporte", "expense"),
-    ("soat", "Transporte", "expense"),
-    ("revision tecnomecanica", "Transporte", "expense"),
-    ("multa transito", "Transporte", "expense"),
-    ("comparendo", "Transporte", "expense"),
+from app.diccionario_categorias import (
+    TRANSFERENCIA_ENTRADA,
+    TRANSFERENCIA_PERSONA_DEBIL,
+    TRANSFERENCIA_PERSONA_FUERTE,
+    entradas,
+)
 
-    # ── Comida y mercado ────────────────────────────────────────────
-    ("rappi", "Comida", "expense"),
-    ("ifood", "Comida", "expense"),
-    ("domicilios", "Comida", "expense"),
-    ("mercadopago comida", "Comida", "expense"),
-    ("mcdonalds", "Comida", "expense"),
-    ("mc donalds", "Comida", "expense"),
-    ("kfc", "Comida", "expense"),
-    ("burger king", "Comida", "expense"),
-    ("dominos", "Comida", "expense"),
-    ("papa johns", "Comida", "expense"),
-    ("pizza hut", "Comida", "expense"),
-    ("juan valdez", "Comida", "expense"),
-    ("tostao", "Comida", "expense"),
-    ("oma cafe", "Comida", "expense"),
-    ("starbucks", "Comida", "expense"),
-    ("crepes", "Comida", "expense"),
-    ("frisby", "Comida", "expense"),
-    ("el corral", "Comida", "expense"),
-    ("presto", "Comida", "expense"),
-    ("sandwich qbano", "Comida", "expense"),
-    ("subway", "Comida", "expense"),
-    ("kokoriko", "Comida", "expense"),
-    ("wok", "Comida", "expense"),
-    ("restaurante", "Comida", "expense"),
-    ("panaderia", "Comida", "expense"),
-    ("bakery", "Comida", "expense"),
-    ("cafeteria", "Comida", "expense"),
-    ("heladeria", "Comida", "expense"),
-    ("crepes and waffles", "Comida", "expense"),
-    ("bogota beer", "Comida", "expense"),
-    ("cervezeria", "Comida", "expense"),
-    ("bar ", "Comida", "expense"),
-    ("supermercado", "Comida", "expense"),
-    ("minimarket", "Comida", "expense"),
-    ("tienda de barrio", "Comida", "expense"),
-    ("exito", "Comida", "expense"),
-    ("carulla", "Comida", "expense"),
-    ("jumbo", "Comida", "expense"),
-    ("metro supermercado", "Comida", "expense"),
-    ("olimpica", "Comida", "expense"),
-    ("d1", "Comida", "expense"),
-    ("ara", "Comida", "expense"),
-    ("justo y bueno", "Comida", "expense"),
-    ("makro", "Comida", "expense"),
-    ("alkosto", "Comida", "expense"),
-    ("surtimax", "Comida", "expense"),
-    ("merqueo", "Comida", "expense"),
-    ("mercado libre alimentos", "Comida", "expense"),
-    ("fruver", "Comida", "expense"),
-    ("plaza de mercado", "Comida", "expense"),
-    ("carniceria", "Comida", "expense"),
-    ("pescaderia", "Comida", "expense"),
 
-    # ── Ocio y entretenimiento ──────────────────────────────────────
-    ("netflix", "Ocio", "expense"),
-    ("spotify", "Ocio", "expense"),
-    ("disney", "Ocio", "expense"),
-    ("hbo", "Ocio", "expense"),
-    ("max app", "Ocio", "expense"),
-    ("amazon prime", "Ocio", "expense"),
-    ("prime video", "Ocio", "expense"),
-    ("youtube premium", "Ocio", "expense"),
-    ("youtube music", "Ocio", "expense"),
-    ("apple music", "Ocio", "expense"),
-    ("apple tv", "Ocio", "expense"),
-    ("deezer", "Ocio", "expense"),
-    ("paramount", "Ocio", "expense"),
-    ("star plus", "Ocio", "expense"),
-    ("crunchyroll", "Ocio", "expense"),
-    ("cine colombia", "Ocio", "expense"),
-    ("cinemark", "Ocio", "expense"),
-    ("procinal", "Ocio", "expense"),
-    ("royal films", "Ocio", "expense"),
-    ("steam", "Ocio", "expense"),
-    ("playstation", "Ocio", "expense"),
-    ("nintendo", "Ocio", "expense"),
-    ("xbox", "Ocio", "expense"),
-    ("epic games", "Ocio", "expense"),
-    ("riot games", "Ocio", "expense"),
-    ("google play", "Ocio", "expense"),
-    ("app store", "Ocio", "expense"),
-    ("itunes", "Ocio", "expense"),
-    ("tinder", "Ocio", "expense"),
-    ("bumble", "Ocio", "expense"),
-    ("boleteria", "Ocio", "expense"),
-    ("tuboleta", "Ocio", "expense"),
-    ("eventbrite", "Ocio", "expense"),
-    ("concierto", "Ocio", "expense"),
-    ("discoteca", "Ocio", "expense"),
-    ("billar", "Ocio", "expense"),
-    ("bolera", "Ocio", "expense"),
-    ("parque de diversiones", "Ocio", "expense"),
-    ("salon de apuestas", "Ocio", "expense"),
-    ("betplay", "Ocio", "expense"),
-    ("wplay", "Ocio", "expense"),
-    ("rushbet", "Ocio", "expense"),
-    ("codere", "Ocio", "expense"),
+def normalizar(texto: str) -> str:
+    """minúsculas, sin tildes, solo letras/números separados por un espacio."""
+    t = "".join(c for c in unicodedata.normalize("NFD", (texto or "").lower()) if unicodedata.category(c) != "Mn")
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", t).split())
 
-    # ── Hogar y servicios públicos ──────────────────────────────────
-    ("epm", "Hogar", "expense"),
-    ("codensa", "Hogar", "expense"),
-    ("enel", "Hogar", "expense"),
-    ("afinia", "Hogar", "expense"),
-    ("air-e", "Hogar", "expense"),
-    ("electricaribe", "Hogar", "expense"),
-    ("vanti", "Hogar", "expense"),
-    ("gas natural", "Hogar", "expense"),
-    ("alcanos", "Hogar", "expense"),
-    ("acueducto", "Hogar", "expense"),
-    ("empresas publicas", "Hogar", "expense"),
-    ("triple a", "Hogar", "expense"),
-    ("aguas de", "Hogar", "expense"),
-    ("claro hogar", "Hogar", "expense"),
-    ("claro", "Hogar", "expense"),
-    ("movistar", "Hogar", "expense"),
-    ("tigo", "Hogar", "expense"),
-    ("tigo une", "Hogar", "expense"),
-    ("wom", "Hogar", "expense"),
-    ("virgin mobile", "Hogar", "expense"),
-    ("etb", "Hogar", "expense"),
-    ("une", "Hogar", "expense"),
-    ("directv", "Hogar", "expense"),
-    ("colombia telecomunicaciones", "Hogar", "expense"),
-    ("arriendo", "Hogar", "expense"),
-    ("canon de arrendamiento", "Hogar", "expense"),
-    ("administracion", "Hogar", "expense"),
-    ("cuota administracion", "Hogar", "expense"),
-    ("propiedad horizontal", "Hogar", "expense"),
-    ("homecenter", "Hogar", "expense"),
-    ("easy", "Hogar", "expense"),
-    ("falabella hogar", "Hogar", "expense"),
-    ("ktronix", "Otros", "expense"),
-    ("sodimac", "Hogar", "expense"),
-    ("ferreteria", "Hogar", "expense"),
-    ("pintuco", "Hogar", "expense"),
-    ("empleada domestica", "Hogar", "expense"),
-    ("servicio domestico", "Hogar", "expense"),
-    ("jardineria", "Hogar", "expense"),
-    ("plomeria", "Hogar", "expense"),
-    ("electricista", "Hogar", "expense"),
 
-    # ── Salud ───────────────────────────────────────────────────────
-    ("farmatodo", "Salud", "expense"),
-    ("cruz verde", "Salud", "expense"),
-    ("la rebaja", "Salud", "expense"),
-    ("droguer", "Salud", "expense"),
-    ("locatel", "Salud", "expense"),
-    ("eps", "Salud", "expense"),
-    ("copago", "Salud", "expense"),
-    ("cuota moderadora", "Salud", "expense"),
-    ("sura eps", "Salud", "expense"),
-    ("sura", "Salud", "expense"),
-    ("compensar salud", "Salud", "expense"),
-    ("colsanitas", "Salud", "expense"),
-    ("coomeva medicina", "Salud", "expense"),
-    ("famisanar", "Salud", "expense"),
-    ("nueva eps", "Salud", "expense"),
-    ("salud total", "Salud", "expense"),
-    ("medimas", "Salud", "expense"),
-    ("consulta medica", "Salud", "expense"),
-    ("odontologia", "Salud", "expense"),
-    ("odontologo", "Salud", "expense"),
-    ("dentista", "Salud", "expense"),
-    ("laboratorio clinico", "Salud", "expense"),
-    ("optica", "Salud", "expense"),
-    ("gimnasio", "Salud", "expense"),
-    ("bodytech", "Salud", "expense"),
-    ("smart fit", "Salud", "expense"),
-    ("spinning center", "Salud", "expense"),
-    ("veterinaria", "Salud", "expense"),
-    ("psicologo", "Salud", "expense"),
-    ("terapia", "Salud", "expense"),
+def _indexar():
+    indice = []
+    for palabra, categoria, tipo in entradas():
+        prefijo = palabra.endswith("*")
+        pat = normalizar(palabra.rstrip("*"))
+        if not pat:
+            continue
+        indice.append((len(pat.split()), len(pat), pat, prefijo, categoria, tipo, palabra.rstrip("*")))
+    # más palabras primero, luego más largo: 'uber eats' antes que 'uber'
+    # a igualdad, un ingreso explícito ('nomina') gana: 'NOMINA SKANDIA' es ingreso, no inversión
+    indice.sort(key=lambda e: (-e[0], e[5] != "income", -e[1]))
+    return indice
 
-    # ── Pensión y fondos ────────────────────────────────────────────
-    ("colpensiones", "Salud", "expense"),
-    ("proteccion pension", "Salud", "expense"),
-    ("proteccion", "Salud", "expense"),
-    ("porvenir", "Salud", "expense"),
-    ("skandia", "Salud", "expense"),
-    ("old mutual", "Salud", "expense"),
 
-    # ── Educación (sin categoría propia en la app todavía — cae en Otros) ──
-    ("pension colegio", "Otros", "expense"),
-    ("matricula universidad", "Otros", "expense"),
-    ("icetex", "Otros", "expense"),
-    ("colegio", "Otros", "expense"),
-    ("universidad", "Otros", "expense"),
-    ("curso online", "Otros", "expense"),
-    ("udemy", "Otros", "expense"),
-    ("coursera", "Otros", "expense"),
-    ("platzi", "Otros", "expense"),
-    ("duolingo", "Ocio", "expense"),
+_INDICE = _indexar()
 
-    # ── Compras / retail general ────────────────────────────────────
-    ("falabella", "Otros", "expense"),
-    ("mercado libre", "Otros", "expense"),
-    ("amazon", "Otros", "expense"),
-    ("shein", "Otros", "expense"),
-    ("aliexpress", "Otros", "expense"),
-    ("dafiti", "Otros", "expense"),
-    ("zara", "Otros", "expense"),
-    ("h and m", "Otros", "expense"),
-    ("adidas", "Otros", "expense"),
-    ("nike", "Otros", "expense"),
-    ("bogota outlets", "Otros", "expense"),
 
-    # ── Ingresos ─────────────────────────────────────────────────────
-    ("nomina", "Ingresos", "income"),
-    ("salario", "Ingresos", "income"),
-    ("pago de nomina", "Ingresos", "income"),
-    ("consignacion", "Ingresos", "income"),
-    ("honorarios", "Ingresos", "income"),
-    ("pago factura", "Ingresos", "income"),
-    ("pago servicio prestado", "Ingresos", "income"),
-    ("bonificacion", "Ingresos", "income"),
-    ("prima", "Ingresos", "income"),
-    ("cesantias", "Ingresos", "income"),
-    ("liquidacion", "Ingresos", "income"),
+def _coincide(texto_pad: str, pat: str, prefijo: bool) -> bool:
+    return (f" {pat}" in texto_pad) if prefijo else (f" {pat} " in texto_pad)
 
-    # ── Líneas típicas de un extracto bancario colombiano (PDF), no de
-    # una notificación push de comercio — antes solo el diccionario de
-    # comercios existía y ninguna de estas frases matcheaba nada, así
-    # que todo lo importado desde un extracto caía en "Otros" sin excepción.
-    ("retiro cajero", "Otros", "expense"),
-    ("retiro atm", "Otros", "expense"),
-    ("retiro en efectivo", "Otros", "expense"),
-    ("retiro sin tarjeta", "Otros", "expense"),
-    ("cuota de manejo", "Otros", "expense"),
-    ("cuota manejo", "Otros", "expense"),
-    ("comision", "Otros", "expense"),
-    ("cargo por servicio", "Otros", "expense"),
-    ("gmf", "Otros", "expense"),
-    ("4x1000", "Otros", "expense"),
-    ("gravamen movimientos financieros", "Otros", "expense"),
-    ("pago pse", "Otros", "expense"),
-    ("pago tarjeta credito", "Otros", "expense"),
-    ("pago tc", "Otros", "expense"),
-    ("pago minimo", "Otros", "expense"),
-    ("pago total tarjeta", "Otros", "expense"),
-    ("cuota credito", "Otros", "expense"),
-    ("cuota prestamo", "Otros", "expense"),
-    ("cuota libranza", "Otros", "expense"),
-    ("intereses", "Otros", "expense"),
-    ("interes de mora", "Otros", "expense"),
-    ("compra tarjeta debito", "Otros", "expense"),
-    ("compra tarjeta credito", "Otros", "expense"),
-    ("compra internacional", "Otros", "expense"),
-    ("avance en efectivo", "Otros", "expense"),
-    ("avance tarjeta", "Otros", "expense"),
-    ("impuesto timbre", "Otros", "expense"),
-    ("declaracion renta", "Otros", "expense"),
-    ("dian", "Otros", "expense"),
-    ("impuesto vehicular", "Otros", "expense"),
-    ("predial", "Otros", "expense"),
-    ("abono intereses", "Ingresos", "income"),
-    ("rendimientos financieros", "Ingresos", "income"),
-    ("devolucion", "Ingresos", "income"),
-    ("reembolso", "Ingresos", "income"),
-    ("reintegro", "Ingresos", "income"),
-    ("nota credito", "Ingresos", "income"),
-]
 
-# transferencias entre personas naturales — no son gasto en una categoría
-# de consumo, son movimiento de efectivo. Se separan para no ensuciar
-# "Comida"/"Transporte" con plata que en realidad es un préstamo o pago entre personas.
-PATRONES_TRANSFERENCIA_PERSONA = [
-    "enviaste a",
-    "recibiste de",
-    "transferencia a",
-    "transferencia de",
-    "envio a",
-    "pago a ",
-    "giro a",
-    "giro de",
-    # genérico, sin destinatario — común en líneas de extracto tipo
-    # "TRANSFERENCIA CUENTA 1234" donde no hay nombre de persona.
-    "transferencia",
-    "trf a",
-    "trf de",
-    "traslado entre cuentas",
-    "traslado a cuenta",
-]
+def _transferencia(texto_pad: str, frases: list[str]) -> dict | None:
+    for frase in frases:
+        if _coincide(texto_pad, normalizar(frase), False):
+            tipo = "income" if frase in TRANSFERENCIA_ENTRADA else "expense"
+            # Confianza baja a propósito: una transferencia a otra persona puede ser un gasto
+            # real o plata que se presta, así que nunca se auto-importa sola.
+            return {
+                "categoria": "Transferencias", "tipo": tipo, "confianza": 0.5, "fuente": "diccionario",
+                "palabra": frase, "razon": f"por palabra clave «{frase}»",
+            }
+    return None
 
 
 def clasificar_por_diccionario(descripcion: str) -> dict | None:
-    desc_norm = " ".join(tokenize(descripcion))
-    desc_lower = descripcion.lower()
+    texto_pad = f" {normalizar(descripcion)} "
 
-    for patron in PATRONES_TRANSFERENCIA_PERSONA:
-        if patron in desc_lower:
-            # distingue si es entrada o salida por el propio patrón.
-            # Confianza baja a propósito: una transferencia a otra persona puede
-            # ser un gasto real (ej. pagarle al de la tienda) o plata que se presta,
-            # así que nunca se auto-importa sola — el usuario la confirma o crea
-            # una Regla de categorización si quiere que siempre caiga en algo fijo.
-            tipo = "income" if "recibiste" in patron or patron == "giro de" or patron == "trf de" else "expense"
+    r = _transferencia(texto_pad, TRANSFERENCIA_PERSONA_FUERTE)
+    if r:
+        return r
+
+    for _n, _l, pat, prefijo, categoria, tipo, original in _INDICE:
+        if _coincide(texto_pad, pat, prefijo):
             return {
-                "categoria": "Transferencias",
-                "tipo": tipo,
-                "confianza": 0.5,
-                "fuente": "diccionario",
+                "categoria": categoria, "tipo": tipo, "confianza": 0.75, "fuente": "diccionario",
+                "palabra": original, "razon": f"por palabra clave «{original}»",
             }
 
-    for patron, categoria, tipo in PATRONES_CONOCIDOS:
-        patron_norm = " ".join(tokenize(patron)) or patron
-        if patron_norm in desc_norm or patron in desc_lower:
-            return {
-                "categoria": categoria,
-                "tipo": tipo,
-                "confianza": 0.75,
-                "fuente": "diccionario",
-            }
-
-    return None
+    return _transferencia(texto_pad, TRANSFERENCIA_PERSONA_DEBIL)

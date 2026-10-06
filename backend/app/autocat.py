@@ -11,7 +11,9 @@ import unicodedata
 from sqlalchemy.orm import Session
 
 from app.classifier import aplicar_reglas, build_model, classify
+from app.clave_comercio import clave_comercio, es_huella_peligrosa, huella_en_descripcion
 from app.comercios_conocidos import clasificar_por_diccionario
+from app.diccionario_categorias import CATEGORIA_RESPALDO
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, es_pago_tarjeta
 from app.models import Categoria, Movimiento, ReglaCategoria
 
@@ -38,19 +40,32 @@ def datos_auto(origen: str | None) -> dict:
     return {"cat_origen": None, "cat_confirmada": True}
 
 
-def ajustar_a_categorias_usuario(db: Session, usuario_id: str, categoria: str) -> str:
-    """Si el usuario renombró/ocultó una categoría base, el diccionario puede
-    sugerir un nombre que ya no existe en su lista (movimiento huérfano). En ese
-    caso cae en 'Otros'. Si el usuario aún no tiene lista, no se toca nada."""
-    if not categoria or categoria in CATEGORIAS_DE_SISTEMA:
-        return categoria
+_BASE = {"comida", "transporte", "ocio", "hogar", "salud", "transferencias", "ingresos", "otros"}
+
+
+def _activas_de(db: Session, usuario_id: str) -> set[str]:
     filas = db.query(Categoria.nombre, Categoria.activa).filter(Categoria.usuario_id == usuario_id).all()
     if not filas:
+        return set(_BASE)  # aún no tiene lista: se le crearán las 8 base
+    return {n.lower() for n, a in filas if a}
+
+
+def _ajustar(activas: set[str], categoria: str) -> str:
+    """Categoría sugerida -> una que el usuario realmente tenga. Si renombró u
+    ocultó la sugerida se prueba su categoría de respaldo (Suscripciones -> Ocio);
+    si tampoco existe, cae en 'Otros' (nunca queda un movimiento huérfano)."""
+    if not categoria or categoria in CATEGORIAS_DE_SISTEMA:
         return categoria
-    activas = {n.lower() for n, a in filas if a}
     if categoria.lower() in activas:
         return categoria
+    respaldo = CATEGORIA_RESPALDO.get(categoria)
+    if respaldo and respaldo.lower() in activas:
+        return respaldo
     return "Otros"
+
+
+def ajustar_a_categorias_usuario(db: Session, usuario_id: str, categoria: str) -> str:
+    return _ajustar(_activas_de(db, usuario_id), categoria)
 
 
 def movimientos_confirmados(db: Session, usuario_id: str) -> list[dict]:
@@ -68,24 +83,120 @@ def movimientos_confirmados(db: Session, usuario_id: str) -> list[dict]:
     return [{"descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo} for m in movs]
 
 
+class ClasificadorUsuario:
+    """ÚNICO punto donde se decide la categoría de un movimiento nuevo. Orden:
+      1) reglas del usuario (huella exacta primero, luego 'contiene'),
+      2) modelo aprendido de sus movimientos confirmados,
+      3) diccionario de palabras clave,
+      4) sin resultado -> 'Otros' y se le pregunta.
+    Cada resultado trae la RAZÓN ('por tu regla «vento coliving»'). Carga reglas,
+    modelo y categorías una sola vez: sirve para clasificar lotes grandes."""
+
+    def __init__(self, db: Session, usuario_id: str):
+        self.db = db
+        self.usuario_id = usuario_id
+        self.reglas = (
+            db.query(ReglaCategoria).filter(ReglaCategoria.usuario_id == usuario_id)
+            .order_by(ReglaCategoria.prioridad.desc()).all()
+        )
+        self.modelo = build_model(movimientos_confirmados(db, usuario_id))
+        self.activas = _activas_de(db, usuario_id)
+
+    def clasificar(self, descripcion: str, texto_extra: str = "") -> dict | None:
+        """dict con categoria, tipo, confianza, fuente, origen, razon; None si no se reconoce."""
+        if es_pago_tarjeta(descripcion):
+            # El pago de una tarjeta no es un gasto (las compras ya se contaron).
+            return {"categoria": CATEGORIA_PAGO_TARJETA, "tipo": "expense", "confianza": 1.0,
+                    "fuente": "regla_tarjeta", "origen": "regla", "razon": "es el pago de una tarjeta"}
+        r = aplicar_reglas(descripcion, self.reglas) or classify(descripcion, self.modelo)
+        if not r:
+            r = clasificar_por_diccionario(f"{descripcion} {texto_extra}".strip())
+            if r:
+                r = {**r, "categoria": _ajustar(self.activas, r["categoria"])}
+                if r["categoria"] == "Otros":
+                    r = None  # la categoría sugerida no existe para él: mejor preguntarle
+        if not r:
+            return None
+        return {**r, "origen": origen_de(r.get("fuente"))}
+
+    def detalle(self, descripcion: str) -> tuple[str, str | None]:
+        r = self.clasificar(descripcion)
+        return (r["categoria"], r["origen"]) if r else ("Otros", None)
+
+
 def clasificar_lote_detalle(db: Session, usuario_id: str, descripciones: list[str]) -> list[tuple[str, str | None]]:
     """(categoría, origen) para cada descripción. Modelo armado una sola vez."""
-    reglas = (
-        db.query(ReglaCategoria).filter(ReglaCategoria.usuario_id == usuario_id)
-        .order_by(ReglaCategoria.prioridad.desc()).all()
+    c = ClasificadorUsuario(db, usuario_id)
+    return [c.detalle(d) for d in descripciones]
+
+
+def aplicar_a_anteriores(
+    db: Session, usuario_id: str, huella: str, categoria: str, excluir_ids: set[str] | None = None,
+) -> int:
+    """'Aplicar también a los anteriores': recategoriza (y confirma) los movimientos
+    pasados del usuario cuya huella de comercio coincide. Respeta permisos de edición
+    y no toca transferencias internas. Sin commit."""
+    if not huella:
+        return 0
+    from app.compartidos import cuentas_ids_accesibles, puede_editar_cuenta
+    from app.models import Cuenta
+
+    excluir_ids = excluir_ids or set()
+    ids_cuentas = cuentas_ids_accesibles(db, usuario_id)
+    movs = (
+        db.query(Movimiento)
+        .filter(
+            Movimiento.cuenta_id.in_(ids_cuentas),
+            Movimiento.tipo != "transfer",
+            Movimiento.fuente != "transferencia_interna",
+        )
+        .all()
     )
-    modelo = build_model(movimientos_confirmados(db, usuario_id))
-    salida = []
-    for d in descripciones:
-        if es_pago_tarjeta(d):
-            salida.append((CATEGORIA_PAGO_TARJETA, "regla"))
+    editables: dict[str, bool] = {}
+    n = 0
+    for m in movs:
+        if m.id in excluir_ids or not huella_en_descripcion(huella, m.descripcion or ""):
             continue
-        r = aplicar_reglas(d, reglas) or classify(d, modelo) or clasificar_por_diccionario(d)
-        if not r:
-            salida.append(("Otros", None))
-        else:
-            salida.append((ajustar_a_categorias_usuario(db, usuario_id, r["categoria"]), origen_de(r.get("fuente"))))
-    return salida
+        if m.categoria == categoria and m.cat_confirmada is not False:
+            continue  # ya está así y confirmada
+        if m.cuenta_id not in editables:
+            c = db.query(Cuenta).filter(Cuenta.id == m.cuenta_id).first()
+            editables[m.cuenta_id] = bool(c and puede_editar_cuenta(db, usuario_id, c))
+        if not editables[m.cuenta_id]:
+            continue
+        m.categoria = categoria
+        m.cat_confirmada = True
+        m.cat_origen = None
+        n += 1
+    return n
+
+
+# --- reglas aprendidas (una por huella de comercio) ---------------------------
+
+def guardar_regla_aprendida(
+    db: Session, usuario_id: str, descripcion: str, categoria: str, tipo: str | None = None,
+    confirmar_peligrosa: bool = False,
+) -> dict:
+    """Guarda (o actualiza) la regla del comercio de esta descripción.
+    - Si ya hay una regla con la misma huella, se ACTUALIZA: nunca dos reglas
+      contradictorias para el mismo comercio.
+    - Huellas demasiado amplias (una palabra de <4 letras, palabras vacías) no se
+      guardan sin confirmar. No hace commit: lo hace quien llama."""
+    huella = clave_comercio(descripcion)
+    peligro = es_huella_peligrosa(huella)
+    if peligro and not confirmar_peligrosa:
+        return {"guardada": False, "huella": huella, "motivo": peligro, "requiere_confirmacion": bool(huella)}
+    existentes = db.query(ReglaCategoria).filter(ReglaCategoria.usuario_id == usuario_id).all()
+    regla = next((r for r in existentes if clave_comercio(r.patron) == huella), None)
+    actualizada = regla is not None
+    if regla:
+        regla.categoria = categoria
+        if tipo:
+            regla.tipo = tipo
+    else:
+        regla = ReglaCategoria(usuario_id=usuario_id, patron=huella, categoria=categoria, tipo=tipo, prioridad=0)
+        db.add(regla)
+    return {"guardada": True, "huella": huella, "actualizada": actualizada, "motivo": None, "requiere_confirmacion": False}
 
 
 # --- patrón de comercio para "aplicar a todos los de este comercio" -----------
