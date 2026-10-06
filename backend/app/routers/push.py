@@ -10,6 +10,7 @@ from app.auth import UsuarioActual, cron_autorizado, get_current_user
 from app.compartidos import cuentas_ids_accesibles
 from app.contabilidad import gastos_por_categoria, tipos_cuenta_de, tipos_efectivos
 from app.config import settings
+from app.crons import Corrida
 from app.database import get_db
 from app.finanzas import calc_estado_recurrente
 from app.fx import convertir_a_cop
@@ -94,59 +95,66 @@ def cron_revisar_presupuestos(
     usuarios_con_push = {
         s[0] for s in db.query(PushSubscription.usuario_id).distinct().all()
     }
-    notificados = 0
+    resultado = {"notificados": 0}
     ahora = ahora_co()
 
+    corrida = Corrida(db)
     for usuario_id in usuarios_con_push:
-        presupuestos = (
-            db.query(Presupuesto)
-            .filter(Presupuesto.usuario_id == usuario_id, Presupuesto.activo == True)  # noqa: E712
-            .all()
-        )
-        cfg = srv.obtener_config(db, usuario_id)
-        gastos = srv.GastosPorRango(db, usuario_id)
-        for p in presupuestos:
-            if p.limite <= 0:
-                continue
-            # Cada presupuesto se evalúa en SU periodo (mensual, quincenal, semanal).
-            proy = srv.proyectar_presupuesto(p, cfg, gastos, ahora)
-            clave = proy["clave_periodo"]
-            if proy["limite"] <= 0:
-                continue
+        with corrida.aislar(usuario_id):
+            _revisar_presupuestos_de(db, usuario_id, ahora, resultado)
 
-            # 1) Umbral ya usado. Una sola alerta por presupuesto y por periodo:
-            #    sin esta marca, el aviso se repetiría cada día sobre el umbral.
-            if p.ultima_alerta_mes != clave and proy["pct_usado"] >= p.alerta_pct:
-                enviar_push(
-                    db,
-                    usuario_id,
-                    f"Presupuesto de {p.categoria}",
-                    f"Ya usaste el {round(proy['pct_usado'])}% — quedan "
-                    f"{max(0, proy['limite'] - proy['gastado']):,.0f} COP",
-                    "/presupuesto",
-                )
-                p.ultima_alerta_mes = clave
-                db.commit()
-                notificados += 1
-                continue
+    return {"ok": True, "notificados": resultado["notificados"], **corrida.resumen()}
 
-            # 2) Alerta PREDICTIVA: aún no llegas al umbral, pero al ritmo actual te
-            #    pasarías. Una vez por periodo y sin avisar en los primeros 3 días
-            #    (con tan pocos datos el ritmo engaña).
-            avisadas = srv.json_dict(cfg.alertas_proyeccion)
-            if (
-                p.ultima_alerta_mes != clave  # si ya avisó el umbral, no repetir
-                and proy["estado"] == "en_riesgo"
-                and proy["dias_transcurridos"] >= 3
-                and proy["dias_restantes"] > 0
-                and avisadas.get(p.id) != clave
-            ):
-                enviar_push(db, usuario_id, f"Ojo con {p.categoria}", proy["mensaje"], "/presupuesto")
-                avisadas[p.id] = clave
-                cfg = srv.guardar_config(db, usuario_id, alertas_proyeccion=json.dumps(avisadas))
-                notificados += 1
 
-    return {"ok": True, "notificados": notificados}
+def _revisar_presupuestos_de(db: Session, usuario_id: str, ahora, resultado: dict) -> None:
+    """Trabajo de UN usuario del cron de presupuestos (aislado por quien lo llama)."""
+    presupuestos = (
+        db.query(Presupuesto)
+        .filter(Presupuesto.usuario_id == usuario_id, Presupuesto.activo == True)  # noqa: E712
+        .all()
+    )
+    cfg = srv.obtener_config(db, usuario_id)
+    gastos = srv.GastosPorRango(db, usuario_id)
+    for p in presupuestos:
+        if p.limite <= 0:
+            continue
+        # Cada presupuesto se evalúa en SU periodo (mensual, quincenal, semanal).
+        proy = srv.proyectar_presupuesto(p, cfg, gastos, ahora)
+        clave = proy["clave_periodo"]
+        if proy["limite"] <= 0:
+            continue
+
+        # 1) Umbral ya usado. Una sola alerta por presupuesto y por periodo:
+        #    sin esta marca, el aviso se repetiría cada día sobre el umbral.
+        if p.ultima_alerta_mes != clave and proy["pct_usado"] >= p.alerta_pct:
+            enviar_push(
+                db,
+                usuario_id,
+                f"Presupuesto de {p.categoria}",
+                f"Ya usaste el {round(proy['pct_usado'])}% — quedan "
+                f"{max(0, proy['limite'] - proy['gastado']):,.0f} COP",
+                "/presupuesto",
+            )
+            p.ultima_alerta_mes = clave
+            db.commit()
+            resultado["notificados"] += 1
+            continue
+
+        # 2) Alerta PREDICTIVA: aún no llegas al umbral, pero al ritmo actual te
+        #    pasarías. Una vez por periodo y sin avisar en los primeros 3 días
+        #    (con tan pocos datos el ritmo engaña).
+        avisadas = srv.json_dict(cfg.alertas_proyeccion)
+        if (
+            p.ultima_alerta_mes != clave  # si ya avisó el umbral, no repetir
+            and proy["estado"] == "en_riesgo"
+            and proy["dias_transcurridos"] >= 3
+            and proy["dias_restantes"] > 0
+            and avisadas.get(p.id) != clave
+        ):
+            enviar_push(db, usuario_id, f"Ojo con {p.categoria}", proy["mensaje"], "/presupuesto")
+            avisadas[p.id] = clave
+            cfg = srv.guardar_config(db, usuario_id, alertas_proyeccion=json.dumps(avisadas))
+            resultado["notificados"] += 1
 
 
 @router.post("/cron/aportes-automaticos")
@@ -168,60 +176,69 @@ def cron_aportes_automaticos(
         .all()
     )
     aportados = 0
+    corrida = Corrida(db)
 
     for meta in metas:
-        # Si la meta ya alcanzó su objetivo, no debe seguir recibiendo aportes
-        # automáticos mes a mes (el usuario no la desactivó, solo la cumplió).
-        if (meta.monto_actual or 0) >= (meta.monto_objetivo or 0):
-            continue
+        # El id se lee antes: tras un rollback el objeto queda expirado.
+        with corrida.aislar(meta.usuario_id):
+            if _aportar_meta_automatico(db, meta, hoy, ultimo_dia_mes_actual):
+                aportados += 1
 
-        # Si el día configurado no existe este mes (ej. 31 en un mes de 30),
-        # se dispara el último día del mes en su lugar.
-        dia_efectivo = min(meta.dia_aporte, ultimo_dia_mes_actual)
-        if dia_efectivo != hoy.day:
-            continue
-        ya_este_mes = (
-            meta.ultimo_aporte_automatico
-            and meta.ultimo_aporte_automatico.year == hoy.year
-            and meta.ultimo_aporte_automatico.month == hoy.month
+    return {"ok": True, "aportados": aportados, **corrida.resumen()}
+
+
+def _aportar_meta_automatico(db: Session, meta, hoy, ultimo_dia_mes_actual: int) -> bool:
+    """Aporte automático de UNA meta. True si se aportó."""
+    # Si la meta ya alcanzó su objetivo, no debe seguir recibiendo aportes
+    # automáticos mes a mes (el usuario no la desactivó, solo la cumplió).
+    if (meta.monto_actual or 0) >= (meta.monto_objetivo or 0):
+        return False
+
+    # Si el día configurado no existe este mes (ej. 31 en un mes de 30),
+    # se dispara el último día del mes en su lugar.
+    dia_efectivo = min(meta.dia_aporte, ultimo_dia_mes_actual)
+    if dia_efectivo != hoy.day:
+        return False
+    ya_este_mes = (
+        meta.ultimo_aporte_automatico
+        and meta.ultimo_aporte_automatico.year == hoy.year
+        and meta.ultimo_aporte_automatico.month == hoy.month
+    )
+    if ya_este_mes:
+        return False
+
+    cuenta = None
+    if meta.cuenta_origen_id:
+        # Defensa en profundidad: aunque la API ya valida al guardar la meta, el cron
+        # solo toca cuentas que pertenecen al dueño de la meta.
+        cuenta = (
+            db.query(Cuenta)
+            .filter(Cuenta.id == meta.cuenta_origen_id, Cuenta.usuario_id == meta.usuario_id)
+            .first()
         )
-        if ya_este_mes:
-            continue
 
-        cuenta = None
-        if meta.cuenta_origen_id:
-            # Defensa en profundidad: aunque la API ya valida al guardar la meta, el cron
-            # solo toca cuentas que pertenecen al dueño de la meta.
-            cuenta = (
-                db.query(Cuenta)
-                .filter(Cuenta.id == meta.cuenta_origen_id, Cuenta.usuario_id == meta.usuario_id)
-                .first()
-            )
+    monto = meta.aporte_automatico
+    # Si la cuenta de origen no tiene saldo suficiente, no dejar el saldo
+    # en negativo silenciosamente: se aparta solo lo disponible (igual que
+    # aportar_meta valida en el endpoint manual). Si no hay nada disponible,
+    # se salta el aporte este mes.
+    if cuenta:
+        if cuenta.saldo <= 0:
+            return False
+        monto = min(monto, cuenta.saldo)
+        cuenta.saldo -= monto
+    meta.monto_actual = (meta.monto_actual or 0) + monto
+    meta.ultimo_aporte_automatico = hoy
+    db.commit()
 
-        monto = meta.aporte_automatico
-        # Si la cuenta de origen no tiene saldo suficiente, no dejar el saldo
-        # en negativo silenciosamente: se aparta solo lo disponible (igual que
-        # aportar_meta valida en el endpoint manual). Si no hay nada disponible,
-        # se salta el aporte este mes.
-        if cuenta:
-            if cuenta.saldo <= 0:
-                continue
-            monto = min(monto, cuenta.saldo)
-            cuenta.saldo -= monto
-        meta.monto_actual = (meta.monto_actual or 0) + monto
-        meta.ultimo_aporte_automatico = hoy
-        db.commit()
-
-        enviar_push(
-            db,
-            meta.usuario_id,
-            f"Aporte automático: {meta.nombre}",
-            f"Se apartaron {monto:,.0f} COP para tu meta",
-            "/metas",
-        )
-        aportados += 1
-
-    return {"ok": True, "aportados": aportados}
+    enviar_push(
+        db,
+        meta.usuario_id,
+        f"Aporte automático: {meta.nombre}",
+        f"Se apartaron {monto:,.0f} COP para tu meta",
+        "/metas",
+    )
+    return True
 
 
 @router.post("/cron/premiar-presupuestos-mes")
@@ -252,38 +269,41 @@ def cron_premiar_presupuestos_mes(
         .all()
     }
     premiados = 0
+    corrida = Corrida(db)
 
     for usuario_id in usuarios_con_presupuesto:
-        presupuestos = (
-            db.query(Presupuesto)
-            .filter(Presupuesto.usuario_id == usuario_id, Presupuesto.activo == True)  # noqa: E712
-            .all()
-        )
-        if not presupuestos:
-            continue
-
-        ids_accesibles = cuentas_ids_accesibles(db, usuario_id)
-        cumplio_todos = True
-        gastado_mes = gastos_por_categoria(db, ids_accesibles, inicio_mes)
-        for p in presupuestos:
-            gastado = gastado_mes.get(p.categoria, 0.0)
-            if gastado > p.limite:
-                cumplio_todos = False
-                break
-
-        if cumplio_todos:
-            otorgada = otorgar_vida_si_nueva(db, usuario_id, f"presupuesto_cumplido_{clave_mes}")
-            if otorgada:
+        with corrida.aislar(usuario_id):
+            if _premiar_presupuestos_de(db, usuario_id, inicio_mes, clave_mes):
                 premiados += 1
-                enviar_push(
-                    db,
-                    usuario_id,
-                    "¡Cumpliste tu presupuesto! 🎉",
-                    "Ningún presupuesto se pasó este mes — mira cómo creció tu árbol financiero",
-                    "/ahorcado",
-                )
 
-    return {"ok": True, "premiados": premiados}
+    return {"ok": True, "premiados": premiados, **corrida.resumen()}
+
+
+def _premiar_presupuestos_de(db: Session, usuario_id: str, inicio_mes, clave_mes: str) -> bool:
+    """Premio del mes para UN usuario. True si se otorgó la vida."""
+    presupuestos = (
+        db.query(Presupuesto)
+        .filter(Presupuesto.usuario_id == usuario_id, Presupuesto.activo == True)  # noqa: E712
+        .all()
+    )
+    if not presupuestos:
+        return False
+
+    ids_accesibles = cuentas_ids_accesibles(db, usuario_id)
+    gastado_mes = gastos_por_categoria(db, ids_accesibles, inicio_mes)
+    if any(gastado_mes.get(p.categoria, 0.0) > p.limite for p in presupuestos):
+        return False
+
+    if not otorgar_vida_si_nueva(db, usuario_id, f"presupuesto_cumplido_{clave_mes}"):
+        return False
+    enviar_push(
+        db,
+        usuario_id,
+        "¡Cumpliste tu presupuesto! 🎉",
+        "Ningún presupuesto se pasó este mes — mira cómo creció tu árbol financiero",
+        "/ahorcado",
+    )
+    return True
 
 
 @router.post("/cron/resumen-semanal")
@@ -301,37 +321,45 @@ def cron_resumen_semanal(
         s[0] for s in db.query(PushSubscription.usuario_id).distinct().all()
     }
     enviados = 0
+    corrida = Corrida(db)
 
     for usuario_id in usuarios_con_push:
-        ids_accesibles = cuentas_ids_accesibles(db, usuario_id)
-        if not ids_accesibles:
-            continue
-        monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()}
-        semana = (
-            db.query(Movimiento)
-            .filter(Movimiento.cuenta_id.in_(ids_accesibles), Movimiento.fecha >= hace_7_dias)
-            .all()
-        )
-        if not semana:
-            continue
+        with corrida.aislar(usuario_id):
+            if _resumen_semanal_de(db, usuario_id, hace_7_dias):
+                enviados += 1
 
-        def monto_cop(m):
-            return convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
+    return {"ok": True, "enviados": enviados, **corrida.resumen()}
 
-        te = tipos_efectivos(semana, tipos_cuenta_de(db, ids_accesibles))
-        gastos = sum(monto_cop(m) for m in semana if te[m.id] == "expense")
-        ingresos = sum(monto_cop(m) for m in semana if te[m.id] == "income")
 
-        enviar_push(
-            db,
-            usuario_id,
-            "Tu semana en números",
-            f"Gastaste {gastos:,.0f} COP e ingresaste {ingresos:,.0f} COP — mira el detalle",
-            "/insights",
-        )
-        enviados += 1
+def _resumen_semanal_de(db: Session, usuario_id: str, hace_7_dias) -> bool:
+    """Resumen semanal de UN usuario. True si se envió."""
+    ids_accesibles = cuentas_ids_accesibles(db, usuario_id)
+    if not ids_accesibles:
+        return False
+    monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()}
+    semana = (
+        db.query(Movimiento)
+        .filter(Movimiento.cuenta_id.in_(ids_accesibles), Movimiento.fecha >= hace_7_dias)
+        .all()
+    )
+    if not semana:
+        return False
 
-    return {"ok": True, "enviados": enviados}
+    def monto_cop(m):
+        return convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
+
+    te = tipos_efectivos(semana, tipos_cuenta_de(db, ids_accesibles))
+    gastos = sum(monto_cop(m) for m in semana if te[m.id] == "expense")
+    ingresos = sum(monto_cop(m) for m in semana if te[m.id] == "income")
+
+    enviar_push(
+        db,
+        usuario_id,
+        "Tu semana en números",
+        f"Gastaste {gastos:,.0f} COP e ingresaste {ingresos:,.0f} COP — mira el detalle",
+        "/insights",
+    )
+    return True
 
 
 HORA_RECORDATORIO_REGISTRO = 20  # 8pm Colombia
@@ -364,28 +392,37 @@ def cron_recordar_registro(
         .all()
     )
     enviados = 0
+    corrida = Corrida(db)
     for perfil in perfiles:
-        ids = cuentas_ids_accesibles(db, perfil.usuario_id)
-        registro_hoy = (
-            db.query(Movimiento.id)
-            .filter(Movimiento.cuenta_id.in_(ids), Movimiento.fecha >= inicio_dia)
-            .first()
-        )
-        if registro_hoy:
-            continue
-        n = enviar_push(
-            db,
-            perfil.usuario_id,
-            "¿Hiciste algún movimiento hoy?",
-            "Aún no registras nada hoy. Anótalo en 10 segundos y tus cuentas seguirán cuadrando.",
-            "/agregar",
-        )
-        if n:
-            perfil.ultimo_recordatorio = hoy
-            db.commit()
-            enviados += 1
+        with corrida.aislar(perfil.usuario_id):
+            if _recordar_registro_de(db, perfil, hoy, inicio_dia):
+                enviados += 1
 
-    return {"ok": True, "enviados": enviados}
+    return {"ok": True, "enviados": enviados, **corrida.resumen()}
+
+
+def _recordar_registro_de(db: Session, perfil, hoy: str, inicio_dia) -> bool:
+    """Recordatorio nocturno para UN perfil. True si se envió."""
+    ids = cuentas_ids_accesibles(db, perfil.usuario_id)
+    registro_hoy = (
+        db.query(Movimiento.id)
+        .filter(Movimiento.cuenta_id.in_(ids), Movimiento.fecha >= inicio_dia)
+        .first()
+    )
+    if registro_hoy:
+        return False
+    n = enviar_push(
+        db,
+        perfil.usuario_id,
+        "¿Hiciste algún movimiento hoy?",
+        "Aún no registras nada hoy. Anótalo en 10 segundos y tus cuentas seguirán cuadrando.",
+        "/agregar",
+    )
+    if not n:
+        return False
+    perfil.ultimo_recordatorio = hoy
+    db.commit()
+    return True
 
 
 @router.post("/cron/recordar-recurrentes")
@@ -402,31 +439,12 @@ def cron_recordar_recurrentes(
     hoy = ahora_co()
     recurrentes = db.query(Recurrente).filter(Recurrente.activo == True).all()  # noqa: E712
     notificados = 0
+    corrida = Corrida(db)
 
     for rec in recurrentes:
-        estado_info = calc_estado_recurrente(rec)
-        if estado_info["estado"] != "proximo":
-            continue
-
-        ya_notificado_este_ciclo = (
-            rec.ultima_notificacion_vencimiento is not None
-            and rec.ultima_notificacion_vencimiento.year == hoy.year
-            and rec.ultima_notificacion_vencimiento.month == hoy.month
-        )
-        if ya_notificado_este_ciclo:
-            continue
-
-        dias = estado_info["dias_para_vencer"]
-        enviar_push(
-            db,
-            rec.usuario_id,
-            f"{rec.nombre} está por vencer",
-            f"Faltan {dias} {'día' if dias == 1 else 'días'} — {rec.monto:,.0f} COP",
-            "/recurrentes",
-        )
-        rec.ultima_notificacion_vencimiento = hoy
-        db.commit()
-        notificados += 1
+        with corrida.aislar(rec.usuario_id):
+            if _avisar_recurrente(db, rec, hoy):
+                notificados += 1
 
     # Mismo cron diario: también avisa de tarjetas de crédito con pago cerca.
     # Así no hace falta un cron nuevo ni cambiar horarios.
@@ -439,18 +457,51 @@ def cron_recordar_recurrentes(
             .all()
         )
         for cuenta, info in tarjetas_por_avisar(tarjetas, hoy):
-            dias = info["dias_para_pago"]
-            cuando = "hoy" if dias == 0 else f"en {dias} {'día' if dias == 1 else 'días'}"
-            enviar_push(
-                db,
-                cuenta.usuario_id,
-                f"Paga tu {cuenta.nombre}",
-                f"Paga antes del {info['proximo_pago']} ({cuando}) para no pagar intereses — "
-                f"debes {info['cupo_usado']:,.0f}",
-                "/cuentas",
-            )
-            cuenta.ultima_alerta_pago = info["proximo_pago"]
-            db.commit()
-            tarjetas_avisadas += 1
+            with corrida.aislar(cuenta.usuario_id):
+                _avisar_pago_tarjeta(db, cuenta, info)
+                tarjetas_avisadas += 1
 
-    return {"ok": True, "notificados": notificados, "tarjetas_avisadas": tarjetas_avisadas}
+    return {"ok": True, "notificados": notificados, "tarjetas_avisadas": tarjetas_avisadas,
+            **corrida.resumen()}
+
+
+def _avisar_recurrente(db: Session, rec, hoy) -> bool:
+    """Aviso de vencimiento de UN recurrente. True si se envió."""
+    estado_info = calc_estado_recurrente(rec)
+    if estado_info["estado"] != "proximo":
+        return False
+
+    ya_notificado_este_ciclo = (
+        rec.ultima_notificacion_vencimiento is not None
+        and rec.ultima_notificacion_vencimiento.year == hoy.year
+        and rec.ultima_notificacion_vencimiento.month == hoy.month
+    )
+    if ya_notificado_este_ciclo:
+        return False
+
+    dias = estado_info["dias_para_vencer"]
+    enviar_push(
+        db,
+        rec.usuario_id,
+        f"{rec.nombre} está por vencer",
+        f"Faltan {dias} {'día' if dias == 1 else 'días'} — {rec.monto:,.0f} COP",
+        "/recurrentes",
+    )
+    rec.ultima_notificacion_vencimiento = hoy
+    db.commit()
+    return True
+
+
+def _avisar_pago_tarjeta(db: Session, cuenta, info: dict) -> None:
+    dias = info["dias_para_pago"]
+    cuando = "hoy" if dias == 0 else f"en {dias} {'día' if dias == 1 else 'días'}"
+    enviar_push(
+        db,
+        cuenta.usuario_id,
+        f"Paga tu {cuenta.nombre}",
+        f"Paga antes del {info['proximo_pago']} ({cuando}) para no pagar intereses — "
+        f"debes {info['cupo_usado']:,.0f}",
+        "/cuentas",
+    )
+    cuenta.ultima_alerta_pago = info["proximo_pago"]
+    db.commit()

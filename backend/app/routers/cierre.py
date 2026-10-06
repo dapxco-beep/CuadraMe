@@ -188,7 +188,9 @@ def cron_cerrar_mes(
         except Exception:
             db.rollback()
             res["errores"] += 1
-            logger.warning("cierre: falló para un usuario", exc_info=True)
+            logger.exception("cierre: falló para el usuario %s", uid)
+    res["fallidos"] = res["errores"]
+    res["procesados"] = len(usuarios) - res["errores"]
     return res
 
 

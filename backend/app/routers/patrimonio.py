@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from app import patrimonio_calc as calc
 from app import precios
 from app.auth import UsuarioActual, cron_autorizado, get_current_user
+from app.crons import Corrida
 from app.database import get_db
 from app.fx import convertir_a_cop
 from app.models import Cuenta, Deuda
@@ -293,13 +294,12 @@ def cron_snapshot_mensual(x_cron_secret: str = Header(default=""), db: Session =
     ids = {r[0] for r in db.query(Cuenta.usuario_id).distinct().all()}
     ids |= {r[0] for r in db.query(ActivoPatrimonio.usuario_id).distinct().all()}
     guardados = 0
+    corrida = Corrida(db)
     for uid in ids:
-        try:
+        with corrida.aislar(uid):
             guardar_snapshot(db, uid, calcular_resumen(db, uid))
             guardados += 1
-        except Exception:
-            db.rollback()
-    return {"ok": True, "usuarios": len(ids), "guardados": guardados}
+    return {"ok": True, "usuarios": len(ids), "guardados": guardados, **corrida.resumen()}
 
 
 @router.post("/cron/actualizar-precios")
@@ -313,13 +313,15 @@ def cron_actualizar_precios(x_cron_secret: str = Header(default=""), db: Session
         ActivoPatrimonio.fuente_precio.isnot(None),
     ).all()
     actualizados = 0
+    corrida = Corrida(db)
     for a in candidatos:
-        res = precios.obtener_precio(a.fuente_precio, a.ticker, a.clase, a.moneda)
-        if res:
-            _registrar_valor(db, a, res[0], res[1], a.fuente_precio)
-            actualizados += 1
-    db.commit()
-    return {"ok": True, "actualizados": actualizados}
+        with corrida.aislar(a.usuario_id):
+            res = precios.obtener_precio(a.fuente_precio, a.ticker, a.clase, a.moneda)
+            if res:
+                _registrar_valor(db, a, res[0], res[1], a.fuente_precio)
+                db.commit()
+                actualizados += 1
+    return {"ok": True, "actualizados": actualizados, **corrida.resumen()}
 
 
 def _registrar_valor(db: Session, a: ActivoPatrimonio, valor: float, fecha: datetime, fuente="manual"):
