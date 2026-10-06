@@ -367,7 +367,8 @@ button, a {
 /* Grid de dos columnas solo en ≥1024 px. En móvil/iPad vertical los wrappers
    son transparentes, así el orden y el aspecto del teléfono no cambian. */
 .dos-col,
-.dos-col > .col {
+.dos-col > .col,
+.dos-grid {
   display: contents;
 }
 
@@ -441,6 +442,16 @@ button, a {
   }
   .dos-col.dos-col-5-6 {
     grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  }
+  /* Variante donde cada bloque se coloca con col-start/row-start (para no cambiar el orden móvil) */
+  .dos-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    column-gap: 1.25rem;
+    align-items: start;
+  }
+  .dos-col.dos-col-4-7 {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
   }
   .dos-col > .col {
     display: block;

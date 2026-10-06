@@ -50,7 +50,7 @@ export default function Patrimonio() {
   const vacio = datos && datos.activos.length === 0 && datos.pasivos.length === 0 && datos.total_cuentas === 0
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
+    <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
       <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Patrimonio</h1>
         <button
@@ -76,7 +76,8 @@ export default function Patrimonio() {
         </div>
       ) : (
         datos && (
-          <>
+          <div className="dos-col dos-col-5-6">
+            <div className="col">
             <TarjetaNeto datos={datos} />
 
             {datos.historial.length > 0 && (
@@ -100,6 +101,8 @@ export default function Patrimonio() {
               </section>
             )}
 
+            </div>
+            <div className="col">
             <section className="mx-5 mt-4">
               <h2 className="text-sm font-semibold mb-1">Mis activos</h2>
               <p className="text-xs text-ink-soft mb-2 flex gap-1.5 items-start" data-testid="aviso-inversion">
@@ -149,7 +152,8 @@ export default function Patrimonio() {
               activo se calcula en su propia moneda. El valor de fondos, acciones, inmuebles y vehículos depende del
               precio que registres.
             </p>
-          </>
+            </div>
+          </div>
         )
       )}
 

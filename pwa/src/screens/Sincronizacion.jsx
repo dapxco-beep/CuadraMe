@@ -271,7 +271,7 @@ export default function Sincronizacion() {
   const visibles = verTodos ? extractos : extractos.slice(0, EXTRACTOS_VISIBLES)
 
   return (
-    <div className="flex-1 overflow-y-auto pb-8 screen-enter">
+    <div className="flex-1 overflow-y-auto pb-8 screen-enter pantalla-ancha">
       {/* a) Encabezado: una línea de resumen y el botón principal */}
       <header className="px-6 pantalla-top pb-1 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
@@ -283,6 +283,8 @@ export default function Sincronizacion() {
         </div>
       </header>
 
+      <div className="dos-col dos-col-4-7">
+      <div className="col">
       <section className="mx-6 mt-3">
         {conectado ? (
           <button
@@ -356,6 +358,8 @@ export default function Sincronizacion() {
         )}
       </Seccion>
 
+      </div>
+      <div className="col">
       {/* c) Cuentas por mes */}
       <Seccion id="sinc-cuentas" titulo="Cuentas por mes" ayuda="Toca un mes para ver el detalle.">
         {filasCuentas.length === 0 ? (
@@ -590,6 +594,9 @@ export default function Sincronizacion() {
           </div>
         )}
       </Seccion>
+
+      </div>
+      </div>
 
       <p className="mx-6 mt-8 text-xs text-ink-soft text-center">
         <button onClick={() => navigate('/correos')} className="underline">Correos bancarios</button>

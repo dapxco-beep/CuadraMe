@@ -8,6 +8,8 @@ import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { Isotipo } from '../brand/Marca'
+import { esCampoDeTexto } from '../lib/atajos'
+import BarraProgreso from '../components/BarraProgreso'
 import { compartirImagen, construirDiapositivas, nombreMes } from '../lib/wrappedImagen'
 
 // Desglose del mes por categoría: la diapositiva solo cuenta cuánto gastaste, esto dice en qué.
@@ -28,9 +30,11 @@ function DetalleCategorias({ datos, fmt, onVerInforme }) {
                 <span className="font-medium truncate">{c.categoria}</span>
                 <span className="font-semibold shrink-0">{fmt(c.monto)}</span>
               </div>
-              <div className="mt-1 h-2 rounded-full bg-line overflow-hidden" aria-hidden="true">
-                <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(3, (c.monto / mayor) * 100)}%` }} />
-              </div>
+              <BarraProgreso
+                pct={Math.max(3, (c.monto / mayor) * 100)}
+                label={`Gasto en ${c.categoria}`}
+                className="mt-1 h-2 rounded-full bg-line overflow-hidden"
+              />
               <p className="mt-1 text-xs text-ink-soft">
                 {c.pct}% del gasto
                 {c.variacion_pct === null
@@ -129,8 +133,22 @@ export default function Wrapped() {
 
   const d = diapos[i]
 
+  // Flechas ← → cambian de diapositiva con el teclado (no cuando se está en un campo o lista,
+  // donde las flechas ya significan otra cosa, ni con una hoja abierta).
+  useEffect(() => {
+    function alTeclear(e) {
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      if (esCampoDeTexto(e.target) || document.querySelector('[role="dialog"][aria-modal="true"]')) return
+      e.preventDefault()
+      ir(e.key === 'ArrowRight' ? i + 1 : i - 1)
+    }
+    window.addEventListener('keydown', alTeclear)
+    return () => window.removeEventListener('keydown', alTeclear)
+  })
+
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto screen-enter">
+    <div className="flex-1 flex flex-col overflow-y-auto screen-enter pantalla-ancha">
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
@@ -173,9 +191,10 @@ export default function Wrapped() {
       {mes && !datos && !error && <p className="text-sm text-ink-soft text-center mt-10">Cargando...</p>}
 
       {d && (
-        <>
+        <div className="dos-col dos-col-6-5">
+          <div className="col">
           {/* Los toques en el tercio izquierdo/derecho cambian de diapositiva, como en las historias */}
-          <div className="relative flex-1 mx-6 mt-3 mb-3 overflow-hidden bg-[#17140f] text-[#f5f1e8] min-h-[360px] card-marca"
+          <div className="relative flex-1 mx-6 mt-3 mb-3 overflow-hidden bg-[#17140f] text-[#f5f1e8] min-h-[360px] lg:min-h-[520px] card-marca"
             style={{
               backgroundImage:
                 'linear-gradient(to right, rgb(255 255 255 / 0.045) 1px, transparent 1px), linear-gradient(to bottom, rgb(255 255 255 / 0.045) 1px, transparent 1px)',
@@ -185,7 +204,7 @@ export default function Wrapped() {
             <div className="absolute top-3 inset-x-4 flex gap-1.5 z-10" aria-hidden="true">
               {diapos.map((s, n) => (
                 <span key={s.id} className="flex-1 h-1 rounded-full bg-white/20 overflow-hidden">
-                  <span className="block h-full bg-[#e8823f] transition-all duration-300" style={{ width: n <= i ? '100%' : '0%' }} />
+                  <span className="block h-full w-full bg-[#e8823f] barra-fill" style={{ transform: `scaleX(${n <= i ? 1 : 0})` }} />
                 </span>
               ))}
             </div>
@@ -233,9 +252,12 @@ export default function Wrapped() {
               <ChevronRight size={18} />
             </button>
           </div>
+          </div>
 
+          <div className="col">
           <DetalleCategorias datos={datos} fmt={fmt} onVerInforme={() => navigate(`/informe?mes=${datos.mes}`)} />
-        </>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -215,7 +215,7 @@ export default function Movimientos() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
+    <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
       <header className="px-5 pantalla-top pb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Movimientos</h1>
         {modoSeleccion ? (
@@ -259,6 +259,9 @@ export default function Movimientos() {
         )}
       </header>
 
+      {/* ≥1024 px: filtros y resumen a la izquierda (fijos al hacer scroll), lista a la derecha */}
+      <div className="dos-col dos-col-5-6">
+      <div className="col col-sticky">
       {mostrarFiltrosFecha && (
         <div className="px-5 mb-4">
           <div className="flex gap-2">
@@ -343,7 +346,7 @@ export default function Movimientos() {
       )}
 
       {!soloRevisar && categorias.length > 1 && (
-        <div className="px-5 flex gap-2 mb-4 overflow-x-auto no-scrollbar">
+        <div className="px-5 flex gap-2 mb-4 overflow-x-auto no-scrollbar lg:flex-wrap lg:overflow-visible">
           {categorias.map((f) => (
             <button
               key={f}
@@ -358,6 +361,8 @@ export default function Movimientos() {
         </div>
       )}
 
+      </div>
+      <div className="col">
       {cargando ? (
         <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
       ) : errorCarga ? (
@@ -472,6 +477,9 @@ export default function Movimientos() {
           </button>
         </div>
       )}
+
+      </div>
+      </div>
 
       {cambiando && (
         <HojaCambiarCategoria movimiento={cambiando} onClose={() => setCambiando(null)} onHecho={alCambiarCategoria} />
