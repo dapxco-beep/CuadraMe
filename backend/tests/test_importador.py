@@ -269,6 +269,34 @@ def test_confirmar_sin_ajustar_saldo_y_validaciones():
     assert client.post("/importar/confirmar", json={"cuenta_id": cuenta, "filas": []}).status_code == 422
 
 
+def test_importado_sin_ajustar_saldo_no_mueve_saldo_al_editar_ni_borrar():
+    """Regresión: saldo 100.000; se importan 2 filas (5.000 y 7.000) sin ajustar; borrar una
+    o editar el monto de la otra no cambia el saldo (antes lo desfasaba)."""
+    como("imp-sinsaldo")
+    cuenta = client.post("/cuentas", json={"nombre": "Banco", "saldo": 100_000}).json()["id"]
+    filas = [{"fecha": "2026-10-01", "descripcion": "Cafe", "monto": 5_000, "tipo": "expense"},
+             {"fecha": "2026-10-02", "descripcion": "Libro", "monto": 7_000, "tipo": "expense"}]
+    j = client.post("/importar/confirmar", json={"cuenta_id": cuenta, "filas": filas, "ajustar_saldo": False}).json()
+    assert j["importados"] == 2 and j["saldo"] == 100_000
+
+    def saldo():
+        return [c for c in client.get("/cuentas").json() if c["id"] == cuenta][0]["saldo"]
+
+    movs = {m["descripcion"]: m for m in client.get("/movimientos").json() if m["cuenta_id"] == cuenta}
+    assert movs["Cafe"]["fuente"] == "importado_sin_saldo"
+    assert client.delete(f"/movimientos/{movs['Cafe']['id']}").status_code == 200
+    assert saldo() == 100_000
+    assert client.put(f"/movimientos/{movs['Libro']['id']}", json={"monto": 9_000}).status_code == 200
+    assert saldo() == 100_000
+    # Con ajuste (caso normal) borrar SÍ devuelve el dinero: 100.000 -> importa 5.000 -> 95.000 -> borra -> 100.000
+    j2 = client.post("/importar/confirmar", json={"cuenta_id": cuenta, "ajustar_saldo": True, "filas": [
+        {"fecha": "2026-10-03", "descripcion": "Taxi", "monto": 5_000, "tipo": "expense"}]}).json()
+    assert j2["saldo"] == 95_000
+    taxi = [m for m in client.get("/movimientos").json() if m["descripcion"] == "Taxi"][0]
+    client.delete(f"/movimientos/{taxi['id']}")
+    assert saldo() == 100_000
+
+
 def test_errores_de_archivo_y_cuenta_ajena():
     cuenta = _preparar("imp-err")
     base = {"cuenta_id": cuenta, "nombre_archivo": "x.pdf", "archivo_base64": _b64(b"%PDF-1.4")}

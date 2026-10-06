@@ -27,7 +27,7 @@ from app.autocat import clasificar_lote_detalle, datos_auto
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, puede_editar_cuenta
 from app.conciliacion import auditar_movimientos, compute_fingerprint
-from app.contabilidad import CATEGORIA_PAGO_TARJETA, es_pago_tarjeta
+from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_IMPORTADO_SIN_SALDO, es_pago_tarjeta
 from app.database import get_db
 from app.importador_tabular import MAX_BYTES, MAX_FILAS, CAMPOS, ErrorArchivo, analizar
 from app.limites import verificar_limite
@@ -202,7 +202,9 @@ def confirmar(
         db.add(Movimiento(
             usuario_id=usuario.id, cuenta_id=cuenta.id, fecha=datetime.fromisoformat(f.fecha),
             descripcion=f.descripcion.strip(), categoria=categoria, tipo=f.tipo, monto=f.monto,
-            fuente=FUENTE_IMPORTACION, notas=f"Importado de {data.nombre_archivo[:80]}", **auto,
+            # Sin ajustar saldo, la marca evita que editar/borrar luego mueva el saldo.
+            fuente=FUENTE_IMPORTACION if data.ajustar_saldo else FUENTE_IMPORTADO_SIN_SALDO,
+            notas=f"Importado de {data.nombre_archivo[:80]}", **auto,
         ))
         neto += f.monto if f.tipo == "income" else -f.monto
         importados += 1
