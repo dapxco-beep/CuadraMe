@@ -172,6 +172,44 @@ def _tipo_por_signo(monto: float, desc: str) -> str:
     return "income" if monto > 0 else "expense"
 
 
+def _num_es(s: str) -> float:  # 1.234,56
+    return float(s.replace(".", "").replace(",", "."))
+
+
+def _num_en(s: str) -> float:  # 1,234.56
+    return float(s.replace(",", ""))
+
+
+def total_impreso_del_extracto(texto: str) -> float | None:
+    """Lo que el propio extracto dice que se movió (entradas + salidas), si trae el
+    resumen de Nu ('Lo que entró / salió') o el de Nequi ('Total abonos / cargos').
+    None si el extracto no trae un resumen que sepamos leer."""
+    try:
+        ent = re.search(r"Lo que entró a tu cuenta\s+\+?\$([\d.,]+)", texto)
+        sal = re.search(r"Lo que salió de tu cuenta\s+-?\$([\d.,]+)", texto)
+        if ent and sal:
+            return _num_es(ent.group(1)) + _num_es(sal.group(1))
+        ab = re.search(r"Total abonos\s+\$([\d.,]+)", texto)
+        ca = re.search(r"Total cargos\s+\$([\d.,]+)", texto)
+        if ab and ca:
+            return _num_en(ab.group(1)) + _num_en(ca.group(1))
+    except ValueError:
+        pass
+    return None
+
+
+def cuadra_con_el_resumen(texto: str, movimientos: list[dict]) -> bool | None:
+    """¿Lo leído suma lo mismo que dice el resumen del extracto? True/False, o None si el
+    extracto no trae resumen. Detecta líneas que se perdieron (o se leyeron de más) sin
+    que nadie lo note. Compara entradas + salidas en valor absoluto: no depende de cómo se
+    clasificó cada movimiento (transferencia propia, ingreso o gasto)."""
+    esperado = total_impreso_del_extracto(texto)
+    if esperado is None:
+        return None
+    leido = sum(abs(m["monto"]) for m in movimientos)
+    return abs(leido - esperado) < 1
+
+
 def parse_texto_con_regex(texto: str) -> tuple[list[dict], int]:
     """Intenta parsers específicos por banco; retorna ([], 0) si ninguno matchea.
     El segundo valor es cuántas líneas parecían un movimiento pero se descartaron
@@ -201,6 +239,11 @@ def parse_texto_con_regex(texto: str) -> tuple[list[dict], int]:
 
     if not movimientos:
         movimientos = _parse_generico(texto)
+
+    # Si el extracto trae su propio resumen y lo leído no suma lo mismo, falta (o sobra)
+    # algo: se avisa con el contador de "descartados" en vez de dejarlo pasar en silencio.
+    if movimientos and cuadra_con_el_resumen(texto, movimientos) is False:
+        descartados += 1
 
     return movimientos, descartados
 

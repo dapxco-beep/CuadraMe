@@ -2,7 +2,9 @@
 extractos reales, datos inventados). Cubre los fallos hallados al medir con extractos
 reales: números sueltos en la descripción ('OXXO CENTRO 114'), banco mal detectado
 y transferencias propias confundidas con las de otra persona del mismo nombre."""
-from app.conciliacion import detectar_banco, es_transferencia_propia, fijar_nombre_titular, parse_texto_con_regex
+from app.conciliacion import (
+    cuadra_con_el_resumen, detectar_banco, es_transferencia_propia, fijar_nombre_titular, parse_texto_con_regex,
+)
 
 NU = """Hola, Ana Maria
 Llegó tu extracto de Octubre
@@ -12,7 +14,7 @@ Nu Placa Número de Cuenta Período
 ABC123 11112222 01 - 31 OCT 2025
 Tu dinero al inicio del mes $1.000.000,00
 Lo que entró a tu cuenta +$500.000,00
-Lo que salió de tu cuenta -$300.000,00
+Lo que salió de tu cuenta -$2.373.470,00
 Movimientos
 01 oct Compra en TIENDA UNO 72 SUR con tarjeta débito -$22.000,00
 01 oct Compra en MERCADO XYZ 114 con tarjeta débito -$11.400,00
@@ -99,10 +101,21 @@ Fecha del movimiento Descripción Valor Saldo
 """
 
 
+def test_si_falta_una_linea_el_resumen_del_extracto_lo_delata():
+    fijar_nombre_titular("Ana Maria Lopez Rojas")
+    completo, d_ok = parse_texto_con_regex(NU)
+    assert d_ok == 0 and cuadra_con_el_resumen(NU, completo) is True
+    # Se pierde una línea (p. ej. un formato nuevo que el lector no entiende): se avisa.
+    recortado = NU.replace("04 oct Enviaste a Ana Gomez -$9.000,00\n", "04 oct Enviaste a Ana Gomez  9000\n")
+    movs, d = parse_texto_con_regex(recortado)
+    assert len(movs) == 6 and d == 1 and cuadra_con_el_resumen(recortado, movs) is False
+    assert cuadra_con_el_resumen("texto sin resumen", movs) is None
+
+
 def test_nequi_formato_dolar_con_coma_de_miles_lee_todo_y_cierra_la_cadena():
     fijar_nombre_titular("Ana Maria Lopez Rojas")
-    movs, _ = parse_texto_con_regex(NEQUI)
-    assert len(movs) == 4
+    movs, descartados = parse_texto_con_regex(NEQUI)
+    assert len(movs) == 4 and descartados == 0 and cuadra_con_el_resumen(NEQUI, movs) is True
     assert sum(m["monto"] for m in movs if m["tipo"] == "income") == 60000
     assert sum(m["monto"] for m in movs if m["tipo"] == "expense") == 57028
     assert 2000 + 60000 - 57028 == 4972
