@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -327,14 +328,21 @@ def importar_faltantes(
     reglas_omitidas: list[dict] = []
     # Varios extractos con periodos que se solapan comparten movimientos: si otro archivo (o
     # el usuario) ya los registró, aquí no se duplican.
-    ya_registrados = {r["fingerprint"] for r in _cargar_ledger(db, usuario.id, cuenta.id)}
+    # Se CUENTAN las huellas (no basta con saber si existen): dos movimientos idénticos el
+    # mismo día (dos envíos de $20.000 a la misma persona) son DOS, no un duplicado. De lo
+    # registrado con una huella solo sobra para "duplicado" lo que este mismo extracto aún
+    # no explica (sus líneas ya exactas o importadas).
+    en_libro = Counter(r["fingerprint"] for r in _cargar_ledger(db, usuario.id, cuenta.id))
+    explicados = Counter(i.get("fingerprint") for i in review if i.get("estado") in ("exacto", "importado"))
+    ya_registrados = {fp: n - explicados[fp] for fp, n in en_libro.items() if n > explicados[fp]}
     duplicados_omitidos = 0
 
     for item in review:
         fp = item.get("fingerprint")
         if fp not in fingerprints or item.get("estado") != "faltante":
             continue
-        if fp in ya_registrados:
+        if ya_registrados.get(fp, 0) > 0:
+            ya_registrados[fp] -= 1
             item["estado"] = "exacto"
             duplicados_omitidos += 1
             continue
