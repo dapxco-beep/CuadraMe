@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import cuenta_accesible, cuentas_ids_accesibles
-from app.contabilidad import tipos_cuenta_de, tipos_efectivos
+from app.contabilidad import tipos_cuenta_de, tipos_de_cuentas, tipos_efectivos
 from app.database import get_db
 from app.fx import convertir_a_cop
 from app.impuestos import AVISO, CATEGORIAS_FISCALES, calcular_gmf, organizar_deducibles
@@ -47,7 +47,7 @@ def _datos_anio(db: Session, usuario: UsuarioActual, anio: int) -> dict:
     ids = cuentas_ids_accesibles(db, usuario.id)
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()
     monedas = {c.id: c.moneda for c in cuentas}
-    tipos = {c.id: c.tipo for c in cuentas}
+    tipos = tipos_de_cuentas(cuentas)
     movs = (
         db.query(Movimiento)
         .filter(Movimiento.cuenta_id.in_(ids), Movimiento.fecha >= datetime(anio, 1, 1) - _TRES_DIAS,

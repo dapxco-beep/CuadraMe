@@ -18,6 +18,7 @@ wrapped, cierre mensual, impuestos). Todo es puro: sin base de datos ni red.
 """
 import re
 import unicodedata
+from bisect import bisect_left, bisect_right
 from datetime import datetime
 
 FUENTE_TRANSFERENCIA = "transferencia_interna"
@@ -50,7 +51,8 @@ PATRON_PAGO_TARJETA = re.compile(
 # para emparejar salida y entrada de igual monto en cuentas distintas).
 PATRON_TRASLADO = re.compile(
     r"transfer|traslado|\btrasl\b|entre\s+cuentas|nequi|daviplata|\bdale\b|movii|"
-    r"\benvi[oa]|enviaste|recibiste|bre-?b|a\s+mi\s+cuenta|desde\s+mi\s+cuenta",
+    r"\benvi[oa]|enviaste|recibiste|bre-?b|a\s+mi\s+cuenta|desde\s+mi\s+cuenta|"
+    r"a\s+tu\s+cuenta|de\s+tu\s+cuenta|^\s*para\s+\S",
     re.IGNORECASE,
 )
 
@@ -148,13 +150,35 @@ def tipo_base(m, tipos_cuenta: dict[str, str] | None = None) -> str:
     return tipo
 
 
+class TiposCuenta(dict):
+    """{cuenta_id: tipo} que además lleva `.monedas` {cuenta_id: moneda}: así los informes que ya
+    llaman tipos_efectivos(movs, tipos_cuenta_de(...)) no emparejan traslados de monedas distintas
+    sin tener que cambiar cada llamada."""
+    monedas: dict[str, str] = {}
+
+
+def _fuerza_pista(m) -> int:
+    """Cuántas pistas de 'traslado' tiene UN movimiento (descripción tipo traslado / marca del lector)."""
+    f = 0
+    if PATRON_TRASLADO.search(_g(m, "descripcion", "") or ""):
+        f += 1
+    if MARCA_TRASLADO_PROPIO in (_g(m, "notas", "") or ""):
+        f += 1
+    return f
+
+
 def tipos_efectivos(movs, tipos_cuenta: dict[str, str] | None = None) -> dict[str, str]:
     """{id_movimiento: 'income'|'expense'|'transfer'} para toda la lista.
 
-    Además de la regla individual, empareja traslados que quedaron registrados
-    como un gasto en una cuenta y un ingreso en otra (típico al importar los
-    extractos de dos bancos): mismo monto, cuentas distintas, <= 2 días y al menos
-    una de las dos descripciones parece traslado. Cada movimiento se usa una vez."""
+    Neutral ('transfer', ni ingreso ni gasto) = (a) las dos patas de un traslado creado en la app
+    (fuente transferencia_interna), (b) pagos de tarjeta y su abono, y (c) PARES DETECTADOS entre
+    cuentas propias: un egreso en una cuenta y un ingreso del MISMO monto y moneda en otra cuenta
+    del mismo usuario, a <= 2 días, con al menos una descripción/marca de traslado. Se emparejan
+    1:1 con el mejor candidato (más pistas, luego fecha más cercana, luego id). Lo que no tiene
+    pareja (transferencia a/de un tercero) sigue siendo gasto/ingreso real.
+
+    Rendimiento: índice por monto redondeado y ventana de fechas con bisección; no hay doble
+    recorrido de toda la lista."""
     movs = list(movs)
     res = {_g(m, "id"): tipo_base(m, tipos_cuenta) for m in movs}
 
@@ -163,42 +187,72 @@ def tipos_efectivos(movs, tipos_cuenta: dict[str, str] | None = None) -> dict[st
     if not gastos or not ingresos:
         return res
 
+    monedas = getattr(tipos_cuenta, "monedas", None) or {}
+
+    def moneda(m):
+        return monedas.get(_g(m, "cuenta_id")) or _g(m, "moneda")
+
     por_monto: dict[int, list] = {}
     for i in ingresos:
-        por_monto.setdefault(round(abs(_g(i, "monto", 0) or 0)), []).append(i)
+        if _g(i, "fecha"):
+            por_monto.setdefault(round(abs(_g(i, "monto", 0) or 0)), []).append(i)
+    claves = {}
+    for k, lista in por_monto.items():
+        lista.sort(key=lambda x: _g(x, "fecha"))
+        claves[k] = [_g(x, "fecha").timestamp() for x in lista]
 
     usados: set = set()
-    for g in sorted(gastos, key=lambda x: _g(x, "fecha") or datetime.min):
-        candidatos = []
-        for i in por_monto.get(round(abs(_g(g, "monto", 0) or 0)), []):
+    for g in sorted((x for x in gastos if _g(x, "fecha")), key=lambda x: (_g(x, "fecha"), str(_g(x, "id")))):
+        k = round(abs(_g(g, "monto", 0) or 0))
+        lista = por_monto.get(k)
+        if not lista:
+            continue
+        t = _g(g, "fecha").timestamp()
+        desde = bisect_left(claves[k], t - VENTANA_EMPAREJAR_SEG)
+        hasta = bisect_right(claves[k], t + VENTANA_EMPAREJAR_SEG)
+        fg = _fuerza_pista(g)
+        mejor = None
+        for i in lista[desde:hasta]:
             iid = _g(i, "id")
             if iid in usados or _g(i, "cuenta_id") == _g(g, "cuenta_id"):
                 continue
             if abs((_g(i, "monto", 0) or 0) - (_g(g, "monto", 0) or 0)) >= 1:
                 continue
-            fg, fi = _g(g, "fecha"), _g(i, "fecha")
-            if not fg or not fi:
+            mg, mi = moneda(g), moneda(i)
+            if mg and mi and mg != mi:
                 continue
-            dif = abs((fg - fi).total_seconds())
-            if dif > VENTANA_EMPAREJAR_SEG:
+            fuerza = fg + _fuerza_pista(i)
+            if not fuerza:
                 continue
-            if not (PATRON_TRASLADO.search(_g(g, "descripcion", "") or "")
-                    or PATRON_TRASLADO.search(_g(i, "descripcion", "") or "")):
-                continue
-            candidatos.append((dif, iid, i))
-        if candidatos:
-            candidatos.sort(key=lambda c: (c[0], str(c[1])))
-            _, iid, _i = candidatos[0]
-            usados.add(iid)
+            clave = (-fuerza, abs(_g(i, "fecha").timestamp() - t), str(iid))
+            if mejor is None or clave < mejor[0]:
+                mejor = (clave, iid)
+        if mejor:
+            usados.add(mejor[1])
             res[_g(g, "id")] = "transfer"
-            res[iid] = "transfer"
+            res[mejor[1]] = "transfer"
     return res
+
+
+def tipos_de_cuentas(cuentas) -> TiposCuenta:
+    """TiposCuenta desde objetos Cuenta ya cargados (tipo y moneda)."""
+    out = TiposCuenta()
+    out.monedas = {}
+    for c in cuentas:
+        out[c.id] = c.tipo
+        out.monedas[c.id] = c.moneda
+    return out
 
 
 def tipos_cuenta_de(db, ids) -> dict[str, str]:
     """{cuenta_id: tipo} para las cuentas dadas (import perezoso: este módulo es puro)."""
     from app.models import Cuenta
-    return {c.id: c.tipo for c in db.query(Cuenta).filter(Cuenta.id.in_(list(ids))).all()}
+    out = TiposCuenta()
+    out.monedas = {}
+    for c in db.query(Cuenta).filter(Cuenta.id.in_(list(ids))).all():
+        out[c.id] = c.tipo
+        out.monedas[c.id] = c.moneda
+    return out
 
 
 def gastos_por_categoria(db, ids_accesibles, desde: datetime, monedas: dict[str, str] | None = None) -> dict[str, float]:
