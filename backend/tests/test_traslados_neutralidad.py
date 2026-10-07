@@ -129,3 +129,10 @@ def test_reportes_exportar_y_resumen_ven_el_traslado_como_neutral(escenario):
     csv = client.get("/exportar/movimientos.csv").text
     assert "No cuenta" in [l for l in csv.splitlines() if "Enviaste a Ana Lopez" in l][0]
     assert [l for l in csv.splitlines() if "Enviaste a Pepito" in l][0].rstrip().endswith("Gasto")
+
+
+def test_es_un_gasto_real_del_usuario_impide_el_emparejamiento():
+    from app.contabilidad import MARCA_NO_TRASLADO
+    te = tipos_efectivos([_m("e", "expense", 500_000, "Enviaste a Ana Lopez", "N", notas=MARCA_NO_TRASLADO),
+                          _m("i", "income", 500_000, "Recibiste de Ana Lopez", "U")], TIPOS)
+    assert te == {"e": "expense", "i": "income"}

@@ -60,6 +60,12 @@ PATRON_TRASLADO = re.compile(
 # titular u otra cuenta propia: el movimiento SÍ mueve saldo (tiene dirección) y los informes
 # lo tratan como traslado solo si aparece su otra pata (ver tipos_efectivos).
 MARCA_TRASLADO_PROPIO = "posible_traslado_propio"
+# El usuario dijo "es un gasto/ingreso real": nunca se empareja como traslado.
+MARCA_NO_TRASLADO = "no_es_traslado"
+
+
+def _descartado(m) -> bool:
+    return MARCA_NO_TRASLADO in (_g(m, "notas", "") or "")
 
 # Dirección deducible con certeza de una descripción de transferencia (solo al inicio).
 _RE_SALE = re.compile(r"^\s*(?:para\b|enviaste\b|envio\b|transferencia\s+a\b|trf\s+a\b|transferiste\b)", re.IGNORECASE)
@@ -194,7 +200,7 @@ def tipos_efectivos(movs, tipos_cuenta: dict[str, str] | None = None) -> dict[st
 
     por_monto: dict[int, list] = {}
     for i in ingresos:
-        if _g(i, "fecha"):
+        if _g(i, "fecha") and not _descartado(i):
             por_monto.setdefault(round(abs(_g(i, "monto", 0) or 0)), []).append(i)
     claves = {}
     for k, lista in por_monto.items():
@@ -202,7 +208,7 @@ def tipos_efectivos(movs, tipos_cuenta: dict[str, str] | None = None) -> dict[st
         claves[k] = [_g(x, "fecha").timestamp() for x in lista]
 
     usados: set = set()
-    for g in sorted((x for x in gastos if _g(x, "fecha")), key=lambda x: (_g(x, "fecha"), str(_g(x, "id")))):
+    for g in sorted((x for x in gastos if _g(x, "fecha") and not _descartado(x)), key=lambda x: (_g(x, "fecha"), str(_g(x, "id")))):
         k = round(abs(_g(g, "monto", 0) or 0))
         lista = por_monto.get(k)
         if not lista:

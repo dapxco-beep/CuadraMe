@@ -8,6 +8,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { tipoEfectivo } from '../lib/contabilidad'
+import { direccionDe, etiquetaTraslado, signoDe } from '../lib/traslados'
 import { esAuto, claveComercio } from '../lib/comercio'
 import { useModoPantalla } from '../lib/useAncho'
 import { guardarCacheLista, leerCacheLista, parchearEnCaches, quitarDeCaches, useEstadoLista } from '../lib/useEstadoLista'
@@ -50,6 +51,8 @@ const FilaMovimiento = memo(function FilaMovimiento({
   const larga = useRef(false)
   const inicio = useRef({ x: 0, y: 0 })
   const esTransfer = m.fuente === 'transferencia_interna'
+  const direccion = direccionDe(m) // todo movimiento tiene dirección: el signo y el color la siguen
+  const traslado = etiquetaTraslado(m)
 
   function cancelar() {
     clearTimeout(timer.current)
@@ -102,7 +105,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
     >
       <span
         className={`absolute -left-5 top-[18px] w-2.5 h-2.5 rounded-full border-2 border-paper ${
-          m.tipo === 'income' ? 'bg-accent-2' : 'bg-ink'
+          direccion === 'income' ? 'bg-accent-2' : 'bg-ink'
         }`}
       />
       <div className="flex items-start gap-3">
@@ -138,6 +141,11 @@ const FilaMovimiento = memo(function FilaMovimiento({
                 <ChevronDown size={12} aria-hidden="true" />
               </button>
             )}
+            {traslado && !esTransfer && (
+              <span className="ml-2 text-[11px] font-semibold text-ink-soft rounded-full bg-paper-raised border border-line px-2 py-0.5">
+                {traslado}
+              </span>
+            )}
             {esAuto(m) && <InsigniaAuto movimiento={m} />}
             {botonConfirmar && esAuto(m) && (
               <button
@@ -157,8 +165,8 @@ const FilaMovimiento = memo(function FilaMovimiento({
           aria-hidden="true"
           className="pt-2.5 shrink-0"
         >
-          <span className={`text-[15px] font-bold ${m.tipo === 'income' ? 'text-accent-2' : m.tipo === 'transfer' ? 'text-ink-soft' : 'text-ink'}`}>
-            {m.tipo === 'income' ? '+' : m.tipo === 'expense' ? '-' : ''}
+          <span className={`text-[15px] font-bold ${direccion === 'income' ? 'text-accent-2' : direccion ? 'text-ink' : 'text-ink-soft'}`}>
+            {signoDe(m)}
             {formatMoneda(m.monto, moneda)}
           </span>
         </Link>

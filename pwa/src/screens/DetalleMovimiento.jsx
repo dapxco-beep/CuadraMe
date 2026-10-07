@@ -10,8 +10,18 @@ import { useDialogos } from '../lib/DialogosContext'
 import { esAuto } from '../lib/comercio'
 import { HojaCambiarCategoria, InsigniaAuto } from '../components/CategorizacionAuto'
 import { parchearEnCaches, quitarDeCaches } from '../lib/useEstadoLista'
+import {
+  cambiosEsReal,
+  cambiosMarcarTraslado,
+  candidatosContraparte,
+  esPosibleTraslado,
+  esTrasladoConfirmado,
+  etiquetaTipo,
+  signoDe,
+  direccionDe,
+} from '../lib/traslados'
 
-const ETIQUETA_TIPO = { income: 'Ingreso', expense: 'Gasto', transfer: 'Transferencia' }
+const ETIQUETA_TIPO = { income: 'Ingreso', expense: 'Gasto', transfer: 'Traslado ↔' }
 
 function fechaParaInput(fechaISO) {
   return fechaISO.slice(0, 10)
@@ -42,6 +52,64 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
   }, [id])
 
   const [cambiandoCategoria, setCambiandoCategoria] = useState(false)
+  const [contrapartes, setContrapartes] = useState(null) // null = sin buscar; [] = no hay candidatas
+  const [trasladando, setTrasladando] = useState(false)
+
+  // Guarda un cambio de traslado (categoría neutral / marca de "real") y refresca lista y detalle.
+  async function aplicarTraslado(cambios, mensaje) {
+    setTrasladando(true)
+    try {
+      const actualizado = await api.editarMovimiento(id, cambios)
+      setMovimiento(actualizado)
+      parchearEnCaches(actualizado)
+      onCambio?.(actualizado)
+      setContrapartes(null)
+      avisar(mensaje, 'ok')
+    } catch (err) {
+      avisar(err.message || 'No se pudo guardar')
+    } finally {
+      setTrasladando(false)
+    }
+  }
+
+  // Busca la otra pata: dirección opuesta, mismo monto, otra cuenta (misma moneda), a <= 2 días.
+  async function buscarContraparte() {
+    setTrasladando(true)
+    try {
+      const f = new Date(movimiento.fecha)
+      const dia = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+      const desde = dia(new Date(f.getTime() - 2 * 86400000))
+      const hasta = dia(new Date(f.getTime() + 2 * 86400000))
+      const lista = await api.movimientos(200, 0, { desde, hasta })
+      const moneda = (cid) => cuentas.find((c) => c.id === cid)?.moneda
+      setContrapartes(
+        candidatosContraparte(movimiento, lista).filter((o) => moneda(o.cuenta_id) === moneda(movimiento.cuenta_id))
+      )
+    } catch (err) {
+      avisar(err.message || 'No se pudo buscar')
+    } finally {
+      setTrasladando(false)
+    }
+  }
+
+  // Vincular = las dos patas quedan como traslado propio (neutral en ingresos y gastos).
+  async function vincular(otro) {
+    setTrasladando(true)
+    try {
+      const propio = await api.editarMovimiento(id, cambiosMarcarTraslado(movimiento))
+      const ajeno = await api.editarMovimiento(otro.id, cambiosMarcarTraslado(otro))
+      setMovimiento(propio)
+      parchearEnCaches(propio)
+      parchearEnCaches(ajeno)
+      onCambio?.(propio)
+      setContrapartes(null)
+      avisar('Vinculados: ya no cuentan como ingreso ni gasto', 'ok')
+    } catch (err) {
+      avisar(err.message || 'No se pudo vincular')
+    } finally {
+      setTrasladando(false)
+    }
+  }
 
   async function confirmarCategoria() {
     try {
@@ -147,7 +215,9 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
     )
   }
 
-  const signo = movimiento.tipo === 'income' ? '+' : movimiento.tipo === 'expense' ? '-' : ''
+  const signo = signoDe(movimiento)
+  const direccion = direccionDe(movimiento)
+  const puedeMarcar = !esTransferencia && (movimiento.tipo === 'income' || movimiento.tipo === 'expense')
   const campo =
     'w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm outline-none focus:border-accent'
 
@@ -180,7 +250,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
         >
           {esTransferencia ? '🔁' : iconoDe(movimiento.categoria)}
         </span>
-        <p className={`text-4xl font-bold ${movimiento.tipo === 'income' ? 'text-accent' : 'text-ink'}`}>
+        <p className={`text-4xl font-bold ${direccion === 'income' ? 'text-accent' : 'text-ink'}`}>
           {signo}
           {formatMoneda(movimiento.monto, cuenta?.moneda)}
         </p>
@@ -309,7 +379,89 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           )}
           {cuenta && <Fila label="Cuenta" valor={cuenta.nombre} />}
           <Fila label="Fecha" valor={new Date(movimiento.fecha).toLocaleString('es-CO')} />
-          <Fila label="Tipo" valor={ETIQUETA_TIPO[movimiento.tipo] || movimiento.tipo} />
+          <Fila label="Tipo" valor={etiquetaTipo(movimiento)} />
+          {puedeMarcar && (
+            <div className="px-4 py-3.5">
+              {esPosibleTraslado(movimiento) && (
+                <p className="text-sm mb-3">
+                  Parece un movimiento entre tus propias cuentas. Si lo es, no cuenta como ingreso ni gasto.
+                </p>
+              )}
+              <div className="flex flex-col gap-2">
+                {esTrasladoConfirmado(movimiento) ? (
+                  <button
+                    onClick={() =>
+                      aplicarTraslado(
+                        cambiosEsReal(movimiento),
+                        direccion === 'income' ? 'Listo: cuenta como ingreso real' : 'Listo: cuenta como gasto real'
+                      )
+                    }
+                    disabled={trasladando}
+                    className="rounded-xl border border-line py-2.5 text-sm font-semibold disabled:opacity-60"
+                  >
+                    {direccion === 'income' ? 'Es un ingreso real' : 'Es un gasto real'}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => aplicarTraslado(cambiosMarcarTraslado(movimiento), 'Marcado como traslado entre tus cuentas')}
+                      disabled={trasladando}
+                      className="rounded-xl bg-accent text-white py-2.5 text-sm font-semibold disabled:opacity-60"
+                    >
+                      Marcar como traslado entre mis cuentas
+                    </button>
+                    {esPosibleTraslado(movimiento) && (
+                      <button
+                        onClick={() =>
+                          aplicarTraslado(
+                            cambiosEsReal(movimiento),
+                            direccion === 'income' ? 'Listo: cuenta como ingreso real' : 'Listo: cuenta como gasto real'
+                          )
+                        }
+                        disabled={trasladando}
+                        className="rounded-xl border border-line py-2.5 text-sm font-semibold disabled:opacity-60"
+                      >
+                        {direccion === 'income' ? 'Es un ingreso real' : 'Es un gasto real'}
+                      </button>
+                    )}
+                  </>
+                )}
+                <button
+                  onClick={buscarContraparte}
+                  disabled={trasladando}
+                  className="rounded-xl border border-line py-2.5 text-sm font-semibold disabled:opacity-60"
+                >
+                  Vincular con su contraparte
+                </button>
+              </div>
+              {contrapartes && contrapartes.length === 0 && (
+                <p className="text-xs text-ink-soft mt-3">
+                  No encontré el movimiento contrario (mismo monto, otra cuenta, a menos de 2 días).
+                </p>
+              )}
+              {contrapartes && contrapartes.length > 0 && (
+                <ul className="mt-3 space-y-2">
+                  {contrapartes.map((o) => (
+                    <li key={o.id} className="flex items-center gap-3 rounded-xl border border-line px-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm truncate">{o.descripcion}</p>
+                        <p className="text-xs text-ink-soft">
+                          {cuentas.find((c) => c.id === o.cuenta_id)?.nombre} · {new Date(o.fecha).toLocaleDateString('es-CO')}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => vincular(o)}
+                        disabled={trasladando}
+                        className="text-sm font-semibold text-accent shrink-0 disabled:opacity-60"
+                      >
+                        Vincular
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           <Fila label="Origen" valor={movimiento.fuente} />
           {movimiento.notas && !esTransferencia && <Fila label="Notas" valor={movimiento.notas} />}
         </div>
