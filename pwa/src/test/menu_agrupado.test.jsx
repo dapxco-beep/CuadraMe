@@ -53,7 +53,7 @@ describe('navegacion.js (fuente única)', () => {
     expect(etiquetas('dinero')).toEqual(['Cuentas', 'Deudas', 'Recurrentes', 'Impuestos'])
     expect(etiquetas('datos')).toContain('Traer movimientos')
     expect(ITEMS_MAS.find((i) => i.label === 'Traer movimientos').to).toBe('/sincronizacion')
-    expect(etiquetas('ajustes')).toEqual(['Perfil', 'Conexiones', 'Privacidad', 'Conectar dispositivo'])
+    expect(etiquetas('ajustes')).toEqual(['Perfil', 'Conexiones', 'Ayuda', 'Privacidad', 'Conectar dispositivo'])
   })
 
   it('la búsqueda tolera acentos y mayúsculas, y encuentra por palabras clave', () => {

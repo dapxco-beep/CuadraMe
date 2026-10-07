@@ -110,7 +110,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
         </button>
         {historial && (
           <ul className="px-4 py-3 space-y-1.5 text-xs text-ink-soft">
-            {historial.length === 0 && <li>Aún no hay registros.</li>}
+            {historial.length === 0 && <li>Aún no has aceptado ni cancelado ninguna autorización.</li>}
             {historial.map((h) => (
               <li key={h.id}>
                 {formatearFechaCO(h.fecha_co)} · {FINALIDADES[h.finalidad]?.titulo || h.finalidad} · {h.aceptado ? 'autorizó' : 'revocó'} (v{h.version})

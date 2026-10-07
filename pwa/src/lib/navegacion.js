@@ -1,6 +1,6 @@
 import {
   Bot, CalendarCheck, CreditCard, Database, Gift, GraduationCap, Home, Landmark, Lightbulb, List, PieChart, PiggyBank,
-  Plug, Receipt, RefreshCw, Repeat, Settings, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Sprout, Tag,
+  LifeBuoy, Plug, Receipt, RefreshCw, Repeat, Settings, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Sprout, Tag,
   TrendingUp, User, Wallet, Mail, FileCheck, FileSpreadsheet,
 } from 'lucide-react'
 
@@ -71,6 +71,7 @@ export const GRUPOS = [
     items: [
       { to: '/perfil', icon: User, label: 'Perfil', palabras: 'cuenta usuario pin seguridad tema notificaciones' },
       { to: '/conexiones', icon: Plug, label: 'Conexiones', palabras: 'gmail estado correo falla' },
+      { to: '/ayuda', icon: LifeBuoy, label: 'Ayuda', palabras: 'preguntas frecuentes dudas soporte como funciona extracto clave pdf gmail primeros pasos' },
       { to: '/legal/privacidad', icon: ShieldCheck, label: 'Privacidad', palabras: 'datos legal terminos politica' },
       { to: '/conectar-dispositivo', icon: Smartphone, label: 'Conectar dispositivo', palabras: 'atajo iphone android wallet celular' },
     ],

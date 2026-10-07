@@ -3,9 +3,10 @@ import { borrarSeguridad } from './seguridad'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-export const MSG_SIN_CONEXION = 'Sin conexión. Revisa tu internet e intenta de nuevo.'
-export const MSG_ERROR_SERVIDOR = 'Tuvimos un problema. Intenta de nuevo en un momento.'
-export const MSG_SESION_VENCIDA = 'Tu sesión venció. Vuelve a iniciar sesión para continuar.'
+import { MSG_ERROR_SERVIDOR, MSG_SESION_VENCIDA, MSG_SIN_CONEXION } from './mensajesBase'
+import { mensajeAmable, mensajePorEstado } from './mensajes'
+
+export { MSG_ERROR_SERVIDOR, MSG_SESION_VENCIDA, MSG_SIN_CONEXION }
 
 // fetch() falla con un TypeError ("Failed to fetch", "Load failed", "NetworkError...")
 // cuando no hay red o el servidor no responde. Ese texto en inglés no le sirve a nadie.
@@ -173,7 +174,8 @@ async function pedir(path, { method = 'GET', body, auth = true, headers: extra }
         : Array.isArray(d)
           ? String(d[0]?.msg || '').replace(/^Value error, /, '')
           : d?.mensaje
-    const err = new Error(mensaje || `Error ${res.status}`)
+    // Texto técnico del servidor («Not Found», «jwt expired»…) se traduce; si no dijo nada, va por código.
+    const err = new Error(mensaje ? mensajeAmable(mensaje, { status: res.status }) : mensajePorEstado(res.status))
     err.status = res.status
     err.detalle = d
     throw err
@@ -191,7 +193,7 @@ async function descargarArchivo(path, nombreArchivo) {
     await cerrarSesionVencida()
     throw new Error(MSG_SESION_VENCIDA)
   }
-  if (!res.ok) throw new Error(res.status >= 500 ? MSG_ERROR_SERVIDOR : `Error ${res.status}`)
+  if (!res.ok) throw new Error(mensajePorEstado(res.status))
 
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)

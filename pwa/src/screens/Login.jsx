@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { EncabezadoMarca } from '../brand/Marca'
+import { mensajeDeError } from '../lib/mensajes'
 
 export default function Login() {
   const { login, registro, loginConGoogle, recuperarPassword } = useAuth()
@@ -33,7 +34,7 @@ export default function Login() {
         setMensaje('Revisa tu correo para confirmar tu cuenta antes de entrar')
       }
     } catch (err) {
-      setError(err.message || 'Algo salió mal')
+      setError(mensajeDeError(err, 'No pudimos continuar. Intenta de nuevo.'))
     } finally {
       setCargando(false)
     }
@@ -48,7 +49,7 @@ export default function Login() {
       // Mismo mensaje exista o no el correo, para no revelar quién tiene cuenta.
       setMensaje('Si ese correo tiene cuenta, te enviamos un enlace para crear una contraseña nueva')
     } catch (err) {
-      setError(err.message || 'No se pudo enviar el correo')
+      setError(mensajeDeError(err, 'No pudimos enviar el correo. Intenta de nuevo.'))
     }
   }
 
@@ -61,7 +62,7 @@ export default function Login() {
     try {
       await loginConGoogle()
     } catch (err) {
-      setError(err.message || 'No se pudo iniciar con Google')
+      setError(mensajeDeError(err, 'No pudimos entrar con Google. Intenta de nuevo.'))
     }
   }
 

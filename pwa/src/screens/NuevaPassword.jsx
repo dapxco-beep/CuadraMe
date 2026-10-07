@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../lib/AuthContext'
+import { mensajeDeError } from '../lib/mensajes'
 
 // Se muestra cuando el usuario entra desde el enlace "restablecer contraseña"
 // del correo: Supabase ya lo dejó con sesión, solo falta que escriba la nueva.
@@ -19,7 +20,7 @@ export default function NuevaPassword() {
     try {
       await cambiarPassword(password)
     } catch (err) {
-      setError(err.message || 'No se pudo cambiar la contraseña')
+      setError(mensajeDeError(err, 'No pudimos cambiar tu contraseña. Intenta de nuevo.'))
     } finally {
       setCargando(false)
     }

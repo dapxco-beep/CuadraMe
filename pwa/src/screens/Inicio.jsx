@@ -14,6 +14,7 @@ import { useCategorias } from '../lib/CategoriasContext'
 import MazoCuentas from '../components/MazoCuentas'
 import ArbolFinanciero from '../components/ArbolFinanciero'
 import CarruselDescubrir from '../components/CarruselDescubrir'
+import AsistentePrimerUso from '../components/AsistentePrimerUso'
 import { etapaPorScore } from '../lib/saludFinanciera'
 import ResumenSaldo from '../components/ResumenSaldo'
 import PreguntaMovimiento from '../components/PreguntaMovimiento'
@@ -193,6 +194,9 @@ export default function Inicio() {
           <span className="text-xs font-semibold text-danger shrink-0">Ver estado</span>
         </Link>
       )}
+
+      {/* Primeros pasos: solo mientras falte algo (y no se haya ocultado); luego vive en Perfil */}
+      <AsistentePrimerUso variante="inicio" />
 
       {/* ≥1024 px: dos columnas (lo principal | el resto plegado). En teléfono los wrappers
           no existen visualmente y el orden es: héroe, dos acciones, secciones. */}

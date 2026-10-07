@@ -26,6 +26,7 @@ import Hoja from '../components/Hoja'
 import PasosCentro from '../components/PasosCentro'
 import SubirArchivos from '../components/SubirArchivos'
 import Conexiones from './Conexiones'
+import { mensajeAmable } from '../lib/mensajes'
 
 // "Traer movimientos": UN solo centro para todo lo que trae movimientos a CuadraMe.
 //   Arriba: estado y «Sincronizar todo».  Luego tres bloques plegables con contador:
@@ -233,7 +234,7 @@ export default function Sincronizacion() {
         onProgreso: (p) => montado.current && setProgreso({ leidos: p.leidos, total_estimado: p.total_estimado }),
       })
       if (!r?.ok) {
-        if (silencioso !== true) setErrorSync(r?.error || 'No se pudo sincronizar')
+        if (silencioso !== true) setErrorSync(mensajeAmable(r?.error, { porDefecto: 'No pudimos traer tus correos. Intenta de nuevo.' }))
       } else {
         const leidos = r.leidos ? `Leí ${r.leidos} correos. ` : ''
         if (silencioso !== true) setResumen(`${leidos}${resumenSync(r)}`)
@@ -241,7 +242,7 @@ export default function Sincronizacion() {
         await cargar()
       }
     } catch (err) {
-      if (silencioso !== true) setErrorSync(err.message || 'Error al sincronizar')
+      if (silencioso !== true) setErrorSync(err.message || 'No pudimos traer tus movimientos. Intenta de nuevo.')
     } finally {
       if (montado.current) setProgreso(null)
     }
@@ -582,7 +583,7 @@ export default function Sincronizacion() {
               )}
 
               {pendientes.length === 0 ? (
-                <AlDia texto={conciliados.length ? 'No tienes extractos pendientes' : 'Aún no hay extractos en tu correo'} />
+                <AlDia texto={conciliados.length ? 'No tienes extractos pendientes' : 'Aún no encontramos extractos en tu correo. Cuando tu banco te envíe uno, aparecerá aquí'} />
               ) : (
                 <div className="flex flex-col gap-4">
                   {agruparPorBanco(visibles).map((g) => (
