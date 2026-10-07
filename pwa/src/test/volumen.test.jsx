@@ -1,7 +1,7 @@
 // Volumen realista con datos 100% sintéticos (semilla fija; nada real). Comprueba que la lista de
 // Movimientos no pinta las ~1.500 filas a la vez y que seguir usándola (buscar, seleccionar todo) funciona.
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -50,7 +50,11 @@ import Movimientos from '../screens/Movimientos'
 beforeEach(() => {
   vaciarCachesListas()
   window.sessionStorage.clear()
-  api.movimientos = vi.fn((limite, desplazamiento) => Promise.resolve(DATOS.slice(desplazamiento, desplazamiento + limite)))
+  // El servidor filtra por texto (q) igual que el real; sin esto la búsqueda nunca encontraría lo no cargado
+  api.movimientos = vi.fn((limite, desplazamiento, consulta = {}) => {
+    const base = consulta.q ? DATOS.filter((m) => m.descripcion.toLowerCase().includes(consulta.q.toLowerCase())) : DATOS
+    return Promise.resolve(base.slice(desplazamiento, desplazamiento + limite))
+  })
   api.conteoPorRevisar = vi.fn().mockResolvedValue({ auto: 0, otros: 0, total: 0 })
 })
 
@@ -85,18 +89,26 @@ describe('Movimientos con volumen (1.500 sintéticos)', () => {
     expect(screen.queryByText('Compra sintética 1400')).toBeNull()
   })
 
-  it('cargar todo y buscar sigue funcionando sobre los 1.500', async () => {
+  it('con todo cargado, buscar filtra sobre los 1.500 aunque no estén pintados', async () => {
+    // "Volver" con 1.500 cargados: se piden las 8 páginas de una vez (sin 7 clics ni teclear letra a letra)
+    window.sessionStorage.setItem('cuadrame:lista:/movimientos', JSON.stringify({ scroll: 0, ventana: 0, cantidad: TOTAL }))
     montar()
     await screen.findByText('Compra sintética 0')
-    for (let i = 0; i < 7; i++) {
-      const antes = api.movimientos.mock.calls.length
-      await userEvent.click(await screen.findByText('Cargar movimientos anteriores'))
-      await waitFor(() => expect(api.movimientos.mock.calls.length).toBeGreaterThan(antes))
+    await waitFor(() => expect(api.movimientos).toHaveBeenCalledTimes(Math.ceil(TOTAL / 200)))
+    expect(screen.queryByText('Compra sintética 1499')).toBeNull() // está en los datos, pero no pintada
+    // Se escribe en el buscador: pasa a la URL tras 300 ms de pausa (debounce). Con reloj falso no
+    // dependemos de la velocidad de la máquina.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      fireEvent.change(screen.getByLabelText('Buscar movimiento'), { target: { value: 'sintética 1499' } })
+      await act(async () => {
+        vi.advanceTimersByTime(400)
+      })
+    } finally {
+      vi.useRealTimers()
     }
-    expect(document.querySelectorAll('[data-fila]').length).toBeLessThan(120)
-    await userEvent.type(screen.getByLabelText('Buscar movimiento'), 'sintética 1499')
-    expect(await screen.findByText('Compra sintética 1499', {}, { timeout: 3000 })).toBeInTheDocument()
-  }, 30000)
+    expect(await screen.findByText('Compra sintética 1499', {}, { timeout: 10000 })).toBeInTheDocument()
+  })
 
   it('"Seleccionar todo lo filtrado" cuenta los 1.500 aunque no estén pintados', async () => {
     montar()
