@@ -2,6 +2,8 @@
 // eje Y, periodos de fecha y selección de meses de la tendencia. Se prueban en
 // src/test/informes.test.jsx.
 
+import { formatPorcentaje } from './format'
+
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 export const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -121,7 +123,5 @@ export function cuadriculaSemanas(dias) {
 }
 
 export function pctTexto(x) {
-  if (x === null || x === undefined) return '—'
-  const r = Math.round(x * 10) / 10
-  return `${r > 0 ? '+' : ''}${String(r).replace('.', ',')} %`
+  return formatPorcentaje(x, { signo: true })
 }

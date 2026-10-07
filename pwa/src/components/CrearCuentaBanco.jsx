@@ -6,6 +6,7 @@ import SelectorCuenta from './SelectorCuenta'
 import Hoja from './Hoja'
 import CamposCuentaNueva, { CAMPOS_VACIOS } from './CamposCuentaNueva'
 import { datosCuentaNueva, validarTarjetaNueva } from '../lib/cuentaNueva'
+import { useAlertaVisible } from '../lib/useAlertaVisible'
 
 // Hoja para crear la cuenta de un banco detectado ("Crear cuenta Nequi"): usa el
 // mismo selector de cuenta de siempre, con el banco ya elegido.
@@ -19,6 +20,7 @@ export default function CrearCuentaBanco({ banco, onClose, onCreada }) {
   const [campos, setCampos] = useState(CAMPOS_VACIOS)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const refError = useAlertaVisible(error)
 
   async function crear() {
     setError('')
@@ -59,7 +61,7 @@ export default function CrearCuentaBanco({ banco, onClose, onCreada }) {
           />
         </div>
         <CamposCuentaNueva tipo={tipo} valores={campos} onCambio={setCampos} />
-        {error && <p className="text-sm text-danger mb-3" role="alert">{error}</p>}
+        {error && <p ref={refError} className="text-sm text-danger mb-3" role="alert">{error}</p>}
         <button
           onClick={crear}
           disabled={guardando}

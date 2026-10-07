@@ -171,7 +171,7 @@ describe('Wrapped', () => {
     const d = construirDiapositivas(DATOS)
     expect(d.map((s) => s.id)).toEqual(['gasto', 'categoria', 'ahorro', 'racha', 'comparacion'])
     expect(d[1].valor).toBe('Mercado')
-    expect(d[4].valor).toContain('100%')
+    expect(d[4].valor).toContain('100 %')
     expect(nombreMes('2026-09')).toBe('Septiembre')
   })
 

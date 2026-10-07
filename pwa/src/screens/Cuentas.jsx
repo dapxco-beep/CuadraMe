@@ -19,6 +19,7 @@ import CamposCuentaNueva, { CAMPOS_VACIOS } from '../components/CamposCuentaNuev
 import { datosCuentaNueva, validarTarjetaNueva } from '../lib/cuentaNueva'
 import BotonOjo from '../components/BotonOjo'
 import Hoja from '../components/Hoja'
+import { useAlertaVisible } from '../lib/useAlertaVisible'
 
 const tipos = [
   { id: 'ahorro', label: 'Ahorros' },
@@ -42,7 +43,11 @@ export default function Cuentas() {
   function cargarResumen() {
     Promise.resolve().then(() => api.resumenCuentas()).then(setResumen).catch(() => {})
   }
-  useEffect(cargarResumen, [])
+  // El encabezado (saldo total / deudas de tarjeta) se vuelve a pedir cada vez que el contexto
+  // recarga las cuentas: crear, editar, eliminar o ajustar un saldo lo refresca sin recargar la página.
+  useEffect(() => {
+    if (!cargando) cargarResumen()
+  }, [cuentas, cargando])
 
   // Abrir el detalle desde la lista agrega una entrada de historial (atrás lo cierra, como
   // en cualquier hoja); cerrarlo con X/Escape/tocar fuera deshace esa entrada. Si se llegó
@@ -143,8 +148,7 @@ export default function Cuentas() {
           cuentaId={detalleId}
           onClose={cerrarDetalle}
           onCambio={() => {
-            recargar()
-            cargarResumen()
+            recargar() // al cambiar las cuentas, el efecto de arriba refresca también el resumen
           }}
         />
       )}
@@ -189,6 +193,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
   const [guardando, setGuardando] = useState(false)
   const [eliminando, setEliminando] = useState(false)
   const [error, setError] = useState('')
+  const refError = useAlertaVisible(error)
   const { confirmar } = useDialogos()
 
   async function guardar() {
@@ -312,7 +317,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
         </p>
       )}
 
-      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+      {error && <p ref={refError} role="alert" className="text-sm text-danger mb-3">{error}</p>}
 
       <button
         onClick={guardar}

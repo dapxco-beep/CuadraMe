@@ -80,7 +80,7 @@ describe('Tarjeta de crédito en Cuentas', () => {
     montar(<Cuentas />)
     const barra = await screen.findByRole('progressbar', { name: 'Utilización del cupo' })
     expect(barra).toHaveAttribute('aria-valuenow', '85')
-    expect(screen.getByText('85%')).toBeInTheDocument()
+    expect(screen.getByText('85 %')).toBeInTheDocument()
     expect(screen.getByText(/más del 80%/)).toBeInTheDocument()
     expect(screen.getByText('10 oct')).toBeInTheDocument()
     expect(screen.getByText('25 oct')).toBeInTheDocument()

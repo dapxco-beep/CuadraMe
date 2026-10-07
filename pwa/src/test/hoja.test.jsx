@@ -128,3 +128,26 @@ describe('Hoja', () => {
     expect(screen.getByRole('dialog', { name: 'Abajo' })).toBeInTheDocument()
   })
 })
+
+describe('Hoja dentro de una pantalla animada', () => {
+  it('se monta en document.body, no dentro del contenedor con transform', async () => {
+    render(
+      <div className="screen-enter" data-testid="pantalla">
+        <Demo />
+      </div>
+    )
+    await userEvent.click(screen.getByText('Abrir'))
+    const dialogo = screen.getByRole('dialog', { name: 'Nueva meta' })
+    expect(screen.getByTestId('pantalla').contains(dialogo)).toBe(false)
+    expect(dialogo.closest('.hoja-fondo').parentElement).toBe(document.body)
+  })
+
+  it('.screen-enter y .stagger-item no dejan fill-mode both/forwards (transform permanente)', async () => {
+    const fs = await import('node:fs')
+    const css = fs.readFileSync(`${process.cwd()}/src/index.css`, 'utf8')
+    for (const clase of ['screen-enter', 'stagger-item']) {
+      const bloque = css.match(new RegExp(`\\.${clase}\\s*\\{[^}]*\\}`))[0].replace(/\/\*[\s\S]*?\*\//g, '')
+      expect(bloque).not.toMatch(/\b(both|forwards)\b/)
+    }
+  })
+})

@@ -203,7 +203,15 @@ export default function CuentasAmigos() {
                 {m.simplificado.map((p, i) => (
                   <li key={i} className="text-sm flex justify-between gap-2 rounded-xl bg-paper-raised border border-line px-3 py-2">
                     <span>
-                      <strong>{p.de_nombre}</strong> le paga a <strong>{p.a_nombre}</strong>
+                      {p.de_nombre === 'Tú' ? (
+                        <>
+                          <strong>Tú</strong> le pagas a <strong>{p.a_nombre}</strong>
+                        </>
+                      ) : (
+                        <>
+                          <strong>{p.de_nombre}</strong> le paga a <strong>{p.a_nombre === 'Tú' ? 'ti' : p.a_nombre}</strong>
+                        </>
+                      )}
                     </span>
                     <span className="tabular-nums font-medium">{formatMoneda(p.monto, m.moneda)}</span>
                   </li>

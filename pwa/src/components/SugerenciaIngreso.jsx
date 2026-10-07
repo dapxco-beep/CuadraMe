@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { api } from '../lib/api'
-import { formatCOP } from '../lib/format'
+import { formatCOP, formatPorcentaje } from '../lib/format'
 import Hoja from './Hoja'
 
 // Hoja inferior: cómo repartir un ingreso (gastos fijos, ahorro/metas, gasto libre
@@ -81,13 +82,13 @@ export default function SugerenciaIngreso({ monto: montoInicial, cuentaId, onClo
           <p className="text-sm mb-3">
             De <span className="font-bold">{formatCOP(sug.monto)}</span>, te sugiero:
           </p>
-          <Fila etiqueta="Gastos fijos" detalle={`${Math.round((sug.necesidades / sug.monto) * 100)}%`} valor={sug.necesidades} />
-          <Fila etiqueta="Ahorro" detalle={`${Math.round((sug.ahorro_total / sug.monto) * 100)}%`} valor={sug.ahorro_total} />
+          <Fila etiqueta="Gastos fijos" detalle={formatPorcentaje((sug.necesidades / sug.monto) * 100, { decimales: 0 })} valor={sug.necesidades} />
+          <Fila etiqueta="Ahorro" detalle={formatPorcentaje((sug.ahorro_total / sug.monto) * 100, { decimales: 0 })} valor={sug.ahorro_total} />
           {metas.map((m) => (
             <Fila key={m.id} etiqueta={`→ ${m.nombre}`} valor={m.monto} sub />
           ))}
           {sug.ahorro_libre > 0 && <Fila etiqueta="→ Ahorro libre" valor={sug.ahorro_libre} sub />}
-          <Fila etiqueta="Gasto libre" detalle={`${Math.round((sug.gasto_libre / sug.monto) * 100)}%`} valor={sug.gasto_libre} />
+          <Fila etiqueta="Gasto libre" detalle={formatPorcentaje((sug.gasto_libre / sug.monto) * 100, { decimales: 0 })} valor={sug.gasto_libre} />
           {sug.sobres.map((s) => (
             <Fila key={s.categoria} etiqueta={`→ Sobre ${s.categoria}`} valor={s.monto} sub />
           ))}
@@ -112,6 +113,13 @@ export default function SugerenciaIngreso({ monto: montoInicial, cuentaId, onClo
             >
               {aplicando ? 'Apartando...' : 'Apartar para mis metas'}
             </button>
+          )}
+          {metas.length === 0 && (
+            // Hoy la única acción que mueve dinero es apartar para metas (api.aportarMeta);
+            // sin metas no hay nada que aplicar, así que se explica y se ofrece crear una.
+            <p className="text-xs text-ink-soft text-center">
+              Aún no tienes metas a las que apartar. <Link to="/metas" onClick={onClose} className="text-accent font-medium">Crear una meta</Link>
+            </p>
           )}
           <button onClick={onClose} className="w-full text-sm text-ink-soft font-medium py-2">
             Ahora no

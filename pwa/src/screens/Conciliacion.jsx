@@ -14,6 +14,8 @@ import SubidaMultiple from '../components/SubidaMultiple'
 import ZonaSubida from '../components/ZonaSubida'
 import { useDialogos } from '../lib/DialogosContext'
 import { tipoDeArchivo } from '../lib/subidaMultiple'
+import { nombreMes } from '../lib/sincronizacion'
+import { clavesFilas, filasAImportar, gemelasFaltantes } from '../lib/conciliacionClaves'
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -82,7 +84,11 @@ export default function Conciliacion() {
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: CATEGORIAS } = useCategorias()
   const { avisar } = useDialogos()
-  const [cuentaId, setCuentaId] = useState(cuentas[0]?.id || '')
+  // Desde Sincronización ("Subir el extracto de este mes") llegan la cuenta y el mes preseleccionados.
+  const cuentaDeEstado = location.state?.cuentaId
+  const [cuentaId, setCuentaId] = useState(
+    (cuentaDeEstado && cuentas.some((c) => c.id === cuentaDeEstado) ? cuentaDeEstado : '') || cuentas[0]?.id || ''
+  )
   const [password, setPassword] = useState('')
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState('')
@@ -217,6 +223,13 @@ export default function Conciliacion() {
             Detectamos automáticamente lo que falta por registrar.
           </p>
 
+          {location.state?.mes && (
+            <p role="status" className="rounded-2xl bg-accent-soft text-sm font-medium px-4 py-3 mb-4">
+              Sube el extracto de <span className="capitalize">{nombreMes(location.state.mes)}</span>
+              {cuentas.find((c) => c.id === cuentaId) ? ` de ${cuentas.find((c) => c.id === cuentaId).nombre}` : ''}.
+            </p>
+          )}
+
           {cuentas.length > 1 && (
             <div className="mb-3">
               <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Cuenta</p>
@@ -307,13 +320,14 @@ export default function Conciliacion() {
           {SECCIONES.map((sec) => {
             const items = resultado.review.filter((m) => sec.estados.includes(m.estado))
             if (items.length === 0) return null
+            const claves = clavesFilas(items)
             return (
           <section key={sec.id} aria-label={sec.titulo} className="mb-4">
             <h2 className="text-sm font-semibold">{sec.titulo} ({items.length})</h2>
             {sec.ayuda && <p className="text-xs text-ink-soft mt-0.5 mb-2">{sec.ayuda}</p>}
           <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden mt-2">
-            {items.map((m) => (
-              <div key={m.fingerprint} className="px-4 py-3.5">
+            {items.map((m, idx) => (
+              <div key={claves[idx]} className="px-4 py-3.5">
                 <label className="flex items-center gap-3">
                   {m.estado === 'faltante' && (
                     <input
@@ -327,6 +341,9 @@ export default function Conciliacion() {
                     <p className="text-sm font-medium truncate">{m.descripcion}</p>
                     <p className={`text-xs ${estadoColor[m.estado]}`}>
                       {m.fecha} · {estadoLabel[m.estado]}
+                      {m.estado === 'faltante' && gemelasFaltantes(resultado.review, m.fingerprint) > 1
+                        ? ` · idéntico a otros ${gemelasFaltantes(resultado.review, m.fingerprint) - 1} (se importan juntos)`
+                        : ''}
                       {m.estado === 'completado' && m.categoria_sugerida ? ` · ${m.categoria_sugerida}` : ''}
                     </p>
                     {m.estado === 'completado' && m.descripcion_registrada && m.descripcion_registrada !== m.descripcion && (
@@ -395,7 +412,7 @@ export default function Conciliacion() {
               disabled={seleccionados.size === 0 || importando}
               className="flex-1 bg-ink text-paper rounded-2xl py-3.5 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              <Check size={16} /> {importando ? 'Importando...' : `Importar (${seleccionados.size})`}
+              <Check size={16} /> {importando ? 'Importando...' : `Importar (${filasAImportar(resultado.review, seleccionados)})`}
             </button>
           </div>
         </div>

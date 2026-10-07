@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeftRight, CalendarClock, ChevronRight, HandCoins, PieChart, Plus, SlidersHorizontal, TrendingUp, X } from 'lucide-react'
 import { EstadoVacio, CargandoMarca } from '../brand/Marca'
-import { formatCOP } from '../lib/format'
+import { formatCOP, formatPorcentaje } from '../lib/format'
 import { api } from '../lib/api'
 import GraficoTendencia from '../components/GraficoTendencia'
 import { useCategorias } from '../lib/CategoriasContext'
@@ -225,7 +225,7 @@ export default function Presupuesto() {
                   style={{ height: `${Math.max(180, conDatos.length * 76)}px` }}
                 />
                 <p className="text-[11px] text-ink-soft text-center mt-2.5 leading-tight font-medium">
-                  {pctGeneral}% del<br />mes usado
+                  {formatPorcentaje(pctGeneral)} del<br />mes usado
                 </p>
               </div>
 
@@ -265,7 +265,7 @@ export default function Presupuesto() {
                         <BarraProgreso
                           pct={animarBarras ? p.pct : 0}
                           label={`Gastado en ${p.categoria}`}
-                          texto={`${p.pct}% del límite`}
+                          texto={`${formatPorcentaje(p.pct)} del límite`}
                           color={
                             sobrepasado
                               ? 'var(--color-danger)'

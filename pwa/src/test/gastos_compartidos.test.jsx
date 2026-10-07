@@ -181,6 +181,9 @@ describe('Cuentas con amigos', () => {
   it('muestra el saldo, el enlace de WhatsApp y registra un pago', async () => {
     montar('/amigos')
     expect(await screen.findByText('Te debe')).toBeInTheDocument()
+    // gramática: "Ana Gómez le paga a ti", no "a Tú"
+    const fila = screen.getByText('ti', { selector: 'strong' }).closest('li')
+    expect(fila.textContent).toContain('Ana Gómez le paga a ti')
     const enlace = screen.getByRole('link', { name: /Cobrar por WhatsApp/ })
     expect(enlace.getAttribute('href')).toContain('https://wa.me/573001234567?text=')
     await userEvent.click(screen.getByText('Me pagó'))

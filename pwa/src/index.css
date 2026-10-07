@@ -153,14 +153,19 @@ body {
 
 /* Pantalla completa entrando: usar en el contenedor raíz de cada screen */
 .screen-enter {
-  animation: slide-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* backwards (no both): al terminar no queda ningún transform, que volvería relativo
+     cualquier `position: fixed` de los descendientes. */
+  animation: slide-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
+
+/* Hojas abiertas (viven en el body) mientras la app está bloqueada con PIN */
+body[data-bloqueado] .hoja-fondo { visibility: hidden; }
 
 /* Tarjetas/filas que aparecen en cascada dentro de una lista: aplicar
    la misma clase a cada item y dejar que --stagger-i (0,1,2...) escalone
    el delay, o usar .stagger-N para los primeros índices sin variables. */
 .stagger-item {
-  animation: slide-up-sm 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: slide-up-sm 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   /* Tope de 8 pasos: en listas largas el retraso no crece sin límite (350 ms máx.) */
   animation-delay: calc(min(var(--stagger-i, 0), 8) * 35ms);
 }

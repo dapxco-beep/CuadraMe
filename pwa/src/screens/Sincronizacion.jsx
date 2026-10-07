@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { useEstadoLista } from '../lib/useEstadoLista'
 import {
-  ArrowLeft, CheckCheck, CheckCircle2, FileCheck2, FileText, KeyRound, Mail, RefreshCw, Tag, Wallet, X,
+  ArrowLeft, CheckCheck, ChevronLeft, ChevronRight, CheckCircle2, FileCheck2, FileText, KeyRound, Mail, RefreshCw, Tag, Wallet, X,
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
@@ -12,7 +12,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import { haceCuanto, resumenSync, sincronizarTodo } from '../lib/sincronizarGmail'
 import {
   BANCO_SIN_IDENTIFICAR, agruparPorBanco, conciliarExtracto, estadoCelda, ESTADOS_CELDA, nombreMes,
-  resumenTareas, separarExtractos, textoEstadoExtracto,
+  moverMes, nombresDesambiguados, resumenTareas, separarExtractos, textoEstadoExtracto,
 } from '../lib/sincronizacion'
 import CrearCuentaBanco from '../components/CrearCuentaBanco'
 import ExtractosYaConciliados from '../components/ExtractosYaConciliados'
@@ -85,16 +85,29 @@ export default function Sincronizacion() {
     }
   }, [])
 
+  // Ventana de meses: null = los más recientes. Se desplaza con "Antes"/"Después"; si el
+  // servidor no soporta `hasta` (devuelve siempre la misma ventana) se esconden los botones.
+  const [hasta, setHasta] = useState(null)
+  const [ventanaFija, setVentanaFija] = useState(false)
+  const hastaRef = useRef(null)
+
   const cargar = useCallback(async () => {
     try {
       const [est, gm, ex, clave, porCat] = await Promise.all([
-        api.sincronizacionEstado(),
+        api.sincronizacionEstado(hastaRef.current),
         api.gmailEstado().catch(() => null),
         api.extractosCorreo().catch(() => []),
         api.clavePdfEstado().catch(() => ({})),
         api.sincronizacionPorCategorizar(0).catch(() => ({ items: [], total: 0 })),
       ])
       if (!montado.current) return
+      const ultimoMes = est?.meses?.[est.meses.length - 1]?.clave
+      if (hastaRef.current && ultimoMes && ultimoMes !== hastaRef.current) {
+        // el servidor ignoró la ventana pedida: no se puede desplazar
+        hastaRef.current = null
+        setHasta(null)
+        setVentanaFija(true)
+      }
       setEstado(est)
       setGmail(gm)
       setExtractos(Array.isArray(ex) ? ex : [])
@@ -111,6 +124,17 @@ export default function Sincronizacion() {
   useEffect(() => {
     cargar()
   }, [cargar])
+
+  function moverVentana(delta) {
+    const hoy = new Date()
+    const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
+    const nuevo = moverMes(hastaRef.current || mesActual, delta * 6)
+    const siguiente = nuevo >= mesActual ? null : nuevo // null = la ventana más reciente
+    hastaRef.current = siguiente
+    setHasta(siguiente)
+    setDetalle(null)
+    cargar()
+  }
 
   // ── Sincronizar todo (Gmail por lotes) ─────────────────────────────
   const sincronizando = Boolean(progreso)
@@ -263,6 +287,7 @@ export default function Sincronizacion() {
   const sinCuenta = estado?.sin_cuenta || []
   const meses = estado?.meses || []
   const filasCuentas = estado?.cuentas || []
+  const nombreFila = nombresDesambiguados(filasCuentas, cuentas)
   const conectado = Boolean(gmail?.conectado)
   const pct = progreso?.total_estimado ? Math.min(100, Math.round((progreso.leidos / progreso.total_estimado) * 100)) : 0
   const ultima = haceCuanto(estado?.ultima_sync)
@@ -372,6 +397,18 @@ export default function Sincronizacion() {
           <p className="text-sm text-ink-soft">Aún no tienes cuentas.</p>
         ) : (
           <div className="rounded-2xl bg-paper-raised border border-line p-3">
+            {!ventanaFija && (
+              <div className="flex items-center justify-between mb-2" aria-label="Ventana de meses">
+                <button onClick={() => moverVentana(-1)} className="flex items-center gap-1 text-xs font-semibold text-accent min-h-[40px] pr-3">
+                  <ChevronLeft size={14} aria-hidden="true" /> Meses anteriores
+                </button>
+                {hasta && (
+                  <button onClick={() => moverVentana(1)} className="flex items-center gap-1 text-xs font-semibold text-accent min-h-[40px] pl-3">
+                    Meses siguientes <ChevronRight size={14} aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+            )}
             <div role="table" aria-label="Estado de cada cuenta en los últimos meses">
               <div role="row" className="grid grid-cols-[minmax(0,1.5fr)_repeat(6,minmax(0,1fr))] gap-1 items-end mb-1.5">
                 <span role="columnheader" className="text-[11px] text-ink-soft">Cuenta</span>
@@ -381,7 +418,7 @@ export default function Sincronizacion() {
               </div>
               {filasCuentas.map((c) => (
                 <div key={c.id} role="row" className="grid grid-cols-[minmax(0,1.5fr)_repeat(6,minmax(0,1fr))] gap-1 items-center mb-1">
-                  <span role="rowheader" className="text-xs font-medium truncate pr-1">{c.nombre}</span>
+                  <span role="rowheader" title={nombreFila[c.id]} className="text-xs font-medium leading-tight break-words line-clamp-3 pr-1">{nombreFila[c.id]}</span>
                   {c.meses.map((m) => {
                     const e = estadoCelda(m.estado)
                     const activa = detalle?.cuentaId === c.id && detalle?.mes === m.mes
@@ -390,7 +427,7 @@ export default function Sincronizacion() {
                         <button
                           onClick={() => setDetalle(activa ? null : { cuentaId: c.id, mes: m.mes })}
                           aria-pressed={activa}
-                          aria-label={`${c.nombre}, ${nombreMes(m.mes)}: ${e.texto}`}
+                          aria-label={`${nombreFila[c.id]}, ${nombreMes(m.mes)}: ${e.texto}`}
                           className={`h-10 rounded-lg border text-sm font-semibold flex items-center justify-center ${e.clase} ${activa ? 'ring-2 ring-ink' : ''}`}
                         >
                           <span aria-hidden="true">{e.simbolo}</span>
@@ -426,7 +463,7 @@ export default function Sincronizacion() {
               <div className="mt-3 rounded-xl bg-paper border border-line p-3" role="region" aria-label="Detalle del mes">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold capitalize">{cuentaDetalle.nombre} · {nombreMes(celdaDetalle.mes)}</p>
+                    <p className="text-sm font-semibold capitalize">{nombreFila[cuentaDetalle.id]} · {nombreMes(celdaDetalle.mes)}</p>
                     <p className="text-xs font-medium mt-0.5">
                       <span aria-hidden="true">{estadoCelda(celdaDetalle.estado).simbolo}</span> {estadoCelda(celdaDetalle.estado).texto}
                     </p>
@@ -446,8 +483,16 @@ export default function Sincronizacion() {
                   {celdaDetalle.estado === 'falta_clave' && (
                     <button onClick={() => { setMostrarClave(true); irA('sinc-extractos') }} className="rounded-xl bg-accent text-white text-xs font-semibold px-3.5 py-2.5">Poner clave</button>
                   )}
+                  {(celdaDetalle.estado === 'sin_extracto' || celdaDetalle.estado === 'vacio') && (
+                    <button
+                      onClick={() => navigate('/conciliacion', { state: { cuentaId: cuentaDetalle.id, mes: celdaDetalle.mes } })}
+                      className="rounded-xl bg-accent text-white text-xs font-semibold px-3.5 py-2.5"
+                    >
+                      Subir el extracto de este mes
+                    </button>
+                  )}
                   {celdaDetalle.estado === 'sin_extracto' && (
-                    <button onClick={() => (conectado ? sincronizar() : navigate('/correos'))} className="rounded-xl bg-accent text-white text-xs font-semibold px-3.5 py-2.5">
+                    <button onClick={() => (conectado ? sincronizar() : navigate('/correos'))} className="rounded-xl border border-line text-xs font-semibold px-3.5 py-2.5">
                       {conectado ? 'Buscar extracto' : 'Conectar Gmail'}
                     </button>
                   )}
