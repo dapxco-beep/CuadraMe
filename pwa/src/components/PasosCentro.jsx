@@ -16,7 +16,7 @@ export default function PasosCentro({ paso }) {
                 hecho ? 'bg-cuadra text-white' : actual ? 'bg-accent text-white' : 'bg-line text-ink-soft'
               }`}
             >
-              {hecho ? <Check size={11} aria-hidden="true" /> : n}
+              {hecho ? <Check size={16} aria-hidden="true" /> : n}
             </span>
             <span className={`truncate ${actual ? 'font-semibold' : 'text-ink-soft'}`}>{t}</span>
             {n < PASOS.length && <span className="text-ink-soft" aria-hidden="true">→</span>}

@@ -181,14 +181,14 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
                   disabled={procesando.has(c.id) || !cuentaId || !(monto > 0)}
                   className="flex-1 flex items-center justify-center gap-1.5 bg-accent text-white font-semibold rounded-xl py-2.5 text-sm disabled:opacity-50"
                 >
-                  <Check size={14} aria-hidden="true" /> Aprobar
+                  <Check size={16} aria-hidden="true" /> Aprobar
                 </button>
                 <button
                   onClick={() => descartar(c)}
                   disabled={procesando.has(c.id)}
                   className="px-4 rounded-xl border border-line text-sm text-ink-soft flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  <X size={14} aria-hidden="true" /> Descartar
+                  <X size={16} aria-hidden="true" /> Descartar
                 </button>
               </div>
             </li>

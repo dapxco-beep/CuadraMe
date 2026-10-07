@@ -99,7 +99,7 @@ export default function ConexionGmail({ estado, onCambio }) {
       {estado?.conectado ? (
         <div className="rounded-2xl bg-paper border border-line p-4">
           <div className="flex items-center gap-3">
-            <Mail size={18} className="text-accent shrink-0" aria-hidden="true" />
+            <Mail size={20} className="text-accent shrink-0" aria-hidden="true" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{estado.email}</p>
               <p className="text-xs text-ink-soft">Conectado · solo lectura</p>
@@ -124,7 +124,7 @@ export default function ConexionGmail({ estado, onCambio }) {
       {error && <p className="text-xs text-danger mt-2" role="alert">{error}</p>}
 
       <p className="flex items-start gap-1.5 text-[11px] text-ink-soft mt-3">
-        <ShieldCheck size={13} className="shrink-0 mt-0.5 text-accent" aria-hidden="true" />
+        <ShieldCheck size={16} className="shrink-0 mt-0.5 text-accent" aria-hidden="true" />
         <span>
           Solo tengo permiso de <b>lectura</b>: no envío, borro ni modifico correos. No guardo tus correos ni los PDF, solo
           banco, periodo y estado de cada extracto, y los movimientos que apruebas.
@@ -137,7 +137,7 @@ export default function ConexionGmail({ estado, onCambio }) {
         className="w-full flex items-center justify-between text-xs text-ink-soft py-2 mt-1"
       >
         <span>(Opcional) Etiqueta «gastos» para correos que no detecto solo</span>
-        <ChevronDown size={14} className={`shrink-0 transition-transform ${mostrarGuia ? 'rotate-180' : ''}`} aria-hidden="true" />
+        <ChevronDown size={16} className={`shrink-0 transition-transform ${mostrarGuia ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
       {mostrarGuia && (
         <ol className="rounded-2xl bg-paper border border-line divide-y divide-line overflow-hidden">

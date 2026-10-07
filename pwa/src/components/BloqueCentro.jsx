@@ -25,7 +25,7 @@ export default function BloqueCentro({ id, titulo, icono: Icono, cuenta = 0, mos
           )}
           {alDia && mostrarAlDia && (
             <span className="flex items-center gap-1 text-xs font-semibold text-cuadra" data-testid={`al-dia-${id}`}>
-              <CheckCircle2 size={14} aria-hidden="true" /> Todo al día
+              <CheckCircle2 size={16} aria-hidden="true" /> Todo al día
             </span>
           )}
           <ChevronDown size={16} className={`text-ink-soft shrink-0 transition-transform ${abierto ? 'rotate-180' : ''}`} aria-hidden="true" />
