@@ -71,6 +71,8 @@ def test_direccion_por_descripcion_solo_si_es_inequivoca():
     assert direccion_por_descripcion("Enviaste a Ana") == "expense"
     assert direccion_por_descripcion("De Luis Gomez") == "income"
     assert direccion_por_descripcion("Recibiste de Luis") == "income"
+    assert direccion_por_descripcion("RECIBÍ POR BRE-B DE: ANA") == "income"
+    assert direccion_por_descripcion("Recibi por Bre-B de Ana") == "income"
     assert direccion_por_descripcion("Transfer") is None
     assert direccion_por_descripcion("COMPRA EXITO") is None
     assert tipo_con_direccion("income", "x") == "income"

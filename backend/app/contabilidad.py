@@ -63,7 +63,7 @@ MARCA_TRASLADO_PROPIO = "posible_traslado_propio"
 
 # Dirección deducible con certeza de una descripción de transferencia (solo al inicio).
 _RE_SALE = re.compile(r"^\s*(?:para\b|enviaste\b|envio\b|transferencia\s+a\b|trf\s+a\b|transferiste\b)", re.IGNORECASE)
-_RE_ENTRA = re.compile(r"^\s*(?:de\b|recibiste\b|transferencia\s+de\b|trf\s+de\b|giro\s+de\b|te\s+enviaron\b)", re.IGNORECASE)
+_RE_ENTRA = re.compile(r"^\s*(?:de\b|recibi(?:ste)?\b|transferencia\s+de\b|trf\s+de\b|giro\s+de\b|te\s+enviaron\b)", re.IGNORECASE)
 
 
 def direccion_por_descripcion(descripcion: str) -> str | None:
