@@ -271,7 +271,7 @@ def test_aprobar_correo_con_categoria_cambiada_crea_la_regla_y_la_siguiente_la_u
     movs = client.get("/movimientos").json()
     movs = movs["items"] if isinstance(movs, dict) else movs
     assert {m["descripcion"]: m["categoria"] for m in movs}[c["comercio"]] == "Hogar"
-    nuevo = next(m for m in movs if m["descripcion"].endswith("(correo)"))
+    nuevo = next(m for m in movs if m["fuente"] == "email")
     assert nuevo["categoria"] == "Hogar" and nuevo["cat_confirmada"] is True
 
     # El siguiente correo del mismo comercio ya llega categorizado por la regla, con su razón.

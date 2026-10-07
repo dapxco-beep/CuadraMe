@@ -59,7 +59,10 @@ _BANK_MAP = [
     ("uala", "Ualá"),
     ("tpaga", "Tpaga"),
     ("dale", "Dale!"),
-    # Comercios y servicios frecuentes (no bancarios)
+]
+
+# Comercios y servicios que escriben ellos mismos: si el remitente es uno de estos, ES el comercio.
+_COMERCIO_MAP = [
     ("falabella.com", "Falabella"),
     ("rappi", "Rappi"),
     ("paypal", "PayPal"),
@@ -78,11 +81,22 @@ _BANK_MAP = [
     ("ifood", "iFood"),
 ]
 
-_SUBJECT_PATTERNS = [
-    re.compile(r"\*([A-Z][A-Z0-9 ]{2,25})\*"),
-    re.compile(r"(?:compra\s+en|pago\s+(?:en|a)|establecimiento[:\s]+)([A-Za-zÀ-ú][^,\n.]{2,30})", re.IGNORECASE),
-    re.compile(r"(?:recibo\s+de|factura\s+de)[:\s]+([A-Za-zÀ-ú][^,\n.]{2,30})", re.IGNORECASE),
+# Concepto del movimiento leído del asunto/cuerpo. Cada patrón captura el nombre (comercio o
+# persona); el prefijo es lo que se antepone para que la descripción se lea sola.
+# El nombre termina en puntuación o en una palabra de "detalle" (por, con, el, desde...).
+_FIN = r"(?=[,;.\n]|\s+(?:por|con|desde|de\s+tu|a\s+las|el\s+(?:\d|d[ií]a)|valor|usando|cuenta|tarjeta|COP|USD)\b|\s+\$|\s*$)"
+_NOMBRE = r"([A-Za-zÀ-ú0-9*][^,;.\n$]{1,38}?)"
+_CONCEPTOS = [
+    (re.compile(r"compra\s+(?:(?:exitosa|aprobada|realizada)\s+)?(?:en|con\s+tu\s+tarjeta\s+en)\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Compra en "),
+    (re.compile(r"(?:enviaste|env[ií]o|transferiste|transferencia)\s+(?:de\s+)?(?:\$\s*[\d.,]+\s+)?a\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Envío a "),
+    (re.compile(r"(?:recibiste|te\s+enviaron|te\s+transfirieron)\s+(?:\$\s*[\d.,]+\s+)?de\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Recibido de "),
+    (re.compile(r"pago\s+de\s+(servicios?\s+p[uú]blicos|servicios?|factura|impuestos?|pensi[oó]n|matr[ií]cula|arriendo|cuota)", re.IGNORECASE), "Pago de "),
+    (re.compile(r"(?:recibo|factura)\s+de\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Pago de "),
+    (re.compile(r"pago\s+(?:en|a)\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Pago a "),
+    (re.compile(r"establecimiento[:\s]+" + _NOMBRE + _FIN, re.IGNORECASE), "Compra en "),
+    (re.compile(r"retiro\s+(?:en\s+)?(cajero|corresponsal)", re.IGNORECASE), "Retiro en "),
 ]
+_ASTERISCO = re.compile(r"\*([A-Z][A-Z0-9 ]{2,25})\*")
 
 _INGRESO_RE = re.compile(r"recibiste|te enviaron|consignaron|abono|dep[oó]sito", re.IGNORECASE)
 _TRANSFER_RE = re.compile(r"transferencia\s+entre|transferiste a tu|traslado entre cuentas", re.IGNORECASE)
@@ -124,16 +138,48 @@ def extraer_moneda(texto: str) -> str:
     return "COP"
 
 
-def extraer_comercio(remitente: str, asunto: str) -> str:
+def _bonito(nombre: str) -> str:
+    """Limpia espacios y baja las MAYÚSCULAS ('JUAN VALDEZ' -> 'Juan Valdez'); lo mixto no se toca."""
+    n = " ".join(nombre.strip(" -:*").split())[:40]
+    return n.title() if n.isupper() else n
+
+
+def extraer_concepto(asunto: str, cuerpo: str = "") -> str:
+    """'Compra en Juan Valdez', 'Envío a Ana', 'Pago de servicios'... leído del asunto
+    (primero) o del cuerpo. '' si no hay nada que se entienda."""
+    for texto in (asunto or "", cuerpo or ""):
+        for patron, prefijo in _CONCEPTOS:
+            m = patron.search(texto)
+            if m:
+                nombre = _bonito(m.group(1))
+                if nombre:
+                    return f"{prefijo}{nombre}"
+        m = _ASTERISCO.search(texto)  # 'BOLD*CAFE LUNA' / '*RAPPI*'
+        if m:
+            return f"Compra en {_bonito(m.group(1))}"
+    return ""
+
+
+def descripcion_sin_detalle(texto: str) -> str:
+    """Respaldo claro cuando un correo bancario no dice dónde fue el movimiento. Nunca el remitente."""
+    tipo = detectar_tipo(texto)
+    return {"income": "Ingreso sin detalle", "transfer": "Traslado sin detalle"}.get(tipo, "Gasto sin detalle")
+
+
+def extraer_comercio(remitente: str, asunto: str, cuerpo: str = "") -> str:
+    """Qué describe el movimiento: el concepto o comercio del asunto/cuerpo. Si el remitente
+    es un banco y el correo no dice más, un respaldo ('Gasto sin detalle'), no el nombre del
+    banco: el banco ya aparece en la tarjeta y en la cuenta."""
+    concepto = extraer_concepto(asunto, cuerpo)
+    if concepto:
+        return concepto
+
     remitente_lower = (remitente or "").lower()
-    for clave, nombre in _BANK_MAP:
+    for clave, nombre in _COMERCIO_MAP:
         if clave in remitente_lower:
             return nombre
-
-    for patron in _SUBJECT_PATTERNS:
-        m = patron.search(asunto or "")
-        if m:
-            return " ".join(m.group(1).strip().split())[:40]
+    if any(clave in remitente_lower for clave, _ in _BANK_MAP):
+        return descripcion_sin_detalle(f"{asunto or ''} {cuerpo or ''}")
 
     m = re.match(r'^"?([^"<@]+)"?\s*<', remitente or "")
     if m:
