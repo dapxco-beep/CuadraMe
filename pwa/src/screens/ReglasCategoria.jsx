@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { useVolver } from '../lib/useVolver'
 import { Link } from 'react-router-dom'
@@ -47,7 +48,7 @@ export default function ReglasCategoria() {
           onClick={() => setMostrarForm(true)}
           className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
          aria-label="Nueva regla">
-          <Plus size={18} />
+          <Plus size={20} />
         </button>
       </header>
 
@@ -59,7 +60,7 @@ export default function ReglasCategoria() {
         to="/entrenar-categorias"
         className="mx-6 mt-3 flex items-center gap-3 rounded-2xl bg-accent-soft border border-accent/30 px-4 py-3"
       >
-        <GraduationCap size={18} className="text-accent shrink-0" />
+        <GraduationCap size={20} className="text-accent shrink-0" />
         <span className="flex-1 text-sm">
           <b>Entrenar categorías</b>
           <span className="block text-xs text-ink-soft">Enséñame los comercios que más se repiten y los clasifico solos.</span>
@@ -68,7 +69,7 @@ export default function ReglasCategoria() {
       </Link>
 
       {cargando ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <EsqueletoLista filas={4} className="mx-6 mt-6" etiqueta="Cargando tus reglas" />
       ) : error ? (
         <div className="mx-6 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
           <p className="text-sm text-danger mb-3">{error}</p>

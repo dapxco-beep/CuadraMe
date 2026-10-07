@@ -142,7 +142,7 @@ export default function SelectorCuenta({
           <p className="text-xs text-ink-soft mb-1.5">¿Cuál es tu banco o billetera?</p>
           {verTodas && (
             <div className="relative mb-2">
-              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-soft" aria-hidden="true" />
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-soft" aria-hidden="true" />
               <input
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}

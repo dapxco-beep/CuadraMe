@@ -22,7 +22,7 @@ function Fuentes({ fuentes }) {
   if (!fuentes?.length) return null
   return (
     <p className="mt-2 text-[11px] text-ink-soft flex gap-1.5 items-start">
-      <Info size={12} className="shrink-0 mt-0.5" aria-hidden="true" />
+      <Info size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
       <span>Basado en: {fuentes.join(' · ')}</span>
     </p>
   )
@@ -95,7 +95,7 @@ function TarjetaPropuesta({ msg, onResuelto }) {
   if (msg.estado === 'confirmado') {
     return (
       <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-accent">
-        <Check size={14} /> Movimiento guardado
+        <Check size={16} /> Movimiento guardado
       </p>
     )
   }
@@ -177,7 +177,7 @@ function TarjetaPlan({ msg, onResuelto }) {
   if (msg.estado === 'confirmado') {
     return (
       <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-accent">
-        <Check size={14} /> Meta creada: la verás en Metas
+        <Check size={16} /> Meta creada: la verás en Metas
       </p>
     )
   }
@@ -426,7 +426,7 @@ export default function Asistente() {
         </button>
       </form>
       <p className="px-6 pb-2 text-[11px] text-ink-soft text-center">
-        <X size={9} className="inline -mt-0.5" aria-hidden="true" /> No guardamos tus conversaciones. Nunca escribas claves ni PIN.
+        <X size={16} className="inline -mt-0.5" aria-hidden="true" /> No guardamos tus conversaciones. Nunca escribas claves ni PIN.
       </p>
     </div>
   )

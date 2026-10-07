@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { EsqueletoGrafica, EsqueletoTarjeta } from '../components/Esqueletos'
 import { Info, Landmark, Plus, TrendingDown, TrendingUp, X } from 'lucide-react'
+import Icono from '../components/Icono'
 import { api } from '../lib/api'
 import { formatCOP, formatMoneda, formatPorcentaje } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
@@ -64,8 +66,8 @@ export default function Patrimonio() {
 
       {cargando && !datos ? (
         <div className="mx-5 mt-3 space-y-3">
-          <div className="skeleton h-32" />
-          <div className="skeleton h-48" />
+          <EsqueletoTarjeta alto={128} etiqueta="Cargando tu patrimonio" />
+          <EsqueletoGrafica alto={150} />
         </div>
       ) : error && !datos ? (
         <div className="mx-5 mt-6 rounded-2xl bg-danger-soft p-6 text-center" role="alert">
@@ -106,7 +108,7 @@ export default function Patrimonio() {
             <section className="mx-5 mt-4">
               <h2 className="text-sm font-semibold mb-1">Mis activos</h2>
               <p className="text-xs text-ink-soft mb-2 flex gap-1.5 items-start" data-testid="aviso-inversion">
-                <Info size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
+                <Info size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
                 Las cuentas de tipo inversión ya se cuentan en “Cuentas”: no hace falta registrarlas también como activo.
               </p>
               {datos.activos.length === 0 ? (
@@ -181,7 +183,7 @@ function TarjetaNeto({ datos }) {
       <p className="text-[38px] t-display"><Monto texto={formatCOP(datos.patrimonio_neto)} /></p>
       {variacion !== null && variacion !== undefined && (
         <p className="mt-1 text-xs flex items-center gap-1 opacity-90">
-          {sube ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+          {sube ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
           {sube ? '+' : '-'}
           {formatCOP(Math.abs(variacion))} vs. el mes anterior
         </p>
@@ -226,7 +228,7 @@ function TarjetaActivo({ activo: a, indice, onEditar }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold truncate">
-            {meta?.emoji} {a.nombre}
+            {meta?.icono && <Icono icono={meta.icono} tam="sm" className="inline -mt-0.5 mr-1 text-accent" />}{a.nombre}
           </p>
           <p className="text-xs text-ink-soft">
             {meta?.label}
@@ -400,7 +402,7 @@ function FormActivo({ activo, onClose, onGuardado }) {
                 clase === c ? 'bg-accent text-white border-accent' : 'bg-paper-raised border-line text-ink-soft'
               }`}
             >
-              {CLASES[c].emoji} {CLASES[c].label}
+              <Icono icono={CLASES[c].icono} tam="sm" className="inline -mt-0.5 mr-1" />{CLASES[c].label}
             </button>
           ))}
         </div>

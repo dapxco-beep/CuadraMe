@@ -42,11 +42,13 @@ export function useAtajosTeclado() {
         e.preventDefault()
         navigate('/agregar')
       } else if (k === '/') {
-        const buscador = document.querySelector('input[type="search"], input[data-atajo-buscar]')
-        if (buscador) {
-          e.preventDefault()
-          buscador.focus()
-        }
+        // Primero el buscador de la pantalla; si no tiene, el del menú lateral (o abrir «Más» en el riel)
+        const buscador =
+          document.querySelector('input[type="search"]:not([data-atajo-menu]), input[data-atajo-buscar]') ||
+          document.querySelector('input[data-atajo-menu]')
+        e.preventDefault()
+        if (buscador) buscador.focus()
+        else window.dispatchEvent(new Event('cuadrame:abrir-menu'))
       }
     }
     window.addEventListener('keydown', alTeclear)

@@ -3,15 +3,17 @@
 // lo hace el backend; aquí solo hay lo necesario para dibujar y para la vista
 // previa del formulario.
 
+import { Car, ChartPie, Coins, Globe, House, Landmark, TrendingUp, Wallet } from 'lucide-react'
+
 export const CLASES = {
-  cdt: { label: 'CDT', emoji: '🏦' },
-  fondo: { label: 'Fondo de inversión', emoji: '📊' },
-  etf: { label: 'ETF', emoji: '🌐' },
-  accion: { label: 'Acción', emoji: '📈' },
-  cripto: { label: 'Cripto', emoji: '🪙' },
-  inmueble: { label: 'Inmueble', emoji: '🏠' },
-  vehiculo: { label: 'Vehículo', emoji: '🚗' },
-  cuentas: { label: 'Efectivo y cuentas', emoji: '💵' },
+  cdt: { label: 'CDT', icono: Landmark },
+  fondo: { label: 'Fondo de inversión', icono: ChartPie },
+  etf: { label: 'ETF', icono: Globe },
+  accion: { label: 'Acción', icono: TrendingUp },
+  cripto: { label: 'Cripto', icono: Coins },
+  inmueble: { label: 'Inmueble', icono: House },
+  vehiculo: { label: 'Vehículo', icono: Car },
+  cuentas: { label: 'Efectivo y cuentas', icono: Wallet },
 }
 
 export const CLASES_MERCADO = ['fondo', 'etf', 'accion', 'cripto']

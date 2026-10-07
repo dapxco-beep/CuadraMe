@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { useVolver } from '../lib/useVolver'
 import { useEstadoLista } from '../lib/useEstadoLista'
-import { ArrowLeft, Plus, Repeat, X, PiggyBank, Sparkles } from 'lucide-react'
+import { ArrowLeft, PartyPopper, Plus, Repeat, X, PiggyBank, Sparkles } from 'lucide-react'
+import Icono from '../components/Icono'
 import PlanificadorMeta from '../components/PlanificadorMeta'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
@@ -44,7 +46,7 @@ export default function Metas() {
             onClick={volver}
             className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
            aria-label="Volver">
-            <ArrowLeft size={18} />
+            <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-semibold">Metas de ahorro</h1>
         </div>
@@ -53,7 +55,7 @@ export default function Metas() {
             onClick={() => setPlaneando(true)}
             className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
             aria-label="Planear una meta">
-            <Sparkles size={17} className="text-accent" />
+            <Sparkles size={20} className="text-accent" />
           </button>
           <button
             onClick={() => setMostrarForm(true)}
@@ -65,7 +67,7 @@ export default function Metas() {
       </header>
 
       {cargando ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <EsqueletoLista filas={3} className="mx-5 mt-6" etiqueta="Cargando tus metas" />
       ) : error ? (
         <div className="mx-5 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
           <p className="text-sm text-danger mb-3">{error}</p>
@@ -95,11 +97,11 @@ export default function Metas() {
               )}
               {m.aporte_automatico && !m.completada && (
                 <p className="text-xs text-accent flex items-center gap-1 mb-3">
-                  <Repeat size={11} /> {formatCOP(m.aporte_automatico)} automático el día {m.dia_aporte}
+                  <Repeat size={16} /> {formatCOP(m.aporte_automatico)} automático el día {m.dia_aporte}
                 </p>
               )}
               {m.completada ? (
-                <p className="text-sm font-semibold text-accent">¡Meta completada! 🎉</p>
+                <p className="text-sm font-semibold text-accent flex items-center gap-1.5"><Icono icono={PartyPopper} tam="sm" /> ¡Meta completada!</p>
               ) : (
                 <button
                   onClick={() => setAportando(m)}

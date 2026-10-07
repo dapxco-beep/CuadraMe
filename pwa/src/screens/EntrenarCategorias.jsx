@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { EsqueletoTarjeta } from '../components/Esqueletos'
 import { ArrowLeft, Check, GraduationCap, Search } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
 import { useVolver } from '../lib/useVolver'
@@ -62,7 +63,7 @@ function Fila({ item, categorias, onGuardar }) {
           disabled={estado === 'guardando'}
           className="rounded-xl bg-ink text-paper px-3.5 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-60"
         >
-          <Check size={14} /> {estado === 'guardando' ? 'Guardando…' : 'Guardar regla'}
+          <Check size={16} /> {estado === 'guardando' ? 'Guardando…' : 'Guardar regla'}
         </button>
       </div>
       <label className="flex items-center gap-2 text-xs text-ink-soft mt-2">
@@ -210,7 +211,7 @@ export default function EntrenarCategorias() {
       )}
 
       {cargando ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <EsqueletoTarjeta alto={220} className="mx-6 mt-6" etiqueta="Cargando movimientos por entrenar" />
       ) : error ? (
         <div className="mx-6 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
           <p className="text-sm text-danger mb-3">{error}</p>

@@ -191,7 +191,7 @@ export default function BandejaPorConfirmar() {
       <div className="flex items-start justify-between gap-3 mb-1">
         <div className="flex items-center gap-2.5">
           <span className="w-9 h-9 rounded-xl bg-accent-soft flex items-center justify-center shrink-0">
-            <Smartphone size={17} className="text-accent" />
+            <Smartphone size={20} className="text-accent" />
           </span>
           <h2 className="text-lg font-semibold leading-tight">
             Detectamos {n} {n === 1 ? 'movimiento' : 'movimientos'}: ¿son tuyos?
@@ -241,21 +241,21 @@ export default function BandejaPorConfirmar() {
                   disabled={ocupado}
                   className="flex items-center justify-center gap-1.5 rounded-xl bg-accent text-white text-xs font-semibold py-2.5 disabled:opacity-60"
                 >
-                  <Check size={14} /> Es mío
+                  <Check size={16} /> Es mío
                 </button>
                 <button
                   onClick={() => setEditandoId(m.id)}
                   disabled={ocupado}
                   className="flex items-center justify-center gap-1.5 rounded-xl border border-line text-xs font-semibold py-2.5 disabled:opacity-60"
                 >
-                  <Pencil size={13} /> Editar
+                  <Pencil size={16} /> Editar
                 </button>
                 <button
                   onClick={() => descartarUno(m)}
                   disabled={ocupado}
                   className="flex items-center justify-center gap-1.5 rounded-xl border border-line text-danger text-xs font-semibold py-2.5 disabled:opacity-60"
                 >
-                  <Trash2 size={13} /> No es mío
+                  <Trash2 size={16} /> No es mío
                 </button>
               </div>
             </li>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, MessageCircle, Plus } from 'lucide-react'
@@ -73,7 +74,7 @@ export default function CuentasAmigos() {
             className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
             aria-label="Volver"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={20} />
           </button>
           <h1 className="text-2xl font-semibold">Cuentas con amigos</h1>
         </div>
@@ -82,7 +83,7 @@ export default function CuentasAmigos() {
           className="w-11 h-11 rounded-full bg-ink text-paper flex items-center justify-center"
           aria-label="Nuevo gasto dividido"
         >
-          <Plus size={18} />
+          <Plus size={20} />
         </button>
       </header>
 
@@ -103,7 +104,7 @@ export default function CuentasAmigos() {
         </div>
       )}
 
-      {cargando && <p className="px-5 mt-6 text-sm text-ink-soft">Cargando...</p>}
+      {cargando && <EsqueletoLista filas={3} className="mx-5 mt-6" etiqueta="Cargando cuentas compartidas" />}
       {error && (
         <div className="px-5 mt-6" role="alert">
           <p className="text-sm text-danger">{error}</p>
@@ -162,7 +163,7 @@ export default function CuentasAmigos() {
                             rel="noopener noreferrer"
                             className="flex-1 rounded-xl bg-accent-soft text-accent text-xs font-semibold py-2 flex items-center justify-center gap-1.5"
                           >
-                            <MessageCircle size={14} /> Cobrar por WhatsApp
+                            <MessageCircle size={16} /> Cobrar por WhatsApp
                           </a>
                           <button
                             onClick={() =>

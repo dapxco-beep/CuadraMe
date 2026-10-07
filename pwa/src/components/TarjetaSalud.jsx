@@ -49,7 +49,7 @@ export function AnilloPuntaje({ score, size = 96 }) {
   )
 }
 
-export default function TarjetaSalud() {
+export default function TarjetaSalud({ embebida = false }) {
   const [datos, setDatos] = useState(null)
   const [abierto, setAbierto] = useState(false)
 
@@ -74,14 +74,14 @@ export default function TarjetaSalud() {
   return (
     <section
       aria-label="Salud financiera"
-      className="mx-6 mt-3 rounded-2xl bg-paper-raised border border-line p-4 stagger-item"
+      className={embebida ? "mt-2 pt-3 border-t border-line" : "mx-6 mt-3 rounded-2xl bg-paper-raised border border-line p-4 stagger-item"}
       style={{ '--stagger-i': 4 }}
     >
       <div className="flex items-center gap-4">
         <AnilloPuntaje score={datos.score} />
         <div className="flex-1 min-w-0">
           <p className="text-xs text-ink-soft flex items-center gap-1">
-            <HeartPulse size={13} /> Salud financiera
+            <HeartPulse size={16} /> Salud financiera
           </p>
           <p className="text-lg font-bold">{datos.nivel}</p>
           {datos.consejos[0] && <p className="text-xs text-ink-soft mt-1">{datos.consejos[0]}</p>}
@@ -95,7 +95,7 @@ export default function TarjetaSalud() {
         className="w-full flex items-center justify-center gap-1 text-xs text-accent font-semibold mt-3"
       >
         {abierto ? 'Ocultar desglose' : 'Ver desglose'}
-        <ChevronDown size={14} className={`transition-transform ${abierto ? 'rotate-180' : ''}`} />
+        <ChevronDown size={16} className={`transition-transform ${abierto ? 'rotate-180' : ''}`} />
       </button>
 
       {abierto && (
@@ -118,7 +118,7 @@ export default function TarjetaSalud() {
             <div className="rounded-xl bg-accent-soft p-3 space-y-2">
               {datos.consejos.map((t) => (
                 <p key={t} className="text-xs text-ink flex gap-2">
-                  <Lightbulb size={14} className="text-accent shrink-0 mt-0.5" />
+                  <Lightbulb size={16} className="text-accent shrink-0 mt-0.5" />
                   <span>{t}</span>
                 </p>
               ))}

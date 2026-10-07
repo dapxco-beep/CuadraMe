@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { useVolver } from '../lib/useVolver'
 import { ArrowDown, ArrowLeft, ArrowUp, Check, Eye, EyeOff, Plus, Trash2, X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -64,7 +65,7 @@ export default function Categorias() {
           className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
           aria-label="Nueva categoría"
         >
-          <Plus size={18} />
+          <Plus size={20} />
         </button>
       </header>
 
@@ -98,7 +99,7 @@ export default function Categorias() {
       </div>
 
       {cargando && categorias.length === 0 ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <EsqueletoLista filas={6} className="mx-6 mt-6" etiqueta="Cargando categorías" />
       ) : (
         <>
           <div className="mx-6 mt-3 rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
@@ -191,7 +192,7 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
             className="w-7 h-5 flex items-center justify-center text-ink-soft disabled:opacity-25"
             aria-label={`Subir ${c.nombre}`}
           >
-            <ArrowUp size={13} />
+            <ArrowUp size={16} />
           </button>
           <button
             onClick={onBajar || undefined}
@@ -199,7 +200,7 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
             className="w-7 h-5 flex items-center justify-center text-ink-soft disabled:opacity-25"
             aria-label={`Bajar ${c.nombre}`}
           >
-            <ArrowDown size={13} />
+            <ArrowDown size={16} />
           </button>
         </div>
       )}
@@ -217,7 +218,7 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
           className="shrink-0 flex items-center gap-1 text-xs font-semibold text-accent px-3 h-9"
           aria-label={`Reactivar ${c.nombre}`}
         >
-          <EyeOff size={14} /> Reactivar
+          <EyeOff size={16} /> Reactivar
         </button>
       )}
     </div>
@@ -428,7 +429,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
               disabled={eliminando}
               className="w-full flex items-center justify-center gap-1.5 mt-3 text-sm text-danger font-medium disabled:opacity-60"
             >
-              <Trash2 size={14} /> {eliminando ? 'Eliminando...' : 'Eliminar categoría'}
+              <Trash2 size={16} /> {eliminando ? 'Eliminando...' : 'Eliminar categoría'}
             </button>
           )}
         </>

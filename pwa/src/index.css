@@ -9,6 +9,7 @@
   --color-line: var(--c-line);
   --color-accent: var(--c-accent);
   --color-accent-2: var(--c-accent-2);
+  --color-gold: var(--c-gold);
   --color-accent-soft: var(--c-accent-soft);
   --color-danger: var(--c-danger);
   --color-danger-soft: var(--c-danger-soft);
@@ -22,6 +23,23 @@
   --font-sans: var(--f-sans);
 }
 
+/* ── Tokens de movimiento: escala única de duraciones y una sola curva ──────
+   rápido (hover, foco, pulsar) · normal (salidas, fundidos) · lento (entradas de
+   pantalla y hojas). Misma escala en lib/tokens.js para framer-motion. */
+:root {
+  --dur-rapido: 120ms;
+  --dur-normal: 200ms;
+  --dur-lento: 320ms;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Radios y sombras compartidos (el espacio sigue la escala de 4 px de Tailwind) */
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 28px;
+  --sombra-1: 0 1px 2px rgb(34 31 25 / 0.06);
+  --sombra-2: 0 6px 18px -10px rgb(34 31 25 / 0.35);
+}
+
 /* Tema CuadraMe cálido (default) — crema, Sora, acento naranja/dorado */
 :root,
 :root[data-theme='calido'] {
@@ -32,17 +50,19 @@
   --c-line: #e8e2d3;
   /* --c-accent es el terracota para TEXTO y botones (contraste AA sobre papel:
      5.2:1). --c-brand es el terracota "de logo", más vivo, solo para gráficos. */
-  --c-accent: #b04413;
+  --c-accent: #a8400f;
   --c-accent-2: #d9a441;
+  /* dorado para TEXTO: AA sobre papel (5.8:1); --c-accent-2 queda para rellenos y gráficos */
+  --c-gold: #7a5a0a;
   --c-accent-soft: #fbe4d3;
-  --c-danger: #c73e2c;
+  --c-danger: #b8331f;
   --c-danger-soft: #fbe2dd;
 
   /* Identidad: isotipo y firma "cuadre" */
   --c-brand: #d9622b;
   --c-brand-2: #d9a441;
   --c-brand-ink: #221f19;
-  --c-hero-a: #b8470f;
+  --c-hero-a: #a83f0d;
   --c-hero-b: #8a3010;
   --c-hero-ink: #fff7ee;
   --c-hero-soft: #ffe3c9;
@@ -62,6 +82,7 @@
   --c-line: #332e24;
   --c-accent: #e8823f;
   --c-accent-2: #e8bc63;
+  --c-gold: #e8bc63;
   --c-accent-soft: #332615;
   --c-danger: #e0685a;
   --c-danger-soft: #2e1a16;
@@ -84,6 +105,10 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+:root { color-scheme: light; }
+:root[data-theme='dark'] { color-scheme: dark; }
+input[type='checkbox'], input[type='radio'], input[type='range'] { accent-color: var(--color-accent); }
+
 html, body, #root {
   height: 100%;
 }
@@ -93,7 +118,7 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   overscroll-behavior-y: none;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: background var(--dur-normal) var(--ease), color var(--dur-normal) var(--ease);
 }
 
 #root {
@@ -155,7 +180,7 @@ body {
 .screen-enter {
   /* backwards (no both): al terminar no queda ningún transform, que volvería relativo
      cualquier `position: fixed` de los descendientes. */
-  animation: slide-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation: slide-up var(--dur-lento) var(--ease) backwards;
 }
 
 /* Hojas abiertas (viven en el body) mientras la app está bloqueada con PIN */
@@ -165,7 +190,7 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
    la misma clase a cada item y dejar que --stagger-i (0,1,2...) escalone
    el delay, o usar .stagger-N para los primeros índices sin variables. */
 .stagger-item {
-  animation: slide-up-sm 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation: slide-up-sm var(--dur-lento) var(--ease) backwards;
   /* Tope de 8 pasos: en listas largas el retraso no crece sin límite (350 ms máx.) */
   animation-delay: calc(min(var(--stagger-i, 0), 8) * 35ms);
 }
@@ -178,19 +203,19 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
 }
 
 .pop-in {
-  animation: scale-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: scale-in var(--dur-normal) var(--ease) both;
 }
 
 /* Modal/hoja inferior: fondo con fade, contenido deslizando desde abajo */
 .sheet-backdrop {
-  animation: fade-in 0.18s ease-out both;
+  animation: fade-in var(--dur-normal) var(--ease) both;
 }
 .sheet-content {
-  animation: sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: sheet-up var(--dur-lento) var(--ease) both;
 }
 
 /* Salida de la hoja (componente Hoja): el fondo se desvanece y el panel baja.
-   Dura lo mismo que DURACION_SALIDA en components/Hoja.jsx. */
+   Dura lo mismo que DURACION_SALIDA (= --dur-normal) en components/Hoja.jsx. */
 @keyframes fade-out {
   from { opacity: 1; }
   to { opacity: 0; }
@@ -209,18 +234,18 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
 }
 .hoja-saliendo.sheet-backdrop,
 .hoja-saliendo .sheet-backdrop {
-  animation: fade-out 0.18s ease-in both;
+  animation: fade-out var(--dur-normal) var(--ease) both;
 }
 .hoja-saliendo .sheet-content {
-  animation: sheet-down 0.18s ease-in both;
+  animation: sheet-down var(--dur-normal) var(--ease) both;
 }
 /* En pantallas anchas (iPad, PC) la hoja es un modal centrado */
 @media (min-width: 768px) {
   .hoja-panel.sheet-content {
-    animation: modal-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: modal-in var(--dur-normal) var(--ease) both;
   }
   .hoja-saliendo .hoja-panel.sheet-content {
-    animation: modal-out 0.18s ease-in both;
+    animation: modal-out var(--dur-normal) var(--ease) both;
   }
 }
 
@@ -234,7 +259,7 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
 
 /* Pulso corto para confirmar una acción (ej. saldo actualizado, check) */
 .pop-once {
-  animation: pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: pop var(--dur-lento) var(--ease) both;
 }
 
 /* Esqueleto de carga con brillo, para reemplazar "Cargando..." en texto plano */
@@ -252,18 +277,18 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
 }
 .linea-patrimonio {
   stroke-dasharray: 1;
-  animation: dibujar-linea 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: dibujar-linea 1s var(--ease) both;
 }
 
 /* Barras de progreso: se animan con transform (no con width/height) para no
    disparar layout; el relleno nace en el borde izquierdo (o inferior si es vertical). */
 .barra-fill {
   transform-origin: left center;
-  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.7s var(--ease);
 }
 .barra-fill-v {
   transform-origin: center bottom;
-  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.7s var(--ease);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -294,7 +319,9 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
 
 /* Botones y filas interactivas: feedback consistente en toda la app */
 button, a {
-  transition: transform 0.15s ease, opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  transition-property: transform, opacity, background-color, border-color, box-shadow, filter;
+  transition-duration: var(--dur-rapido);
+  transition-timing-function: var(--ease);
 }
 /* El "se hunde al tocar" solo tiene sentido con el dedo; con ratón se siente raro */
 @media (hover: none) {
@@ -476,6 +503,77 @@ button, a {
     top: 1rem;
   }
 }
+
+/* ═══ Sistema de diseño: tipografía, botones, chips, tarjetas, campos ═════
+   Un solo lugar define cómo se ve y se comporta cada pieza (hover, foco, deshabilitado).
+   Las pantallas usan los componentes Boton / Chip / Tarjeta / Campo, que solo ponen estas clases. */
+@layer components {
+  /* Escala tipográfica: tamaño / peso / interlineado juntos. Cifras siempre tabulares. */
+  .t-h1 { font-size: 1.5rem; line-height: 1.75rem; font-weight: 700; letter-spacing: -0.03em; }
+  .t-h2 { font-size: 1.0625rem; line-height: 1.5rem; font-weight: 600; letter-spacing: -0.015em; }
+  .t-cuerpo { font-size: 0.875rem; line-height: 1.375rem; }
+  .t-apoyo { font-size: 0.75rem; line-height: 1.125rem; color: var(--color-ink-soft); }
+  .t-cifra { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+
+  /* Botones */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    min-height: 44px; padding: 0 1.25rem; border-radius: 9999px; border: 1px solid transparent;
+    font-size: 0.875rem; font-weight: 600; line-height: 1.25rem; text-align: center;
+    cursor: pointer; user-select: none;
+  }
+  .btn-sm { min-height: 36px; padding: 0 0.875rem; font-size: 0.8125rem; }
+  .btn-compacto { padding: 0.375rem 0.75rem; gap: 0.375rem; font-size: 0.8125rem; line-height: 1.15; min-height: 48px; }
+  .btn-bloque { display: flex; width: 100%; }
+  .btn-primario { background: var(--color-accent); color: var(--color-paper-raised); }
+  .btn-secundario { background: var(--color-paper-raised); color: var(--color-ink); border-color: var(--color-line); }
+  .btn-suave { background: var(--color-accent-soft); color: var(--color-accent); }
+  .btn-fantasma { background: transparent; color: var(--color-accent); }
+  .btn-peligro { background: var(--color-danger-soft); color: var(--color-danger); border-color: color-mix(in srgb, var(--color-danger) 30%, transparent); }
+  .btn:disabled, .btn[aria-disabled='true'] { opacity: 0.5; cursor: not-allowed; }
+  .btn[aria-busy='true'] { cursor: progress; }
+
+  /* Chips (filtros y opciones): activo = aria-pressed / aria-checked */
+  .chip {
+    display: inline-flex; align-items: center; gap: 0.375rem; min-height: 36px; padding: 0 0.875rem;
+    border-radius: 9999px; border: 1px solid var(--color-line); background: var(--color-paper-raised);
+    color: var(--color-ink); font-size: 0.8125rem; font-weight: 500; white-space: nowrap; cursor: pointer;
+  }
+  .chip[aria-pressed='true'], .chip[aria-checked='true'], .chip[aria-current='true'] {
+    background: var(--color-accent-soft); border-color: var(--color-accent); color: var(--color-accent); font-weight: 600;
+  }
+  .chip:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Tarjetas: una sola superficie por bloque (sin tarjetas dentro de tarjetas: lo de adentro se separa con líneas) */
+  .tarjeta { background: var(--color-paper-raised); border: 1px solid var(--color-line); border-radius: 18px 30px 18px 18px; padding: 1rem; }
+  .tarjeta-suave { background: var(--color-accent-soft); border: 1px solid transparent; border-radius: 18px 30px 18px 18px; padding: 1rem; }
+  .tarjeta-lista { background: var(--color-paper-raised); border: 1px solid var(--color-line); border-radius: 18px; overflow: hidden; }
+  .tarjeta-lista > * + * { border-top: 1px solid var(--color-line); }
+
+  /* Campos: etiqueta visible arriba, error junto al campo */
+  .campo-etiqueta { display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-ink-soft); margin-bottom: 0.375rem; }
+  .campo-entrada {
+    width: 100%; min-height: 44px; padding: 0 0.875rem; border-radius: 14px; border: 1px solid var(--color-line);
+    background: var(--color-paper-raised); color: var(--color-ink); font-size: 1rem; outline: none;
+  }
+  .campo-entrada::placeholder { color: var(--color-ink-soft); }
+  .campo-entrada:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent); }
+  .campo-entrada[aria-invalid='true'] { border-color: var(--color-danger); }
+  .campo-entrada:disabled { opacity: 0.55; cursor: not-allowed; }
+  .campo-error { display: flex; align-items: flex-start; gap: 0.375rem; margin-top: 0.375rem; font-size: 0.75rem; color: var(--color-danger); }
+  .campo-ayuda { margin-top: 0.375rem; font-size: 0.75rem; color: var(--color-ink-soft); }
+}
+@media (hover: hover) {
+  .btn-primario:hover:not(:disabled) { filter: brightness(1.08); }
+  .btn-secundario:hover:not(:disabled), .chip:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-line));
+  }
+  .btn-suave:hover:not(:disabled), .btn-peligro:hover:not(:disabled) { filter: brightness(0.97); }
+  .btn-fantasma:hover:not(:disabled) { background: var(--color-accent-soft); }
+}
+
+/* Secciones plegables (Inicio): el contenido se abre/cierra sin saltos de altura bruscos */
+.plegable-cuerpo[hidden] { display: none; }
 
 /* Impresión / "Guardar como PDF" (pantalla Impuestos) */
 .print-only { display: none; }

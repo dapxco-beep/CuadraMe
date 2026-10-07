@@ -165,7 +165,7 @@ export default function DividirGasto() {
           className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
           aria-label="Volver"
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={20} />
         </button>
         <h1 className="text-2xl font-semibold">Dividir gasto</h1>
       </header>
@@ -217,7 +217,7 @@ export default function DividirGasto() {
                   grupoId === g.id ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
                 }`}
               >
-                <Users size={13} /> {g.nombre}
+                <Users size={16} /> {g.nombre}
               </button>
             ))}
           </div>
@@ -239,7 +239,7 @@ export default function DividirGasto() {
             onClick={() => setNuevo({ nombre: '', telefono: '' })}
             className="rounded-2xl border border-dashed border-line px-3.5 py-2 text-sm text-ink-soft flex items-center gap-1"
           >
-            <Plus size={14} /> Amigo
+            <Plus size={16} /> Amigo
           </button>
         </div>
 

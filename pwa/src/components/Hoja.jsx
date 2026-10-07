@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { DUR_MS } from '../lib/tokens'
 
 // Hoja inferior / modal único de la app (antes había 20+ copias de
 // `fixed inset-0 ... items-end`). Qué resuelve:
@@ -18,7 +19,31 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 //   )}
 // o controlada con `abierta` (la salida se anima y los hijos se conservan mientras tanto).
 
-export const DURACION_SALIDA = 180 // ms; debe coincidir con las animaciones .hoja-saliendo de index.css
+export const DURACION_SALIDA = DUR_MS.normal // ms; = --dur-normal, la de las animaciones .hoja-saliendo de index.css
+
+// Cierre iniciado por el PADRE (p. ej. una X que hace setAbierta(false), o guardar): React
+// desmonta la hoja de golpe y no hay forma de animar algo que ya no existe. Solución: al
+// desmontarse sin haber hecho su salida, se deja en el body una copia "fantasma" del DOM
+// (inerte, oculta a lectores de pantalla) que reproduce la animación de salida y se retira.
+// Así X, guardar, atrás y tocar fuera se ven igual, sin tocar a cada pantalla que usa Hoja.
+function fantasmaDeSalida(fondo) {
+  if (!fondo || !fondo.isConnected || fondo.classList.contains('hoja-saliendo')) return
+  // En pruebas la copia duplicaría textos y etiquetas y rompería las consultas de las demás
+  // pruebas; solo se activa cuando una prueba lo pide (globalThis.__hojaFantasma = true).
+  if (import.meta.env?.MODE === 'test' && !globalThis.__hojaFantasma) return
+  if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  const copia = fondo.cloneNode(true)
+  copia.classList.add('hoja-saliendo', 'hoja-fantasma')
+  copia.setAttribute('aria-hidden', 'true')
+  copia.setAttribute('inert', '')
+  copia.removeAttribute('data-testid')
+  copia.querySelectorAll('[data-testid],[id]').forEach((el) => {
+    el.removeAttribute('data-testid')
+    el.removeAttribute('id')
+  })
+  document.body.appendChild(copia)
+  setTimeout(() => copia.remove(), DURACION_SALIDA + 40)
+}
 
 const FOCUSABLES =
   'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
@@ -77,6 +102,15 @@ export default function Hoja({
       montada.current = false
     }
   }, [])
+
+  // Desmontaje abrupto (cierre del padre): deja la copia que anima la salida (ver arriba)
+  const fondo = useRef(null)
+  useLayoutEffect(
+    () => () => {
+      fantasmaDeSalida(fondo.current)
+    },
+    []
+  )
 
   // Control por prop: al pasar a abierta=false se anima la salida y luego se desmonta
   useEffect(() => {
@@ -217,6 +251,7 @@ export default function Hoja({
   // quedaba recortada y sin fondo. En el body siempre cubre el viewport.
   return createPortal(
     <div
+      ref={fondo}
       data-testid={testId}
       className={`hoja-fondo fixed inset-0 ${capa} flex items-end md:items-center justify-center bg-ink/40 sheet-backdrop ${
         fase === 'saliendo' ? 'hoja-saliendo' : ''

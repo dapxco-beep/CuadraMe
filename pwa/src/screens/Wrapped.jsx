@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { DUR, EASE } from '../lib/tokens'
+import { EsqueletoTarjeta } from '../components/Esqueletos'
 import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -189,7 +191,7 @@ export default function Wrapped() {
       )}
 
       {error && <p role="alert" className="mx-6 mt-6 text-sm text-danger text-center">{error}</p>}
-      {mes && !datos && !error && <p className="text-sm text-ink-soft text-center mt-10">Cargando...</p>}
+      {mes && !datos && !error && <EsqueletoTarjeta alto={320} className="mx-6 mt-6" etiqueta="Cargando tu resumen" />}
 
       {d && (
         <div className="dos-col dos-col-6-5">
@@ -219,7 +221,7 @@ export default function Wrapped() {
                 initial={{ opacity: 0, x: dir * 40 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: dir * -40 }}
-                transition={{ duration: 0.22 }}
+                transition={{ duration: DUR.normal, ease: EASE }}
                 className="absolute inset-0 flex flex-col items-center justify-center text-center px-8"
                 aria-live="polite"
               >
@@ -238,7 +240,7 @@ export default function Wrapped() {
           <div className="px-6 pb-4 flex items-center gap-3">
             <button type="button" onClick={() => ir(i - 1)} disabled={i === 0} aria-label="Diapositiva anterior"
               className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center disabled:opacity-40">
-              <ChevronLeft size={18} />
+              <ChevronLeft size={20} />
             </button>
             <button
               type="button"
@@ -250,7 +252,7 @@ export default function Wrapped() {
             </button>
             <button type="button" onClick={() => ir(i + 1)} disabled={i === diapos.length - 1} aria-label="Diapositiva siguiente"
               className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center disabled:opacity-40">
-              <ChevronRight size={18} />
+              <ChevronRight size={20} />
             </button>
           </div>
           </div>

@@ -49,7 +49,7 @@ const TARJETAS_BASE = [
   },
 ]
 
-export default function CarruselDescubrir({ gmailConectado, cuentasCount }) {
+export default function CarruselDescubrir({ gmailConectado, cuentasCount, embebida = false }) {
   const [indice, setIndice] = useState(0)
   const scrollRef = useRef(null)
 
@@ -70,8 +70,8 @@ export default function CarruselDescubrir({ gmailConectado, cuentasCount }) {
   if (tarjetas.length === 0) return null
 
   return (
-    <div className="mt-4">
-      <div ref={scrollRef} className="flex gap-3 overflow-x-auto no-scrollbar px-6 snap-x snap-mandatory">
+    <div className={embebida ? "mt-2" : "mt-4"}>
+      <div ref={scrollRef} className={`flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory ${embebida ? "" : "px-6"}`}>
         {tarjetas.map((t) => (
           <Link
             key={t.id}

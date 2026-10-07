@@ -90,6 +90,44 @@ describe('Hoja', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
+  it('una X que cierra desde el padre (sin cerrar()) también anima la salida', async () => {
+    function ConX() {
+      const [abierta, setAbierta] = useState(true)
+      return (
+        abierta && (
+          <Hoja titulo="Con X" onCerrar={() => setAbierta(false)} testId="hoja-x">
+            <button aria-label="Cerrar" onClick={() => setAbierta(false)}>
+              X
+            </button>
+          </Hoja>
+        )
+      )
+    }
+    globalThis.__hojaFantasma = true
+    render(<ConX />)
+    await userEvent.click(screen.getByLabelText('Cerrar'))
+    globalThis.__hojaFantasma = false
+    // Para lectores de pantalla y pruebas la hoja ya no existe…
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    // …pero queda una copia inerte reproduciendo la salida, que luego se retira
+    const fantasma = document.querySelector('.hoja-fantasma')
+    expect(fantasma).toBeInTheDocument()
+    expect(fantasma).toHaveClass('hoja-saliendo')
+    expect(fantasma).toHaveAttribute('aria-hidden', 'true')
+    await waitFor(() => expect(document.querySelector('.hoja-fantasma')).not.toBeInTheDocument())
+  })
+
+  it('la duración de salida sale de los tokens y coincide con el CSS', async () => {
+    const { DURACION_SALIDA } = await import('../components/Hoja')
+    const { DUR_MS } = await import('../lib/tokens')
+    const fs = await import('node:fs')
+    const css = fs.readFileSync(`${process.cwd()}/src/index.css`, 'utf8')
+    expect(DURACION_SALIDA).toBe(DUR_MS.normal)
+    expect(css).toMatch(new RegExp(`--dur-normal:\\s*${DUR_MS.normal}ms`))
+    expect(css).toMatch(new RegExp(`--dur-rapido:\\s*${DUR_MS.rapido}ms`))
+    expect(css).toMatch(new RegExp(`--dur-lento:\\s*${DUR_MS.lento}ms`))
+  })
+
   it('la trampa de foco mantiene Tab dentro de la hoja', async () => {
     render(<Demo />)
     await userEvent.click(screen.getByText('Abrir'))

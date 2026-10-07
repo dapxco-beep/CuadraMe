@@ -69,7 +69,7 @@ export default function GraficoTendencia({ meses = [], rangoInicial = 6 }) {
 
       {conDatos.length === 0 ? (
         <div className="rounded-2xl bg-paper border border-line px-4 py-8 text-center">
-          <BarChart3 size={26} className="mx-auto text-ink-soft" aria-hidden="true" />
+          <BarChart3 size={24} className="mx-auto text-ink-soft" aria-hidden="true" />
           <p className="text-sm font-semibold mt-2">Aún no hay movimientos en estos meses</p>
           <p className="text-xs text-ink-soft mt-1">Cuando registres ingresos y gastos, aquí verás cómo evoluciona tu plata mes a mes.</p>
         </div>

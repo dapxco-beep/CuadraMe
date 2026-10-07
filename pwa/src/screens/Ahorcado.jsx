@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { EsqueletoTarjeta } from '../components/Esqueletos'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Lightbulb } from 'lucide-react'
 import { api } from '../lib/api'
@@ -31,7 +32,7 @@ export default function Ahorcado() {
       </p>
 
       {cargando ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <EsqueletoTarjeta alto={260} className="mx-6 mt-4" etiqueta="Cargando tu árbol" />
       ) : reporte ? (
         <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-6">
           <div className="w-full aspect-square max-w-[260px] mx-auto pop-in">
@@ -43,7 +44,7 @@ export default function Ahorcado() {
           </p>
           {reporte.salud.tips?.[0] && (
             <p className="text-xs text-ink-soft flex items-center justify-center gap-1.5 mt-4 pt-4 border-t border-line">
-              <Lightbulb size={13} className="shrink-0" /> {reporte.salud.tips[0]}
+              <Lightbulb size={16} className="shrink-0" /> {reporte.salud.tips[0]}
             </p>
           )}
         </section>

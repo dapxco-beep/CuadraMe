@@ -171,7 +171,7 @@ export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, 
               disabled={creando}
               className="mt-4 w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-accent text-accent font-semibold py-3 text-sm disabled:opacity-60"
             >
-              <Plus size={15} /> {busqueda.trim() ? `Crear categoría «${busqueda.trim()}»` : 'Crear categoría'}
+              <Plus size={16} /> {busqueda.trim() ? `Crear categoría «${busqueda.trim()}»` : 'Crear categoría'}
             </button>
           )}
         </>

@@ -30,14 +30,14 @@ export default function ResumenSaldo({ resumen, bolsillo, className = '' }) {
             type="button"
             aria-pressed={modo === m.id}
             onClick={() => setModo(m.id)}
-            className={`rounded-full px-3 py-1 text-[11px] font-semibold border border-current ${modo === m.id ? 'bg-black/25' : 'opacity-70'}`}
+            className={`rounded-full px-3 py-1 text-[11px] font-semibold border border-current ${modo === m.id ? 'bg-[color-mix(in_srgb,currentColor_16%,transparent)]' : 'opacity-70'}`}
           >
             {m.label}
           </button>
         ))}
       </div>
 
-      <div className="mt-3 rounded-2xl bg-black/20 px-3.5 py-3 space-y-1.5 text-xs" data-testid="desglose-saldo">
+      <div className="mt-3 rounded-2xl bg-[color-mix(in_srgb,currentColor_9%,transparent)] px-3.5 py-3 space-y-1.5 text-xs" data-testid="desglose-saldo">
         {modo === 'total' ? (
           <>
             <Fila k="Disponible hoy (cuentas, sin tarjetas)" v={fmt(resumen.disponible_cop)} />

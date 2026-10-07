@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Bell, Copy, FileCheck2, KeyRound, Mail, RefreshCw, Send, Smartphone } from 'lucide-react'
@@ -131,7 +132,7 @@ function TarjetaGmail({ g, navigate, recargar }) {
       <div className="flex gap-2 mt-3">
         {g.conectado ? (
           <Boton onClick={sincronizar} disabled={sincronizando} className="flex-1 bg-ink text-paper">
-            <RefreshCw size={14} className={sincronizando ? 'animate-spin' : ''} />
+            <RefreshCw size={16} className={sincronizando ? 'animate-spin' : ''} />
             {sincronizando ? 'Sincronizando...' : 'Sincronizar todo'}
           </Boton>
         ) : (
@@ -214,13 +215,13 @@ function TarjetaAtajo({ a, recargar }) {
       {aviso && !error && <p className="text-xs font-semibold mt-2" role="status">{aviso}</p>}
       <div className="grid grid-cols-3 gap-2 mt-3">
         <Boton onClick={copiar} className="border border-line">
-          <Copy size={13} /> Copiar clave
+          <Copy size={16} /> Copiar clave
         </Boton>
         <Boton onClick={regenerar} className="border border-line">
-          <KeyRound size={13} /> Clave nueva
+          <KeyRound size={16} /> Clave nueva
         </Boton>
         <Boton onClick={probar} disabled={probando} className="bg-accent text-white">
-          <Send size={13} /> {probando ? 'Probando...' : 'Probar conexión'}
+          <Send size={16} /> {probando ? 'Probando...' : 'Probar conexión'}
         </Boton>
       </div>
     </Tarjeta>
@@ -369,7 +370,7 @@ export default function Conexiones() {
           <button className="underline font-semibold" onClick={recargar}>Reintentar</button>
         </p>
       )}
-      {!estado && !error && <p className="px-6 mt-6 text-sm text-ink-soft">Cargando...</p>}
+      {!estado && !error && <EsqueletoLista filas={4} className="mx-6 mt-6" etiqueta="Cargando el estado de tus conexiones" />}
       {estado && (
         <>
           <TarjetaGmail g={estado.gmail} navigate={navigate} recargar={recargar} />

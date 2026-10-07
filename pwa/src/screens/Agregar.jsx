@@ -207,7 +207,7 @@ export default function Agregar() {
           className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
           aria-label="Cerrar"
         >
-          <X size={18} />
+          <X size={20} />
         </button>
       </header>
 
@@ -246,7 +246,7 @@ export default function Agregar() {
               escaneando ? 'opacity-60 pointer-events-none' : 'cursor-pointer'
             }`}
           >
-            <Camera size={14} /> Foto de factura
+            <Camera size={16} /> Foto de factura
             <input type="file" accept="image/*" capture="environment" className="hidden" aria-label="Tomar foto de factura" onChange={leerFactura} />
           </label>
           <label
@@ -263,7 +263,7 @@ export default function Agregar() {
               onClick={dividirGasto}
               className="flex-1 rounded-2xl border border-line bg-paper-raised py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5"
             >
-              <Users size={14} /> Dividir
+              <Users size={16} /> Dividir
             </button>
           )}
         </div>
@@ -271,7 +271,7 @@ export default function Agregar() {
 
       {escaneando && (
         <p role="status" className="px-5 mt-2 text-xs text-accent flex items-center gap-1.5">
-          <Sparkles size={12} className="animate-pulse" /> Leyendo tu factura...
+          <Sparkles size={16} className="animate-pulse" /> Leyendo tu factura...
         </p>
       )}
       {errorFactura && (
@@ -331,7 +331,7 @@ export default function Agregar() {
         />
         {categoriaAutoDetectada && categoria && (
           <div className="flex items-center gap-1.5 mt-2 text-xs text-accent">
-            <Sparkles size={12} />
+            <Sparkles size={16} />
             <span>Detectamos: {categoria}</span>
           </div>
         )}

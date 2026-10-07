@@ -54,7 +54,7 @@ export default function SelectorEmoji({ valor, onChange }) {
       </div>
 
       <div className="flex items-center gap-2 bg-paper-raised border border-line rounded-xl px-3 py-2 mb-2">
-        <Search size={14} className="text-ink-soft" />
+        <Search size={16} className="text-ink-soft" />
         <input
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}

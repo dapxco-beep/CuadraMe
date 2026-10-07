@@ -131,17 +131,17 @@ export default function Perfil() {
         <h2 className="text-[15px] font-semibold mb-3">Tus cuentas</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
           <Link to="/cuentas" className="flex items-center gap-3 px-4 py-3.5">
-            <Landmark size={18} className="text-accent shrink-0" />
+            <Landmark size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Ver y editar mis cuentas</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/movimientos" className="flex items-center gap-3 px-4 py-3.5">
-            <List size={18} className="text-accent shrink-0" />
+            <List size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Todos mis movimientos</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/compartir" className="flex items-center gap-3 px-4 py-3.5">
-            <Users size={18} className="text-accent shrink-0" />
+            <Users size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Compartir una cuenta</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
@@ -152,7 +152,7 @@ export default function Perfil() {
         <h2 className="text-[15px] font-semibold mb-3">Registro automático</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
           <Link to="/sincronizacion" className="flex items-center gap-3 px-4 py-3.5">
-            <RefreshCw size={18} className="text-accent shrink-0" />
+            <RefreshCw size={20} className="text-accent shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium">Sincronización</p>
               <p className="text-xs text-ink-soft mt-0.5">Qué falta conciliar, subir o categorizar</p>
@@ -160,7 +160,7 @@ export default function Perfil() {
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/conexiones" className="flex items-center gap-3 px-4 py-3.5">
-            <RefreshCw size={18} className="text-accent shrink-0" />
+            <RefreshCw size={20} className="text-accent shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium">Conexiones y estado</p>
               <p className="text-xs text-ink-soft mt-0.5">Mira si Gmail, el Atajo y las notificaciones funcionan</p>
@@ -168,7 +168,7 @@ export default function Perfil() {
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/correos" className="flex items-center gap-3 px-4 py-3.5">
-            <Mail size={18} className="text-accent shrink-0" />
+            <Mail size={20} className="text-accent shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium">Leer correos bancarios</p>
               <p className="text-xs text-ink-soft mt-0.5">Conecta tu Gmail y sugerimos movimientos por ti</p>
@@ -176,12 +176,12 @@ export default function Perfil() {
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/conciliacion" className="flex items-center gap-3 px-4 py-3.5">
-            <FileUp size={18} className="text-accent shrink-0" />
+            <FileUp size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Subir extracto (PDF)</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/importar" className="flex items-center gap-3 px-4 py-3.5">
-            <FileUp size={18} className="text-accent shrink-0" />
+            <FileUp size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Importar Excel o CSV</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
@@ -214,32 +214,32 @@ export default function Perfil() {
         <h2 className="text-[15px] font-semibold mb-3">Planeación</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
           <Link to="/metas" className="flex items-center gap-3 px-4 py-3.5">
-            <PiggyBank size={18} className="text-accent shrink-0" />
+            <PiggyBank size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Metas de ahorro</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/recurrentes" className="flex items-center gap-3 px-4 py-3.5">
-            <Repeat size={18} className="text-accent shrink-0" />
+            <Repeat size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Gastos recurrentes</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/deudas" className="flex items-center gap-3 px-4 py-3.5">
-            <CreditCard size={18} className="text-accent shrink-0" />
+            <CreditCard size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Deudas</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/reglas-categoria" className="flex items-center gap-3 px-4 py-3.5">
-            <Wand2 size={18} className="text-accent shrink-0" />
+            <Wand2 size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Reglas de categorización</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/entrenar-categorias" className="flex items-center gap-3 px-4 py-3.5">
-            <GraduationCap size={18} className="text-accent shrink-0" />
+            <GraduationCap size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Entrenar categorías</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/categorias" className="flex items-center gap-3 px-4 py-3.5">
-            <Tag size={18} className="text-accent shrink-0" />
+            <Tag size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Categorías</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
@@ -250,17 +250,17 @@ export default function Perfil() {
         <h2 className="text-[15px] font-semibold mb-3">Extra</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
           <Link to="/impuestos" className="flex items-center gap-3 px-4 py-3.5">
-            <Receipt size={18} className="text-accent shrink-0" />
+            <Receipt size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Impuestos (4x1000 y renta)</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/cierre-mes" className="flex items-center gap-3 px-4 py-3.5">
-            <FileText size={18} className="text-accent shrink-0" />
+            <FileText size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Cierre de mes</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/ahorcado" className="flex items-center gap-3 px-4 py-3.5">
-            <Sprout size={18} className="text-accent shrink-0" />
+            <Sprout size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Tu árbol financiero</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
@@ -341,7 +341,7 @@ export default function Perfil() {
           </p>
           <div className="flex items-center gap-2">
             <code className="flex-1 text-xs bg-paper rounded-xl px-3 py-2.5 truncate">
-              {apiKey || 'Cargando...'}
+              {apiKey || <span className="skeleton inline-block h-3.5 w-40 align-middle" role="status" aria-label="Cargando tu clave" />}
             </code>
             <button
               onClick={copiarApiKey}
@@ -349,7 +349,7 @@ export default function Perfil() {
               className="shrink-0 w-11 h-11 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
               aria-label="Copiar"
             >
-              <Copy size={15} className={copiado ? 'text-accent' : 'text-ink-soft'} />
+              <Copy size={16} className={copiado ? 'text-accent' : 'text-ink-soft'} />
             </button>
             <button
               onClick={regenerarApiKey}
@@ -357,7 +357,7 @@ export default function Perfil() {
               className="shrink-0 w-11 h-11 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
               aria-label="Regenerar"
             >
-              <RefreshCw size={15} className="text-ink-soft" />
+              <RefreshCw size={16} className="text-ink-soft" />
             </button>
           </div>
           {copiado && <p className="text-xs text-accent mt-2">Copiada al portapapeles</p>}
@@ -365,7 +365,7 @@ export default function Perfil() {
             to="/conectar-dispositivo"
             className="flex items-center justify-center gap-1.5 mt-3 text-sm text-accent font-semibold"
           >
-            Ver guía paso a paso (iPhone/Android) <ChevronRight size={15} />
+            Ver guía paso a paso (iPhone/Android) <ChevronRight size={16} />
           </Link>
         </div>
       </section>
@@ -391,7 +391,7 @@ export default function Perfil() {
                 <p className="text-sm font-medium">{t.nombre}</p>
                 <p className="text-xs text-ink-soft">{t.desc}</p>
               </div>
-              {theme === t.id && <Check size={18} className="text-accent shrink-0" />}
+              {theme === t.id && <Check size={20} className="text-accent shrink-0" />}
             </button>
           ))}
         </div>
@@ -403,17 +403,17 @@ export default function Perfil() {
         <h2 className="text-[15px] font-semibold mb-3">Legal</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
           <Link to="/legal/terminos" className="flex items-center gap-3 px-4 py-3.5">
-            <FileText size={18} className="text-ink-soft shrink-0" />
+            <FileText size={20} className="text-ink-soft shrink-0" />
             <p className="flex-1 text-sm font-medium">Términos y Condiciones</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/legal/privacidad" className="flex items-center gap-3 px-4 py-3.5">
-            <FileText size={18} className="text-ink-soft shrink-0" />
+            <FileText size={20} className="text-ink-soft shrink-0" />
             <p className="flex-1 text-sm font-medium">Política de Privacidad</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/legal/autorizacion-datos" className="flex items-center gap-3 px-4 py-3.5">
-            <FileText size={18} className="text-ink-soft shrink-0" />
+            <FileText size={20} className="text-ink-soft shrink-0" />
             <p className="flex-1 text-sm font-medium">Autorización de datos</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
@@ -425,7 +425,7 @@ export default function Perfil() {
           onClick={logout}
           className="w-full flex items-center gap-3 rounded-2xl bg-paper-raised border border-line px-4 py-3.5 text-danger font-medium text-sm"
         >
-          <LogOut size={18} /> Cerrar sesión
+          <LogOut size={20} /> Cerrar sesión
         </button>
       </section>
 

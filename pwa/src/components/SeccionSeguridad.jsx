@@ -170,7 +170,7 @@ export default function SeccionSeguridad() {
 
             {bioOk && (
               <div className="mt-4 pt-3 border-t border-line flex items-center gap-3">
-                <Fingerprint size={18} className="text-accent shrink-0" />
+                <Fingerprint size={20} className="text-accent shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">Huella o Face ID</p>
                   <p className="text-xs text-ink-soft mt-0.5">El PIN siempre queda como respaldo</p>

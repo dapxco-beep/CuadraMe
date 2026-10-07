@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { useVolver } from '../lib/useVolver'
 import { useEstadoLista } from '../lib/useEstadoLista'
 import { ArrowLeft, Plus, X } from 'lucide-react'
@@ -11,7 +12,7 @@ import Hoja from '../components/Hoja'
 
 const urgenciaColor = {
   critico: 'text-danger',
-  proximo: 'text-accent-2',
+  proximo: 'text-gold',
   normal: 'text-ink-soft',
 }
 
@@ -51,7 +52,7 @@ export default function Deudas() {
             onClick={volver}
             className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
            aria-label="Volver">
-            <ArrowLeft size={18} />
+            <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-semibold">Deudas</h1>
         </div>
@@ -71,7 +72,7 @@ export default function Deudas() {
       )}
 
       {cargando ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <EsqueletoLista filas={3} className="mx-5 mt-6" etiqueta="Cargando tus deudas" />
       ) : error ? (
         <div className="mx-5 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
           <p className="text-sm text-danger mb-3">{error}</p>
