@@ -329,6 +329,7 @@ def obtener_review(
     return ProcesarExtractoResponse(
         ok=True,
         historial_id=historial.id,
+        cuenta_id=historial.cuenta_id,
         banco_detectado=historial.banco_detectado,
         total_movimientos=historial.total_movimientos,
         exactos=historial.exactos,

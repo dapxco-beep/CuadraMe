@@ -677,6 +677,8 @@ class CorreoGastoOut(BaseModel):
     banco_detectado: Optional[str] = None
     cuenta_sugerida_id: Optional[str] = None
     falta_cuenta: bool = False
+    # El monto no se pudo leer del correo (<= 0): hay que pedirlo antes de aprobar.
+    falta_monto: bool = False
     # Por qué se sugirió esa categoría ('por tu regla «rappi»'); None si la eligió el usuario
     # o no se pudo decidir. `preguntar_categoria`: quedó en 'Otros', hay que preguntarle.
     razon_categoria: Optional[str] = None
@@ -703,6 +705,8 @@ class CorreoGastoUpdate(BaseModel):
 class AprobarCorreoRequest(BaseModel):
     # Opcional a propósito: sin cuenta elegida se responde 400 claro en vez de 422.
     cuenta_id: Optional[str] = None
+    # Monto escrito por el usuario cuando el correo no lo traía (debe ser > 0).
+    monto: Optional[float] = None
     # Categoría elegida por el usuario al aprobar (si cambió la sugerida).
     categoria: Optional[str] = None
     recordar: bool = False
@@ -844,6 +848,7 @@ class MovimientoReview(BaseModel):
 class ProcesarExtractoResponse(BaseModel):
     ok: bool
     historial_id: Optional[str] = None
+    cuenta_id: Optional[str] = None  # cuenta del extracto (al reabrir una revisión desde el historial)
     banco_detectado: Optional[str] = None
     total_movimientos: int = 0
     exactos: int = 0

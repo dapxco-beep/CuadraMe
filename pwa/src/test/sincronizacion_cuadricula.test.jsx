@@ -13,6 +13,7 @@ const api = vi.hoisted(() => ({
   gmailEstado: vi.fn(),
   extractosCorreo: vi.fn(),
   clavePdfEstado: vi.fn(),
+  correosPendientes: vi.fn(),
 }))
 vi.mock('../lib/api', () => ({ api }))
 vi.mock('../lib/CuentasContext', () => ({
@@ -60,6 +61,7 @@ beforeEach(() => {
   api.gmailEstado.mockResolvedValue({ conectado: false })
   api.extractosCorreo.mockResolvedValue([])
   api.clavePdfEstado.mockResolvedValue({})
+  api.correosPendientes.mockResolvedValue([])
 })
 
 describe('helpers', () => {
@@ -82,12 +84,15 @@ describe('Sincronización: cuadrícula', () => {
     expect(screen.getByRole('button', { name: /Nu Colombia \(Crédito ••4821\), mayo 2026/ })).toBeTruthy()
   })
 
-  it('"Subir el extracto de este mes" abre Conciliación con cuenta y mes', async () => {
+  it('"Subir el extracto de este mes" abre el bloque Subir archivos con cuenta y mes, sin salir del centro', async () => {
     montar()
     fireEvent.click(await screen.findByRole('button', { name: /Nu Colombia \(Ahorros\), mayo 2026/ }))
     const det = screen.getByRole('region', { name: 'Detalle del mes' })
     fireEvent.click(within(det).getByRole('button', { name: 'Subir el extracto de este mes' }))
-    expect(JSON.parse((await screen.findByTestId('destino')).textContent)).toEqual({ cuentaId: 'n1', mes: '2026-05' })
+    expect(await screen.findByText(/Sube el extracto de/)).toHaveTextContent('mayo 2026 de Nu Colombia')
+    expect(screen.getByRole('button', { name: /Subir archivos/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByLabelText('Archivos a subir')).toBeTruthy()
+    expect(screen.queryByTestId('destino')).toBeNull()
   })
 
   it('"Meses anteriores" pide la ventana anterior al servidor', async () => {

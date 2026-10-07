@@ -1,7 +1,7 @@
-// Pantalla Correos: sección "Extractos encontrados", clave del PDF y privacidad.
+// Centro Traer movimientos, bloque «Desde tu correo»: extractos encontrados, clave del PDF y privacidad.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 const CUENTAS = [
   { id: 'c1', nombre: 'Efectivo', saldo: 0, moneda: 'COP', tipo: 'efectivo', icono: '💵' },
@@ -14,7 +14,17 @@ const EXTRACTOS = [
   { id: 'e3', banco: 'Nequi', periodo: 'julio 2026', asunto: 'Extracto', archivo: 'c.pdf', estado: 'procesado', cuenta_sugerida_id: null, historial_id: 'h9' },
 ]
 
+const ESTADO = {
+  meses: [], cuentas: [], sin_cuenta: [], ultima_sync: null,
+  tareas: [
+    { id: 'falta_clave', titulo: 'Falta la clave del PDF', detalle: '', cantidad: 1, ruta: '/sincronizacion#clave' },
+    { id: 'extractos_por_conciliar', titulo: 'Extractos por conciliar', detalle: '', cantidad: 1, ruta: '/sincronizacion#extractos' },
+  ],
+}
+
 const api = vi.hoisted(() => ({
+  sincronizacionEstado: vi.fn(),
+  sincronizacionPorCategorizar: vi.fn(),
   gmailEstado: vi.fn(),
   correosPendientes: vi.fn(),
   extractosCorreo: vi.fn(),
@@ -24,36 +34,36 @@ const api = vi.hoisted(() => ({
   conciliarExtractoCorreo: vi.fn(),
   descartarExtractoCorreo: vi.fn(),
   sincronizarCorreos: vi.fn(),
+  obtenerReviewExtracto: vi.fn(),
 }))
 vi.mock('../lib/api', () => ({ api }))
 vi.mock('../lib/CuentasContext', () => ({
   useCuentas: () => ({ cuentas: CUENTAS, cargando: false, error: '', recargar: vi.fn() }),
 }))
+vi.mock('../lib/CategoriasContext', () => ({ useCategorias: () => ({ nombres: ['Otros'], iconoDe: () => '' }) }))
 
 import { DialogosProvider } from '../lib/DialogosContext'
-import Correos from '../screens/Correos'
-
-function Destino() {
-  const loc = useLocation()
-  return <p>Destino conciliación {loc.state?.historialId}</p>
-}
+import Sincronizacion from '../screens/Sincronizacion'
 
 function montar() {
   return render(
     <DialogosProvider>
-      <MemoryRouter initialEntries={['/correos']}>
+      <MemoryRouter initialEntries={['/sincronizacion']}>
         <Routes>
-          <Route path="/correos" element={<Correos />} />
-          <Route path="/conciliacion" element={<Destino />} />
+          <Route path="/sincronizacion" element={<Sincronizacion />} />
         </Routes>
       </MemoryRouter>
     </DialogosProvider>
   )
 }
 
+const extractosEncontrados = () => screen.findByRole('heading', { name: /Extractos encontrados/ })
+
 beforeEach(() => {
   localStorage.clear()
   Object.values(api).forEach((f) => f.mockReset())
+  api.sincronizacionEstado.mockResolvedValue(ESTADO)
+  api.sincronizacionPorCategorizar.mockResolvedValue({ items: [], total: 0 })
   api.gmailEstado.mockResolvedValue({ conectado: true, email: 'yo@gmail.com', etiqueta: 'gastos' })
   api.correosPendientes.mockResolvedValue([])
   api.extractosCorreo.mockResolvedValue(EXTRACTOS)
@@ -61,60 +71,63 @@ beforeEach(() => {
   api.sincronizarCorreos.mockResolvedValue({ ok: true, nuevos: 0, omitidos: 0, extractos_nuevos: 0 })
 })
 
-describe('Correos: extractos encontrados', () => {
+describe('Desde tu correo: extractos encontrados', () => {
   it('lista los extractos con su estado y el mensaje de privacidad', async () => {
     montar()
     // El conciliado (Nequi) no cuenta como pendiente: queda en su sección plegada.
-    expect(await screen.findByText('Extractos encontrados (2)')).toBeTruthy()
-    expect(screen.getByText('Nuevo')).toBeTruthy()
-    // "Falta clave" es la etiqueta del extracto y también un filtro de la lista.
-    expect(screen.getAllByText('Falta clave').length).toBeGreaterThanOrEqual(2)
-    expect(screen.queryByText('Nequi')).toBeNull()
+    expect((await extractosEncontrados()).textContent).toBe('Extractos encontrados2')
+    expect(within(screen.getByTestId('extracto-e1')).getByText('Nuevo · listo para conciliar')).toBeTruthy()
+    expect(within(screen.getByTestId('extracto-e2')).getByText('Falta la clave del PDF')).toBeTruthy()
+    expect(screen.queryByText(/Nequi/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Ya conciliados \(1\)/ }))
     expect(screen.getByText(/Nequi · julio 2026/)).toBeTruthy()
-    expect(screen.getByText(/solo tiene permiso de/i)).toBeTruthy()
-    expect(screen.getByText(/No guardamos tus correos ni los PDF/i)).toBeTruthy()
+    expect(screen.getByText(/Solo tengo permiso de/)).toBeTruthy()
+    expect(screen.getByText(/No guardo tus correos ni los PDF/)).toBeTruthy()
   })
 
-  it('un extracto sin clave no se puede conciliar', async () => {
+  it('un extracto sin clave no se puede conciliar: ofrece poner la clave', async () => {
     montar()
-    await screen.findByText('Davivienda')
-    const botones = screen.getAllByRole('button', { name: 'Conciliar' })
-    expect(botones[0].disabled).toBe(false) // el nuevo
-    expect(botones[1].disabled).toBe(true) // falta clave
-    expect(screen.getByText(/falta la clave del PDF/i)).toBeTruthy()
+    await extractosEncontrados()
+    const sinClave = screen.getByTestId('extracto-e2')
+    expect(within(sinClave).queryByRole('button', { name: 'Conciliar' })).toBeNull()
+    expect(within(sinClave).getByRole('button', { name: 'Poner clave' })).toBeTruthy()
+    expect(within(screen.getByTestId('extracto-e1')).getByRole('button', { name: 'Conciliar' }).disabled).toBe(false)
   })
 
-  it('Conciliar usa la cuenta sugerida y abre el flujo de conciliación con el historial', async () => {
+  it('Conciliar usa la cuenta sugerida y abre la revisión del historial en el mismo centro', async () => {
     api.conciliarExtractoCorreo.mockResolvedValue({ ok: true, historial_id: 'h1' })
+    api.obtenerReviewExtracto.mockResolvedValue({ ok: true, historial_id: 'h1', cuenta_id: 'c2', banco_detectado: 'Bancolombia', total_movimientos: 0, review: [] })
     montar()
-    await screen.findByText('Bancolombia')
-    fireEvent.click(screen.getAllByRole('button', { name: 'Conciliar' })[0])
+    await extractosEncontrados()
+    fireEvent.click(within(screen.getByTestId('extracto-e1')).getByRole('button', { name: 'Conciliar' }))
     await waitFor(() => expect(api.conciliarExtractoCorreo).toHaveBeenCalledWith('e1', 'c2'))
-    expect(await screen.findByText('Destino conciliación h1')).toBeTruthy()
+    expect(await screen.findByTestId('revision-multiple')).toBeTruthy()
+    expect(api.obtenerReviewExtracto).toHaveBeenCalledWith('h1')
   })
 
   it('si la conciliación falla muestra el mensaje y se queda en la pantalla', async () => {
     api.conciliarExtractoCorreo.mockResolvedValue({ ok: false, error: 'No se pudo leer este PDF.' })
     montar()
-    await screen.findByText('Bancolombia')
-    fireEvent.click(screen.getAllByRole('button', { name: 'Conciliar' })[0])
+    await extractosEncontrados()
+    fireEvent.click(within(screen.getByTestId('extracto-e1')).getByRole('button', { name: 'Conciliar' }))
     expect(await screen.findByText('No se pudo leer este PDF.')).toBeTruthy()
   })
 
-  it('permite guardar la clave del PDF sin mostrarla de vuelta', async () => {
+  it('permite guardar la clave del PDF sin mostrarla de vuelta, y borrarla', async () => {
     api.guardarClavePdf.mockResolvedValue({ ok: true, configurada: true })
+    api.borrarClavePdf.mockResolvedValue({ ok: true, configurada: false })
     montar()
-    await screen.findByText('Bancolombia')
-    fireEvent.click(screen.getByRole('button', { name: /Clave del PDF/ }))
-    expect(screen.getByText('Aún no hay clave guardada.')).toBeTruthy()
+    await extractosEncontrados()
+    expect(screen.getByText(/Normalmente es tu cédula/)).toBeTruthy()
     const campo = screen.getByLabelText('Clave del PDF')
     expect(campo.type).toBe('password')
     fireEvent.change(campo, { target: { value: '1020304050' } })
     fireEvent.click(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(api.guardarClavePdf).toHaveBeenCalledWith('1020304050'))
-    expect(await screen.findByText('Hay una clave guardada.')).toBeTruthy()
+    expect(await screen.findByText(/Hay una clave guardada/)).toBeTruthy()
     expect(screen.queryByDisplayValue('1020304050')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Borrar la clave guardada' }))
+    await waitFor(() => expect(api.borrarClavePdf).toHaveBeenCalled())
   })
 
   it('sincroniza sola al abrir si pasaron más de 6 horas, y no si fue reciente', async () => {
@@ -126,7 +139,7 @@ describe('Correos: extractos encontrados', () => {
   it('no vuelve a sincronizar si ya se hizo hace poco', async () => {
     localStorage.setItem('cuadrame_gmail_sync', String(Date.now()))
     montar()
-    await screen.findByText('Extractos encontrados (2)')
+    await extractosEncontrados()
     expect(api.sincronizarCorreos).not.toHaveBeenCalled()
   })
 })

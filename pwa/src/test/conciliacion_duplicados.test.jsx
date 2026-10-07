@@ -17,8 +17,8 @@ vi.mock('../lib/CategoriasContext', () => ({
 }))
 
 import { DialogosProvider } from '../lib/DialogosContext'
-import Conciliacion from '../screens/Conciliacion'
-import { clavesFilas, filasAImportar } from '../lib/conciliacionClaves'
+import SubidaMultiple from '../components/SubidaMultiple'
+import { clavesUnicas } from '../lib/subidaMultiple'
 
 const review = [
   { fingerprint: 'x', fecha: '2026-10-03', descripcion: 'TIENDA D1', monto: 5000, tipo: 'expense', estado: 'faltante', categoria_sugerida: 'Comida' },
@@ -30,28 +30,26 @@ beforeEach(() => Object.values(api).forEach((f) => f.mockReset()))
 
 describe('claves de filas', () => {
   it('huellas repetidas obtienen claves distintas y estables', () => {
-    expect(clavesFilas(review)).toEqual(['x#0', 'x#1', 'y#0'])
-    expect(clavesFilas(review)).toEqual(clavesFilas(review))
-  })
-  it('cuenta filas, no huellas', () => {
-    expect(filasAImportar(review, new Set(['x', 'y']))).toBe(3)
-    expect(filasAImportar(review, new Set(['y']))).toBe(1)
+    const items = review.map((m) => ({ k: m.fingerprint }))
+    expect(clavesUnicas(items)).toEqual(['x#0', 'x#1', 'y#0'])
+    expect(clavesUnicas(items)).toEqual(clavesUnicas(items))
   })
 })
 
-describe('Conciliacion con filas idénticas', () => {
+describe('Revisión consolidada con filas idénticas', () => {
   it('sin warning de claves repetidas, ambas filas visibles y el botón cuenta 3', async () => {
     const err = vi.spyOn(console, 'error').mockImplementation(() => {})
     api.obtenerReviewExtracto.mockResolvedValue({ ok: true, historial_id: 'h1', review, resumen: {} })
     api.importarFaltantes.mockResolvedValue({ importados: 3 })
     render(
       <DialogosProvider>
-        <MemoryRouter initialEntries={[{ pathname: '/', state: { historialId: 'h1' } }]}>
-          <Conciliacion />
+        <MemoryRouter>
+          <SubidaMultiple revisionInicial={{ historialId: 'h1' }} />
         </MemoryRouter>
       </DialogosProvider>
     )
     expect(await screen.findAllByText('TIENDA D1')).toHaveLength(2)
+    expect(screen.getAllByText(/idéntico a otros 1 \(se importan juntos\)/)).toHaveLength(2)
     const boton = screen.getByRole('button', { name: /Importar \(3\)/ })
     expect(boton).toBeInTheDocument()
     const avisosClave = err.mock.calls.filter((c) => String(c[0]).includes('same key'))

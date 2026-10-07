@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, Check, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -7,6 +7,8 @@ import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { AvisoCategorizados } from './CategorizacionAuto'
 import AvisoYaConciliado from './AvisoYaConciliado'
+import BarraProgreso from './BarraProgreso'
+import PropuestaTarjeta from './PropuestaTarjeta'
 import RecordarRegla, { RECORDAR_INICIAL } from './RecordarRegla'
 import ZonaSubida from './ZonaSubida'
 import { opcionesCategoria } from '../lib/importar'
@@ -15,11 +17,14 @@ import {
   MAX_ARCHIVOS,
   agruparPorCuenta,
   clavesFaltantes,
+  clavesUnicas,
   consolidar,
+  gemelasNuevas,
   normalizarPdf,
   normalizarTabular,
   procesarCola,
   sugerirCuenta,
+  textoDescartados,
   tipoDeArchivo,
   validarSeleccion,
 } from '../lib/subidaMultiple'
@@ -51,26 +56,34 @@ function periodoTexto(p) {
   return p.desde === p.hasta ? p.desde : `${p.desde} a ${p.hasta}`
 }
 
+const nuevoArchivo = (f, cuentas, cuentaInicial) => ({
+  id: nuevoId(), file: f, nombre: f.name, tipo: tipoDeArchivo(f.name),
+  cuentaId: sugerirCuenta(f.name, cuentas, cuentaInicial), password: '', estado: 'pendiente', error: '',
+  banco: '', periodo: null, items: [],
+})
+
 /**
- * Varios extractos a la vez: cola (uno tras otro, un fallo no frena a los demás),
- * revisión consolidada sin duplicados entre archivos y UNA confirmación que importa
- * lo marcado, aplica las categorías y guarda las reglas que el usuario quiso recordar.
+ * Subida de extractos y archivos (PDF, Excel, CSV; uno o varios): la zona única detecta el tipo
+ * por la extensión y manda cada archivo a su lector. Cola (uno tras otro, un fallo no frena a
+ * los demás), UNA revisión consolidada agrupada por cuenta y archivo, y UNA confirmación que
+ * importa lo marcado, aplica las categorías y guarda las reglas que el usuario quiso recordar.
+ *
+ * `revisionInicial={{ historialId }}` abre directo la revisión de un extracto ya procesado
+ * (el de un correo, un enlace o una notificación) sin volver a subir nada.
  */
-export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial = '', onCancelar }) {
+export default function SubidaMultiple({
+  archivosIniciales = [], cuentaInicial = '', revisionInicial = null, onCancelar, onImportado, onManual,
+}) {
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: CATEGORIAS } = useCategorias()
   const [archivos, setArchivos] = useState(() => {
     const { aceptados } = validarSeleccion(archivosIniciales)
-    return aceptados.map((f) => ({
-      id: nuevoId(), file: f, nombre: f.name, tipo: tipoDeArchivo(f.name),
-      cuentaId: sugerirCuenta(f.name, cuentas, cuentaInicial), password: '', estado: 'pendiente', error: '',
-      banco: '', periodo: null, items: [],
-    }))
+    return aceptados.map((f) => nuevoArchivo(f, cuentas, cuentaInicial))
   })
   const [rechazados, setRechazados] = useState(() => validarSeleccion(archivosIniciales).rechazados)
   const [progreso, setProgreso] = useState({ actual: 0, total: 0 })
   const [corriendo, setCorriendo] = useState(false)
-  const [fase, setFase] = useState('cola') // cola | revision | resultado
+  const [fase, setFase] = useState(revisionInicial?.historialId ? 'abriendo' : 'cola') // abriendo | cola | revision | resultado
   const [seleccion, setSeleccion] = useState(new Set())
   const [categorias, setCategorias] = useState({})
   const [aprender, setAprender] = useState({}) // clave -> { recordar, anteriores } (solo filas editadas)
@@ -79,6 +92,13 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
   const [error, setError] = useState('')
   const archivosRef = useRef(archivos)
   archivosRef.current = archivos
+  const montado = useRef(true)
+  useEffect(() => {
+    montado.current = true
+    return () => {
+      montado.current = false
+    }
+  }, [])
 
   const consolidado = useMemo(() => consolidar(archivos), [archivos])
   const listos = consolidado.archivos.filter((a) => a.estado === 'listo')
@@ -87,17 +107,51 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
 
   const parchar = (id, parche) => setArchivos((prev) => prev.map((a) => (a.id === id ? { ...a, ...parche } : a)))
 
+  function empezarRevision(lista) {
+    setSeleccion(new Set(clavesFaltantes(lista)))
+    const cats = {}
+    for (const a of lista) {
+      if (a.estado !== 'listo') continue
+      for (const it of a.items) cats[`${a.id}:${it.k}`] = it.categoria || 'Otros'
+    }
+    setCategorias(cats)
+    setAprender({})
+    setFase('revision')
+  }
+
+  // Revisión de un extracto que ya se procesó en el servidor (correo, enlace, notificación).
+  const historialInicial = revisionInicial?.historialId
+  useEffect(() => {
+    if (!historialInicial) return
+    let vigente = true
+    api.obtenerReviewExtracto(historialInicial)
+      .then((r) => {
+        if (!vigente) return
+        const base = normalizarPdf(r)
+        const cuentaId = r.cuenta_id || revisionInicial?.cuentaId || cuentaInicial || cuentas[0]?.id || ''
+        const a = {
+          id: nuevoId(), file: null, nombre: `Extracto ${base.banco}`, tipo: 'pdf', cuentaId, password: '',
+          estado: 'listo', error: '', nMov: r.total_movimientos, ...base,
+        }
+        setArchivos([a])
+        empezarRevision([a])
+      })
+      .catch(() => {
+        if (!vigente) return
+        setError('No se pudo abrir la revisión del extracto.')
+        setFase('cola')
+      })
+    return () => {
+      vigente = false
+    }
+    // solo al montar: la revisión inicial no cambia mientras el componente vive
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historialInicial])
+
   function agregar(files) {
     const { aceptados, rechazados: rech } = validarSeleccion(files, archivos.length)
     setRechazados(rech)
-    setArchivos((prev) => [
-      ...prev,
-      ...aceptados.map((f) => ({
-        id: nuevoId(), file: f, nombre: f.name, tipo: tipoDeArchivo(f.name),
-        cuentaId: sugerirCuenta(f.name, cuentas, cuentaInicial), password: '', estado: 'pendiente', error: '',
-        banco: '', periodo: null, items: [],
-      })),
-    ])
+    setArchivos((prev) => [...prev, ...aceptados.map((f) => nuevoArchivo(f, cuentas, cuentaInicial))])
   }
 
   function quitar(id) {
@@ -117,7 +171,7 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
     const r = await api.importarVistaPrevia({ cuenta_id: a.cuentaId, nombre_archivo: a.nombre, archivo_base64: base64 })
     const n = normalizarTabular(r)
     if (n.items.length === 0) {
-      throw new Error('No reconocimos las columnas de este archivo. Impórtalo solo desde "Importar Excel o CSV" para elegirlas a mano.')
+      throw new Error('No reconocimos las columnas de este archivo.')
     }
     return { estado: 'listo', error: '', ...n, nMov: n.items.length }
   }
@@ -126,26 +180,13 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
     setCorriendo(true)
     setError('')
     await procesarCola(archivosRef.current, procesarUno, { onCambio: parchar, onProgreso: setProgreso })
-    setCorriendo(false)
+    if (montado.current) setCorriendo(false)
   }
 
   function reintentar(a) {
     parchar(a.id, { estado: 'pendiente', error: '' })
     // el estado se aplica al terminar el render; la cola lee archivosRef
     setTimeout(procesar, 0)
-  }
-
-  function irARevision() {
-    const claves = clavesFaltantes(consolidado.archivos)
-    setSeleccion(new Set(claves))
-    const cats = {}
-    for (const a of consolidado.archivos) {
-      if (a.estado !== 'listo') continue
-      for (const it of a.items) cats[`${a.id}:${it.k}`] = it.categoria || 'Otros'
-    }
-    setCategorias(cats)
-    setAprender({})
-    setFase('revision')
   }
 
   function alternar(clave) {
@@ -185,10 +226,12 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
       try {
         let r
         if (a.tipo === 'pdf') {
-          const cats = Object.fromEntries(marcados.map((it) => [it.k, categorias[`${a.id}:${it.k}`] || 'Otros']))
-          r = await api.importarFaltantes(a.historialId, marcados.map((it) => it.k), cats, {
-            recordar: marcados.filter((it) => rec(it)?.recordar).map((it) => it.k),
-            aplicar_anteriores: marcados.filter((it) => rec(it)?.recordar && rec(it)?.anteriores).map((it) => it.k),
+          // El servidor importa por huella: las filas idénticas se importan juntas, se envía una vez.
+          const ks = [...new Set(marcados.map((it) => it.k))]
+          const cats = Object.fromEntries(ks.map((k) => [k, categorias[`${a.id}:${k}`] || 'Otros']))
+          r = await api.importarFaltantes(a.historialId, ks, cats, {
+            recordar: ks.filter((k) => aprender[`${a.id}:${k}`]?.recordar),
+            aplicar_anteriores: ks.filter((k) => aprender[`${a.id}:${k}`]?.recordar && aprender[`${a.id}:${k}`]?.anteriores),
           })
         } else {
           r = await api.importarConfirmar({
@@ -208,9 +251,18 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
       }
     }
     await recargarCuentas()
+    if (!montado.current) return
     setResultados(salida)
     setFase('resultado')
     setImportando(false)
+    onImportado?.(salida)
+  }
+
+  // ── Abriendo una revisión guardada ─────────────────────────
+  if (fase === 'abriendo') {
+    return (
+      <p className="text-sm text-ink-soft py-6 text-center" role="status">Abriendo la revisión…</p>
+    )
   }
 
   // ── Resultado ──────────────────────────────────────────────
@@ -219,10 +271,10 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
     const totalAuto = resultados.reduce((n, r) => n + (r.categorizados_auto || 0), 0)
     const reglas = resultados.reduce((n, r) => n + (r.reglas_guardadas || 0), 0)
     return (
-      <div className="px-5 mt-4" data-testid="resultado-multiple">
+      <div className="mt-2" data-testid="resultado-multiple" role="status">
         <div className="text-center">
           <div className="w-14 h-14 rounded-full bg-accent-soft text-accent flex items-center justify-center mx-auto mb-3">
-            <Check size={24} />
+            <Check size={24} aria-hidden="true" />
           </div>
           <p className="text-lg font-semibold">
             {totalImportados} {totalImportados === 1 ? 'movimiento importado' : 'movimientos importados'}
@@ -233,7 +285,7 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
             </p>
           )}
         </div>
-        <ul className="mt-4 rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
+        <ul className="mt-4 rounded-2xl bg-paper border border-line divide-y divide-line overflow-hidden">
           {resultados.map((r) => (
             <li key={r.id} className="px-4 py-3">
               <p className="text-sm font-medium truncate">{r.nombre}</p>
@@ -249,10 +301,14 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
           ))}
         </ul>
         <AvisoCategorizados n={totalAuto} className="mt-4" />
-        <div className="flex gap-2 mt-6">
-          <button onClick={onCancelar} className="flex-1 rounded-2xl border border-line py-3.5 text-sm font-semibold">Subir otros</button>
-          <Link to="/movimientos" replace className="flex-1 bg-ink text-paper rounded-2xl py-3.5 text-sm font-semibold text-center">
-            Ver movimientos
+        <div className="flex gap-2 mt-5">
+          <button onClick={onCancelar} className="flex-1 rounded-2xl border border-line py-3 text-sm font-semibold">Subir otros</button>
+          <Link
+            to={totalAuto > 0 ? '/movimientos?revisar=1' : '/movimientos'}
+            replace
+            className="flex-1 bg-ink text-paper rounded-2xl py-3 text-sm font-semibold text-center"
+          >
+            {totalAuto > 0 ? 'Revisar lo categorizado' : 'Ver movimientos'}
           </Link>
         </div>
       </div>
@@ -263,8 +319,8 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
   if (fase === 'revision') {
     const grupos = agruparPorCuenta(consolidado.archivos)
     return (
-      <div className="px-5 mt-4" data-testid="revision-multiple">
-        <div className="rounded-2xl bg-paper-raised border border-line p-4 mb-3 grid grid-cols-3 gap-2 text-center">
+      <div className="mt-2" data-testid="revision-multiple">
+        <div className="rounded-2xl bg-paper border border-line p-4 mb-3 grid grid-cols-3 gap-2 text-center">
           <div>
             <p className="text-lg font-bold">{listos.length}</p>
             <p className="text-xs text-ink-soft">Archivos</p>
@@ -280,7 +336,7 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
         </div>
         {consolidado.repetidos > 0 && (
           <p className="text-xs text-ink-soft mb-3">
-            Los movimientos que aparecen en dos extractos (periodos que se solapan) se cuentan una sola vez.
+            Lo que aparece en dos extractos (periodos que se solapan) se cuenta una sola vez.
           </p>
         )}
 
@@ -298,26 +354,48 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
 
         {grupos.map((g) => (
           <section key={g.cuentaId} className="mb-5" aria-label={`Cuenta ${nombreCuenta(g.cuentaId)}`}>
-            <h2 className="text-sm font-semibold mb-2">{nombreCuenta(g.cuentaId)}</h2>
+            <h3 className="text-sm font-semibold mb-2">{nombreCuenta(g.cuentaId)}</h3>
             {g.archivos.map((a) => {
               const visibles = a.items.filter((it) => it.estado !== 'ya')
               const ya = a.items.length - visibles.length
+              const claves = clavesUnicas(visibles)
               return (
                 <div key={a.id} className="mb-3">
                   <p className="text-xs text-ink-soft mb-1.5 truncate">
                     {a.nombre} · {a.banco} · {periodoTexto(a.periodo)}
                     {ya > 0 ? ` · ${ya} ya registrados` : ''}
                   </p>
+                  <AvisoYaConciliado info={a.yaConciliado} cuenta={nombreCuenta(a.cuentaId)} className="mb-2" />
+                  <PropuestaTarjeta propuesta={a.propuestaTarjeta} cuentaId={a.cuentaId} className="mb-2" />
+                  <AvisoCategorizados n={a.autoImportados} className="mb-2" />
+                  {a.descartados > 0 && (
+                    <p className="rounded-2xl bg-accent-soft px-3.5 py-2.5 text-xs mb-2" role="status" data-testid="aviso-descartados">
+                      {textoDescartados(a.descartados)}
+                    </p>
+                  )}
+                  {a.completados?.length > 0 && (
+                    <div role="status" className="rounded-2xl bg-accent-soft px-3.5 py-2.5 text-xs mb-2">
+                      <p className="font-semibold">
+                        Completé {a.completados.length} {a.completados.length === 1 ? 'movimiento' : 'movimientos'} con tu extracto
+                      </p>
+                      {a.completados.filter((c) => c.montoRegistrado != null && c.montoRegistrado !== c.monto).map((c, i) => (
+                        <p key={i} className="text-danger mt-1">
+                          {c.descripcion}: anotaste {formatCOP(c.montoRegistrado)} y el banco dice {formatCOP(c.monto)}. Revisa el monto.
+                        </p>
+                      ))}
+                    </div>
+                  )}
                   {visibles.length === 0 ? (
-                    <p className="text-xs text-ink-soft rounded-2xl border border-line bg-paper-raised px-4 py-3">Todo lo de este archivo ya estaba registrado.</p>
+                    <p className="text-xs text-ink-soft rounded-2xl border border-line bg-paper px-4 py-3">Todo lo de este archivo ya estaba registrado.</p>
                   ) : (
-                    <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
-                      {visibles.map((it) => {
+                    <div className="rounded-2xl bg-paper border border-line divide-y divide-line overflow-hidden">
+                      {visibles.map((it, idx) => {
                         const clave = `${a.id}:${it.k}`
                         const marcado = seleccion.has(clave)
                         const repetido = it.estado === 'repetido'
+                        const gemelas = gemelasNuevas(visibles, it.k)
                         return (
-                          <div key={clave} className="px-4 py-3">
+                          <div key={`${a.id}:${claves[idx]}`} className="px-4 py-3">
                             <label className="flex items-center gap-3">
                               <input
                                 type="checkbox"
@@ -329,13 +407,14 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
                               />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">{it.descripcion}</p>
-                                <p className={`text-xs ${repetido ? 'text-ink-soft' : it.estado === 'posible' ? 'text-danger' : 'text-danger'}`}>
+                                <p className="text-xs text-danger">
                                   {it.fecha} ·{' '}
                                   {repetido ? `Ya está en ${it.repetidoDe}` : it.estado === 'posible' ? 'Posible duplicado' : 'Falta registrar'}
+                                  {it.estado === 'nuevo' && gemelas > 1 ? ` · idéntico a otros ${gemelas - 1} (se importan juntos)` : ''}
                                 </p>
                               </div>
                               <p className="text-sm font-semibold shrink-0">
-                                {it.tipo === 'income' ? '+' : '-'}
+                                {it.tipo === 'income' ? '+' : it.tipo === 'transfer' ? '' : '-'}
                                 {formatCOP(it.monto)}
                               </p>
                             </label>
@@ -345,7 +424,7 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
                                   aria-label={`Categoría de ${it.descripcion}`}
                                   value={categorias[clave] || 'Otros'}
                                   onChange={(e) => cambiarCategoria(clave, it, e.target.value)}
-                                  className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-xs"
+                                  className="w-full rounded-xl border border-line bg-paper-raised px-3 py-2 text-xs"
                                 >
                                   {opcionesCategoria(CATEGORIAS, categorias[clave]).map((c) => (
                                     <option key={c} value={c}>{c}</option>
@@ -367,6 +446,21 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
                       })}
                     </div>
                   )}
+                  {a.sobrantes?.length > 0 && (
+                    <details className="mt-2 rounded-2xl border border-line bg-paper px-3.5 py-2.5">
+                      <summary className="text-xs font-semibold cursor-pointer">
+                        {a.sobrantes.length} {a.sobrantes.length === 1 ? 'registrado no aparece' : 'registrados no aparecen'} en el extracto
+                      </summary>
+                      <ul className="mt-2 space-y-1">
+                        {a.sobrantes.map((s, i) => (
+                          <li key={i} className="text-xs text-ink-soft flex justify-between gap-2">
+                            <span className="truncate">{s.fecha} · {s.descripcion}</span>
+                            <span className="shrink-0">{formatCOP(s.monto)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                 </div>
               )
             })}
@@ -375,13 +469,15 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
 
         {error && <p className="text-sm text-danger mb-3" role="alert">{error}</p>}
         <div className="flex gap-2">
-          <button onClick={() => setFase('cola')} className="flex-1 rounded-2xl border border-line py-3.5 text-sm font-semibold">Atrás</button>
+          <button onClick={revisionInicial ? onCancelar : () => setFase('cola')} className="flex-1 rounded-2xl border border-line py-3 text-sm font-semibold">
+            {revisionInicial ? 'Cerrar' : 'Atrás'}
+          </button>
           <button
             onClick={importar}
             disabled={totalMarcados === 0 || importando}
-            className="flex-1 bg-ink text-paper rounded-2xl py-3.5 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+            className="flex-1 bg-ink text-paper rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
           >
-            <Check size={16} /> {importando ? 'Importando...' : `Importar (${totalMarcados})`}
+            <Check size={16} aria-hidden="true" /> {importando ? 'Importando...' : `Importar (${totalMarcados})`}
           </button>
         </div>
       </div>
@@ -389,26 +485,32 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
   }
 
   // ── Cola ───────────────────────────────────────────────────
+  const pctCola = progreso.total ? Math.round(((progreso.actual - 1) / progreso.total) * 100) : 0
   return (
-    <div className="px-5 mt-4" data-testid="cola-multiple">
-      {corriendo && progreso.total > 0 && (
-        <p className="text-sm font-semibold mb-3" role="status">
-          Archivo {progreso.actual} de {progreso.total}
-        </p>
-      )}
+    <div className="mt-2" data-testid="cola-multiple">
+      <div aria-live="polite" role="status" className={corriendo && progreso.total > 0 ? 'mb-3' : ''}>
+        {corriendo && progreso.total > 0 && (
+          <>
+            <p className="text-sm font-semibold">
+              Archivo {progreso.actual} de {progreso.total}
+            </p>
+            <BarraProgreso pct={pctCola} label="Progreso de la subida" className="h-1.5 mt-1.5 rounded-full bg-line overflow-hidden" fillClass="" />
+          </>
+        )}
+      </div>
 
       <ul className="space-y-2.5 mb-4">
         {archivos.map((a) => {
           const Icono = a.tipo === 'pdf' ? FileText : FileSpreadsheet
           return (
-            <li key={a.id} className="rounded-2xl bg-paper-raised border border-line p-3.5" data-estado={a.estado}>
+            <li key={a.id} className="rounded-2xl bg-paper border border-line p-3.5" data-estado={a.estado}>
               <div className="flex items-start gap-3">
-                <Icono size={20} className="text-accent shrink-0 mt-0.5" />
+                <Icono size={20} className="text-accent shrink-0 mt-0.5" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{a.nombre}</p>
                   <p className={`text-xs mt-0.5 flex items-center gap-1 ${a.estado === 'error' || a.estado === 'falta_clave' ? 'text-danger' : a.estado === 'listo' ? 'text-accent' : 'text-ink-soft'}`}>
-                    {a.estado === 'procesando' && <Loader2 size={16} className="animate-spin" />}
-                    {a.estado === 'error' || a.estado === 'falta_clave' ? <AlertTriangle size={16} /> : null}
+                    {a.estado === 'procesando' && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
+                    {a.estado === 'error' || a.estado === 'falta_clave' ? <AlertTriangle size={16} aria-hidden="true" /> : null}
                     {ETIQUETA_ARCHIVO[a.estado]}
                   </p>
                   {a.estado === 'listo' && (
@@ -423,7 +525,7 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
                 </div>
                 {a.estado !== 'procesando' && (
                   <button onClick={() => quitar(a.id)} aria-label={`Quitar ${a.nombre}`} className="w-11 h-11 -mr-1 flex items-center justify-center text-ink-soft shrink-0">
-                    <X size={16} />
+                    <X size={16} aria-hidden="true" />
                   </button>
                 )}
               </div>
@@ -435,7 +537,7 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
                     aria-label={`Cuenta de ${a.nombre}`}
                     value={a.cuentaId}
                     onChange={(e) => parchar(a.id, { cuentaId: e.target.value })}
-                    className="w-full mt-0.5 rounded-xl border border-line bg-paper px-3 py-2 text-xs"
+                    className="w-full mt-0.5 rounded-xl border border-line bg-paper-raised px-3 py-2 text-xs"
                   >
                     {cuentas.map((c) => (
                       <option key={c.id} value={c.id}>{c.icono} {c.nombre}</option>
@@ -451,7 +553,7 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
                     onChange={(e) => parchar(a.id, { password: e.target.value })}
                     placeholder="Clave del PDF"
                     aria-label={`Clave de ${a.nombre}`}
-                    className="flex-1 min-w-0 rounded-xl border border-line bg-paper px-3 py-2 text-xs outline-none focus:border-accent"
+                    className="flex-1 min-w-0 rounded-xl border border-line bg-paper-raised px-3 py-2 text-xs outline-none focus:border-accent"
                   />
                   <button onClick={() => reintentar(a)} disabled={!a.password || corriendo} className="rounded-xl bg-accent text-white px-3 text-xs font-semibold disabled:opacity-60">
                     Reintentar
@@ -459,9 +561,16 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
                 </div>
               )}
               {a.estado === 'error' && (
-                <button onClick={() => reintentar(a)} disabled={corriendo} className="mt-2 ml-8 text-xs font-semibold text-accent underline disabled:opacity-60">
-                  Reintentar
-                </button>
+                <div className="mt-2 ml-8 flex flex-wrap gap-x-4 gap-y-1">
+                  <button onClick={() => reintentar(a)} disabled={corriendo} className="text-xs font-semibold text-accent underline disabled:opacity-60 min-h-[32px]">
+                    Reintentar
+                  </button>
+                  {a.tipo === 'tabular' && onManual && (
+                    <button onClick={onManual} className="text-xs font-semibold text-accent underline min-h-[32px]">
+                      Elegir las columnas a mano
+                    </button>
+                  )}
+                </div>
               )}
             </li>
           )
@@ -475,6 +584,7 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
           ))}
         </ul>
       )}
+      {error && <p className="text-sm text-danger mb-3" role="alert">{error}</p>}
 
       {archivos.length < MAX_ARCHIVOS && !corriendo && (
         <div className="mb-4">
@@ -483,22 +593,22 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
       )}
 
       <div className="flex gap-2">
-        <button onClick={onCancelar} disabled={corriendo} className="flex-1 rounded-2xl border border-line py-3.5 text-sm font-semibold disabled:opacity-60">
+        <button onClick={onCancelar} disabled={corriendo} className="flex-1 rounded-2xl border border-line py-3 text-sm font-semibold disabled:opacity-60">
           Cancelar
         </button>
         {hayPendientes ? (
           <button
             onClick={procesar}
             disabled={corriendo || archivos.length === 0}
-            className="flex-1 bg-ink text-paper rounded-2xl py-3.5 text-sm font-semibold disabled:opacity-60"
+            className="flex-1 bg-ink text-paper rounded-2xl py-3 text-sm font-semibold disabled:opacity-60"
           >
             {corriendo ? 'Procesando...' : `Procesar ${archivos.filter((a) => a.estado === 'pendiente').length} ${archivos.filter((a) => a.estado === 'pendiente').length === 1 ? 'archivo' : 'archivos'}`}
           </button>
         ) : (
           <button
-            onClick={irARevision}
+            onClick={() => empezarRevision(consolidado.archivos)}
             disabled={corriendo || listos.length === 0}
-            className="flex-1 bg-ink text-paper rounded-2xl py-3.5 text-sm font-semibold disabled:opacity-60"
+            className="flex-1 bg-ink text-paper rounded-2xl py-3 text-sm font-semibold disabled:opacity-60"
           >
             Revisar ({listos.length} {listos.length === 1 ? 'archivo' : 'archivos'})
           </button>

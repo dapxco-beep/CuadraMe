@@ -56,7 +56,7 @@ function esIphoneSinInstalar() {
   return ios && !instalada
 }
 
-function TarjetaGmail({ g, navigate, recargar }) {
+function TarjetaGmail({ g, ir, recargar }) {
   const [progreso, setProgreso] = useState(null)
   const [resultado, setResultado] = useState('')
   const [error, setError] = useState('')
@@ -103,7 +103,7 @@ function TarjetaGmail({ g, navigate, recargar }) {
           {g.extractos_falta_clave > 0 && (
             <p className="text-xs mt-2">
               {g.extractos_falta_clave} esperan clave.{' '}
-              <button className="underline text-accent font-semibold" onClick={() => navigate('/correos')}>
+              <button className="underline text-accent font-semibold" onClick={() => ir('correo')}>
                 Guardar la clave del PDF
               </button>
             </p>
@@ -136,12 +136,12 @@ function TarjetaGmail({ g, navigate, recargar }) {
             {sincronizando ? 'Sincronizando...' : 'Sincronizar todo'}
           </Boton>
         ) : (
-          <Boton onClick={() => navigate('/correos')} className="flex-1 bg-ink text-paper">
+          <Boton onClick={() => ir('correo')} className="flex-1 bg-ink text-paper">
             Conectar Gmail
           </Boton>
         )}
         {g.conectado && (
-          <Boton onClick={() => navigate('/correos')} className="border border-line text-ink-soft">
+          <Boton onClick={() => ir('correo')} className="border border-line text-ink-soft">
             Ver correos
           </Boton>
         )}
@@ -228,7 +228,7 @@ function TarjetaAtajo({ a, recargar }) {
   )
 }
 
-function TarjetaConciliacion({ c, navigate }) {
+function TarjetaConciliacion({ c, ir }) {
   const cuentas = c.cuentas || []
   return (
     <Tarjeta icono={FileCheck2} titulo="Conciliación con el banco" semaforo={c.semaforo} mensaje={c.mensaje} testid="tarjeta-conciliacion">
@@ -244,7 +244,7 @@ function TarjetaConciliacion({ c, navigate }) {
                 </p>
                 <p className="text-[11px] text-ink-soft">Último cruce {haceCuanto(f.ultimo_cruce)}</p>
                 <Boton
-                  onClick={() => navigate('/conciliacion', { state: { historialId: f.historial_id } })}
+                  onClick={() => ir('subir', { historialId: f.historial_id })}
                   className="w-full mt-2 border border-line"
                 >
                   Conciliar ahora
@@ -253,7 +253,7 @@ function TarjetaConciliacion({ c, navigate }) {
             ) : (
               <>
                 <p className="text-xs text-ink-soft mt-1">Aún sin extracto procesado.</p>
-                <Boton onClick={() => navigate('/conciliacion')} className="w-full mt-2 border border-line">
+                <Boton onClick={() => ir('subir')} className="w-full mt-2 border border-line">
                   Importar extracto
                 </Boton>
               </>
@@ -331,8 +331,11 @@ function TarjetaPush({ p }) {
   )
 }
 
-export default function Conexiones() {
+// Estado de las conexiones (Gmail, Atajo, conciliación, notificaciones). Vive como hoja dentro del
+// centro "Traer movimientos"; `alIr(bloque, state)` abre el bloque que corresponde.
+export default function Conexiones({ embebido = false, alIr }) {
   const navigate = useNavigate()
+  const ir = (bloque, state) => (alIr ? alIr(bloque, state) : navigate('/sincronizacion', { state: { abrir: bloque, ...state } }))
   const volver = useVolver('/perfil')
   const [estado, setEstado] = useState(null)
   const [error, setError] = useState('')
@@ -351,18 +354,17 @@ export default function Conexiones() {
   }, [])
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
-        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="text-xl font-bold">Conexiones y estado</h1>
-      </header>
+    <div className={embebido ? '' : 'flex-1 overflow-y-auto pb-6 screen-enter'}>
+      {!embebido && (
+        <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+          <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="text-xl font-bold">Conexiones y estado</h1>
+        </header>
+      )}
       <p className="px-6 text-xs text-ink-soft">
-        Aquí ves de un vistazo si todo lo que te registra los movimientos solo está funcionando.{' '}
-        <button onClick={() => navigate('/sincronizacion')} className="underline font-semibold text-accent">
-          Ver qué falta por resolver
-        </button>
+        ¿Todo lo que registra tus movimientos solo está funcionando?
       </p>
       {error && (
         <p role="alert" className="mx-6 mt-3 text-xs text-danger">
@@ -373,9 +375,9 @@ export default function Conexiones() {
       {!estado && !error && <EsqueletoLista filas={4} className="mx-6 mt-6" etiqueta="Cargando el estado de tus conexiones" />}
       {estado && (
         <>
-          <TarjetaGmail g={estado.gmail} navigate={navigate} recargar={recargar} />
+          <TarjetaGmail g={estado.gmail} ir={ir} recargar={recargar} />
           <TarjetaAtajo a={estado.atajo} recargar={recargar} />
-          <TarjetaConciliacion c={estado.conciliacion} navigate={navigate} />
+          <TarjetaConciliacion c={estado.conciliacion} ir={ir} />
           <TarjetaPush p={estado.push} />
         </>
       )}

@@ -13,6 +13,7 @@ import { BloqueoProvider, useBloqueo } from './lib/BloqueoContext'
 import PantallaBloqueo from './components/PantallaBloqueo'
 import ShellApp from './components/ShellApp'
 import BandejaPorConfirmar from './components/BandejaPorConfirmar'
+import RedirigirAlCentro from './components/RedirigirAlCentro'
 import SplashMarca, { splashPendiente } from './brand/SplashMarca'
 import { CargandoMarca } from './brand/Marca'
 import Login from './screens/Login'
@@ -32,19 +33,15 @@ const Patrimonio = lazy(() => import('./screens/Patrimonio'))
 const Metas = lazy(() => import('./screens/Metas'))
 const Recurrentes = lazy(() => import('./screens/Recurrentes'))
 const Deudas = lazy(() => import('./screens/Deudas'))
-const Conciliacion = lazy(() => import('./screens/Conciliacion'))
 const Ahorcado = lazy(() => import('./screens/Ahorcado'))
 const Compartir = lazy(() => import('./screens/Compartir'))
 const ConectarDispositivo = lazy(() => import('./screens/ConectarDispositivo'))
-const Correos = lazy(() => import('./screens/Correos'))
-const Conexiones = lazy(() => import('./screens/Conexiones'))
 const Sincronizacion = lazy(() => import('./screens/Sincronizacion'))
 const Insights = lazy(() => import('./screens/Insights'))
 const Asistente = lazy(() => import('./screens/Asistente'))
 const ReglasCategoria = lazy(() => import('./screens/ReglasCategoria'))
 const EntrenarCategorias = lazy(() => import('./screens/EntrenarCategorias'))
 const Categorias = lazy(() => import('./screens/Categorias'))
-const ImportarArchivo = lazy(() => import('./screens/ImportarArchivo'))
 const Impuestos = lazy(() => import('./screens/Impuestos'))
 const CierreMes = lazy(() => import('./screens/CierreMes'))
 const Wrapped = lazy(() => import('./screens/Wrapped'))
@@ -103,9 +100,9 @@ function AppGate() {
         <Route path="/metas" element={<Metas />} />
         <Route path="/recurrentes" element={<Recurrentes />} />
         <Route path="/deudas" element={<Deudas />} />
-        <Route path="/conciliacion" element={<Conciliacion />} />
-        <Route path="/correos" element={<Correos />} />
-        <Route path="/conexiones" element={<Conexiones />} />
+        <Route path="/conciliacion" element={<RedirigirAlCentro ruta="/conciliacion" />} />
+        <Route path="/correos" element={<RedirigirAlCentro ruta="/correos" />} />
+        <Route path="/conexiones" element={<RedirigirAlCentro ruta="/conexiones" />} />
         <Route path="/sincronizacion" element={<Sincronizacion />} />
         <Route path="/insights" element={<Insights />} />
         <Route path="/asistente" element={<Asistente />} />
@@ -117,7 +114,7 @@ function AppGate() {
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/resumen" element={<Wrapped />} />
         <Route path="/informe" element={<Informe />} />
-        <Route path="/importar" element={<ImportarArchivo />} />
+        <Route path="/importar" element={<RedirigirAlCentro ruta="/importar" />} />
         <Route path="/impuestos" element={<Impuestos />} />
         <Route path="/cierre-mes" element={<CierreMes />} />
         <Route path="/perfil" element={<Perfil />} />

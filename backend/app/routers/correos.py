@@ -80,6 +80,9 @@ logger = logging.getLogger(__name__)
 ESTADOS_VISIBLES = ("nuevo", "falta_clave", "procesado", "error", ESTADO_YA_CONCILIADO)
 
 
+MENSAJE_MONTO_INVALIDO = "El monto debe ser mayor que cero: escríbelo antes de aprobar"
+
+
 def _get_or_create_perfil(db: Session, usuario_id: str) -> Perfil:
     perfil = db.query(Perfil).filter(Perfil.usuario_id == usuario_id).first()
     if not perfil:
@@ -99,6 +102,7 @@ def _con_cuenta(db: Session, usuario_id: str, correos: list[CorreoGasto]) -> lis
     for c in correos:
         o = CorreoGastoOut.model_validate(c)
         o.banco_detectado, o.cuenta_sugerida_id, o.falta_cuenta = inferir_cuenta_por_remitente(c.remitente, cuentas)
+        o.falta_monto = (c.monto or 0) <= 0
         if c.estado == "pendiente":
             o.preguntar_categoria = c.categoria_sugerida == "Otros"
             # La razón se recalcula: solo vale si la categoría sigue siendo la que sugirió el clasificador.
@@ -233,7 +237,7 @@ def _crear_correo(msg: dict, usuario_id: str, modelo: ClasificadorUsuario) -> Co
     asunto = h.get("Subject", "")
     snippet = msg.get("snippet", "")
     texto = f"{asunto} {snippet}"
-    comercio = extraer_comercio(remitente, asunto)
+    comercio = extraer_comercio(remitente, asunto, snippet)
     resultado = modelo.clasificar(comercio, texto)
     return CorreoGasto(
         usuario_id=usuario_id,
@@ -914,6 +918,8 @@ def editar_correo(
         raise HTTPException(status_code=404, detail="Correo no encontrado")
 
     if data.monto is not None:
+        if data.monto <= 0:
+            raise HTTPException(status_code=400, detail=MENSAJE_MONTO_INVALIDO)
         correo.monto = data.monto
     if data.comercio is not None:
         correo.comercio = data.comercio
@@ -949,6 +955,14 @@ def aprobar_correo(
     if correo.estado != "pendiente":
         raise HTTPException(status_code=400, detail="Este correo ya fue procesado")
 
+    # Un movimiento de 0 (o negativo) no existe: si el correo no trajo el monto, hay que escribirlo.
+    if data.monto is not None:
+        if data.monto <= 0:
+            raise HTTPException(status_code=400, detail=MENSAJE_MONTO_INVALIDO)
+        correo.monto = data.monto
+    if (correo.monto or 0) <= 0:
+        raise HTTPException(status_code=400, detail=MENSAJE_MONTO_INVALIDO)
+
     cuenta = (
         db.query(Cuenta)
         .filter(Cuenta.id == data.cuenta_id, Cuenta.usuario_id == usuario.id)
@@ -976,7 +990,9 @@ def aprobar_correo(
     movimiento = Movimiento(
         usuario_id=usuario.id,
         cuenta_id=cuenta.id,
-        descripcion=f"{correo.comercio} (correo)",
+        # El comercio o concepto que dice el correo ('Compra en Juan Valdez'), no quién lo envió.
+        # El origen queda en `fuente="email"`.
+        descripcion=correo.comercio,
         categoria=correo.categoria_sugerida,
         tipo=correo.tipo_sugerido,
         monto=correo.monto,
