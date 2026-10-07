@@ -505,7 +505,12 @@ export const api = {
 
   // Cierre de mes
   cierresMes: () => request('/cierre-mes'),
-  cierreMes: (mes) => request(`/cierre-mes/${mes}`),
+  // 404 = aún no hay cierre de ese mes (estado normal): se devuelve null en vez de lanzar.
+  cierreMes: (mes) =>
+    request(`/cierre-mes/${mes}`).catch((e) => {
+      if (e?.status === 404) return null
+      throw e
+    }),
   generarCierreMes: (mes) => request(`/cierre-mes/${mes}/generar`, { method: 'POST' }),
   cierrePreferencias: () => request('/cierre-mes/preferencias'),
   guardarCierrePreferencias: (correo) => request('/cierre-mes/preferencias', { method: 'PUT', body: { correo } }),

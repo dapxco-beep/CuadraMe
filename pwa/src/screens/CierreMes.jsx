@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Lightbulb, TrendingUp } from 'lucide-react'
 import { api } from '../lib/api'
@@ -25,6 +25,7 @@ export default function CierreMes() {
   const volver = useVolver('/')
   const { avisar } = useDialogos()
   const [lista, setLista] = useState(null)
+  const listaRef = useRef(null) // cierres existentes, para no pedir los que no existen
   const [mes, setMes] = useState(null)
   const [informe, setInforme] = useState(null)
   const [correo, setCorreo] = useState(false)
@@ -36,6 +37,7 @@ export default function CierreMes() {
     api
       .cierresMes()
       .then((l) => {
+        listaRef.current = Array.isArray(l) ? l : null
         setLista(l)
         setMes(l[0]?.mes || mesAnterior())
       })
@@ -46,13 +48,23 @@ export default function CierreMes() {
     if (!mes) return
     setInforme(null)
     setError('')
-    api.cierreMes(mes).then(setInforme).catch(() => setInforme(false))
+    // Si la lista de cierres ya cargó y este mes no está, no hay nada que pedir: así no se hace
+    // una petición que el servidor contesta con 404 (error rojo en la consola en cada visita).
+    const conocidos = listaRef.current
+    if (conocidos && !conocidos.some((l) => l.mes === mes)) {
+      setInforme(false)
+      return
+    }
+    // 404 o null = "aún no hay cierre", un estado normal
+    api.cierreMes(mes).then((r) => setInforme(r || false)).catch(() => setInforme(false))
   }, [mes])
 
   async function generar() {
     setCargando(true)
     try {
-      setInforme(await api.generarCierreMes(mes))
+      const nuevo = await api.generarCierreMes(mes)
+      listaRef.current = [...(listaRef.current || []), { mes }]
+      setInforme(nuevo)
     } catch (e) {
       setError(e.message || 'No se pudo generar')
     } finally {
