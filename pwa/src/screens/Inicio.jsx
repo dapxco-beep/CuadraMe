@@ -34,9 +34,9 @@ const ACCESOS_RAPIDOS = [
 ]
 
 // Fila de enlace dentro de una sección: ícono + título + apoyo + flecha
-function FilaEnlace({ to, icono, titulo, apoyo, testId }) {
+function FilaEnlace({ to, state, icono, titulo, apoyo, testId }) {
   return (
-    <Link to={to} data-testid={testId} className="flex items-center gap-3 py-3 min-h-[56px]">
+    <Link to={to} state={state} data-testid={testId} className="flex items-center gap-3 py-3 min-h-[56px]">
       <span className="w-9 h-9 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
         <Icono icono={icono} tam="md" />
       </span>
@@ -184,7 +184,8 @@ export default function Inicio() {
 
       {conexionFalla && (
         <Link
-          to="/conexiones"
+          to="/sincronizacion"
+          state={{ abrir: 'estado' }}
           role="alert"
           data-testid="aviso-conexiones"
           className="mx-6 mt-2 rounded-2xl bg-danger-soft border border-danger/30 p-3 flex items-center justify-between gap-3"
@@ -295,7 +296,7 @@ export default function Inicio() {
                 <Boton to="/cuentas" variante="secundario" tam="sm" className="flex-1">
                   Ajustar saldo
                 </Boton>
-                <Boton to="/conciliacion" variante="secundario" tam="sm" className="flex-1">
+                <Boton to="/sincronizacion" state={{ abrir: 'subir' }} variante="secundario" tam="sm" className="flex-1">
                   Conciliar con mi banco
                 </Boton>
               </div>
@@ -353,7 +354,7 @@ export default function Inicio() {
                   titulo="Traer movimientos"
                   apoyo={tareasSync === null ? 'Correos, extractos y archivos' : tareasSync === 0 ? 'Todo al día' : `${tareasSync} por resolver`}
                 />
-                {conexionFalla && <FilaEnlace to="/conexiones" icono={Sparkles} titulo="Una conexión está fallando" apoyo="Ver el estado de tus conexiones" />}
+                {conexionFalla && <FilaEnlace to="/sincronizacion" state={{ abrir: 'estado' }} icono={Sparkles} titulo="Una conexión está fallando" apoyo="Ver el estado de tus conexiones" />}
               </div>
             </SeccionPlegable>
 

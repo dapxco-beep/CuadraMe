@@ -99,6 +99,7 @@ _CONCEPTOS = [
 _ASTERISCO = re.compile(r"\*([A-Z][A-Z0-9 ]{2,25})\*")
 
 _INGRESO_RE = re.compile(r"recibiste|te enviaron|consignaron|abono|dep[oó]sito", re.IGNORECASE)
+_EGRESO_RE = re.compile(r"enviaste|transferiste|pagaste|pago|compra|retiro|d[eé]bito|cargo", re.IGNORECASE)
 _TRANSFER_RE = re.compile(r"transferencia\s+entre|transferiste a tu|traslado entre cuentas", re.IGNORECASE)
 
 
@@ -163,7 +164,7 @@ def extraer_concepto(asunto: str, cuerpo: str = "") -> str:
 def descripcion_sin_detalle(texto: str) -> str:
     """Respaldo claro cuando un correo bancario no dice dónde fue el movimiento. Nunca el remitente."""
     tipo = detectar_tipo(texto)
-    return {"income": "Ingreso sin detalle", "transfer": "Traslado sin detalle"}.get(tipo, "Gasto sin detalle")
+    return "Ingreso sin detalle" if tipo == "income" else "Gasto sin detalle"
 
 
 def extraer_comercio(remitente: str, asunto: str, cuerpo: str = "") -> str:
@@ -199,8 +200,17 @@ def extraer_comercio(remitente: str, asunto: str, cuerpo: str = "") -> str:
 
 
 def detectar_tipo(texto: str) -> str:
-    if _TRANSFER_RE.search(texto):
-        return "transfer"
-    if _INGRESO_RE.search(texto):
+    """Siempre con dirección: 'income' (entró plata) o 'expense' (salió). Nunca 'transfer':
+    un traslado propio mueve saldo igual que cualquier otro movimiento y se marca aparte
+    con es_posible_traslado_propio. Si el correo trae palabras de entrada y de salida, gana
+    la que aparece primero; si no trae ninguna, se asume gasto."""
+    ingreso = _INGRESO_RE.search(texto or "")
+    salida = _EGRESO_RE.search(texto or "")
+    if ingreso and (not salida or ingreso.start() <= salida.start()):
         return "income"
     return "expense"
+
+
+def es_posible_traslado_propio(texto: str) -> bool:
+    """El correo habla de pasar plata entre cuentas del mismo dueño (pista, no certeza)."""
+    return bool(_TRANSFER_RE.search(texto or ""))

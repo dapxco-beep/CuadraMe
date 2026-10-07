@@ -53,14 +53,14 @@ describe('navegacion.js (fuente única)', () => {
     expect(etiquetas('dinero')).toEqual(['Cuentas', 'Deudas', 'Recurrentes', 'Impuestos'])
     expect(etiquetas('datos')).toContain('Traer movimientos')
     expect(ITEMS_MAS.find((i) => i.label === 'Traer movimientos').to).toBe('/sincronizacion')
-    expect(etiquetas('ajustes')).toEqual(['Perfil', 'Conexiones', 'Privacidad', 'Conectar dispositivo'])
+    expect(etiquetas('ajustes')).toEqual(['Perfil', 'Privacidad', 'Conectar dispositivo'])
   })
 
   it('la búsqueda tolera acentos y mayúsculas, y encuentra por palabras clave', () => {
     expect(normalizar('Categorías')).toBe('categorias')
     expect(buscarDestinos('CATEGORIAS').map((d) => d.label)).toContain('Categorías')
     expect(buscarDestinos('sincronizacion')[0].label).toBe('Traer movimientos')
-    expect(buscarDestinos('gmail').map((d) => d.to)).toContain('/conexiones')
+    expect(buscarDestinos('gmail').map((d) => d.to)).toContain('/sincronizacion')
     expect(buscarDestinos('zzzz')).toEqual([])
     expect(buscarDestinos('   ')).toEqual([])
   })

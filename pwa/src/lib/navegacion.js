@@ -1,7 +1,7 @@
 import {
   Bot, CalendarCheck, CreditCard, Database, Gift, GraduationCap, Home, Landmark, Lightbulb, List, PieChart, PiggyBank,
-  Plug, Receipt, RefreshCw, Repeat, Settings, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Sprout, Tag,
-  TrendingUp, User, Wallet, Mail, FileCheck, FileSpreadsheet,
+  Receipt, RefreshCw, Repeat, Settings, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Sprout, Tag,
+  TrendingUp, User, Wallet,
 } from 'lucide-react'
 
 // ═══ Única fuente de verdad de la navegación ═══════════════════════════════
@@ -58,7 +58,7 @@ export const GRUPOS = [
     titulo: 'Datos',
     icon: Database,
     items: [
-      { to: '/sincronizacion', icon: RefreshCw, label: 'Traer movimientos', corta: 'Traer', palabras: 'sincronizar sincronizacion importar correo extracto' },
+      { to: '/sincronizacion', icon: RefreshCw, label: 'Traer movimientos', corta: 'Traer', palabras: 'sincronizar sincronizacion importar correo correos gmail extracto conciliar pdf excel csv archivo conexiones estado falla' },
       { to: '/categorias', icon: Tag, label: 'Categorías', palabras: 'etiquetas iconos' },
       { to: '/entrenar-categorias', icon: GraduationCap, label: 'Entrenar categorías', palabras: 'aprender clasificar' },
       { to: '/reglas-categoria', icon: SlidersHorizontal, label: 'Reglas', palabras: 'automatico comercio categoria' },
@@ -70,7 +70,6 @@ export const GRUPOS = [
     icon: Settings,
     items: [
       { to: '/perfil', icon: User, label: 'Perfil', palabras: 'cuenta usuario pin seguridad tema notificaciones' },
-      { to: '/conexiones', icon: Plug, label: 'Conexiones', palabras: 'gmail estado correo falla' },
       { to: '/legal/privacidad', icon: ShieldCheck, label: 'Privacidad', palabras: 'datos legal terminos politica' },
       { to: '/conectar-dispositivo', icon: Smartphone, label: 'Conectar dispositivo', palabras: 'atajo iphone android wallet celular' },
     ],
@@ -78,9 +77,6 @@ export const GRUPOS = [
 ]
 
 export const EXTRA_BUSQUEDA = [
-  { to: '/correos', icon: Mail, label: 'Correos', palabras: 'gmail leer bancos' },
-  { to: '/conciliacion', icon: FileCheck, label: 'Conciliar extracto', palabras: 'pdf banco cuadrar' },
-  { to: '/importar', icon: FileSpreadsheet, label: 'Importar Excel o CSV', palabras: 'archivo planilla' },
   { to: '/compartir', icon: Gift, label: 'Compartir resumen', palabras: 'imagen' },
 ]
 

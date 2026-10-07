@@ -96,13 +96,13 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
               />
             )}
             <button
-              onClick={() => navigate('/conciliacion')}
+              onClick={() => navigate('/sincronizacion', { state: { abrir: 'subir' } })}
               className="flex items-center justify-center gap-2 rounded-2xl border border-line bg-paper-raised py-3.5 text-sm font-semibold"
             >
               <FileUp size={16} className="text-accent" /> Conciliar con mi banco
             </button>
             <p className="text-[11px] text-ink-soft text-center">
-              Sube el extracto en PDF, o <Link to="/importar" className="text-accent font-medium">importa un Excel o CSV</Link> del banco.
+              Sube el extracto en PDF, o <Link to="/sincronizacion" state={{ abrir: 'subir', manual: true }} className="text-accent font-medium">importa un Excel o CSV</Link> del banco.
             </p>
           </div>
 

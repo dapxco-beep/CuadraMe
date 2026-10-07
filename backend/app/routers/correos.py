@@ -18,6 +18,7 @@ from app.config import settings
 from app.limites import verificar_limite
 from app.database import get_db
 from app.conciliacion import detectar_banco
+from app.contabilidad import con_marca_traslado
 from app.extractos_conciliados import (
     ESTADO_YA_CONCILIADO,
     depurar_conciliados,
@@ -44,7 +45,7 @@ from app.extractos_gmail import (
     listar_adjuntos_pdf,
     sugerir_cuenta,
 )
-from app.gmail_extract import detectar_tipo, extraer_comercio, extraer_moneda, extraer_monto
+from app.gmail_extract import detectar_tipo, es_posible_traslado_propio, extraer_comercio, extraer_moneda, extraer_monto
 from app.gmail_oauth import (
     cifrar,
     cliente_gmail,
@@ -987,14 +988,21 @@ def aprobar_correo(
         if eligio and data.recordar:
             aprendido = _aprender_de_correo(db, usuario.id, correo, data.categoria, data.aplicar_anteriores)
 
+    # Correos viejos pudieron quedar como 'transfer' (sin dirección): se leen de nuevo del texto.
+    tipo = correo.tipo_sugerido
+    if tipo not in ("income", "expense"):
+        tipo = detectar_tipo(f"{correo.asunto} {correo.snippet}")
+    notas = con_marca_traslado("") if es_posible_traslado_propio(f"{correo.asunto} {correo.snippet}") else ""
+
     movimiento = Movimiento(
         usuario_id=usuario.id,
         cuenta_id=cuenta.id,
+        notas=notas,
         # El comercio o concepto que dice el correo ('Compra en Juan Valdez'), no quién lo envió.
         # El origen queda en `fuente="email"`.
         descripcion=correo.comercio,
         categoria=correo.categoria_sugerida,
-        tipo=correo.tipo_sugerido,
+        tipo=tipo,
         monto=correo.monto,
         # recibido_en y creado_en están en UTC: el movimiento va en hora Colombia.
         fecha=utc_a_co(correo.recibido_en or correo.creado_en),
@@ -1006,9 +1014,9 @@ def aprobar_correo(
     )
     db.add(movimiento)
 
-    if correo.tipo_sugerido == "income":
+    if tipo == "income":
         cuenta.saldo += correo.monto
-    elif correo.tipo_sugerido == "expense":
+    else:
         cuenta.saldo -= correo.monto
 
     correo.estado = "aprobado"

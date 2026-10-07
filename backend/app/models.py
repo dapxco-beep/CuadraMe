@@ -248,7 +248,7 @@ class CorreoGasto(Base):
     moneda = Column(String, default="COP")
     comercio = Column(String, default="")
     categoria_sugerida = Column(String, default="Otros")
-    tipo_sugerido = Column(String, default="expense")  # income | expense | transfer
+    tipo_sugerido = Column(String, default="expense")  # income | expense (antes también transfer)
     confianza = Column(Float, default=0)
     estado = Column(String, default="pendiente")  # pendiente | aprobado | descartado
     movimiento_id = Column(String, nullable=True)

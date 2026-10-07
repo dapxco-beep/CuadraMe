@@ -9,7 +9,8 @@ import { FileUp, Mail, Mic, Users, Wand2 } from 'lucide-react'
 const TARJETAS_BASE = [
   {
     id: 'correos',
-    to: '/correos',
+    to: '/sincronizacion',
+    state: { abrir: 'correo' },
     icon: Mail,
     titulo: 'Deja que CuadraMe registre por ti',
     texto: 'Conecta tu Gmail y te sugerimos cada movimiento del banco',
@@ -33,7 +34,8 @@ const TARJETAS_BASE = [
   },
   {
     id: 'conciliacion',
-    to: '/conciliacion',
+    to: '/sincronizacion',
+    state: { abrir: 'subir' },
     icon: FileUp,
     titulo: 'Sube tu extracto del banco',
     texto: 'Compáralo con tus movimientos y encuentra lo que falta registrar',
@@ -76,6 +78,7 @@ export default function CarruselDescubrir({ gmailConectado, cuentasCount, embebi
           <Link
             key={t.id}
             to={t.to}
+            state={t.state}
             className="shrink-0 w-[calc(100%-24px)] snap-center rounded-2xl bg-accent-soft p-4 flex items-center gap-3"
           >
             <div className="w-11 h-11 rounded-full bg-paper-raised flex items-center justify-center shrink-0 pop-in">

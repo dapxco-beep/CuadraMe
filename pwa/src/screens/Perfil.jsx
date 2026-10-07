@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Receipt, Check, ChevronRight, Copy, CreditCard, FileText, FileUp, GraduationCap, Landmark, Link2, List, LogOut, Mail, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2 } from 'lucide-react'
+import { Bell, Receipt, Check, ChevronRight, Copy, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2 } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -154,35 +154,9 @@ export default function Perfil() {
           <Link to="/sincronizacion" className="flex items-center gap-3 px-4 py-3.5">
             <RefreshCw size={20} className="text-accent shrink-0" />
             <div className="flex-1">
-              <p className="text-sm font-medium">Sincronización</p>
-              <p className="text-xs text-ink-soft mt-0.5">Qué falta conciliar, subir o categorizar</p>
+              <p className="text-sm font-medium">Traer movimientos</p>
+              <p className="text-xs text-ink-soft mt-0.5">Desde tu correo, el extracto del banco o un Excel</p>
             </div>
-            <ChevronRight size={16} className="text-ink-soft" />
-          </Link>
-          <Link to="/conexiones" className="flex items-center gap-3 px-4 py-3.5">
-            <RefreshCw size={20} className="text-accent shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Conexiones y estado</p>
-              <p className="text-xs text-ink-soft mt-0.5">Mira si Gmail, el Atajo y las notificaciones funcionan</p>
-            </div>
-            <ChevronRight size={16} className="text-ink-soft" />
-          </Link>
-          <Link to="/correos" className="flex items-center gap-3 px-4 py-3.5">
-            <Mail size={20} className="text-accent shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Leer correos bancarios</p>
-              <p className="text-xs text-ink-soft mt-0.5">Conecta tu Gmail y sugerimos movimientos por ti</p>
-            </div>
-            <ChevronRight size={16} className="text-ink-soft" />
-          </Link>
-          <Link to="/conciliacion" className="flex items-center gap-3 px-4 py-3.5">
-            <FileUp size={20} className="text-accent shrink-0" />
-            <p className="flex-1 text-sm font-medium">Subir extracto (PDF)</p>
-            <ChevronRight size={16} className="text-ink-soft" />
-          </Link>
-          <Link to="/importar" className="flex items-center gap-3 px-4 py-3.5">
-            <FileUp size={20} className="text-accent shrink-0" />
-            <p className="flex-1 text-sm font-medium">Importar Excel o CSV</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
         </div>

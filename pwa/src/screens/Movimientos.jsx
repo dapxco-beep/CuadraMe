@@ -664,7 +664,8 @@ export default function Movimientos() {
               <Download size={16} />
             </button>
             <Link
-              to="/importar"
+              to="/sincronizacion"
+              state={{ abrir: 'subir', manual: true }}
               className="w-11 h-11 rounded-full border border-line text-ink-soft flex items-center justify-center"
               aria-label="Importar desde Excel o CSV"
             >
