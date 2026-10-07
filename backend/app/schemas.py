@@ -853,6 +853,8 @@ class ProcesarExtractoResponse(BaseModel):
     sobrantes: int = 0  # registrados en el periodo que no aparecen en el extracto
     periodo_desde: Optional[str] = None  # ISO, primer movimiento del extracto
     periodo_hasta: Optional[str] = None
+    parece_extracto: bool = True  # False: el archivo no parece un extracto (carta, factura...); no se importa nada
+    motivo_rechazo: Optional[str] = None
     requiere_clave: bool = False  # el PDF está protegido y falta (o es incorrecta) la clave
     # Aviso (no bloquea): ese mes de esa cuenta ya estaba conciliado antes de subir este archivo.
     ya_conciliado: Optional[dict] = None  # {"mes": "2026-09", "cruzados": n}

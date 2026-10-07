@@ -17,6 +17,9 @@ from app.conciliacion import (
     auditar_movimientos,
     compute_fingerprint,
     detectar_banco,
+    MOTIVO_NO_EXTRACTO,
+    evaluar_extracto,
+    senales_extracto,
     normalize_texto,
     parse_bank_date,
     fijar_nombre_titular,
@@ -69,9 +72,17 @@ def procesar_extracto(
     fijar_nombre_titular(usuario.nombre)
     movimientos, descartados = parse_texto_con_regex(texto_plano) if texto_plano else ([], 0)
     via_ia = False
-    if not movimientos:
+    sin_senales = banco == "generico" and senales_extracto(texto_plano) < 2
+    # Banco desconocido y casi sin señales de extracto: no se manda a la IA (inventaría filas
+    # de una carta o factura) ni se importa nada.
+    if not movimientos and not sin_senales:
         movimientos = extraer_via_ia(texto_plano, cuenta.nombre, banco)
         via_ia = True
+
+    if movimientos:
+        parece, motivo = evaluar_extracto(texto_plano, banco, movimientos)
+        if not parece:
+            return _no_parece_extracto(banco, motivo)
 
     if not movimientos:
         historial = HistorialExtracto(
@@ -93,6 +104,8 @@ def procesar_extracto(
             if texto_plano and len(texto_plano) > 10
             else "No se extrajo texto del PDF (posiblemente protegido con otra clave o escaneado como imagen)."
         )
+        if sin_senales and texto_plano:
+            return _no_parece_extracto(banco, MOTIVO_NO_EXTRACTO)
         return ProcesarExtractoResponse(
             ok=False,
             error=f"No se pudieron extraer movimientos del PDF. {detalle}",
@@ -217,6 +230,14 @@ def procesar_extracto(
         sobrantes=sobrantes,
         ya_conciliado=ya_conciliado,
         **_periodo(resultado["review"]),
+    )
+
+
+def _no_parece_extracto(banco: str, motivo: str) -> ProcesarExtractoResponse:
+    """Rechazo claro (sin importar nada): el cliente lo muestra como error de ESE archivo."""
+    return ProcesarExtractoResponse(
+        ok=False, parece_extracto=False, motivo_rechazo=motivo, banco_detectado=banco,
+        error=f"{motivo} Sube el PDF que descargas de tu banco con los movimientos del mes.",
     )
 
 

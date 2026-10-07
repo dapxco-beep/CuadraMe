@@ -248,6 +248,52 @@ def parse_texto_con_regex(texto: str) -> tuple[list[dict], int]:
     return movimientos, descartados
 
 
+# Palabras propias de un extracto (cada grupo cuenta una vez). Una carta, una factura o una
+# inscripción rara vez traen dos de estos grupos a la vez junto a una tabla de movimientos.
+_SENALES_EXTRACTO = (
+    r"extracto", r"saldo\s+(?:anterior|inicial|final|disponible|actual)|nuevo saldo",
+    r"movimientos?|transacciones", r"d[eé]bitos?|cr[eé]ditos?|abonos?|cargos?",
+    r"fecha", r"descripci[oó]n|detalle|concepto", r"valor|monto|importe",
+)
+MIN_MOVIMIENTOS_GENERICO = 3
+MOTIVO_NO_EXTRACTO = "Este archivo no parece un extracto bancario."
+
+
+def senales_extracto(texto: str) -> int:
+    t = (texto or "").lower()
+    return sum(1 for s in _SENALES_EXTRACTO if re.search(s, t))
+
+
+def _fecha_valida(valor) -> datetime | None:
+    try:
+        return parse_bank_date(valor)
+    except ValueError:
+        return None
+
+
+def evaluar_extracto(texto: str, banco: str, movimientos: list[dict]) -> tuple[bool, str]:
+    """¿Este texto parece un extracto bancario? Conservador: es mejor pedir confirmación que
+    importar basura. Con un banco reconocido se confía (lo demás lo valida el resumen del
+    extracto). Con el parser genérico (banco desconocido) se exigen señales de extracto Y una
+    tabla coherente: al menos MIN_MOVIMIENTOS_GENERICO líneas con fecha válida, monto y
+    descripción, dentro de un rango de fechas razonable (≤ 15 meses)."""
+    if banco != "generico":
+        return True, ""
+    if senales_extracto(texto) < 2:
+        return False, MOTIVO_NO_EXTRACTO
+    plausibles = []
+    for m in movimientos:
+        f = _fecha_valida(m.get("fecha"))
+        monto = m.get("monto") or 0
+        if f and monto >= 1 and len((m.get("descripcion") or "").strip()) >= 3 and f.year >= 2000:
+            plausibles.append(f)
+    if len(plausibles) < MIN_MOVIMIENTOS_GENERICO or len(plausibles) < 0.7 * len(movimientos):
+        return False, MOTIVO_NO_EXTRACTO
+    if (max(plausibles) - min(plausibles)).days > 460:
+        return False, MOTIVO_NO_EXTRACTO
+    return True, ""
+
+
 def _parse_nequi(texto: str) -> list[dict]:
     movimientos = []
     patron_a = re.compile(
@@ -429,40 +475,39 @@ def _parse_bancolombia(texto: str) -> list[dict]:
     return movimientos
 
 
-def _parse_davivienda_generico(texto: str) -> list[dict]:
+_RE_NO_MOVIMIENTO = re.compile(r"saldo|total|per[ií]odo|extracto|n[uú]mero de cuenta", re.IGNORECASE)
+
+
+def _parse_tabular_por_linea(texto: str, patron: re.Pattern) -> list[dict]:
+    """Lector de una línea por movimiento: fecha, descripción y UN valor al final. Solo
+    espacios dentro de la línea (nunca salta de renglón: antes pegaba la fecha de un
+    encabezado con el 'Saldo anterior' de la línea de abajo) y el signo '-' del valor
+    decide gasto o ingreso (antes se perdía al limpiar el número y todo salía como ingreso)."""
     movimientos = []
-    patron = re.compile(r"(\d{2})[/\-](\d{2})[/\-](\d{2,4})\s+(.+?)\s+([\-]?\$?[\d.,]+)\s*$", re.MULTILINE)
     for m in patron.finditer(texto):
         anio = "20" + m.group(3) if len(m.group(3)) == 2 else m.group(3)
         desc = m.group(4).strip()
-        monto = parse_monto_cop(m.group(5))
-        if monto != monto or monto == 0:
+        valor = m.group(5)
+        monto = parse_monto_cop(valor)
+        if monto != monto or monto == 0 or _RE_NO_MOVIMIENTO.search(desc):
             continue
         movimientos.append({
             "fecha": f"{anio}-{m.group(2)}-{m.group(1)}",
             "descripcion": desc, "monto": abs(monto),
-            "tipo": "expense" if monto < 0 else "income",
+            "tipo": "expense" if valor.strip().startswith("-") else "income",
             "referencia": "", "saldo": None,
         })
     return movimientos
+
+
+def _parse_davivienda_generico(texto: str) -> list[dict]:
+    return _parse_tabular_por_linea(
+        texto, re.compile(r"(\d{2})[/\-](\d{2})[/\-](\d{2,4})[ \t]+(.+?)[ \t]+(\-?\$?[\d.,]+)[ \t]*$", re.MULTILINE))
 
 
 def _parse_generico(texto: str) -> list[dict]:
-    movimientos = []
-    patron = re.compile(r"(\d{2})[/\-](\d{2})[/\-](\d{2,4})\s+(.+?)\s+([\-]?[\d.,]+)\s*$", re.MULTILINE)
-    for m in patron.finditer(texto):
-        anio = "20" + m.group(3) if len(m.group(3)) == 2 else m.group(3)
-        desc = m.group(4).strip()
-        monto = parse_monto_cop(m.group(5))
-        if monto != monto or monto == 0:
-            continue
-        movimientos.append({
-            "fecha": f"{anio}-{m.group(2)}-{m.group(1)}",
-            "descripcion": desc, "monto": abs(monto),
-            "tipo": "expense" if monto < 0 else "income",
-            "referencia": "", "saldo": None,
-        })
-    return movimientos
+    return _parse_tabular_por_linea(
+        texto, re.compile(r"(\d{2})[/\-](\d{2})[/\-](\d{2,4})[ \t]+(.+?)[ \t]+(\-?[\d.,]+)[ \t]*$", re.MULTILINE))
 
 
 # ── Normalización, fingerprint y matching ──────────────────────────
