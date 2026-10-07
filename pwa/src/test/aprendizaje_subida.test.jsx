@@ -43,7 +43,6 @@ import {
   validarSeleccion,
 } from '../lib/subidaMultiple'
 import EntrenarCategorias, { textoProgreso } from '../screens/EntrenarCategorias'
-import Conciliacion from '../screens/Conciliacion'
 import SubidaMultiple from '../components/SubidaMultiple'
 
 const montar = (ui, estado) =>
@@ -150,14 +149,14 @@ describe('Entrenar categorías', () => {
   })
 })
 
-describe('Conciliación: «Recordar» al corregir la categoría', () => {
+describe('Revisión: «Recordar» al corregir la categoría', () => {
   it('al cambiar la categoría aparece «Recordar para …» marcado y se envía al importar', async () => {
     api.obtenerReviewExtracto.mockResolvedValue({
       ok: true, historial_id: 'h1', exactos: 0, aproximados: 0, faltantes: 1, completados: 0, sobrantes: 0, total_movimientos: 1, descartados: 0,
       review: [{ fingerprint: 'fp1', fecha: '2026-10-03', descripcion: 'PAGO EN VENTO COLIVING 0105', monto: 900000, tipo: 'expense', estado: 'faltante', categoria_sugerida: 'Otros' }],
     })
     api.importarFaltantes.mockResolvedValue({ ok: true, importados: 1, sin_categoria_clara: 0, categorizados_auto: 0, reglas_guardadas: 1 })
-    montar(<Conciliacion />, { historialId: 'h1' })
+    montar(<SubidaMultiple revisionInicial={{ historialId: 'h1' }} />)
     const select = await screen.findByLabelText('Categoría de PAGO EN VENTO COLIVING 0105')
     expect(screen.queryByText(/Recordar para/)).toBeNull() // sin editar, no se ofrece
     await userEvent.selectOptions(select, 'Hogar')

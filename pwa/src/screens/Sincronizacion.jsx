@@ -112,6 +112,7 @@ export default function Sincronizacion() {
   const [verEstado, setVerEstado] = useState(llegada?.abrir === 'estado')
   const montado = useRef(true)
   const iniciado = useRef(false)
+  const autoSync = useRef(false)
 
   useEffect(() => {
     montado.current = true
@@ -143,6 +144,18 @@ export default function Sincronizacion() {
         hastaRef.current = null
         setHasta(null)
         setVentanaFija(true)
+      }
+      // Primera carga: se abre lo que tiene algo por hacer (nunca se cierra nada que el usuario abrió).
+      // Va en el mismo lote que los datos, así no hay un instante con todo cerrado.
+      if (!iniciado.current) {
+        iniciado.current = true
+        const t = est?.tareas || []
+        const conectado = Boolean(gm?.conectado)
+        setAbiertos((a) => ({
+          correo: a.correo || !conectado || tareasDeBloque(t, 'correo').length > 0,
+          subir: a.subir || t.length === 0 || sinDatos({ estado: est, conectado }),
+          revisar: true, // incluye la cuadrícula: es el panorama, se ve siempre
+        }))
       }
       setEstado(est)
       setGmail(gm)
@@ -199,19 +212,11 @@ export default function Sincronizacion() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key])
 
-  // Primera carga: se abre lo que tiene algo por hacer (nunca se cierra nada que el usuario abrió).
+  // Sincronización automática al abrir (como máximo cada 6 horas), sin ruido si falla.
   useEffect(() => {
-    if (cargando || iniciado.current) return
-    iniciado.current = true
-    const t = estado?.tareas || []
-    const conectado = Boolean(gmail?.conectado)
-    setAbiertos((a) => ({
-      correo: a.correo || !conectado || tareasDeBloque(t, 'correo').length > 0,
-      subir: a.subir || t.length === 0 || sinDatos({ estado, conectado }),
-      revisar: a.revisar || tareasDeBloque(t, 'revisar').length > 0,
-    }))
-    // Sincronización automática al abrir (como máximo cada 6 horas), sin ruido si falla.
-    if (conectado && tocaSincronizar()) sincronizar(true)
+    if (cargando || autoSync.current) return
+    autoSync.current = true
+    if (gmail?.conectado && tocaSincronizar()) sincronizar(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cargando])
 

@@ -1,4 +1,4 @@
-// Pantalla Sincronización + cuenta por remitente en Correos.
+// Centro Traer movimientos (Sincronización) + cuenta por remitente en los correos por revisar.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -22,6 +22,7 @@ const api = vi.hoisted(() => ({
   recategorizarComercio: vi.fn(),
   aprobarCorreo: vi.fn(),
   crearCuenta: vi.fn(),
+  obtenerReviewExtracto: vi.fn(),
 }))
 vi.mock('../lib/api', () => ({ api }))
 const recargar = vi.hoisted(() => vi.fn())
@@ -33,7 +34,6 @@ vi.mock('../lib/CategoriasContext', () => ({
 }))
 
 import { DialogosProvider } from '../lib/DialogosContext'
-import Correos from '../screens/Correos'
 import Sincronizacion from '../screens/Sincronizacion'
 import {
   agruparPorBanco, estadoCelda, nombreMes, resumenTareas, textoEstadoExtracto,
@@ -89,7 +89,6 @@ function montar(ruta = '/sincronizacion') {
       <MemoryRouter initialEntries={[ruta]}>
         <Routes>
           <Route path="/sincronizacion" element={<Sincronizacion />} />
-          <Route path="/correos" element={<Correos />} />
           <Route path="/conciliacion" element={<p>Pantalla conciliación</p>} />
         </Routes>
       </MemoryRouter>
@@ -99,6 +98,7 @@ function montar(ruta = '/sincronizacion') {
 
 beforeEach(() => {
   localStorage.clear()
+  localStorage.setItem('cuadrame_gmail_sync', String(Date.now())) // recién sincronizado: no hay sincronización automática al abrir
   Object.values(api).forEach((f) => f.mockReset())
   recargar.mockReset()
   api.sincronizacionEstado.mockResolvedValue(ESTADO)
@@ -152,9 +152,11 @@ describe('pantalla Sincronización', () => {
     api.sincronizacionEstado.mockResolvedValue({ ...ESTADO, tareas: [], sin_cuenta: [], ultima_sync: new Date(Date.now() - 2 * 3600 * 1000).toISOString().replace('Z', '') })
     montar()
     const vacio = await screen.findByTestId('todo-al-dia')
-    expect(within(vacio).getByText('Todo al día')).toBeTruthy()
-    expect(within(vacio).getByText(/Última sincronización: hace 2 h/)).toBeTruthy()
+    expect(vacio.textContent).toMatch(/Todo al día · última sincronización hace 2 h/)
     expect(screen.getByTestId('resumen-tareas').textContent).toBe('Todo al día')
+    // Cada bloque con cero pendientes queda en «Todo al día».
+    expect(screen.getByTestId('al-dia-sinc-correo')).toBeTruthy()
+    expect(screen.getByTestId('al-dia-sinc-revisar')).toBeTruthy()
   })
 
   it('la grilla tiene texto accesible por celda y al tocarla abre el detalle del mes', async () => {
@@ -203,16 +205,21 @@ describe('pantalla Sincronización', () => {
     fireEvent.change(within(sinBanco).getByLabelText(/Cuenta del extracto/), { target: { value: 'nu' } })
     expect(boton.disabled).toBe(false)
 
-    // El del banco conocido usa la sugerida y abre el flujo de conciliación existente.
+    // El del banco conocido usa la sugerida y abre la revisión AQUÍ MISMO (sin cambiar de pantalla).
+    api.obtenerReviewExtracto.mockResolvedValue({
+      ok: true, historial_id: 'h1', cuenta_id: 'bc', banco_detectado: 'Bancolombia', total_movimientos: 1, descartados: 0,
+      review: [{ fingerprint: 'f1', fecha: '2026-09-02', descripcion: 'Compra D1', monto: 1000, tipo: 'expense', estado: 'faltante' }],
+    })
     fireEvent.click(within(nuevo).getByRole('button', { name: 'Conciliar' }))
     await waitFor(() => expect(api.conciliarExtractoCorreo).toHaveBeenCalledWith('e1', 'bc'))
-    expect(await screen.findByText('Pantalla conciliación')).toBeTruthy()
+    expect(await screen.findByTestId('revision-multiple')).toBeTruthy()
+    expect(api.obtenerReviewExtracto).toHaveBeenCalledWith('h1')
   })
 
   it('por categorizar: elegir categoría recuerda el comercio por defecto; la casilla lo evita', async () => {
     api.recategorizarComercio.mockResolvedValue({ ok: true, actualizados: 3, patron: 'PANADERIA LA 80' })
     montar()
-    await screen.findByText('Por categorizar (2)')
+    await screen.findByTestId('cat-m1')
     const m1 = screen.getByTestId('cat-m1')
     const casilla = within(m1).getByRole('checkbox')
     expect(casilla.checked).toBe(true)
@@ -251,7 +258,7 @@ describe('pantalla Sincronización', () => {
   })
 })
 
-describe('Correos: la cuenta sale de quién envió el correo', () => {
+describe('Correos por revisar: la cuenta sale de quién envió el correo', () => {
   const NEQUI = { id: 'k1', comercio: 'Bre-B', asunto: '¡Enviaste plata por Bre-B!', categoria_sugerida: 'Otros', tipo_sugerido: 'expense', monto: 500, banco_detectado: 'Nequi', cuenta_sugerida_id: null, falta_cuenta: true }
   const BANCO = { id: 'k2', comercio: 'Exito', asunto: 'Compra', categoria_sugerida: 'Mercado', tipo_sugerido: 'expense', monto: 45000, banco_detectado: 'Bancolombia', cuenta_sugerida_id: 'bc', falta_cuenta: false }
   const RARO = { id: 'k3', comercio: 'Tienda', asunto: 'Pago', categoria_sugerida: 'Otros', tipo_sugerido: 'expense', monto: 9000, banco_detectado: null, cuenta_sugerida_id: null, falta_cuenta: false }
@@ -263,19 +270,19 @@ describe('Correos: la cuenta sale de quién envió el correo', () => {
   })
 
   it('nunca preselecciona la primera cuenta: un correo de Nequi sin cuenta Nequi no se puede aprobar', async () => {
-    montar('/correos')
+    montar()
     await screen.findByText('Bre-B')
     const selector = screen.getByLabelText('Cuenta de Bre-B')
     expect(selector.value).toBe('') // antes caía en "Nu Colombia" (cuentas[0])
     expect(within(selector).getByText('No tienes cuenta Nequi')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Crear cuenta Nequi' })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Crear cuenta Nequi' }).length).toBeGreaterThan(0)
     const aprobar = screen.getAllByRole('button', { name: /Aprobar/ })
     expect(aprobar[0].disabled).toBe(true)
   })
 
   it('usa la cuenta sugerida por el servidor y aprueba con ella', async () => {
     api.aprobarCorreo.mockResolvedValue({})
-    montar('/correos')
+    montar()
     await screen.findByText('Exito')
     expect(screen.getByLabelText('Cuenta de Exito').value).toBe('bc')
     const aprobar = screen.getAllByRole('button', { name: /Aprobar/ })
@@ -286,7 +293,7 @@ describe('Correos: la cuenta sale de quién envió el correo', () => {
 
   it('sin banco detectado exige elegir la cuenta a mano', async () => {
     api.aprobarCorreo.mockResolvedValue({})
-    montar('/correos')
+    montar()
     await screen.findByText('Tienda')
     const selector = screen.getByLabelText('Cuenta de Tienda')
     const aprobar = screen.getAllByRole('button', { name: /Aprobar/ })[2]

@@ -24,7 +24,7 @@ vi.mock('../lib/CategoriasContext', () => ({
 
 import { DialogosProvider } from '../lib/DialogosContext'
 import ConectarDispositivo, { ATAJO_ICLOUD_URL } from '../screens/ConectarDispositivo'
-import Conciliacion, { resumenCompletados } from '../screens/Conciliacion'
+import SubidaMultiple from '../components/SubidaMultiple'
 
 const montar = (ui, estado) =>
   render(
@@ -71,36 +71,44 @@ describe('revisión de conciliación con tres listas', () => {
     { fingerprint: 'd', fecha: '2026-10-02', descripcion: 'Spotify', monto: 16900, tipo: 'expense', estado: 'exacto' },
   ]
 
-  it('resumen con singular y plural', () => {
-    expect(resumenCompletados(0)).toBeNull()
-    expect(resumenCompletados(1)).toBe('Completé 1 movimiento con tu extracto')
-    expect(resumenCompletados(3)).toBe('Completé 3 movimientos con tu extracto')
+  it('el resumen de completados usa singular y plural', async () => {
+    api.obtenerReviewExtracto.mockResolvedValue({
+      ok: true, historial_id: 'h3', cuenta_id: 'c1', exactos: 0, aproximados: 0, faltantes: 0, completados: 2, sobrantes: 0,
+      total_movimientos: 2, descartados: 0, review: [review[0], { ...review[0], fingerprint: 'z' }],
+    })
+    montar(<SubidaMultiple revisionInicial={{ historialId: 'h3' }} />)
+    expect(await screen.findByText('Completé 2 movimientos con tu extracto')).toBeInTheDocument()
   })
 
-  it('muestra completados, faltantes y sobrantes en secciones claras', async () => {
+  it('muestra completados, faltantes y sobrantes en la revisión consolidada', async () => {
     api.obtenerReviewExtracto.mockResolvedValue({
-      ok: true, historial_id: 'h1', exactos: 1, aproximados: 0, faltantes: 1, completados: 1, sobrantes: 1,
+      ok: true, historial_id: 'h1', cuenta_id: 'c1', exactos: 1, aproximados: 0, faltantes: 1, completados: 1, sobrantes: 1,
       total_movimientos: 3, descartados: 0, review,
     })
-    montar(<Conciliacion />, { historialId: 'h1' })
+    montar(<SubidaMultiple revisionInicial={{ historialId: 'h1' }} />)
     expect(await screen.findByText('Completé 1 movimiento con tu extracto')).toBeInTheDocument()
-    const completados = screen.getByRole('region', { name: 'Completados con el banco' })
-    expect(within(completados).getByText('RESTAURANTE EL CORRAL')).toBeInTheDocument()
-    expect(within(completados).getByText(/Tú anotaste: mi almuerzo/)).toBeInTheDocument()
-    const faltan = screen.getByRole('region', { name: 'Faltan en CuadraMe' })
-    expect(within(faltan).getByText('Netflix')).toBeInTheDocument()
-    const sobran = screen.getByRole('region', { name: 'Registrados que no aparecen en el extracto' })
-    expect(within(sobran).getByText('Movimiento en Nequi')).toBeInTheDocument()
-    expect(within(sobran).queryByText('Netflix')).toBeNull()
+    expect(screen.getByText('Netflix')).toBeInTheDocument() // lo que falta
+    const sobran = screen.getByText('1 registrado no aparece en el extracto').closest('details')
+    expect(within(sobran).getByText(/Movimiento en Nequi/)).toBeInTheDocument()
+    expect(within(sobran).queryByText(/Netflix/)).toBeNull()
   })
 
   it('avisa si el monto registrado difiere del banco', async () => {
     const r = [{ ...review[0], monto_registrado: 24000 }]
     api.obtenerReviewExtracto.mockResolvedValue({
-      ok: true, historial_id: 'h2', exactos: 0, aproximados: 0, faltantes: 0, completados: 1, sobrantes: 0,
+      ok: true, historial_id: 'h2', cuenta_id: 'c1', exactos: 0, aproximados: 0, faltantes: 0, completados: 1, sobrantes: 0,
       total_movimientos: 1, descartados: 0, review: r,
     })
-    montar(<Conciliacion />, { historialId: 'h2' })
+    montar(<SubidaMultiple revisionInicial={{ historialId: 'h2' }} />)
     expect(await screen.findByText(/el banco dice/)).toBeInTheDocument()
+  })
+
+  it('avisa las líneas del PDF que no se pudieron leer', async () => {
+    api.obtenerReviewExtracto.mockResolvedValue({
+      ok: true, historial_id: 'h4', cuenta_id: 'c1', exactos: 0, aproximados: 0, faltantes: 1, completados: 0, sobrantes: 0,
+      total_movimientos: 1, descartados: 3, review: [review[1]],
+    })
+    montar(<SubidaMultiple revisionInicial={{ historialId: 'h4' }} />)
+    expect(await screen.findByTestId('aviso-descartados')).toHaveTextContent('3 líneas no se pudieron leer con certeza')
   })
 })

@@ -48,8 +48,8 @@ import Metas from '../screens/Metas'
 import Recurrentes from '../screens/Recurrentes'
 import Deudas from '../screens/Deudas'
 import Insights from '../screens/Insights'
-import Correos from '../screens/Correos'
-import Conciliacion from '../screens/Conciliacion'
+import Sincronizacion from '../screens/Sincronizacion'
+import ImportarArchivo from '../screens/ImportarArchivo'
 import Ahorcado from '../screens/Ahorcado'
 import ConectarDispositivo from '../screens/ConectarDispositivo'
 import Categorias from '../screens/Categorias'
@@ -62,7 +62,7 @@ import Perfil from '../screens/Perfil'
 import Agregar from '../screens/Agregar'
 
 const PANTALLAS = {
-  Presupuesto, Metas, Recurrentes, Deudas, Insights, Correos, Conciliacion, Ahorcado,
+  Presupuesto, Metas, Recurrentes, Deudas, Insights, Sincronizacion, ImportarArchivo, Ahorcado,
   ConectarDispositivo, Categorias, ReglasCategoria, Compartir, Cuentas, Inicio, Movimientos, Perfil, Agregar,
 }
 

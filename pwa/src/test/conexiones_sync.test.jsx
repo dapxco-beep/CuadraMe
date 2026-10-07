@@ -16,8 +16,11 @@ const api = vi.hoisted(() => ({
   correosLista: vi.fn(),
   extractosCorreo: vi.fn(),
   clavePdfEstado: vi.fn(),
+  sincronizacionEstado: vi.fn(),
+  sincronizacionPorCategorizar: vi.fn(),
 }))
 vi.mock('../lib/api', () => ({ api }))
+vi.mock('../lib/CategoriasContext', () => ({ useCategorias: () => ({ nombres: ['Otros'], iconoDe: () => '' }) }))
 vi.mock('../lib/CuentasContext', () => ({
   useCuentas: () => ({ cuentas: [{ id: 'c1', nombre: 'Efectivo', moneda: 'COP' }], cargando: false, error: '', recargar: vi.fn() }),
 }))
@@ -30,7 +33,7 @@ vi.mock('../lib/push', () => ({
 import { DialogosProvider } from '../lib/DialogosContext'
 import { haceCuanto, resumenSync, sincronizarTodo } from '../lib/sincronizarGmail'
 import Conexiones from '../screens/Conexiones'
-import Correos from '../screens/Correos'
+import Sincronizacion from '../screens/Sincronizacion'
 
 const ESTADO = {
   hay_falla: false,
@@ -56,8 +59,7 @@ function montar(ui, ruta) {
       <MemoryRouter initialEntries={[ruta]}>
         <Routes>
           <Route path="/conexiones" element={<Conexiones />} />
-          <Route path="/correos" element={<Correos />} />
-          <Route path="/conciliacion" element={<p>Pantalla conciliación</p>} />
+          <Route path="/sincronizacion" element={<Sincronizacion />} />
         </Routes>
       </MemoryRouter>
     </DialogosProvider>
@@ -154,34 +156,32 @@ describe('Conexiones y estado', () => {
   })
 })
 
-describe('Correos: pasos, resumen y filtros', () => {
-  it('muestra los pasos y el resumen claro tras sincronizar', async () => {
+describe('Centro: pasos, resumen y correos ignorados', () => {
+  beforeEach(() => {
+    localStorage.setItem('cuadrame_gmail_sync', String(Date.now())) // sin sincronización automática al abrir
+    api.sincronizacionEstado.mockResolvedValue({ meses: [], cuentas: [], sin_cuenta: [], tareas: [], ultima_sync: null })
+    api.sincronizacionPorCategorizar.mockResolvedValue({ items: [], total: 0 })
+  })
+
+  it('muestra los pasos Conecta, Trae, Revisa y el resumen claro tras sincronizar', async () => {
     api.sincronizarCorreos.mockResolvedValue({ ok: true, completado: true, nuevos: 18, extractos_encontrados: 3 })
-    montar(null, '/correos')
+    montar(null, '/sincronizacion')
     expect(await screen.findByTestId('pasos')).toBeTruthy()
-    expect(screen.getByText('Conecta Gmail')).toBeTruthy()
-    expect(await screen.findByText('Encontré 18 movimientos nuevos y 3 extractos.').catch(() => null)).toBeNull // silencioso al abrir
-    fireEvent.click(screen.getByRole('button', { name: /Sincronizar ahora/ }))
-    expect(await screen.findByText('Encontré 18 movimientos nuevos y 3 extractos.')).toBeTruthy()
+    expect(screen.getByText('Conecta')).toBeTruthy()
+    expect(screen.getByText('Revisa')).toBeTruthy()
+    // Conectado y sin datos: va en el paso 2.
+    expect(screen.getByText('Trae').closest('li').getAttribute('aria-current')).toBe('step')
+    fireEvent.click(screen.getByRole('button', { name: 'Sincronizar todo' }))
+    expect(await screen.findByText(/Encontré 18 movimientos nuevos y 3 extractos\./)).toBeTruthy()
   })
 
-  it('el filtro Ignorados lista y permite cargar más', async () => {
-    localStorage.setItem('cuadrame_gmail_sync', String(Date.now()))
-    const pagina = (desde) => Array.from({ length: 30 }, (_, i) => ({ id: `i${desde + i}`, asunto: `Promo ${desde + i}`, remitente: 'b@banco.co' }))
-    api.correosLista.mockResolvedValueOnce(pagina(0)).mockResolvedValueOnce(pagina(30).slice(0, 5))
-    montar(null, '/correos')
-    fireEvent.click(await screen.findByRole('button', { name: 'Ignorados' }))
+  it('«Ver correos ignorados» los lista', async () => {
+    api.correosLista.mockResolvedValue([{ id: 'i1', asunto: 'Promo 0', remitente: 'b@banco.co' }])
+    montar(null, '/sincronizacion')
+    // Sin nada por resolver el bloque está plegado («Todo al día»): se abre para verlo.
+    fireEvent.click(await screen.findByRole('button', { name: /Desde tu correo/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver correos ignorados' }))
     expect(await screen.findByText('Promo 0')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Cargar más' }))
-    expect(await screen.findByText('Promo 34')).toBeTruthy()
-    expect(api.correosLista).toHaveBeenLastCalledWith('ignorados', 30, 30)
-    expect(screen.queryByRole('button', { name: 'Cargar más' })).toBeNull()
-  })
-
-  it('el filtro Falta clave pide solo esos extractos al servidor', async () => {
-    localStorage.setItem('cuadrame_gmail_sync', String(Date.now()))
-    montar(null, '/correos')
-    fireEvent.click(await screen.findByRole('button', { name: 'Falta clave' }))
-    await waitFor(() => expect(api.extractosCorreo).toHaveBeenCalledWith('falta_clave'))
+    expect(api.correosLista).toHaveBeenCalledWith('ignorados', 0, 30)
   })
 })

@@ -1,5 +1,5 @@
-// Correos: lo ya conciliado no es pendiente (sección plegada) y al aprobar un correo
-// con otra categoría se recuerda la regla del comercio.
+// Centro Traer movimientos: lo ya conciliado no es pendiente (sección plegada) y al aprobar un
+// correo con otra categoría se recuerda la regla del comercio.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -12,7 +12,18 @@ const EXTRACTOS = [
   { id: 'e3', banco: 'Nequi', periodo: 'agosto 2026', asunto: 'Extracto', archivo: 'c.pdf', estado: 'procesado', cuenta_sugerida_id: null, historial_id: 'h9', cruzados: 1 },
 ]
 
+const ESTADO = {
+  meses: [], cuentas: [], sin_cuenta: [], ultima_sync: null,
+  tareas: [{ id: 'extractos_por_conciliar', titulo: 'Extractos por conciliar', detalle: '', cantidad: 1, ruta: '/sincronizacion#extractos' }],
+}
+const ESTADO_CORREO = {
+  ...ESTADO,
+  tareas: [{ id: 'correos_por_revisar', titulo: 'Correos por revisar', detalle: '', cantidad: 1, ruta: '/sincronizacion#correos' }],
+}
+
 const api = vi.hoisted(() => ({
+  sincronizacionEstado: vi.fn(),
+  sincronizacionPorCategorizar: vi.fn(),
   gmailEstado: vi.fn(),
   correosPendientes: vi.fn(),
   extractosCorreo: vi.fn(),
@@ -20,6 +31,7 @@ const api = vi.hoisted(() => ({
   aprobarCorreo: vi.fn(),
   conciliarExtractoCorreo: vi.fn(),
   sincronizarCorreos: vi.fn(),
+  obtenerReviewExtracto: vi.fn(),
 }))
 vi.mock('../lib/api', () => ({ api }))
 vi.mock('../lib/CuentasContext', () => ({
@@ -30,15 +42,14 @@ vi.mock('../lib/CategoriasContext', () => ({
 }))
 
 import { DialogosProvider } from '../lib/DialogosContext'
-import Correos from '../screens/Correos'
+import Sincronizacion from '../screens/Sincronizacion'
 
 function montar() {
   return render(
     <DialogosProvider>
-      <MemoryRouter initialEntries={['/correos']}>
+      <MemoryRouter initialEntries={['/sincronizacion']}>
         <Routes>
-          <Route path="/correos" element={<Correos />} />
-          <Route path="/conciliacion" element={<p>Pantalla conciliación</p>} />
+          <Route path="/sincronizacion" element={<Sincronizacion />} />
         </Routes>
       </MemoryRouter>
     </DialogosProvider>
@@ -46,14 +57,17 @@ function montar() {
 }
 
 const CORREO = {
-  id: 'k1', comercio: 'Zafiro Quimera', asunto: 'Compra aprobada', categoria_sugerida: 'Comida', tipo_sugerido: 'expense',
+  id: 'k1', comercio: 'Compra en Zafiro Quimera', asunto: 'Compra aprobada', categoria_sugerida: 'Comida', tipo_sugerido: 'expense',
   monto: 15000, banco_detectado: 'Bancolombia', cuenta_sugerida_id: 'bc', falta_cuenta: false,
   razon_categoria: 'por palabra clave «zafiro»', preguntar_categoria: false,
 }
+const NOMBRE = 'Compra en Zafiro Quimera'
 
 beforeEach(() => {
   localStorage.setItem('cuadrame_gmail_sync', String(Date.now()))
   Object.values(api).forEach((f) => f.mockReset())
+  api.sincronizacionEstado.mockResolvedValue(ESTADO)
+  api.sincronizacionPorCategorizar.mockResolvedValue({ items: [], total: 0 })
   api.gmailEstado.mockResolvedValue({ conectado: true, email: 'yo@gmail.com', etiqueta: 'gastos' })
   api.correosPendientes.mockResolvedValue([])
   api.extractosCorreo.mockResolvedValue(EXTRACTOS)
@@ -61,11 +75,11 @@ beforeEach(() => {
   api.aprobarCorreo.mockResolvedValue({})
 })
 
-describe('Correos: extractos ya conciliados', () => {
+describe('Extractos ya conciliados', () => {
   it('no cuentan ni aparecen como nuevos: quedan en una sección plegada con sus movimientos cruzados', async () => {
     montar()
-    expect(await screen.findByText('Extractos encontrados (1)')).toBeTruthy()
-    expect(screen.getAllByText('Nuevo')).toHaveLength(1)
+    expect((await screen.findByRole('heading', { name: /Extractos encontrados/ })).textContent).toBe('Extractos encontrados1')
+    expect(screen.getAllByText(/Nuevo · listo para conciliar/)).toHaveLength(1)
     expect(screen.queryByText('Nu Colombia')).toBeNull()
 
     const boton = screen.getByRole('button', { name: /Ya conciliados \(2\)/ })
@@ -77,30 +91,32 @@ describe('Correos: extractos ya conciliados', () => {
     expect(within(screen.getByTestId('conciliado-e3')).getByText('1 movimiento cruzado')).toBeTruthy()
   })
 
-  it('el filtro "Ya conciliados" muestra solo esos, ya abiertos, y "Revisar de nuevo" no bloquea', async () => {
+  it('«Revisar de nuevo» no bloquea: vuelve a abrir la revisión', async () => {
     api.conciliarExtractoCorreo.mockResolvedValue({ ok: true, historial_id: 'h1' })
+    api.obtenerReviewExtracto.mockResolvedValue({ ok: true, historial_id: 'h1', cuenta_id: 'bc', banco_detectado: 'Nu', total_movimientos: 0, review: [] })
     montar()
-    await screen.findByText('Extractos encontrados (1)')
-    fireEvent.click(screen.getByRole('button', { name: 'Ya conciliados', pressed: false }))
-    expect(await screen.findByText('Extractos ya conciliados')).toBeTruthy()
-    expect(screen.getByTestId('conciliado-e2')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Conciliar' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Revisar de nuevo' }))
+    await screen.findByRole('heading', { name: /Extractos encontrados/ })
+    fireEvent.click(screen.getByRole('button', { name: /Ya conciliados \(2\)/ }))
+    fireEvent.click(within(screen.getByTestId('conciliado-e2')).getByRole('button', { name: 'Revisar de nuevo' }))
     await waitFor(() => expect(api.conciliarExtractoCorreo).toHaveBeenCalledWith('e2', 'bc'))
-    expect(await screen.findByText('Pantalla conciliación')).toBeTruthy()
+    expect(await screen.findByTestId('revision-multiple')).toBeTruthy()
   })
 })
 
-describe('Correos: aprender la regla al aprobar', () => {
-  it('muestra la razón de la categoría y, si la cambia, deja «Recordar» marcado y lo envía', async () => {
+describe('Correos por revisar: aprender la regla al aprobar', () => {
+  beforeEach(() => {
+    api.sincronizacionEstado.mockResolvedValue(ESTADO_CORREO)
     api.correosPendientes.mockResolvedValue([CORREO])
     api.extractosCorreo.mockResolvedValue([])
+  })
+
+  it('muestra la razón de la categoría y, si la cambia, deja «Recordar» marcado y lo envía', async () => {
     montar()
-    await screen.findByText('Zafiro Quimera')
+    await screen.findByText(NOMBRE)
     expect(screen.getByText(/Comida · por palabra clave/)).toBeTruthy()
     expect(screen.queryByTestId('recordar-regla')).toBeNull() // sin cambiar nada no hay nada que recordar
 
-    fireEvent.change(screen.getByLabelText('Categoría de Zafiro Quimera'), { target: { value: 'Hogar' } })
+    fireEvent.change(screen.getByLabelText(`Categoría de ${NOMBRE}`), { target: { value: 'Hogar' } })
     const casilla = within(screen.getByTestId('recordar-regla')).getByLabelText(/Recordar para/)
     expect(casilla.checked).toBe(true) // marcado por defecto
     fireEvent.click(screen.getByLabelText('Aplicar también a los anteriores'))
@@ -111,11 +127,9 @@ describe('Correos: aprender la regla al aprobar', () => {
   })
 
   it('desmarcar «Recordar» aprueba con la categoría pero sin guardar regla', async () => {
-    api.correosPendientes.mockResolvedValue([CORREO])
-    api.extractosCorreo.mockResolvedValue([])
     montar()
-    await screen.findByText('Zafiro Quimera')
-    fireEvent.change(screen.getByLabelText('Categoría de Zafiro Quimera'), { target: { value: 'Hogar' } })
+    await screen.findByText(NOMBRE)
+    fireEvent.change(screen.getByLabelText(`Categoría de ${NOMBRE}`), { target: { value: 'Hogar' } })
     fireEvent.click(within(screen.getByTestId('recordar-regla')).getByLabelText(/Recordar para/))
     fireEvent.click(screen.getByRole('button', { name: /Aprobar/ }))
     await waitFor(() =>
@@ -125,12 +139,11 @@ describe('Correos: aprender la regla al aprobar', () => {
 
   it('si quedó en «Otros» le pregunta la categoría', async () => {
     api.correosPendientes.mockResolvedValue([{ ...CORREO, categoria_sugerida: 'Otros', razon_categoria: null, preguntar_categoria: true }])
-    api.extractosCorreo.mockResolvedValue([])
     montar()
-    await screen.findByText('Zafiro Quimera')
+    await screen.findByText(NOMBRE)
     expect(screen.getByTestId('pregunta-cat-k1')).toBeTruthy()
-    expect(screen.getByLabelText('Categoría de Zafiro Quimera').value).toBe('')
-    fireEvent.change(screen.getByLabelText('Categoría de Zafiro Quimera'), { target: { value: 'Comida' } })
+    expect(screen.getByLabelText(`Categoría de ${NOMBRE}`).value).toBe('')
+    fireEvent.change(screen.getByLabelText(`Categoría de ${NOMBRE}`), { target: { value: 'Comida' } })
     expect(screen.queryByTestId('pregunta-cat-k1')).toBeNull()
     expect(screen.getByTestId('recordar-regla')).toBeTruthy()
   })

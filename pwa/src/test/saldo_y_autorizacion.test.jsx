@@ -16,6 +16,8 @@ const api = vi.hoisted(() => ({
   extractosCorreo: vi.fn(),
   clavePdfEstado: vi.fn(),
   sincronizarCorreos: vi.fn(),
+  sincronizacionEstado: vi.fn(),
+  sincronizacionPorCategorizar: vi.fn(),
 }))
 vi.mock('../lib/api', () => ({ api }))
 vi.mock('../lib/CuentasContext', () => ({
@@ -31,7 +33,7 @@ import DetalleCuenta from '../components/DetalleCuenta'
 import ResumenSaldo from '../components/ResumenSaldo'
 import AutorizacionTratamiento from '../screens/AutorizacionTratamiento'
 import SeccionPrivacidad from '../components/SeccionPrivacidad'
-import Correos from '../screens/Correos'
+import Sincronizacion from '../screens/Sincronizacion'
 import { textoActualizado } from '../lib/saldos'
 
 const AHORRO = { id: 'c1', nombre: 'Bancolombia', tipo: 'ahorro', saldo: 1500000, moneda: 'COP' }
@@ -165,15 +167,19 @@ describe('Autorización de tratamiento de datos', () => {
 })
 
 describe('Gmail por invitación y consentimiento', () => {
-  function montarCorreos(estado, ruta = '/correos') {
+  function montarCorreos(estado, ruta = '/sincronizacion') {
+    api.sincronizacionEstado.mockResolvedValue({ meses: [], cuentas: [], sin_cuenta: [], tareas: [], ultima_sync: null })
+    api.sincronizacionPorCategorizar.mockResolvedValue({ items: [], total: 0 })
+    api.extractosCorreo.mockResolvedValue([])
+    api.clavePdfEstado.mockResolvedValue({})
     api.gmailEstado.mockResolvedValue({ conectado: false, etiqueta: 'gastos', ...estado })
     api.correosPendientes.mockResolvedValue([])
-    return envolver(<Correos />, ruta)
+    return envolver(<Sincronizacion />, ruta)
   }
 
   it('si Google devolvió sin_acceso muestra el mensaje amable con mailto al soporte', async () => {
-    montarCorreos({ modo_pruebas: true, soporte_email: 'ayuda@cuadrame.test', consentimiento: true }, '/correos?gmail=sin_acceso')
-    expect(await screen.findByText('Gmail aún está en acceso por invitación')).toBeInTheDocument()
+    montarCorreos({ modo_pruebas: true, soporte_email: 'ayuda@cuadrame.test', consentimiento: true }, '/sincronizacion?gmail=sin_acceso')
+    expect(await screen.findByText('Gmail aún es por invitación')).toBeInTheDocument()
     expect(screen.getByText(/Google no te dejó entrar/)).toBeInTheDocument()
     const pedir = screen.getByRole('link', { name: 'Pedir acceso' })
     expect(pedir.getAttribute('href')).toMatch(/^mailto:ayuda@cuadrame\.test\?/)
@@ -183,7 +189,7 @@ describe('Gmail por invitación y consentimiento', () => {
 
   it('sin la autorización de lectura de correo no conecta: pide el consentimiento primero', async () => {
     montarCorreos({ modo_pruebas: false, consentimiento: false })
-    await userEvent.click(await screen.findByRole('button', { name: 'Conectar Gmail' }))
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Conectar Gmail' })).at(-1))
     expect(api.gmailConectar).not.toHaveBeenCalled()
     expect(await screen.findByText('Leer mi correo (Gmail, solo lectura)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Autorizo' })).toBeDisabled() // casilla sin marcar
@@ -191,7 +197,7 @@ describe('Gmail por invitación y consentimiento', () => {
 
   it('con la autorización dada no muestra el aviso de invitación si ya no está en modo pruebas', async () => {
     montarCorreos({ modo_pruebas: false, consentimiento: true })
-    await screen.findByRole('button', { name: 'Conectar Gmail' })
+    await screen.findAllByRole('button', { name: 'Conectar Gmail' })
     expect(screen.queryByTestId('aviso-invitacion')).toBeNull()
   })
 })
