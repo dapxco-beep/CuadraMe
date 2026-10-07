@@ -22,6 +22,23 @@
   --font-sans: var(--f-sans);
 }
 
+/* ── Tokens de movimiento: escala única de duraciones y una sola curva ──────
+   rápido (hover, foco, pulsar) · normal (salidas, fundidos) · lento (entradas de
+   pantalla y hojas). Misma escala en lib/tokens.js para framer-motion. */
+:root {
+  --dur-rapido: 120ms;
+  --dur-normal: 200ms;
+  --dur-lento: 320ms;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Radios y sombras compartidos (el espacio sigue la escala de 4 px de Tailwind) */
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 28px;
+  --sombra-1: 0 1px 2px rgb(34 31 25 / 0.06);
+  --sombra-2: 0 6px 18px -10px rgb(34 31 25 / 0.35);
+}
+
 /* Tema CuadraMe cálido (default) — crema, Sora, acento naranja/dorado */
 :root,
 :root[data-theme='calido'] {
@@ -93,7 +110,7 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   overscroll-behavior-y: none;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: background var(--dur-normal) var(--ease), color var(--dur-normal) var(--ease);
 }
 
 #root {
@@ -155,7 +172,7 @@ body {
 .screen-enter {
   /* backwards (no both): al terminar no queda ningún transform, que volvería relativo
      cualquier `position: fixed` de los descendientes. */
-  animation: slide-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation: slide-up var(--dur-lento) var(--ease) backwards;
 }
 
 /* Hojas abiertas (viven en el body) mientras la app está bloqueada con PIN */
@@ -165,7 +182,7 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
    la misma clase a cada item y dejar que --stagger-i (0,1,2...) escalone
    el delay, o usar .stagger-N para los primeros índices sin variables. */
 .stagger-item {
-  animation: slide-up-sm 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation: slide-up-sm var(--dur-lento) var(--ease) backwards;
   /* Tope de 8 pasos: en listas largas el retraso no crece sin límite (350 ms máx.) */
   animation-delay: calc(min(var(--stagger-i, 0), 8) * 35ms);
 }
@@ -178,19 +195,19 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
 }
 
 .pop-in {
-  animation: scale-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: scale-in var(--dur-normal) var(--ease) both;
 }
 
 /* Modal/hoja inferior: fondo con fade, contenido deslizando desde abajo */
 .sheet-backdrop {
-  animation: fade-in 0.18s ease-out both;
+  animation: fade-in var(--dur-normal) var(--ease) both;
 }
 .sheet-content {
-  animation: sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: sheet-up var(--dur-lento) var(--ease) both;
 }
 
 /* Salida de la hoja (componente Hoja): el fondo se desvanece y el panel baja.
-   Dura lo mismo que DURACION_SALIDA en components/Hoja.jsx. */
+   Dura lo mismo que DURACION_SALIDA (= --dur-normal) en components/Hoja.jsx. */
 @keyframes fade-out {
   from { opacity: 1; }
   to { opacity: 0; }
@@ -209,18 +226,18 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
 }
 .hoja-saliendo.sheet-backdrop,
 .hoja-saliendo .sheet-backdrop {
-  animation: fade-out 0.18s ease-in both;
+  animation: fade-out var(--dur-normal) var(--ease) both;
 }
 .hoja-saliendo .sheet-content {
-  animation: sheet-down 0.18s ease-in both;
+  animation: sheet-down var(--dur-normal) var(--ease) both;
 }
 /* En pantallas anchas (iPad, PC) la hoja es un modal centrado */
 @media (min-width: 768px) {
   .hoja-panel.sheet-content {
-    animation: modal-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: modal-in var(--dur-normal) var(--ease) both;
   }
   .hoja-saliendo .hoja-panel.sheet-content {
-    animation: modal-out 0.18s ease-in both;
+    animation: modal-out var(--dur-normal) var(--ease) both;
   }
 }
 
@@ -234,7 +251,7 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
 
 /* Pulso corto para confirmar una acción (ej. saldo actualizado, check) */
 .pop-once {
-  animation: pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: pop var(--dur-lento) var(--ease) both;
 }
 
 /* Esqueleto de carga con brillo, para reemplazar "Cargando..." en texto plano */
@@ -252,18 +269,18 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
 }
 .linea-patrimonio {
   stroke-dasharray: 1;
-  animation: dibujar-linea 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: dibujar-linea 1s var(--ease) both;
 }
 
 /* Barras de progreso: se animan con transform (no con width/height) para no
    disparar layout; el relleno nace en el borde izquierdo (o inferior si es vertical). */
 .barra-fill {
   transform-origin: left center;
-  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.7s var(--ease);
 }
 .barra-fill-v {
   transform-origin: center bottom;
-  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.7s var(--ease);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -294,7 +311,9 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
 
 /* Botones y filas interactivas: feedback consistente en toda la app */
 button, a {
-  transition: transform 0.15s ease, opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  transition-property: transform, opacity, background-color, border-color, box-shadow, filter;
+  transition-duration: var(--dur-rapido);
+  transition-timing-function: var(--ease);
 }
 /* El "se hunde al tocar" solo tiene sentido con el dedo; con ratón se siente raro */
 @media (hover: none) {
