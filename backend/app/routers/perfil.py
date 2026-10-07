@@ -96,6 +96,32 @@ def actualizar_confianza_autoimport(
     return {"confianza_autoimport": perfil.confianza_autoimport}
 
 
+class AutoimportarExtractosUpdate(BaseModel):
+    activo: bool
+
+
+@router.get("/autoimportar-extractos")
+def obtener_autoimportar_extractos(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    perfil = _get_or_create_perfil(db, usuario.id)
+    return {"activo": bool(perfil.autoimportar_extractos), "confianza_autoimport": perfil.confianza_autoimport or 0.75}
+
+
+@router.put("/autoimportar-extractos")
+def actualizar_autoimportar_extractos(
+    data: AutoimportarExtractosUpdate,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Opcional y apagado por defecto: al subir un extracto, importa solo lo que la app
+    reconoce con certeza (umbral = confianza-autoimport). Lo importado se puede deshacer."""
+    perfil = _get_or_create_perfil(db, usuario.id)
+    perfil.autoimportar_extractos = data.activo
+    db.commit()
+    return {"activo": bool(perfil.autoimportar_extractos)}
+
+
 @router.post("/eliminar-cuenta")
 def eliminar_cuenta(
     data: EliminarCuentaRequest,

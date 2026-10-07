@@ -37,14 +37,21 @@ from app.schemas import (
     ProcesarExtractoResponse,
 )
 
-# Umbral de confianza por defecto del clasificador aprendido para auto-importar
-# sin pasar por revisión manual. Cada usuario puede ajustar el suyo desde
-# Perfil (perfil.confianza_autoimport) si quiere ser más o menos estricto.
+# Auto-importar es OPCIONAL y viene APAGADO (perfil.autoimportar_extractos): procesar un
+# extracto solo lee y propone; importar es al confirmar la revisión. Con el ajuste activo se
+# importan solos los movimientos que el clasificador reconoce con confianza >= umbral
+# (por defecto este; cada usuario ajusta el suyo en perfil.confianza_autoimport), y se pueden
+# deshacer con POST /conciliacion/historial/{id}/deshacer-auto.
 # Solo aplica a movimientos detectados por los parsers regex específicos de
 # banco (no al fallback de IA, más propenso a error de lectura del PDF).
 CONFIANZA_AUTOIMPORT_DEFAULT = 0.75
 
 router = APIRouter(prefix="/conciliacion", tags=["conciliacion"])
+
+
+def _autoimportar_activo(db: Session, usuario_id: str) -> bool:
+    perfil = db.query(Perfil).filter(Perfil.usuario_id == usuario_id).first()
+    return bool(perfil and perfil.autoimportar_extractos)
 
 
 def _umbral_autoimport(db: Session, usuario_id: str) -> float:
@@ -128,13 +135,14 @@ def procesar_extracto(
     # Solo lo confirmado por el usuario alimenta el aprendizaje.
     modelo = ClasificadorUsuario(db, usuario.id)
     umbral = _umbral_autoimport(db, usuario.id)
+    autoimportar = _autoimportar_activo(db, usuario.id)
 
     for item in resultado["review"]:
         if item["estado"] != "faltante":
             continue
         clasif = modelo.clasificar(item["descripcion"])
 
-        if not via_ia and clasif and clasif["confianza"] >= umbral:
+        if autoimportar and not via_ia and clasif and clasif["confianza"] >= umbral:
             fecha_dt = parse_bank_date(item["fecha"])
             movimiento = Movimiento(
                 usuario_id=usuario.id,
@@ -149,6 +157,7 @@ def procesar_extracto(
                 **datos_auto(origen_de(clasif.get("fuente")) or "similar"),
             )
             db.add(movimiento)
+            db.flush()  # id del movimiento, para poder deshacer
 
             if item["tipo"] == "income":
                 cuenta.saldo += item["monto"]
@@ -156,6 +165,10 @@ def procesar_extracto(
                 cuenta.saldo -= item["monto"]
 
             item["estado"] = "importado"
+            item["auto"] = True
+            item["movimiento_id"] = movimiento.id
+            item["categoria_sugerida"] = clasif["categoria"]
+            item["razon_categoria"] = clasif.get("razon")
             auto_importados += 1
         else:
             # No se auto-importó (confianza baja, viene de IA, o no hubo match):
@@ -215,6 +228,8 @@ def procesar_extracto(
     completados, sobrantes = _contar_review(resultado["review"])
 
     return ProcesarExtractoResponse(
+        autoimportar_activo=autoimportar,
+        ya_registrados=resultado["exactos"] + resultado["aproximados"] + completados,
         propuesta_tarjeta=_propuesta_tarjeta(cuenta, texto_plano),
         ok=True,
         historial_id=historial.id,
@@ -312,8 +327,67 @@ def obtener_review(
         review=review,
         completados=completados,
         sobrantes=sobrantes,
+        auto_importados=sum(1 for i in review if i.get("auto") and i.get("estado") == "importado"),
+        ya_registrados=historial.exactos + historial.aproximados + completados,
         **_periodo(review),
     )
+
+
+@router.post("/historial/{historial_id}/deshacer-auto")
+def deshacer_auto_importados(
+    historial_id: str,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Deshace lo que se importó solo al procesar este extracto (ajuste 'importar lo que
+    reconozco'): borra esos movimientos y revierte el saldo. Los que el usuario ya confirmó o
+    editó se respetan y quedan registrados. Lo borrado vuelve a la revisión como 'faltante'."""
+    historial = (
+        db.query(HistorialExtracto)
+        .filter(HistorialExtracto.id == historial_id, HistorialExtracto.usuario_id == usuario.id)
+        .first()
+    )
+    if not historial:
+        raise HTTPException(status_code=404, detail="Historial no encontrado")
+    cuenta = cuenta_accesible(db, usuario.id, historial.cuenta_id)
+    if not cuenta or not puede_editar_cuenta(db, usuario.id, cuenta):
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+
+    review = json.loads(historial.review_json or "[]")
+    deshechos = conservados = 0
+    for item in review:
+        if not (item.get("auto") and item.get("estado") == "importado" and item.get("movimiento_id")):
+            continue
+        mov = (
+            db.query(Movimiento)
+            .filter(Movimiento.id == item["movimiento_id"], Movimiento.usuario_id == usuario.id,
+                    Movimiento.cuenta_id == cuenta.id, Movimiento.fuente == "conciliacion_auto")
+            .first()
+        )
+        if mov is None:
+            item["estado"] = "faltante"  # ya no existe (lo borró el usuario)
+        elif mov.cat_confirmada:
+            conservados += 1  # el usuario ya lo revisó: se queda
+            item["auto"] = False
+            continue
+        else:
+            if mov.tipo == "income":
+                cuenta.saldo -= mov.monto
+            elif mov.tipo == "expense":
+                cuenta.saldo += mov.monto
+            db.delete(mov)
+            item["estado"] = "faltante"
+            deshechos += 1
+        item["auto"] = False
+        item.pop("movimiento_id", None)
+
+    historial.review_json = json.dumps(review, default=str)
+    historial.importados = max(0, (historial.importados or 0) - deshechos)
+    historial.faltantes = (historial.faltantes or 0) + deshechos
+    if deshechos:
+        historial.estado = "pendiente_revision"
+    db.commit()
+    return {"ok": True, "deshechos": deshechos, "conservados": conservados}
 
 
 @router.post("/historial/{historial_id}/importar")

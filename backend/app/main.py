@@ -64,6 +64,10 @@ if engine.dialect.name == "postgresql":
             "confianza_autoimport FLOAT DEFAULT 0.75"
         ))
         conn.execute(text(
+            "ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS "
+            "autoimportar_extractos BOOLEAN DEFAULT FALSE"
+        ))
+        conn.execute(text(
             "ALTER TABLE presupuestos ADD COLUMN IF NOT EXISTS "
             "sobre_ajuste FLOAT DEFAULT 0"
         ))

@@ -28,6 +28,9 @@ class Perfil(Base):
     gmail_email = Column(String, nullable=True)
     gmail_etiqueta = Column(String, default="gastos")
     confianza_autoimport = Column(Float, default=0.75)  # 0.5-0.95: qué tan segura debe estar la categorización antes de auto-importar un movimiento sin preguntar
+    # Importar solos, al subir un extracto, los movimientos que la app categoriza con certeza
+    # (umbral = confianza_autoimport). Apagado por defecto: nada se importa sin que el usuario confirme.
+    autoimportar_extractos = Column(Boolean, default=False)
     # Recordatorio nocturno (8pm Colombia) si hoy no registró nada; opcional.
     recordatorio_diario = Column(Boolean, default=False)
     ultimo_recordatorio = Column(String, nullable=True)  # YYYY-MM-DD del último aviso, para no repetir

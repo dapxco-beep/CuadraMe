@@ -835,6 +835,9 @@ class MovimientoReview(BaseModel):
     categoria_sugerida: Optional[str] = None
     descripcion_registrada: Optional[str] = None  # completado: lo que había registrado el usuario
     monto_registrado: Optional[float] = None  # completado: monto registrado (puede diferir del banco)
+    razon_categoria: Optional[str] = None  # por qué se sugiere esa categoría
+    auto: bool = False  # importado solo (ajuste "importar lo que reconozco"): se puede deshacer
+    movimiento_id: Optional[str] = None  # id del movimiento creado al auto-importar
 
 
 class ProcesarExtractoResponse(BaseModel):
@@ -848,7 +851,9 @@ class ProcesarExtractoResponse(BaseModel):
     descartados: int = 0
     review: list[MovimientoReview] = []
     error: Optional[str] = None
-    auto_importados: int = 0  # movimientos que entraron solos (quedan "por revisar")
+    auto_importados: int = 0  # movimientos que entraron solos (solo con el ajuste activo; quedan "por revisar")
+    ya_registrados: int = 0  # exactos + aproximados + completados; ya_registrados + faltantes + auto_importados = total_movimientos
+    autoimportar_activo: bool = False  # el ajuste 'importar solo lo que reconozco con certeza'
     completados: int = 0  # movimientos rápidos completados con los datos del banco
     sobrantes: int = 0  # registrados en el periodo que no aparecen en el extracto
     periodo_desde: Optional[str] = None  # ISO, primer movimiento del extracto
