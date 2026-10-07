@@ -19,6 +19,7 @@ import CamposCuentaNueva, { CAMPOS_VACIOS } from '../components/CamposCuentaNuev
 import { datosCuentaNueva, validarTarjetaNueva } from '../lib/cuentaNueva'
 import BotonOjo from '../components/BotonOjo'
 import Hoja from '../components/Hoja'
+import { useAlertaVisible } from '../lib/useAlertaVisible'
 
 const tipos = [
   { id: 'ahorro', label: 'Ahorros' },
@@ -192,6 +193,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
   const [guardando, setGuardando] = useState(false)
   const [eliminando, setEliminando] = useState(false)
   const [error, setError] = useState('')
+  const refError = useAlertaVisible(error)
   const { confirmar } = useDialogos()
 
   async function guardar() {
@@ -315,7 +317,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
         </p>
       )}
 
-      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+      {error && <p ref={refError} role="alert" className="text-sm text-danger mb-3">{error}</p>}
 
       <button
         onClick={guardar}

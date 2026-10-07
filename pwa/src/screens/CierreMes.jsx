@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Lightbulb, TrendingUp } from 'lucide-react'
 import { api } from '../lib/api'
-import { formatCOP } from '../lib/format'
+import { formatCOP, formatPorcentaje } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
 
 function mesAnterior() {
@@ -107,7 +107,7 @@ export default function CierreMes() {
               <div className="divide-y divide-line mt-2">
                 <Fila etiqueta="Ingresos" valor={formatCOP(informe.ingresos)} />
                 <Fila etiqueta="Gastos" valor={formatCOP(informe.gastos)} />
-                <Fila etiqueta={`Ahorro (${informe.tasa_ahorro}%)`} valor={formatCOP(informe.ahorro)} fuerte />
+                <Fila etiqueta={`Ahorro (${formatPorcentaje(informe.tasa_ahorro)})`} valor={formatCOP(informe.ahorro)} fuerte />
                 {informe.intereses_pagados > 0 && <Fila etiqueta="Intereses pagados" valor={formatCOP(informe.intereses_pagados)} />}
                 {informe.patrimonio && informe.patrimonio.variacion !== null && (
                   <Fila etiqueta="Patrimonio del mes" valor={`${informe.patrimonio.variacion >= 0 ? '+' : '-'}${formatCOP(Math.abs(informe.patrimonio.variacion))}`} />

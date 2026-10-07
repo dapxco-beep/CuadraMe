@@ -102,8 +102,8 @@ describe('Entrenar categorías', () => {
     api.vocabularioCategorias.mockResolvedValue(vocab)
     api.aprenderRegla.mockResolvedValue({ guardada: true, huella: 'vento coliving', anteriores_actualizados: 2 })
     montar(<EntrenarCategorias />)
-    expect(await screen.findByText('Entrenaste 12 comercios · 83% de tus movimientos ya tienen categoría')).toBeInTheDocument()
-    expect(textoProgreso({ comercios_entrenados: 1, porcentaje: 50 })).toBe('Entrenaste 1 comercio · 50% de tus movimientos ya tienen categoría')
+    expect(await screen.findByText('Entrenaste 12 comercios · 83 % de tus movimientos ya tienen categoría')).toBeInTheDocument()
+    expect(textoProgreso({ comercios_entrenados: 1, porcentaje: 50 })).toBe('Entrenaste 1 comercio · 50 % de tus movimientos ya tienen categoría')
 
     const fila = screen.getAllByTestId('fila-entrenar')[0]
     await userEvent.selectOptions(within(fila).getByLabelText('Categoría para vento coliving'), 'Hogar')

@@ -26,7 +26,12 @@ function calcularFrecuentes(movimientos) {
     }
     vistos.get(clave).veces += 1
   }
-  return [...vistos.values()].sort((a, b) => b.veces - a.veces).slice(0, 6)
+  return [...vistos.values()].sort((a, b) => b.veces - a.veces).slice(0, 30)
+}
+
+// Solo los del tipo de la pestaña activa: en "Gasto" no salen ingresos (ni al revés).
+export function frecuentesDelTipo(frecuentes, tipo) {
+  return frecuentes.filter((f) => f.tipo === tipo).slice(0, 6)
 }
 
 export default function Agregar() {
@@ -333,11 +338,11 @@ export default function Agregar() {
       </div>
       )}
 
-      {!esTransferencia && frecuentes.length > 0 && !descripcion && (
+      {!esTransferencia && frecuentesDelTipo(frecuentes, tipo).length > 0 && !descripcion && (
         <div className="px-5 mb-4">
           <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Frecuentes</p>
           <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {frecuentes.map((f) => (
+            {frecuentesDelTipo(frecuentes, tipo).map((f) => (
               <button
                 key={f.descripcion}
                 onClick={() => usarFrecuente(f)}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Info, Landmark, Plus, TrendingDown, TrendingUp, X } from 'lucide-react'
 import { api } from '../lib/api'
-import { formatCOP, formatMoneda } from '../lib/format'
+import { formatCOP, formatMoneda, formatPorcentaje } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
 import { CLASES, CLASES_BIEN, CLASES_MERCADO, formatPct, valorCDT } from '../lib/patrimonio'
 import GraficoPatrimonio from '../components/GraficoPatrimonio'
@@ -254,7 +254,7 @@ function TarjetaActivo({ activo: a, indice, onEditar }) {
 
       {a.clase === 'cdt' && (
         <p className="text-[11px] text-ink-soft mt-1.5">
-          {a.tasa_ea}% E.A. · {a.vencido ? 'Vencido' : `vence en ${a.dias_al_vencimiento} días`} · al vencimiento{' '}
+          {formatPorcentaje(a.tasa_ea, { decimales: 2 })} E.A. · {a.vencido ? 'Vencido' : `vence en ${a.dias_al_vencimiento} días`} · al vencimiento{' '}
           {formatMoneda(a.valor_vencimiento, a.moneda)}
         </p>
       )}

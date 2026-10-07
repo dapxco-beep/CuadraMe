@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { AlertTriangle, ArrowLeft, ChevronRight, Clock, PieChart, Send, Sparkles, TrendingUp, Zap } from 'lucide-react'
 import { api } from '../lib/api'
-import { formatCOP } from '../lib/format'
+import { formatCOP, formatVeces } from '../lib/format'
 import { rangoPeriodo } from '../lib/informe'
 import MapaActividad from '../components/MapaActividad'
 import SelectorPeriodo from '../components/SelectorPeriodo'
@@ -153,7 +153,7 @@ export default function Insights() {
                   <div key={c.descripcion} className="px-4 py-3">
                     <p className="text-sm font-medium">{c.descripcion}</p>
                     <p className="text-xs text-ink-soft mt-0.5">
-                      {formatCOP(c.total_mes)} en comisiones este mes ({c.veces} {c.veces === 1 ? 'vez' : 'veces'}) — vale la pena revisar si se puede evitar
+                      {formatCOP(c.total_mes)} en comisiones este mes ({formatVeces(c.veces)}) — vale la pena revisar si se puede evitar
                     </p>
                   </div>
                 ))}

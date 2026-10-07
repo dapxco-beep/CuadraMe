@@ -4,6 +4,7 @@ import { useVolver } from '../lib/useVolver'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, ChevronLeft, ChevronRight, PieChart, Share2 } from 'lucide-react'
 import { nombreMesLargo } from '../lib/informe'
+import { formatPorcentaje } from '../lib/format'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useDialogos } from '../lib/DialogosContext'
@@ -36,10 +37,10 @@ function DetalleCategorias({ datos, fmt, onVerInforme }) {
                 className="mt-1 h-2 rounded-full bg-line overflow-hidden"
               />
               <p className="mt-1 text-xs text-ink-soft">
-                {c.pct}% del gasto
+                {formatPorcentaje(c.pct)} del gasto
                 {c.variacion_pct === null
                   ? ' · sin gasto el mes anterior'
-                  : ` · ${sube ? '↑' : c.variacion_pct < 0 ? '↓' : '='} ${Math.abs(c.variacion_pct)}% frente al mes anterior`}
+                  : ` · ${sube ? '↑' : c.variacion_pct < 0 ? '↓' : '='} ${formatPorcentaje(Math.abs(c.variacion_pct))} frente al mes anterior`}
               </p>
             </li>
           )

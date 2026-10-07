@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useVolver } from '../lib/useVolver'
 import { AlertTriangle, ArrowLeft, Check, Info, Send, Sparkles, X } from 'lucide-react'
 import { api } from '../lib/api'
-import { formatCOP } from '../lib/format'
+import { formatCOP, formatPorcentaje } from '../lib/format'
 import { Isotipo } from '../brand/Marca'
 import { EVENTO_RESUELTO } from '../components/ConsentimientoGlobal'
 
@@ -48,7 +48,7 @@ function TarjetaSimulacion({ c }) {
           </span>
         </div>
       ))}
-      <p className="text-[11px] text-ink-soft">Cuotas con {c.tasa_mensual_referencia_pct} % mensual de referencia; tu tarjeta real puede variar.</p>
+      <p className="text-[11px] text-ink-soft">Cuotas con {formatPorcentaje(c.tasa_mensual_referencia_pct, { decimales: 2 })} mensual de referencia; tu tarjeta real puede variar.</p>
     </div>
   )
 }

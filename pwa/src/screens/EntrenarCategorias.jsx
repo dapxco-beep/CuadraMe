@@ -3,14 +3,14 @@ import { ArrowLeft, Check, GraduationCap, Search } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
 import { useVolver } from '../lib/useVolver'
 import { api } from '../lib/api'
-import { formatCOP } from '../lib/format'
+import { formatCOP, formatPorcentaje, formatVeces } from '../lib/format'
 import { useCategorias } from '../lib/CategoriasContext'
 
 /** Texto de progreso de arriba: «Entrenaste 12 comercios · 83% de tus movimientos ya tienen categoría». */
 export function textoProgreso(p) {
   if (!p) return ''
   const n = p.comercios_entrenados
-  return `Entrenaste ${n} ${n === 1 ? 'comercio' : 'comercios'} · ${p.porcentaje}% de tus movimientos ya tienen categoría`
+  return `Entrenaste ${n} ${n === 1 ? 'comercio' : 'comercios'} · ${formatPorcentaje(p.porcentaje)} de tus movimientos ya tienen categoría`
 }
 
 function Fila({ item, categorias, onGuardar }) {
@@ -40,7 +40,7 @@ function Fila({ item, categorias, onGuardar }) {
           <p className="text-sm font-semibold truncate">{item.clave}</p>
           <p className="text-xs text-ink-soft truncate">Ej.: {item.ejemplo}</p>
           <p className="text-xs text-ink-soft mt-0.5">
-            {item.conteo} {item.conteo === 1 ? 'vez' : 'veces'} · {formatCOP(item.monto_total)}
+            {formatVeces(item.conteo)} · {formatCOP(item.monto_total)}
             {item.categoria_actual !== 'Otros' ? ` · hoy en ${item.categoria_actual} (sin confirmar)` : ' · sin categoría'}
           </p>
         </div>

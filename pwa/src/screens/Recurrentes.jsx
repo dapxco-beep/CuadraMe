@@ -3,7 +3,7 @@ import { EstadoVacio } from '../brand/Marca'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Check, Plus, Sparkles, X, Repeat } from 'lucide-react'
 import { api } from '../lib/api'
-import { formatCOP } from '../lib/format'
+import { formatCOP, formatVeces } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import Hoja from '../components/Hoja'
 
@@ -103,7 +103,7 @@ export default function Recurrentes() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{s.descripcion}</p>
                   <p className="text-xs text-ink-soft">
-                    {formatCOP(s.monto_promedio)} · {s.ocurrencias} veces detectado
+                    {formatCOP(s.monto_promedio)} · {formatVeces(s.ocurrencias)} detectado
                   </p>
                 </div>
                 <button

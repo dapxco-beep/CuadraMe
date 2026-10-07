@@ -3,7 +3,7 @@
 // (html-to-image pesaría ~15 KB y fallaría con fuentes/SVG en Safari; aquí la
 // tarjeta es simple y la dibujamos nosotros, con resultado idéntico en todos
 // los navegadores).
-import { formatCOP } from './format'
+import { formatCOP, formatPorcentaje } from './format'
 import { CUERPO, FICHA, CHECK } from '../brand/geometria'
 
 export function nombreMes(mes) {
@@ -26,12 +26,12 @@ export function construirDiapositivas(d, fmt = formatCOP) {
     {
       id: 'categoria', emoji: '🏆', titulo: 'Tu categoría top',
       valor: d.categoria_top ? d.categoria_top.categoria : 'Sin gastos',
-      detalle: d.categoria_top ? `${fmt(d.categoria_top.monto)} (${Math.round((d.categoria_top.monto / d.gasto_total) * 100)}% de tu gasto)` : 'Registra gastos para verla',
+      detalle: d.categoria_top ? `${fmt(d.categoria_top.monto)} (${formatPorcentaje((d.categoria_top.monto / d.gasto_total) * 100, { decimales: 0 })} de tu gasto)` : 'Registra gastos para verla',
     },
     {
       id: 'ahorro', emoji: d.ahorro >= 0 ? '🌱' : '⚠️', titulo: d.ahorro >= 0 ? 'Lograste ahorrar' : 'Gastaste más de lo que entró',
       valor: fmt(Math.abs(d.ahorro)),
-      detalle: d.ingresos > 0 ? `${d.tasa_ahorro}% de tus ingresos` : 'No registraste ingresos este mes',
+      detalle: d.ingresos > 0 ? `${formatPorcentaje(d.tasa_ahorro)} de tus ingresos` : 'No registraste ingresos este mes',
     },
     {
       id: 'racha', emoji: '🔥', titulo: 'Tu mejor racha',
@@ -47,7 +47,7 @@ export function construirDiapositivas(d, fmt = formatCOP) {
   } else {
     const baja = d.variacion_gasto_pct < 0
     comparacion = {
-      valor: `${baja ? '↓' : '↑'} ${Math.abs(d.variacion_gasto_pct)}%`,
+      valor: `${baja ? '↓' : '↑'} ${formatPorcentaje(Math.abs(d.variacion_gasto_pct))}`,
       detalle: `${baja ? 'menos' : 'más'} que el mes anterior (${fmt(d.gasto_mes_anterior)})`,
     }
   }

@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { nombreMesLargo, pctTexto, rangoPeriodo } from '../lib/informe'
+import { formatVeces } from '../lib/format'
 import SelectorPeriodo from '../components/SelectorPeriodo'
 import BarraProgreso from '../components/BarraProgreso'
 
@@ -260,7 +261,7 @@ export default function Informe() {
                   <li key={c.nombre} className="flex items-center gap-3 py-2.5 text-sm">
                     <span className="w-5 text-xs text-ink-soft">{i + 1}</span>
                     <span className="flex-1 min-w-0 truncate">{c.nombre}</span>
-                    <span className="text-[11px] text-ink-soft">{c.num} {c.num === 1 ? 'vez' : 'veces'}</span>
+                    <span className="text-[11px] text-ink-soft">{formatVeces(c.num)}</span>
                     <span className="font-semibold">{fmt(c.monto)}</span>
                   </li>
                 ))}

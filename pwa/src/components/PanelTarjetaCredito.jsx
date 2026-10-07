@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Pencil, X } from 'lucide-react'
 import { api } from '../lib/api'
-import { formatMoneda } from '../lib/format'
+import { formatMoneda, formatPorcentaje } from '../lib/format'
 import Hoja from './Hoja'
 import ComprasACuotas from './ComprasACuotas'
 
@@ -109,7 +109,7 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
             <>
               <div className="flex justify-between text-xs mb-1.5">
                 <span className="font-semibold">Cupo usado</span>
-                <span className={`font-semibold ${nivel.texto}`}>{t.utilizacion_pct}%</span>
+                <span className={`font-semibold ${nivel.texto}`}>{formatPorcentaje(t.utilizacion_pct)}</span>
               </div>
               <div
                 className="h-2.5 rounded-full bg-paper overflow-hidden"

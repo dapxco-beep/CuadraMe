@@ -84,10 +84,16 @@ export default function AutorizacionTratamiento({ onListo }) {
         <button
           onClick={continuar}
           disabled={!marcas.tratamiento_basico || guardando}
+          aria-describedby={!marcas.tratamiento_basico ? 'ayuda-aceptar' : undefined}
           className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-50"
         >
           {guardando ? 'Guardando...' : 'Aceptar y continuar'}
         </button>
+        {!marcas.tratamiento_basico && (
+          <p id="ayuda-aceptar" className="text-xs text-ink-soft text-center -mt-1">
+            Marca la casilla obligatoria para continuar
+          </p>
+        )}
         <button onClick={logout} className="w-full py-2 text-sm text-ink-soft font-medium">
           No acepto, cerrar sesión
         </button>

@@ -5,6 +5,7 @@ import { EncabezadoMarca } from '../brand/Marca'
 import SelectorCuenta from '../components/SelectorCuenta'
 import CamposCuentaNueva, { CAMPOS_VACIOS } from '../components/CamposCuentaNueva'
 import { datosCuentaNueva, validarTarjetaNueva } from '../lib/cuentaNueva'
+import { useAlertaVisible } from '../lib/useAlertaVisible'
 
 const PASOS_BIENVENIDA = [
   {
@@ -66,6 +67,7 @@ export default function CrearCuenta({ onCreada }) {
   const [moneda, setMoneda] = useState('COP')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const refError = useAlertaVisible(error)
 
   async function guardar() {
     setError('')
@@ -128,7 +130,7 @@ export default function CrearCuenta({ onCreada }) {
         ))}
       </div>
 
-      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+      {error && <p ref={refError} role="alert" className="text-sm text-danger mb-3">{error}</p>}
 
       <button
         onClick={guardar}
