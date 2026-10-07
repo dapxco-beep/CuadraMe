@@ -85,7 +85,7 @@ describe('Barra de navegación', () => {
       expect(within(hoja).getByRole('link', { name: label })).toHaveAttribute('href', to)
     }
     expect(within(hoja).getByRole('link', { name: 'Patrimonio' })).toBeInTheDocument()
-    expect(within(hoja).getByRole('link', { name: 'Perfil y ajustes' })).toBeInTheDocument()
+    expect(within(hoja).getByRole('link', { name: 'Perfil' })).toBeInTheDocument()
   })
 
   it('la hoja se cierra con Escape', async () => {

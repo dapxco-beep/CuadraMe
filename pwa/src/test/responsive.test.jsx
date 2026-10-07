@@ -66,7 +66,7 @@ describe('Shell responsive', () => {
     expect(container.querySelector('.barra-riel')).not.toBeNull()
     expect(container.querySelector('.barra-completa')).toBeNull()
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
-    for (const nombre of ['Inicio', 'Movimientos', 'Presupuesto', 'Patrimonio', 'Sincronización', 'Agregar movimiento']) {
+    for (const nombre of ['Inicio', 'Movimientos', 'Presupuesto', 'Patrimonio', 'Traer movimientos', 'Agregar movimiento']) {
       expect(within(nav).getByRole('link', { name: nombre })).toBeInTheDocument()
     }
     // Una sola navegación (no hay barra inferior duplicada)
@@ -85,7 +85,7 @@ describe('Shell responsive', () => {
     for (const { label, to } of ITEMS_MAS) {
       expect(within(nav).getByRole('link', { name: label })).toHaveAttribute('href', to)
     }
-    expect(within(nav).getByRole('link', { name: 'Perfil y ajustes' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'Perfil' })).toBeInTheDocument()
     expect(within(nav).getByRole('button', { name: /Tema/ })).toBeInTheDocument()
     expect(within(nav).queryByRole('button', { name: 'Más' })).toBeNull()
   })

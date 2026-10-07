@@ -1,7 +1,10 @@
+import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import BottomNav from './BottomNav'
 import BarraLateral from './BarraLateral'
 import { useModoPantalla } from '../lib/useAncho'
 import { useAtajosTeclado } from '../lib/atajos'
+import { registrarReciente } from '../lib/navegacion'
 
 // Estructura de la app autenticada:
 //  - <768 px (teléfono): columna de 480 px con barra inferior, igual que siempre.
@@ -11,7 +14,12 @@ import { useAtajosTeclado } from '../lib/atajos'
 // qué navegación se monta, para que no existan dos navegaciones a la vez.
 export default function ShellApp({ children }) {
   const modo = useModoPantalla()
+  const { pathname } = useLocation()
   useAtajosTeclado()
+  // «Recientes» del menú: cada pantalla del menú que se visita queda registrada
+  useEffect(() => {
+    registrarReciente(pathname)
+  }, [pathname])
   return (
     <div className="app-shell" data-modo={modo}>
       {modo !== 'movil' && <BarraLateral modo={modo} />}
