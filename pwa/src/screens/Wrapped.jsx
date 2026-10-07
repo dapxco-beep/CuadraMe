@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { DUR, EASE } from '../lib/tokens'
 import { EsqueletoTarjeta } from '../components/Esqueletos'
 import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
@@ -220,7 +221,7 @@ export default function Wrapped() {
                 initial={{ opacity: 0, x: dir * 40 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: dir * -40 }}
-                transition={{ duration: 0.22 }}
+                transition={{ duration: DUR.normal, ease: EASE }}
                 className="absolute inset-0 flex flex-col items-center justify-center text-center px-8"
                 aria-live="polite"
               >

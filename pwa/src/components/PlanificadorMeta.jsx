@@ -14,7 +14,7 @@ export function finDeMes(ym) {
 const COLOR_VIABILIDAD = {
   lograda: 'text-accent',
   viable: 'text-accent',
-  ajustada: 'text-accent-2',
+  ajustada: 'text-gold',
   incompatible: 'text-danger',
   fecha_vencida: 'text-danger',
   sin_datos: 'text-ink-soft',

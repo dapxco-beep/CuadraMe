@@ -145,7 +145,7 @@ export default function Insights() {
           {alertas && (alertas.comisiones.length > 0 || alertas.cobros_duplicados.length > 0) && (
             <section className="mx-6 mt-4">
               <div className="flex items-center gap-2 mb-2">
-                <Zap size={16} className="text-accent-2" />
+                <Zap size={16} className="text-gold" />
                 <h2 className="text-[15px] font-semibold">Cosas que detectamos por ti</h2>
               </div>
               <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
@@ -172,7 +172,7 @@ export default function Insights() {
           {resumen.anomalias.length > 0 && (
             <section className="mx-6 mt-4">
               <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle size={16} className="text-accent-2" />
+                <AlertTriangle size={16} className="text-gold" />
                 <h2 className="text-[15px] font-semibold">Fuera de lo normal</h2>
               </div>
               <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
@@ -180,7 +180,7 @@ export default function Insights() {
                   <div key={a.categoria} className="px-4 py-3">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium">{a.categoria}</p>
-                      <p className="text-sm font-bold text-accent-2">+{a.variacion_pct}%</p>
+                      <p className="text-sm font-bold text-gold">+{a.variacion_pct}%</p>
                     </div>
                     <p className="text-xs text-ink-soft mt-0.5">
                       {formatCOP(a.monto_actual)} este mes vs. {formatCOP(a.promedio_historico)} promedio

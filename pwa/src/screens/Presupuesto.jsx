@@ -103,13 +103,13 @@ export default function Presupuesto() {
       <div className="px-6 pt-2 flex gap-2">
         <button
           onClick={() => setMostrarIngreso(true)}
-          className="flex items-center gap-1.5 rounded-full border border-line bg-paper-raised px-3.5 py-2 text-xs font-semibold min-h-[36px]"
+          className="chip font-semibold"
         >
           <HandCoins size={16} className="text-accent" /> Repartir un ingreso
         </button>
         <button
           onClick={() => setMostrarConfig(true)}
-          className="flex items-center gap-1.5 rounded-full border border-line bg-paper-raised px-3.5 py-2 text-xs font-semibold min-h-[36px]"
+          className="chip font-semibold"
         >
           <SlidersHorizontal size={16} className="text-ink-soft" /> Ajustes
         </button>
@@ -246,7 +246,7 @@ export default function Presupuesto() {
                             </span>
                           )}
                           {p.sobre_ajuste !== 0 && (
-                            <span className={`ml-1.5 text-[11px] font-bold ${p.sobre_ajuste > 0 ? 'text-accent-2' : 'text-ink-soft'}`}>
+                            <span className={`ml-1.5 text-[11px] font-bold ${p.sobre_ajuste > 0 ? 'text-gold' : 'text-ink-soft'}`}>
                               {p.sobre_ajuste > 0 ? '+' : ''}{formatCOP(p.sobre_ajuste)}
                             </span>
                           )}
@@ -277,7 +277,7 @@ export default function Presupuesto() {
                         />
                       )}
                       {p.proy && p.proy.arrastre > 0 && (
-                        <p className="text-[11px] text-accent-2 mt-1.5">
+                        <p className="text-[11px] text-gold mt-1.5">
                           Incluye {formatCOP(p.proy.arrastre)} que te sobraron del periodo anterior
                         </p>
                       )}

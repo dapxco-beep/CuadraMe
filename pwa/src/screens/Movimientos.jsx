@@ -159,7 +159,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
           aria-hidden="true"
           className="pt-2.5 shrink-0"
         >
-          <span className={`text-[15px] font-bold ${m.tipo === 'income' ? 'text-accent-2' : m.tipo === 'transfer' ? 'text-ink-soft' : 'text-ink'}`}>
+          <span className={`text-[15px] font-bold ${m.tipo === 'income' ? 'text-gold' : m.tipo === 'transfer' ? 'text-ink-soft' : 'text-ink'}`}>
             {m.tipo === 'income' ? '+' : m.tipo === 'expense' ? '-' : ''}
             {formatMoneda(m.monto, moneda)}
           </span>
@@ -801,7 +801,7 @@ export default function Movimientos() {
                 <div className="px-5 mb-3 flex gap-3">
                   <div className="flex-1 rounded-2xl bg-paper-raised border border-line p-3">
                     <p className="text-[11px] text-ink-soft uppercase tracking-wide">Ingresos</p>
-                    <p className="text-sm font-bold text-accent-2 mt-0.5">{formatCOP(totalIngresos)}</p>
+                    <p className="text-sm font-bold text-gold mt-0.5">{formatCOP(totalIngresos)}</p>
                   </div>
                   <div className="flex-1 rounded-2xl bg-paper-raised border border-line p-3">
                     <p className="text-[11px] text-ink-soft uppercase tracking-wide">Gastos</p>

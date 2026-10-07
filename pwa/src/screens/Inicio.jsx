@@ -261,11 +261,11 @@ export default function Inicio() {
           </section>
 
           {/* BLOQUE 2 — las dos acciones principales */}
-          <div className="mx-6 mt-3 grid grid-cols-2 gap-3 stagger-item" style={{ '--stagger-i': 1 }}>
-            <Boton to="/agregar" icono={Plus}>
+          <div className="mx-6 mt-3 grid grid-cols-2 gap-2.5 stagger-item" style={{ '--stagger-i': 1 }}>
+            <Boton to="/agregar" icono={Plus} className="btn-compacto">
               Agregar movimiento
             </Boton>
-            <Boton to="/sincronizacion" variante="secundario" icono={RefreshCw} data-testid="acceso-sincronizacion">
+            <Boton to="/sincronizacion" variante="secundario" icono={RefreshCw} className="btn-compacto" data-testid="acceso-sincronizacion">
               Traer movimientos
               {tareasSync > 0 && (
                 <span className="ml-0.5 min-w-5 h-5 px-1.5 rounded-full bg-accent text-paper-raised text-[11px] font-bold flex items-center justify-center t-cifra">
@@ -306,7 +306,7 @@ export default function Inicio() {
               abiertaPorDefecto={movimientos.length === 0} // sin movimientos, la invitación a registrar el primero va a la vista
               titulo="Movimientos recientes"
               icono={ArrowLeftRight}
-              resumen={movimientos.length ? `${movimientos.length} últimos` : 'Sin movimientos'}
+              resumen={movimientos.length ? '' : 'Sin movimientos'}
             >
               {movimientos.length === 0 ? (
                 <div className="py-4 text-center">

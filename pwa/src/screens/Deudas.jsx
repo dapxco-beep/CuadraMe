@@ -12,7 +12,7 @@ import Hoja from '../components/Hoja'
 
 const urgenciaColor = {
   critico: 'text-danger',
-  proximo: 'text-accent-2',
+  proximo: 'text-gold',
   normal: 'text-ink-soft',
 }
 

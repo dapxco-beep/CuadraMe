@@ -25,7 +25,7 @@ const NIVELES = {
   ok: { barra: 'var(--color-accent)', texto: 'text-ink-soft', aviso: '' },
   alerta: {
     barra: 'var(--color-accent-2)',
-    texto: 'text-accent-2',
+    texto: 'text-gold',
     aviso: 'Uso moderado: lo ideal es mantenerte por debajo del 30% del cupo.',
   },
   critico: {
@@ -58,7 +58,7 @@ export function BloqueExtracto({ t, moneda }) {
       </p>
       {t.vencido && <p className="text-danger mt-1">El plazo ya pasó: paga cuanto antes para frenar los intereses.</p>}
       {!pagado && !t.vencido && t.dias_para_limite != null && t.dias_para_limite <= 7 && (
-        <p className={`mt-1 font-medium ${t.dias_para_limite <= 3 ? 'text-danger' : 'text-accent-2'}`} data-testid="aviso-dias-pago">
+        <p className={`mt-1 font-medium ${t.dias_para_limite <= 3 ? 'text-danger' : 'text-gold'}`} data-testid="aviso-dias-pago">
           {t.dias_para_limite === 0 ? 'Hoy vence tu pago.' : `Te quedan ${t.dias_para_limite} ${t.dias_para_limite === 1 ? 'día' : 'días'} para el pago.`}
           {t.pago_minimo_del_extracto && t.pago_minimo != null && ` Pago mínimo de tu extracto: ${formatMoneda(t.pago_minimo, moneda)}.`}
         </p>

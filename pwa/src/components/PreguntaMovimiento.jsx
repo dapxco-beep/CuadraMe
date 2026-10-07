@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
+import { Boton } from './ui'
 import { useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
 import { bandejaAbierta, debePreguntarMovimiento, ocultarPreguntaHoy, preguntaOcultaHoy } from '../lib/bandeja'
 
 /**
@@ -36,15 +36,12 @@ export default function PreguntaMovimiento({ ultimaFecha }) {
       <p className="text-sm font-semibold">¿Hiciste algún movimiento?</p>
       <p className="text-xs text-ink-soft mt-0.5">Anótalo ahora y tu fin de mes cuadra con la realidad.</p>
       <div className="flex gap-2 mt-3">
-        <button
-          onClick={() => navigate('/agregar?foco=monto')}
-          className="flex-1 flex items-center justify-center gap-1.5 bg-accent text-white font-semibold rounded-xl py-2.5 text-sm"
-        >
-          <Plus size={16} /> Registrar gasto
-        </button>
-        <button onClick={ninguno} className="flex-1 rounded-xl border border-line text-ink-soft font-medium py-2.5 text-sm">
+        <Boton onClick={() => navigate("/agregar?foco=monto")} tam="sm" className="flex-1">
+          Registrar gasto
+        </Boton>
+        <Boton onClick={ninguno} variante="secundario" tam="sm" className="flex-1">
           No hice ninguno
-        </button>
+        </Boton>
       </div>
     </section>
   )

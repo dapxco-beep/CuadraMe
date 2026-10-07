@@ -10,7 +10,7 @@ import Hoja from '../components/Hoja'
 
 const estadoColor = {
   pagado: 'text-accent',
-  proximo: 'text-accent-2',
+  proximo: 'text-gold',
   vencido: 'text-danger',
   pendiente: 'text-ink-soft',
 }
