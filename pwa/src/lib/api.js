@@ -26,6 +26,7 @@ let cerrandoSesion = false
 async function cerrarSesionVencida() {
   if (cerrandoSesion) return
   cerrandoSesion = true
+  invalidarCache()
   try {
     borrarSeguridad()
     await supabase.auth.signOut()
@@ -39,7 +40,89 @@ async function cerrarSesionVencida() {
   }
 }
 
-async function request(path, { method = 'GET', body, auth = true, headers: extra } = {}) {
+// ── Deduplicación y caché de lecturas (GET) ─────────────────────────────────────────────
+// Antes cada componente pedía lo suyo: Inicio disparaba ~33 peticiones (GET /cuentas x5, etc.)
+// y con el backend lejos (150-250 ms de ida y vuelta) cada duplicado se nota.
+//  - Dos GET idénticos al mismo tiempo comparten una sola petición.
+//  - La respuesta se recuerda unos segundos (TTL).
+//  - Cualquier escritura (POST/PUT/PATCH/DELETE) vacía la caché: se prefiere pedir de más a
+//    mostrar un dato viejo. Una lectura que arrancó ANTES de la escritura no se guarda.
+//  - La clave incluye al usuario: al cambiar de sesión no se mezclan datos.
+//  - Se entrega una copia, así que quien reciba el dato puede modificarlo sin afectar a otros.
+const TTL_CACHE_MS = 5000
+let ttlCache = import.meta.env.MODE === 'test' ? 0 : TTL_CACHE_MS // las pruebas piden fresco salvo que activen la caché
+let cacheActiva = true
+const cacheLecturas = new Map() // clave -> { hasta, valor }
+const lecturasEnVuelo = new Map() // clave -> Promise
+let generacion = 0
+const estadisticas = { red: 0, compartidas: 0, cacheadas: 0 }
+
+export function invalidarCache() {
+  cacheLecturas.clear()
+  lecturasEnVuelo.clear()
+  generacion++
+}
+// Solo para pruebas y mediciones.
+export function configurarCache({ ttl, desactivar = false } = {}) {
+  ttlCache = ttl ?? TTL_CACHE_MS
+  cacheActiva = !desactivar
+  invalidarCache()
+}
+export function estadisticasPeticiones(reiniciar = false) {
+  const copia = { ...estadisticas }
+  if (reiniciar) Object.assign(estadisticas, { red: 0, compartidas: 0, cacheadas: 0 })
+  return copia
+}
+const copiar = (v) => (v !== null && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v)
+
+async function request(path, opciones = {}) {
+  const { method = 'GET', auth = true, sinCache = false } = opciones
+  if (method !== 'GET') {
+    invalidarCache()
+    try {
+      return await pedir(path, opciones)
+    } finally {
+      invalidarCache() // las lecturas lanzadas mientras escribía pudieron ver el estado viejo
+    }
+  }
+  if (sinCache || !cacheActiva) {
+    estadisticas.red++
+    return pedir(path, opciones)
+  }
+  let uid = 'anon'
+  if (auth) {
+    const { data } = await supabase.auth.getSession()
+    uid = data?.session?.user?.id || 'anon'
+  }
+  const clave = `${uid}|${path}`
+  const guardada = cacheLecturas.get(clave)
+  if (guardada && guardada.hasta > Date.now()) {
+    estadisticas.cacheadas++
+    return copiar(guardada.valor)
+  }
+  const enVuelo = lecturasEnVuelo.get(clave)
+  if (enVuelo) {
+    estadisticas.compartidas++
+    return enVuelo.then(copiar)
+  }
+  const gen = generacion
+  estadisticas.red++
+  const promesa = pedir(path, opciones).then(
+    (valor) => {
+      if (ttlCache > 0 && gen === generacion) cacheLecturas.set(clave, { hasta: Date.now() + ttlCache, valor })
+      if (lecturasEnVuelo.get(clave) === promesa) lecturasEnVuelo.delete(clave)
+      return valor
+    },
+    (err) => {
+      if (lecturasEnVuelo.get(clave) === promesa) lecturasEnVuelo.delete(clave)
+      throw err
+    }
+  )
+  lecturasEnVuelo.set(clave, promesa)
+  return promesa.then(copiar)
+}
+
+async function pedir(path, { method = 'GET', body, auth = true, headers: extra } = {}) {
   const headers = { 'Content-Type': 'application/json', ...(extra || {}) }
   let conSesion = false
   if (auth) {
@@ -310,7 +393,7 @@ export const api = {
     request('/perfil/confianza-autoimport', { method: 'PUT', body: { confianza_autoimport: valor } }),
 
   gmailEstado: () => request('/correos/gmail/estado'),
-  gmailConectar: () => request('/correos/gmail/conectar'),
+  gmailConectar: () => request('/correos/gmail/conectar', { sinCache: true }), // URL de OAuth con estado único
   gmailDesconectar: () => request('/correos/gmail/desconectar', { method: 'POST' }),
   gmailEtiqueta: (etiqueta) => request(`/correos/gmail/etiqueta?etiqueta=${encodeURIComponent(etiqueta)}`, { method: 'POST' }),
   // params: { completa: true } fuerza la ventana larga (90 días); cada llamada procesa un lote.
