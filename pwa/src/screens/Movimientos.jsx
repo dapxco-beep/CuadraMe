@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { Link, useLocation, useNavigationType, useSearchParams } from 'react-router-dom'
@@ -31,6 +31,9 @@ import DetalleMovimiento from './DetalleMovimiento'
 const TAMANO_PAGINA = 200
 const MAX_LOTES = 15 // tope de seguridad al re-pedir lo ya cargado (3.000 movimientos)
 const PRESION_LARGA_MS = 450
+const ALTO_DIA_BASE = 40 // etiqueta del día + espacio, para estimar antes de medir
+const ALTO_FILA_ESTIMADO = 72
+const MARGEN_VENTANA = 800 // px extra arriba y abajo para que el scroll rápido no muestre vacío
 
 function etiquetaDia(fechaISO) {
   const fecha = new Date(fechaISO)
@@ -354,6 +357,77 @@ export default function Movimientos() {
   )
   const recientes = useMemo(() => categoriasRecientes(movimientos, CATEGORIAS), [movimientos, CATEGORIAS])
   const filtrosVisibles = mostrarFiltros || lateral || !!(f.cuenta || f.desde || f.hasta || f.tipo)
+
+  // --- Ventana (virtualización por días) ---
+  // Con 1.500+ movimientos solo se pintan los días que se ven más un margen; lo de arriba y abajo
+  // se reemplaza por dos espacios en blanco del alto exacto. Un día tiene alto variable (la fila
+  // cambia si hay etiqueta de traslado o botón Confirmar), así que se MIDE cada día al pintarlo y,
+  // mientras no se ha pintado, se usa una estimación. Las filas siguen siendo FilaMovimiento.
+  const listaRef = useRef(null)
+  const alturas = useRef(new Map()) // diaKey -> alto medido en px
+  const [version, setVersion] = useState(0) // sube cuando una medida cambia, para recalcular
+  const [vista, setVista] = useState(0) // sube al hacer scroll/redimensionar
+  const { offs, total } = useMemo(() => {
+    const o = new Array(gruposDia.length + 1)
+    let y = 0
+    gruposDia.forEach((g, i) => {
+      o[i] = y
+      y += alturas.current.get(g.diaKey) || ALTO_DIA_BASE + g.items.length * ALTO_FILA_ESTIMADO
+    })
+    o[gruposDia.length] = y
+    return { offs: o, total: y }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gruposDia, version])
+  const ventana = useMemo(() => {
+    const n = gruposDia.length
+    const lista = listaRef.current
+    // Posición de la lista respecto a la pantalla: sirve igual si hace scroll el contenedor o la página
+    const rect = lista ? lista.getBoundingClientRect() : { top: 0 }
+    const vh = (typeof window !== 'undefined' && window.innerHeight) || 800
+    const desde = -rect.top - MARGEN_VENTANA
+    const hasta = -rect.top + vh + MARGEN_VENTANA
+    let ini = 0
+    while (ini < n - 1 && offs[ini + 1] <= desde) ini++
+    let fin = ini + 1
+    while (fin < n && offs[fin] < hasta) fin++
+    return { ini, fin, arriba: offs[ini] || 0, abajo: Math.max(0, total - (offs[fin] ?? total)) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gruposDia, offs, total, vista, f.comercio, cargando])
+
+  useEffect(() => {
+    let pendiente = 0
+    const programar = () => {
+      if (pendiente) return
+      pendiente = requestAnimationFrame(() => {
+        pendiente = 0
+        setVista((v) => v + 1)
+      })
+    }
+    // El evento scroll no burbuja: en captura sobre document cubre el contenedor y la página
+    document.addEventListener('scroll', programar, { capture: true, passive: true })
+    window.addEventListener('resize', programar)
+    return () => {
+      document.removeEventListener('scroll', programar, { capture: true })
+      window.removeEventListener('resize', programar)
+      if (pendiente) cancelAnimationFrame(pendiente)
+    }
+  }, [])
+
+  // Medir los días pintados; si alguno difiere de lo estimado, se recalculan las posiciones
+  useLayoutEffect(() => {
+    const lista = listaRef.current
+    if (!lista) return
+    let cambio = false
+    for (const el of lista.querySelectorAll('[data-dia]')) {
+      const h = el.getBoundingClientRect().height
+      const previo = alturas.current.get(el.dataset.dia)
+      if (h > 0 && (previo === undefined || Math.abs(previo - h) > 1)) {
+        alturas.current.set(el.dataset.dia, h)
+        cambio = true
+      }
+    }
+    if (cambio) setVersion((v) => v + 1)
+  })
 
   // --- Categorizar sin abrir el movimiento (actualización optimista + Deshacer) ---
   const categorizar = useCallback(
@@ -936,9 +1010,12 @@ export default function Movimientos() {
           ) : (
             <div className="mx-5 relative pl-5">
               <div className="absolute left-[9px] top-1.5 bottom-1.5 w-0.5 bg-line" />
-              {gruposDia.map((grupo, gi) => (
-                <div key={grupo.diaKey} className="grupo-dia">
-                  <p className="text-[11px] font-bold text-ink-soft uppercase tracking-wide mt-5 mb-1 first:mt-0">
+              <div ref={listaRef} style={{ paddingTop: ventana.arriba, paddingBottom: ventana.abajo }}>
+              {gruposDia.slice(ventana.ini, ventana.fin).map((grupo, k) => {
+                const gi = ventana.ini + k
+                return (
+                <div key={grupo.diaKey} data-dia={grupo.diaKey} className={gi === 0 ? '' : 'pt-5'}>
+                  <p className="text-[11px] font-bold text-ink-soft uppercase tracking-wide mb-1">
                     {grupo.label}
                   </p>
                   {grupo.items.map((m, i) => (
@@ -959,7 +1036,9 @@ export default function Movimientos() {
                     />
                   ))}
                 </div>
-              ))}
+                )
+              })}
+              </div>
             </div>
           )}
 
