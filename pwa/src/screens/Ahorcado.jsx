@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { EsqueletoTarjeta } from '../components/Esqueletos'
+import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Lightbulb } from 'lucide-react'
 import { api } from '../lib/api'
 import ArbolFinanciero from '../components/ArbolFinanciero'
 import { etapaPorScore, MENSAJE_POR_ETAPA } from '../lib/saludFinanciera'
 
 export default function Ahorcado() {
-  const navigate = useNavigate()
+  const volver = useVolver('/')
   const [reporte, setReporte] = useState(null)
   const [cargando, setCargando] = useState(true)
 
@@ -18,8 +19,8 @@ export default function Ahorcado() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pt-14 pb-2 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Tu árbol financiero</h1>
@@ -31,7 +32,7 @@ export default function Ahorcado() {
       </p>
 
       {cargando ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <EsqueletoTarjeta alto={260} className="mx-6 mt-4" etiqueta="Cargando tu árbol" />
       ) : reporte ? (
         <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-6">
           <div className="w-full aspect-square max-w-[260px] mx-auto pop-in">
@@ -43,7 +44,7 @@ export default function Ahorcado() {
           </p>
           {reporte.salud.tips?.[0] && (
             <p className="text-xs text-ink-soft flex items-center justify-center gap-1.5 mt-4 pt-4 border-t border-line">
-              <Lightbulb size={13} className="shrink-0" /> {reporte.salud.tips[0]}
+              <Lightbulb size={16} className="shrink-0" /> {reporte.salud.tips[0]}
             </p>
           )}
         </section>

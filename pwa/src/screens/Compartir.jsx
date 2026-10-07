@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Check, Mail, Trash2, UserPlus, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
 
 export default function Compartir() {
-  const navigate = useNavigate()
+  const volver = useVolver('/perfil')
   const { cuentas } = useCuentas()
   const [cuentaId, setCuentaId] = useState(cuentas[0]?.id || '')
   const [invitaciones, setInvitaciones] = useState([])
@@ -66,8 +66,8 @@ export default function Compartir() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pt-14 pb-2 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Compartir cuentas</h1>
@@ -85,15 +85,15 @@ export default function Compartir() {
                 </p>
                 <button
                   onClick={() => responderInvitacion(inv.id, true)}
-                  className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center shrink-0"
+                  className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center shrink-0"
                  aria-label="Aceptar invitación">
-                  <Check size={14} />
+                  <Check size={16} />
                 </button>
                 <button
                   onClick={() => responderInvitacion(inv.id, false)}
-                  className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center shrink-0"
+                  className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center shrink-0"
                  aria-label="Rechazar invitación">
-                  <X size={14} />
+                  <X size={16} />
                 </button>
               </div>
             ))}
@@ -167,7 +167,7 @@ export default function Compartir() {
                       <p className="text-sm font-medium truncate">Usuario compartido</p>
                       <p className="text-xs text-ink-soft">{c.rol === 'editor' ? 'Puede editar' : 'Solo ver'}</p>
                     </div>
-                    <button onClick={() => revocar(c.usuario_id)} className="w-9 h-9 -mr-1.5 flex items-center justify-center text-danger shrink-0" aria-label="Quitar acceso">
+                    <button onClick={() => revocar(c.usuario_id)} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-danger shrink-0" aria-label="Quitar acceso">
                       <Trash2 size={16} />
                     </button>
                   </div>

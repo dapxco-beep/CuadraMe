@@ -92,15 +92,16 @@ def _resumen_fallback(resumen: dict) -> str:
     ingresos = resumen.get("ingresos", 0)
     top = resumen.get("top_categorias", [])
     top_txt = f" La mayor parte fue en {top[0]['categoria']}." if top else ""
-    return f"Esta semana ingresaron ${ingresos:,.0f} y gastaste ${gastos:,.0f}.{top_txt}"
+    periodo = resumen.get("periodo") or "los últimos 7 días"
+    return f"En {periodo} ingresaron ${ingresos:,.0f} y gastaste ${gastos:,.0f}.{top_txt}"
 
 
-def responder_pregunta(pregunta: str, contexto: dict) -> str:
+def responder_pregunta(pregunta: str, contexto: dict) -> str | None:
     """Chat de finanzas: responde preguntas sobre los datos del usuario, usando
     SOLO el contexto que se le pasa (no accede a la base de datos directamente,
     así que no puede inventar cifras que no estén en el contexto)."""
     if not settings.openrouter_api_key:
-        return "El asistente de IA no está disponible en este momento."
+        return None
 
     prompt = (
         "Eres el asistente financiero de CuadraMe. Responde la pregunta del usuario "
@@ -125,4 +126,4 @@ def responder_pregunta(pregunta: str, contexto: dict) -> str:
         resp.raise_for_status()
         return resp.json()["choices"][0]["message"]["content"].strip()
     except Exception:
-        return "No pude procesar la pregunta en este momento, intenta de nuevo."
+        return None

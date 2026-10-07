@@ -4,12 +4,15 @@ iOS 16.4+ solo si la PWA está "instalada" a pantalla de inicio). Usa VAPID
 para autenticar el servidor ante los navegadores, sin depender de Firebase.
 """
 import json
+import logging
 
 from pywebpush import WebPushException, webpush
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import PushSubscription
+
+logger = logging.getLogger("app.push")
 
 
 def _private_key_pem() -> str:
@@ -50,5 +53,10 @@ def enviar_push(db: Session, usuario_id: str, titulo: str, cuerpo: str, url: str
             if status in (404, 410):
                 db.delete(sub)
                 db.commit()
+        except Exception as e:
+            # Red caída, VAPID inválido, clave mal formada... Un fallo de envío
+            # nunca debe tumbar el cron ni a los demás usuarios. Se registra solo
+            # el tipo de error (sin endpoint, claves ni datos personales).
+            logger.warning("push: envío fallido (%s)", type(e).__name__)
 
     return enviados

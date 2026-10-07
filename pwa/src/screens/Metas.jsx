@@ -1,16 +1,26 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Repeat, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
+import { EstadoVacio } from '../brand/Marca'
+import { useVolver } from '../lib/useVolver'
+import { useEstadoLista } from '../lib/useEstadoLista'
+import { ArrowLeft, PartyPopper, Plus, Repeat, X, PiggyBank, Sparkles } from 'lucide-react'
+import Icono from '../components/Icono'
+import PlanificadorMeta from '../components/PlanificadorMeta'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
+import Hoja from '../components/Hoja'
+import BarraProgreso from '../components/BarraProgreso'
 
 export default function Metas() {
-  const navigate = useNavigate()
+  const volver = useVolver('/perfil')
   const [metas, setMetas] = useState([])
   const [cargando, setCargando] = useState(true)
+  const raiz = useRef(null)
+  useEstadoLista('/metas', { contenedorRef: raiz, listo: !cargando }) // al volver, misma posición
   const [mostrarForm, setMostrarForm] = useState(false)
   const [aportando, setAportando] = useState(null)
+  const [planeando, setPlaneando] = useState(false)
   const [error, setError] = useState('')
 
   async function cargar() {
@@ -29,27 +39,35 @@ export default function Metas() {
   }, [])
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-5 pt-14 pb-2 flex items-center justify-between">
+    <div ref={raiz} className="flex-1 overflow-y-auto pb-6 screen-enter">
+      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/perfil')}
-            className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+            onClick={volver}
+            className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
            aria-label="Volver">
-            <ArrowLeft size={18} />
+            <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-semibold">Metas de ahorro</h1>
         </div>
-        <button
-          onClick={() => setMostrarForm(true)}
-          className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center"
-         aria-label="Nueva meta">
-          <Plus size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPlaneando(true)}
+            className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+            aria-label="Planear una meta">
+            <Sparkles size={20} className="text-accent" />
+          </button>
+          <button
+            onClick={() => setMostrarForm(true)}
+            className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
+           aria-label="Nueva meta">
+            <Plus size={20} />
+          </button>
+        </div>
       </header>
 
       {cargando ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <EsqueletoLista filas={3} className="mx-5 mt-6" etiqueta="Cargando tus metas" />
       ) : error ? (
         <div className="mx-5 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
           <p className="text-sm text-danger mb-3">{error}</p>
@@ -58,9 +76,7 @@ export default function Metas() {
           </button>
         </div>
       ) : metas.length === 0 ? (
-        <div className="mx-5 mt-6 rounded-2xl bg-paper-raised border border-line p-8 text-center">
-          <p className="text-sm text-ink-soft">Aún no tienes metas de ahorro</p>
-        </div>
+        <EstadoVacio icono={PiggyBank} titulo="Aún no tienes metas de ahorro" texto="Ponle nombre a algo que quieres lograr y ve cómo cuadra." className="mx-5 mt-6" />
       ) : (
         <div className="mx-5 mt-4 space-y-3">
           {metas.map((m, i) => (
@@ -69,12 +85,7 @@ export default function Metas() {
                 <p className="text-sm font-semibold">{m.nombre}</p>
                 <p className="text-xs text-ink-soft">{m.progreso_pct}%</p>
               </div>
-              <div className="h-2 rounded-full bg-line overflow-hidden mb-2">
-                <div
-                  className="h-full bg-accent rounded-full"
-                  style={{ width: `${Math.min(100, m.progreso_pct)}%` }}
-                />
-              </div>
+              <BarraProgreso pct={m.progreso_pct} label={`Progreso de ${m.nombre}`} className="h-2 rounded-full bg-line overflow-hidden mb-2" />
               <div className="flex items-center justify-between text-xs text-ink-soft mb-3">
                 <span>{formatCOP(m.monto_actual)}</span>
                 <span>{formatCOP(m.monto_objetivo)}</span>
@@ -86,11 +97,11 @@ export default function Metas() {
               )}
               {m.aporte_automatico && !m.completada && (
                 <p className="text-xs text-accent flex items-center gap-1 mb-3">
-                  <Repeat size={11} /> {formatCOP(m.aporte_automatico)} automático el día {m.dia_aporte}
+                  <Repeat size={16} /> {formatCOP(m.aporte_automatico)} automático el día {m.dia_aporte}
                 </p>
               )}
               {m.completada ? (
-                <p className="text-sm font-semibold text-accent">¡Meta completada! 🎉</p>
+                <p className="text-sm font-semibold text-accent flex items-center gap-1.5"><Icono icono={PartyPopper} tam="sm" /> ¡Meta completada!</p>
               ) : (
                 <button
                   onClick={() => setAportando(m)}
@@ -102,6 +113,16 @@ export default function Metas() {
             </div>
           ))}
         </div>
+      )}
+
+      {planeando && (
+        <PlanificadorMeta
+          onClose={() => setPlaneando(false)}
+          onCreada={() => {
+            setPlaneando(false)
+            cargar()
+          }}
+        />
       )}
 
       {mostrarForm && (
@@ -169,97 +190,95 @@ function FormMeta({ onClose, onGuardada }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 max-h-[90vh] overflow-y-auto sheet-content">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Nueva meta</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
-            <X size={16} />
-          </button>
-        </div>
-
-        <input
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          placeholder="Nombre (ej. Viaje a Cartagena)"
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
-        />
-        <input
-          value={montoObjetivo}
-          onChange={(e) => setMontoObjetivo(e.target.value.replace(/\D/g, ''))}
-          inputMode="numeric"
-          placeholder="Monto objetivo (ej. 5000000)"
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
-        />
-        <input
-          value={montoActual}
-          onChange={(e) => setMontoActual(e.target.value.replace(/\D/g, ''))}
-          inputMode="numeric"
-          placeholder="Ya tienes ahorrado (opcional)"
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
-        />
-
-        <button
-          type="button"
-          onClick={() => setAhorroAutomatico((v) => !v)}
-          className="w-full flex items-center gap-3 rounded-2xl border border-line bg-paper-raised px-4 py-3.5 mb-3"
-        >
-          <span
-            className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
-              ahorroAutomatico ? 'bg-accent border-accent' : 'border-line'
-            }`}
-          >
-            {ahorroAutomatico && <span className="w-2 h-2 rounded-sm bg-white" />}
-          </span>
-          <span className="text-sm text-left flex-1">Apartar dinero automáticamente cada mes</span>
-        </button>
-
-        {ahorroAutomatico && (
-          <div className="rounded-2xl bg-accent-soft p-3 mb-4 space-y-3">
-            <input
-              value={aporteAutomatico}
-              onChange={(e) => setAporteAutomatico(e.target.value.replace(/\D/g, ''))}
-              inputMode="numeric"
-              placeholder="Cuánto apartar cada mes"
-              className="w-full rounded-xl border border-line bg-paper px-3.5 py-3 text-sm outline-none focus:border-accent"
-            />
-            <div className="flex gap-2">
-              <input
-                value={diaAporte}
-                onChange={(e) => setDiaAporte(e.target.value.replace(/\D/g, '').slice(0, 2))}
-                inputMode="numeric"
-                placeholder="Día del mes (1-31)"
-                className="flex-1 rounded-xl border border-line bg-paper px-3.5 py-3 text-sm outline-none focus:border-accent"
-              />
-              {cuentas.length > 0 && (
-                <select
-                  value={cuentaOrigenId}
-                  onChange={(e) => setCuentaOrigenId(e.target.value)}
-                  className="flex-1 rounded-xl border border-line bg-paper px-3.5 py-3 text-sm"
-                >
-                  {cuentas.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nombre}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-            <p className="text-xs text-ink-soft">
-              Ese día se descuenta de la cuenta elegida y se suma a tu meta automáticamente.
-            </p>
-          </div>
-        )}
-
-        {error && <p className="text-sm text-danger mb-3">{error}</p>}
-
-        <button
-          onClick={guardar}
-          disabled={guardando}
-          className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
-        >
-          {guardando ? 'Guardando...' : 'Crear meta'}
+    <Hoja onCerrar={onClose}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Nueva meta</h2>
+        <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <X size={16} />
         </button>
       </div>
-    </div>
+
+      <input
+        value={nombre}
+        onChange={(e) => setNombre(e.target.value)}
+        placeholder="Nombre (ej. Viaje a Cartagena)"
+        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
+      />
+      <input
+        value={montoObjetivo}
+        onChange={(e) => setMontoObjetivo(e.target.value.replace(/\D/g, ''))}
+        inputMode="numeric"
+        placeholder="Monto objetivo (ej. 5000000)"
+        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
+      />
+      <input
+        value={montoActual}
+        onChange={(e) => setMontoActual(e.target.value.replace(/\D/g, ''))}
+        inputMode="numeric"
+        placeholder="Ya tienes ahorrado (opcional)"
+        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
+      />
+
+      <button
+        type="button"
+        onClick={() => setAhorroAutomatico((v) => !v)}
+        className="w-full flex items-center gap-3 rounded-2xl border border-line bg-paper-raised px-4 py-3.5 mb-3"
+      >
+        <span
+          className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+            ahorroAutomatico ? 'bg-accent border-accent' : 'border-line'
+          }`}
+        >
+          {ahorroAutomatico && <span className="w-2 h-2 rounded-sm bg-white" />}
+        </span>
+        <span className="text-sm text-left flex-1">Apartar dinero automáticamente cada mes</span>
+      </button>
+
+      {ahorroAutomatico && (
+        <div className="rounded-2xl bg-accent-soft p-3 mb-4 space-y-3">
+          <input
+            value={aporteAutomatico}
+            onChange={(e) => setAporteAutomatico(e.target.value.replace(/\D/g, ''))}
+            inputMode="numeric"
+            placeholder="Cuánto apartar cada mes"
+            className="w-full rounded-xl border border-line bg-paper px-3.5 py-3 text-sm outline-none focus:border-accent"
+          />
+          <div className="flex gap-2">
+            <input
+              value={diaAporte}
+              onChange={(e) => setDiaAporte(e.target.value.replace(/\D/g, '').slice(0, 2))}
+              inputMode="numeric"
+              placeholder="Día del mes (1-31)"
+              className="flex-1 rounded-xl border border-line bg-paper px-3.5 py-3 text-sm outline-none focus:border-accent"
+            />
+            {cuentas.length > 0 && (
+              <select
+                value={cuentaOrigenId}
+                onChange={(e) => setCuentaOrigenId(e.target.value)}
+                className="flex-1 rounded-xl border border-line bg-paper px-3.5 py-3 text-sm"
+              >
+                {cuentas.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                ))}
+              </select>
+            )}
+          </div>
+          <p className="text-xs text-ink-soft">
+            Ese día se descuenta de la cuenta elegida y se suma a tu meta automáticamente.
+          </p>
+        </div>
+      )}
+
+      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+
+      <button
+        onClick={guardar}
+        disabled={guardando}
+        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+      >
+        {guardando ? 'Guardando...' : 'Crear meta'}
+      </button>
+    </Hoja>
   )
 }
 
@@ -286,52 +305,50 @@ function FormAporte({ meta, onClose, onAportado }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Aportar a "{meta.nombre}"</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
-            <X size={16} />
-          </button>
-        </div>
-
-        <input
-          value={monto}
-          onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
-          inputMode="numeric"
-          placeholder="Monto a aportar"
-          autoFocus
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
-        />
-
-        {cuentas.length > 0 && (
-          <>
-            <select
-              value={cuentaId}
-              onChange={(e) => setCuentaId(e.target.value)}
-              className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm mb-1"
-            >
-              <option value="">No descontar de ninguna cuenta (dinero externo)</option>
-              {cuentas.map((c) => (
-                <option key={c.id} value={c.id}>Descontar de {c.nombre}</option>
-              ))}
-            </select>
-            <p className="text-xs text-ink-soft mb-4">
-              Si eliges una cuenta, el monto se descuenta de su saldo real.
-            </p>
-          </>
-        )}
-
-        {error && <p className="text-sm text-danger mb-3">{error}</p>}
-
-        <button
-          onClick={guardar}
-          disabled={guardando}
-          className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
-        >
-          {guardando ? 'Guardando...' : 'Aportar'}
+    <Hoja onCerrar={onClose}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Aportar a "{meta.nombre}"</h2>
+        <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <X size={16} />
         </button>
       </div>
-    </div>
+
+      <input
+        value={monto}
+        onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
+        inputMode="numeric"
+        placeholder="Monto a aportar"
+        autoFocus
+        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
+      />
+
+      {cuentas.length > 0 && (
+        <>
+          <select
+            value={cuentaId}
+            onChange={(e) => setCuentaId(e.target.value)}
+            className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm mb-1"
+          >
+            <option value="">No descontar de ninguna cuenta (dinero externo)</option>
+            {cuentas.map((c) => (
+              <option key={c.id} value={c.id}>Descontar de {c.nombre}</option>
+            ))}
+          </select>
+          <p className="text-xs text-ink-soft mb-4">
+            Si eliges una cuenta, el monto se descuenta de su saldo real.
+          </p>
+        </>
+      )}
+
+      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+
+      <button
+        onClick={guardar}
+        disabled={guardando}
+        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+      >
+        {guardando ? 'Guardando...' : 'Aportar'}
+      </button>
+    </Hoja>
   )
 }

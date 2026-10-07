@@ -12,6 +12,7 @@ import httpx
 import pdfplumber
 
 from app.config import settings
+from app.contabilidad import tipo_con_direccion
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
@@ -27,6 +28,15 @@ def pdf_a_texto(pdf_base64: str, password: str = "") -> str:
         return ""
 
 
+def pdf_pide_clave(pdf_base64: str, password: str = "") -> bool:
+    """True si el PDF no se pudo abrir por estar protegido (falta la clave o es incorrecta)."""
+    try:
+        with pdfplumber.open(io.BytesIO(base64.b64decode(pdf_base64)), password=password or None):
+            return False
+    except Exception as e:  # pdfminer envuelve PDFPasswordIncorrect
+        return "password" in repr(e).lower()
+
+
 def _build_prompt_extraccion(cuenta: str, banco: str) -> str:
     banco_hint = f"Banco/entidad: {banco.capitalize()}. " if banco not in ("generico", "desconocido") else ""
     return "\n".join([
@@ -36,13 +46,13 @@ def _build_prompt_extraccion(cuenta: str, banco: str) -> str:
         "",
         "Devuelve SOLO este JSON válido (sin markdown, sin texto extra):",
         '{"movimientos":[',
-        '  {"fecha":"YYYY-MM-DD","descripcion":"texto exacto del banco","monto":123456.78,"tipo":"expense|income|transfer","referencia":"123456"}',
+        '  {"fecha":"YYYY-MM-DD","descripcion":"texto exacto del banco","monto":123456.78,"tipo":"expense|income","referencia":"123456"}',
         "]}",
         "",
         "Reglas:",
         '- Débitos, cargos, pagos, compras => "expense"',
         '- Créditos, abonos, consignaciones, depósitos => "income"',
-        '- Transferencias entre cuentas propias del titular => "transfer"',
+        '- Transferencias y traslados: "expense" si el dinero SALE de la cuenta (Para…, Enviaste…), "income" si ENTRA (De…, Recibiste…). Nunca uses "transfer"',
         "- monto siempre positivo",
         "- fecha formato YYYY-MM-DD obligatorio",
         "- Si el monto tiene puntos de miles (ej: 1.234.567), conviértelo a 1234567",
@@ -132,7 +142,7 @@ def _parse_respuesta_ia(texto: str) -> list[dict]:
             "fecha": fecha,
             "descripcion": str(m.get("descripcion", "")).strip(),
             "monto": monto,
-            "tipo": str(m.get("tipo", "expense")).lower(),
+            "tipo": tipo_con_direccion(str(m.get("tipo", "expense")).lower(), str(m.get("descripcion", ""))) or "expense",
             "referencia": str(m.get("referencia", "")).strip(),
             "saldo": None,
         })

@@ -1,16 +1,19 @@
 import calendar
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import cuentas_ids_accesibles
+from app.cuotas_servicio import comprometido_cuotas
+from app.contabilidad import tipo_efectivo_receta, tipos_cuenta_de, tipos_efectivos
 from app.database import get_db
 from app.fx import convertir_a_cop
 from app.models import Cuenta, Movimiento, Recurrente
 from app.reportes import calc_health_score
+from app.wrapped import calcular_wrapped
 from app.schemas import (
     FlujoCajaFuturo,
     FlujoCajaMes,
@@ -65,13 +68,15 @@ def reporte_mensual(
         mes_target = mes or ahora_co().strftime("%Y-%m")
         mes_movs = [m for m in movimientos if m.fecha.strftime("%Y-%m") == mes_target]
 
-    ingresos = sum(_monto_cop(m, monedas) for m in mes_movs if m.tipo == "income")
-    gastos = sum(_monto_cop(m, monedas) for m in mes_movs if m.tipo == "expense")
+    # Tipo efectivo: el pago de tarjeta y los traslados entre cuentas propias no son gasto ni ingreso.
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
+    ingresos = sum(_monto_cop(m, monedas) for m in mes_movs if te[m.id] == "income")
+    gastos = sum(_monto_cop(m, monedas) for m in mes_movs if te[m.id] == "expense")
     ahorro = ingresos - gastos
 
     categorias: dict[str, float] = {}
     for m in mes_movs:
-        if m.tipo == "expense":
+        if te[m.id] == "expense":
             categorias[m.categoria] = categorias.get(m.categoria, 0) + _monto_cop(m, monedas)
     top_categorias = sorted(
         ({"categoria": k, "monto": v} for k, v in categorias.items()),
@@ -105,15 +110,19 @@ def tendencias(
     monedas = _monedas_por_cuenta(db, ids_accesibles)
     movimientos = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids_accesibles)).all()
 
+    meses = max(1, min(meses, 24))  # 3/6/12 en la app; tope para no armar series enormes
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
     por_mes: dict[str, dict[str, float]] = {}
     for m in movimientos:
         clave = m.fecha.strftime("%Y-%m")
-        por_mes.setdefault(clave, {"ingresos": 0.0, "gastos": 0.0})
+        por_mes.setdefault(clave, {"ingresos": 0.0, "gastos": 0.0, "num": 0})
         monto_cop = _monto_cop(m, monedas)
-        if m.tipo == "income":
+        if te[m.id] == "income":
             por_mes[clave]["ingresos"] += monto_cop
-        elif m.tipo == "expense":
+            por_mes[clave]["num"] += 1
+        elif te[m.id] == "expense":
             por_mes[clave]["gastos"] += monto_cop
+            por_mes[clave]["num"] += 1
 
     hoy = ahora_co()
     claves_ordenadas = []
@@ -131,6 +140,7 @@ def tendencias(
             ingresos=por_mes.get(clave, {}).get("ingresos", 0.0),
             gastos=por_mes.get(clave, {}).get("gastos", 0.0),
             ahorro=por_mes.get(clave, {}).get("ingresos", 0.0) - por_mes.get(clave, {}).get("gastos", 0.0),
+            num_movimientos=por_mes.get(clave, {}).get("num", 0),
         )
         for clave in claves_ordenadas
     ]
@@ -157,6 +167,7 @@ def tendencias(
 @router.get("/flujo-caja-futuro", response_model=FlujoCajaFuturo)
 def flujo_caja_futuro(
     meses: int = 3,
+    incluir_cuotas: bool = False,
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
@@ -174,8 +185,12 @@ def flujo_caja_futuro(
     def _monto_recurrente_cop(r: Recurrente) -> float:
         return convertir_a_cop(r.monto, monedas.get(r.cuenta_id, "COP"))
 
-    ingresos_recurrentes = sum(_monto_recurrente_cop(r) for r in recurrentes if r.tipo == "income")
-    gastos_recurrentes = sum(_monto_recurrente_cop(r) for r in recurrentes if r.tipo == "expense")
+    # Un recurrente "Pago tarjeta" no es gasto: las compras con la tarjeta ya cuentan en el promedio variable.
+    def _efectivo_rec(r):
+        return tipo_efectivo_receta(r.tipo, r.categoria, r.nombre)
+
+    ingresos_recurrentes = sum(_monto_recurrente_cop(r) for r in recurrentes if _efectivo_rec(r) == "income")
+    gastos_recurrentes = sum(_monto_recurrente_cop(r) for r in recurrentes if _efectivo_rec(r) == "expense")
 
     hoy = ahora_co()
     hace_3_meses = hoy - timedelta(days=90)
@@ -188,7 +203,8 @@ def flujo_caja_futuro(
         )
         .all()
     )
-    gasto_variable_total = sum(_monto_cop(m, monedas) for m in movimientos if m.tipo == "expense")
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
+    gasto_variable_total = sum(_monto_cop(m, monedas) for m in movimientos if te[m.id] == "expense")
     gasto_variable_promedio_mes = gasto_variable_total / 3
 
     meses_proyeccion: list[FlujoCajaMes] = []
@@ -201,7 +217,11 @@ def flujo_caja_futuro(
         mes_siguiente = mes_siguiente if mes_siguiente <= 12 else 1
         cursor = cursor.replace(year=anio, month=mes_siguiente, day=1)
 
-        gastos_esperados = gastos_recurrentes + gasto_variable_promedio_mes
+        # Cuotas de compras diferidas que vencen ese mes. El promedio variable ya incluye
+        # esas compras a su precio completo cuando se hicieron, así que por defecto solo
+        # se informan; con ?incluir_cuotas=true se suman a los gastos esperados.
+        cuotas_mes = comprometido_cuotas(db, usuario.id, cursor.year, cursor.month, hoy.date())
+        gastos_esperados = gastos_recurrentes + gasto_variable_promedio_mes + (cuotas_mes if incluir_cuotas else 0)
         saldo_corrido = saldo_corrido + ingresos_recurrentes - gastos_esperados
 
         meses_proyeccion.append(
@@ -210,7 +230,41 @@ def flujo_caja_futuro(
                 saldo_proyectado=round(saldo_corrido),
                 ingresos_esperados=round(ingresos_recurrentes),
                 gastos_esperados=round(gastos_esperados),
+                cuotas_tarjeta=cuotas_mes,
             )
         )
 
     return FlujoCajaFuturo(saldo_actual=round(saldo_actual), meses=meses_proyeccion)
+
+
+@router.get("/wrapped")
+def resumen_wrapped(
+    mes: str | None = None,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Datos para las diapositivas del resumen mensual (por defecto, el mes
+    en curso). Solo movimientos de las cuentas del propio usuario."""
+    mes = mes or ahora_co().strftime("%Y-%m")
+    try:
+        anio, num = (int(x) for x in mes.split("-"))
+        if not 1 <= num <= 12:
+            raise ValueError
+        anterior = f"{anio - 1}-12" if num == 1 else f"{anio}-{num - 1:02d}"
+    except ValueError:
+        raise HTTPException(status_code=422, detail="El mes debe tener formato YYYY-MM")
+
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    monedas = _monedas_por_cuenta(db, ids_accesibles)
+    movimientos = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids_accesibles)).all()
+
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
+
+    def filas(clave):
+        return [
+            {"tipo": te[m.id], "monto": _monto_cop(m, monedas), "categoria": m.categoria, "fecha": m.fecha}
+            for m in movimientos
+            if m.fecha.strftime("%Y-%m") == clave
+        ]
+
+    return calcular_wrapped(mes, filas(mes), filas(anterior))

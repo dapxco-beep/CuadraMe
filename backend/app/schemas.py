@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class CuentaCreate(BaseModel):
@@ -10,6 +10,11 @@ class CuentaCreate(BaseModel):
     saldo: float = 0
     moneda: str = "COP"
     icono: str = "🏦"
+    cupo_total: Optional[float] = Field(default=None, ge=0)
+    dia_corte: Optional[int] = Field(default=None, ge=1, le=31)
+    dia_pago: Optional[int] = Field(default=None, ge=1, le=31)
+    tasa_ea: Optional[float] = Field(default=None, ge=0, le=200)
+    alias_tarjeta: Optional[str] = Field(default=None, max_length=120)
 
 
 class EliminarCuentaRequest(BaseModel):
@@ -20,15 +25,63 @@ class ConfianzaAutoimportUpdate(BaseModel):
     confianza_autoimport: float = Field(ge=0.5, le=0.95)
 
 
+def _validar_icono(v):
+    from app.autocat import es_emoji
+    if v is None:
+        return v
+    v = v.strip()
+    if not es_emoji(v):
+        raise ValueError("El ícono debe ser un emoji (máximo 16 caracteres)")
+    return v
+
+
+def _validar_color(v):
+    import re
+    if v is None or v == "":
+        return None
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", v):
+        raise ValueError("El color debe tener el formato #RRGGBB")
+    return v.lower()
+
+
 class CategoriaCreate(BaseModel):
-    nombre: str = Field(min_length=1, max_length=30)
+    nombre: str = Field(min_length=1, max_length=40)
     icono: str = "🏷️"
+    color: Optional[str] = None
+    tipo: Literal["gasto", "ingreso", "ambos"] = "ambos"
+
+    @field_validator("icono")
+    @classmethod
+    def _v_icono(cls, v):
+        return _validar_icono(v)
+
+    @field_validator("color")
+    @classmethod
+    def _v_color(cls, v):
+        return _validar_color(v)
 
 
 class CategoriaUpdate(BaseModel):
-    nombre: Optional[str] = Field(default=None, min_length=1, max_length=30)
+    nombre: Optional[str] = Field(default=None, min_length=1, max_length=40)
     icono: Optional[str] = None
     activa: Optional[bool] = None
+    color: Optional[str] = None  # "" quita el color
+    tipo: Optional[Literal["gasto", "ingreso", "ambos"]] = None
+
+    @field_validator("icono")
+    @classmethod
+    def _v_icono(cls, v):
+        return _validar_icono(v)
+
+    @field_validator("color")
+    @classmethod
+    def _v_color(cls, v):
+        # "" significa "quitar el color": se conserva para distinguirlo de "no tocar".
+        return "" if v == "" else _validar_color(v)
+
+
+class CategoriasOrden(BaseModel):
+    ids: list[str] = Field(min_length=1, max_length=200)
 
 
 class CategoriaOut(BaseModel):
@@ -38,6 +91,9 @@ class CategoriaOut(BaseModel):
     orden: int
     activa: bool
     es_base: bool
+    color: Optional[str] = None
+    tipo: Optional[str] = "ambos"
+    movimientos: int = 0  # cuántos movimientos usan esta categoría
 
     class Config:
         from_attributes = True
@@ -47,6 +103,41 @@ class CuentaUpdate(BaseModel):
     nombre: Optional[str] = None
     tipo: Optional[str] = None
     icono: Optional[str] = None
+    cupo_total: Optional[float] = Field(default=None, ge=0)
+    dia_corte: Optional[int] = Field(default=None, ge=1, le=31)
+    dia_pago: Optional[int] = Field(default=None, ge=1, le=31)
+    tasa_ea: Optional[float] = Field(default=None, ge=0, le=200)
+    alias_tarjeta: Optional[str] = Field(default=None, max_length=120)
+
+
+class TarjetaInfo(BaseModel):
+    """Cálculos derivados de una tarjeta de crédito (ver app/tarjetas.py)."""
+    cupo_usado: float
+    cupo_disponible: Optional[float]
+    utilizacion_pct: Optional[float]
+    nivel_utilizacion: str  # sin_cupo | ok | alerta | critico
+    proximo_corte: Optional[str]  # YYYY-MM-DD
+    proximo_pago: Optional[str]
+    dias_para_corte: Optional[int]
+    dias_para_pago: Optional[int]
+    pago_minimo_estimado: float
+    interes_estimado: Optional[float]
+    # Extracto (None si la tarjeta no tiene día de corte): lo que hay que pagar para no pagar intereses
+    total_extracto: Optional[float] = None
+    pagado_desde_corte: Optional[float] = None
+    falta_para_evitar_intereses: Optional[float] = None
+    compras_despues_corte: Optional[float] = None
+    fecha_limite_pago: Optional[str] = None
+    fecha_ultimo_corte: Optional[str] = None
+    dias_para_limite: Optional[int] = None
+    pagado_pct: Optional[float] = None
+    vencido: bool = False
+    # Datos del extracto real aplicados por el cliente (ver app/extracto_tarjeta.py)
+    total_del_banco: bool = False
+    pago_minimo_extracto: Optional[float] = None
+    pago_total_extracto: Optional[float] = None
+    pago_minimo: Optional[float] = None  # el del extracto si se conoce; si no, la estimación
+    pago_minimo_del_extracto: bool = False
 
 
 class CuentaOut(BaseModel):
@@ -56,9 +147,20 @@ class CuentaOut(BaseModel):
     saldo: float
     moneda: str
     icono: str
+    cupo_total: Optional[float] = None
+    dia_corte: Optional[int] = None
+    dia_pago: Optional[int] = None
+    tasa_ea: Optional[float] = None
+    alias_tarjeta: Optional[str] = None
+    tarjeta: Optional[TarjetaInfo] = None
 
     class Config:
         from_attributes = True
+
+
+class AjusteSaldoRequest(BaseModel):
+    saldo_real: float
+    nota: str = ""
 
 
 class InvitarRequest(BaseModel):
@@ -126,18 +228,78 @@ class MovimientoOut(BaseModel):
     monto: float
     fuente: str
     notas: str
+    cat_origen: Optional[str] = None
+    cat_confirmada: Optional[bool] = True
 
     class Config:
         from_attributes = True
 
 
+class RecategorizarComercioRequest(BaseModel):
+    categoria: str = Field(min_length=1)
+    patron: Optional[str] = Field(default=None, max_length=60)  # si no viene, se deduce de la descripción
+    aplicar_a_todos: bool = True
+    confirmar_peligrosa: bool = False  # guardar aunque la huella sea muy corta o genérica
+
+
+class ConfirmarCategoriasRequest(BaseModel):
+    movimiento_ids: Optional[list[str]] = None  # None = todos los pendientes de revisión
+
+
 class MovimientoRapidoCreate(BaseModel):
-    """Para registro sin login: Atajos de iOS, Scriptable, Tasker, reglas de correo."""
+    """Para registro sin login: Atajos de iOS (disparador 'Transacción' de Wallet),
+    Tasker, reglas de correo. Acepta lo que entrega iOS tal cual: comercio, monto
+    (número o texto colombiano como '45.000,00'), tarjeta, fecha y moneda."""
     monto: float = Field(gt=0)
-    tipo: Literal["income", "expense"]
-    descripcion: str
+    tipo: Literal["income", "expense"] = "expense"
+    descripcion: Optional[str] = Field(default=None, max_length=150)  # si falta, se usa el comercio
+    comercio: Optional[str] = Field(default=None, max_length=150)
+    tarjeta: Optional[str] = Field(default=None, max_length=120)  # nombre de la tarjeta en Wallet
     cuenta: Optional[str] = None  # nombre de cuenta a buscar (ej. "Nequi"); si no hay match usa la primera del usuario
-    fuente: str = "shortcut"  # shortcut | sms | email
+    fecha: Optional[str] = None  # ISO o dd/mm/aaaa; si no se entiende se usa la hora actual
+    moneda: Optional[str] = Field(default=None, max_length=5)
+    fuente: str = Field(default="shortcut", max_length=30)  # shortcut | wallet | sms | email
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalizar(cls, datos):
+        if not isinstance(datos, dict):
+            return datos
+        from app.wallet import parse_monto_co
+
+        # Las claves llegan como las escribió quien armó el Atajo ("Comercio", "Monto"...):
+        # se pasan a minúsculas para no depender de eso.
+        d = {str(k).strip().lower(): v for k, v in datos.items()}
+        # Nombres que usa iOS (en inglés y en español) y variantes del Atajo.
+        for original, destino in (("comerciante", "comercio"), ("importe", "monto"), ("cantidad", "monto"),
+                                  ("tarjeta_o_pase", "tarjeta"), ("tarjeta o pase", "tarjeta"),
+                                  ("merchant", "comercio"), ("amount", "monto"), ("card", "tarjeta"),
+                                  ("nombre_tarjeta", "tarjeta"), ("tarjeta_nombre", "tarjeta"),
+                                  ("date", "fecha"), ("currency", "moneda"), ("name", "descripcion")):
+            if d.get(destino) in (None, "") and d.get(original) not in (None, ""):
+                d[destino] = d[original]
+        d["monto"] = parse_monto_co(d.get("monto"))
+        for campo in ("descripcion", "comercio", "tarjeta", "cuenta", "moneda", "fecha"):
+            v = d.get(campo)
+            d[campo] = str(v).strip()[:150] if v not in (None, "") and str(v).strip() else None
+        import re
+        fuente = re.sub(r"[\s-]+", "_", str(d.get("fuente") or "shortcut").strip().lower())[:30]
+        d["fuente"] = fuente
+        # Al cerrar la app del banco el Atajo manda la nota (opcional): sin ella el
+        # backend pone 'Movimiento en <cuenta>'. En cualquier otra fuente sí se exige.
+        if fuente != "cierre_app" and not d.get("descripcion") and not d.get("comercio"):
+            raise ValueError("Falta el comercio o la descripción del movimiento")
+        tipo = str(d.get("tipo") or "expense").strip().lower()
+        d["tipo"] = {"gasto": "expense", "egreso": "expense", "ingreso": "income"}.get(tipo, tipo)
+        return d
+
+
+class MovimientoRapidoOut(MovimientoOut):
+    """Respuesta corta para que el Atajo muestre una notificación local."""
+    mensaje: str
+    duplicado: bool = False
+    por_confirmar: bool = False
+    cuenta_nombre: Optional[str] = None
 
 
 class RecategorizarMasivoRequest(BaseModel):
@@ -150,11 +312,27 @@ class RecategorizarMasivoResponse(BaseModel):
     actualizados: int
 
 
+class MoverMasivoRequest(BaseModel):
+    movimiento_ids: list[str] = Field(min_length=1, max_length=500)
+    cuenta_id: str
+
+
+class EliminarMasivoRequest(BaseModel):
+    movimiento_ids: list[str] = Field(min_length=1, max_length=500)
+
+
+class MasivoResponse(BaseModel):
+    ok: bool
+    actualizados: int = 0
+    omitidos: int = 0
+
+
 class MovimientoPorVozCreate(BaseModel):
     """Para registro por voz/Siri: se manda la frase dicha tal cual, sin
     estructurar. El backend interpreta monto/tipo/descripción."""
     texto: str
     cuenta: Optional[str] = None
+    tarjeta: Optional[str] = Field(default=None, max_length=120)
 
 
 class MovimientoPorVozResponse(BaseModel):
@@ -189,6 +367,14 @@ class ReglaCategoriaCreate(BaseModel):
     categoria: str
     tipo: Optional[str] = None
     prioridad: int = 0
+
+
+class AprenderReglaRequest(BaseModel):
+    descripcion: str = Field(min_length=1, max_length=200)  # de ahí se saca la huella del comercio
+    categoria: str = Field(min_length=1, max_length=60)
+    tipo: Optional[str] = None
+    aplicar_anteriores: bool = False
+    confirmar_peligrosa: bool = False
 
 
 class ReglaCategoriaOut(BaseModel):
@@ -264,6 +450,9 @@ class EnMiBolsillo(BaseModel):
     saldo_total: float
     recurrentes_pendientes_mes: float
     aportes_comprometidos_mes: float
+    # Cuotas de compras a cuotas con tarjeta que vencen este mes. La deuda de la tarjeta
+    # ya está restada en el saldo, así que solo se descuenta de disponible_real si se pide.
+    cuotas_tarjeta_mes: float = 0
     disponible_real: float
     disponible_real_por_dia: float
     dias_restantes_mes: int
@@ -282,6 +471,7 @@ class TendenciaMes(BaseModel):
     ingresos: float
     gastos: float
     ahorro: float
+    num_movimientos: int = 0
 
 
 class Proyeccion(BaseModel):
@@ -301,6 +491,7 @@ class FlujoCajaMes(BaseModel):
     saldo_proyectado: float
     ingresos_esperados: float
     gastos_esperados: float
+    cuotas_tarjeta: float = 0  # cuotas de compras diferidas que vencen ese mes (informativo)
 
 
 class FlujoCajaFuturo(BaseModel):
@@ -461,6 +652,11 @@ class GmailEstado(BaseModel):
     conectado: bool
     email: Optional[str] = None
     etiqueta: str = "gastos"
+    # La app de Google aún no está verificada: solo entran correos agregados como 'test user'.
+    modo_pruebas: bool = False
+    soporte_email: str = ""
+    # ¿Ya dio la autorización específica de lectura de correo?
+    consentimiento: bool = True
 
 
 class CorreoGastoOut(BaseModel):
@@ -477,6 +673,20 @@ class CorreoGastoOut(BaseModel):
     confianza: float
     estado: str
     movimiento_id: Optional[str]
+    # Calculados al leer (no son columnas): quién envió el correo y qué cuenta le corresponde.
+    banco_detectado: Optional[str] = None
+    cuenta_sugerida_id: Optional[str] = None
+    falta_cuenta: bool = False
+    # El monto no se pudo leer del correo (<= 0): hay que pedirlo antes de aprobar.
+    falta_monto: bool = False
+    # Por qué se sugirió esa categoría ('por tu regla «rappi»'); None si la eligió el usuario
+    # o no se pudo decidir. `preguntar_categoria`: quedó en 'Otros', hay que preguntarle.
+    razon_categoria: Optional[str] = None
+    preguntar_categoria: bool = False
+    # Solo al aprobar/editar con 'Recordar': qué pasó con la regla del comercio.
+    regla_guardada: Optional[bool] = None
+    regla_omitida: Optional[str] = None
+    anteriores_actualizados: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -487,17 +697,61 @@ class CorreoGastoUpdate(BaseModel):
     comercio: Optional[str] = None
     categoria: Optional[str] = None
     tipo: Optional[str] = None
+    # Con categoría nueva: guarda la regla del comercio (y, opcional, recategoriza los anteriores).
+    recordar: bool = False
+    aplicar_anteriores: bool = False
 
 
 class AprobarCorreoRequest(BaseModel):
-    cuenta_id: str
+    # Opcional a propósito: sin cuenta elegida se responde 400 claro en vez de 422.
+    cuenta_id: Optional[str] = None
+    # Monto escrito por el usuario cuando el correo no lo traía (debe ser > 0).
+    monto: Optional[float] = None
+    # Categoría elegida por el usuario al aprobar (si cambió la sugerida).
+    categoria: Optional[str] = None
+    recordar: bool = False
+    aplicar_anteriores: bool = False
 
 
 class SincronizarCorreosResponse(BaseModel):
     ok: bool
     nuevos: int
     omitidos: int
+    extractos_nuevos: int = 0
     error: Optional[str] = None
+    # Progreso de la sincronización por lotes: el cliente repite la llamada
+    # mientras `completado` sea False. Los contadores son de toda la corrida.
+    leidos: int = 0
+    total_estimado: int = 0
+    pendientes: int = 0
+    completado: bool = True
+    extractos_encontrados: int = 0
+
+
+class ExtractoCorreoOut(BaseModel):
+    id: str
+    remitente: str
+    asunto: str
+    archivo: str
+    banco: str
+    periodo: str
+    cuenta_sugerida_id: Optional[str]
+    estado: str
+    historial_id: Optional[str]
+    recibido_en: Optional[datetime]
+    # Solo en extractos procesados: movimientos que se cruzaron (exactos + aproximados).
+    cruzados: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ClavePdfIn(BaseModel):
+    clave: str = Field(min_length=1, max_length=120)
+
+
+class ConciliarExtractoRequest(BaseModel):
+    cuenta_id: str
 
 
 # ── Notificaciones push ──────────────────────────────────────
@@ -550,6 +804,9 @@ class ResumenSemanal(BaseModel):
     top_categorias: list[dict]
     anomalias: list[Anomalia]
     texto: str
+    desde: str | None = None
+    hasta: str | None = None
+    etiqueta: str | None = None
 
 
 class PreguntarRequest(BaseModel):
@@ -558,6 +815,8 @@ class PreguntarRequest(BaseModel):
 
 class PreguntarResponse(BaseModel):
     respuesta: str
+    fuentes: list[str] = []
+    sugerencias: list[str] = []
 
 
 # ── Conciliación de extractos ──────────────────────────────────────
@@ -575,14 +834,21 @@ class MovimientoReview(BaseModel):
     tipo: str
     referencia: Optional[str] = ""
     fingerprint: str
-    estado: str  # exacto | aproximado | faltante
+    estado: str  # exacto | aproximado | faltante | completado | sobrante | importado
     match_id: Optional[str] = None
     categoria_sugerida: Optional[str] = None
+    descripcion_registrada: Optional[str] = None  # completado: lo que había registrado el usuario
+    monto_registrado: Optional[float] = None  # completado: monto registrado (puede diferir del banco)
+    razon_categoria: Optional[str] = None  # por qué se sugiere esa categoría
+    auto: bool = False  # importado solo (ajuste "importar lo que reconozco"): se puede deshacer
+    movimiento_id: Optional[str] = None  # id del movimiento creado al auto-importar
+    pista: Optional[str] = None  # 'posible_traslado_propio': la contraparte parece el titular; mueve saldo igual
 
 
 class ProcesarExtractoResponse(BaseModel):
     ok: bool
     historial_id: Optional[str] = None
+    cuenta_id: Optional[str] = None  # cuenta del extracto (al reabrir una revisión desde el historial)
     banco_detectado: Optional[str] = None
     total_movimientos: int = 0
     exactos: int = 0
@@ -591,11 +857,28 @@ class ProcesarExtractoResponse(BaseModel):
     descartados: int = 0
     review: list[MovimientoReview] = []
     error: Optional[str] = None
+    auto_importados: int = 0  # movimientos que entraron solos (solo con el ajuste activo; quedan "por revisar")
+    ya_registrados: int = 0  # exactos + aproximados + completados; ya_registrados + faltantes + auto_importados = total_movimientos
+    autoimportar_activo: bool = False  # el ajuste 'importar solo lo que reconozco con certeza'
+    completados: int = 0  # movimientos rápidos completados con los datos del banco
+    sobrantes: int = 0  # registrados en el periodo que no aparecen en el extracto
+    periodo_desde: Optional[str] = None  # ISO, primer movimiento del extracto
+    periodo_hasta: Optional[str] = None
+    parece_extracto: bool = True  # False: el archivo no parece un extracto (carta, factura...); no se importa nada
+    motivo_rechazo: Optional[str] = None
+    requiere_clave: bool = False  # el PDF está protegido y falta (o es incorrecta) la clave
+    # Aviso (no bloquea): ese mes de esa cuenta ya estaba conciliado antes de subir este archivo.
+    ya_conciliado: Optional[dict] = None  # {"mes": "2026-09", "cruzados": n}
+    # Solo si la cuenta es una tarjeta de crédito y el extracto trae datos legibles:
+    # {cambios, datos, texto}. Es una PROPUESTA: se aplica solo si el cliente pulsa 'Aplicar'.
+    propuesta_tarjeta: Optional[dict] = None
 
 
 class ImportarFaltantesRequest(BaseModel):
     fingerprints: list[str]
     categorias: Optional[dict[str, str]] = None  # fingerprint -> categoría elegida por el usuario, si la cambió
+    recordar: list[str] = []  # fingerprints cuya categoría elegida se guarda como regla del comercio
+    aplicar_anteriores: list[str] = []  # subconjunto de `recordar`: además recategoriza movimientos pasados
 
 
 class HistorialExtractoOut(BaseModel):
@@ -613,3 +896,31 @@ class HistorialExtractoOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ── Estrategia de deudas ────────────────────────
+
+class PlanDeudaOut(BaseModel):
+    id: str
+    nombre: str
+    mes_libre: Optional[int]  # mes (1 = el próximo) en que queda en cero
+
+
+class ResultadoMetodoOut(BaseModel):
+    metodo: str  # sin_extra | avalancha | bola_de_nieve
+    meses: Optional[int]  # None si no se termina de pagar en el horizonte
+    fecha_libre: Optional[str]  # YYYY-MM
+    intereses_totales: float
+    ahorro_intereses: Optional[float]  # frente a pagar solo las cuotas actuales
+    meses_ahorrados: Optional[int]
+    orden: list[PlanDeudaOut]
+    saldo_por_mes: list[float]  # deuda total al cierre de cada mes (0 = hoy)
+
+
+class EstrategiaOut(BaseModel):
+    extra_mensual: float
+    deuda_total: float
+    sin_extra: ResultadoMetodoOut
+    avalancha: ResultadoMetodoOut
+    bola_de_nieve: ResultadoMetodoOut
+    mejor: str  # avalancha | bola_de_nieve

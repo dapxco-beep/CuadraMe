@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Calendar, Sparkles, X } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useVolver } from '../lib/useVolver'
+import { Calendar, Camera, Image as ImagenIcono, Sparkles, Users, X } from 'lucide-react'
 import { api } from '../lib/api'
+import { prepararImagen } from '../lib/imagen'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
+import SugerenciaIngreso from '../components/SugerenciaIngreso'
 import { useCategorias } from '../lib/CategoriasContext'
 import TarjetaCuenta from '../components/TarjetaCuenta'
 
@@ -23,11 +26,19 @@ function calcularFrecuentes(movimientos) {
     }
     vistos.get(clave).veces += 1
   }
-  return [...vistos.values()].sort((a, b) => b.veces - a.veces).slice(0, 6)
+  return [...vistos.values()].sort((a, b) => b.veces - a.veces).slice(0, 30)
+}
+
+// Solo los del tipo de la pestaña activa: en "Gasto" no salen ingresos (ni al revés).
+export function frecuentesDelTipo(frecuentes, tipo) {
+  return frecuentes.filter((f) => f.tipo === tipo).slice(0, 6)
 }
 
 export default function Agregar() {
   const navigate = useNavigate()
+  // Cerrar o guardar vuelve a donde estaba el usuario (o a Inicio si entró directo, p. ej. desde el atajo);
+  // así "atrás" nunca reabre el formulario ya guardado.
+  const volver = useVolver('/')
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: categoriasRapidas } = useCategorias()
   const [cuentaElegidaId, setCuentaId] = useState('')
@@ -35,6 +46,7 @@ export default function Agregar() {
   const [monto, setMonto] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [tipo, setTipo] = useState('expense')
+  const [sugerirIngreso, setSugerirIngreso] = useState(null) // { monto, cuentaId } tras registrar un ingreso
   const [categoria, setCategoria] = useState('')
   const [categoriaAutoDetectada, setCategoriaAutoDetectada] = useState(false)
   const [frecuentes, setFrecuentes] = useState([])
@@ -43,6 +55,16 @@ export default function Agregar() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const carruselRef = useRef(null)
+  const montoRef = useRef(null)
+  const [params] = useSearchParams()
+  // "Registrar gasto" desde la pregunta de Inicio abre aquí con el cursor en el monto
+  // (teclado numérico listo), para registrar en un par de toques.
+  useEffect(() => {
+    if (params.get('foco') === 'monto') montoRef.current?.focus()
+  }, [params])
+  const [escaneando, setEscaneando] = useState(false)
+  const [factura, setFactura] = useState(null) // datos extra leídos de la foto (solo informativos)
+  const [errorFactura, setErrorFactura] = useState('')
 
   // Si el usuario aún no eligió cuenta se usa la primera: se deriva al renderizar
   // en vez de copiarla a un estado con un efecto (evita un render extra).
@@ -87,6 +109,41 @@ export default function Agregar() {
     setMonto(String(Math.round(f.monto)))
   }
 
+  // La foto solo RELLENA el formulario: el usuario revisa y toca "Guardar" él mismo.
+  async function leerFactura(e) {
+    const archivo = e.target.files?.[0]
+    e.target.value = '' // permite volver a elegir la misma foto
+    if (!archivo) return
+    setErrorFactura('')
+    setFactura(null)
+    setEscaneando(true)
+    try {
+      const { base64, mime } = await prepararImagen(archivo)
+      const r = await api.escanearFactura(base64, mime)
+      setTipo('expense')
+      setMonto(String(Math.round(r.total)))
+      if (r.comercio) setDescripcion(r.comercio)
+      if (r.fecha) setFecha(r.fecha)
+      if (r.categoria && r.categoria !== 'Otros') {
+        setCategoria(r.categoria)
+        setCategoriaAutoDetectada(true)
+      }
+      setFactura(r)
+    } catch (err) {
+      setErrorFactura(err.message || 'No pudimos leer la factura')
+    } finally {
+      setEscaneando(false)
+    }
+  }
+
+  function dividirGasto() {
+    setError('')
+    if (!monto || Number(monto) <= 0) return setError('Ingresa un monto válido para dividir')
+    navigate('/dividir', {
+      state: { monto: Number(monto), descripcion: descripcion.trim(), categoria: categoria || undefined, cuentaId, fecha },
+    })
+  }
+
   async function guardar() {
     setError('')
     if (!cuentaId) return setError('Crea una cuenta primero')
@@ -104,7 +161,7 @@ export default function Agregar() {
           fecha: fecha ? `${fecha}T12:00:00` : undefined,
         })
         await recargarCuentas()
-        navigate('/')
+        volver()
         return
       }
       await api.crearMovimiento({
@@ -116,7 +173,13 @@ export default function Agregar() {
         fecha: fecha ? `${fecha}T12:00:00` : undefined,
       })
       await recargarCuentas()
-      navigate('/')
+      // Un ingreso abre la sugerencia de reparto (fijos, ahorro, gasto libre); el
+      // usuario la acepta o la descarta, y de ahí vuelve al inicio.
+      if (tipo === 'income') {
+        setSugerirIngreso({ monto: Number(monto), cuentaId })
+        return
+      }
+      volver()
     } catch (err) {
       setError(err.message || 'No se pudo guardar')
     } finally {
@@ -124,16 +187,27 @@ export default function Agregar() {
     }
   }
 
+  if (sugerirIngreso) {
+    return (
+      <SugerenciaIngreso
+        monto={sugerirIngreso.monto}
+        cuentaId={sugerirIngreso.cuentaId}
+        onClose={volver}
+        onAplicado={recargarCuentas}
+      />
+    )
+  }
+
   return (
     <div className="flex-1 flex flex-col pb-6">
-      <header className="px-5 pt-14 pb-2 flex items-center justify-between">
+      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Nuevo movimiento</h1>
         <button
-          onClick={() => navigate('/')}
-          className="w-9 h-9 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+          onClick={volver}
+          className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
           aria-label="Cerrar"
         >
-          <X size={18} />
+          <X size={20} />
         </button>
       </header>
 
@@ -165,6 +239,59 @@ export default function Agregar() {
         </button>
       </div>
 
+      {!esTransferencia && (
+        <div className="px-5 mt-2 flex gap-2">
+          <label
+            className={`flex-1 rounded-2xl border border-line bg-paper-raised py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 ${
+              escaneando ? 'opacity-60 pointer-events-none' : 'cursor-pointer'
+            }`}
+          >
+            <Camera size={16} /> Foto de factura
+            <input type="file" accept="image/*" capture="environment" className="hidden" aria-label="Tomar foto de factura" onChange={leerFactura} />
+          </label>
+          <label
+            className={`shrink-0 w-11 rounded-2xl border border-line bg-paper-raised flex items-center justify-center ${
+              escaneando ? 'opacity-60 pointer-events-none' : 'cursor-pointer'
+            }`}
+            title="Elegir de la galería"
+          >
+            <ImagenIcono size={16} />
+            <input type="file" accept="image/*" className="hidden" aria-label="Elegir factura de la galería" onChange={leerFactura} />
+          </label>
+          {tipo === 'expense' && (
+            <button
+              onClick={dividirGasto}
+              className="flex-1 rounded-2xl border border-line bg-paper-raised py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5"
+            >
+              <Users size={16} /> Dividir
+            </button>
+          )}
+        </div>
+      )}
+
+      {escaneando && (
+        <p role="status" className="px-5 mt-2 text-xs text-accent flex items-center gap-1.5">
+          <Sparkles size={16} className="animate-pulse" /> Leyendo tu factura...
+        </p>
+      )}
+      {errorFactura && (
+        <p role="alert" className="px-5 mt-2 text-xs text-danger">
+          {errorFactura}
+        </p>
+      )}
+      {factura && (
+        <div role="status" className="mx-5 mt-2 rounded-2xl bg-accent-soft border border-accent/40 px-4 py-2.5 text-xs text-accent">
+          <p className="font-semibold">Revisa los datos antes de guardar</p>
+          <p className="mt-0.5">
+            La IA puede equivocarse.
+            {factura.impuestos != null && ` IVA/impuestos: ${formatMoneda(factura.impuestos, factura.moneda)}.`}
+            {factura.propina != null && ` Propina: ${formatMoneda(factura.propina, factura.moneda)}.`}
+            {cuentaActual && factura.moneda !== (cuentaActual.moneda || 'COP') &&
+              ` La factura está en ${factura.moneda} y tu cuenta en ${cuentaActual.moneda}: ajusta el monto.`}
+          </p>
+        </div>
+      )}
+
       {mostrarFecha && (
         <div className="px-5 mt-2">
           <input
@@ -185,6 +312,8 @@ export default function Agregar() {
             onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
             placeholder="0"
             inputMode="numeric"
+            ref={montoRef}
+            aria-label="Monto"
             className="bg-transparent outline-none text-6xl font-semibold text-center w-full tabular-nums placeholder:text-ink-soft/40"
           />
         </div>
@@ -202,18 +331,18 @@ export default function Agregar() {
         />
         {categoriaAutoDetectada && categoria && (
           <div className="flex items-center gap-1.5 mt-2 text-xs text-accent">
-            <Sparkles size={12} />
+            <Sparkles size={16} />
             <span>Detectamos: {categoria}</span>
           </div>
         )}
       </div>
       )}
 
-      {!esTransferencia && frecuentes.length > 0 && !descripcion && (
+      {!esTransferencia && frecuentesDelTipo(frecuentes, tipo).length > 0 && !descripcion && (
         <div className="px-5 mb-4">
           <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Frecuentes</p>
           <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {frecuentes.map((f) => (
+            {frecuentesDelTipo(frecuentes, tipo).map((f) => (
               <button
                 key={f.descripcion}
                 onClick={() => usarFrecuente(f)}
@@ -302,6 +431,9 @@ export default function Agregar() {
           className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
         >
           {guardando ? 'Guardando...' : esTransferencia ? 'Hacer transferencia' : 'Guardar movimiento'}
+        </button>
+        <button onClick={() => navigate('/amigos')} className="w-full text-center text-sm text-accent font-medium mt-4">
+          Cuentas con amigos
         </button>
       </div>
     </div>

@@ -1,24 +1,182 @@
 import { supabase } from './supabase'
+import { borrarSeguridad } from './seguridad'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-async function request(path, { method = 'GET', body, auth = true } = {}) {
-  const headers = { 'Content-Type': 'application/json' }
+export const MSG_SIN_CONEXION = 'Sin conexión. Revisa tu internet e intenta de nuevo.'
+export const MSG_ERROR_SERVIDOR = 'Tuvimos un problema. Intenta de nuevo en un momento.'
+export const MSG_SESION_VENCIDA = 'Tu sesión venció. Vuelve a iniciar sesión para continuar.'
+
+// fetch() falla con un TypeError ("Failed to fetch", "Load failed", "NetworkError...")
+// cuando no hay red o el servidor no responde. Ese texto en inglés no le sirve a nadie.
+async function fetchSeguro(url, opciones) {
+  try {
+    return await fetch(url, opciones)
+  } catch (e) {
+    if (e?.name === 'AbortError') throw e
+    const err = new Error(MSG_SIN_CONEXION)
+    err.sinConexion = true
+    throw err
+  }
+}
+
+// Un 401 con sesión significa que el token ya no vale (venció o la revocaron):
+// se cierra la sesión de forma limpia y se avisa, en vez de dejar la app a medias.
+let cerrandoSesion = false
+async function cerrarSesionVencida() {
+  if (cerrandoSesion) return
+  cerrandoSesion = true
+  invalidarCache()
+  try {
+    borrarSeguridad()
+    await supabase.auth.signOut()
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cuadrame:sesion-vencida', { detail: { mensaje: MSG_SESION_VENCIDA } }))
+    }
+  } catch {
+    // sin red el signOut puede fallar; el token ya no servía de todos modos
+  } finally {
+    cerrandoSesion = false
+  }
+}
+
+// ── Deduplicación y caché de lecturas (GET) ─────────────────────────────────────────────
+// Antes cada componente pedía lo suyo: Inicio disparaba ~33 peticiones (GET /cuentas x5, etc.)
+// y con el backend lejos (150-250 ms de ida y vuelta) cada duplicado se nota.
+//  - Dos GET idénticos al mismo tiempo comparten una sola petición.
+//  - La respuesta se recuerda unos segundos (TTL).
+//  - Cualquier escritura (POST/PUT/PATCH/DELETE) vacía la caché: se prefiere pedir de más a
+//    mostrar un dato viejo. Una lectura que arrancó ANTES de la escritura no se guarda.
+//  - La clave incluye al usuario: al cambiar de sesión no se mezclan datos.
+//  - Se entrega una copia, así que quien reciba el dato puede modificarlo sin afectar a otros.
+const TTL_CACHE_MS = 5000
+let ttlCache = import.meta.env.MODE === 'test' ? 0 : TTL_CACHE_MS // las pruebas piden fresco salvo que activen la caché
+let cacheActiva = true
+const cacheLecturas = new Map() // clave -> { hasta, valor }
+const lecturasEnVuelo = new Map() // clave -> Promise
+let generacion = 0
+const estadisticas = { red: 0, compartidas: 0, cacheadas: 0 }
+
+export function invalidarCache() {
+  cacheLecturas.clear()
+  lecturasEnVuelo.clear()
+  generacion++
+}
+// Solo para pruebas y mediciones.
+export function configurarCache({ ttl, desactivar = false } = {}) {
+  ttlCache = ttl ?? TTL_CACHE_MS
+  cacheActiva = !desactivar
+  invalidarCache()
+}
+export function estadisticasPeticiones(reiniciar = false) {
+  const copia = { ...estadisticas }
+  if (reiniciar) Object.assign(estadisticas, { red: 0, compartidas: 0, cacheadas: 0 })
+  return copia
+}
+const copiar = (v) => (v !== null && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v)
+
+async function request(path, opciones = {}) {
+  const { method = 'GET', auth = true, sinCache = false } = opciones
+  if (method !== 'GET') {
+    invalidarCache()
+    try {
+      return await pedir(path, opciones)
+    } finally {
+      invalidarCache() // las lecturas lanzadas mientras escribía pudieron ver el estado viejo
+    }
+  }
+  if (sinCache || !cacheActiva) {
+    estadisticas.red++
+    return pedir(path, opciones)
+  }
+  let uid = 'anon'
+  if (auth) {
+    const { data } = await supabase.auth.getSession()
+    uid = data?.session?.user?.id || 'anon'
+  }
+  const clave = `${uid}|${path}`
+  const guardada = cacheLecturas.get(clave)
+  if (guardada && guardada.hasta > Date.now()) {
+    estadisticas.cacheadas++
+    return copiar(guardada.valor)
+  }
+  const enVuelo = lecturasEnVuelo.get(clave)
+  if (enVuelo) {
+    estadisticas.compartidas++
+    return enVuelo.then(copiar)
+  }
+  const gen = generacion
+  estadisticas.red++
+  const promesa = pedir(path, opciones).then(
+    (valor) => {
+      if (ttlCache > 0 && gen === generacion) cacheLecturas.set(clave, { hasta: Date.now() + ttlCache, valor })
+      if (lecturasEnVuelo.get(clave) === promesa) lecturasEnVuelo.delete(clave)
+      return valor
+    },
+    (err) => {
+      if (lecturasEnVuelo.get(clave) === promesa) lecturasEnVuelo.delete(clave)
+      throw err
+    }
+  )
+  lecturasEnVuelo.set(clave, promesa)
+  return promesa.then(copiar)
+}
+
+async function pedir(path, { method = 'GET', body, auth = true, headers: extra } = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(extra || {}) }
+  let conSesion = false
   if (auth) {
     const { data } = await supabase.auth.getSession()
     const token = data.session?.access_token
-    if (token) headers.Authorization = `Bearer ${token}`
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+      conSesion = true
+    }
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetchSeguro(`${API_URL}${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
   })
 
   if (!res.ok) {
+    if (res.status === 401 && conSesion) {
+      await cerrarSesionVencida()
+      const err = new Error(MSG_SESION_VENCIDA)
+      err.status = 401
+      throw err
+    }
     const data = await res.json().catch(() => ({}))
-    throw new Error(data.detail || `Error ${res.status}`)
+    const d = data.detail
+    if (res.status >= 500) {
+      const err = new Error(MSG_ERROR_SERVIDOR)
+      err.status = res.status
+      err.detalle = d
+      throw err
+    }
+    // Autorización pendiente (Ley 1581): el backend responde con un objeto {codigo, finalidad, mensaje}.
+    // Se avisa a la app para que muestre el consentimiento específico en vez de un error crudo.
+    if (d && typeof d === 'object' && d.codigo === 'consentimiento_requerido') {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cuadrame:consentimiento', { detail: { finalidad: d.finalidad } }))
+      }
+      const err = new Error(d.mensaje || 'Falta una autorización')
+      err.codigo = d.codigo
+      err.finalidad = d.finalidad
+      throw err
+    }
+    // detail puede ser texto, un objeto (409 con datos) o la lista de errores de validación.
+    const mensaje =
+      typeof d === 'string'
+        ? d
+        : Array.isArray(d)
+          ? String(d[0]?.msg || '').replace(/^Value error, /, '')
+          : d?.mensaje
+    const err = new Error(mensaje || `Error ${res.status}`)
+    err.status = res.status
+    err.detalle = d
+    throw err
   }
   return res.json()
 }
@@ -26,10 +184,14 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
 async function descargarArchivo(path, nombreArchivo) {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetchSeguro(`${API_URL}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
-  if (!res.ok) throw new Error(`Error ${res.status}`)
+  if (res.status === 401 && token) {
+    await cerrarSesionVencida()
+    throw new Error(MSG_SESION_VENCIDA)
+  }
+  if (!res.ok) throw new Error(res.status >= 500 ? MSG_ERROR_SERVIDOR : `Error ${res.status}`)
 
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)
@@ -40,13 +202,86 @@ async function descargarArchivo(path, nombreArchivo) {
   URL.revokeObjectURL(url)
 }
 
+// Quita los parámetros vacíos (desde/hasta/mes) antes de armar la query.
+function limpiar(p) {
+  return Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined && v !== null && v !== ''))
+}
+
 export const api = {
   cuentas: () => request('/cuentas'),
   crearCuenta: (data) => request('/cuentas', { method: 'POST', body: data }),
   editarCuenta: (id, data) => request(`/cuentas/${id}`, { method: 'PUT', body: data }),
   eliminarCuenta: (id) => request(`/cuentas/${id}`, { method: 'DELETE' }),
+  resumenCuentas: () => request('/cuentas/resumen'),
+  detalleCuenta: (id) => request(`/cuentas/${id}/detalle`),
+  cuotasTarjeta: (cuentaId) => request(`/cuotas-tarjeta${cuentaId ? `?cuenta_id=${encodeURIComponent(cuentaId)}` : ''}`),
+  crearCuotaTarjeta: (data) => request('/cuotas-tarjeta', { method: 'POST', body: data }),
+  pagarCuotaTarjeta: (id) => request(`/cuotas-tarjeta/${id}/pagar-cuota`, { method: 'POST' }),
+  eliminarCuotaTarjeta: (id) => request(`/cuotas-tarjeta/${id}`, { method: 'DELETE' }),
+  ajustarSaldo: (id, saldoReal) => request(`/cuentas/${id}/ajustar-saldo`, { method: 'POST', body: { saldo_real: saldoReal } }),
 
-  movimientos: (limit = 100, offset = 0) => request(`/movimientos?limit=${limit}&offset=${offset}`),
+  consentimientos: () => request('/consentimientos'),
+  historialConsentimientos: () => request('/consentimientos/historial'),
+  guardarConsentimientos: (version, items, origen = 'app') =>
+    request('/consentimientos', { method: 'POST', body: { version, items, origen } }),
+
+  // Filtros opcionales (los resuelve el servidor, así cubren TODO el historial y no solo lo cargado):
+  // { porRevisar, q, categoria, tipo, cuentaId, desde, hasta } (fechas AAAA-MM-DD).
+  movimientos: (limit = 100, offset = 0, { porRevisar = false, q, categoria, tipo, cuentaId, desde, hasta } = {}) => {
+    const extra = new URLSearchParams()
+    if (q) extra.set('q', q)
+    if (categoria) extra.set('categoria', categoria)
+    if (tipo) extra.set('tipo', tipo)
+    if (cuentaId) extra.set('cuenta_id', cuentaId)
+    if (desde) extra.set('desde', desde)
+    if (hasta) extra.set('hasta', `${hasta}T23:59:59`) // incluye todo el día "hasta"
+    const resto = extra.toString()
+    return request(
+      `/movimientos?limit=${limit}&offset=${offset}${porRevisar ? '&por_revisar=true' : ''}${resto ? `&${resto}` : ''}`
+    )
+  },
+  // Cuántos OTROS movimientos son del mismo comercio (misma huella): "Aplicar a los 12 anteriores".
+  similaresConteo: (descripcion, excluirId) =>
+    request(
+      `/movimientos/similares/conteo?${new URLSearchParams({ descripcion, ...(excluirId ? { excluir_id: excluirId } : {}) })}`
+    ),
+  moverMovimientosMasivo: (movimientoIds, cuentaId) =>
+    request('/movimientos/mover-masivo', {
+      method: 'POST',
+      body: { movimiento_ids: movimientoIds, cuenta_id: cuentaId },
+    }),
+  eliminarMovimientosMasivo: (movimientoIds) =>
+    request('/movimientos/eliminar-masivo', { method: 'POST', body: { movimiento_ids: movimientoIds } }),
+  conteoPorRevisar: () => request('/movimientos/por-revisar/conteo'),
+  // Bandeja "¿son tuyos?": movimientos que llegaron solos (Wallet, atajos) sin confirmar.
+  movimientosPorConfirmar: () => request('/movimientos/por-confirmar'),
+  // Pago de prueba del asistente de instalación: usa la API key, igual que el Atajo real,
+  // para comprobar de punta a punta que la clave y la conexión funcionan.
+  pagoDePrueba: (apiKey) =>
+    request('/movimientos/rapido', {
+      method: 'POST',
+      auth: false,
+      headers: { 'X-Api-Key': apiKey },
+      body: { comercio: 'Pago de prueba CuadraMe', monto: '1.000', tarjeta: 'Prueba CuadraMe', moneda: 'COP', fuente: 'wallet' },
+    }),
+  // Prueba del "registro al cerrar la app": igual que el Atajo (sin comercio, fuente cierre_app).
+  registroRapidoDePrueba: (apiKey) =>
+    request('/movimientos/rapido', {
+      method: 'POST',
+      auth: false,
+      headers: { 'X-Api-Key': apiKey },
+      body: { tipo: 'gasto', monto: '1.000', descripcion: 'Prueba de registro rápido', fuente: 'cierre_app' },
+    }),
+  recordatorioDiario: () => request('/perfil/recordatorio-diario'),
+  actualizarRecordatorioDiario: (activo) =>
+    request('/perfil/recordatorio-diario', { method: 'PUT', body: { activo } }),
+  confirmarCategorias: (movimientoIds) =>
+    request('/movimientos/confirmar-categorias', {
+      method: 'POST',
+      body: { movimiento_ids: movimientoIds ?? null },
+    }),
+  recategorizarComercio: (id, data) =>
+    request(`/movimientos/${id}/recategorizar-comercio`, { method: 'POST', body: data }),
   movimiento: (id) => request(`/movimientos/${id}`),
   editarMovimiento: (id, data) => request(`/movimientos/${id}`, { method: 'PUT', body: data }),
   crearTransferencia: (data) => request('/movimientos/transferencia', { method: 'POST', body: data }),
@@ -68,6 +303,12 @@ export const api = {
       body: { presupuesto_origen_id: origenId, presupuesto_destino_id: destinoId, monto },
     }),
   disponibleHoy: () => request('/presupuestos/disponible-hoy'),
+  proyeccionPresupuestos: () => request('/planificacion/proyeccion'),
+  configPlanificacion: () => request('/planificacion/config'),
+  guardarConfigPlanificacion: (data) => request('/planificacion/config', { method: 'PUT', body: data }),
+  distribuirIngreso: (monto) => request('/planificacion/distribuir-ingreso', { method: 'POST', body: { monto } }),
+  planMeta: (data) => request('/planificacion/plan-meta', { method: 'POST', body: data }),
+  descomposicionPatrimonio: () => request('/planificacion/patrimonio-descomposicion'),
   enMiBolsillo: () => request('/presupuestos/en-mi-bolsillo'),
 
   reporteMensual: (opts = {}) => {
@@ -108,7 +349,19 @@ export const api = {
   pagarDeuda: (id, montoPagado, crearMovimiento = true) =>
     request(`/deudas/${id}/pagar`, { method: 'POST', body: { monto_pagado: montoPagado, crear_movimiento: crearMovimiento } }),
   eliminarDeuda: (id) => request(`/deudas/${id}`, { method: 'DELETE' }),
+  estrategiaDeudas: (extra = 0) => request(`/deudas/estrategia?extra=${encodeURIComponent(extra)}`),
 
+  patrimonio: () => request('/patrimonio'),
+  crearActivo: (data) => request('/patrimonio/activos', { method: 'POST', body: data }),
+  editarActivo: (id, data) => request(`/patrimonio/activos/${id}`, { method: 'PUT', body: data }),
+  eliminarActivo: (id) => request(`/patrimonio/activos/${id}`, { method: 'DELETE' }),
+  registrarValorActivo: (id, valor, fecha) =>
+    request(`/patrimonio/activos/${id}/valor`, { method: 'POST', body: { valor, fecha } }),
+  registrarFlujoActivo: (id, monto, fecha, nota = '') =>
+    request(`/patrimonio/activos/${id}/flujos`, { method: 'POST', body: { monto, fecha, nota } }),
+
+  aplicarExtractoTarjeta: (cuentaId, datos) =>
+    request(`/tarjetas/${cuentaId}/aplicar-extracto`, { method: 'POST', body: datos }),
   procesarExtracto: (pdfBase64, cuentaId, password = '') =>
     request('/conciliacion/procesar', {
       method: 'POST',
@@ -116,10 +369,11 @@ export const api = {
     }),
   historialExtractos: () => request('/conciliacion/historial'),
   obtenerReviewExtracto: (id) => request(`/conciliacion/historial/${id}`),
-  importarFaltantes: (id, fingerprints, categorias) =>
+  // `aprender` (opcional): { recordar: [fingerprint], aplicar_anteriores: [fingerprint] }
+  importarFaltantes: (id, fingerprints, categorias, aprender) =>
     request(`/conciliacion/historial/${id}/importar`, {
       method: 'POST',
-      body: { fingerprints, categorias },
+      body: aprender ? { fingerprints, categorias, ...aprender } : { fingerprints, categorias },
     }),
   eliminarHistorialExtracto: (id) => request(`/conciliacion/historial/${id}`, { method: 'DELETE' }),
 
@@ -127,7 +381,9 @@ export const api = {
     request(`/categorias${incluirInactivas ? '?incluir_inactivas=true' : ''}`),
   crearCategoria: (data) => request('/categorias', { method: 'POST', body: data }),
   editarCategoria: (id, data) => request(`/categorias/${id}`, { method: 'PUT', body: data }),
-  eliminarCategoria: (id) => request(`/categorias/${id}`, { method: 'DELETE' }),
+  eliminarCategoria: (id, moverA) =>
+    request(`/categorias/${id}${moverA ? '?mover_a=' + encodeURIComponent(moverA) : ''}`, { method: 'DELETE' }),
+  reordenarCategorias: (ids) => request('/categorias/orden', { method: 'PUT', body: { ids } }),
 
   eliminarMiCuenta: () => request('/perfil/eliminar-cuenta', { method: 'POST', body: { confirmacion: 'ELIMINAR' } }),
   apiKey: () => request('/perfil/api-key'),
@@ -137,18 +393,49 @@ export const api = {
     request('/perfil/confianza-autoimport', { method: 'PUT', body: { confianza_autoimport: valor } }),
 
   gmailEstado: () => request('/correos/gmail/estado'),
-  gmailConectar: () => request('/correos/gmail/conectar'),
+  gmailConectar: () => request('/correos/gmail/conectar', { sinCache: true }), // URL de OAuth con estado único
   gmailDesconectar: () => request('/correos/gmail/desconectar', { method: 'POST' }),
   gmailEtiqueta: (etiqueta) => request(`/correos/gmail/etiqueta?etiqueta=${encodeURIComponent(etiqueta)}`, { method: 'POST' }),
-  sincronizarCorreos: () => request('/correos/sincronizar', { method: 'POST' }),
+  // params: { completa: true } fuerza la ventana larga (90 días); cada llamada procesa un lote.
+  sincronizarCorreos: (params) =>
+    request(`/correos/sincronizar${params?.completa ? '?completa=true' : ''}`, { method: 'POST' }),
+  correosLista: (filtro = 'nuevos', offset = 0, limite = 30) =>
+    request(`/correos/lista?filtro=${filtro}&limite=${limite}&offset=${offset}`),
+  conexionesEstado: () => request('/conexiones/estado'),
+  // Pantalla Sincronización: grilla cuentas x meses, tareas y cola de categorías por preguntar.
+  // `hasta` ('YYYY-MM') desplaza la ventana de meses; el backend actual la ignora (siempre los últimos 6).
+  sincronizacionEstado: (hasta) => request(`/sincronizacion/estado${hasta ? `?hasta=${hasta}` : ''}`),
+  sincronizacionPorCategorizar: (offset = 0, limite = 10) =>
+    request(`/sincronizacion/por-categorizar?limite=${limite}&offset=${offset}`),
   correosPendientes: () => request('/correos/pendientes'),
   editarCorreo: (id, data) => request(`/correos/${id}`, { method: 'PATCH', body: data }),
-  aprobarCorreo: (id, cuentaId) => request(`/correos/${id}/aprobar`, { method: 'POST', body: { cuenta_id: cuentaId } }),
+  aprobarCorreo: (id, cuentaId, extra = {}) => request(`/correos/${id}/aprobar`, { method: 'POST', body: { cuenta_id: cuentaId, ...extra } }),
   descartarCorreo: (id) => request(`/correos/${id}/descartar`, { method: 'POST' }),
+  extractosCorreo: (estado, offset = 0, limite = 50) =>
+    request(`/correos/extractos?limite=${limite}&offset=${offset}${estado ? `&estado=${estado}` : ''}`),
+  conciliarExtractoCorreo: (id, cuentaId) =>
+    request(`/correos/extractos/${id}/conciliar`, { method: 'POST', body: { cuenta_id: cuentaId } }),
+  descartarExtractoCorreo: (id) => request(`/correos/extractos/${id}/descartar`, { method: 'POST' }),
+  clavePdfEstado: () => request('/correos/clave-pdf'),
+  guardarClavePdf: (clave) => request('/correos/clave-pdf', { method: 'PUT', body: { clave } }),
+  borrarClavePdf: () => request('/correos/clave-pdf', { method: 'DELETE' }),
 
-  resumenSemanal: () => request('/insights/resumen-semanal'),
+  resumenSemanal: (desde, hasta) =>
+    request(`/insights/resumen-semanal${desde && hasta ? `?desde=${desde}&hasta=${hasta}` : ''}`),
+  // Informe "en qué gasto": p = { periodo, desde, hasta, mes }
+  informeGasto: (p = {}) => request(`/informes/gasto?${new URLSearchParams(limpiar(p)).toString()}`),
+  informeMovimientos: (p = {}) => request(`/informes/gasto/movimientos?${new URLSearchParams(limpiar(p)).toString()}`),
+  informeMeses: () => request('/informes/meses'),
+  gastoDiario: (desde, hasta) =>
+    request(`/informes/diario${desde && hasta ? `?desde=${desde}&hasta=${hasta}` : ''}`),
   edadDelDinero: () => request('/insights/edad-del-dinero'),
+  saludFinanciera: () => request('/insights/salud-financiera'),
+  wrapped: (mes) => request(`/reportes/wrapped${mes ? `?mes=${mes}` : ''}`),
   alertasProactivas: () => request('/insights/alertas-proactivas'),
+  asistenteSugerencias: () => request('/asistente/sugerencias'),
+  asistenteMensaje: (texto) => request('/asistente/mensaje', { method: 'POST', body: { texto } }),
+  asistenteConfirmarMovimiento: (data) => request('/asistente/confirmar/movimiento', { method: 'POST', body: data }),
+  asistenteConfirmarPlan: (data) => request('/asistente/confirmar/plan', { method: 'POST', body: data }),
   preguntar: (pregunta) => request('/insights/preguntar', { method: 'POST', body: { pregunta } }),
 
   pushPublicKey: () => request('/push/vapid-public-key', { auth: false }),
@@ -173,6 +460,10 @@ export const api = {
   reglasCategoria: () => request('/reglas-categoria'),
   crearReglaCategoria: (data) => request('/reglas-categoria', { method: 'POST', body: data }),
   eliminarReglaCategoria: (id) => request(`/reglas-categoria/${id}`, { method: 'DELETE' }),
+  // Aprendizaje: guarda la regla del comercio de una descripción (una por huella) y, si se pide, recategoriza los anteriores.
+  aprenderRegla: (data) => request('/reglas-categoria/aprender', { method: 'POST', body: data }),
+  vocabularioCategorias: () => request('/categorias/vocabulario'),
+  explicarCategoria: (q) => request(`/categorias/explicar?q=${encodeURIComponent(q)}`),
 
   flujoCajaFuturo: (meses = 3) => request(`/reportes/flujo-caja-futuro?meses=${meses}`),
 
@@ -180,4 +471,47 @@ export const api = {
   nuevaPartidaAhorcado: () => request('/ahorcado/nueva-partida', { method: 'POST' }),
   adivinarLetraAhorcado: (partidaId, letra) =>
     request(`/ahorcado/${partidaId}/adivinar`, { method: 'POST', body: { letra } }),
+
+  // Gastos compartidos (cuentas con amigos)
+  contactosGasto: () => request('/gastos-compartidos/contactos'),
+  crearContactoGasto: (data) => request('/gastos-compartidos/contactos', { method: 'POST', body: data }),
+  eliminarContactoGasto: (id) => request(`/gastos-compartidos/contactos/${id}`, { method: 'DELETE' }),
+  gruposGasto: () => request('/gastos-compartidos/grupos'),
+  crearGrupoGasto: (data) => request('/gastos-compartidos/grupos', { method: 'POST', body: data }),
+  eliminarGrupoGasto: (id) => request(`/gastos-compartidos/grupos/${id}`, { method: 'DELETE' }),
+  calcularDivision: (data) => request('/gastos-compartidos/calcular', { method: 'POST', body: data }),
+  crearGastoCompartido: (data) => request('/gastos-compartidos', { method: 'POST', body: data }),
+  gastosCompartidos: (grupoId) => request(`/gastos-compartidos${grupoId ? `?grupo_id=${grupoId}` : ''}`),
+  eliminarGastoCompartido: (id) => request(`/gastos-compartidos/${id}`, { method: 'DELETE' }),
+  saldosGasto: (grupoId) => request(`/gastos-compartidos/saldos${grupoId ? `?grupo_id=${grupoId}` : ''}`),
+  registrarPagoGasto: (data) => request('/gastos-compartidos/liquidaciones', { method: 'POST', body: data }),
+
+  // Foto de factura (la IA solo sugiere; nada se guarda hasta que el usuario confirme)
+  escanearFactura: (imagenBase64, mime) =>
+    request('/facturas/escanear', { method: 'POST', body: { imagen_base64: imagenBase64, mime } }),
+
+  // Importar CSV / Excel: la vista previa NO guarda nada; solo /confirmar crea movimientos
+  importarVistaPrevia: (data) => request('/importar/vista-previa', { method: 'POST', body: data }),
+  importarConfirmar: (data) => request('/importar/confirmar', { method: 'POST', body: data }),
+
+  // Impuestos Colombia (informativo)
+  impuestosResumen: (anio) => request(`/impuestos/resumen${anio ? `?anio=${anio}` : ''}`),
+  impuestosAjustes: (cuentaExentaId) =>
+    request('/impuestos/ajustes', { method: 'PUT', body: { cuenta_exenta_gmf_id: cuentaExentaId || null } }),
+  impuestosMarcar: (movimientoId, data) =>
+    request(`/impuestos/marcas/${movimientoId}`, { method: 'PUT', body: data }),
+  impuestosQuitarMarca: (movimientoId) => request(`/impuestos/marcas/${movimientoId}`, { method: 'DELETE' }),
+  impuestosExcel: (anio) => descargarArchivo(`/impuestos/exportar.xlsx?anio=${anio}`, `cuadrame_renta_${anio}.xlsx`),
+
+  // Cierre de mes
+  cierresMes: () => request('/cierre-mes'),
+  // 404 = aún no hay cierre de ese mes (estado normal): se devuelve null en vez de lanzar.
+  cierreMes: (mes) =>
+    request(`/cierre-mes/${mes}`).catch((e) => {
+      if (e?.status === 404) return null
+      throw e
+    }),
+  generarCierreMes: (mes) => request(`/cierre-mes/${mes}/generar`, { method: 'POST' }),
+  cierrePreferencias: () => request('/cierre-mes/preferencias'),
+  guardarCierrePreferencias: (correo) => request('/cierre-mes/preferencias', { method: 'PUT', body: { correo } }),
 }

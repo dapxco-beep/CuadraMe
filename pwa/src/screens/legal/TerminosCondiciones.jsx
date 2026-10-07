@@ -1,20 +1,20 @@
-import { useNavigate } from 'react-router-dom'
+import { useVolver } from '../../lib/useVolver'
 import { ArrowLeft } from 'lucide-react'
 
 export default function TerminosCondiciones() {
-  const navigate = useNavigate()
+  const volver = useVolver('/perfil')
 
   return (
     <div className="flex-1 overflow-y-auto pb-10">
-      <header className="px-6 pt-14 pb-2 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Términos y Condiciones</h1>
       </header>
 
       <div className="px-6 mt-4 text-sm leading-relaxed text-ink space-y-5">
-        <p className="text-xs text-ink-soft">Última actualización: 30 de septiembre de 2026</p>
+        <p className="text-xs text-ink-soft">Versión 1.1 (borrador) · Última actualización: 3 de octubre de 2026</p>
 
         <section>
           <h2 className="font-semibold mb-1.5">1. Quiénes somos</h2>
@@ -90,6 +90,28 @@ export default function TerminosCondiciones() {
             Actualmente todas las funciones de CuadraMe están disponibles sin costo. Si en el futuro se
             introduce un plan de pago, se te informará con anticipación y de forma clara antes de
             cualquier cobro, y estos Términos se actualizarán en consecuencia.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="font-semibold mb-1.5">Funciones nuevas y su alcance (octubre de 2026)</h2>
+          <p>
+            Importación de archivos, lectura de correos y extractos, fotos de facturas y asistente de IA son ayudas que proponen información: la categoría, el monto o la respuesta pueden contener errores. Tú revisas y confirmas antes de guardar, y eres responsable de la información que registras.
+          </p>
+          <p>
+            Tarjetas de crédito y transferencias: para los reportes, el pago de una tarjeta y los traslados entre tus propias cuentas no se cuentan como gasto ni ingreso, para no duplicar las compras ya registradas. Los saldos de tus cuentas sí reflejan todos los movimientos.
+          </p>
+          <p>
+            Impuestos: el contador de 4x1000 y la marca de gastos posiblemente deducibles son estimaciones informativas. CuadraMe no presta asesoría tributaria, no garantiza que un gasto sea deducible ni calcula tu impuesto de renta; confirma con un contador y con la DIAN.
+          </p>
+          <p>
+            Gastos compartidos: al registrar contactos de terceros declaras que tienes derecho a hacerlo para dividir gastos. Los saldos entre personas son un registro de apoyo; CuadraMe no cobra ni transfiere dinero.
+          </p>
+          <p>
+            Cierre de mes y patrimonio: son resúmenes automáticos con base en lo que registraste; no son recomendaciones de inversión.
+          </p>
+          <p>
+            Todas las funciones son hoy gratuitas; si esto cambia, te lo informaremos antes.
           </p>
         </section>
 

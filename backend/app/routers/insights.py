@@ -3,14 +3,22 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from fastapi import HTTPException
+
+from app import asistente as ia
+from app import asistente_consultas as consultas
+from app import informe as inf
+from app.asistente_datos import cargar_datos
 from app.limites import verificar_limite
 from app.utiles import ahora_co
 from app.alertas_proactivas import detectar_cobros_duplicados, detectar_comisiones
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import cuentas_ids_accesibles
+from app.contabilidad import tipos_cuenta_de, tipos_efectivos
 from app.database import get_db
 from app.edad_dinero import calcular_edad_dinero, mensaje_edad, tendencia_edad
 from app.fx import convertir_a_cop
+from app.salud_financiera import calcular_salud_financiera
 from app.insights import detectar_anomalias, generar_resumen_semanal, responder_pregunta
 from app.models import Cuenta, Deuda, Meta, Movimiento, Presupuesto
 from app.schemas import (
@@ -26,25 +34,39 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 
 @router.get("/resumen-semanal", response_model=ResumenSemanal)
 def resumen_semanal(
-    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+    desde: str | None = None,
+    hasta: str | None = None,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
 ):
+    """Por defecto, los últimos 7 días. Con `desde`/`hasta` (AAAA-MM-DD, ambos
+    inclusive) resume cualquier rango personalizado."""
     hoy = ahora_co()
     hace_7_dias = hoy - timedelta(days=7)
+    fin_rango = None
+    etiqueta = None
+    if desde or hasta:
+        try:
+            rango = inf.rango_periodo("rango", hoy, desde or hasta, hasta or desde)
+        except inf.PeriodoInvalido as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        hace_7_dias, fin_rango, etiqueta = rango["desde"], rango["hasta"], rango["etiqueta"]
 
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
     monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()}
     todos = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids_accesibles)).all()
-    semana = [m for m in todos if m.fecha >= hace_7_dias]
+    semana = [m for m in todos if m.fecha >= hace_7_dias and (fin_rango is None or m.fecha < fin_rango)]
 
     def monto_cop(m):
         return convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
 
-    ingresos = sum(monto_cop(m) for m in semana if m.tipo == "income")
-    gastos = sum(monto_cop(m) for m in semana if m.tipo == "expense")
+    te = tipos_efectivos(todos, tipos_cuenta_de(db, ids_accesibles))  # sin pagos de tarjeta ni traslados propios
+    ingresos = sum(monto_cop(m) for m in semana if te[m.id] == "income")
+    gastos = sum(monto_cop(m) for m in semana if te[m.id] == "expense")
 
     categorias: dict[str, float] = {}
     for m in semana:
-        if m.tipo == "expense":
+        if te[m.id] == "expense":
             categorias[m.categoria] = categorias.get(m.categoria, 0) + monto_cop(m)
     top_categorias = sorted(
         ({"categoria": k, "monto": v} for k, v in categorias.items()),
@@ -53,7 +75,7 @@ def resumen_semanal(
     )[:3]
 
     anomalias_raw = detectar_anomalias(
-        [{"categoria": m.categoria, "tipo": m.tipo, "monto": monto_cop(m), "fecha": m.fecha} for m in todos]
+        [{"categoria": m.categoria, "tipo": te[m.id], "monto": monto_cop(m), "fecha": m.fecha} for m in todos]
     )
 
     texto = generar_resumen_semanal({
@@ -61,6 +83,7 @@ def resumen_semanal(
         "gastos": gastos,
         "top_categorias": top_categorias,
         "anomalias": anomalias_raw,
+        "periodo": etiqueta,
     })
 
     return ResumenSemanal(
@@ -70,6 +93,9 @@ def resumen_semanal(
         top_categorias=top_categorias,
         anomalias=anomalias_raw,
         texto=texto,
+        desde=(rango["desde"].date().isoformat() if etiqueta else (hoy - timedelta(days=7)).date().isoformat()),
+        hasta=((rango["hasta"] - timedelta(days=1)).date().isoformat() if etiqueta else hoy.date().isoformat()),
+        etiqueta=etiqueta or "los últimos 7 días",
     )
 
 
@@ -93,13 +119,14 @@ def alertas_proactivas(
     # detectar_cobros_duplicados dos montos iguales en monedas distintas
     # (o el mismo monto en USD vs. su equivalente en COP) no se comparan
     # de forma consistente con el resto de la app.
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
     data = [
         {
             "id": m.id,
             "descripcion": m.descripcion,
             "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP")),
             "fecha": m.fecha,
-            "tipo": m.tipo,
+            "tipo": te[m.id],
         }
         for m in movimientos
     ]
@@ -124,8 +151,9 @@ def edad_del_dinero(
         .filter(Movimiento.cuenta_id.in_(ids_accesibles), Movimiento.fecha >= hace_90_dias)
         .all()
     )
+    te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
     data = [
-        {"fecha": m.fecha, "tipo": m.tipo, "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))}
+        {"fecha": m.fecha, "tipo": te[m.id], "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))}
         for m in movimientos
     ]
 
@@ -148,6 +176,27 @@ def preguntar(
     movimientos, para no exceder el contexto del modelo)."""
     # Cada pregunta cuesta una llamada a la IA: tope por usuario.
     verificar_limite(f"preguntar:{usuario.id}", 20, 3600, "Llegaste al límite de preguntas por hora. Intenta más tarde.")
+
+    # 1) Las preguntas típicas (en qué gasté más, cuánto gasté en X, comparar
+    #    meses, presupuesto...) se resuelven con CÁLCULO del backend, el mismo
+    #    del asistente nuevo y con la regla contable: cifras reales y periodo explícito.
+    from app.routers.asistente import _responder_rapida
+
+    hoy = ahora_co()
+    texto_seguro = ia.redactar_secretos(data.pregunta).replace("<<<", " ").replace(">>>", " ").strip()
+    intento = ia.detectar_intencion(texto_seguro, hoy)
+    if intento["intencion"] in ("consulta", "rapida"):
+        d = cargar_datos(db, usuario.id, hoy)
+        r = (consultas.responder_consulta(intento, d) if intento["intencion"] == "consulta"
+             else _responder_rapida(intento["id"], d, intento.get("periodo")))
+        return PreguntarResponse(respuesta=r["texto"], fuentes=r.get("fuentes", []),
+                                 sugerencias=r.get("sugerencias", []))
+    if intento["intencion"] in ("comprar", "ahorro", "deudas", "registrar"):
+        return PreguntarResponse(
+            respuesta="Eso lo resuelvo mejor en CuadraMe AI (Inicio > Pregúntale a CuadraMe AI): simula, "
+                      "arma el plan y te deja confirmar antes de guardar nada.")
+
+    # 2) Pregunta abierta: IA sobre los últimos 90 días (si no hay IA, se sugieren preguntas útiles).
     hace_90_dias = ahora_co() - timedelta(days=90)
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
 
@@ -181,4 +230,72 @@ def preguntar(
     }
 
     respuesta = responder_pregunta(data.pregunta, contexto)
+    if not respuesta:
+        return PreguntarResponse(respuesta=consultas.texto_no_entendi(), sugerencias=consultas.SUGERENCIAS_UTILES)
     return PreguntarResponse(respuesta=respuesta)
+
+
+@router.get("/salud-financiera")
+def salud_financiera(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    """Puntaje 0-100 con desglose. Aquí solo se juntan los datos (todo en COP);
+    la fórmula vive en app/salud_financiera.py como función pura."""
+    ahora = ahora_co()
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()
+    monedas = {c.id: c.moneda for c in cuentas}
+    # El colchón son los saldos líquidos: una cuenta de crédito no es plata propia.
+    saldo_liquido = sum(
+        convertir_a_cop(c.saldo, c.moneda) for c in cuentas if c.tipo in ("ahorro", "efectivo")
+    )
+
+    movs = (
+        db.query(Movimiento)
+        .filter(Movimiento.cuenta_id.in_(ids_accesibles), Movimiento.fecha >= ahora - timedelta(days=90))
+        .all()
+    )
+
+    def cop(m):
+        return convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
+
+    te = tipos_efectivos(movs, tipos_cuenta_de(db, ids_accesibles))
+    corte_30 = ahora - timedelta(days=30)
+    ult30 = [m for m in movs if m.fecha >= corte_30]
+    ingresos_30 = sum(cop(m) for m in ult30 if te[m.id] == "income")
+    gastos_30 = sum(cop(m) for m in ult30 if te[m.id] == "expense")
+
+    # Gasto mensual típico: gastos de hasta 90 días prorrateados a 30. Si la
+    # persona es nueva se usa solo el tiempo que lleva (mínimo 30 días) para no
+    # subestimar su gasto dividiendo entre meses vacíos.
+    gastos_90 = sum(cop(m) for m in movs if te[m.id] == "expense")
+    if movs:
+        dias_obs = min(90, max(30, (ahora - min(m.fecha for m in movs)).days + 1))
+    else:
+        dias_obs = 30
+    gasto_mensual = gastos_90 / dias_obs * 30
+
+    deudas = db.query(Deuda).filter(Deuda.usuario_id == usuario.id, Deuda.activa == True).all()  # noqa: E712
+    cuotas = sum(d.cuota_mensual or 0 for d in deudas)
+
+    inicio_mes = ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    gastado_cat: dict[str, float] = {}
+    for m in movs:
+        if te[m.id] == "expense" and m.fecha >= inicio_mes:
+            gastado_cat[m.categoria] = gastado_cat.get(m.categoria, 0) + cop(m)
+    presupuestos = [
+        (p.limite + (p.sobre_ajuste or 0), gastado_cat.get(p.categoria, 0))
+        for p in db.query(Presupuesto).filter(Presupuesto.usuario_id == usuario.id, Presupuesto.activo == True).all()  # noqa: E712
+    ]
+
+    dias_registro = len({m.fecha.date() for m in ult30})
+
+    return calcular_salud_financiera(
+        saldo_liquido=saldo_liquido,
+        gasto_mensual_promedio=gasto_mensual,
+        ingresos_30d=ingresos_30,
+        gastos_30d=gastos_30,
+        cuotas_deuda_mensual=cuotas,
+        presupuestos=presupuestos,
+        dias_con_registro_30d=dias_registro,
+    )

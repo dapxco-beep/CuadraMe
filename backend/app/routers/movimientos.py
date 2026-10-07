@@ -1,27 +1,61 @@
+﻿import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user, get_current_user_by_api_key
+from sqlalchemy import and_, or_
+
+from app.clave_comercio import clave_comercio, huella_en_descripcion
+from app.autocat import (
+    ClasificadorUsuario,
+    ajustar_a_categorias_usuario,
+    aplicar_a_anteriores,
+    guardar_regla_aprendida,
+    datos_auto,
+    movimientos_confirmados,
+    origen_de,
+    patron_de_comercio,
+)
 from app.classifier import aplicar_reglas, build_model, classify
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, cuentas_ids_accesibles, puede_editar_cuenta
+from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_APORTE_META, FUENTE_IMPORTADO_SIN_SALDO, delta_saldo, es_pago_tarjeta
 from app.database import get_db
+from app.fx import convertir_a_cop
 from app.limites import verificar_limite
-from app.models import Cuenta, Movimiento, ReglaCategoria
+from app.wallet import (
+    FUENTES_POR_CONFIRMAR,
+    ORIGEN_ATAJO,
+    ORIGEN_CIERRE_APP,
+    ORIGEN_WALLET,
+    fecha_razonable,
+    formato_cop,
+    coincide_cuenta,
+    mapear_cuenta,
+    parse_fecha,
+)
+from app.models import Categoria, Cuenta, Meta, Movimiento, ReglaCategoria
 from app.rachas import registrar_actividad_hoy
 from app.schemas import (
     ClasificarRequest,
     ClasificarResponse,
+    ConfirmarCategoriasRequest,
+    EliminarMasivoRequest,
+    MasivoResponse,
+    MoverMasivoRequest,
     MovimientoCreate,
     MovimientoOut,
     MovimientoPorVozCreate,
     MovimientoPorVozResponse,
     MovimientoRapidoCreate,
+    MovimientoRapidoOut,
     MovimientoUpdate,
+    RecategorizarComercioRequest,
     RecategorizarMasivoRequest,
     RecategorizarMasivoResponse,
     TransferenciaCreate,
@@ -36,15 +70,27 @@ router = APIRouter(prefix="/movimientos", tags=["movimientos"])
 # "transfer" sin efecto en saldo) por esta fuente.
 FUENTE_TRANSFERENCIA = "transferencia_interna"
 
+# "Por revisar": categorizados automáticamente sin confirmar, o en 'Otros'.
+_PENDIENTE_REVISION = or_(
+    Movimiento.cat_confirmada.is_(False),
+    and_(Movimiento.categoria == "Otros", Movimiento.fuente != FUENTE_TRANSFERENCIA),
+)
+
 
 def _delta_saldo(tipo: str, monto: float) -> float:
-    """Cuánto cambia el saldo de la cuenta por un movimiento. 'transfer'
-    importado de un extracto no mueve saldo (el banco ya lo reflejó)."""
+    """Cuánto cambia el saldo por (tipo, monto): income suma, expense resta. Solo un 'transfer'
+    heredado sin dirección vale 0; los traslados de la app se resuelven en _delta_de (notas)."""
     if tipo == "income":
         return monto
     if tipo == "expense":
         return -monto
     return 0.0
+
+
+def _delta_de(mov: Movimiento) -> float:
+    """Como _delta_saldo pero respetando los importados 'sin saldo': nunca tocaron
+    el saldo al crearse, así que editarlos o borrarlos tampoco debe tocarlo."""
+    return delta_saldo(mov)
 
 
 def _fecha_o_400(valor: str, campo: str) -> datetime:
@@ -66,6 +112,7 @@ def listar_movimientos(
     hasta: str | None = None,
     monto_min: float | None = None,
     monto_max: float | None = None,
+    por_revisar: bool = False,
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
@@ -90,8 +137,136 @@ def listar_movimientos(
         query = query.filter(Movimiento.monto >= monto_min)
     if monto_max is not None:
         query = query.filter(Movimiento.monto <= monto_max)
+    if por_revisar:
+        query = query.filter(_PENDIENTE_REVISION)
 
     return query.order_by(Movimiento.fecha.desc()).offset(offset).limit(limit).all()
+
+
+@router.get("/por-revisar/conteo")
+def conteo_por_revisar(
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Cuántos movimientos esperan revisión: los que la app categorizó sola y
+    nadie confirmó, más los que quedaron en 'Otros'. Los traslados propios no cuentan."""
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    base = db.query(Movimiento).filter(
+        Movimiento.cuenta_id.in_(ids_accesibles), Movimiento.fuente != FUENTE_TRANSFERENCIA
+    )
+    auto = base.filter(Movimiento.cat_confirmada.is_(False)).count()
+    otros = base.filter(Movimiento.categoria == "Otros", Movimiento.cat_confirmada.isnot(False)).count()
+    return {"auto": auto, "otros": otros, "total": auto + otros}
+
+
+@router.get("/por-confirmar", response_model=list[MovimientoOut])
+def listar_por_confirmar(
+    dias: int = Query(14, ge=1, le=60),
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Bandeja '¿son tuyos?': movimientos que llegaron solos (Wallet, atajos,
+    SMS) y el usuario aún no confirmó. Ya cuentan en los saldos; confirmar los
+    deja como están y descartar (DELETE) revierte el saldo."""
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    desde = ahora_co() - timedelta(days=dias)
+    return (
+        db.query(Movimiento)
+        .filter(
+            Movimiento.cuenta_id.in_(ids_accesibles),
+            Movimiento.cat_confirmada.is_(False),
+            Movimiento.fuente.in_(FUENTES_POR_CONFIRMAR),
+            Movimiento.fecha >= desde,
+        )
+        .order_by(Movimiento.fecha.desc())
+        .limit(100)
+        .all()
+    )
+
+
+@router.post("/confirmar-categorias")
+def confirmar_categorias(
+    data: ConfirmarCategoriasRequest,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Confirma con un toque la categoría que puso la app (uno, varios o todos
+    los pendientes). No cambia la categoría: solo deja de ser 'Auto'."""
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    q = db.query(Movimiento).filter(
+        Movimiento.cuenta_id.in_(ids_accesibles), Movimiento.cat_confirmada.is_(False)
+    )
+    if data.movimiento_ids is not None:
+        q = q.filter(Movimiento.id.in_(data.movimiento_ids))
+    n = q.update({"cat_confirmada": True}, synchronize_session=False)
+    db.commit()
+    return {"ok": True, "confirmados": n}
+
+
+@router.post("/{movimiento_id}/recategorizar-comercio")
+def recategorizar_comercio(
+    movimiento_id: str,
+    data: RecategorizarComercioRequest,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Cambia la categoría de este movimiento y, si `aplicar_a_todos`, crea una
+    regla de categoría para el comercio y la aplica a todos los movimientos tuyos
+    que lo contengan (los confirma). Las compras futuras de ese comercio quedan
+    categorizadas 'por tu regla'."""
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    mov = (
+        db.query(Movimiento)
+        .filter(Movimiento.id == movimiento_id, Movimiento.cuenta_id.in_(ids_accesibles))
+        .first()
+    )
+    if not mov:
+        raise HTTPException(status_code=404, detail="Movimiento no encontrado")
+    cuenta = cuenta_accesible(db, usuario.id, mov.cuenta_id)
+    if not cuenta or not puede_editar_cuenta(db, usuario.id, cuenta):
+        raise HTTPException(status_code=403, detail="No tienes permiso para editar esta cuenta")
+
+    categoria = data.categoria.strip()
+    existe = db.query(Categoria.id).filter(Categoria.usuario_id == usuario.id).first()
+    if existe and not db.query(Categoria.id).filter(
+        Categoria.usuario_id == usuario.id, Categoria.nombre == categoria
+    ).first():
+        raise HTTPException(status_code=400, detail="Esa categoría no existe en tu lista")
+
+    mov.categoria = categoria
+    mov.cat_confirmada = True
+    mov.cat_origen = None
+    actualizados = 1
+    patron = None
+    regla_omitida = None
+
+    if data.aplicar_a_todos:
+        origen_regla = (data.patron or "").strip() or mov.descripcion
+        r = guardar_regla_aprendida(
+            db, usuario.id, origen_regla, categoria, confirmar_peligrosa=data.confirmar_peligrosa
+        )
+        patron = r["huella"]
+        if r["guardada"]:
+            actualizados += aplicar_a_anteriores(db, usuario.id, r["huella"], categoria, {mov.id})
+        else:
+            regla_omitida = r["motivo"]  # solo este movimiento; la regla pide confirmación
+
+    db.commit()
+    return {"ok": True, "actualizados": actualizados, "patron": patron, "regla_omitida": regla_omitida}
+
+
+# Va antes de "/{movimiento_id}" para que no la confunda con un id.
+@router.get("/cuentas-rapido", response_model=list[str])
+def cuentas_para_atajo(
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user_by_api_key),
+):
+    """Nombres de las cuentas del usuario, autenticado por API key, para que un Atajo
+    de iPhone las muestre en 'Elegir de la lista' en vez de llevar un nombre fijo.
+    Responde una lista simple de textos: Atajos la entiende directo como lista."""
+    verificar_limite(f"cuentas-rapido:{usuario.id}", 60, 3600, "Demasiadas consultas seguidas. Intenta en un rato.")
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).order_by(Cuenta.nombre).all()
+    return [c.nombre for c in cuentas]
 
 
 @router.get("/{movimiento_id}", response_model=MovimientoOut)
@@ -123,9 +298,12 @@ def crear_movimiento(
     cuenta = bloquear_cuenta(db, cuenta.id)  # saldo consistente si llegan dos registros a la vez
 
     categoria = data.categoria
+    auto = datos_auto(None)
     if not categoria:
         resultado = _clasificar(db, usuario.id, data.descripcion)
         categoria = resultado["categoria"] if resultado else "Otros"
+        if resultado:
+            auto = datos_auto(origen_de(resultado.get("fuente")))
 
     movimiento = Movimiento(
         usuario_id=usuario.id,
@@ -137,6 +315,7 @@ def crear_movimiento(
         fecha=data.fecha or ahora_co(),
         notas=data.notas or "",
         fuente="manual",
+        **auto,
     )
     db.add(movimiento)
     cuenta.saldo += _delta_saldo(data.tipo, data.monto)
@@ -218,6 +397,15 @@ def editar_movimiento(
             detail="Las transferencias entre cuentas no se editan: elimínala y créala de nuevo",
         )
 
+    if mov.fuente == FUENTE_APORTE_META:
+        # Decisión simple y segura: editarlo desalinearía la meta (su monto_actual
+        # ya sumó este aporte). Para deshacerlo se elimina (eso sí revierte la meta).
+        raise HTTPException(
+            status_code=400,
+            detail="Este movimiento es un aporte a una meta y no se edita: "
+                   "elimínalo para devolver el dinero a la cuenta y descontarlo de la meta",
+        )
+
     cambios = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None}
 
     cuenta_actual = bloquear_cuenta(db, mov.cuenta_id)
@@ -231,12 +419,16 @@ def editar_movimiento(
             raise HTTPException(status_code=404, detail="Cuenta no encontrada")
         cuenta_nueva = bloquear_cuenta(db, destino.id)
 
-    cuenta_actual.saldo -= _delta_saldo(mov.tipo, mov.monto)
+    cuenta_actual.saldo -= _delta_de(mov)
     for campo in ("descripcion", "monto", "tipo", "categoria", "fecha", "notas"):
         if campo in cambios:
             setattr(mov, campo, cambios[campo])
     mov.cuenta_id = cuenta_nueva.id
-    cuenta_nueva.saldo += _delta_saldo(mov.tipo, mov.monto)
+    cuenta_nueva.saldo += _delta_de(mov)
+    if "categoria" in cambios:
+        # El usuario eligió la categoría: deja de ser una suposición de la app.
+        mov.cat_confirmada = True
+        mov.cat_origen = None
 
     db.commit()
     db.refresh(mov)
@@ -271,10 +463,106 @@ def recategorizar_masivo(
         if mov.cuenta_id not in cuentas_editables:
             continue
         mov.categoria = data.categoria
+        mov.cat_confirmada = True
+        mov.cat_origen = None
         actualizados += 1
 
     db.commit()
     return RecategorizarMasivoResponse(ok=True, actualizados=actualizados)
+
+
+@router.post("/mover-masivo", response_model=MasivoResponse)
+def mover_masivo(
+    data: MoverMasivoRequest,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Pasa varios movimientos a otra cuenta y corrige los saldos de ambas (como editar uno
+    por uno, pero en una sola transacción). Se omiten las transferencias internas, los aportes
+    a metas y los de una cuenta en otra moneda que la de destino."""
+    destino = cuenta_accesible(db, usuario.id, data.cuenta_id)
+    if not destino or not puede_editar_cuenta(db, usuario.id, destino):
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    pedidos = set(data.movimiento_ids)
+    movs = (
+        db.query(Movimiento)
+        .filter(Movimiento.id.in_(pedidos), Movimiento.cuenta_id.in_(ids_accesibles))
+        .all()
+    )
+    # Se bloquean todas las cuentas implicadas siempre en el mismo orden (por id).
+    cuentas = {cid: bloquear_cuenta(db, cid) for cid in sorted({m.cuenta_id for m in movs} | {destino.id})}
+    destino = cuentas[destino.id]
+    actualizados = 0
+    for mov in movs:
+        origen = cuentas.get(mov.cuenta_id)
+        if (
+            mov.fuente in (FUENTE_TRANSFERENCIA, FUENTE_APORTE_META)
+            or mov.cuenta_id == destino.id
+            or not origen
+            or not puede_editar_cuenta(db, usuario.id, origen)
+            or (origen.moneda or "COP") != (destino.moneda or "COP")
+        ):
+            continue
+        origen.saldo -= _delta_de(mov)
+        destino.saldo += _delta_de(mov)
+        mov.cuenta_id = destino.id
+        actualizados += 1
+    db.commit()
+    return MasivoResponse(ok=True, actualizados=actualizados, omitidos=len(pedidos) - actualizados)
+
+
+@router.post("/eliminar-masivo", response_model=MasivoResponse)
+def eliminar_masivo(
+    data: EliminarMasivoRequest,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Elimina varios movimientos y revierte sus saldos (y los aportes a metas) en una sola
+    transacción. Las transferencias internas se omiten: se borran de a una porque afectan
+    dos cuentas. Si falta permiso sobre alguna cuenta, no se borra nada."""
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    pedidos = set(data.movimiento_ids)
+    movs = (
+        db.query(Movimiento)
+        .filter(Movimiento.id.in_(pedidos), Movimiento.cuenta_id.in_(ids_accesibles))
+        .all()
+    )
+    borrables = sorted((m for m in movs if m.fuente != FUENTE_TRANSFERENCIA), key=lambda m: m.cuenta_id)
+    try:
+        for mov in borrables:
+            _borrar_normal(db, usuario, mov)
+    except HTTPException:
+        db.rollback()
+        raise
+    db.commit()
+    return MasivoResponse(ok=True, actualizados=len(borrables), omitidos=len(pedidos) - len(borrables))
+
+
+@router.get("/similares/conteo")
+def conteo_similares(
+    descripcion: str = Query(..., min_length=1, max_length=200),
+    excluir_id: str | None = None,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Cuántos OTROS movimientos tuyos son del mismo comercio (misma huella): sirve para
+    mostrar 'Aplicar a los 12 anteriores' antes de decidir."""
+    huella = clave_comercio(descripcion)
+    if not huella:
+        return {"huella": "", "conteo": 0}
+    ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
+    movs = (
+        db.query(Movimiento.id, Movimiento.descripcion)
+        .filter(
+            Movimiento.cuenta_id.in_(ids_accesibles),
+            Movimiento.tipo != "transfer",
+            Movimiento.fuente != FUENTE_TRANSFERENCIA,
+        )
+        .all()
+    )
+    n = sum(1 for i, d in movs if i != excluir_id and huella_en_descripcion(huella, d or ""))
+    return {"huella": huella, "conteo": n}
 
 
 @router.delete("/{movimiento_id}")
@@ -296,16 +584,39 @@ def eliminar_movimiento(
         _eliminar_transferencia(db, usuario, mov)
         return {"ok": True}
 
+    _borrar_normal(db, usuario, mov)
+    db.commit()
+    return {"ok": True}
+
+
+def _borrar_normal(db: Session, usuario: UsuarioActual, mov: Movimiento) -> None:
+    """Borra un movimiento común y revierte su efecto en la cuenta (y en la meta si era un
+    aporte). Sin commit: quien llama decide cuándo confirmar."""
+    # bloquear_cuenta relee la fila (populate_existing): sin este flush, al borrar varios de la
+    # misma cuenta seguidos se perdería el ajuste de saldo pendiente del anterior.
+    db.flush()
     cuenta = bloquear_cuenta(db, mov.cuenta_id)
     if cuenta and not puede_editar_cuenta(db, usuario.id, cuenta):
         raise HTTPException(status_code=403, detail="No tienes permiso para editar esta cuenta")
 
     if cuenta:
-        cuenta.saldo -= _delta_saldo(mov.tipo, mov.monto)
+        cuenta.saldo -= _delta_de(mov)
+
+    if mov.fuente == FUENTE_APORTE_META and (mov.notas or "").startswith("META:"):
+        # Revierte el aporte: el dinero vuelve a la cuenta (línea de arriba) y se
+        # descuenta de la meta (sin bajar de 0). El cron no re-aporta este mes porque
+        # la meta conserva su marca de "ya aportado" (borrarlo es decisión del usuario).
+        meta = (
+            db.query(Meta)
+            .filter(Meta.id == mov.notas[5:], Meta.usuario_id == mov.usuario_id)
+            .with_for_update()
+            .populate_existing()
+            .first()
+        )
+        if meta:
+            meta.monto_actual = max(0.0, (meta.monto_actual or 0) - mov.monto)
 
     db.delete(mov)
-    db.commit()
-    return {"ok": True}
 
 
 def _eliminar_transferencia(db: Session, usuario: UsuarioActual, mov: Movimiento) -> None:
@@ -325,7 +636,22 @@ def _eliminar_transferencia(db: Session, usuario: UsuarioActual, mov: Movimiento
             raise HTTPException(status_code=403, detail="No tienes permiso para editar las cuentas de esta transferencia")
     for p in patas:
         c = db.query(Cuenta).filter(Cuenta.id == p.cuenta_id).first()
-        sale = (p.notas or "").endswith(":out")
+        notas = p.notas or ""
+        if notas.endswith(":out"):
+            sale = True
+        elif notas.endswith(":in"):
+            sale = False
+        elif p.tipo in ("income", "expense"):
+            # Transferencia antigua sin notas 'TRF:': el tipo dice hacia dónde movió el saldo
+            # (expense = salió de esta cuenta; income = entró). Solo se borra esta pata.
+            sale = p.tipo == "expense"
+        else:
+            db.rollback()
+            raise HTTPException(
+                status_code=400,
+                detail="Esta transferencia antigua no se puede borrar automáticamente: "
+                       "ajusta el saldo de la cuenta a mano y deja el movimiento como está.",
+            )
         c.saldo += p.monto if sale else -p.monto
         db.delete(p)
     db.commit()
@@ -339,24 +665,75 @@ def _registrar_movimiento_rapido(
     descripcion: str,
     cuenta_nombre: str | None,
     fuente: str,
-) -> Movimiento:
+    *,
+    tarjeta: str | None = None,
+    fecha: str | None = None,
+    moneda: str | None = None,
+    origen_auto: str | None = None,
+    detectar_duplicado: bool = False,
+) -> tuple[Movimiento, Cuenta, bool]:
+    """Crea el movimiento de un registro automático y devuelve (movimiento,
+    cuenta, duplicado).
+
+    - La cuenta sale del alias/nombre de la tarjeta (ver wallet.mapear_cuenta).
+    - Con `origen_auto` ('wallet' | 'atajo') el movimiento se crea de inmediato
+      (los saldos quedan bien) pero marcado "por confirmar", con el mismo
+      mecanismo de la categorización automática (cat_confirmada=False).
+    - Con `detectar_duplicado`, el mismo comercio+monto+cuenta dentro de ±2
+      minutos devuelve el movimiento ya existente en vez de crear otro: así
+      un reintento del Atajo no cuenta el pago dos veces."""
     # Estos endpoints se autentican solo con API key: se limita para frenar
     # tanto abusos como un atajo mal configurado que se quede en bucle.
     verificar_limite(f"rapido:{usuario_id}", 120, 3600, "Demasiados registros rápidos seguidos. Intenta en un rato.")
-    cuenta = None
-    if cuenta_nombre:
-        cuenta = (
-            db.query(Cuenta)
-            .filter(Cuenta.usuario_id == usuario_id, Cuenta.nombre.ilike(f"%{cuenta_nombre}%"))
-            .first()
-        )
-    if not cuenta:
-        cuenta = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).first()
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).order_by(Cuenta.nombre).all()
+    cuenta, _como = mapear_cuenta(cuentas, tarjeta, cuenta_nombre, moneda)
     if not cuenta:
         raise HTTPException(status_code=404, detail="El usuario no tiene ninguna cuenta creada")
 
-    resultado = _clasificar(db, usuario_id, descripcion)
+    cuenta = bloquear_cuenta(db, cuenta.id)  # serializa reintentos simultáneos del mismo pago
+    ahora = ahora_co()
+    momento = fecha_razonable(parse_fecha(fecha), ahora)
+
+    notas = ""
+    if tarjeta:
+        notas = f"Tarjeta: {tarjeta[:60]}"
+    moneda_orig = re.sub(r"[^A-Z]", "", (moneda or "").upper())[:3]
+    moneda_cuenta = (cuenta.moneda or "COP").upper()
+    if moneda_orig and moneda_orig != moneda_cuenta:
+        notas = (notas + " · " if notas else "") + f"Original: {monto:g} {moneda_orig}"
+        if moneda_cuenta == "COP":
+            monto = round(convertir_a_cop(monto, moneda_orig), 2)
+
+    es_cierre = origen_auto == ORIGEN_CIERRE_APP
+    nota_usuario = (descripcion or "").strip()
+    if es_cierre and not nota_usuario:
+        descripcion = f"Movimiento en {cuenta.nombre}"
+    if detectar_duplicado:
+        # Cierre de app: el Atajo no trae comercio, así que un reintento se
+        # reconoce por monto+cuenta+tipo en ±1 min. Wallet/atajo: ±2 min y mismo comercio.
+        ventana = timedelta(minutes=1 if es_cierre else 2)
+        filtros = [
+            Movimiento.cuenta_id == cuenta.id,
+            Movimiento.tipo == tipo,
+            Movimiento.monto == monto,
+            Movimiento.fecha >= momento - ventana,
+            Movimiento.fecha <= momento + ventana,
+        ]
+        if es_cierre:
+            filtros.append(Movimiento.fuente == "cierre_app")
+        else:
+            filtros.append(func.lower(Movimiento.descripcion) == descripcion.lower())
+        existente = db.query(Movimiento).filter(*filtros).first()
+        if existente:
+            return existente, cuenta, True
+
+    # Sin nota no hay nada que clasificar: el cierre de app queda en 'Otros'.
+    resultado = None if (es_cierre and not nota_usuario) else _clasificar(db, usuario_id, descripcion)
     categoria = resultado["categoria"] if resultado else "Otros"
+    if origen_auto:
+        auto = {"cat_origen": origen_auto, "cat_confirmada": False}
+    else:
+        auto = datos_auto(origen_de(resultado.get("fuente")) if resultado else None)
 
     movimiento = Movimiento(
         usuario_id=usuario_id,
@@ -365,29 +742,69 @@ def _registrar_movimiento_rapido(
         categoria=categoria,
         tipo=tipo,
         monto=monto,
-        fecha=ahora_co(),
+        fecha=momento,
+        notas=notas,
         fuente=fuente,
+        **auto,
     )
     db.add(movimiento)
-    cuenta = bloquear_cuenta(db, cuenta.id)
     cuenta.saldo += _delta_saldo(tipo, monto)
 
     db.commit()
     db.refresh(movimiento)
     registrar_actividad_hoy(db, usuario_id)
-    return movimiento
+    return movimiento, cuenta, False
 
 
-@router.post("/rapido", response_model=MovimientoOut)
+@router.post("/rapido", response_model=MovimientoRapidoOut)
 def crear_movimiento_rapido(
     data: MovimientoRapidoCreate,
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user_by_api_key),
 ):
     """Registro sin login, autenticado por API key (header X-Api-Key).
-    Pensado para Atajos de iOS / Scriptable / Tasker / reglas de correo."""
-    return _registrar_movimiento_rapido(
-        db, usuario.id, data.monto, data.tipo, data.descripcion, data.cuenta, data.fuente
+    Pensado para el disparador 'Transacción' de Atajos de iOS (Apple Wallet),
+    Tasker y reglas de correo. El movimiento se crea al instante pero queda
+    'por confirmar': la app le pregunta al usuario si es suyo. Un reintento del
+    mismo pago (±2 min) responde 200 con el movimiento que ya existía."""
+    es_cierre = data.fuente == "cierre_app" and not data.comercio and not data.tarjeta
+    es_wallet = not es_cierre and (bool(data.comercio or data.tarjeta) or data.fuente in ("wallet", "apple_pay", "google_pay"))
+    descripcion = data.comercio or data.descripcion  # en cierre_app puede ser None: la nota es opcional
+    fuente = data.fuente if data.fuente in ("apple_pay", "google_pay") else ("wallet" if es_wallet else data.fuente)
+    origen = ORIGEN_CIERRE_APP if es_cierre else (ORIGEN_WALLET if es_wallet else ORIGEN_ATAJO)
+    mov, cuenta, duplicado = _registrar_movimiento_rapido(
+        db,
+        usuario.id,
+        data.monto,
+        data.tipo,
+        descripcion,
+        data.cuenta,
+        fuente,
+        tarjeta=data.tarjeta,
+        fecha=data.fecha,
+        moneda=data.moneda,
+        origen_auto=origen,
+        detectar_duplicado=True,
+    )
+    signo = "Ingreso" if mov.tipo == "income" else "Gasto"
+    if duplicado:
+        mensaje = f"Ya lo tenías: {signo.lower()} de {formato_cop(mov.monto)} en {mov.descripcion}."
+    else:
+        mensaje = f"{signo} de {formato_cop(mov.monto)} en {mov.descripcion} ({cuenta.nombre}). Confírmalo en CuadraMe."
+    # Si el Atajo pidió una cuenta que no existe, el movimiento cayó en otra: se dice,
+    # para que no se registre en silencio en la cuenta equivocada.
+    if data.cuenta and not data.tarjeta and not coincide_cuenta(cuenta, data.cuenta):
+        mensaje += (
+            f" Ojo: no encontré una cuenta que se llame «{data.cuenta}», así que lo guardé en {cuenta.nombre}. "
+            "Crea esa cuenta en CuadraMe o corrige el texto de la automatización."
+        )
+    base = MovimientoOut.model_validate(mov, from_attributes=True).model_dump()
+    return MovimientoRapidoOut(
+        **base,
+        mensaje=mensaje,
+        duplicado=duplicado,
+        por_confirmar=mov.cat_confirmada is False,
+        cuenta_nombre=cuenta.nombre,
     )
 
 
@@ -410,7 +827,7 @@ def crear_movimiento_por_voz(
             mensaje="No logré entender el monto. Intenta decir algo como 'gasté 20 mil en el almuerzo'.",
         )
 
-    movimiento = _registrar_movimiento_rapido(
+    movimiento, _cuenta, _dup = _registrar_movimiento_rapido(
         db,
         usuario.id,
         interpretado["monto"],
@@ -418,6 +835,7 @@ def crear_movimiento_por_voz(
         interpretado["descripcion"],
         data.cuenta,
         "voz",
+        tarjeta=data.tarjeta,
     )
     return MovimientoPorVozResponse(
         ok=True,
@@ -447,30 +865,11 @@ def clasificar_movimiento(
 
 
 def _movimientos_categorizados(db: Session, usuario_id: str) -> list[dict]:
-    movs = (
-        db.query(Movimiento)
-        .filter(Movimiento.usuario_id == usuario_id, Movimiento.categoria != "Otros")
-        .all()
-    )
-    return [{"descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo} for m in movs]
+    # Solo lo confirmado por el usuario alimenta el aprendizaje (ver autocat).
+    return movimientos_confirmados(db, usuario_id)
 
 
 def _clasificar(db: Session, usuario_id: str, descripcion: str) -> dict | None:
-    """Reglas del usuario primero (control explícito), modelo aprendido después."""
-    reglas = (
-        db.query(ReglaCategoria)
-        .filter(ReglaCategoria.usuario_id == usuario_id)
-        .order_by(ReglaCategoria.prioridad.desc())
-        .all()
-    )
-    resultado = aplicar_reglas(descripcion, reglas)
-    if resultado:
-        return resultado
-
-    historial = _movimientos_categorizados(db, usuario_id)
-    modelo = build_model(historial)
-    resultado = classify(descripcion, modelo)
-    if resultado:
-        return resultado
-
-    return clasificar_por_diccionario(descripcion)
+    """Reglas del usuario > modelo aprendido > palabras clave (ver autocat.ClasificadorUsuario).
+    El resultado incluye la 'razon' que se le muestra al usuario."""
+    return ClasificadorUsuario(db, usuario_id).clasificar(descripcion)

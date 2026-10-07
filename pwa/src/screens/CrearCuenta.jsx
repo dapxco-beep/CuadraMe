@@ -1,15 +1,11 @@
 import { useState } from 'react'
 import { Mail, Sparkles, Wallet } from 'lucide-react'
 import { api } from '../lib/api'
-
-const MONEDAS = ['COP', 'USD', 'EUR']
-const iconos = ['🏦', '💜', '💵', '💳', '📈']
-const tipos = [
-  { id: 'ahorro', label: 'Ahorros' },
-  { id: 'efectivo', label: 'Efectivo' },
-  { id: 'credito', label: 'Crédito' },
-  { id: 'inversion', label: 'Inversión' },
-]
+import { EncabezadoMarca } from '../brand/Marca'
+import SelectorCuenta from '../components/SelectorCuenta'
+import CamposCuentaNueva, { CAMPOS_VACIOS } from '../components/CamposCuentaNueva'
+import { datosCuentaNueva, validarTarjetaNueva } from '../lib/cuentaNueva'
+import { useAlertaVisible } from '../lib/useAlertaVisible'
 
 const PASOS_BIENVENIDA = [
   {
@@ -32,11 +28,7 @@ const PASOS_BIENVENIDA = [
 function Bienvenida({ onContinuar }) {
   return (
     <div className="flex-1 flex flex-col justify-center px-8 py-10">
-      <div className="text-center mb-8">
-        <img src="/icons/icon-192.png" alt="CuadraMe" className="w-16 h-16 rounded-3xl mx-auto mb-4" />
-        <h1 className="text-2xl font-bold">Bienvenido a CuadraMe</h1>
-        <p className="text-sm text-ink-soft mt-1">Esto es lo que puedes hacer</p>
-      </div>
+      <EncabezadoMarca titulo="Bienvenido a CuadraMe" lema="Esto es lo que puedes hacer" />
 
       <div className="flex flex-col gap-3 mb-8">
         {PASOS_BIENVENIDA.map((p, i) => (
@@ -71,24 +63,23 @@ export default function CrearCuenta({ onCreada }) {
   const [nombre, setNombre] = useState('')
   const [tipo, setTipo] = useState('ahorro')
   const [icono, setIcono] = useState('🏦')
-  const [saldo, setSaldo] = useState('')
+  const [campos, setCampos] = useState(CAMPOS_VACIOS)
   const [moneda, setMoneda] = useState('COP')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const refError = useAlertaVisible(error)
 
   async function guardar() {
     setError('')
     if (!nombre.trim()) return setError('Ponle un nombre a tu cuenta')
 
+    if (tipo === 'credito') {
+      const problema = validarTarjetaNueva(campos)
+      if (problema) return setError(problema)
+    }
     setGuardando(true)
     try {
-      const cuenta = await api.crearCuenta({
-        nombre: nombre.trim(),
-        tipo,
-        icono,
-        moneda,
-        saldo: Number(saldo) || 0,
-      })
+      const cuenta = await api.crearCuenta(datosCuentaNueva({ nombre, tipo, icono, moneda, ...campos }))
       onCreada(cuenta)
     } catch (err) {
       setError(err.message || 'No se pudo crear la cuenta')
@@ -102,49 +93,35 @@ export default function CrearCuenta({ onCreada }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-center px-8 py-10 screen-enter">
+    <div className="flex-1 overflow-y-auto flex flex-col px-6 py-10 screen-enter">
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold">Crea tu primera cuenta</h1>
-        <p className="text-sm text-ink-soft mt-1">Bancolombia, Nequi, efectivo... la que uses más</p>
+        <p className="text-sm text-ink-soft mt-1">Elige la que uses más. Luego agregas las demás.</p>
       </div>
 
-      <div className="flex gap-2 justify-center mb-5">
-        {iconos.map((ic) => (
-          <button
-            key={ic}
-            onClick={() => setIcono(ic)}
-            className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center text-xl ${
-              icono === ic ? 'border-accent bg-accent-soft' : 'border-line'
-            }`}
-          >
-            {ic}
-          </button>
-        ))}
+      <div className="mb-4">
+        <SelectorCuenta
+          nombre={nombre}
+          setNombre={setNombre}
+          tipo={tipo}
+          setTipo={setTipo}
+          setIcono={setIcono}
+          moneda={moneda}
+          setMoneda={setMoneda}
+          mostrarMoneda={false}
+        />
       </div>
 
-      <input
-        value={nombre}
-        onChange={(e) => setNombre(e.target.value)}
-        placeholder="Nombre de la cuenta (ej. Bancolombia Ahorro)"
-        className="rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
-      />
+      <CamposCuentaNueva tipo={tipo} valores={campos} onCambio={setCampos} />
 
-      <input
-        value={saldo}
-        onChange={(e) => setSaldo(e.target.value.replace(/[^\d.]/g, ''))}
-        inputMode="decimal"
-        placeholder="Saldo actual (opcional)"
-        className="rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
-      />
-
-      <div className="flex gap-2 mb-3" role="group" aria-label="Moneda de la cuenta">
-        {MONEDAS.map((m) => (
+      <div className="flex gap-2 mb-5" role="group" aria-label="Moneda de la cuenta">
+        {['COP', 'USD', 'EUR'].map((m) => (
           <button
             key={m}
             type="button"
             aria-pressed={moneda === m}
             onClick={() => setMoneda(m)}
-            className={`flex-1 rounded-2xl border py-2.5 text-sm font-medium ${
+            className={`flex-1 rounded-2xl border py-2.5 text-sm font-medium min-h-[44px] ${
               moneda === m ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
             }`}
           >
@@ -153,21 +130,7 @@ export default function CrearCuenta({ onCreada }) {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mb-5">
-        {tipos.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTipo(t.id)}
-            className={`rounded-2xl border py-3 text-sm font-medium ${
-              tipo === t.id ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+      {error && <p ref={refError} role="alert" className="text-sm text-danger mb-3">{error}</p>}
 
       <button
         onClick={guardar}

@@ -5,21 +5,36 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import Base, engine
+from app.rls import asegurar_rls
+from app import models_asistente  # noqa: F401  (registra la tabla uso_asistente para create_all)
 from app.routers import (
     ahorcado,
+    asistente,
     backup,
     categorias,
+    cierre,
     compartir,
     conciliacion,
+    conexiones,
+    consentimientos,
     correos,
     cuentas,
+    cuotas_tarjeta,
     deudas,
     exportar,
+    extracto_tarjeta,
+    facturas,
+    gastos_compartidos,
+    importar,
+    informes,
+    impuestos,
     insights,
     metas,
     metricas,
     movimientos,
     pagos,
+    patrimonio,
+    planificacion,
     perfil,
     presupuestos,
     push,
@@ -49,6 +64,10 @@ if engine.dialect.name == "postgresql":
             "confianza_autoimport FLOAT DEFAULT 0.75"
         ))
         conn.execute(text(
+            "ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS "
+            "autoimportar_extractos BOOLEAN DEFAULT FALSE"
+        ))
+        conn.execute(text(
             "ALTER TABLE presupuestos ADD COLUMN IF NOT EXISTS "
             "sobre_ajuste FLOAT DEFAULT 0"
         ))
@@ -56,11 +75,39 @@ if engine.dialect.name == "postgresql":
             "ALTER TABLE presupuestos ADD COLUMN IF NOT EXISTS "
             "ultima_alerta_mes VARCHAR"
         ))
+        # Tarjetas de crédito reales: cupo, corte, pago y tasa en la cuenta.
+        # (La misma lista, como SQL suelto, está en supabase/migraciones/.)
+        conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS cupo_total FLOAT"))
+        conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS dia_corte INTEGER"))
+        conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS dia_pago INTEGER"))
+        conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS tasa_ea FLOAT"))
+        conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS ultima_alerta_pago VARCHAR"))
+        # Categorías libres y categorización automática transparente.
+        # DEFAULT TRUE deja los movimientos existentes como "confirmados".
+        # (Como SQL suelto: supabase/migraciones/categorias_auto.sql.)
+        conn.execute(text("ALTER TABLE categorias ADD COLUMN IF NOT EXISTS color VARCHAR"))
+        conn.execute(text("ALTER TABLE categorias ADD COLUMN IF NOT EXISTS tipo VARCHAR DEFAULT 'ambos'"))
+        conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS cat_origen VARCHAR"))
+        conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS cat_confirmada BOOLEAN DEFAULT TRUE"))
+        # Registro con Apple Wallet: alias de tarjeta y recordatorio nocturno.
+        # (Como SQL suelto: supabase/migraciones/wallet_recordatorio.sql.)
+        conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS alias_tarjeta VARCHAR"))
+        conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS recordatorio_diario BOOLEAN DEFAULT FALSE"))
+        conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS ultimo_recordatorio VARCHAR"))
+        # Cruce con el extracto (supabase/migraciones/cierre_app_conciliacion.sql).
+        conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS conciliado_en TIMESTAMP NULL"))
+        conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS extracto_id VARCHAR NULL"))
+        # Tablero "Conexiones": último uso de la API key (Atajo de iPhone).
+        # (Como SQL suelto: supabase/migraciones/sync_gmail_conexiones.sql.)
+        conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS api_key_ultimo_uso TIMESTAMP"))
         # Casi toda consulta filtra por cuenta y ordena/filtra por fecha.
         conn.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_movimientos_cuenta_fecha "
             "ON movimientos (cuenta_id, fecha DESC)"
         ))
+    # Las tablas recién creadas por create_all nacen sin RLS: se activa aquí
+    # (tolerante a fallos; ver app/rls.py).
+    asegurar_rls(engine)
 
 if settings.sentry_dsn:
     sentry_sdk.init(
@@ -82,6 +129,11 @@ app = FastAPI(
     redoc_url=None if _es_prod else "/redoc",
     openapi_url=None if _es_prod else "/openapi.json",
 )
+
+# Los Atajos de iPhone leen "mensaje" de la respuesta: en /movimientos/rapido* los errores lo traen.
+from app import errores_atajo  # noqa: E402
+
+errores_atajo.registrar(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -117,6 +169,22 @@ app.include_router(ahorcado.router)
 app.include_router(categorias.router)
 app.include_router(backup.router)
 app.include_router(metricas.router)
+app.include_router(patrimonio.router)
+app.include_router(planificacion.router)
+app.include_router(gastos_compartidos.router)
+app.include_router(facturas.router)
+app.include_router(asistente.router)
+app.include_router(importar.router)
+app.include_router(impuestos.router)
+app.include_router(cierre.router)
+app.include_router(consentimientos.router)
+app.include_router(informes.router)
+app.include_router(conexiones.router)
+app.include_router(cuotas_tarjeta.router)
+app.include_router(extracto_tarjeta.router)
+from app.routers import sincronizacion  # noqa: E402
+
+app.include_router(sincronizacion.router)
 
 
 @app.get("/health")

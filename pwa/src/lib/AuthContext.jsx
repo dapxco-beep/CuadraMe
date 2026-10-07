@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from './supabase'
+import { borrarSeguridad } from './seguridad'
 
 const AuthContext = createContext(null)
 
@@ -46,6 +47,9 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
+    // El PIN y la huella son de este dispositivo y de esta sesión: se borran
+    // ANTES de salir para que, pase lo que pase con la red, no queden atrás.
+    borrarSeguridad()
     await supabase.auth.signOut()
   }
 

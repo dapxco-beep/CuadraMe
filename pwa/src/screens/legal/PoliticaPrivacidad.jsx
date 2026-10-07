@@ -1,20 +1,20 @@
-import { useNavigate } from 'react-router-dom'
+import { useVolver } from '../../lib/useVolver'
 import { ArrowLeft } from 'lucide-react'
 
 export default function PoliticaPrivacidad() {
-  const navigate = useNavigate()
+  const volver = useVolver('/perfil')
 
   return (
     <div className="flex-1 overflow-y-auto pb-10">
-      <header className="px-6 pt-14 pb-2 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Política de Privacidad</h1>
       </header>
 
       <div className="px-6 mt-4 text-sm leading-relaxed text-ink space-y-5">
-        <p className="text-xs text-ink-soft">Última actualización: 30 de septiembre de 2026</p>
+        <p className="text-xs text-ink-soft">Versión 1.1 (borrador) · Última actualización: 3 de octubre de 2026</p>
 
         <section>
           <h2 className="font-semibold mb-1.5">1. Responsable del tratamiento</h2>
@@ -68,6 +68,34 @@ export default function PoliticaPrivacidad() {
             Si en el futuro se compartieran datos agregados o anonimizados con fines de mejora del
             producto (ej. estadísticas de uso sin identificar personas), lo indicaremos aquí antes de
             hacerlo.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="font-semibold mb-1.5">Novedades de tratamiento (octubre de 2026)</h2>
+          <p>
+            Correo y extractos: si conectas Gmail (permiso de solo lectura), CuadraMe lee los correos de la etiqueta que elijas y detecta, además, notificaciones bancarias sin etiqueta y extractos en PDF adjuntos. De los extractos guardamos solo metadatos (banco, periodo, nombre del archivo); el PDF se descarga, se procesa y no se almacena.
+          </p>
+          <p>
+            Clave del PDF: si decides guardar la clave con la que se abren tus extractos (normalmente tu cédula), se guarda cifrada y nunca se incluye en copias de seguridad ni en correos. Puedes borrarla cuando quieras.
+          </p>
+          <p>
+            Fotos de facturas: la imagen se procesa para sugerirte el movimiento y no se almacena; solo se guarda lo que confirmes.
+          </p>
+          <p>
+            Asistente de IA: cuando usas funciones de IA (preguntas, lectura de facturas o de extractos) se envía a nuestro proveedor de IA (OpenRouter y los modelos que opere) únicamente lo necesario para responder: tu pregunta y un resumen de tus movimientos, cuentas, presupuestos, metas y deudas recientes, o el texto/imagen del documento. No enviamos tu contraseña, PIN ni claves. El proveedor puede estar fuera de Colombia (transferencia internacional).
+          </p>
+          <p>
+            Gastos compartidos: puedes registrar nombres de amigos o contactos y lo que se les debe. Esos datos son de terceros que no usan CuadraMe: úsalos solo con su conocimiento y para dividir gastos. Puedes borrarlos en cualquier momento.
+          </p>
+          <p>
+            PIN y biometría: el PIN y la huella/rostro se verifican en tu dispositivo; no los recibimos ni los guardamos en nuestros servidores.
+          </p>
+          <p>
+            Patrimonio, impuestos y cierre de mes: los activos, valores y deudas que registres, las marcas de gastos posiblemente deducibles (con su nota de soporte, solo texto) y los informes mensuales que generamos se guardan en tu cuenta. Son información de apoyo y no constituyen asesoría tributaria ni financiera. El cierre de mes llega por notificación y, solo si lo activas, por correo electrónico (Resend).
+          </p>
+          <p>
+            Importación de archivos: los CSV/Excel que subas se leen en el momento para proponerte movimientos; el archivo no se almacena.
           </p>
         </section>
 

@@ -1,20 +1,20 @@
-import { useNavigate } from 'react-router-dom'
+import { useVolver } from '../../lib/useVolver'
 import { ArrowLeft } from 'lucide-react'
 
 export default function AutorizacionDatos() {
-  const navigate = useNavigate()
+  const volver = useVolver('/perfil')
 
   return (
     <div className="flex-1 overflow-y-auto pb-10">
-      <header className="px-6 pt-14 pb-2 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Autorización de datos</h1>
       </header>
 
       <div className="px-6 mt-4 text-sm leading-relaxed text-ink space-y-5">
-        <p className="text-xs text-ink-soft">Última actualización: 30 de septiembre de 2026</p>
+        <p className="text-xs text-ink-soft">Versión 1.1 (borrador) · Última actualización: 3 de octubre de 2026</p>
 
         <section>
           <p>
@@ -75,6 +75,25 @@ export default function AutorizacionDatos() {
             técnica que DAPX utiliza para operar CuadraMe (actualmente Supabase, Railway y Vercel),
             quienes actúan como encargados del tratamiento bajo instrucciones de DAPX y sujetos a
             condiciones de confidencialidad.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="font-semibold mb-1.5">Autorizaciones adicionales (octubre de 2026)</h2>
+          <p>
+            Autorizo la lectura de adjuntos y extractos en mi Gmail (si conecto Gmail), incluida la detección de notificaciones bancarias sin etiqueta y de extractos en PDF; el PDF no se almacena.
+          </p>
+          <p>
+            Autorizo, si decido guardarla, el almacenamiento cifrado de la clave de mis extractos en PDF, que puedo borrar cuando quiera.
+          </p>
+          <p>
+            Autorizo el procesamiento de fotos de facturas que yo suba (no se almacenan) y el envío a un proveedor de IA (OpenRouter y sus modelos, posiblemente fuera de Colombia) de los datos mínimos necesarios para responder mis consultas: mi pregunta, un resumen de mis movimientos, cuentas, presupuestos, metas y deudas, o el contenido del documento. Nunca contraseñas, PIN ni claves.
+          </p>
+          <p>
+            Declaro que los datos de terceros que registre en gastos compartidos (nombres de contactos) los trato con su conocimiento y solo para dividir gastos.
+          </p>
+          <p>
+            Entiendo que el PIN y la biometría se verifican localmente en mi dispositivo, y que los datos de patrimonio, impuestos y cierres mensuales se guardan en mi cuenta como información de apoyo, no asesoría.
           </p>
         </section>
 

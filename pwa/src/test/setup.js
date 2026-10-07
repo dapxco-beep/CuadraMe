@@ -1,6 +1,9 @@
 import '@testing-library/jest-dom/vitest'
 import { afterEach } from 'vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
+
+// Con muchas pruebas en paralelo (o la máquina ocupada) 1 s de espera por defecto se queda corto.
+configure({ asyncUtilTimeout: 5000 })
 
 afterEach(cleanup)
 

@@ -76,13 +76,15 @@ def intercambiar_code(code: str) -> dict:
 
 
 def obtener_email(access_token: str) -> str:
+    # El perfil de Gmail responde con el permiso gmail.readonly que ya pedimos.
+    # (El endpoint oauth2/v2/userinfo exigiría además el scope userinfo.email.)
     resp = httpx.get(
-        "https://www.googleapis.com/oauth2/v2/userinfo",
+        "https://gmail.googleapis.com/gmail/v1/users/me/profile",
         headers={"Authorization": f"Bearer {access_token}"},
         timeout=10,
     )
     resp.raise_for_status()
-    return resp.json().get("email", "")
+    return resp.json().get("emailAddress", "")
 
 
 def cliente_gmail(refresh_token_enc: str):

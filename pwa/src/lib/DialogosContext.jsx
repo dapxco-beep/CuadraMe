@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import Hoja from '../components/Hoja'
 
 // Reemplaza alert() y confirm() del navegador, que se ven ajenos al diseño,
 // bloquean el hilo y en PWAs instaladas a veces ni aparecen. Dos piezas:
@@ -17,13 +18,22 @@ export function DialogosProvider({ children }) {
     })
   }, [])
 
-  const avisar = useCallback((mensaje, tipo = 'error') => {
+  // avisar(mensaje, tipo, { accion: { texto, onClick }, duracion }): con `accion` el aviso trae un
+  // botón (p. ej. "Deshacer") y dura 5 s para dar tiempo a pulsarlo.
+  const avisar = useCallback((mensaje, tipo = 'error', opciones = {}) => {
     clearTimeout(temporizador.current)
-    setToast({ mensaje, tipo })
-    temporizador.current = setTimeout(() => setToast(null), 4000)
+    setToast({ mensaje, tipo, accion: opciones.accion || null })
+    temporizador.current = setTimeout(() => setToast(null), opciones.duracion || (opciones.accion ? 5000 : 4000))
   }, [])
 
   useEffect(() => () => clearTimeout(temporizador.current), [])
+
+  // api.js avisa cuando la sesión venció y se cerró sola: mensaje amable en vez de una pantalla rota
+  useEffect(() => {
+    const alVencer = (e) => avisar(e.detail?.mensaje || 'Tu sesión venció. Vuelve a iniciar sesión.', 'info')
+    window.addEventListener('cuadrame:sesion-vencida', alVencer)
+    return () => window.removeEventListener('cuadrame:sesion-vencida', alVencer)
+  }, [avisar])
 
   function responder(valor) {
     confirmacion?.resolve(valor)
@@ -45,44 +55,53 @@ export function DialogosProvider({ children }) {
               toast.tipo === 'error' ? 'bg-danger text-white' : 'bg-ink text-paper'
             }`}
           >
-            {toast.mensaje}
+            <div className="flex items-center justify-between gap-3">
+              <span>{toast.mensaje}</span>
+              {toast.accion && (
+                <button
+                  onClick={() => {
+                    clearTimeout(temporizador.current)
+                    setToast(null)
+                    toast.accion.onClick()
+                  }}
+                  className="shrink-0 font-bold underline underline-offset-2 px-2 py-1 -my-1 -mr-1"
+                >
+                  {toast.accion.texto}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
       {confirmacion && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sheet-backdrop"
-          onClick={() => responder(false)}
+        // Atrás, Escape o tocar fuera = cancelar (el mismo "false" que el botón Cancelar)
+        <Hoja
+          role="alertdialog"
+          ariaLabel={confirmacion.titulo || 'Confirmar'}
+          clasePanel="p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
+          onCerrar={() => responder(false)}
         >
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            aria-label={confirmacion.titulo || 'Confirmar'}
-            className="sheet-content w-full max-w-[480px] rounded-t-3xl bg-paper-raised p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {confirmacion.titulo && <p className="text-base font-bold mb-1">{confirmacion.titulo}</p>}
-            <p className="text-sm text-ink-soft">{confirmacion.mensaje}</p>
-            <div className="flex gap-3 mt-5">
-              <button
-                autoFocus
-                onClick={() => responder(false)}
-                className="flex-1 rounded-2xl border border-line py-3.5 text-sm font-semibold"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => responder(true)}
-                className={`flex-1 rounded-2xl py-3.5 text-sm font-semibold ${
-                  confirmacion.peligro ? 'bg-danger text-white' : 'bg-ink text-paper'
-                }`}
-              >
-                {confirmacion.confirmarTexto || 'Continuar'}
-              </button>
-            </div>
+          {confirmacion.titulo && <p className="text-base font-bold mb-1">{confirmacion.titulo}</p>}
+          <p className="text-sm text-ink-soft">{confirmacion.mensaje}</p>
+          <div className="flex gap-3 mt-5">
+            <button
+              autoFocus
+              onClick={() => responder(false)}
+              className="flex-1 rounded-2xl border border-line py-3.5 text-sm font-semibold"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => responder(true)}
+              className={`flex-1 rounded-2xl py-3.5 text-sm font-semibold ${
+                confirmacion.peligro ? 'bg-danger text-white' : 'bg-ink text-paper'
+              }`}
+            >
+              {confirmacion.confirmarTexto || 'Continuar'}
+            </button>
           </div>
-        </div>
+        </Hoja>
       )}
     </DialogosContext.Provider>
   )

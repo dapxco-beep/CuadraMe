@@ -1,50 +1,39 @@
-import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { Link } from 'react-router-dom'
-import { Check, Download, Search, SlidersHorizontal, X } from 'lucide-react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
+import { EstadoVacio } from '../brand/Marca'
+import { Link, useLocation, useNavigationType, useSearchParams } from 'react-router-dom'
+import { ArrowLeftRight, Check, ChevronDown, Download, Search, Shuffle, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
+import Icono from '../components/Icono'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
+import { tipoEfectivo } from '../lib/contabilidad'
+import { direccionDe, etiquetaTraslado, signoDe } from '../lib/traslados'
+import { esAuto, claveComercio } from '../lib/comercio'
+import { useModoPantalla } from '../lib/useAncho'
+import { guardarCacheLista, leerCacheLista, parchearEnCaches, quitarDeCaches, useEstadoLista } from '../lib/useEstadoLista'
+import {
+  agruparPorComercio,
+  categoriasRecientes,
+  coincideFiltros,
+  consultaServidor,
+  hayFiltros,
+  huellaDe,
+  leerFiltros,
+} from '../lib/movimientosLista'
+import { InsigniaAuto } from '../components/CategorizacionAuto'
+import SelectorCategoria from '../components/SelectorCategoria'
+import Hoja from '../components/Hoja'
+import DetalleMovimiento from './DetalleMovimiento'
 
 const TAMANO_PAGINA = 200
-
-// ── Virtualización ────────────────────────────────────────────────────────
-// Con 1.500+ filas, pintar todo el DOM hace lento el celular. Solo se dibujan las
-// filas que se ven (más un margen). Para que sea simple y rápido, cada tipo de fila
-// tiene ALTO FIJO: así la posición de cada una se calcula sumando, sin medir el DOM.
-const ALTO = {
-  movil: { dia: 40, mov: 60 },
-  ancho: { dia: 36, mov: 44 },
-}
-const MARGEN_PX = 600 // filas extra arriba/abajo para que el scroll rápido no muestre vacío
-const CLAVE_VOLVER = 'cuadrame.movimientos.volver'
-
-// ¿La pantalla es de escritorio/iPad horizontal? Se reacciona al cambiar de tamaño.
-function useEsAncho() {
-  const consulta = '(min-width: 1024px)'
-  return useSyncExternalStore(
-    (cb) => {
-      const mq = window.matchMedia(consulta)
-      mq.addEventListener?.('change', cb)
-      return () => mq.removeEventListener?.('change', cb)
-    },
-    () => window.matchMedia(consulta).matches,
-    () => false
-  )
-}
-
-// Búsqueda binaria: índice de la fila que contiene la posición `y`.
-function indiceEn(offsets, y) {
-  let lo = 0
-  let hi = offsets.length - 2
-  while (lo < hi) {
-    const medio = (lo + hi + 1) >> 1
-    if (offsets[medio] <= y) lo = medio
-    else hi = medio - 1
-  }
-  return lo
-}
+const MAX_LOTES = 15 // tope de seguridad al re-pedir lo ya cargado (3.000 movimientos)
+const PRESION_LARGA_MS = 450
+const ALTO_DIA_BASE = 40 // etiqueta del día + espacio, para estimar antes de medir
+const ALTO_FILA_ESTIMADO = 72
+const MARGEN_VENTANA = 800 // px extra arriba y abajo para que el scroll rápido no muestre vacío
 
 function etiquetaDia(fechaISO) {
   const fecha = new Date(fechaISO)
@@ -58,221 +47,533 @@ function etiquetaDia(fechaISO) {
   return fecha.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })
 }
 
-// Lo que se guarda al abrir un movimiento, para que "Volver" deje todo como estaba.
-function leerVolver() {
-  try {
-    return JSON.parse(sessionStorage.getItem(CLAVE_VOLVER) || 'null')
-  } catch {
-    return null
-  }
-}
+// Una fila de la lista. Está memoizada: al categorizar UN movimiento solo se vuelve a pintar su
+// fila (las demás reciben las mismas props y React las salta), clave con miles de movimientos.
+const FilaMovimiento = memo(function FilaMovimiento({
+  m, icono, moneda, esSel, modoSel, panel, botonConfirmar, indice, onToggle, onChip, onConfirmar, onAbrir,
+}) {
+  const timer = useRef(null)
+  const larga = useRef(false)
+  const inicio = useRef({ x: 0, y: 0 })
+  const esTransfer = m.fuente === 'transferencia_interna'
+  const direccion = direccionDe(m) // todo movimiento tiene dirección: el signo y el color la siguen
+  const traslado = etiquetaTraslado(m)
 
-function SkeletonLista({ ancho }) {
-  const alto = ancho ? ALTO.ancho.mov : ALTO.movil.mov
+  function cancelar() {
+    clearTimeout(timer.current)
+    timer.current = null
+  }
+  // Pulsación larga (dedo o lápiz): entra al modo selección con este movimiento marcado
+  function empezar(e) {
+    if (e.pointerType === 'mouse' || modoSel) return
+    larga.current = false
+    inicio.current = { x: e.clientX, y: e.clientY }
+    cancelar()
+    timer.current = setTimeout(() => {
+      timer.current = null
+      larga.current = true
+      navigator.vibrate?.(15)
+      onToggle(m.id, true)
+    }, PRESION_LARGA_MS)
+  }
+  function mover(e) {
+    if (timer.current && Math.hypot(e.clientX - inicio.current.x, e.clientY - inicio.current.y) > 10) cancelar()
+  }
+  function alClic(e) {
+    if (larga.current) {
+      e.preventDefault()
+      larga.current = false
+      return
+    }
+    if (modoSel) {
+      e.preventDefault()
+      onToggle(m.id)
+    } else if (panel) {
+      e.preventDefault()
+      onAbrir(m.id)
+    }
+  }
+
   return (
-    <div className="mx-5 space-y-1" aria-busy="true" aria-label="Cargando movimientos" role="status">
-      {Array.from({ length: 8 }, (_, i) => (
-        <div key={i} className="flex items-center gap-3" style={{ height: alto }}>
-          <div className="flex-1 space-y-2">
-            <div className="skeleton h-3.5 w-2/3" />
-            <div className="skeleton h-3 w-1/3" />
+    <div
+      className="relative stagger-item [-webkit-touch-callout:none]"
+      style={{ '--stagger-i': indice }}
+      data-fila={m.id}
+      onPointerDown={empezar}
+      onPointerMove={mover}
+      onPointerUp={cancelar}
+      onPointerCancel={cancelar}
+      onPointerLeave={cancelar}
+      onContextMenu={(e) => {
+        if (larga.current) e.preventDefault()
+      }}
+    >
+      <span
+        className={`absolute -left-5 top-[18px] w-2.5 h-2.5 rounded-full border-2 border-paper ${
+          direccion === 'income' ? 'bg-accent-2' : 'bg-ink'
+        }`}
+      />
+      <div className="flex items-start gap-3">
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={esSel}
+          aria-label={`Seleccionar ${m.descripcion}`}
+          onClick={() => onToggle(m.id)}
+          className={`${modoSel ? 'flex' : 'hidden md:flex'} mt-3 w-5 h-5 rounded-md border-2 shrink-0 items-center justify-center ${
+            esSel ? 'bg-accent border-accent' : 'border-line'
+          }`}
+        >
+          {esSel && <Check size={16} className="text-white" />}
+        </button>
+        <div className="min-w-0 flex-1">
+          <Link to={`/movimientos/${m.id}`} onClick={alClic} className="block pt-2.5 min-w-0">
+            <p className="text-sm font-semibold truncate">{m.descripcion}</p>
+          </Link>
+          <div className="flex items-center flex-wrap gap-y-1 pt-0.5 pb-2.5">
+            {esTransfer ? (
+              <span className="text-xs text-ink-soft">
+                <Icono icono={ArrowLeftRight} tam="sm" className="inline -mt-0.5" /> {m.categoria}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => (modoSel ? onToggle(m.id) : onChip(m))}
+                aria-label={`Cambiar categoría de ${m.descripcion}`}
+                className="inline-flex items-center gap-1 text-xs text-ink-soft rounded-full border border-line px-2.5 min-h-[32px] hover:border-accent hover:text-ink"
+              >
+                <span aria-hidden="true">{icono}</span> {m.categoria}
+                <ChevronDown size={16} aria-hidden="true" />
+              </button>
+            )}
+            {traslado && !esTransfer && (
+              <span className="ml-2 text-[11px] font-semibold text-ink-soft rounded-full bg-paper-raised border border-line px-2 py-0.5">
+                {traslado}
+              </span>
+            )}
+            {esAuto(m) && <InsigniaAuto movimiento={m} />}
+            {botonConfirmar && esAuto(m) && (
+              <button
+                onClick={() => onConfirmar(m)}
+                aria-label={`Confirmar categoría de ${m.descripcion}`}
+                className="ml-2 flex items-center gap-1 text-xs font-semibold px-3 min-h-[32px] rounded-full bg-accent text-white"
+              >
+                <Check size={16} /> Confirmar
+              </button>
+            )}
           </div>
-          <div className="skeleton h-4 w-20" />
         </div>
-      ))}
+        <Link
+          to={`/movimientos/${m.id}`}
+          onClick={alClic}
+          tabIndex={-1}
+          aria-hidden="true"
+          className="pt-2.5 shrink-0"
+        >
+          <span className={`text-[15px] font-bold ${direccion === 'income' ? 'text-gold' : direccion ? 'text-ink' : 'text-ink-soft'}`}>
+            {signoDe(m)}
+            {formatMoneda(m.monto, moneda)}
+          </span>
+        </Link>
+      </div>
     </div>
   )
-}
+})
 
 export default function Movimientos() {
-  const { cuentas } = useCuentas()
+  const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: CATEGORIAS, iconoDe } = useCategorias()
-  const { avisar } = useDialogos()
-  const esAncho = useEsAncho()
-  const alturas = esAncho ? ALTO.ancho : ALTO.movil
-  const monedaDe = useMemo(() => Object.fromEntries(cuentas.map((c) => [c.id, c.moneda])), [cuentas])
-  const nombreCuenta = useMemo(() => Object.fromEntries(cuentas.map((c) => [c.id, c.nombre])), [cuentas])
+  const { avisar, confirmar } = useDialogos()
+  const modo = useModoPantalla()
+  const lateral = modo === 'lateral'
+  const location = useLocation()
+  const [params, setParams] = useSearchParams()
+  const raiz = useRef(null)
 
-  // Si se viene de abrir un movimiento, se recupera lo que la persona tenía puesto.
-  const [volver] = useState(leerVolver)
-  const f0 = volver?.filtros || {}
+  // --- Filtros: viven en la URL (sobreviven a atrás, a recargar y a compartir el enlace) ---
+  const f = useMemo(() => leerFiltros(params), [params])
+  const panelId = lateral ? params.get('mov') : null
+  const claveLista = useMemo(() => {
+    const p = new URLSearchParams(params)
+    p.delete('mov') // abrir el panel de detalle no cambia de lista
+    const s = p.toString()
+    return `${location.pathname}${s ? `?${s}` : ''}`
+  }, [params, location.pathname])
 
-  const [movimientos, setMovimientos] = useState([])
-  const [busqueda, setBusqueda] = useState(f0.busqueda || '')
-  const [filtro, setFiltro] = useState(f0.filtro || 'Todos')
-  const [cuentaId, setCuentaId] = useState(f0.cuentaId || '')
-  const [desde, setDesde] = useState(f0.desde || '')
-  const [hasta, setHasta] = useState(f0.hasta || '')
-  const [mostrarFiltrosFecha, setMostrarFiltrosFecha] = useState(!!(f0.desde || f0.hasta || f0.cuentaId))
-  const [cargando, setCargando] = useState(true)
-  const [exportando, setExportando] = useState(false)
-  const [modoSeleccion, setModoSeleccion] = useState(false)
-  const [seleccionados, setSeleccionados] = useState(new Set())
-  const [aplicandoCategoria, setAplicandoCategoria] = useState(false)
-  const [hayMas, setHayMas] = useState(false)
+  const cambiarParams = useCallback(
+    (cambios) => {
+      setParams(
+        (prev) => {
+          const n = new URLSearchParams(prev)
+          for (const [k, v] of Object.entries(cambios)) {
+            if (v === '' || v == null || v === false) n.delete(k)
+            else n.set(k, v === true ? '1' : v)
+          }
+          return n
+        },
+        { replace: true } // los filtros no ensucian el historial: "atrás" sale de la pantalla
+      )
+    },
+    [setParams]
+  )
+
+  const consulta = useMemo(() => consultaServidor(f), [f])
+  const consultaKey = JSON.stringify(consulta)
+
+  // --- Datos: arrancan del caché si se vuelve a una lista ya vista (pinta al instante) ---
+  const vuelve = useNavigationType() === 'POP' // al entrar tocando el menú se parte de cero
+  const [cacheInicial] = useState(() => (vuelve ? leerCacheLista(claveLista) : null))
+  const [movimientos, setMovimientos] = useState(cacheInicial?.items || [])
+  const [hayMas, setHayMas] = useState(!!cacheInicial?.hayMas)
+  const [cargando, setCargando] = useState(!cacheInicial)
   const [cargandoMas, setCargandoMas] = useState(false)
   const [errorCarga, setErrorCarga] = useState('')
+  const [conteo, setConteo] = useState({ auto: 0, otros: 0, total: 0 })
+  const [exportando, setExportando] = useState(false)
+  const [mostrarFiltros, setMostrarFiltros] = useState(false)
+  const [texto, setTexto] = useState(f.q)
+  const [selector, setSelector] = useState(null)
+  const [moverACuenta, setMoverACuenta] = useState(false)
+  const [modoSeleccion, setModoSeleccion] = useState(false)
+  const [seleccionados, setSeleccionados] = useState(() => new Set())
+  const [aplicando, setAplicando] = useState(false)
+  const [expandidos, setExpandidos] = useState(() => new Set())
 
-  const scrollRef = useRef(null)
-  const listaRef = useRef(null)
+  const peticion = useRef(0)
+  const ultimaConsulta = useRef(null)
+  const claveDeItems = useRef(cacheInicial ? claveLista : null)
+
+  const guardado = useEstadoLista(claveLista, {
+    contenedorRef: raiz,
+    cantidad: movimientos.length,
+    listo: !cargando && !errorCarga,
+  })
+
+  const pedir = useCallback(
+    (offset) => (Object.keys(consulta).length ? api.movimientos(TAMANO_PAGINA, offset, consulta) : api.movimientos(TAMANO_PAGINA, offset)),
+    [consulta]
+  )
+
+  // Pide páginas hasta juntar `objetivo` movimientos (al volver, los que ya había cargados)
+  const traerHasta = useCallback(
+    async (objetivo) => {
+      let acum = []
+      let hay = true
+      for (let i = 0; i < MAX_LOTES; i++) {
+        const lote = await pedir(acum.length)
+        acum = acum.concat(lote)
+        hay = lote.length === TAMANO_PAGINA
+        if (!hay || acum.length >= objetivo) break
+      }
+      return { items: acum, hay }
+    },
+    [pedir]
+  )
+
+  const recargarConteo = useCallback(() => {
+    Promise.resolve(api.conteoPorRevisar?.())
+      .then((c) => c && setConteo(c))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
-    let activo = true
-    // Al volver se piden de nuevo tantas páginas como las que había cargadas.
-    const paginas = Math.min(8, Math.max(1, Math.ceil((volver?.cargados || 0) / TAMANO_PAGINA)))
-    ;(async () => {
-      try {
-        let todos = []
-        let ultima = []
-        for (let p = 0; p < paginas; p++) {
-          ultima = await api.movimientos(TAMANO_PAGINA, todos.length)
-          todos = [...todos, ...ultima]
-          if (ultima.length < TAMANO_PAGINA) break
-        }
-        if (!activo) return
-        setMovimientos(todos)
-        setHayMas(ultima.length === TAMANO_PAGINA)
-      } catch (err) {
-        if (activo) setErrorCarga(err.message || 'No se pudieron cargar los movimientos')
-      } finally {
-        if (activo) setCargando(false)
-      }
-    })()
-    sessionStorage.removeItem(CLAVE_VOLVER)
-    return () => {
-      activo = false
+    const cambioFiltro = ultimaConsulta.current !== null && ultimaConsulta.current !== consultaKey
+    const silencioso = !cambioFiltro && !!cacheInicial // volver a una lista conocida: se revalida sin tapar nada
+    ultimaConsulta.current = consultaKey
+    const objetivo = cambioFiltro
+      ? TAMANO_PAGINA
+      : Math.max(TAMANO_PAGINA, guardado?.cantidad || 0, cacheInicial?.items?.length || 0)
+    const mia = ++peticion.current
+    if (!silencioso) {
+      claveDeItems.current = null
+      setCargando(true)
+      setErrorCarga('')
+      if (cambioFiltro && raiz.current) raiz.current.scrollTop = 0
+      setSeleccionados(new Set())
     }
+    traerHasta(objetivo)
+      .then(({ items, hay }) => {
+        if (mia !== peticion.current) return
+        claveDeItems.current = claveLista
+        setMovimientos(items)
+        setHayMas(hay)
+        setErrorCarga('')
+      })
+      .catch((err) => {
+        if (mia !== peticion.current || silencioso) return
+        setErrorCarga(err.message || 'No se pudieron cargar los movimientos')
+      })
+      .finally(() => mia === peticion.current && setCargando(false))
+    recargarConteo()
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consultaKey])
+
+  // El caché sigue a la lista (incluye los cambios optimistas) para pintarla al volver
+  useEffect(() => {
+    if (!cargando && !errorCarga && claveDeItems.current === claveLista) {
+      guardarCacheLista(claveLista, { items: movimientos, hayMas })
+    }
+  }, [movimientos, hayMas, cargando, errorCarga, claveLista])
+
+  // Búsqueda: se escribe sin demora y pasa a la URL 300 ms después de la última tecla
+  useEffect(() => setTexto(f.q), [f.q])
+  useEffect(() => {
+    if (texto === f.q) return undefined
+    const t = setTimeout(() => cambiarParams({ q: texto.trim() ? texto : '' }), 300)
+    return () => clearTimeout(t)
+  }, [texto]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // --- Derivados ---
+  const monedaDe = useMemo(() => Object.fromEntries(cuentas.map((c) => [c.id, c.moneda])), [cuentas])
+  const tiposCuenta = useMemo(() => Object.fromEntries(cuentas.map((c) => [c.id, c.tipo])), [cuentas])
+  const filtrados = useMemo(() => movimientos.filter((m) => coincideFiltros(m, f)), [movimientos, f])
+  const filtradosRef = useRef(filtrados)
+  filtradosRef.current = filtrados
+  const activos = hayFiltros(f)
+  const totalIngresos = useMemo(
+    () => filtrados.filter((m) => tipoEfectivo(m, tiposCuenta) === 'income').reduce((s, m) => s + m.monto, 0),
+    [filtrados, tiposCuenta]
+  )
+  const totalGastos = useMemo(
+    () => filtrados.filter((m) => tipoEfectivo(m, tiposCuenta) === 'expense').reduce((s, m) => s + m.monto, 0),
+    [filtrados, tiposCuenta]
+  )
+  const gruposDia = useMemo(() => {
+    const mapa = new Map()
+    for (const m of filtrados) {
+      const k = m.fecha.slice(0, 10)
+      let g = mapa.get(k)
+      if (!g) {
+        g = { diaKey: k, label: etiquetaDia(m.fecha), items: [] }
+        mapa.set(k, g)
+      }
+      g.items.push(m)
+    }
+    return [...mapa.values()]
+  }, [filtrados])
+  const gruposComercio = useMemo(
+    () => (f.comercio ? agruparPorComercio(filtrados, f.orden) : []),
+    [filtrados, f.comercio, f.orden]
+  )
+  const recientes = useMemo(() => categoriasRecientes(movimientos, CATEGORIAS), [movimientos, CATEGORIAS])
+  const filtrosVisibles = mostrarFiltros || lateral || !!(f.cuenta || f.desde || f.hasta || f.tipo)
+
+  // --- Ventana (virtualización por días) ---
+  // Con 1.500+ movimientos solo se pintan los días que se ven más un margen; lo de arriba y abajo
+  // se reemplaza por dos espacios en blanco del alto exacto. Un día tiene alto variable (la fila
+  // cambia si hay etiqueta de traslado o botón Confirmar), así que se MIDE cada día al pintarlo y,
+  // mientras no se ha pintado, se usa una estimación. Las filas siguen siendo FilaMovimiento.
+  const listaRef = useRef(null)
+  const alturas = useRef(new Map()) // diaKey -> alto medido en px
+  const [version, setVersion] = useState(0) // sube cuando una medida cambia, para recalcular
+  const [vista, setVista] = useState(0) // sube al hacer scroll/redimensionar
+  const { offs, total } = useMemo(() => {
+    const o = new Array(gruposDia.length + 1)
+    let y = 0
+    gruposDia.forEach((g, i) => {
+      o[i] = y
+      y += alturas.current.get(g.diaKey) || ALTO_DIA_BASE + g.items.length * ALTO_FILA_ESTIMADO
+    })
+    o[gruposDia.length] = y
+    return { offs: o, total: y }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gruposDia, version])
+  const ventana = useMemo(() => {
+    const n = gruposDia.length
+    const lista = listaRef.current
+    // Posición de la lista respecto a la pantalla: sirve igual si hace scroll el contenedor o la página
+    const rect = lista ? lista.getBoundingClientRect() : { top: 0 }
+    const vh = (typeof window !== 'undefined' && window.innerHeight) || 800
+    const desde = -rect.top - MARGEN_VENTANA
+    const hasta = -rect.top + vh + MARGEN_VENTANA
+    let ini = 0
+    while (ini < n - 1 && offs[ini + 1] <= desde) ini++
+    let fin = ini + 1
+    while (fin < n && offs[fin] < hasta) fin++
+    return { ini, fin, arriba: offs[ini] || 0, abajo: Math.max(0, total - (offs[fin] ?? total)) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gruposDia, offs, total, vista, f.comercio, cargando])
+
+  useEffect(() => {
+    let pendiente = 0
+    const programar = () => {
+      if (pendiente) return
+      pendiente = requestAnimationFrame(() => {
+        pendiente = 0
+        setVista((v) => v + 1)
+      })
+    }
+    // El evento scroll no burbuja: en captura sobre document cubre el contenedor y la página
+    document.addEventListener('scroll', programar, { capture: true, passive: true })
+    window.addEventListener('resize', programar)
+    return () => {
+      document.removeEventListener('scroll', programar, { capture: true })
+      window.removeEventListener('resize', programar)
+      if (pendiente) cancelAnimationFrame(pendiente)
+    }
   }, [])
+
+  // Medir los días pintados; si alguno difiere de lo estimado, se recalculan las posiciones
+  useLayoutEffect(() => {
+    const lista = listaRef.current
+    if (!lista) return
+    let cambio = false
+    for (const el of lista.querySelectorAll('[data-dia]')) {
+      const h = el.getBoundingClientRect().height
+      const previo = alturas.current.get(el.dataset.dia)
+      if (h > 0 && (previo === undefined || Math.abs(previo - h) > 1)) {
+        alturas.current.set(el.dataset.dia, h)
+        cambio = true
+      }
+    }
+    if (cambio) setVersion((v) => v + 1)
+  })
+
+  // --- Categorizar sin abrir el movimiento (actualización optimista + Deshacer) ---
+  const categorizar = useCallback(
+    async (items, categoria, { recordar = false, anteriores = false } = {}) => {
+      const ids = items.map((m) => m.id)
+      const idSet = new Set(ids)
+      const previos = items.map((m) => ({ id: m.id, categoria: m.categoria }))
+      const huella = items.length ? huellaDe(items[0]) : ''
+      // Con "aplicar a los anteriores" los que ya están cargados cambian a la vez
+      const afectados = new Set(idSet)
+      if (anteriores && huella) {
+        for (const m of filtradosRef.current) if (huellaDe(m) === huella && m.fuente !== 'transferencia_interna') afectados.add(m.id)
+      }
+      const siguiente =
+        items.length === 1 && f.cat === 'Otros' && categoria !== 'Otros'
+          ? filtradosRef.current[filtradosRef.current.findIndex((m) => m.id === items[0].id) + 1]
+          : null
+
+      setMovimientos((prev) =>
+        prev.map((m) => (afectados.has(m.id) ? { ...m, categoria, cat_confirmada: true, cat_origen: null } : m))
+      )
+
+      let regla = null
+      try {
+        const llamadas = [api.recategorizarMasivo(ids, categoria)]
+        if (recordar && items.length) {
+          llamadas.push(
+            Promise.resolve(
+              api.aprenderRegla({ descripcion: items[0].descripcion, categoria, aplicar_anteriores: anteriores })
+            ).then((r) => {
+              regla = r
+            })
+          )
+        }
+        await Promise.all(llamadas)
+      } catch (err) {
+        // Falló: se devuelve todo como estaba
+        setMovimientos((prev) => prev.map((m) => (idSet.has(m.id) ? { ...m, categoria: previos.find((p) => p.id === m.id).categoria } : m)))
+        avisar(err.message || 'No se pudo cambiar la categoría')
+        return
+      }
+      recargarConteo()
+
+      const extra = anteriores && regla?.anteriores_actualizados ? regla.anteriores_actualizados : 0
+      const recuerda = recordar && regla?.guardada
+      const destino = `${iconoDe(categoria)} ${categoria}`
+      const mensaje =
+        items.length === 1
+          ? extra
+            ? `Listo: ${extra + 1} movimientos movidos a ${destino}`
+            : `Movido a ${destino}${recuerda ? ` · recordaré «${regla.huella}»` : ''}`
+          : `${items.length} movimientos movidos a ${destino}`
+
+      async function deshacer() {
+        const porCategoria = new Map()
+        for (const p of previos) {
+          if (p.categoria === categoria) continue
+          porCategoria.set(p.categoria, [...(porCategoria.get(p.categoria) || []), p.id])
+        }
+        setMovimientos((prev) =>
+          prev.map((m) => (idSet.has(m.id) ? { ...m, categoria: previos.find((p) => p.id === m.id).categoria } : m))
+        )
+        try {
+          await Promise.all([...porCategoria].map(([cat, lista]) => api.recategorizarMasivo(lista, cat)))
+          // Si el aviso creó la regla del comercio, se quita (si solo la actualizó, se deja)
+          if (recuerda && !regla.actualizada) {
+            const reglas = await api.reglasCategoria()
+            const r = (reglas || []).find((x) => claveComercio(x.patron) === regla.huella)
+            if (r) await api.eliminarReglaCategoria(r.id)
+          }
+          recargarConteo()
+        } catch {
+          avisar('No se pudo deshacer')
+        }
+      }
+      // Con "aplicar a los anteriores" cambiaron movimientos que no están en pantalla: sin Deshacer
+      avisar(mensaje, 'ok', extra ? {} : { accion: { texto: 'Deshacer', onClick: deshacer } })
+
+      // Flujo de limpieza continuo: con "Sin categorizar" activo, pasa solo al siguiente
+      if (siguiente) setTimeout(() => setSelector(selectorDeFila(siguiente)), 280)
+    },
+    [f.cat, avisar, iconoDe, recargarConteo] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+
+  function selectorDeFila(m) {
+    return { items: [m], movimiento: m, categoriaActual: m.categoria, titulo: 'Categoría', subtitulo: m.descripcion, clave: m.id }
+  }
+  const abrirChip = useCallback((m) => setSelector(selectorDeFila(m)), [])
+  function abrirChipGrupo(g) {
+    setSelector({
+      items: g.items,
+      movimiento: g.items[0],
+      categoriaActual: g.mixta ? '' : g.categoria,
+      titulo: 'Categoría del comercio',
+      subtitulo: `${g.nombre} · ${g.conteo} movimientos`,
+      clave: g.huella,
+    })
+  }
+  function abrirChipMasivo() {
+    const items = movimientos.filter((m) => seleccionados.has(m.id))
+    setSelector({
+      items, movimiento: null, categoriaActual: '', masivo: true,
+      titulo: 'Categoría para la selección', subtitulo: `${items.length} seleccionados`, clave: 'masivo',
+    })
+  }
+
+  const confirmarUno = useCallback(
+    async (m) => {
+      try {
+        await api.confirmarCategorias([m.id])
+        setMovimientos((prev) => prev.map((x) => (x.id === m.id ? { ...x, cat_confirmada: true, cat_origen: null } : x)))
+        recargarConteo()
+      } catch {
+        avisar('No se pudo confirmar la categoría')
+      }
+    },
+    [avisar, recargarConteo]
+  )
+
+  async function confirmarTodas() {
+    const ok = await confirmar(
+      'Se dejarán como correctas las categorías que la app puso sola. Los de "Otros" siguen pendientes.',
+      { titulo: `¿Confirmar ${conteo.auto} categorías?`, confirmarTexto: 'Confirmar todas' }
+    )
+    if (!ok) return
+    try {
+      await api.confirmarCategorias(null)
+      const { items, hay } = await traerHasta(Math.max(TAMANO_PAGINA, movimientos.length))
+      setMovimientos(items)
+      setHayMas(hay)
+      recargarConteo()
+    } catch {
+      avisar('No se pudieron confirmar')
+    }
+  }
 
   async function cargarMas() {
     setCargandoMas(true)
     try {
-      const siguientes = await api.movimientos(TAMANO_PAGINA, movimientos.length)
+      const siguientes = await pedir(movimientos.length)
       setMovimientos((prev) => [...prev, ...siguientes])
       setHayMas(siguientes.length === TAMANO_PAGINA)
     } catch {
       avisar('No se pudieron cargar más movimientos')
     } finally {
       setCargandoMas(false)
-    }
-  }
-
-  // useDeferredValue: al teclear, la lista se actualiza sin trabar el campo de texto.
-  const busquedaDiferida = useDeferredValue(busqueda)
-
-  const categorias = useMemo(() => ['Todos', ...new Set(movimientos.map((m) => m.categoria))], [movimientos])
-
-  const filtrados = useMemo(() => {
-    const q = busquedaDiferida.toLowerCase()
-    return movimientos.filter((m) => {
-      if (q && !m.descripcion.toLowerCase().includes(q)) return false
-      if (filtro !== 'Todos' && m.categoria !== filtro) return false
-      if (cuentaId && m.cuenta_id !== cuentaId) return false
-      if (desde && m.fecha.slice(0, 10) < desde) return false
-      if (hasta && m.fecha.slice(0, 10) > hasta) return false
-      return true
-    })
-  }, [movimientos, busquedaDiferida, filtro, cuentaId, desde, hasta])
-
-  const { totalIngresos, totalGastos } = useMemo(() => {
-    let i = 0
-    let g = 0
-    for (const m of filtrados) {
-      if (m.tipo === 'income') i += m.monto
-      else if (m.tipo === 'expense') g += m.monto
-    }
-    return { totalIngresos: i, totalGastos: g }
-  }, [filtrados])
-
-  const hayFiltrosActivos = !!(cuentaId || desde || hasta || filtro !== 'Todos' || busqueda)
-
-  // Lista plana: encabezados de día y movimientos en una sola secuencia (llegan ordenados por fecha).
-  const filas = useMemo(() => {
-    const out = []
-    let diaActual = null
-    for (const m of filtrados) {
-      const diaKey = m.fecha.slice(0, 10)
-      if (diaKey !== diaActual) {
-        diaActual = diaKey
-        out.push({ tipo: 'dia', key: `d-${diaKey}`, label: etiquetaDia(m.fecha) })
-      }
-      out.push({ tipo: 'mov', key: m.id, m })
-    }
-    return out
-  }, [filtrados])
-
-  // offsets[i] = y donde empieza la fila i; el último valor es el alto total.
-  const offsets = useMemo(() => {
-    const o = new Array(filas.length + 1)
-    let y = 0
-    for (let i = 0; i < filas.length; i++) {
-      o[i] = y
-      y += alturas[filas[i].tipo]
-    }
-    o[filas.length] = y
-    return o
-  }, [filas, alturas])
-  const altoTotal = offsets[filas.length]
-
-  const [rango, setRango] = useState({ ini: 0, fin: 30 })
-  const recalcular = useCallback(() => {
-    const sc = scrollRef.current
-    const lista = listaRef.current
-    if (!sc || !lista || filas.length === 0) return
-    const vista = sc.clientHeight || 800 // jsdom no mide: se asume una pantalla típica
-    const arriba = sc.getBoundingClientRect().top - lista.getBoundingClientRect().top // px de la lista ya pasados
-    const ini = indiceEn(offsets, arriba - MARGEN_PX)
-    const fin = Math.min(filas.length, indiceEn(offsets, arriba + vista + MARGEN_PX) + 1)
-    setRango((prev) => (prev.ini === ini && prev.fin === fin ? prev : { ini, fin }))
-  }, [offsets, filas.length])
-
-  useLayoutEffect(() => {
-    recalcular()
-  }, [recalcular, cargando])
-
-  useEffect(() => {
-    const sc = scrollRef.current
-    if (!sc) return
-    let pendiente = 0
-    const programar = () => {
-      if (pendiente) return
-      pendiente = requestAnimationFrame(() => {
-        pendiente = 0
-        recalcular()
-      })
-    }
-    sc.addEventListener('scroll', programar, { passive: true })
-    window.addEventListener('resize', programar)
-    return () => {
-      sc.removeEventListener('scroll', programar)
-      window.removeEventListener('resize', programar)
-      if (pendiente) cancelAnimationFrame(pendiente)
-    }
-  }, [recalcular])
-
-  // Restaurar la posición de scroll al volver desde el detalle.
-  const scrollRestaurado = useRef(false)
-  useEffect(() => {
-    if (cargando || scrollRestaurado.current || !volver?.scroll) return
-    scrollRestaurado.current = true
-    requestAnimationFrame(() => {
-      if (scrollRef.current) scrollRef.current.scrollTop = volver.scroll
-    })
-  }, [cargando, volver])
-
-  function recordarParaVolver() {
-    try {
-      sessionStorage.setItem(
-        CLAVE_VOLVER,
-        JSON.stringify({
-          filtros: { busqueda, filtro, cuentaId, desde, hasta },
-          scroll: scrollRef.current?.scrollTop || 0,
-          cargados: movimientos.length,
-        })
-      )
-    } catch {
-      /* sin sessionStorage simplemente no se restaura */
     }
   }
 
@@ -287,150 +588,129 @@ export default function Movimientos() {
     }
   }
 
-  function toggleSeleccion(id) {
+  // --- Selección múltiple ---
+  const alternar = useCallback((id, entrar = false) => {
+    setModoSeleccion(true)
     setSeleccionados((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
+      const n = new Set(prev)
+      if (entrar || !n.has(id)) n.add(id)
+      else n.delete(id)
+      return n
     })
-  }
+  }, [])
 
   function salirModoSeleccion() {
     setModoSeleccion(false)
     setSeleccionados(new Set())
   }
+  const seleccionarTodoFiltrado = () => setSeleccionados(new Set(filtrados.map((m) => m.id)))
+  function seleccionarSimilares() {
+    const huellas = new Set(movimientos.filter((m) => seleccionados.has(m.id)).map(huellaDe))
+    setSeleccionados((prev) => {
+      const n = new Set(prev)
+      for (const m of filtrados) if (huellas.has(huellaDe(m))) n.add(m.id)
+      return n
+    })
+  }
 
-  async function aplicarCategoriaMasiva(categoria) {
-    if (seleccionados.size === 0) return
-    setAplicandoCategoria(true)
+  async function moverSeleccion(cuentaId) {
+    setMoverACuenta(false)
+    const ids = [...seleccionados]
+    setAplicando(true)
     try {
-      await api.recategorizarMasivo([...seleccionados], categoria)
-      setMovimientos((prev) => prev.map((m) => (seleccionados.has(m.id) ? { ...m, categoria } : m)))
+      const r = await api.moverMovimientosMasivo(ids, cuentaId)
+      const idSet = new Set(ids)
+      setMovimientos((prev) => prev.map((m) => (idSet.has(m.id) && m.fuente !== 'transferencia_interna' ? { ...m, cuenta_id: cuentaId } : m)))
+      await recargarCuentas?.()
+      const destino = cuentas.find((c) => c.id === cuentaId)?.nombre || 'la cuenta'
+      avisar(
+        r.omitidos
+          ? `${r.actualizados} movidos a ${destino}. ${r.omitidos} no se pudieron mover (transferencias, aportes a metas u otra moneda).`
+          : `${r.actualizados} movimientos movidos a ${destino}`,
+        'ok'
+      )
       salirModoSeleccion()
-    } catch {
-      avisar('No se pudo actualizar la categoría')
+    } catch (err) {
+      avisar(err.message || 'No se pudieron mover')
     } finally {
-      setAplicandoCategoria(false)
+      setAplicando(false)
     }
   }
 
-  const todosSeleccionados = filtrados.length > 0 && seleccionados.size === filtrados.length
-
-  function signo(m) {
-    return m.tipo === 'income' ? '+' : m.tipo === 'expense' ? '-' : ''
-  }
-  function colorMonto(m) {
-    return m.tipo === 'income' ? 'text-accent-2' : m.tipo === 'transfer' ? 'text-ink-soft' : 'text-ink'
-  }
-  function casilla(m) {
-    const marcado = seleccionados.has(m.id)
-    return (
-      <span
-        aria-hidden="true"
-        className={`w-5 h-5 rounded-md border-2 shrink-0 flex items-center justify-center ${marcado ? 'bg-accent border-accent' : 'border-line'}`}
-      >
-        {marcado && <Check size={16} className="text-white" />}
-      </span>
+  async function eliminarSeleccion() {
+    const ids = [...seleccionados]
+    const ok = await confirmar(
+      'El saldo de las cuentas se ajustará como si estos movimientos nunca hubieran existido. Esto no se puede deshacer.',
+      {
+        titulo: `¿Eliminar ${ids.length} ${ids.length === 1 ? 'movimiento' : 'movimientos'}?`,
+        confirmarTexto: 'Eliminar',
+        peligro: true,
+      }
     )
+    if (!ok) return
+    setAplicando(true)
+    try {
+      const r = await api.eliminarMovimientosMasivo(ids)
+      // Las transferencias se omiten en el servidor: solo salen de la lista las que de verdad se borraron
+      const omitidas = new Set(movimientos.filter((m) => ids.includes(m.id) && m.fuente === 'transferencia_interna').map((m) => m.id))
+      const borrados = ids.filter((id) => !omitidas.has(id))
+      const set = new Set(borrados)
+      borrados.forEach((id) => quitarDeCaches(id))
+      setMovimientos((prev) => prev.filter((m) => !set.has(m.id)))
+      await recargarCuentas?.()
+      recargarConteo()
+      avisar(
+        r.omitidos
+          ? `${r.actualizados} eliminados. ${r.omitidos} no se eliminaron (las transferencias se borran de una en una).`
+          : `${r.actualizados} ${r.actualizados === 1 ? 'movimiento eliminado' : 'movimientos eliminados'}`,
+        'ok'
+      )
+      salirModoSeleccion()
+    } catch (err) {
+      avisar(err.message || 'No se pudieron eliminar')
+    } finally {
+      setAplicando(false)
+    }
   }
 
-  // Envoltorio común: en modo selección es un botón; si no, un enlace al detalle.
-  function envolver(m, className, style, hijos, extra = {}) {
-    return modoSeleccion ? (
-      <button
-        key={m.id}
-        onClick={() => toggleSeleccion(m.id)}
-        className={`${className} text-left`}
-        style={style}
-        aria-pressed={seleccionados.has(m.id)}
-        {...extra}
-      >
-        {hijos}
-      </button>
-    ) : (
-      <Link key={m.id} to={`/movimientos/${m.id}`} onClick={recordarParaVolver} className={className} style={style} {...extra}>
-        {hijos}
-      </Link>
-    )
+  // --- Detalle como panel lateral (≥1024 px): la lista no se desmonta ---
+  const abrirPanel = useCallback((id) => cambiarParams({ mov: id }), [cambiarParams])
+  const cerrarPanel = useCallback(() => cambiarParams({ mov: '' }), [cambiarParams])
+  function alCambioDetalle(actualizado, eliminadoId) {
+    if (eliminadoId) {
+      quitarDeCaches(eliminadoId)
+      setMovimientos((prev) => prev.filter((m) => m.id !== eliminadoId))
+    } else if (actualizado) {
+      parchearEnCaches(actualizado)
+      setMovimientos((prev) => prev.map((m) => (m.id === actualizado.id ? { ...m, ...actualizado } : m)))
+    }
+    recargarConteo()
   }
 
-  function filaMovil(fila, top) {
-    const m = fila.m
-    const estilo = { top, height: alturas.mov, left: 20, right: 0 }
-    return envolver(
-      m,
-      'absolute flex items-center',
-      estilo,
-      <>
-        <span
-          className={`absolute -left-5 top-1/2 -mt-[5px] w-2.5 h-2.5 rounded-full border-2 border-paper ${m.tipo === 'income' ? 'bg-accent-2' : 'bg-ink'}`}
-        />
-        <div className="flex items-center justify-between gap-3 w-full">
-          {modoSeleccion && casilla(m)}
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold truncate">{m.descripcion}</p>
-            <p className="text-xs text-ink-soft mt-0.5 truncate">
-              <span aria-hidden="true">{m.tipo === 'transfer' ? '🔁' : iconoDe(m.categoria)}</span> {m.categoria}
-            </p>
-          </div>
-          <span className={`text-[15px] font-bold shrink-0 ${colorMonto(m)}`}>
-            {signo(m)}
-            {formatMoneda(m.monto, monedaDe[m.cuenta_id])}
-          </span>
-        </div>
-      </>
-    )
-  }
+  const nombreCuenta = (id) => cuentas.find((c) => c.id === id)?.nombre || 'Cuenta'
+  const chipsActivos = [
+    f.q && { k: 'q', texto: `Texto: ${f.q}` },
+    f.cuenta && { k: 'cuenta', texto: nombreCuenta(f.cuenta) },
+    f.cat && f.cat !== 'Otros' && { k: 'cat', texto: f.cat },
+    f.tipo && { k: 'tipo', texto: { income: 'Ingresos', expense: 'Gastos', transfer: 'Transferencias' }[f.tipo] || f.tipo },
+    f.desde && { k: 'desde', texto: `Desde ${f.desde}` },
+    f.hasta && { k: 'hasta', texto: `Hasta ${f.hasta}` },
+  ].filter(Boolean)
 
-  // Tabla de escritorio: mismas filas virtualizadas, pero en columnas.
-  const COLUMNAS = 'grid grid-cols-[110px_minmax(0,1fr)_190px_170px_150px] items-center gap-4 px-4'
-  function filaTabla(fila, top, indice) {
-    const m = fila.m
-    return envolver(
-      m,
-      `absolute inset-x-0 ${COLUMNAS} border-b border-line hover:bg-paper-raised`,
-      { top, height: alturas.mov },
-      <>
-        <span role="cell" className="text-xs text-ink-soft">
-          {modoSeleccion ? (
-            <span className="flex items-center gap-2">{casilla(m)}{m.fecha.slice(0, 10)}</span>
-          ) : (
-            m.fecha.slice(0, 10)
-          )}
-        </span>
-        <span role="cell" className="text-sm font-semibold truncate">{m.descripcion}</span>
-        <span role="cell" className="text-sm text-ink-soft truncate">
-          <span aria-hidden="true">{m.tipo === 'transfer' ? '🔁' : iconoDe(m.categoria)}</span> {m.categoria}
-        </span>
-        <span role="cell" className="text-sm text-ink-soft truncate">{nombreCuenta[m.cuenta_id] || ''}</span>
-        <span role="cell" className={`text-sm font-bold text-right ${colorMonto(m)}`}>
-          {signo(m)}
-          {formatMoneda(m.monto, monedaDe[m.cuenta_id])}
-        </span>
-      </>,
-      { role: 'row', 'aria-rowindex': indice + 2 }
-    )
-  }
-
-  const visibles = filas.slice(rango.ini, rango.fin)
+  const campo = 'rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-xs'
+  const botonChip = (activo) =>
+    `shrink-0 text-sm px-4 py-1.5 min-h-[36px] rounded-full border font-medium ${
+      activo ? 'bg-accent text-white border-accent' : 'border-accent text-accent'
+    }`
 
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
-      <header className="px-5 pt-14 pb-4 flex items-center justify-between">
+    <div ref={raiz} className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
+      <header className="px-5 pantalla-top pb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Movimientos</h1>
         {modoSeleccion ? (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSeleccionados(todosSeleccionados ? new Set() : new Set(filtrados.map((m) => m.id)))}
-              className="text-sm text-ink-soft font-medium"
-            >
-              {todosSeleccionados ? 'Quitar todos' : `Seleccionar los ${filtrados.length}`}
-            </button>
-            <button onClick={salirModoSeleccion} className="text-sm text-accent font-medium">
-              Cancelar
-            </button>
-          </div>
+          <button onClick={salirModoSeleccion} className="text-sm text-accent font-medium min-h-[44px] px-2">
+            Cancelar
+          </button>
         ) : (
           <div className="flex items-center gap-2">
             <button
@@ -440,11 +720,11 @@ export default function Movimientos() {
               Seleccionar
             </button>
             <button
-              onClick={() => setMostrarFiltrosFecha((v) => !v)}
+              onClick={() => setMostrarFiltros((v) => !v)}
               aria-label="Filtros de fecha y cuenta"
-              aria-expanded={mostrarFiltrosFecha}
-              className={`w-9 h-9 rounded-full border flex items-center justify-center ${
-                mostrarFiltrosFecha || desde || hasta ? 'bg-accent-soft border-accent text-accent' : 'border-line text-ink-soft'
+              aria-expanded={filtrosVisibles}
+              className={`w-11 h-11 rounded-full border flex items-center justify-center ${
+                filtrosVisibles ? 'bg-accent-soft border-accent text-accent' : 'border-line text-ink-soft'
               }`}
             >
               <SlidersHorizontal size={16} />
@@ -452,194 +732,423 @@ export default function Movimientos() {
             <button
               onClick={() => exportar('csv')}
               disabled={exportando}
-              className="w-9 h-9 rounded-full border border-line text-ink-soft flex items-center justify-center disabled:opacity-50"
+              className="w-11 h-11 rounded-full border border-line text-ink-soft flex items-center justify-center disabled:opacity-50"
               aria-label="Exportar CSV"
             >
               <Download size={16} />
             </button>
+            <Link
+              to="/sincronizacion"
+              state={{ abrir: 'subir', manual: true }}
+              className="w-11 h-11 rounded-full border border-line text-ink-soft flex items-center justify-center"
+              aria-label="Importar desde Excel o CSV"
+            >
+              <Upload size={16} />
+            </Link>
           </div>
         )}
       </header>
 
-      {mostrarFiltrosFecha && (
-        <div className="px-5 mb-4">
-          <div className="flex gap-2">
-            <input
-              type="date"
-              aria-label="Desde"
-              value={desde}
-              onChange={(e) => setDesde(e.target.value)}
-              className="flex-1 rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-xs"
-            />
-            <input
-              type="date"
-              aria-label="Hasta"
-              value={hasta}
-              onChange={(e) => setHasta(e.target.value)}
-              className="flex-1 rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-xs"
-            />
-            <button onClick={() => exportar('xlsx')} className="text-xs text-accent font-medium shrink-0 px-2" aria-label="Exportar a Excel">
-              .xlsx
-            </button>
-          </div>
-          {cuentas.length > 1 && (
-            <select
-              aria-label="Filtrar por cuenta"
-              value={cuentaId}
-              onChange={(e) => setCuentaId(e.target.value)}
-              className="w-full mt-2 rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-xs"
-            >
-              <option value="">Todas las cuentas</option>
-              {cuentas.map((c) => (
-                <option key={c.id} value={c.id}>{c.nombre}</option>
-              ))}
-            </select>
+      {/* ≥1024 px: filtros (o el detalle del movimiento) a la izquierda, lista a la derecha */}
+      <div className="dos-col dos-col-5-6">
+        <div className="col col-sticky lg:max-h-[calc(100svh-2rem)] lg:overflow-y-auto">
+          {panelId ? (
+            <DetalleMovimiento key={panelId} id={panelId} embebido onCerrar={cerrarPanel} onCambio={alCambioDetalle} />
+          ) : (
+            <>
+              <div className="px-5 mb-3">
+                <div className="flex items-center gap-2 bg-paper-raised border border-line rounded-2xl px-4 py-3">
+                  <Search size={20} className="text-ink-soft" />
+                  <input
+                    value={texto}
+                    aria-label="Buscar movimiento"
+                    data-atajo-buscar
+                    onChange={(e) => setTexto(e.target.value)}
+                    placeholder="Buscar movimiento"
+                    className="bg-transparent outline-none text-sm flex-1 placeholder:text-ink-soft"
+                  />
+                </div>
+              </div>
+
+              <div className="px-5 mb-3 flex gap-2 overflow-x-auto no-scrollbar lg:flex-wrap lg:overflow-visible">
+                {(conteo.total > 0 || f.revisar) && (
+                  <button onClick={() => cambiarParams({ revisar: !f.revisar })} aria-pressed={f.revisar} className={botonChip(f.revisar)}>
+                    Por revisar{conteo.total > 0 ? ` (${conteo.total})` : ''}
+                  </button>
+                )}
+                {(conteo.otros > 0 || f.cat === 'Otros') && (
+                  <button
+                    onClick={() => cambiarParams({ cat: f.cat === 'Otros' ? '' : 'Otros' })}
+                    aria-pressed={f.cat === 'Otros'}
+                    className={botonChip(f.cat === 'Otros')}
+                  >
+                    Sin categorizar{conteo.otros > 0 ? ` (${conteo.otros})` : ''}
+                  </button>
+                )}
+                {(conteo.auto > 0 || f.conf) && (
+                  <button onClick={() => cambiarParams({ conf: !f.conf })} aria-pressed={f.conf} className={botonChip(f.conf)}>
+                    Por confirmar{conteo.auto > 0 ? ` (${conteo.auto})` : ''}
+                  </button>
+                )}
+              </div>
+              {f.revisar && conteo.auto > 0 && (
+                <div className="px-5 mb-3">
+                  <button onClick={confirmarTodas} className="text-xs text-ink-soft font-medium underline">
+                    Confirmar las {conteo.auto} automáticas
+                  </button>
+                </div>
+              )}
+
+              {filtrosVisibles && (
+                <div className="px-5 mb-3 grid grid-cols-2 gap-2">
+                  <input
+                    type="date"
+                    aria-label="Desde"
+                    value={f.desde}
+                    onChange={(e) => cambiarParams({ desde: e.target.value })}
+                    className={campo}
+                  />
+                  <input
+                    type="date"
+                    aria-label="Hasta"
+                    value={f.hasta}
+                    onChange={(e) => cambiarParams({ hasta: e.target.value })}
+                    className={campo}
+                  />
+                  {cuentas.length > 1 && (
+                    <select
+                      aria-label="Filtrar por cuenta"
+                      value={f.cuenta}
+                      onChange={(e) => cambiarParams({ cuenta: e.target.value })}
+                      className={campo}
+                    >
+                      <option value="">Todas las cuentas</option>
+                      {cuentas.map((c) => (
+                        <option key={c.id} value={c.id}>{c.nombre}</option>
+                      ))}
+                    </select>
+                  )}
+                  <select
+                    aria-label="Filtrar por categoría"
+                    value={f.cat}
+                    onChange={(e) => cambiarParams({ cat: e.target.value })}
+                    className={campo}
+                  >
+                    <option value="">Todas las categorías</option>
+                    {[...new Set([...CATEGORIAS, ...(f.cat ? [f.cat] : [])])].map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label="Filtrar por tipo"
+                    value={f.tipo}
+                    onChange={(e) => cambiarParams({ tipo: e.target.value })}
+                    className={campo}
+                  >
+                    <option value="">Ingresos y gastos</option>
+                    <option value="expense">Solo gastos</option>
+                    <option value="income">Solo ingresos</option>
+                    <option value="transfer">Transferencias</option>
+                  </select>
+                  <button onClick={() => exportar('xlsx')} className="text-xs text-accent font-medium px-2 text-left" aria-label="Exportar a Excel">
+                    Exportar .xlsx
+                  </button>
+                </div>
+              )}
+
+              {activos && (
+                <div className="px-5 mb-3 flex items-center flex-wrap gap-2" aria-label="Filtros activos">
+                  {chipsActivos.map((c) => (
+                    <button
+                      key={c.k}
+                      onClick={() => cambiarParams({ [c.k]: '' })}
+                      aria-label={`Quitar filtro ${c.texto}`}
+                      className="inline-flex items-center gap-1 text-xs px-3 min-h-[32px] rounded-full bg-ink text-paper"
+                    >
+                      {c.texto} <X size={16} aria-hidden="true" />
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => {
+                      setTexto('')
+                      cambiarParams({ q: '', cuenta: '', cat: '', tipo: '', desde: '', hasta: '', revisar: false, conf: false })
+                    }}
+                    className="text-xs font-semibold text-accent underline px-1 min-h-[32px]"
+                  >
+                    Limpiar
+                  </button>
+                </div>
+              )}
+
+              {activos && filtrados.length > 0 && (
+                <div className="px-5 mb-3 flex gap-3">
+                  <div className="flex-1 rounded-2xl bg-paper-raised border border-line p-3">
+                    <p className="text-[11px] text-ink-soft uppercase tracking-wide">Ingresos</p>
+                    <p className="text-sm font-bold text-gold mt-0.5">{formatCOP(totalIngresos)}</p>
+                  </div>
+                  <div className="flex-1 rounded-2xl bg-paper-raised border border-line p-3">
+                    <p className="text-[11px] text-ink-soft uppercase tracking-wide">Gastos</p>
+                    <p className="text-sm font-bold text-ink mt-0.5">{formatCOP(totalGastos)}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="px-5 mb-4 flex items-center gap-2">
+                <div role="group" aria-label="Vista" className="inline-flex rounded-full border border-line p-0.5 bg-paper-raised">
+                  {[
+                    { id: false, texto: 'Lista' },
+                    { id: true, texto: 'Por comercio' },
+                  ].map((v) => (
+                    <button
+                      key={v.texto}
+                      aria-pressed={f.comercio === v.id}
+                      onClick={() => cambiarParams({ vista: v.id ? 'comercio' : '' })}
+                      className={`text-sm px-4 min-h-[36px] rounded-full font-medium ${
+                        f.comercio === v.id ? 'bg-ink text-paper' : 'text-ink-soft'
+                      }`}
+                    >
+                      {v.texto}
+                    </button>
+                  ))}
+                </div>
+                {f.comercio && (
+                  <select
+                    aria-label="Ordenar comercios"
+                    value={f.orden}
+                    onChange={(e) => cambiarParams({ orden: e.target.value === 'monto' ? 'monto' : '' })}
+                    className={`${campo} ml-auto`}
+                  >
+                    <option value="cantidad">Más movimientos</option>
+                    <option value="monto">Mayor monto</option>
+                  </select>
+                )}
+              </div>
+            </>
           )}
         </div>
-      )}
 
-      {hayFiltrosActivos && filtrados.length > 0 && (
-        <div className="px-5 mb-4 flex gap-3">
-          <div className="flex-1 rounded-2xl bg-paper-raised border border-line p-3">
-            <p className="text-[11px] text-ink-soft uppercase tracking-wide">Ingresos</p>
-            <p className="text-sm font-bold text-accent-2 mt-0.5">{formatCOP(totalIngresos)}</p>
-          </div>
-          <div className="flex-1 rounded-2xl bg-paper-raised border border-line p-3">
-            <p className="text-[11px] text-ink-soft uppercase tracking-wide">Gastos</p>
-            <p className="text-sm font-bold text-ink mt-0.5">{formatCOP(totalGastos)}</p>
-          </div>
-        </div>
-      )}
+        <div className="col">
+          {cargando ? (
+            <EsqueletoLista filas={8} className="mx-5" etiqueta="Cargando movimientos" />
+          ) : errorCarga ? (
+            <div role="alert" className="mx-5 rounded-3xl bg-danger-soft border border-danger/30 p-6 text-center">
+              <p className="text-sm text-danger">{errorCarga}</p>
+            </div>
+          ) : filtrados.length === 0 ? (
+            <EstadoVacio
+              icono={Search}
+              titulo={f.revisar && chipsActivos.length === 0 && !f.cat && !f.conf ? 'Todo está revisado' : 'No hay movimientos que coincidan'}
+              texto={
+                f.revisar && chipsActivos.length === 0 && !f.cat && !f.conf
+                  ?'No hay categorías automáticas pendientes ni movimientos en "Otros".'
+                  : 'Prueba con otro filtro o búsqueda.'
+              }
+              className="mx-5"
+            />
+          ) : f.comercio ? (
+            <div className="mx-5 space-y-2.5">
+              {gruposComercio.map((g) => (
+                <div key={g.huella} className="rounded-2xl border border-line bg-paper-raised p-3" data-comercio={g.huella}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">{g.nombre}</p>
+                      <p className="text-xs text-ink-soft mt-0.5">
+                        {g.conteo} {g.conteo === 1 ? 'movimiento' : 'movimientos'} · {formatCOP(g.total)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => abrirChipGrupo(g)}
+                      aria-label={`Categoría de ${g.nombre}`}
+                      className="inline-flex items-center gap-1 text-sm rounded-full border border-accent text-accent px-3 min-h-[40px] shrink-0"
+                    >
+                      {g.mixta ? <Icono icono={Shuffle} tam="sm" /> : <span aria-hidden="true">{iconoDe(g.categoria)}</span>} {g.mixta ? 'Varias' : g.categoria}
+                      <ChevronDown size={16} aria-hidden="true" />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() =>
+                      setExpandidos((prev) => {
+                        const n = new Set(prev)
+                        if (n.has(g.huella)) n.delete(g.huella)
+                        else n.add(g.huella)
+                        return n
+                      })
+                    }
+                    aria-expanded={expandidos.has(g.huella)}
+                    className="mt-1 text-xs text-ink-soft underline min-h-[32px]"
+                  >
+                    {expandidos.has(g.huella) ? 'Ocultar movimientos' : 'Ver movimientos'}
+                  </button>
+                  {expandidos.has(g.huella) && (
+                    <ul className="mt-1 divide-y divide-line">
+                      {g.items.slice(0, 50).map((m) => (
+                        <li key={m.id}>
+                          <Link
+                            to={`/movimientos/${m.id}`}
+                            onClick={(e) => {
+                              if (lateral) {
+                                e.preventDefault()
+                                abrirPanel(m.id)
+                              }
+                            }}
+                            className="flex items-center justify-between gap-3 py-2 text-xs"
+                          >
+                            <span className="truncate">
+                              {new Date(m.fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })} · {m.descripcion}
+                            </span>
+                            <span className="font-semibold shrink-0">{formatMoneda(m.monto, monedaDe[m.cuenta_id])}</span>
+                          </Link>
+                        </li>
+                      ))}
+                      {g.items.length > 50 && <li className="py-2 text-xs text-ink-soft">y {g.items.length - 50} más</li>}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mx-5 relative pl-5">
+              <div className="absolute left-[9px] top-1.5 bottom-1.5 w-0.5 bg-line" />
+              <div ref={listaRef} style={{ paddingTop: ventana.arriba, paddingBottom: ventana.abajo }}>
+              {gruposDia.slice(ventana.ini, ventana.fin).map((grupo, k) => {
+                const gi = ventana.ini + k
+                return (
+                <div key={grupo.diaKey} data-dia={grupo.diaKey} className={gi === 0 ? '' : 'pt-5'}>
+                  <p className="text-[11px] font-bold text-ink-soft uppercase tracking-wide mb-1">
+                    {grupo.label}
+                  </p>
+                  {grupo.items.map((m, i) => (
+                    <FilaMovimiento
+                      key={m.id}
+                      m={m}
+                      icono={iconoDe(m.categoria)}
+                      moneda={monedaDe[m.cuenta_id]}
+                      esSel={seleccionados.has(m.id)}
+                      modoSel={modoSeleccion}
+                      panel={lateral}
+                      botonConfirmar={f.revisar}
+                      indice={gi === 0 ? Math.min(i, 12) : 0}
+                      onToggle={alternar}
+                      onChip={abrirChip}
+                      onConfirmar={confirmarUno}
+                      onAbrir={abrirPanel}
+                    />
+                  ))}
+                </div>
+                )
+              })}
+              </div>
+            </div>
+          )}
 
-      <div className="px-5 mb-4">
-        <div className="flex items-center gap-2 bg-paper-raised border border-line rounded-2xl px-4 py-3">
-          <Search size={20} className="text-ink-soft" />
-          <input
-            value={busqueda}
-            aria-label="Buscar movimiento"
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar movimiento"
-            className="bg-transparent outline-none text-sm flex-1 placeholder:text-ink-soft"
-          />
+          {!cargando && !errorCarga && hayMas && (
+            <div className="px-5 mt-6">
+              <button
+                onClick={cargarMas}
+                disabled={cargandoMas}
+                className="w-full rounded-2xl border border-line bg-paper-raised py-3.5 text-sm font-semibold text-ink-soft disabled:opacity-60"
+              >
+                {cargandoMas ? 'Cargando...' : 'Cargar movimientos anteriores'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {categorias.length > 1 && (
-        <div className="px-5 flex gap-2 mb-4 overflow-x-auto no-scrollbar lg:flex-wrap">
-          {categorias.map((f) => (
+      {selector && (
+        <SelectorCategoria
+          key={selector.clave}
+          titulo={selector.titulo}
+          subtitulo={selector.subtitulo}
+          categoriaActual={selector.categoriaActual}
+          movimiento={selector.movimiento}
+          recientes={recientes}
+          onCerrar={() => setSelector(null)}
+          onElegir={(cat, opts) => {
+            const s = selector
+            categorizar(s.items, cat, opts)
+            if (s.masivo) salirModoSeleccion()
+          }}
+        />
+      )}
+
+      {moverACuenta && (
+        <Hoja onCerrar={() => setMoverACuenta(false)} titulo="Mover a otra cuenta">
+          {({ cerrar }) => (
+            <>
+              <h2 className="text-lg font-semibold mb-1">Mover a otra cuenta</h2>
+              <p className="text-xs text-ink-soft mb-3">
+                {seleccionados.size} seleccionados. Los saldos de ambas cuentas se ajustan solos.
+              </p>
+              <div className="space-y-2">
+                {cuentas.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => moverSeleccion(c.id)}
+                    className="w-full text-left rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm font-medium min-h-[44px]"
+                  >
+                    {c.nombre}
+                  </button>
+                ))}
+              </div>
+              <button onClick={cerrar} className="w-full mt-3 rounded-2xl border border-line py-3 text-sm font-semibold">
+                Cancelar
+              </button>
+            </>
+          )}
+        </Hoja>
+      )}
+
+      {modoSeleccion && (
+        <div className="sticky bottom-0 mx-5 mt-4 rounded-2xl bg-ink p-3 shadow-lg pop-in z-10" role="toolbar" aria-label="Acciones sobre la selección">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-paper font-medium shrink-0 px-1" aria-live="polite">
+              {seleccionados.size} seleccionado{seleccionados.size === 1 ? '' : 's'}
+            </span>
             <button
-              key={f}
-              onClick={() => setFiltro(f)}
-              className={`shrink-0 text-sm px-4 py-1.5 rounded-full border ${
-                filtro === f ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
-              }`}
+              disabled={seleccionados.size === 0 || aplicando}
+              onClick={abrirChipMasivo}
+              className="rounded-xl bg-paper text-ink px-3 min-h-[44px] text-sm font-semibold disabled:opacity-40"
             >
-              {f}
+              Categoría
             </button>
-          ))}
-        </div>
-      )}
-
-      {cargando ? (
-        <SkeletonLista ancho={esAncho} />
-      ) : errorCarga ? (
-        <div role="alert" className="mx-5 rounded-3xl bg-danger-soft border border-danger/30 p-6 text-center">
-          <p className="text-sm text-danger">{errorCarga}</p>
-        </div>
-      ) : filtrados.length === 0 ? (
-        <div className="mx-5 rounded-3xl bg-paper-raised border border-line p-8 text-center">
-          <p className="text-sm text-ink-soft">No hay movimientos que coincidan</p>
-        </div>
-      ) : esAncho ? (
-        <div role="table" aria-label="Movimientos" aria-rowcount={filas.length + 1} className="mx-5 rounded-2xl border border-line overflow-hidden bg-paper">
-          <div role="row" aria-rowindex={1} className={`${COLUMNAS} h-10 bg-paper-raised border-b border-line text-[11px] font-bold text-ink-soft uppercase tracking-wide`}>
-            <span role="columnheader">Fecha</span>
-            <span role="columnheader">Descripción</span>
-            <span role="columnheader">Categoría</span>
-            <span role="columnheader">Cuenta</span>
-            <span role="columnheader" className="text-right">Monto</span>
+            {cuentas.length > 1 && (
+              <button
+                disabled={seleccionados.size === 0 || aplicando}
+                onClick={() => setMoverACuenta(true)}
+                className="rounded-xl bg-paper text-ink px-3 min-h-[44px] text-sm font-semibold disabled:opacity-40"
+              >
+                Cuenta
+              </button>
+            )}
+            <button
+              disabled={seleccionados.size === 0 || aplicando}
+              onClick={eliminarSeleccion}
+              className="rounded-xl bg-danger text-white px-3 min-h-[44px] text-sm font-semibold disabled:opacity-40 flex items-center gap-1"
+            >
+              <Trash2 size={16} /> Eliminar
+            </button>
+            <button
+              onClick={salirModoSeleccion}
+              className="ml-auto w-11 h-11 shrink-0 rounded-xl bg-paper flex items-center justify-center"
+              aria-label="Cerrar"
+            >
+              <X size={16} className="text-ink" />
+            </button>
           </div>
-          <div ref={listaRef} className="relative" style={{ height: altoTotal }}>
-            {visibles.map((f, k) => {
-              const i = rango.ini + k
-              return f.tipo === 'dia' ? (
-                <div
-                  key={f.key}
-                  role="row"
-                  aria-rowindex={i + 2}
-                  className="absolute inset-x-0 px-4 flex items-end pb-1.5 bg-paper-raised border-b border-line text-[11px] font-bold text-ink-soft uppercase tracking-wide"
-                  style={{ top: offsets[i], height: alturas.dia }}
-                >
-                  <span role="columnheader">{f.label}</span>
-                </div>
-              ) : (
-                filaTabla(f, offsets[i], i)
-              )
-            })}
+          <div className="flex gap-3 mt-2 px-1">
+            <button onClick={seleccionarTodoFiltrado} className="text-xs text-paper underline min-h-[32px]">
+              Seleccionar todo lo filtrado ({filtrados.length})
+            </button>
+            <button
+              onClick={seleccionarSimilares}
+              disabled={seleccionados.size === 0}
+              className="text-xs text-paper underline min-h-[32px] disabled:opacity-40"
+            >
+              Seleccionar los similares
+            </button>
           </div>
-        </div>
-      ) : (
-        <div className="mx-5 relative">
-          <div className="absolute left-[9px] top-1.5 bottom-1.5 w-0.5 bg-line" />
-          <div ref={listaRef} className="relative" style={{ height: altoTotal }}>
-            {visibles.map((f, k) => {
-              const i = rango.ini + k
-              return f.tipo === 'dia' ? (
-                <p
-                  key={f.key}
-                  className="absolute text-[11px] font-bold text-ink-soft uppercase tracking-wide flex items-end pb-2"
-                  style={{ top: offsets[i], height: alturas.dia, left: 20 }}
-                >
-                  {f.label}
-                </p>
-              ) : (
-                filaMovil(f, offsets[i])
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {!cargando && !errorCarga && hayMas && (
-        <div className="px-5 mt-6">
-          <button
-            onClick={cargarMas}
-            disabled={cargandoMas}
-            className="w-full rounded-2xl border border-line bg-paper-raised py-3.5 text-sm font-semibold text-ink-soft disabled:opacity-60"
-          >
-            {cargandoMas ? 'Cargando...' : 'Cargar movimientos anteriores'}
-          </button>
-        </div>
-      )}
-
-      {modoSeleccion && seleccionados.size > 0 && (
-        <div className="sticky bottom-0 mx-5 mt-4 rounded-2xl bg-ink p-3 flex items-center gap-2 shadow-lg pop-in">
-          <span className="text-xs text-paper font-medium shrink-0 px-1">
-            {seleccionados.size} seleccionado{seleccionados.size === 1 ? '' : 's'}
-          </span>
-          <select
-            disabled={aplicandoCategoria}
-            aria-label="Mover los movimientos seleccionados a una categoría"
-            onChange={(e) => {
-              if (e.target.value) aplicarCategoriaMasiva(e.target.value)
-            }}
-            defaultValue=""
-            className="flex-1 rounded-xl bg-paper text-ink px-3 py-2 text-sm outline-none"
-          >
-            <option value="" disabled>
-              {aplicandoCategoria ? 'Aplicando...' : 'Mover a categoría...'}
-            </option>
-            {CATEGORIAS.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-          <button
-            onClick={salirModoSeleccion}
-            className="w-9 h-9 shrink-0 rounded-xl bg-paper flex items-center justify-center"
-            aria-label="Cerrar"
-          >
-            <X size={16} className="text-ink" />
-          </button>
         </div>
       )}
     </div>

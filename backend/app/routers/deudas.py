@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
+from app.estrategia_deudas import comparar_estrategias
+from app.contabilidad import CATEGORIA_PAGO_TARJETA
 from app.finanzas import calc_deuda
 from app.models import Cuenta, Deuda, Movimiento
-from app.schemas import DeudaCreate, DeudaOut, PagarDeudaRequest
+from app.schemas import DeudaCreate, DeudaOut, EstrategiaOut, PagarDeudaRequest
+from app.utiles import ahora_co
 
 router = APIRouter(prefix="/deudas", tags=["deudas"])
 
@@ -42,6 +45,29 @@ def listar_deudas(
     )
     serializadas = [_serializar(d) for d in deudas]
     return sorted(serializadas, key=lambda d: d["dias_para_pago"])
+
+
+@router.get("/estrategia", response_model=EstrategiaOut)
+def estrategia_deudas(
+    extra: float = Query(default=0, ge=0, le=1_000_000_000),
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Simula avalancha vs bola de nieve con `extra` COP adicionales al mes.
+    Toda la lógica vive en app/estrategia_deudas.py (función pura)."""
+    deudas = (
+        db.query(Deuda)
+        .filter(Deuda.usuario_id == usuario.id, Deuda.activa.is_(True))
+        .all()
+    )
+    entrada = [
+        {
+            "id": d.id, "nombre": d.nombre, "saldo": d.saldo_actual,
+            "tasa_mensual": d.tasa_mensual, "cuota": d.cuota_mensual,
+        }
+        for d in deudas
+    ]
+    return comparar_estrategias(entrada, extra, ahora_co())
 
 
 @router.post("", response_model=DeudaOut)
@@ -88,7 +114,8 @@ def pagar_deuda(
                 usuario_id=usuario.id,
                 cuenta_id=cuenta.id,
                 descripcion=f"Pago {deuda.nombre}",
-                categoria="Deudas",
+                # Pagar una deuda de tarjeta salda compras ya registradas: no es gasto nuevo.
+                categoria=CATEGORIA_PAGO_TARJETA if deuda.tipo == "tarjeta" else "Deudas",
                 tipo="expense",
                 monto=data.monto_pagado,
                 fuente="manual",

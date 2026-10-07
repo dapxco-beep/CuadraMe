@@ -27,3 +27,19 @@ export function formatMoneda(value, moneda = 'COP') {
   }
   return formateadores.get(moneda).format(value)
 }
+
+// Un solo formato para porcentajes en toda la app: coma decimal y espacio antes del %.
+// 51.1 -> '51,1 %'; 12 -> '12 %'; 51.04 -> '51 %'. `signo: true` agrega '+' a los positivos.
+export function formatPorcentaje(valor, { decimales = 1, signo = false } = {}) {
+  const n = Number(valor)
+  if (valor === null || valor === undefined || !Number.isFinite(n)) return '—'
+  const f = 10 ** decimales
+  const r = Math.round(n * f) / f
+  return `${signo && r > 0 ? '+' : ''}${String(r).replace('.', ',')} %`
+}
+
+// '1 vez' / '9 veces' / '9,5 veces'
+export function formatVeces(n) {
+  const r = Math.round(Number(n) * 10) / 10
+  return `${String(r).replace('.', ',')} ${r === 1 ? 'vez' : 'veces'}`
+}

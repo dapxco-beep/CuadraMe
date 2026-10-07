@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Check, ChevronRight, Copy, CreditCard, FileText, FileUp, Landmark, Link2, LogOut, Mail, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2 } from 'lucide-react'
+import { Bell, Receipt, Check, ChevronRight, Copy, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2 } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
 import { useDialogos } from '../lib/DialogosContext'
+import SeccionSeguridad from '../components/SeccionSeguridad'
+import SeccionPrivacidad from '../components/SeccionPrivacidad'
 import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../lib/push'
 
 export default function Perfil() {
@@ -15,6 +17,7 @@ export default function Perfil() {
   const [copiado, setCopiado] = useState(false)
   const [permisoPush, setPermisoPush] = useState('default')
   const [cargandoPush, setCargandoPush] = useState(false)
+  const [recordatorio, setRecordatorio] = useState(false)
   const [confianza, setConfianza] = useState(0.75)
   const [guardandoConfianza, setGuardandoConfianza] = useState(false)
   const [eliminandoCuenta, setEliminandoCuenta] = useState(false)
@@ -23,7 +26,26 @@ export default function Perfil() {
     api.apiKey().then((r) => setApiKey(r.api_key)).catch(() => {})
     estadoPermiso().then(setPermisoPush)
     api.confianzaAutoimport().then((r) => setConfianza(r.confianza_autoimport)).catch(() => {})
+    Promise.resolve().then(() => api.recordatorioDiario()).then((r) => setRecordatorio(!!r.activo)).catch(() => {})
   }, [])
+
+  async function toggleRecordatorio() {
+    const nuevo = !recordatorio
+    setRecordatorio(nuevo)
+    try {
+      await api.actualizarRecordatorioDiario(nuevo)
+      // El aviso viaja por push: si aún no hay permiso, se pide al activarlo.
+      if (nuevo && permisoPush !== 'granted') {
+        await activarPush()
+        setPermisoPush('granted')
+      }
+    } catch (err) {
+      if (err?.message && !/permiso|soporta/i.test(err.message)) {
+        setRecordatorio(!nuevo)
+      }
+      avisar(err.message || 'No se pudo cambiar el recordatorio')
+    }
+  }
 
   async function cambiarConfianza(valor) {
     setConfianza(valor)
@@ -91,7 +113,7 @@ export default function Perfil() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pt-14 pb-2">
+      <header className="px-6 pantalla-top pb-2">
         <h1 className="text-2xl font-bold">Perfil</h1>
       </header>
 
@@ -109,12 +131,17 @@ export default function Perfil() {
         <h2 className="text-[15px] font-semibold mb-3">Tus cuentas</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
           <Link to="/cuentas" className="flex items-center gap-3 px-4 py-3.5">
-            <Landmark size={18} className="text-accent shrink-0" />
+            <Landmark size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Ver y editar mis cuentas</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
+          <Link to="/movimientos" className="flex items-center gap-3 px-4 py-3.5">
+            <List size={20} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Todos mis movimientos</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
           <Link to="/compartir" className="flex items-center gap-3 px-4 py-3.5">
-            <Users size={18} className="text-accent shrink-0" />
+            <Users size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Compartir una cuenta</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
@@ -124,17 +151,12 @@ export default function Perfil() {
       <section className="mx-6 mt-6">
         <h2 className="text-[15px] font-semibold mb-3">Registro automático</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
-          <Link to="/correos" className="flex items-center gap-3 px-4 py-3.5">
-            <Mail size={18} className="text-accent shrink-0" />
+          <Link to="/sincronizacion" className="flex items-center gap-3 px-4 py-3.5">
+            <RefreshCw size={20} className="text-accent shrink-0" />
             <div className="flex-1">
-              <p className="text-sm font-medium">Leer correos bancarios</p>
-              <p className="text-xs text-ink-soft mt-0.5">Conecta tu Gmail y sugerimos movimientos por ti</p>
+              <p className="text-sm font-medium">Traer movimientos</p>
+              <p className="text-xs text-ink-soft mt-0.5">Desde tu correo, el extracto del banco o un Excel</p>
             </div>
-            <ChevronRight size={16} className="text-ink-soft" />
-          </Link>
-          <Link to="/conciliacion" className="flex items-center gap-3 px-4 py-3.5">
-            <FileUp size={18} className="text-accent shrink-0" />
-            <p className="flex-1 text-sm font-medium">Subir extracto (PDF)</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
         </div>
@@ -166,27 +188,32 @@ export default function Perfil() {
         <h2 className="text-[15px] font-semibold mb-3">Planeación</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
           <Link to="/metas" className="flex items-center gap-3 px-4 py-3.5">
-            <PiggyBank size={18} className="text-accent shrink-0" />
+            <PiggyBank size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Metas de ahorro</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/recurrentes" className="flex items-center gap-3 px-4 py-3.5">
-            <Repeat size={18} className="text-accent shrink-0" />
+            <Repeat size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Gastos recurrentes</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/deudas" className="flex items-center gap-3 px-4 py-3.5">
-            <CreditCard size={18} className="text-accent shrink-0" />
+            <CreditCard size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Deudas</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/reglas-categoria" className="flex items-center gap-3 px-4 py-3.5">
-            <Wand2 size={18} className="text-accent shrink-0" />
+            <Wand2 size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Reglas de categorización</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
+          <Link to="/entrenar-categorias" className="flex items-center gap-3 px-4 py-3.5">
+            <GraduationCap size={20} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Entrenar categorías</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
           <Link to="/categorias" className="flex items-center gap-3 px-4 py-3.5">
-            <Tag size={18} className="text-accent shrink-0" />
+            <Tag size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Categorías</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
@@ -196,8 +223,18 @@ export default function Perfil() {
       <section className="mx-6 mt-6">
         <h2 className="text-[15px] font-semibold mb-3">Extra</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
+          <Link to="/impuestos" className="flex items-center gap-3 px-4 py-3.5">
+            <Receipt size={20} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Impuestos (4x1000 y renta)</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/cierre-mes" className="flex items-center gap-3 px-4 py-3.5">
+            <FileText size={20} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Cierre de mes</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
           <Link to="/ahorcado" className="flex items-center gap-3 px-4 py-3.5">
-            <Sprout size={18} className="text-accent shrink-0" />
+            <Sprout size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Tu árbol financiero</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
@@ -234,14 +271,39 @@ export default function Perfil() {
               />
             </button>
           </div>
+
+          <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3 mt-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium">Recordatorio diario</p>
+              <p className="text-xs text-ink-soft mt-0.5">
+                A las 8 p. m. te avisamos solo si hoy no registraste nada
+                {permisoPush !== 'granted' ? ' (activa primero las alertas de arriba)' : ''}
+              </p>
+            </div>
+            <button
+              onClick={toggleRecordatorio}
+              role="switch"
+              aria-checked={recordatorio}
+              aria-label="Recordatorio diario"
+              className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${recordatorio ? 'bg-accent' : 'bg-line'}`}
+            >
+              <span
+                className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                  recordatorio ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
         </section>
       )}
+
+      <SeccionSeguridad />
 
       <section className="mx-6 mt-8">
         <div className="flex items-center gap-2 mb-3">
           <Link2 size={16} className="text-ink-soft" />
           <h2 className="text-[15px] font-semibold">Conectar dispositivos</h2>
-          <span className="text-[10px] font-bold text-ink-soft bg-line px-2 py-0.5 rounded-full uppercase tracking-wide">
+          <span className="text-[11px] font-bold text-ink-soft bg-line px-2 py-0.5 rounded-full uppercase tracking-wide">
             Avanzado
           </span>
         </div>
@@ -253,23 +315,23 @@ export default function Perfil() {
           </p>
           <div className="flex items-center gap-2">
             <code className="flex-1 text-xs bg-paper rounded-xl px-3 py-2.5 truncate">
-              {apiKey || 'Cargando...'}
+              {apiKey || <span className="skeleton inline-block h-3.5 w-40 align-middle" role="status" aria-label="Cargando tu clave" />}
             </code>
             <button
               onClick={copiarApiKey}
               disabled={!apiKey}
-              className="shrink-0 w-9 h-9 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
+              className="shrink-0 w-11 h-11 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
               aria-label="Copiar"
             >
-              <Copy size={15} className={copiado ? 'text-accent' : 'text-ink-soft'} />
+              <Copy size={16} className={copiado ? 'text-accent' : 'text-ink-soft'} />
             </button>
             <button
               onClick={regenerarApiKey}
               disabled={!apiKey}
-              className="shrink-0 w-9 h-9 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
+              className="shrink-0 w-11 h-11 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
               aria-label="Regenerar"
             >
-              <RefreshCw size={15} className="text-ink-soft" />
+              <RefreshCw size={16} className="text-ink-soft" />
             </button>
           </div>
           {copiado && <p className="text-xs text-accent mt-2">Copiada al portapapeles</p>}
@@ -277,7 +339,7 @@ export default function Perfil() {
             to="/conectar-dispositivo"
             className="flex items-center justify-center gap-1.5 mt-3 text-sm text-accent font-semibold"
           >
-            Ver guía paso a paso (iPhone/Android) <ChevronRight size={15} />
+            Ver guía paso a paso (iPhone/Android) <ChevronRight size={16} />
           </Link>
         </div>
       </section>
@@ -296,34 +358,36 @@ export default function Perfil() {
               className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
             >
               <span
-                className="w-9 h-9 rounded-full shrink-0 border border-line"
+                className="w-11 h-11 rounded-full shrink-0 border border-line"
                 style={{ background: themePreview[t.id] }}
               />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">{t.nombre}</p>
                 <p className="text-xs text-ink-soft">{t.desc}</p>
               </div>
-              {theme === t.id && <Check size={18} className="text-accent shrink-0" />}
+              {theme === t.id && <Check size={20} className="text-accent shrink-0" />}
             </button>
           ))}
         </div>
       </section>
 
+      <SeccionPrivacidad onEliminarCuenta={eliminarMiCuenta} eliminando={eliminandoCuenta} />
+
       <section className="mx-6 mt-6">
         <h2 className="text-[15px] font-semibold mb-3">Legal</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
           <Link to="/legal/terminos" className="flex items-center gap-3 px-4 py-3.5">
-            <FileText size={18} className="text-ink-soft shrink-0" />
+            <FileText size={20} className="text-ink-soft shrink-0" />
             <p className="flex-1 text-sm font-medium">Términos y Condiciones</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/legal/privacidad" className="flex items-center gap-3 px-4 py-3.5">
-            <FileText size={18} className="text-ink-soft shrink-0" />
+            <FileText size={20} className="text-ink-soft shrink-0" />
             <p className="flex-1 text-sm font-medium">Política de Privacidad</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/legal/autorizacion-datos" className="flex items-center gap-3 px-4 py-3.5">
-            <FileText size={18} className="text-ink-soft shrink-0" />
+            <FileText size={20} className="text-ink-soft shrink-0" />
             <p className="flex-1 text-sm font-medium">Autorización de datos</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
@@ -335,17 +399,7 @@ export default function Perfil() {
           onClick={logout}
           className="w-full flex items-center gap-3 rounded-2xl bg-paper-raised border border-line px-4 py-3.5 text-danger font-medium text-sm"
         >
-          <LogOut size={18} /> Cerrar sesión
-        </button>
-      </section>
-
-      <section className="mx-6 mt-3">
-        <button
-          onClick={eliminarMiCuenta}
-          disabled={eliminandoCuenta}
-          className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 text-danger/80 text-sm disabled:opacity-60"
-        >
-          <Trash2 size={18} /> {eliminandoCuenta ? 'Eliminando...' : 'Eliminar mi cuenta y mis datos'}
+          <LogOut size={20} /> Cerrar sesión
         </button>
       </section>
 

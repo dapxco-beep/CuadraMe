@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crear los atajos de CuadraMe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Guía corta: dos atajos pequeños y dos tipos de automatización. Un solo gesto por paso, con lo que debes ver. */
+:root {
+  --bg: #f6f2ea; --surface: #fffdf9; --ink: #221f19; --soft: #675f4e; --line: #e6dfcf;
+  --brand: #b04413; --brand-soft: #f7dccb; --ok: #2b7547; --ok-soft: #dcefe3;
+  --warn: #9a5a08; --warn-soft: #f8e8c8; --bad: #b3261e; --bad-soft: #fadcd8;
+  --f-display: 'Sora', system-ui, sans-serif; --f-mono: 'DM Mono', ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17140f; --surface: #221f19; --ink: #f5f1e8; --soft: #b0a892; --line: #373126;
+    --brand: #ee8a47; --brand-soft: #3b2616; --ok: #6fcf97; --ok-soft: #1c3126;
+    --warn: #e8bc63; --warn-soft: #3a2f14; --bad: #f08a80; --bad-soft: #3a1c19;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-display); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 720px; margin: 0 auto; padding: 28px 16px 80px; display: flex; flex-direction: column; gap: 40px; }
+h1, h2, h3 { margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.1; }
+h2 { font-size: 24px; font-weight: 800; }
+h3 { font-size: 17px; font-weight: 700; }
+p { margin: 0; }
+section { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.kicker { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; font-weight: 700; color: var(--brand); }
+.lead { color: var(--soft); }
+.mono { font-family: var(--f-mono); font-size: 13px; }
+.sel { user-select: all; overflow-wrap: anywhere; }
+.band { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--surface); background: var(--brand); border-radius: 12px; padding: 10px 14px; }
+.band.green { background: var(--ok); }
+
+.step { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.step-top { display: flex; gap: 12px; align-items: center; }
+.n { width: 34px; height: 34px; border-radius: 11px 11px 11px 3px; background: var(--brand); color: var(--surface); display: grid; place-items: center; font-weight: 800; flex: none; }
+.do { font-size: 14.5px; color: var(--soft); }
+.do b, .do .pill { color: var(--ink); }
+.see { font-size: 13.5px; background: var(--ok-soft); border-radius: 10px; padding: 8px 12px; }
+.see b { color: var(--ok); }
+.tip { font-size: 13.5px; background: var(--warn-soft); border-radius: 10px; padding: 8px 12px; }
+.warn { font-size: 13.5px; background: var(--bad-soft); border-radius: 10px; padding: 8px 12px; }
+.act { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.act .name { font-weight: 700; font-size: 13px; color: var(--brand); }
+.row { display: grid; grid-template-columns: minmax(70px, 120px) 1fr; gap: 8px; align-items: baseline; font-size: 13.5px; min-width: 0; }
+.row .k { color: var(--soft); font-size: 12px; overflow-wrap: anywhere; }
+.row > span { min-width: 0; overflow-wrap: anywhere; }
+.sub { margin-left: 8px; padding-left: 10px; border-left: 2px solid var(--line); display: flex; flex-direction: column; gap: 5px; }
+.blue { color: var(--brand); font-weight: 600; }
+.pill { display: inline-block; border-radius: 8px; padding: 1px 8px; background: var(--brand-soft); color: var(--brand); font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
+.chip { display: inline-block; border-radius: 99px; padding: 1px 9px; background: var(--warn-soft); color: var(--warn); font-weight: 700; font-size: 12px; }
+.final { background: var(--surface); border: 2px solid var(--ok); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.final pre { margin: 0; font-family: var(--f-mono); font-size: 12.5px; line-height: 1.7; overflow-x: auto; }
+.help { background: var(--brand-soft); border: 1px solid var(--brand); border-radius: 16px; padding: 14px 16px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--soft); }
+.scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header style="display:flex;flex-direction:column;gap:12px">
+  <span class="kicker">CuadraMe · Registro automático</span>
+  <h1>Crear los atajos, versión fácil</h1>
+  <p class="lead">Son <b>2 atajos pequeños</b> y <b>2 tipos de automatización</b>. Hazlos en este orden. Cada paso es una sola cosa, y debajo dice qué debes ver para saber que lo hiciste bien.</p>
+  <div class="help"><b>Si te trabas en cualquier paso:</b> copia el enlace de iCloud del atajo como esté (<i>Compartir → Copiar enlace de iCloud</i>) y pásaselo a Claude. Lo puede leer por dentro y decirte exactamente qué falta, sin que adivines.</div>
+</header>
+
+<section>
+  <h2>Lo que necesitas antes</h2>
+  <div class="step">
+    <div class="row" style="grid-template-columns:100px 1fr"><span class="k">Tu clave</span><span>En CuadraMe: <b>Perfil → Conectar dispositivo → Copiar mi clave</b>. Empieza por <span class="mono">cm_</span>. Déjala copiada.</span></div>
+    <div class="row" style="grid-template-columns:100px 1fr"><span class="k">La dirección</span><span class="mono sel">https://backend-production-aeab.up.railway.app/movimientos/rapido</span></div>
+    <p class="tip">Toca la dirección de arriba para seleccionarla toda y cópiala. La vas a pegar dos veces.</p>
+  </div>
+</section>
+
+<!-- ========== ATAJO 1 ========== -->
+<section>
+  <div class="band">Atajo 1 · Apple Pay · 5 pasos</div>
+  <p class="lead">Registra cada pago que haces con Apple Pay. No pregunta nada.</p>
+
+  <div class="step">
+    <div class="step-top"><span class="n">1</span><h3>Crear el atajo</h3></div>
+    <p class="do">Abre <b>Atajos</b> → pestaña <b>Atajos</b> → toca <b>+</b> arriba a la derecha. Toca el nombre de arriba y escribe: <span class="pill">CuadraMe Apple Pay</span></p>
+    <p class="see"><b>Debes ver:</b> una pantalla vacía que dice “Añadir acción”.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-top"><span class="n">2</span><h3>Pegar tu clave</h3></div>
+    <p class="do">Toca <b>Añadir acción</b>, escribe <b>Texto</b> en el buscador y elígela. En el cuadro, <b>pega tu clave</b>.</p>
+    <div class="act"><div class="name">Texto</div><div class="blue mono">cm_tu_clave_pegada_aquí</div></div>
+  </div>
+
+  <div class="step">
+    <div class="step-top"><span class="n">3</span><h3>Enviar el pago a CuadraMe</h3></div>
+    <p class="do">Añade la acción <b>Obtener contenido de URL</b>. Luego toca <b>Mostrar más</b> y llénala así, de arriba a abajo:</p>
+    <div class="act"><div class="name">Obtener contenido de URL</div>
+      <div class="row"><span class="k">URL</span><span class="blue">pega la dirección</span></div>
+      <div class="row"><span class="k">Método</span><span class="blue">POST</span></div>
+      <div class="row"><span class="k">Encabezados</span><span><span class="mono">X-Api-Key</span> = <span class="pill">Texto</span> <small>(el del paso 2)</small></span></div>
+      <div class="row"><span class="k">Cuerpo de la solicitud</span><span class="blue">JSON</span></div>
+      <div class="sub">
+        <div class="row"><span class="k mono">comercio</span><span><span class="pill">Entrada del atajo › Comercio</span></span></div>
+        <div class="row"><span class="k mono">monto</span><span><span class="pill">Entrada del atajo › Importe</span></span></div>
+        <div class="row"><span class="k mono">tarjeta</span><span><span class="pill">Entrada del atajo › Tarjeta o pase</span></span></div>
+        <div class="row"><span class="k mono">fuente</span><span class="blue">wallet</span></div>
+      </div>
+    </div>
+    <p class="do"><b>Cómo se llena cada campo:</b> “Añadir nuevo campo” → <b>Texto</b>. Escribe el nombre (por ejemplo <span class="mono">comercio</span>). En el valor, toca y elige <b>Seleccionar variable</b> → <b>Entrada del atajo</b>. Aparece una burbuja: <b>tócala otra vez</b> y elige la propiedad (Comercio, Importe…).</p>
+    <p class="tip">Si al tocar la burbuja no aparece la lista de propiedades, es normal: primero crea la automatización de Apple Pay (más abajo, “Automatización 1”) y vuelve a este paso.</p>
+    <p class="see"><b>Debes ver:</b> en cada campo una burbuja azul que dice “Entrada del atajo” y, al lado, la propiedad.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-top"><span class="n">4</span><h3>Leer la respuesta</h3></div>
+    <p class="do">Añade <b>Obtener valor del diccionario</b>. Cambia “Valor” por <b>Valor</b> y escribe la clave <span class="pill">mensaje</span>.</p>
+    <div class="act"><div class="name">Obtener valor del diccionario</div>
+      <div class="row"><span class="k">Obtener</span><span class="blue">Valor</span></div>
+      <div class="row"><span class="k">Clave</span><span class="blue mono">mensaje</span></div>
+      <div class="row"><span class="k">de</span><span><span class="pill">Contenido de la URL</span></span></div></div>
+  </div>
+
+  <div class="step">
+    <div class="step-top"><span class="n">5</span><h3>Avisarte en el celular</h3></div>
+    <p class="do">Añade <b>Mostrar notificación</b>. En el texto, toca y elige la variable <span class="pill">Valor del diccionario</span>.</p>
+    <div class="final"><b>Así queda el Atajo 1 completo:</b>
+<pre>1  Texto                          cm_… (tu clave)
+2  Obtener contenido de URL       POST · 4 campos
+3  Obtener valor del diccionario  mensaje
+4  Mostrar notificación</pre></div>
+  </div>
+</section>
+
+<!-- ========== ATAJO 2 ========== -->
+<section>
+  <div class="band green">Atajo 2 · Cierre de una app · 8 pasos</div>
+  <p class="lead">Cuando cierras Nequi, Daviplata o tu banco, te pregunta si hiciste un movimiento y en cuál de tus cuentas. Sirve para cualquier app.</p>
+
+  <div class="step">
+    <div class="step-top"><span class="n">1</span><h3>Crear el atajo</h3></div>
+    <p class="do">Otro <b>+</b>. Nómbralo: <span class="pill">CuadraMe Cierre</span></p>
+  </div>
+
+  <div class="step">
+    <div class="step-top"><span class="n">2</span><h3>Pegar tu clave</h3></div>
+    <p class="do">Igual que antes: acción <b>Texto</b> con tu clave pegada.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-top"><span class="n">3</span><h3>Preguntar qué pasó</h3></div>
+    <p class="do">Añade <b>Elegir del menú</b>. En “Indicación” escribe <span class="mono">¿Hiciste algún movimiento?</span> y crea 3 opciones:</p>
+    <div class="act"><div class="name">Elegir del menú</div>
+      <div class="row"><span class="k">Opciones</span><span><span class="chip">Gasto</span> <span class="chip">Ingreso</span> <span class="chip">No</span></span></div></div>
+    <p class="do">Ahora pon <b>una acción dentro de cada opción</b>. Es lo que hace que el atajo sepa qué elegiste:</p>
+    <div class="act"><div class="name">Dentro de “Gasto”</div><div class="row"><span class="k">Acción</span><span>Texto</span></div><div class="blue mono">gasto</div></div>
+    <div class="act"><div class="name">Dentro de “Ingreso”</div><div class="row"><span class="k">Acción</span><span>Texto</span></div><div class="blue mono">ingreso</div></div>
+    <div class="act"><div class="name">Dentro de “No”</div><div class="row"><span class="k">Acción</span><span>Detener este atajo</span></div></div>
+    <p class="warn"><b>No las dejes vacías.</b> “Resultado del menú” no es el nombre de la opción que tocaste: es lo que devuelve la <u>última acción dentro de esa opción</u>. Si Gasto e Ingreso están vacías, el atajo manda cualquier cosa como tipo y CuadraMe contesta “falta o no se entiende el tipo”.</p>
+    <p class="see"><b>Debes ver:</b> el menú con tres opciones y una acción dentro de cada una: Texto gasto, Texto ingreso y Detener este atajo.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-top"><span class="n">4</span><h3>Elegir la cuenta</h3></div>
+    <p class="do">Debajo del menú (afuera, al final) añade <b>Obtener contenido de URL</b>. Pregunta a CuadraMe qué cuentas tienes:</p>
+    <div class="act"><div class="name">Obtener contenido de URL</div>
+      <div class="row"><span class="k">URL</span><span class="blue mono">https://backend-production-aeab.up.railway.app/movimientos/cuentas-rapido</span></div>
+      <div class="row"><span class="k">Método</span><span class="blue">GET</span></div>
+      <div class="row"><span class="k">Encabezados</span><span><span class="mono">X-Api-Key</span> = <span class="pill">Texto</span> <small>(tu clave)</small></span></div></div>
+    <p class="do">Enseguida añade <b>Elegir de la lista</b>. Debe tomar como entrada el <span class="pill">Contenido de la URL</span> de arriba.</p>
+    <div class="act"><div class="name">Elegir de la lista</div>
+      <div class="row"><span class="k">Indicación</span><span class="blue">¿En qué cuenta?</span></div>
+      <div class="row"><span class="k">Lista</span><span><span class="pill">Contenido de la URL</span></span></div></div>
+    <p class="see"><b>Debes ver al ejecutarlo:</b> una lista con tus cuentas de CuadraMe (Bancolombia, Nequi…) para tocar una.</p>
+    <p class="tip">La dirección termina en <span class="mono">/movimientos/cuentas-rapido</span> (no <span class="mono">/rapido</span>). Es un GET, no un POST.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-top"><span class="n">5</span><h3>Pedir el monto</h3></div>
+    <p class="do">Debajo del menú (afuera, al final) añade <b>Pedir entrada</b>. Tipo <b>Número</b>, pregunta <span class="mono">¿Cuánto fue?</span>. Enseguida añade <b>Establecer variable</b> y llámala <span class="pill">monto</span>.</p>
+    <p class="tip">Ponerle nombre a la variable evita confundirse después, porque vas a tener dos “Pedir entrada”.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-top"><span class="n">6</span><h3>Pedir la nota</h3></div>
+    <p class="do">Otro <b>Pedir entrada</b>, tipo <b>Texto</b>, pregunta <span class="mono">¿En qué? (opcional)</span>. Luego <b>Establecer variable</b> llamada <span class="pill">nota</span>.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-top"><span class="n">7</span><h3>Enviar a CuadraMe</h3></div>
+    <p class="do">Añade <b>Obtener contenido de URL</b>. Igual que el Atajo 1 (dirección, <b>POST</b>, encabezado <span class="mono">X-Api-Key</span> con el Texto de tu clave, cuerpo <b>JSON</b>), pero con estos campos:</p>
+    <div class="act"><div class="name">Cuerpo JSON</div>
+      <div class="sub">
+        <div class="row"><span class="k mono">tipo</span><span><span class="pill">Resultado del menú</span></span></div>
+        <div class="row"><span class="k mono">monto</span><span><span class="pill">monto</span> <small>(la variable del paso 5)</small></span></div>
+        <div class="row"><span class="k mono">descripcion</span><span><span class="pill">nota</span> <small>(la variable del paso 6)</small></span></div>
+        <div class="row"><span class="k mono">cuenta</span><span><span class="pill">Elemento elegido</span> <small>(de la lista del paso 4)</small></span></div>
+        <div class="row"><span class="k mono">fuente</span><span class="blue">cierre_app</span></div>
+      </div>
+    </div>
+    <p class="tip">“Resultado del menú” aquí vale <span class="mono">gasto</span> o <span class="mono">ingreso</span>, por los Textos que pusiste dentro de cada opción (paso 3). Y <b>cuenta</b> es la cuenta que tocaste en la lista del paso 4.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-top"><span class="n">8</span><h3>Avisarte</h3></div>
+    <p class="do">Igual que el Atajo 1: <b>Obtener valor del diccionario</b> con la clave <span class="mono">mensaje</span>, y <b>Mostrar notificación</b> con ese valor.</p>
+    <div class="final"><b>Así queda el Atajo 2 completo:</b>
+<pre>1  Texto                          cm_… (tu clave)
+2  Elegir del menú                Gasto (Texto gasto) · Ingreso (Texto ingreso) · No (→ Detener)
+3  Obtener contenido de URL       GET …/cuentas-rapido
+4  Elegir de la lista             ¿En qué cuenta?
+5  Pedir entrada (número)  →  Establecer variable monto
+6  Pedir entrada (texto)   →  Establecer variable nota
+7  Obtener contenido de URL       POST · 5 campos (cuenta = Elemento elegido)
+8  Obtener valor del diccionario  mensaje
+9  Mostrar notificación</pre></div>
+  </div>
+</section>
+
+<!-- ========== AUTOMATIZACIONES ========== -->
+<section>
+  <div class="band">Automatización 1 · Apple Pay · una sola vez</div>
+  <div class="step">
+    <p class="do">Atajos → pestaña <b>Automatización</b> → <b>+</b> → <b>Transacción</b>. Elige tus tarjetas y toca <b>Siguiente</b>.</p>
+    <p class="do">Elige la acción <b>Ejecutar atajo</b> y selecciona <span class="pill">CuadraMe Apple Pay</span>. Toca <b>Siguiente</b>.</p>
+    <p class="do">Desactiva <b>Preguntar antes de ejecutar</b> (o elige <b>Ejecutar inmediatamente</b>) y toca <b>Listo</b>.</p>
+  </div>
+
+  <div class="band green">Automatización 2 · cierre de una app · una por cada app</div>
+  <div class="step">
+    <p class="do">Atajos → <b>Automatización</b> → <b>+</b> → <b>App</b>. Elige la app (por ejemplo Nequi). Marca <b>Se cierra</b> y desmarca <b>Se abre</b>. <b>Siguiente</b>.</p>
+    <p class="do">Añade <b>una sola acción</b>: <b>Ejecutar atajo</b> → <span class="pill">Cuádrame Cierre</span>. Ya no hace falta ningún Texto.</p>
+    <div class="act"><div class="name">Ejecutar atajo</div>
+      <div class="row"><span class="k">Atajo</span><span class="blue">Cuádrame Cierre</span></div></div>
+    <p class="do">Desactiva <b>Preguntar antes de ejecutar</b> y toca <b>Listo</b>.</p>
+    <p class="tip">Repite esto una vez por cada app que quieras vigilar (Nequi, Daviplata, tu banco). Todas llaman al mismo atajo, que te pregunta la cuenta en el momento.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Cómo saber que funciona</h2>
+  <div class="step">
+    <h3>Prueba del cierre de app</h3>
+    <p class="do">Abre Nequi y ciérrala. Debe salir <b>¿Hiciste algún movimiento?</b>. Toca Gasto, elige la cuenta de la lista, escribe <span class="mono">1000</span> y una nota. Debe llegar una notificación de CuadraMe que dice en qué cuenta quedó.</p>
+    <p class="see"><b>En CuadraMe:</b> al abrirla sale “Detectamos 1 movimiento”. Descártalo. En <i>Perfil → Conexiones</i> el atajo debe decir “último uso hace 1 min”.</p>
+  </div>
+  <div class="step">
+    <h3>Prueba de Apple Pay</h3>
+    <p class="do">Haz una compra pequeña con Apple Pay. En unos 5 segundos llega el aviso.</p>
+  </div>
+  <div class="scroll"><table>
+    <thead><tr><th>Si ves…</th><th>Es porque…</th><th>Arréglalo</th></tr></thead>
+    <tbody>
+      <tr><td>Error 401</td><td>La clave está mal pegada</td><td>Pégala de nuevo en el Texto</td></tr>
+      <tr><td>Error 422 en “monto”</td><td>El campo tiene la entrada completa</td><td>Toca la burbuja y elige la propiedad (Importe)</td></tr>
+      <tr><td>La lista sale vacía o rara</td><td>El GET devolvió un error (clave mala)</td><td>Revisa la clave del Texto y que la URL termine en /cuentas-rapido</td></tr>
+      <tr><td>No sale tu cuenta en la lista</td><td>Esa cuenta no existe en CuadraMe</td><td>Créala en la app (Cuentas → Nueva cuenta)</td></tr>
+      <tr><td>No corre solo</td><td>Quedó “Preguntar antes de ejecutar”</td><td>Desactívalo</td></tr>
+      <tr><td>Pregunta aunque solo mirabas el saldo</td><td>Salta cada vez que cierras la app</td><td>Toca “No”: es un toque</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>Compartirlo con los clientes</h2>
+  <div class="step">
+    <p class="do">Cuando los dos funcionen: <b>vacía el Texto de la clave</b> en cada atajo. Mantén pulsado cada atajo → <b>Compartir → Copiar enlace de iCloud</b>. Pásale a Claude <b>los dos enlaces</b>. Claude los revisa por dentro y los pone en la app.</p>
+    <p class="tip">Cada cambio que hagas después crea un enlace nuevo. Quien ya lo instaló conserva su versión.</p>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

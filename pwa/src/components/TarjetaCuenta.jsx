@@ -1,11 +1,19 @@
 import { marcaDeEntidad } from '../lib/entidadesFinancierasCO'
-import { formatMoneda } from '../lib/format'
+import { useBloqueo } from '../lib/BloqueoContext'
+import { cupoDisponible, deudaTarjeta, esCredito, textoActualizado } from '../lib/saldos'
 
 // Tarjeta con identidad de marca real (color + monograma) de la entidad que el
 // usuario escribió al crear la cuenta — igual que abrir la billetera y reconocer
 // cada tarjeta física por su color, sin tener que leer el nombre completo.
-export default function TarjetaCuenta({ cuenta, style, className = '' }) {
+//
+// El número siempre lleva su etiqueta: "Saldo actual" en cuentas normales y, en
+// tarjetas de crédito, "Debes" + "Disponible del cupo" (un saldo -800.000 solo
+// confunde). `ultimoMovimiento` (ISO) agrega "actualizado hoy" / la fecha.
+export default function TarjetaCuenta({ cuenta, style, className = '', ultimoMovimiento, compacta = false }) {
   const marca = marcaDeEntidad(cuenta.nombre)
+  const { fmt } = useBloqueo()
+  const credito = esCredito(cuenta)
+  const disponible = cupoDisponible(cuenta)
 
   return (
     <div
@@ -21,7 +29,16 @@ export default function TarjetaCuenta({ cuenta, style, className = '' }) {
           {marca.mono}
         </span>
       </div>
-      <p className="text-xl font-extrabold mt-4 truncate">{formatMoneda(cuenta.saldo, cuenta.moneda)}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide opacity-75 mt-3">{credito ? 'Debes' : 'Saldo actual'}</p>
+      <p className="text-xl font-extrabold truncate">{fmt(credito ? deudaTarjeta(cuenta) : cuenta.saldo, cuenta.moneda)}</p>
+      {!compacta && (
+        <p className="text-[11px] opacity-80 mt-0.5">
+          {credito && disponible != null ? `Disponible del cupo: ${fmt(disponible, cuenta.moneda)}` : ''}
+          {credito && disponible != null && ultimoMovimiento !== undefined ? ' · ' : ''}
+          {/* undefined = aún no sabemos; null = la cuenta no tiene movimientos */}
+          {ultimoMovimiento === undefined ? '' : textoActualizado(ultimoMovimiento)}
+        </p>
+      )}
     </div>
   )
 }

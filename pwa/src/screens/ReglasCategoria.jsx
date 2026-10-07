@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, X } from 'lucide-react'
+import { EsqueletoLista } from '../components/Esqueletos'
+import { EstadoVacio } from '../brand/Marca'
+import { useVolver } from '../lib/useVolver'
+import { Link } from 'react-router-dom'
+import { ArrowLeft, ChevronRight, GraduationCap, Plus, Trash2, X, Tag } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCategorias } from '../lib/CategoriasContext'
+import Hoja from '../components/Hoja'
 
 export default function ReglasCategoria() {
-  const navigate = useNavigate()
+  const volver = useVolver('/perfil')
   const [reglas, setReglas] = useState([])
   const [cargando, setCargando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -33,18 +37,18 @@ export default function ReglasCategoria() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pt-14 pb-2 flex items-center justify-between">
+      <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center -ml-2" aria-label="Volver">
+          <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-bold">Reglas de categorización</h1>
         </div>
         <button
           onClick={() => setMostrarForm(true)}
-          className="w-9 h-9 rounded-full bg-accent text-white flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
          aria-label="Nueva regla">
-          <Plus size={18} />
+          <Plus size={20} />
         </button>
       </header>
 
@@ -52,9 +56,20 @@ export default function ReglasCategoria() {
         Cuando un movimiento contenga este texto, se categoriza automáticamente al instante.
         Tienen prioridad sobre la categorización que aprende de tu historial.
       </p>
+      <Link
+        to="/entrenar-categorias"
+        className="mx-6 mt-3 flex items-center gap-3 rounded-2xl bg-accent-soft border border-accent/30 px-4 py-3"
+      >
+        <GraduationCap size={20} className="text-accent shrink-0" />
+        <span className="flex-1 text-sm">
+          <b>Entrenar categorías</b>
+          <span className="block text-xs text-ink-soft">Enséñame los comercios que más se repiten y los clasifico solos.</span>
+        </span>
+        <ChevronRight size={16} className="text-accent" />
+      </Link>
 
       {cargando ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <EsqueletoLista filas={4} className="mx-6 mt-6" etiqueta="Cargando tus reglas" />
       ) : error ? (
         <div className="mx-6 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
           <p className="text-sm text-danger mb-3">{error}</p>
@@ -63,9 +78,7 @@ export default function ReglasCategoria() {
           </button>
         </div>
       ) : reglas.length === 0 ? (
-        <div className="mx-6 mt-6 rounded-2xl bg-paper-raised border border-line p-8 text-center">
-          <p className="text-sm text-ink-soft">Aún no tienes reglas creadas</p>
-        </div>
+        <EstadoVacio icono={Tag} titulo="Aún no tienes reglas creadas" texto="Una regla clasifica sola los movimientos que se repiten." className="mx-6 mt-6" />
       ) : (
         <div className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
           {reglas.map((r) => (
@@ -74,7 +87,7 @@ export default function ReglasCategoria() {
                 <p className="text-sm font-medium truncate">"{r.patron}"</p>
                 <p className="text-xs text-ink-soft">→ {r.categoria}{r.tipo ? ` · ${r.tipo}` : ''}</p>
               </div>
-              <button onClick={() => eliminar(r.id)} className="w-9 h-9 -mr-1.5 flex items-center justify-center text-danger shrink-0" aria-label="Eliminar">
+              <button onClick={() => eliminar(r.id)} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-danger shrink-0" aria-label="Eliminar">
                 <Trash2 size={16} />
               </button>
             </div>
@@ -119,47 +132,45 @@ function FormRegla({ onClose, onGuardado }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-ink/40 flex items-end justify-center z-50 sheet-backdrop">
-      <div className="w-full max-w-[480px] bg-paper rounded-t-[28px] p-6 pb-8 sheet-content">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Nueva regla</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
-            <X size={16} />
-          </button>
-        </div>
-
-        <input
-          value={patron}
-          onChange={(e) => setPatron(e.target.value)}
-          placeholder="Texto a buscar (ej. Netflix, Uber)"
-          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
-        />
-
-        <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Categoría</p>
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {categoriasSugeridas.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategoria(c)}
-              className={`rounded-2xl border py-3 text-sm font-medium ${
-                categoria === c ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-
-        {error && <p className="text-sm text-danger mb-3">{error}</p>}
-
-        <button
-          onClick={guardar}
-          disabled={guardando}
-          className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
-        >
-          {guardando ? 'Guardando...' : 'Guardar regla'}
+    <Hoja onCerrar={onClose}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Nueva regla</h2>
+        <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
+          <X size={16} />
         </button>
       </div>
-    </div>
+
+      <input
+        value={patron}
+        onChange={(e) => setPatron(e.target.value)}
+        placeholder="Texto a buscar (ej. Netflix, Uber)"
+        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
+      />
+
+      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Categoría</p>
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {categoriasSugeridas.map((c) => (
+          <button
+            key={c}
+            onClick={() => setCategoria(c)}
+            className={`rounded-2xl border py-3 text-sm font-medium ${
+              categoria === c ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'
+            }`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+
+      <button
+        onClick={guardar}
+        disabled={guardando}
+        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+      >
+        {guardando ? 'Guardando...' : 'Guardar regla'}
+      </button>
+    </Hoja>
   )
 }

@@ -8,6 +8,8 @@ import re
 import unicodedata
 from collections import defaultdict
 
+from app.clave_comercio import clave_comercio, huella_en_descripcion
+
 MIN_TOKEN_LEN = 3
 MIN_CONFIANZA = 0.55
 
@@ -107,20 +109,41 @@ def classify(descripcion: str, model: dict) -> dict | None:
         "tipo": tipo,
         "confianza": round(confianza, 2),
         "fuente": "learned",
+        "razon": "similar a movimientos tuyos",
+    }
+
+
+def _resultado_regla(regla, huella: str) -> dict:
+    return {
+        "categoria": regla.categoria,
+        "tipo": regla.tipo,
+        "confianza": 1.0,
+        "fuente": "regla",
+        "palabra": huella,
+        "razon": f"por tu regla «{huella}»",
     }
 
 
 def aplicar_reglas(descripcion: str, reglas: list) -> dict | None:
     """reglas: objetos ReglaCategoria, ya ordenados por prioridad desc.
-    Coincidencia simple: el patrón (case-insensitive) está contenido en la
-    descripción. La primera regla que matchea gana."""
+    1) coincidencia EXACTA de huella de comercio (clave_comercio) y, si no hay,
+    2) por 'contiene': el patrón dentro de la descripción, o su huella como
+    palabras completas dentro de la huella de la descripción."""
+    huella = clave_comercio(descripcion)
+    if huella:
+        for regla in reglas:
+            if clave_comercio(regla.patron) == huella:
+                return _resultado_regla(regla, huella)
     desc_lower = descripcion.lower()
     for regla in reglas:
-        if regla.patron.lower() in desc_lower:
-            return {
-                "categoria": regla.categoria,
-                "tipo": regla.tipo,
-                "confianza": 1.0,
-                "fuente": "regla",
-            }
+        patron = regla.patron.strip()
+        if not patron:
+            continue
+        # Patrones cortos ('d1', 'kfc') solo cuentan como palabra completa (vía huella): 'd1' no debe
+        # activarse dentro de 'cod12345'.
+        if len(patron) >= 4 and patron.lower() in desc_lower:
+            return _resultado_regla(regla, clave_comercio(patron) or patron.lower())
+        hp = clave_comercio(patron)
+        if hp and huella_en_descripcion(hp, descripcion):
+            return _resultado_regla(regla, hp)
     return None

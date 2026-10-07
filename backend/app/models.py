@@ -2,9 +2,10 @@ import secrets
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, Float, DateTime, Boolean, Integer
+from sqlalchemy import Column, String, Float, DateTime, Boolean, Integer, UniqueConstraint
 
 from app.database import Base
+from app.utiles import ahora_co
 
 
 def gen_uuid():
@@ -27,6 +28,14 @@ class Perfil(Base):
     gmail_email = Column(String, nullable=True)
     gmail_etiqueta = Column(String, default="gastos")
     confianza_autoimport = Column(Float, default=0.75)  # 0.5-0.95: qué tan segura debe estar la categorización antes de auto-importar un movimiento sin preguntar
+    # Importar solos, al subir un extracto, los movimientos que la app categoriza con certeza
+    # (umbral = confianza_autoimport). Apagado por defecto: nada se importa sin que el usuario confirme.
+    autoimportar_extractos = Column(Boolean, default=False)
+    # Recordatorio nocturno (8pm Colombia) si hoy no registró nada; opcional.
+    recordatorio_diario = Column(Boolean, default=False)
+    ultimo_recordatorio = Column(String, nullable=True)  # YYYY-MM-DD del último aviso, para no repetir
+    # Última vez que alguien usó la API key (Atajo de iPhone, Tasker...): alimenta el semáforo de "Conexiones".
+    api_key_ultimo_uso = Column(DateTime, nullable=True)
     actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
@@ -40,6 +49,16 @@ class Cuenta(Base):
     saldo = Column(Float, default=0)
     moneda = Column(String, default="COP")
     icono = Column(String, default="🏦")
+    # Solo para tipo "credito" (tarjeta de crédito). Todos opcionales: una
+    # cuenta de crédito sin cupo sigue funcionando como una cuenta más.
+    cupo_total = Column(Float, nullable=True)
+    dia_corte = Column(Integer, nullable=True)  # 1-31
+    dia_pago = Column(Integer, nullable=True)  # 1-31
+    tasa_ea = Column(Float, nullable=True)  # tasa efectiva anual en %
+    ultima_alerta_pago = Column(String, nullable=True)  # fecha de pago ya avisada (YYYY-MM-DD)
+    # Cómo se llama esta cuenta/tarjeta en Apple Wallet ("Visa Bancolombia, 1234").
+    # Varios alias separados por coma; el pago con el celular se asigna por coincidencia parcial.
+    alias_tarjeta = Column(String, nullable=True)
 
 
 class CuentaCompartida(Base):
@@ -118,13 +137,22 @@ class Movimiento(Base):
     id = Column(String, primary_key=True, default=gen_uuid)
     usuario_id = Column(String, nullable=False, index=True)
     cuenta_id = Column(String, index=True, nullable=False)
-    fecha = Column(DateTime, default=datetime.utcnow, index=True)
+    fecha = Column(DateTime, default=ahora_co, index=True)  # hora Colombia (naive), no UTC
     descripcion = Column(String, nullable=False)
     categoria = Column(String, default="Otros")
     tipo = Column(String, nullable=False)  # income | expense | transfer
     monto = Column(Float, nullable=False)
     fuente = Column(String, default="manual")  # manual | csv_import | ai | sms
     notas = Column(String, default="")
+    # Categorización automática transparente: si la app puso la categoría sola
+    # queda cat_confirmada=False y cat_origen dice por qué (regla | comercio |
+    # similar | sugerida). Lo que escribe el usuario nace confirmado.
+    cat_origen = Column(String, nullable=True)
+    cat_confirmada = Column(Boolean, default=True)
+    # Cruce con el extracto: un movimiento rápido (Wallet, cierre de app...) se
+    # completa con los datos del banco y queda conciliado (no se vuelve a tocar).
+    conciliado_en = Column(DateTime, nullable=True)
+    extracto_id = Column(String, nullable=True)
 
 
 class Presupuesto(Base):
@@ -220,11 +248,72 @@ class CorreoGasto(Base):
     moneda = Column(String, default="COP")
     comercio = Column(String, default="")
     categoria_sugerida = Column(String, default="Otros")
-    tipo_sugerido = Column(String, default="expense")  # income | expense | transfer
+    tipo_sugerido = Column(String, default="expense")  # income | expense (antes también transfer)
     confianza = Column(Float, default=0)
     estado = Column(String, default="pendiente")  # pendiente | aprobado | descartado
     movimiento_id = Column(String, nullable=True)
     creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class ExtractoCorreo(Base):
+    """Extracto bancario (PDF adjunto) detectado en el Gmail del usuario.
+    NO guarda el PDF: solo metadatos. Para conciliar se vuelve a descargar."""
+    __tablename__ = "extractos_correo"
+    __table_args__ = (UniqueConstraint("usuario_id", "gmail_msg_id", "archivo", name="uq_extracto_correo"),)
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    gmail_msg_id = Column(String, nullable=False)
+    archivo = Column(String, default="")  # nombre del adjunto
+    remitente = Column(String, default="")
+    asunto = Column(String, default="")
+    banco = Column(String, default="")
+    periodo = Column(String, default="")
+    cuenta_sugerida_id = Column(String, nullable=True)
+    estado = Column(String, default="nuevo")  # nuevo | falta_clave | procesado | descartado | error
+    historial_id = Column(String, nullable=True)
+    recibido_en = Column(DateTime, nullable=True)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class SyncGmail(Base):
+    """Estado de la sincronización de Gmail por usuario. Permite hacerla por
+    lotes (cada request lee pocos correos para no pasar el timeout) y retomarla
+    donde quedó. Los campos `cursor_*` solo valen mientras `en_curso` es True."""
+    __tablename__ = "sync_gmail"
+
+    usuario_id = Column(String, primary_key=True)
+    en_curso = Column(Boolean, default=False)
+    fase = Column(String, default="etiqueta")  # etiqueta | notificaciones | extractos
+    fase_iniciada = Column(Boolean, default=False)  # ya se pidió la primera página de la fase
+    cursor_token = Column(String, nullable=True)  # nextPageToken de Gmail para la siguiente página
+    cursor_ids = Column(String, default="[]")  # JSON: ids de la página actual que faltan por leer
+    reintento_clave_hecho = Column(Boolean, default=False)
+    desde = Column(DateTime, nullable=True)  # inicio de la ventana de búsqueda de esta corrida
+    iniciada_en = Column(DateTime, nullable=True)
+    # Contadores de la corrida en curso.
+    leidos = Column(Integer, default=0)
+    total_estimado = Column(Integer, default=0)
+    nuevos = Column(Integer, default=0)
+    omitidos = Column(Integer, default=0)
+    extractos_nuevos = Column(Integer, default=0)
+    # Última corrida COMPLETA (es la que ve el tablero de conexiones).
+    ultima_sync = Column(DateTime, nullable=True)
+    ultimo_leidos = Column(Integer, default=0)
+    ultimo_nuevos = Column(Integer, default=0)
+    ultimo_extractos = Column(Integer, default=0)
+    ultimo_error = Column(String, nullable=True)
+    ultimo_error_en = Column(DateTime, nullable=True)
+
+
+class ClavePdf(Base):
+    """Clave con la que se abren los extractos cifrados (normalmente la
+    cédula). Se guarda cifrada con Fernet, igual que el refresh token."""
+    __tablename__ = "claves_pdf"
+
+    usuario_id = Column(String, primary_key=True)
+    clave_enc = Column(String, nullable=False)
+    actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class PushSubscription(Base):
@@ -256,6 +345,23 @@ class HistorialExtracto(Base):
     creado_en = Column(DateTime, default=datetime.utcnow)
 
 
+class Consentimiento(Base):
+    """Registro AUDITABLE de autorizaciones de tratamiento de datos (Ley 1581 de 2012).
+    Solo se INSERTA: nunca se actualiza ni se borra. Revocar = nueva fila con
+    aceptado=False; el estado vigente de una finalidad es su fila más reciente."""
+    __tablename__ = "consentimientos"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    version = Column(String, nullable=False)  # versión de los textos legales aceptada (ej. "1.1")
+    finalidad = Column(String, nullable=False)  # tratamiento_basico | lectura_correo | ia | notificaciones
+    aceptado = Column(Boolean, nullable=False)
+    creado_en_utc = Column(DateTime, nullable=False, default=datetime.utcnow)
+    creado_en_co = Column(DateTime, nullable=False)  # la misma fecha en hora Colombia (UTC-5)
+    ip = Column(String, nullable=True)  # opcional; puede no estar disponible
+    origen = Column(String, default="app")  # app | registro | perfil | flujo_gmail | flujo_ia
+
+
 class Categoria(Base):
     """Categorías de movimientos por usuario. Las 8 base (Comida, Transporte,
     etc.) se crean automáticamente la primera vez que el usuario pide su
@@ -270,4 +376,6 @@ class Categoria(Base):
     orden = Column(Integer, default=0)
     activa = Column(Boolean, default=True)  # oculta en vez de borrar, para no perder el historial de movimientos ya categorizados con ella
     es_base = Column(Boolean, default=False)  # una de las 8 originales — no se puede eliminar, solo ocultar o renombrar
+    color = Column(String, nullable=True)  # opcional, "#RRGGBB"
+    tipo = Column(String, default="ambos")  # gasto | ingreso | ambos
     creado_en = Column(DateTime, default=datetime.utcnow)

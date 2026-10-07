@@ -2,12 +2,14 @@ import logging
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
 from app.config import settings
 from app.database import Base, get_db
 from app.models import Cuenta, CuentaCompartida, HistorialExtracto, InvitacionCuenta, Movimiento, Perfil, gen_api_key
+from app.models_gastos import GastoCompartido, GrupoGasto, MiembroGrupoGasto, ParteGasto
 from app.schemas import ConfianzaAutoimportUpdate, EliminarCuentaRequest
 
 router = APIRouter(prefix="/perfil", tags=["perfil"])
@@ -36,12 +38,38 @@ def obtener_api_key(
     return {"api_key": perfil.api_key}
 
 
+class RecordatorioUpdate(BaseModel):
+    activo: bool
+
+
+@router.get("/recordatorio-diario")
+def obtener_recordatorio_diario(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    perfil = _get_or_create_perfil(db, usuario.id)
+    return {"activo": bool(perfil.recordatorio_diario)}
+
+
+@router.put("/recordatorio-diario")
+def actualizar_recordatorio_diario(
+    data: RecordatorioUpdate,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Activa o apaga el aviso de las 8pm 'hoy no has registrado nada'."""
+    perfil = _get_or_create_perfil(db, usuario.id)
+    perfil.recordatorio_diario = data.activo
+    db.commit()
+    return {"activo": bool(perfil.recordatorio_diario)}
+
+
 @router.post("/api-key/regenerar")
 def regenerar_api_key(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
     perfil = _get_or_create_perfil(db, usuario.id)
     perfil.api_key = gen_api_key()
+    perfil.api_key_ultimo_uso = None  # la clave nueva aún no se ha usado
     db.commit()
     return {"api_key": perfil.api_key}
 
@@ -66,6 +94,32 @@ def actualizar_confianza_autoimport(
     perfil.confianza_autoimport = data.confianza_autoimport
     db.commit()
     return {"confianza_autoimport": perfil.confianza_autoimport}
+
+
+class AutoimportarExtractosUpdate(BaseModel):
+    activo: bool
+
+
+@router.get("/autoimportar-extractos")
+def obtener_autoimportar_extractos(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    perfil = _get_or_create_perfil(db, usuario.id)
+    return {"activo": bool(perfil.autoimportar_extractos), "confianza_autoimport": perfil.confianza_autoimport or 0.75}
+
+
+@router.put("/autoimportar-extractos")
+def actualizar_autoimportar_extractos(
+    data: AutoimportarExtractosUpdate,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Opcional y apagado por defecto: al subir un extracto, importa solo lo que la app
+    reconoce con certeza (umbral = confianza-autoimport). Lo importado se puede deshacer."""
+    perfil = _get_or_create_perfil(db, usuario.id)
+    perfil.autoimportar_extractos = data.activo
+    db.commit()
+    return {"activo": bool(perfil.autoimportar_extractos)}
 
 
 @router.post("/eliminar-cuenta")
@@ -111,7 +165,15 @@ def eliminar_cuenta(
             InvitacionCuenta.email_invitado == usuario.email.lower()
         ).delete(synchronize_session=False)
 
-    # 4) Cualquier tabla con columna usuario_id (perfil, cuentas, presupuestos, metas,
+    # 4) Tablas hijas SIN usuario_id: cuelgan de grupos y gastos compartidos del
+    #    usuario y quedarían huérfanas (con nombres/montos de terceros) si solo se
+    #    borrara por usuario_id. Se borran por sus padres, antes que ellos.
+    mis_grupos = db.query(GrupoGasto.id).filter(GrupoGasto.usuario_id == uid)
+    mis_gastos = db.query(GastoCompartido.id).filter(GastoCompartido.usuario_id == uid)
+    db.query(MiembroGrupoGasto).filter(MiembroGrupoGasto.grupo_id.in_(mis_grupos)).delete(synchronize_session=False)
+    db.query(ParteGasto).filter(ParteGasto.gasto_id.in_(mis_gastos)).delete(synchronize_session=False)
+
+    # 5) Cualquier tabla con columna usuario_id (perfil, cuentas, presupuestos, metas,
     #    deudas, rachas, push...). Recorrer el metadata evita olvidar una tabla nueva.
     for tabla in Base.metadata.sorted_tables:
         if "usuario_id" in tabla.c:
@@ -119,6 +181,7 @@ def eliminar_cuenta(
     db.commit()
 
     auth_eliminado = False
+    aviso = None
     if settings.supabase_service_role_key:
         try:
             resp = httpx.delete(
@@ -130,7 +193,15 @@ def eliminar_cuenta(
                 timeout=15,
             )
             auth_eliminado = resp.status_code in (200, 204)
+            if not auth_eliminado:
+                logger.error("Supabase Auth respondió %s al borrar el usuario %s", resp.status_code, uid)
         except httpx.HTTPError:
             logger.exception("No se pudo borrar el usuario %s de Supabase Auth", uid)
+        if not auth_eliminado:
+            # Los datos ya se borraron (commit arriba): no se pierde ese avance.
+            aviso = "Tus datos se borraron, pero no pudimos cerrar tu acceso; escríbenos a soporte"
 
-    return {"ok": True, "auth_eliminado": auth_eliminado}
+    respuesta = {"ok": True, "auth_eliminado": auth_eliminado}
+    if aviso:
+        respuesta["aviso"] = aviso
+    return respuesta
