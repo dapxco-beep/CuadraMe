@@ -1,15 +1,18 @@
 import base64
 import json
 import logging
+import time
 
 from google.auth.exceptions import RefreshError
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.auth import UsuarioActual, get_current_user
+from app.auth import UsuarioActual, cron_autorizado, get_current_user
+from app.crons import Corrida
+from app.push import enviar_push
 from app.autocat import ClasificadorUsuario, aplicar_a_anteriores, guardar_regla_aprendida
 from app.config import settings
 from app.limites import verificar_limite
@@ -520,6 +523,40 @@ def _respuesta_sync(sync: SyncGmail) -> SincronizarCorreosResponse:
     )
 
 
+def _lote_de_sincronizacion(db: Session, usuario_id: str, perfil: Perfil, completa: bool = False,
+                            dias: int = DIAS_PRIMERA_SYNC) -> tuple[SyncGmail, int, int]:
+    """UN lote de la sincronización de Gmail (sin sesión HTTP): lo usan el botón del usuario
+    y el cron. Inicia o retoma la corrida, lee un lote y hace commit. Devuelve (sync, novedades
+    de ESTE lote: correos por revisar, extractos nuevos). Puede lanzar RefreshError y errores
+    de Gmail: quien llama decide qué hacer."""
+    etiqueta = perfil.gmail_etiqueta or "gastos"
+    gmail = cliente_gmail(perfil.gmail_refresh_token_enc)
+    labels = gmail.users().labels().list(userId="me").execute().get("labels", [])
+    label_id = next((l["id"] for l in labels if l["name"].lower() == etiqueta.lower()), None)
+
+    sync = _get_or_create_sync(db, usuario_id)
+    vencida = bool(sync.iniciada_en) and datetime.utcnow() - sync.iniciada_en > timedelta(hours=MAX_CORRIDA_HORAS)
+    if completa or not sync.en_curso or vencida:
+        _iniciar_corrida(gmail, sync, label_id, completa, dias)
+    # Si la etiqueta desapareció a mitad de corrida, se salta esa fase.
+    if sync.fase == "etiqueta" and not label_id:
+        sync.fase, sync.fase_iniciada, sync.cursor_token, sync.cursor_ids = "notificaciones", False, None, "[]"
+
+    # Los contadores de la corrida son acumulados: lo nuevo de este lote es la diferencia.
+    antes_n, antes_e = (sync.nuevos or 0), (sync.extractos_nuevos or 0)
+    # Mismo clasificador que la conciliación: reglas del usuario, lo que aprendió
+    # de sus movimientos confirmados, diccionario y, si nada sirve, 'Otros'.
+    modelo = ClasificadorUsuario(db, usuario_id)
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).all()
+    _correr_lote(gmail, db, usuario_id, sync, label_id, modelo, cuentas, _clave_pdf(db, usuario_id))
+    if sync.en_curso:
+        despues_n, despues_e = (sync.nuevos or 0), (sync.extractos_nuevos or 0)
+    else:
+        despues_n, despues_e = (sync.ultimo_nuevos or 0), (sync.ultimo_extractos or 0)
+    db.commit()
+    return sync, max(0, despues_n - antes_n), max(0, despues_e - antes_e)
+
+
 @router.post("/sincronizar", response_model=SincronizarCorreosResponse)
 def sincronizar(
     completa: bool = False,
@@ -539,26 +576,8 @@ def sincronizar(
     if not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
         raise HTTPException(status_code=400, detail="Gmail no está conectado")
 
-    etiqueta = perfil.gmail_etiqueta or "gastos"
     try:
-        gmail = cliente_gmail(perfil.gmail_refresh_token_enc)
-        labels = gmail.users().labels().list(userId="me").execute().get("labels", [])
-        label_id = next((l["id"] for l in labels if l["name"].lower() == etiqueta.lower()), None)
-
-        sync = _get_or_create_sync(db, usuario.id)
-        vencida = bool(sync.iniciada_en) and datetime.utcnow() - sync.iniciada_en > timedelta(hours=MAX_CORRIDA_HORAS)
-        if completa or not sync.en_curso or vencida:
-            _iniciar_corrida(gmail, sync, label_id, completa, dias)
-        # Si la etiqueta desapareció a mitad de corrida, se salta esa fase.
-        if sync.fase == "etiqueta" and not label_id:
-            sync.fase, sync.fase_iniciada, sync.cursor_token, sync.cursor_ids = "notificaciones", False, None, "[]"
-
-        # Mismo clasificador que la conciliación: reglas del usuario, lo que aprendió
-        # de sus movimientos confirmados, diccionario y, si nada sirve, 'Otros'.
-        modelo = ClasificadorUsuario(db, usuario.id)
-        cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
-        _correr_lote(gmail, db, usuario.id, sync, label_id, modelo, cuentas, _clave_pdf(db, usuario.id))
-        db.commit()
+        sync, _movs, _exts = _lote_de_sincronizacion(db, usuario.id, perfil, completa, dias)
         return _respuesta_sync(sync)
 
     except HTTPException:
@@ -587,6 +606,81 @@ def sincronizar(
             ok=False, nuevos=0, omitidos=0,
             error="No se pudo sincronizar tus correos. Intenta de nuevo en un momento.",
         )
+
+
+# ── Cron: sincronización periódica ─────────────────────────────────
+
+PRESUPUESTO_CRON_SEGUNDOS = 45  # tiempo total por llamada; lo que falte sigue en la próxima (cursor)
+_reloj = time.monotonic  # se puede sustituir en pruebas
+
+
+def _aviso_correos_nuevos(movimientos: int, extractos: int) -> tuple[str, str]:
+    """(título, cuerpo) del push resumen. `movimientos` y `extractos` ya son lo nuevo del lote."""
+    if movimientos and extractos:
+        cuerpo = (f"Encontré {movimientos} movimiento{'s' if movimientos != 1 else ''} nuevo{'s' if movimientos != 1 else ''} "
+                  f"y {extractos} extracto{'s' if extractos != 1 else ''} en tu correo")
+    elif movimientos:
+        cuerpo = f"Encontré {movimientos} movimiento{'s' if movimientos != 1 else ''} nuevo{'s' if movimientos != 1 else ''} en tu correo"
+    else:
+        cuerpo = f"Encontré {extractos} extracto{'s' if extractos != 1 else ''} nuevo{'s' if extractos != 1 else ''} en tu correo para conciliar"
+    return "Novedades en tu correo", cuerpo
+
+
+@router.post("/cron/sincronizar")
+def cron_sincronizar(db: Session = Depends(get_db), x_cron_secret: str = Header(default="")):
+    """Sincronización periódica de Gmail (cron externo, header X-Cron-Secret; recomendado cada
+    3 horas, hora Colombia). Para cada usuario con Gmail conectado Y con la autorización vigente
+    de lectura de correo corre UN lote incremental de la misma sincronización del botón. Tiene
+    presupuesto de tiempo (~45 s): si se acaba, corta y la siguiente ejecución continúa desde
+    el cursor de cada usuario (quien lleva más tiempo sin sincronizar va primero). Un fallo de un
+    usuario no detiene a los demás. Es idempotente: sin correos nuevos no cambia nada ni avisa.
+    Si el lote encontró movimientos o extractos nuevos, manda UN push resumen a ese usuario."""
+    if not cron_autorizado(x_cron_secret):
+        raise HTTPException(status_code=401, detail="No autorizado")
+
+    inicio = _reloj()
+    perfiles = (
+        db.query(Perfil)
+        .filter(Perfil.gmail_conectado.is_(True), Perfil.gmail_refresh_token_enc.isnot(None))
+        .all()
+    )
+    ultimas = {s.usuario_id: s.ultima_sync for s in db.query(SyncGmail).all()}
+    perfiles.sort(key=lambda p: (ultimas.get(p.usuario_id) or datetime.min, p.usuario_id))
+
+    corrida = Corrida(db)
+    nuevos = sin_consentimiento = desconectados = avisados = 0
+    pendientes_por_tiempo = 0
+    for i, perfil in enumerate(perfiles):
+        if _reloj() - inicio >= PRESUPUESTO_CRON_SEGUNDOS:
+            pendientes_por_tiempo = len(perfiles) - i
+            break
+        uid = perfil.usuario_id
+        with corrida.aislar(uid):
+            if not tiene_consentimiento(db, uid, "lectura_correo"):
+                sin_consentimiento += 1
+                continue
+            try:
+                _sync, movs, exts = _lote_de_sincronizacion(db, uid, perfil)
+            except RefreshError:
+                db.rollback()
+                perfil.gmail_conectado = False
+                perfil.gmail_refresh_token_enc = None
+                db.commit()
+                desconectados += 1
+                continue
+            if movs or exts:
+                nuevos += movs + exts
+                try:
+                    titulo, cuerpo = _aviso_correos_nuevos(movs, exts)
+                    if enviar_push(db, uid, titulo, cuerpo, "/correos"):
+                        avisados += 1
+                except Exception:
+                    logger.exception("Cron correos: no se pudo avisar al usuario %s", uid)
+    return {
+        "ok": True, **corrida.resumen(), "nuevos": nuevos, "avisados": avisados,
+        "sin_consentimiento": sin_consentimiento, "desconectados": desconectados,
+        "pendientes_por_tiempo": pendientes_por_tiempo,
+    }
 
 
 # ── Lista completa de correos (con filtros y paginación) ───────────
