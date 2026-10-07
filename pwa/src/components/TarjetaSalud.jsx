@@ -49,7 +49,7 @@ export function AnilloPuntaje({ score, size = 96 }) {
   )
 }
 
-export default function TarjetaSalud() {
+export default function TarjetaSalud({ embebida = false }) {
   const [datos, setDatos] = useState(null)
   const [abierto, setAbierto] = useState(false)
 
@@ -74,7 +74,7 @@ export default function TarjetaSalud() {
   return (
     <section
       aria-label="Salud financiera"
-      className="mx-6 mt-3 rounded-2xl bg-paper-raised border border-line p-4 stagger-item"
+      className={embebida ? "mt-2 pt-3 border-t border-line" : "mx-6 mt-3 rounded-2xl bg-paper-raised border border-line p-4 stagger-item"}
       style={{ '--stagger-i': 4 }}
     >
       <div className="flex items-center gap-4">
