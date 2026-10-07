@@ -223,7 +223,9 @@ def parse_texto_con_regex(texto: str) -> tuple[list[dict], int]:
     descartados = 0
 
     if banco in ("nequi", "generico"):
-        movimientos = _parse_nequi(texto)
+        movimientos, descartados = _parse_nequi_con_perdidas(texto)
+        if not movimientos:
+            descartados = 0  # no era un extracto de Nequi: lo que contó no vale para los otros lectores
 
     if not movimientos and banco in ("nu", "nequi", "generico"):
         movimientos, descartados = _parse_nu(texto, anio)
@@ -242,7 +244,7 @@ def parse_texto_con_regex(texto: str) -> tuple[list[dict], int]:
 
     # Si el extracto trae su propio resumen y lo leído no suma lo mismo, falta (o sobra)
     # algo: se avisa con el contador de "descartados" en vez de dejarlo pasar en silencio.
-    if movimientos and cuadra_con_el_resumen(texto, movimientos) is False:
+    if movimientos and cuadra_con_el_resumen(texto, movimientos) is False and descartados == 0:
         descartados += 1
 
     return movimientos, descartados
@@ -294,63 +296,100 @@ def evaluar_extracto(texto: str, banco: str, movimientos: list[dict]) -> tuple[b
     return True, ""
 
 
-def _parse_nequi(texto: str) -> list[dict]:
-    movimientos = []
-    patron_a = re.compile(
-        r"(\d{2})/(\d{2})/(\d{4})\s+(.+?)\s+\$(-?[\d,]+\.?\d*)\s+\$([\d,]+\.?\d*)", re.MULTILINE
-    )
-    for m in patron_a.finditer(texto):
-        desc = m.group(4).strip()
-        if re.search(r"fecha|descripci[oó]n|valor|saldo", desc, re.IGNORECASE):
-            continue
-        try:
-            monto = float(m.group(5).replace(",", ""))
-        except ValueError:
-            continue
-        if monto == 0:
-            continue
-        fecha = f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
-        tipo = _tipo_por_signo(monto, desc)
-        movimientos.append({
-            "fecha": fecha, "descripcion": desc, "monto": abs(monto),
-            "tipo": tipo, "referencia": "", "saldo": None,
-        })
+def _num_flexible(s: str) -> float | None:
+    """Número con separadores de miles/decimales en cualquier estilo: 1,234.56 · 1.234,56 ·
+    8,200 · 8.200 · 8200.5. Si hay un solo separador seguido de exactamente 3 dígitos es de
+    miles; si hay dos tipos, el último es el decimal."""
+    s = s.strip().strip(".,")
+    if not s or not re.fullmatch(r"[\d.,]+", s):
+        return None
+    ultimo = max(s.rfind("."), s.rfind(","))
+    if ultimo == -1:
+        return float(s)
+    sep = s[ultimo]
+    otro = "," if sep == "." else "."
+    entero, frac = s[:ultimo], s[ultimo + 1:]
+    if otro in entero or (s.count(sep) == 1 and len(frac) != 3):
+        return float(entero.replace(otro, "").replace(sep, "") + "." + frac) if frac else float(entero.replace(otro, "").replace(sep, ""))
+    return float(s.replace(".", "").replace(",", ""))  # solo miles ('8,200' o '1.234.567')
 
-    if movimientos:
-        return movimientos
 
-    lineas = [l.strip() for l in texto.split("\n") if l.strip()]
+# Un valor de Nequi: '$8,200.00', '$-8,200.00', '-$8,200.00', '$ 8.200', '($8,200.00)'.
+_VALOR_NEQUI = r"\(?[-–−]?\s*\$\s*[-–−]?\s*[\d][\d.,]*\)?"
+_RE_REGISTRO_NEQUI = re.compile(
+    r"^(\d{2})/(\d{2})/(\d{4})\s+(.*?)\s*(" + _VALOR_NEQUI + r")(?:\s+(" + _VALOR_NEQUI + r"))?\s*$", re.DOTALL
+)
+_RE_FECHA_NEQUI = re.compile(r"^\s*(\d{2})/(\d{2})/(\d{4})(?!\d)")
+_RE_ENCABEZADO_NEQUI = re.compile(r"fecha|descripci[oó]n|valor|saldo", re.IGNORECASE)
+
+
+def _valor_nequi(token: str) -> float | None:
+    negativo = bool(re.search(r"[-–−]|^\(.*\)$", token))
+    n = _num_flexible(re.sub(r"[^\d.,]", "", token))
+    return None if n is None else (-n if negativo else n)
+
+
+def _parse_nequi_con_perdidas(texto: str) -> tuple[list[dict], int]:
+    """Lee el extracto de Nequi registro por registro. Un movimiento empieza en una línea que
+    arranca con fecha dd/mm/aaaa y puede ocupar hasta 5 líneas (descripción partida, valor en
+    otra línea). Devuelve (movimientos, perdidas): `perdidas` cuenta lo que parecía un
+    movimiento y no se pudo leer, y se suma 1 si la cadena saldo anterior + abonos - cargos
+    no llega al saldo actual impreso. Nada se pierde en silencio."""
+    lineas = [l.strip() for l in texto.split("\n")]
+    movimientos: list[dict] = []
+    perdidas = 0
+    firmados = 0.0
     i = 0
     while i < len(lineas):
-        fecha_m = re.match(r"^(\d{2})/(\d{2})/(\d{4})$", lineas[i])
-        if fecha_m:
-            desc, monto_str = "", ""
-            for j in range(i + 1, min(i + 5, len(lineas))):
-                monto_m = re.match(r"^\$(-?[\d,]+\.?\d*)$", lineas[j])
-                if monto_m:
-                    monto_str = monto_m.group(1)
-                    desc = " ".join(lineas[i + 1:j]).strip()
-                    i = j + 1
-                    break
-            if not desc or not monto_str or re.search(r"fecha|descripci[oó]n|valor|saldo", desc, re.IGNORECASE):
-                i += 1
-                continue
-            try:
-                monto = float(monto_str.replace(",", ""))
-            except ValueError:
-                i += 1
-                continue
-            if monto == 0:
-                i += 1
-                continue
-            fecha = f"{fecha_m.group(3)}-{fecha_m.group(2)}-{fecha_m.group(1)}"
-            movimientos.append({
-                "fecha": fecha, "descripcion": desc, "monto": abs(monto),
-                "tipo": _tipo_por_signo(monto, desc), "referencia": "", "saldo": None,
-            })
-        else:
+        if not _RE_FECHA_NEQUI.match(lineas[i]):
             i += 1
-    return movimientos
+            continue
+        # Se une la línea de fecha con las siguientes hasta que cierre en un valor (o aparezca
+        # otra fecha / una línea vacía / pasen 5 líneas).
+        m = None
+        usadas = 1
+        for extra in range(0, 5):
+            if i + extra >= len(lineas):
+                break
+            if extra and (not lineas[i + extra] or _RE_FECHA_NEQUI.match(lineas[i + extra])):
+                break
+            candidato = " ".join(l for l in lineas[i:i + extra + 1] if l)
+            m = _RE_REGISTRO_NEQUI.match(candidato)
+            if m:
+                usadas = extra + 1
+                break
+        if not m:
+            perdidas += 1  # empezaba como movimiento pero no se pudo leer
+            i += 1
+            continue
+        i += usadas
+        desc = re.sub(r"\s+", " ", m.group(4)).strip()
+        valor = _valor_nequi(m.group(5))
+        if valor is None:
+            perdidas += 1
+            continue
+        if valor == 0:
+            continue
+        if len(_RE_ENCABEZADO_NEQUI.findall(desc)) >= 2:
+            continue  # fila de encabezado de la tabla
+        firmados += valor
+        movimientos.append({
+            "fecha": f"{m.group(3)}-{m.group(2)}-{m.group(1)}", "descripcion": desc, "monto": abs(valor),
+            "tipo": _tipo_por_signo(valor, desc), "referencia": "", "saldo": None,
+        })
+
+    # Cadena del extracto: saldo anterior + abonos - cargos = saldo actual.
+    ini = re.search(r"Saldo (?:anterior|inicial)\s+\$\s*([\d.,]+)", texto, re.IGNORECASE)
+    fin = re.search(r"Saldo (?:actual|final)\s+\$\s*([\d.,]+)", texto, re.IGNORECASE)
+    if movimientos and ini and fin:
+        a, b = _num_flexible(ini.group(1)), _num_flexible(fin.group(1))
+        if a is not None and b is not None and abs(a + firmados - b) >= 1:
+            perdidas += 1
+    return movimientos, perdidas
+
+
+def _parse_nequi(texto: str) -> list[dict]:
+    return _parse_nequi_con_perdidas(texto)[0]
 
 
 _MES_RE = r"(?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)"
