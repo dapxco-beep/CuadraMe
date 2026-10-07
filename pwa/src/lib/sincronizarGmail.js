@@ -15,6 +15,27 @@ export async function sincronizarTodo({ completa = false, onProgreso, maxLlamada
   return r
 }
 
+// Sincronización automática al abrir el centro: como máximo cada 6 horas, con el mismo
+// endpoint del botón (no hay cron nuevo). La marca vive en localStorage (con try/catch).
+export const CLAVE_SYNC = 'cuadrame_gmail_sync'
+const SEIS_HORAS = 6 * 60 * 60 * 1000
+
+export function tocaSincronizar() {
+  try {
+    return Date.now() - Number(localStorage.getItem(CLAVE_SYNC) || 0) > SEIS_HORAS
+  } catch {
+    return false
+  }
+}
+
+export function marcarSincronizado() {
+  try {
+    localStorage.setItem(CLAVE_SYNC, String(Date.now()))
+  } catch {
+    /* sin almacenamiento: se sincroniza solo a mano */
+  }
+}
+
 // "hace 2 h" a partir de una fecha ISO del servidor (UTC sin zona).
 export function haceCuanto(iso, ahora = Date.now()) {
   if (!iso) return null

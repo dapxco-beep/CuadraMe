@@ -81,6 +81,14 @@ export function normalizarPdf(r) {
       razon: m.razon_categoria || null,
       estado: m.estado === 'faltante' ? 'nuevo' : 'ya',
     }))
+  const filaInfo = (m) => ({
+    descripcion: m.descripcion,
+    fecha: m.fecha,
+    monto: m.monto,
+    montoRegistrado: m.monto_registrado ?? null,
+    descripcionRegistrada: m.descripcion_registrada || null,
+    categoria: m.categoria_sugerida || null,
+  })
   return {
     banco: r.banco_detectado || 'desconocido',
     periodo: r.periodo_desde ? { desde: r.periodo_desde, hasta: r.periodo_hasta } : periodoDe(items),
@@ -88,7 +96,35 @@ export function normalizarPdf(r) {
     historialId: r.historial_id,
     autoImportados: r.auto_importados || 0,
     yaConciliado: r.ya_conciliado || null,
+    // Lo que el lector no pudo leer con certeza (se avisa) y lo que cruzó con tu registro rápido.
+    descartados: r.descartados || 0,
+    completados: (r.review || []).filter((m) => m.estado === 'completado').map(filaInfo),
+    sobrantes: (r.review || []).filter((m) => m.estado === 'sobrante').map(filaInfo),
+    propuestaTarjeta: r.propuesta_tarjeta || null,
   }
+}
+
+/** Texto del aviso de líneas que no se pudieron leer ('' si no hubo). */
+export function textoDescartados(n) {
+  if (!n) return ''
+  return n === 1
+    ? '1 línea no se pudo leer con certeza y no aparece aquí. Revisa tu extracto.'
+    : `${n} líneas no se pudieron leer con certeza y no aparecen aquí. Revisa tu extracto.`
+}
+
+/** Claves únicas para React: dos filas idénticas el mismo día comparten huella (se importan juntas). */
+export function clavesUnicas(items) {
+  const vistas = new Map()
+  return items.map((it) => {
+    const n = vistas.get(it.k) || 0
+    vistas.set(it.k, n + 1)
+    return `${it.k}#${n}`
+  })
+}
+
+/** Cuántas filas "nuevas" del archivo comparten esta huella (las gemelas se marcan juntas). */
+export function gemelasNuevas(items, k) {
+  return items.filter((it) => it.estado === 'nuevo' && it.k === k).length
 }
 
 /** Respuesta de POST /importar/vista-previa -> estructura común. */
@@ -104,7 +140,13 @@ export function normalizarTabular(r) {
     razon: p.razon_categoria || null,
     estado: p.estado === 'duplicado' ? 'ya' : p.estado === 'posible_duplicado' ? 'posible' : 'nuevo',
   }))
-  return { banco: 'Excel / CSV', periodo: periodoDe(items), items, yaConciliado: r.ya_conciliado || null }
+  return {
+    banco: 'Excel / CSV',
+    periodo: periodoDe(items),
+    items,
+    yaConciliado: r.ya_conciliado || null,
+    descartados: r.resumen?.con_error || 0,
+  }
 }
 
 /**

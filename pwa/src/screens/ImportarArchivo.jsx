@@ -9,7 +9,6 @@ import { useCategorias } from '../lib/CategoriasContext'
 import { AvisoCategorizados } from '../components/CategorizacionAuto'
 import AvisoYaConciliado from '../components/AvisoYaConciliado'
 import RecordarRegla, { RECORDAR_INICIAL } from '../components/RecordarRegla'
-import SubidaMultiple from '../components/SubidaMultiple'
 import ZonaSubida from '../components/ZonaSubida'
 import {
   CAMPOS_MAPEO,
@@ -38,12 +37,14 @@ const colorEstado = {
   duplicado: 'text-ink-soft',
 }
 
-export default function ImportarArchivo() {
+// Lectura con columnas elegidas a mano (para un Excel o CSV raro). El flujo normal vive en el
+// centro "Traer movimientos"; aquí `embebido` quita el encabezado y `onTerminar` cierra la hoja.
+export default function ImportarArchivo({ embebido = false, cuentaInicial = '', onTerminar }) {
   const navigate = useNavigate()
   const volver = useVolver('/movimientos')
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: CATEGORIAS } = useCategorias()
-  const [cuentaId, setCuentaId] = useState(cuentas[0]?.id || '')
+  const [cuentaId, setCuentaId] = useState(cuentaInicial || cuentas[0]?.id || '')
   const [archivo, setArchivo] = useState(null) // { nombre, base64 }
   const [analisis, setAnalisis] = useState(null) // respuesta de /importar/vista-previa
   const [mapeo, setMapeo] = useState({})
@@ -55,7 +56,6 @@ export default function ImportarArchivo() {
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
   const [resultado, setResultado] = useState(null)
-  const [multiples, setMultiples] = useState(null) // File[] cuando se suben varios archivos a la vez
   const [aprender, setAprender] = useState({}) // fila -> { recordar, anteriores } (solo filas editadas)
 
   function mostrar(r) {
@@ -90,7 +90,7 @@ export default function ImportarArchivo() {
   async function onArchivos(files) {
     setError('')
     if (files.length > 1) {
-      setMultiples(files)
+      setError('Para elegir las columnas a mano sube un archivo a la vez.')
       return
     }
     const file = files[0]
@@ -177,17 +177,19 @@ export default function ImportarArchivo() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-8 screen-enter">
-      <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
-        <button
-          onClick={volver}
-          className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
-          aria-label="Volver"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <h1 className="text-xl font-semibold">Importar Excel o CSV</h1>
-      </header>
+    <div className={embebido ? '' : 'flex-1 overflow-y-auto pb-8 screen-enter'}>
+      {!embebido && (
+        <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
+          <button
+            onClick={volver}
+            className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+            aria-label="Volver"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <h1 className="text-xl font-semibold">Importar Excel o CSV</h1>
+        </header>
+      )}
 
       {resultado && (
         <div className="px-5 mt-6 text-center">
@@ -208,20 +210,16 @@ export default function ImportarArchivo() {
               Importar otro
             </button>
             <button
-              onClick={() => navigate('/movimientos', { replace: true })}
+              onClick={() => (embebido ? onTerminar?.(resultado) : navigate('/movimientos', { replace: true }))}
               className="flex-1 bg-ink text-paper rounded-2xl py-3.5 text-sm font-semibold"
             >
-              Ver movimientos
+              {embebido ? 'Listo' : 'Ver movimientos'}
             </button>
           </div>
         </div>
       )}
 
-      {!analisis && !resultado && multiples && (
-        <SubidaMultiple archivosIniciales={multiples} cuentaInicial={cuentaId} onCancelar={() => setMultiples(null)} />
-      )}
-
-      {!analisis && !resultado && !multiples && (
+      {!analisis && !resultado && (
         <div className="px-5 mt-4">
           <p className="text-sm text-ink-soft mb-4">
             Sube el Excel o CSV que te da tu banco, o uno tuyo. Detectamos las columnas, tú las revisas y
@@ -252,7 +250,7 @@ export default function ImportarArchivo() {
             disabled={cargando}
             icono={FileSpreadsheet}
             titulo={cargando ? 'Leyendo archivo...' : 'Toca para elegir los archivos'}
-            ayuda=".csv, .xlsx o .xls · hasta 10 a la vez (con varios puedes incluir PDF), 5 MB cada uno"
+            ayuda=".csv, .xlsx o .xls · un archivo, hasta 5 MB"
             ariaLabel="Archivo a importar"
           />
 

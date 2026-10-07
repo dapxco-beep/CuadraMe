@@ -847,6 +847,7 @@ class MovimientoReview(BaseModel):
 class ProcesarExtractoResponse(BaseModel):
     ok: bool
     historial_id: Optional[str] = None
+    cuenta_id: Optional[str] = None  # cuenta del extracto (al reabrir una revisión desde el historial)
     banco_detectado: Optional[str] = None
     total_movimientos: int = 0
     exactos: int = 0
