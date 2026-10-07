@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { useVolver } from '../lib/useVolver'
 import { useEstadoLista } from '../lib/useEstadoLista'
 import { ArrowLeft, Plus, X } from 'lucide-react'
@@ -71,7 +72,7 @@ export default function Deudas() {
       )}
 
       {cargando ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <EsqueletoLista filas={3} className="mx-5 mt-6" etiqueta="Cargando tus deudas" />
       ) : error ? (
         <div className="mx-5 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
           <p className="text-sm text-danger mb-3">{error}</p>

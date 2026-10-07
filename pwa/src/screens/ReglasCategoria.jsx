@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { useVolver } from '../lib/useVolver'
 import { Link } from 'react-router-dom'
@@ -68,7 +69,7 @@ export default function ReglasCategoria() {
       </Link>
 
       {cargando ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <EsqueletoLista filas={4} className="mx-6 mt-6" etiqueta="Cargando tus reglas" />
       ) : error ? (
         <div className="mx-6 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
           <p className="text-sm text-danger mb-3">{error}</p>

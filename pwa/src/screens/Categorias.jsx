@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { useVolver } from '../lib/useVolver'
 import { ArrowDown, ArrowLeft, ArrowUp, Check, Eye, EyeOff, Plus, Trash2, X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -98,7 +99,7 @@ export default function Categorias() {
       </div>
 
       {cargando && categorias.length === 0 ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <EsqueletoLista filas={6} className="mx-6 mt-6" etiqueta="Cargando categorías" />
       ) : (
         <>
           <div className="mx-6 mt-3 rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">

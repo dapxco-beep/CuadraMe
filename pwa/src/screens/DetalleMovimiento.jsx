@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { EsqueletoPantalla } from '../components/Esqueletos'
 import { useParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Pencil, Trash2, X } from 'lucide-react'
@@ -140,11 +141,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
   }
 
   if (!movimiento) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <p className="text-sm text-ink-soft">Cargando...</p>
-      </div>
-    )
+    return <EsqueletoPantalla variante="texto" etiqueta="Cargando el movimiento" />
   }
 
   const signo = movimiento.tipo === 'income' ? '+' : movimiento.tipo === 'expense' ? '-' : ''

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { EsqueletoTexto } from './Esqueletos'
 import { Link, useNavigate } from 'react-router-dom'
 import { FileUp, Scale, X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -44,7 +45,7 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
       </div>
 
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-      {!det && !error && <p className="text-sm text-ink-soft">Cargando...</p>}
+      {!det && !error && <EsqueletoTexto lineas={4} etiqueta="Cargando la cuenta" />}
 
       {det && (
         <>

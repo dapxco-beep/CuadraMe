@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { Link } from 'react-router-dom'
 import { ArrowLeftRight, CalendarClock, ChevronRight, HandCoins, PieChart, Plus, SlidersHorizontal, TrendingUp, X } from 'lucide-react'
-import { EstadoVacio, CargandoMarca } from '../brand/Marca'
+import { EstadoVacio } from '../brand/Marca'
 import { formatCOP, formatPorcentaje } from '../lib/format'
 import { api } from '../lib/api'
 import GraficoTendencia from '../components/GraficoTendencia'
@@ -180,7 +181,7 @@ export default function Presupuesto() {
       </div>
       <div className="col">
       {cargando ? (
-        <CargandoMarca className="py-16" />
+        <EsqueletoLista filas={4} className="mx-5 mt-4" etiqueta="Cargando tu presupuesto" />
       ) : presupuestos.length === 0 ? (
         <EstadoVacio
           icono={TrendingUp}

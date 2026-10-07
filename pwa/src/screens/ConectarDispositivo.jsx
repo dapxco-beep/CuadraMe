@@ -567,7 +567,7 @@ export default function ConectarDispositivo() {
             <h2 className="text-[15px] font-semibold mb-3">Script (Tasker JavaScriptlet)</h2>
             <div className="rounded-2xl bg-paper-raised border border-line p-3">
               <pre className="text-[11px] leading-relaxed overflow-x-auto whitespace-pre text-ink-soft max-h-64 overflow-y-auto">
-                {scriptAndroid || 'Cargando tu clave personal...'}
+                {scriptAndroid || <span className="skeleton inline-block h-3.5 w-48 align-middle" role="status" aria-label="Preparando tu script" />}
               </pre>
             </div>
             <div className="flex gap-2 mt-3">
@@ -615,7 +615,7 @@ export default function ConectarDispositivo() {
             </div>
             <p className="text-xs text-ink-soft mb-1.5 font-medium uppercase tracking-wide">Tu clave (X-Api-Key)</p>
             <div className="rounded-2xl bg-paper-raised border border-line p-3 flex items-center gap-2">
-              <p className="text-xs flex-1 truncate">{apiKey || 'Cargando...'}</p>
+              <p className="text-xs flex-1 truncate">{apiKey || <span className="skeleton inline-block h-3.5 w-40 align-middle" role="status" aria-label="Cargando tu clave" />}</p>
               <BotonCopiar texto={apiKey || ''} etiqueta="" disabled={!apiKey} className="w-11 h-11 shrink-0 bg-paper !p-0" />
             </div>
             <p className="text-xs text-ink-soft mt-3">

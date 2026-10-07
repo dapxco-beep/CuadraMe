@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Bell, Copy, FileCheck2, KeyRound, Mail, RefreshCw, Send, Smartphone } from 'lucide-react'
@@ -369,7 +370,7 @@ export default function Conexiones() {
           <button className="underline font-semibold" onClick={recargar}>Reintentar</button>
         </p>
       )}
-      {!estado && !error && <p className="px-6 mt-6 text-sm text-ink-soft">Cargando...</p>}
+      {!estado && !error && <EsqueletoLista filas={4} className="mx-6 mt-6" etiqueta="Cargando el estado de tus conexiones" />}
       {estado && (
         <>
           <TarjetaGmail g={estado.gmail} navigate={navigate} recargar={recargar} />

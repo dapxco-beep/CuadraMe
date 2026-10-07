@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import { EsqueletoGrafica, EsqueletoLista } from '../components/Esqueletos'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { ArrowDownRight, ArrowLeft, ArrowUpRight, ChevronDown, PieChart, Store } from 'lucide-react'
-import { CargandoMarca, EstadoVacio } from '../brand/Marca'
+import { EstadoVacio } from '../brand/Marca'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useCategorias } from '../lib/CategoriasContext'
@@ -134,7 +135,7 @@ export default function Informe() {
         />
       </section>
 
-      {cargando && <CargandoMarca className="py-16" />}
+      {cargando && <div className="mx-6 mt-6 space-y-4"><EsqueletoGrafica alto={160} etiqueta="Cargando tu informe" /><EsqueletoLista filas={4} /></div>}
       {error && <p role="alert" className="mx-6 mt-6 text-sm text-danger text-center">{error}</p>}
 
       {!cargando && informe && !informe.hay_datos && (

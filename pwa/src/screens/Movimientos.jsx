@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { Link, useLocation, useNavigationType, useSearchParams } from 'react-router-dom'
 import { Check, ChevronDown, Download, Search, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
@@ -844,7 +845,7 @@ export default function Movimientos() {
 
         <div className="col">
           {cargando ? (
-            <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+            <EsqueletoLista filas={8} className="mx-5" etiqueta="Cargando movimientos" />
           ) : errorCarga ? (
             <div role="alert" className="mx-5 rounded-3xl bg-danger-soft border border-danger/30 p-6 text-center">
               <p className="text-sm text-danger">{errorCarga}</p>

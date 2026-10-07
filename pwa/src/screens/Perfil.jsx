@@ -341,7 +341,7 @@ export default function Perfil() {
           </p>
           <div className="flex items-center gap-2">
             <code className="flex-1 text-xs bg-paper rounded-xl px-3 py-2.5 truncate">
-              {apiKey || 'Cargando...'}
+              {apiKey || <span className="skeleton inline-block h-3.5 w-40 align-middle" role="status" aria-label="Cargando tu clave" />}
             </code>
             <button
               onClick={copiarApiKey}

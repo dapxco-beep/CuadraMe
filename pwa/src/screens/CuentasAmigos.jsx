@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, MessageCircle, Plus } from 'lucide-react'
@@ -103,7 +104,7 @@ export default function CuentasAmigos() {
         </div>
       )}
 
-      {cargando && <p className="px-5 mt-6 text-sm text-ink-soft">Cargando...</p>}
+      {cargando && <EsqueletoLista filas={3} className="mx-5 mt-6" etiqueta="Cargando cuentas compartidas" />}
       {error && (
         <div className="px-5 mt-6" role="alert">
           <p className="text-sm text-danger">{error}</p>

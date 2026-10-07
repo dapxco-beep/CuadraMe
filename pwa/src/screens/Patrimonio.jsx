@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { EsqueletoGrafica, EsqueletoTarjeta } from '../components/Esqueletos'
 import { Info, Landmark, Plus, TrendingDown, TrendingUp, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP, formatMoneda, formatPorcentaje } from '../lib/format'
@@ -64,8 +65,8 @@ export default function Patrimonio() {
 
       {cargando && !datos ? (
         <div className="mx-5 mt-3 space-y-3">
-          <div className="skeleton h-32" />
-          <div className="skeleton h-48" />
+          <EsqueletoTarjeta alto={128} etiqueta="Cargando tu patrimonio" />
+          <EsqueletoGrafica alto={150} />
         </div>
       ) : error && !datos ? (
         <div className="mx-5 mt-6 rounded-2xl bg-danger-soft p-6 text-center" role="alert">

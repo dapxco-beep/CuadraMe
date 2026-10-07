@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { EsqueletoTarjeta } from '../components/Esqueletos'
 import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -189,7 +190,7 @@ export default function Wrapped() {
       )}
 
       {error && <p role="alert" className="mx-6 mt-6 text-sm text-danger text-center">{error}</p>}
-      {mes && !datos && !error && <p className="text-sm text-ink-soft text-center mt-10">Cargando...</p>}
+      {mes && !datos && !error && <EsqueletoTarjeta alto={320} className="mx-6 mt-6" etiqueta="Cargando tu resumen" />}
 
       {d && (
         <div className="dos-col dos-col-6-5">
