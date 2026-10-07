@@ -3,6 +3,7 @@ import { ArrowLeftRight, CalendarClock, Plus, TrendingUp, X } from 'lucide-react
 import { formatCOP } from '../lib/format'
 import { api } from '../lib/api'
 import GraficoTendencia from '../components/GraficoTendencia'
+import { BarraProgreso, COLORES, Sparkline, colorAvance } from '../components/graficos'
 import { useCategorias } from '../lib/CategoriasContext'
 
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -54,7 +55,7 @@ export default function Presupuesto() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
+    <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha rejilla-ancha">
       <header className="px-6 pt-14 pb-2 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Presupuesto</h1>
         <div className="flex items-center gap-2">
@@ -64,7 +65,7 @@ export default function Presupuesto() {
               className="w-10 h-10 rounded-full bg-paper-raised border border-line flex items-center justify-center"
               aria-label="Mover plata entre categorías"
             >
-              <ArrowLeftRight size={17} className="text-ink-soft" />
+              <ArrowLeftRight size={16} className="text-ink-soft" />
             </button>
           )}
           <button
@@ -79,7 +80,7 @@ export default function Presupuesto() {
       {!cargando && tendencias && tendencias.meses.some((m) => m.ingresos || m.gastos) && (
         <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
           <div className="flex items-center gap-2 mb-1">
-            <TrendingUp size={15} className="text-ink-soft" />
+            <TrendingUp size={16} className="text-ink-soft" />
             <p className="text-sm font-semibold">Tendencia (6 meses)</p>
           </div>
           <GraficoTendencia meses={tendencias.meses} />
@@ -100,7 +101,7 @@ export default function Presupuesto() {
       {!cargando && flujoCaja && flujoCaja.meses.length > 0 && (
         <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
           <div className="flex items-center gap-2 mb-3">
-            <CalendarClock size={15} className="text-ink-soft" />
+            <CalendarClock size={16} className="text-ink-soft" />
             <p className="text-sm font-semibold">Proyección de saldo</p>
           </div>
           <div className="flex items-stretch gap-2">
@@ -117,6 +118,13 @@ export default function Presupuesto() {
               </div>
             ))}
           </div>
+          <div className="mt-3">
+            <Sparkline
+              etiqueta="Saldo proyectado"
+              valores={[flujoCaja.saldo_actual, ...flujoCaja.meses.map((m) => m.saldo_proyectado)]}
+              color={flujoCaja.meses.some((m) => m.saldo_proyectado < 0) ? COLORES.peligro : COLORES.principal}
+            />
+          </div>
           <p className="text-xs text-ink-soft mt-3">
             Estimado según tus recurrentes conocidos y tu ritmo de gasto habitual
           </p>
@@ -124,9 +132,9 @@ export default function Presupuesto() {
       )}
 
       {cargando ? (
-        <p className="text-sm text-ink-soft text-center mt-8">Cargando...</p>
+        <p className="text-sm text-ink-soft text-center mt-8 span-todo">Cargando...</p>
       ) : presupuestos.length === 0 ? (
-        <div className="mx-6 mt-6 rounded-2xl bg-paper-raised border border-line p-8 text-center">
+        <div className="mx-6 mt-6 rounded-2xl bg-paper-raised border border-line p-8 text-center span-todo">
           <p className="text-sm text-ink-soft">Aún no tienes presupuestos definidos</p>
           <button
             onClick={() => setMostrarForm(true)}
@@ -149,15 +157,17 @@ export default function Presupuesto() {
           const colorNivel = pctGeneral >= 100 ? 'var(--color-danger)' : pctGeneral >= 80 ? 'var(--color-accent-2)' : 'var(--color-accent)'
 
           return (
-            <div className="mx-6 mt-4 flex gap-4">
+            <div className="mx-6 mt-4 flex gap-4 span-todo">
               {/* Termómetro: nivel general del mes de un vistazo */}
               <div className="flex flex-col items-center pt-1 shrink-0">
-                <div className="w-8 rounded-full bg-line overflow-hidden relative" style={{ height: `${Math.max(180, conDatos.length * 76)}px` }}>
-                  <div
-                    className="absolute bottom-0 left-0 right-0 rounded-full transition-all duration-700 ease-out"
-                    style={{ height: `${animarBarras ? pctGeneral : 0}%`, background: colorNivel }}
-                  />
-                </div>
+                <BarraProgreso
+                  vertical
+                  pct={pctGeneral}
+                  animar={animarBarras}
+                  color={colorNivel}
+                  alto={Math.max(180, conDatos.length * 76)}
+                  etiqueta="Uso general de tus presupuestos este mes"
+                />
                 <p className="text-[10px] text-ink-soft text-center mt-2.5 leading-tight font-medium">
                   {pctGeneral}% del<br />mes usado
                 </p>
@@ -184,23 +194,16 @@ export default function Presupuesto() {
                             {formatCOP(p.gastado)} / {formatCOP(p.limite)}
                           </p>
                           <button onClick={() => eliminar(p.id)} className="w-8 h-8 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label="Cerrar">
-                            <X size={14} />
+                            <X size={16} />
                           </button>
                         </div>
                       </div>
-                      <div className="h-2 rounded-full bg-line overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-700 ease-out"
-                          style={{
-                            width: `${animarBarras ? p.pct : 0}%`,
-                            background: sobrepasado
-                              ? 'var(--color-danger)'
-                              : cercaDelLimite
-                              ? 'var(--color-accent-2)'
-                              : 'var(--color-accent)',
-                          }}
-                        />
-                      </div>
+                      <BarraProgreso
+                        pct={p.pct}
+                        animar={animarBarras}
+                        color={colorAvance(p.pctReal, p.alerta_pct)}
+                        etiqueta={`${p.categoria}: has usado ${Math.round(p.pctReal)}% de tu presupuesto`}
+                      />
                       {sobrepasado && (
                         <p className="text-xs text-danger mt-1.5">
                           Te pasaste por {formatCOP(p.gastado - p.limite)} — ajusta el resto del mes para compensarlo

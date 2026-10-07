@@ -198,3 +198,32 @@ button:active:not(:disabled), a:active {
     box-shadow: 0 0 0 1px var(--color-line), 0 20px 60px -20px rgb(0 0 0 / 0.25);
   }
 }
+
+/* ── Escritorio / iPad ────────────────────────────────────────────────
+   La app sigue siendo una columna móvil (480px). Las pantallas que ganan con
+   más espacio (Inicio, Movimientos, Presupuesto) llevan .pantalla-ancha y el
+   contenedor crece solo cuando hay pantalla de sobra. El móvil no cambia:
+   todo vive dentro de media queries. */
+@media (min-width: 768px) {
+  #root:has(.pantalla-ancha) {
+    max-width: 760px;
+  }
+}
+@media (min-width: 1024px) {
+  #root:has(.pantalla-ancha) {
+    max-width: 1120px;
+  }
+  /* Dos columnas: más contenido por pantalla. Lo que ocupa todo el ancho
+     (encabezado, avisos, listas largas) lleva .span-todo. */
+  .rejilla-ancha {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1rem;
+    align-content: start;
+    align-items: start;
+  }
+  .rejilla-ancha > header,
+  .rejilla-ancha > .span-todo {
+    grid-column: 1 / -1;
+  }
+}

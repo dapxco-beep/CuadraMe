@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, ArrowLeft, Clock, Send, Sparkles, TrendingUp, Zap } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
+import { MapaCalor } from '../components/graficos'
 
 function construirMapaCalor(movimientos) {
   const gastoPorDia = {}
@@ -25,12 +26,21 @@ function construirMapaCalor(movimientos) {
   return dias.map((d) => ({ ...d, intensidad: d.monto / max }))
 }
 
-function colorIntensidad(intensidad) {
-  if (intensidad === 0) return 'var(--color-line)'
-  if (intensidad < 0.25) return 'color-mix(in srgb, var(--color-accent) 30%, var(--color-paper-raised))'
-  if (intensidad < 0.55) return 'color-mix(in srgb, var(--color-accent) 60%, var(--color-paper-raised))'
-  if (intensidad < 0.85) return 'var(--color-accent)'
-  return 'var(--color-danger)'
+// Escala del mapa de calor (de menos a más gasto), todo desde tokens del tema.
+const NIVELES_CALOR = [
+  'var(--color-line)',
+  'color-mix(in srgb, var(--color-accent) 30%, var(--color-paper-raised))',
+  'color-mix(in srgb, var(--color-accent) 60%, var(--color-paper-raised))',
+  'var(--color-accent)',
+  'var(--color-danger)',
+]
+
+function nivelIntensidad(intensidad) {
+  if (intensidad === 0) return 0
+  if (intensidad < 0.25) return 1
+  if (intensidad < 0.55) return 2
+  if (intensidad < 0.85) return 3
+  return 4
 }
 
 export default function Insights() {
@@ -90,25 +100,11 @@ export default function Insights() {
           <p className="text-[11px] font-bold text-ink-soft uppercase tracking-wide mb-2.5">
             Tu gasto día a día (últimas 5 semanas)
           </p>
-          <div className="grid grid-cols-7 gap-1.5">
-            {mapaCalor.map((d, i) => (
-              <div
-                key={d.key}
-                className="aspect-square rounded-[6px] pop-in"
-                style={{ background: colorIntensidad(d.intensidad), animationDelay: `${Math.min(i, 20) * 12}ms` }}
-                title={`${d.key}: ${formatCOP(d.monto)}`}
-              />
-            ))}
-          </div>
-          <div className="flex items-center gap-1.5 mt-2.5 text-[10px] text-ink-soft">
-            <span>Menos</span>
-            <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: 'var(--color-line)' }} />
-            <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: 'color-mix(in srgb, var(--color-accent) 30%, var(--color-paper-raised))' }} />
-            <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: 'color-mix(in srgb, var(--color-accent) 60%, var(--color-paper-raised))' }} />
-            <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: 'var(--color-accent)' }} />
-            <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: 'var(--color-danger)' }} />
-            <span>Más</span>
-          </div>
+          <MapaCalor
+            titulo="Tu gasto día a día, últimas 5 semanas"
+            niveles={NIVELES_CALOR}
+            celdas={mapaCalor.map((d) => ({ clave: d.key, nivel: nivelIntensidad(d.intensidad), texto: `${d.key}: ${formatCOP(d.monto)}` }))}
+          />
         </section>
       )}
 

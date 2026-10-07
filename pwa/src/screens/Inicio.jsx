@@ -65,16 +65,16 @@ export default function Inicio() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
+    <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha rejilla-ancha">
       <header className="px-6 pt-14 pb-2 flex items-center justify-between">
         <p className="text-lg font-bold">{primerNombre ? `Hola, ${primerNombre}` : 'Hola'}</p>
         <div className="w-10 h-10 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-hidden="true">
-          <Wallet size={18} className="text-ink-soft" />
+          <Wallet size={20} className="text-ink-soft" />
         </div>
       </header>
 
       {errorCarga && (
-        <div role="alert" className="mx-6 mt-2 rounded-2xl bg-danger-soft border border-danger/30 p-3 flex items-center justify-between gap-3">
+        <div role="alert" className="span-todo mx-6 mt-2 rounded-2xl bg-danger-soft border border-danger/30 p-3 flex items-center justify-between gap-3">
           <p className="text-xs text-danger">{errorCarga}</p>
           <button
             onClick={() => {
@@ -130,7 +130,7 @@ export default function Inicio() {
               to={to}
               className="flex flex-col items-center gap-1.5 rounded-2xl bg-paper-raised border border-line py-3"
             >
-              <Icon size={18} className="text-accent" />
+              <Icon size={20} className="text-accent" />
               <span className="text-[11px] font-medium text-ink-soft">{label}</span>
             </Link>
           ))}
@@ -138,7 +138,7 @@ export default function Inicio() {
             to="/correos"
             className="flex flex-col items-center gap-1.5 rounded-2xl bg-paper-raised border border-line py-3"
           >
-            <Mail size={18} className="text-accent" />
+            <Mail size={20} className="text-accent" />
             <span className="text-[11px] font-medium text-ink-soft">Correos</span>
           </Link>
         </div>
@@ -230,7 +230,7 @@ export default function Inicio() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[15px] font-semibold">Movimientos recientes</h2>
           <Link to="/movimientos" className="text-sm text-accent font-medium flex items-center">
-            Ver todo <ChevronRight size={15} />
+            Ver todo <ChevronRight size={16} />
           </Link>
         </div>
         {movimientos.length === 0 ? (
@@ -253,7 +253,7 @@ export default function Inicio() {
                   <p className="text-sm font-medium truncate">{m.descripcion}</p>
                   <p className="text-xs text-ink-soft">{m.categoria}</p>
                 </div>
-                <span className={`text-sm font-semibold shrink-0 ${m.tipo === 'income' ? 'text-accent' : 'text-ink'}`}>
+                <span className={`text-sm font-semibold shrink-0 ${m.tipo === 'income' ? 'text-accent-2' : 'text-ink'}`}>
                   {m.tipo === 'income' ? '+' : m.tipo === 'expense' ? '-' : ''}
                   {formatCOP(m.monto)}
                 </span>
