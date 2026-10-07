@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft, Check, Info, Send, Sparkles, X } from 'lucide
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { Isotipo } from '../brand/Marca'
+import { EVENTO_RESUELTO } from '../components/ConsentimientoGlobal'
 
 // CuadraMe AI. Principios de esta pantalla:
 //  - El asistente PROPONE; solo se guarda algo cuando el usuario toca "Confirmar".
@@ -255,21 +256,55 @@ export default function Asistente() {
     fin.current?.scrollIntoView({ behavior: 'smooth' })
   }, [mensajes])
 
-  async function enviar(contenido) {
+  // Pregunta que el servidor rechazó por falta de autorización de IA: se reenvía sola al autorizar.
+  const [pendiente, setPendiente] = useState('')
+  const pendienteRef = useRef('')
+  const enviarRef = useRef(null)
+
+  async function enviar(contenido, { reenvio = false } = {}) {
     const limpio = (contenido ?? texto).trim()
-    if (!limpio || enviando) return
+    if (!limpio || (enviando && !reenvio)) return
     setTexto('')
+    setPendiente('')
+    pendienteRef.current = ''
     setMensajes((prev) => [...prev, { rol: 'usuario', texto: limpio }])
     setEnviando(true)
     try {
       const r = await api.asistenteMensaje(limpio)
       setMensajes((prev) => [...prev, { rol: 'asistente', ...r }])
     } catch (e) {
-      setMensajes((prev) => [...prev, { rol: 'asistente', tipo: 'error', texto: e.message || 'No pude procesar eso ahora.' }])
+      if (e.codigo === 'consentimiento_requerido') {
+        // No es un error de la conversación: se quita la pregunta del chat (así siguen los chips
+        // de sugerencias) y se espera la autorización para reenviarla.
+        setMensajes((prev) => prev.slice(0, -1))
+        pendienteRef.current = limpio
+        setPendiente(limpio)
+      } else {
+        setMensajes((prev) => [...prev, { rol: 'asistente', tipo: 'error', texto: e.message || 'No pude procesar eso ahora.' }])
+      }
     } finally {
       setEnviando(false)
     }
   }
+  enviarRef.current = enviar
+
+  useEffect(() => {
+    function alResolver(e) {
+      const pregunta = pendienteRef.current
+      if (!pregunta) return
+      if (e.detail?.aceptado) {
+        e.detail.atendido = true
+        enviarRef.current(pregunta, { reenvio: true })
+      } else {
+        // dijo "Ahora no": la pregunta vuelve al cuadro de texto para no perderla
+        pendienteRef.current = ''
+        setPendiente('')
+        setTexto(pregunta)
+      }
+    }
+    window.addEventListener(EVENTO_RESUELTO, alResolver)
+    return () => window.removeEventListener(EVENTO_RESUELTO, alResolver)
+  }, [])
 
   function resolver(indice, estado) {
     setMensajes((prev) => prev.map((m, i) => (i === indice ? { ...m, estado } : m)))
@@ -356,6 +391,11 @@ export default function Asistente() {
               <Fuentes fuentes={m.fuentes} />
             </div>
           )
+        )}
+        {pendiente && !enviando && (
+          <p role="status" className="text-xs text-ink-soft">
+            Para responder «{pendiente}» necesito tu autorización de IA. Al aceptarla la envío sola.
+          </p>
         )}
         {enviando && <p className="text-xs text-ink-soft">Pensando…</p>}
         <div ref={fin} />
