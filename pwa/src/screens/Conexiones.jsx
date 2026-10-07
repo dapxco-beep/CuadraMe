@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { useDialogos } from '../lib/DialogosContext'
 import { activarPush, estadoPermiso, pushSoportado } from '../lib/push'
 import { haceCuanto, resumenSync, sincronizarTodo } from '../lib/sincronizarGmail'
+import { mensajeAmable } from '../lib/mensajes'
 
 // Semáforo: color + texto (no solo color, para que se entienda sin distinguirlos).
 const SEMAFORO = {
@@ -72,7 +73,7 @@ function TarjetaGmail({ g, ir, recargar }) {
         onProgreso: (p) => activo.current && setProgreso({ leidos: p.leidos, total_estimado: p.total_estimado }),
       })
       if (!activo.current) return
-      if (!r?.ok) setError(r?.error || 'No se pudo sincronizar')
+      if (!r?.ok) setError(mensajeAmable(r?.error, { porDefecto: 'No pudimos traer tus correos. Intenta de nuevo.' }))
       else setResultado(resumenSync(r))
     } catch (err) {
       if (activo.current) setError(err.message || 'No se pudo sincronizar')

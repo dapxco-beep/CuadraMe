@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Receipt, Check, ChevronRight, Copy, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2 } from 'lucide-react'
+import { Bell, Receipt, Check, ChevronRight, Copy, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
 import { useDialogos } from '../lib/DialogosContext'
 import SeccionSeguridad from '../components/SeccionSeguridad'
 import SeccionPrivacidad from '../components/SeccionPrivacidad'
+import AsistentePrimerUso from '../components/AsistentePrimerUso'
 import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../lib/push'
 
 export default function Perfil() {
@@ -43,7 +44,7 @@ export default function Perfil() {
       if (err?.message && !/permiso|soporta/i.test(err.message)) {
         setRecordatorio(!nuevo)
       }
-      avisar(err.message || 'No se pudo cambiar el recordatorio')
+      avisar(err.message || 'No pudimos cambiar el recordatorio. Intenta de nuevo.')
     }
   }
 
@@ -68,7 +69,7 @@ export default function Perfil() {
         setPermisoPush('granted')
       }
     } catch (err) {
-      avisar(err.message || 'No se pudo activar las notificaciones')
+      avisar(err.message || 'No pudimos activar las notificaciones. Revisa que tu navegador las permita.')
     } finally {
       setCargandoPush(false)
     }
@@ -84,14 +85,14 @@ export default function Perfil() {
   async function regenerarApiKey() {
     const ok = await confirmar(
       'Los atajos que ya configuraste dejarán de funcionar hasta que actualices la clave ahí.',
-      { titulo: 'Esto invalida la API key anterior', confirmarTexto: 'Regenerar', peligro: true }
+      { titulo: 'Esto desactiva tu clave anterior', confirmarTexto: 'Regenerar', peligro: true }
     )
     if (!ok) return
     try {
       const { api_key } = await api.regenerarApiKey()
       setApiKey(api_key)
     } catch (err) {
-      avisar(err.message || 'No se pudo regenerar la API key')
+      avisar(err.message || 'No pudimos crear la clave nueva. Intenta de nuevo.')
     }
   }
 
@@ -107,7 +108,7 @@ export default function Perfil() {
       await logout()
     } catch (err) {
       setEliminandoCuenta(false)
-      avisar(err.message || 'No se pudo eliminar la cuenta')
+      avisar(err.message || 'No pudimos eliminar tu cuenta. Intenta de nuevo.')
     }
   }
 
@@ -125,6 +126,20 @@ export default function Perfil() {
           <p className="font-semibold">{usuario?.nombre}</p>
           <p className="text-sm text-ink-soft">{usuario?.email}</p>
         </div>
+      </section>
+
+      {/* Lo que desaparece de Inicio al completarse (u ocultarse) sigue aquí para repasarlo */}
+      <AsistentePrimerUso variante="perfil" />
+
+      <section className="mx-6 mt-6">
+        <Link to="/ayuda" className="flex items-center gap-3 rounded-2xl bg-paper-raised border border-line px-4 py-3.5">
+          <LifeBuoy size={20} className="text-accent shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Ayuda y preguntas frecuentes</p>
+            <p className="text-xs text-ink-soft mt-0.5">Extractos, clave del PDF, Gmail, borrar tus datos…</p>
+          </div>
+          <ChevronRight size={16} className="text-ink-soft" />
+        </Link>
       </section>
 
       <section className="mx-6 mt-6">

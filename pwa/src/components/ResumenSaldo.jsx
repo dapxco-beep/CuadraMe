@@ -52,7 +52,7 @@ export default function ResumenSaldo({ resumen, bolsillo, className = '' }) {
             </p>
           </>
         ) : filas.length === 0 ? (
-          <p>Sin datos para mostrar.</p>
+          <p>Aún no hay nada que mostrar. Registra un movimiento y aparecerá aquí.</p>
         ) : (
           filas.map((f) => <Fila key={f.clave} k={f.etiqueta} v={fmt(f.valor, f.moneda)} />)
         )}
