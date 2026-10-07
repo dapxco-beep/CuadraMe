@@ -6,17 +6,20 @@ columnas nuevas y ninguna regla se duplica (la bandeja y 'por revisar' se
 importan de movimientos.py). Solo se cuentan filas, no se suma dinero; donde
 se sume, debe usarse contabilidad.py.
 """
+import re
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import and_, case, func, not_
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import and_, case, func, not_, or_
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
 from app.autocat import patron_de_comercio
 from app.compartidos import cuentas_ids_accesibles
 from app.database import get_db
-from app.extractos_conciliados import ESTADO_YA_CONCILIADO, depurar_conciliados, mes_del_extracto  # noqa: F401
+from app.extractos_conciliados import (  # noqa: F401
+    ESTADO_YA_CONCILIADO, FUENTES_CONCILIACION, depurar_conciliados, mes_del_extracto,
+)
 from app.extractos_gmail import banco_por_remitente, cuentas_del_banco
 from app.models import CorreoGasto, Cuenta, ExtractoCorreo, HistorialExtracto, Movimiento, SyncGmail
 from app.routers.movimientos import _PENDIENTE_REVISION
@@ -27,6 +30,7 @@ from app.wallet import FUENTES_POR_CONFIRMAR
 router = APIRouter(prefix="/sincronizacion", tags=["sincronizacion"])
 
 MESES_GRILLA = 6
+MESES_GRILLA_MAX = 24
 DIAS_BANDEJA = 14  # la misma ventana de GET /movimientos/por-confirmar
 
 _NOMBRES_MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
@@ -125,13 +129,21 @@ def _plural(n: int, uno: str, varios: str) -> str:
 
 @router.get("/estado")
 def estado(
+    meses: int = Query(MESES_GRILLA, ge=1, le=MESES_GRILLA_MAX, description="Cuántos meses mostrar (hasta 24)"),
+    hasta: str | None = Query(None, description="Mes final de la cuadrícula, AAAA-MM (por defecto el actual)"),
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
     """Todo lo que la pantalla necesita en una sola llamada: grilla cuentas x
-    meses, bancos sin cuenta y la lista ordenada de tareas pendientes."""
+    meses, bancos sin cuenta y la lista ordenada de tareas pendientes. La cuadrícula
+    muestra `meses` (6 por defecto, máx. 24) terminando en `hasta`."""
     hoy = ahora_co()
-    meses = ultimos_meses(hoy)
+    fin_grilla = hoy
+    if hasta:
+        if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", hasta):
+            raise HTTPException(status_code=422, detail="'hasta' debe ser un mes AAAA-MM")
+        fin_grilla = datetime(int(hasta[:4]), int(hasta[5:7]), 1)
+    meses = ultimos_meses(fin_grilla, meses)
     claves = [_clave(a, m) for a, m in meses]
     cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).order_by(Cuenta.nombre).all()
     ids_cuentas = [c.id for c in cuentas]
@@ -146,7 +158,9 @@ def estado(
                 db.query(
                     Movimiento.cuenta_id,
                     func.count(Movimiento.id),
-                    func.coalesce(func.sum(case((Movimiento.conciliado_en.isnot(None), 1), else_=0)), 0),
+                    # Conciliado = cruzado con un extracto o importado desde uno (mismo criterio que
+                    # extractos_conciliados.evidencia_conciliado, pero en una sola consulta agrupada).
+                    func.coalesce(func.sum(case((or_(Movimiento.conciliado_en.isnot(None), Movimiento.fuente.in_(FUENTES_CONCILIACION)), 1), else_=0)), 0),
                     func.coalesce(func.sum(case((Movimiento.cat_confirmada.is_(False), 1), else_=0)), 0),
                 )
                 .filter(

@@ -231,10 +231,14 @@ def guardar_preferencias(
 
 
 @router.get("/{mes}")
-def obtener(mes: str, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+def obtener(mes: str, silencioso: bool = False, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """El cierre del mes. Sin cierre: 404 (contrato actual de la PWA) o, con ?silencioso=true,
+    200 {"existe": false} para no ensuciar la consola del cliente."""
     _mes_valido(mes)
     fila = db.query(CierreMes).filter(CierreMes.usuario_id == usuario.id, CierreMes.mes == mes).first()
     if not fila:
+        if silencioso:
+            return {"existe": False, "mes": mes}
         raise HTTPException(status_code=404, detail="Aún no hay cierre de ese mes")
     if not fila.visto:
         fila.visto = True

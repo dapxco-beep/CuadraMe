@@ -313,6 +313,9 @@ def test_preferencia_de_correo_es_opt_in_y_se_puede_apagar():
 def test_generar_manual_mes_pasado_parcial_y_errores():
     mes = _datos_mes_pasado("cierre-man")
     assert client.get(f"/cierre-mes/{mes}").status_code == 404
+    # Modo silencioso (sin error en la consola del cliente): 200 con existe=false.
+    r = client.get(f"/cierre-mes/{mes}?silencioso=true")
+    assert r.status_code == 200 and r.json() == {"existe": False, "mes": mes}
     g1 = client.post(f"/cierre-mes/{mes}/generar").json()
     g2 = client.post(f"/cierre-mes/{mes}/generar").json()
     assert g1 == g2 and g1["ingresos"] == 2_000_000
