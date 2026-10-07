@@ -42,7 +42,11 @@ export default function Cuentas() {
   function cargarResumen() {
     Promise.resolve().then(() => api.resumenCuentas()).then(setResumen).catch(() => {})
   }
-  useEffect(cargarResumen, [])
+  // El encabezado (saldo total / deudas de tarjeta) se vuelve a pedir cada vez que el contexto
+  // recarga las cuentas: crear, editar, eliminar o ajustar un saldo lo refresca sin recargar la página.
+  useEffect(() => {
+    if (!cargando) cargarResumen()
+  }, [cuentas, cargando])
 
   // Abrir el detalle desde la lista agrega una entrada de historial (atrás lo cierra, como
   // en cualquier hoja); cerrarlo con X/Escape/tocar fuera deshace esa entrada. Si se llegó
@@ -143,8 +147,7 @@ export default function Cuentas() {
           cuentaId={detalleId}
           onClose={cerrarDetalle}
           onCambio={() => {
-            recargar()
-            cargarResumen()
+            recargar() // al cambiar las cuentas, el efecto de arriba refresca también el resumen
           }}
         />
       )}
