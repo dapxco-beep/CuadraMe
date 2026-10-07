@@ -180,6 +180,13 @@ export function ArbolConBloqueo({ bloqueado, children }) {
     if (!bloqueado) setMontado(true)
   }, [bloqueado])
 
+  // Las hojas viven en document.body (portal), fuera del árbol inerte: el CSS las oculta
+  // mientras haya bloqueo y Hoja ignora Escape.
+  useEffect(() => {
+    document.body.toggleAttribute('data-bloqueado', !!bloqueado)
+    return () => document.body.removeAttribute('data-bloqueado')
+  }, [bloqueado])
+
   if (bloqueado && !montado) return <PantallaBloqueo />
   return (
     <>

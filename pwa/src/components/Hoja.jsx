@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 
 // Hoja inferior / modal único de la app (antes había 20+ copias de
@@ -152,7 +153,7 @@ export default function Hoja({
   useEffect(() => {
     if (!abierta) return undefined
     function alTeclear(e) {
-      if (panel.current?.closest('[inert]')) return // detrás de la pantalla de bloqueo
+      if (panel.current?.closest('[inert]') || document.body.hasAttribute('data-bloqueado')) return // detrás de la pantalla de bloqueo
       if (e.key === 'Escape' && pila[pila.length - 1] === id && !e.defaultPrevented) {
         e.preventDefault()
         cerrar()
@@ -211,10 +212,13 @@ export default function Hoja({
   if (fase === 'cerrada') return null
   const contenido = abierta ? children : ultimosHijos.current
 
-  return (
+  // Se monta en document.body (portal): un ancestro con transform/filter/contain (p. ej. una
+  // pantalla con animación) vuelve `position: fixed` relativo a ese ancestro y la hoja
+  // quedaba recortada y sin fondo. En el body siempre cubre el viewport.
+  return createPortal(
     <div
       data-testid={testId}
-      className={`fixed inset-0 ${capa} flex items-end md:items-center justify-center bg-ink/40 sheet-backdrop ${
+      className={`hoja-fondo fixed inset-0 ${capa} flex items-end md:items-center justify-center bg-ink/40 sheet-backdrop ${
         fase === 'saliendo' ? 'hoja-saliendo' : ''
       } ${claseFondo}`}
       onPointerDown={(e) => {
@@ -235,6 +239,7 @@ export default function Hoja({
       >
         {typeof contenido === 'function' ? contenido({ cerrar }) : contenido}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
