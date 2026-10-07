@@ -2,7 +2,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { Link, useLocation, useNavigationType, useSearchParams } from 'react-router-dom'
-import { Check, ChevronDown, Download, Search, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeftRight, Check, ChevronDown, Download, Search, Shuffle, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
+import Icono from '../components/Icono'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
@@ -117,7 +118,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
             esSel ? 'bg-accent border-accent' : 'border-line'
           }`}
         >
-          {esSel && <Check size={13} className="text-white" />}
+          {esSel && <Check size={16} className="text-white" />}
         </button>
         <div className="min-w-0 flex-1">
           <Link to={`/movimientos/${m.id}`} onClick={alClic} className="block pt-2.5 min-w-0">
@@ -126,7 +127,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
           <div className="flex items-center flex-wrap gap-y-1 pt-0.5 pb-2.5">
             {esTransfer ? (
               <span className="text-xs text-ink-soft">
-                <span aria-hidden="true">🔁</span> {m.categoria}
+                <Icono icono={ArrowLeftRight} tam="sm" className="inline -mt-0.5" /> {m.categoria}
               </span>
             ) : (
               <button
@@ -136,7 +137,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
                 className="inline-flex items-center gap-1 text-xs text-ink-soft rounded-full border border-line px-2.5 min-h-[32px] hover:border-accent hover:text-ink"
               >
                 <span aria-hidden="true">{icono}</span> {m.categoria}
-                <ChevronDown size={12} aria-hidden="true" />
+                <ChevronDown size={16} aria-hidden="true" />
               </button>
             )}
             {esAuto(m) && <InsigniaAuto movimiento={m} />}
@@ -146,7 +147,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
                 aria-label={`Confirmar categoría de ${m.descripcion}`}
                 className="ml-2 flex items-center gap-1 text-xs font-semibold px-3 min-h-[32px] rounded-full bg-accent text-white"
               >
-                <Check size={13} /> Confirmar
+                <Check size={16} /> Confirmar
               </button>
             )}
           </div>
@@ -674,7 +675,7 @@ export default function Movimientos() {
             <>
               <div className="px-5 mb-3">
                 <div className="flex items-center gap-2 bg-paper-raised border border-line rounded-2xl px-4 py-3">
-                  <Search size={18} className="text-ink-soft" />
+                  <Search size={20} className="text-ink-soft" />
                   <input
                     value={texto}
                     aria-label="Buscar movimiento"
@@ -781,7 +782,7 @@ export default function Movimientos() {
                       aria-label={`Quitar filtro ${c.texto}`}
                       className="inline-flex items-center gap-1 text-xs px-3 min-h-[32px] rounded-full bg-ink text-paper"
                     >
-                      {c.texto} <X size={12} aria-hidden="true" />
+                      {c.texto} <X size={16} aria-hidden="true" />
                     </button>
                   ))}
                   <button
@@ -878,8 +879,8 @@ export default function Movimientos() {
                       aria-label={`Categoría de ${g.nombre}`}
                       className="inline-flex items-center gap-1 text-sm rounded-full border border-accent text-accent px-3 min-h-[40px] shrink-0"
                     >
-                      <span aria-hidden="true">{g.mixta ? '🔀' : iconoDe(g.categoria)}</span> {g.mixta ? 'Varias' : g.categoria}
-                      <ChevronDown size={13} aria-hidden="true" />
+                      {g.mixta ? <Icono icono={Shuffle} tam="sm" /> : <span aria-hidden="true">{iconoDe(g.categoria)}</span>} {g.mixta ? 'Varias' : g.categoria}
+                      <ChevronDown size={16} aria-hidden="true" />
                     </button>
                   </div>
                   <button
@@ -1038,7 +1039,7 @@ export default function Movimientos() {
               onClick={eliminarSeleccion}
               className="rounded-xl bg-danger text-white px-3 min-h-[44px] text-sm font-semibold disabled:opacity-40 flex items-center gap-1"
             >
-              <Trash2 size={14} /> Eliminar
+              <Trash2 size={16} /> Eliminar
             </button>
             <button
               onClick={salirModoSeleccion}

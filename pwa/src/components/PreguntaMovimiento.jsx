@@ -40,7 +40,7 @@ export default function PreguntaMovimiento({ ultimaFecha }) {
           onClick={() => navigate('/agregar?foco=monto')}
           className="flex-1 flex items-center justify-center gap-1.5 bg-accent text-white font-semibold rounded-xl py-2.5 text-sm"
         >
-          <Plus size={15} /> Registrar gasto
+          <Plus size={16} /> Registrar gasto
         </button>
         <button onClick={ninguno} className="flex-1 rounded-xl border border-line text-ink-soft font-medium py-2.5 text-sm">
           No hice ninguno

@@ -132,7 +132,7 @@ function TarjetaGmail({ g, navigate, recargar }) {
       <div className="flex gap-2 mt-3">
         {g.conectado ? (
           <Boton onClick={sincronizar} disabled={sincronizando} className="flex-1 bg-ink text-paper">
-            <RefreshCw size={14} className={sincronizando ? 'animate-spin' : ''} />
+            <RefreshCw size={16} className={sincronizando ? 'animate-spin' : ''} />
             {sincronizando ? 'Sincronizando...' : 'Sincronizar todo'}
           </Boton>
         ) : (
@@ -215,13 +215,13 @@ function TarjetaAtajo({ a, recargar }) {
       {aviso && !error && <p className="text-xs font-semibold mt-2" role="status">{aviso}</p>}
       <div className="grid grid-cols-3 gap-2 mt-3">
         <Boton onClick={copiar} className="border border-line">
-          <Copy size={13} /> Copiar clave
+          <Copy size={16} /> Copiar clave
         </Boton>
         <Boton onClick={regenerar} className="border border-line">
-          <KeyRound size={13} /> Clave nueva
+          <KeyRound size={16} /> Clave nueva
         </Boton>
         <Boton onClick={probar} disabled={probando} className="bg-accent text-white">
-          <Send size={13} /> {probando ? 'Probando...' : 'Probar conexión'}
+          <Send size={16} /> {probando ? 'Probando...' : 'Probar conexión'}
         </Boton>
       </div>
     </Tarjeta>

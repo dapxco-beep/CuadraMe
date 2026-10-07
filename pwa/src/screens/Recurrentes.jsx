@@ -80,7 +80,7 @@ export default function Recurrentes() {
             onClick={volver}
             className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
            aria-label="Volver">
-            <ArrowLeft size={18} />
+            <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-semibold">Recurrentes</h1>
         </div>
@@ -95,7 +95,7 @@ export default function Recurrentes() {
       {!cargando && sugerencias.length > 0 && (
         <section className="mx-5 mt-4">
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles size={15} className="text-accent" />
+            <Sparkles size={16} className="text-accent" />
             <h2 className="text-sm font-semibold">Detectamos posibles recurrentes</h2>
           </div>
           <div className="flex flex-col gap-2">
@@ -111,13 +111,13 @@ export default function Recurrentes() {
                   onClick={() => aceptarSugerencia(s)}
                   className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center shrink-0"
                  aria-label="Aceptar sugerencia">
-                  <Check size={15} />
+                  <Check size={16} />
                 </button>
                 <button
                   onClick={() => descartarSugerencia(s)}
                   className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center shrink-0"
                  aria-label="Descartar sugerencia">
-                  <X size={15} />
+                  <X size={16} />
                 </button>
               </div>
             ))}

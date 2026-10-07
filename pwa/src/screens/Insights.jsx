@@ -89,7 +89,7 @@ export default function Insights() {
         className="mx-6 mt-4 card-marca bg-accent-soft border border-accent/20 p-3.5 flex items-center gap-3"
       >
         <span className="w-10 h-10 rounded-xl bg-paper-raised flex items-center justify-center shrink-0">
-          <PieChart size={18} className="text-accent" />
+          <PieChart size={20} className="text-accent" />
         </span>
         <div className="flex-1">
           <p className="text-sm font-semibold">En qué gasto mi plata</p>

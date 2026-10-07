@@ -105,7 +105,7 @@ export default function ComprasACuotas({ cuenta }) {
       {error && <p role="alert" className="text-danger mt-2">{error}</p>}
 
       <button onClick={() => setAgregando(true)} className="mt-2 flex items-center gap-1.5 text-sm text-accent font-medium min-h-[44px]">
-        <Plus size={14} /> Agregar compra a cuotas
+        <Plus size={16} /> Agregar compra a cuotas
       </button>
 
       {agregando && (

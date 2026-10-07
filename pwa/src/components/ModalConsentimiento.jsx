@@ -31,7 +31,7 @@ export default function ModalConsentimiento({ finalidad, onAceptado, onCancelar,
     <Hoja onCerrar={onCancelar} capa="z-[60]">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold flex items-center gap-2">
-          <ShieldCheck size={18} className="text-accent" /> Necesitamos tu autorización
+          <ShieldCheck size={20} className="text-accent" /> Necesitamos tu autorización
         </h2>
         <button onClick={onCancelar} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
           <X size={16} />

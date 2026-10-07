@@ -52,7 +52,7 @@ export default function Deudas() {
             onClick={volver}
             className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
            aria-label="Volver">
-            <ArrowLeft size={18} />
+            <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-semibold">Deudas</h1>
         </div>

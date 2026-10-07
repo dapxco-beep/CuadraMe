@@ -78,7 +78,7 @@ export default function Cuentas() {
             onClick={() => setMostrarForm(true)}
             className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
            aria-label="Nueva cuenta">
-            <Plus size={18} />
+            <Plus size={20} />
           </button>
         </div>
       </header>
@@ -139,7 +139,7 @@ export default function Cuentas() {
             to="/compartir"
             className="flex items-center justify-center gap-2 text-sm text-accent font-medium py-2"
           >
-            <Users size={15} /> Compartir una cuenta con alguien
+            <Users size={16} /> Compartir una cuenta con alguien
           </Link>
         </div>
       )}
@@ -334,7 +334,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
           disabled={eliminando}
           className="w-full flex items-center justify-center gap-1.5 mt-3 text-sm text-danger font-medium disabled:opacity-60"
         >
-          <Trash2 size={14} /> {eliminando ? 'Eliminando...' : 'Eliminar cuenta'}
+          <Trash2 size={16} /> {eliminando ? 'Eliminando...' : 'Eliminar cuenta'}
         </button>
       )}
     </Hoja>

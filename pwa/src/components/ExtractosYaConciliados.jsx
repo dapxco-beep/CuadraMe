@@ -19,9 +19,9 @@ export default function ExtractosYaConciliados({ items, nombreCuenta = () => '',
         className="w-full flex items-center justify-between text-sm font-semibold text-ink-soft py-2"
       >
         <span className="flex items-center gap-1.5">
-          <CheckCircle2 size={15} className="text-cuadra" aria-hidden="true" /> Ya conciliados ({items.length})
+          <CheckCircle2 size={16} className="text-cuadra" aria-hidden="true" /> Ya conciliados ({items.length})
         </span>
-        <ChevronDown size={14} className={`shrink-0 transition-transform ${abierto ? 'rotate-180' : ''}`} aria-hidden="true" />
+        <ChevronDown size={16} className={`shrink-0 transition-transform ${abierto ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
       {abierto && (
         <ul className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">

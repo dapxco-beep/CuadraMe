@@ -180,7 +180,7 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
         onClick={() => setEditando(true)}
         className="mt-3 flex items-center gap-1.5 text-sm text-accent font-medium"
       >
-        <Pencil size={14} /> {configurada ? 'Editar datos de la tarjeta' : 'Configurar tarjeta'}
+        <Pencil size={16} /> {configurada ? 'Editar datos de la tarjeta' : 'Configurar tarjeta'}
       </button>
 
       {editando && (

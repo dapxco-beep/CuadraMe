@@ -40,7 +40,7 @@ export default function PropuestaTarjeta({ propuesta, cuentaId, className = '' }
   return (
     <div className={`rounded-2xl border border-line bg-paper-raised p-4 ${className}`} role="region" aria-label="Datos de tu tarjeta" data-testid="propuesta-tarjeta">
       <div className="flex items-start gap-2.5">
-        <CreditCard size={18} className="text-accent shrink-0 mt-0.5" />
+        <CreditCard size={20} className="text-accent shrink-0 mt-0.5" />
         {estado === 'aplicada' ? (
           <p role="status" className="text-sm font-semibold text-accent">Listo: actualizamos tu tarjeta.</p>
         ) : (

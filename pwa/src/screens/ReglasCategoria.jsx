@@ -48,7 +48,7 @@ export default function ReglasCategoria() {
           onClick={() => setMostrarForm(true)}
           className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
          aria-label="Nueva regla">
-          <Plus size={18} />
+          <Plus size={20} />
         </button>
       </header>
 
@@ -60,7 +60,7 @@ export default function ReglasCategoria() {
         to="/entrenar-categorias"
         className="mx-6 mt-3 flex items-center gap-3 rounded-2xl bg-accent-soft border border-accent/30 px-4 py-3"
       >
-        <GraduationCap size={18} className="text-accent shrink-0" />
+        <GraduationCap size={20} className="text-accent shrink-0" />
         <span className="flex-1 text-sm">
           <b>Entrenar categorías</b>
           <span className="block text-xs text-ink-soft">Enséñame los comercios que más se repiten y los clasifico solos.</span>

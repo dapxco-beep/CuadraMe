@@ -252,7 +252,7 @@ function BotonCopiar({ texto, etiqueta, disabled, className = '' }) {
       aria-label={etiqueta || 'Copiar'}
       className={`inline-flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold py-2.5 px-4 disabled:opacity-50 ${className}`}
     >
-      {copiado ? <Check size={15} /> : <Copy size={15} />}
+      {copiado ? <Check size={16} /> : <Copy size={16} />}
       {etiqueta && (copiado ? 'Copiado' : etiqueta)}
     </button>
   )
@@ -315,11 +315,11 @@ function BloquePrueba({ apiKey, enviar, texto, boton, exito }) {
           disabled={!apiKey || estado === 'enviando'}
           className="w-full mt-3 flex items-center justify-center gap-2 bg-accent text-white font-semibold rounded-2xl py-3 text-sm disabled:opacity-50"
         >
-          <Send size={15} /> {estado === 'enviando' ? 'Enviando...' : boton}
+          <Send size={16} /> {estado === 'enviando' ? 'Enviando...' : boton}
         </button>
         {estado === 'ok' && (
           <div role="status" className="mt-3 rounded-xl bg-cuadra-soft px-3.5 py-3 flex items-start gap-2.5">
-            <CheckCircle2 size={18} className="text-cuadra shrink-0 mt-0.5" />
+            <CheckCircle2 size={20} className="text-cuadra shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-bold">{exito}</p>
               <p className="text-xs text-ink-soft mt-0.5">{mensaje}</p>
@@ -336,7 +336,7 @@ function BloquePrueba({ apiKey, enviar, texto, boton, exito }) {
 function AvisoPrivacidad() {
   return (
     <section className="mx-6 mt-6 rounded-2xl bg-paper-raised border border-line p-4 flex items-start gap-3" aria-label="Privacidad">
-      <ShieldCheck size={18} className="text-accent shrink-0 mt-0.5" />
+      <ShieldCheck size={20} className="text-accent shrink-0 mt-0.5" />
       <div>
         <p className="text-sm font-semibold">Qué datos viajan</p>
         <p className="text-xs text-ink-soft mt-1 leading-relaxed">
@@ -443,7 +443,7 @@ export default function ConectarDispositivo() {
                     href={ATAJO_ICLOUD_URL}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-accent text-white text-sm font-semibold py-2.5 px-4"
                   >
-                    <Download size={15} /> Agregar el Atajo
+                    <Download size={16} /> Agregar el Atajo
                   </a>
                 ) : (
                   <p className="rounded-xl bg-accent-soft text-accent text-xs font-semibold px-3 py-2 inline-block">
@@ -456,7 +456,7 @@ export default function ConectarDispositivo() {
                     <li>
                       Abre <b>Atajos</b> → pestaña «Atajos» → <b>+</b>. Nómbralo «CuadraMe Apple Pay».{' '}
                       <a href="shortcuts://create-shortcut" className="text-accent font-semibold inline-flex items-center gap-0.5">
-                        Abrir Atajos <ExternalLink size={12} />
+                        Abrir Atajos <ExternalLink size={16} />
                       </a>
                     </li>
                     <li>
@@ -500,7 +500,7 @@ export default function ConectarDispositivo() {
                   marca <b>Ejecutar inmediatamente</b> y como acción elige el Atajo «CuadraMe Apple Pay».
                 </p>
                 <a href="shortcuts://" className="text-accent font-semibold text-sm inline-flex items-center gap-1">
-                  Abrir Atajos <ExternalLink size={13} />
+                  Abrir Atajos <ExternalLink size={16} />
                 </a>
                 <p className="text-xs">
                   Tip: si tu tarjeta de Wallet se llama distinto a tu cuenta, ponle un «alias de tarjeta» a la cuenta

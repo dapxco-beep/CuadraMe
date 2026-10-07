@@ -254,7 +254,7 @@ export default function Informe() {
           {informe.comercios.length > 0 && (
             <section className="mx-6 mt-4 card-marca bg-paper-raised border border-line p-4 lg:col-start-1 lg:row-start-2">
               <div className="flex items-center gap-2 mb-2">
-                <Store size={15} className="text-ink-soft" aria-hidden="true" />
+                <Store size={16} className="text-ink-soft" aria-hidden="true" />
                 <h2 className="text-[15px] font-semibold">Dónde más gastas</h2>
               </div>
               <ol className="divide-y divide-line">

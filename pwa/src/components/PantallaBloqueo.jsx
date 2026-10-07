@@ -111,7 +111,7 @@ export default function PantallaBloqueo() {
                 aria-label={t === 'borrar' ? 'Borrar' : t === 'bio' ? 'Usar huella o rostro' : t}
                 className="h-16 rounded-2xl bg-paper-raised border border-line text-xl font-semibold flex items-center justify-center disabled:opacity-40"
               >
-                {t === 'borrar' ? <Delete size={20} /> : t === 'bio' ? <Fingerprint size={22} className="text-accent" /> : t}
+                {t === 'borrar' ? <Delete size={20} /> : t === 'bio' ? <Fingerprint size={24} className="text-accent" /> : t}
               </button>
             )
           )}

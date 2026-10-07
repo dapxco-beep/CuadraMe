@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { EsqueletoPantalla } from '../components/Esqueletos'
 import { useParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
-import { ArrowLeft, Pencil, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, Pencil, Trash2, X } from 'lucide-react'
+import Icono from '../components/Icono'
 import { formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
@@ -156,7 +157,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           aria-label={embebido ? 'Cerrar detalle' : 'Volver'}
           className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
         >
-          {embebido ? <X size={18} /> : <ArrowLeft size={18} />}
+          {embebido ? <X size={20} /> : <ArrowLeft size={20} />}
         </button>
         <h1 className="text-lg font-semibold flex-1">Detalle del movimiento</h1>
         {!esTransferencia && !editando && (
@@ -175,7 +176,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           className="w-16 h-16 rounded-full bg-accent-soft flex items-center justify-center text-2xl mb-4"
           aria-hidden="true"
         >
-          {esTransferencia ? '🔁' : iconoDe(movimiento.categoria)}
+          {esTransferencia ? <Icono icono={ArrowLeftRight} tam="lg" /> : iconoDe(movimiento.categoria)}
         </span>
         <p className={`text-4xl font-bold ${movimiento.tipo === 'income' ? 'text-accent' : 'text-ink'}`}>
           {signo}

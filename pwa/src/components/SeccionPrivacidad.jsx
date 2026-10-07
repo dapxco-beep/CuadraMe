@@ -119,7 +119,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
           </ul>
         )}
         <button onClick={descargar} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
-          <Download size={18} className="text-accent shrink-0" />
+          <Download size={20} className="text-accent shrink-0" />
           <p className="flex-1 text-sm font-medium">Descargar mis datos (Excel)</p>
         </button>
         <Link to="/legal/autorizacion-datos" className="flex items-center gap-3 px-4 py-3.5">
@@ -131,7 +131,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
           disabled={eliminando}
           className="w-full flex items-center gap-3 px-4 py-3.5 text-left text-danger disabled:opacity-60"
         >
-          <Trash2 size={18} className="shrink-0" />
+          <Trash2 size={20} className="shrink-0" />
           <p className="flex-1 text-sm font-medium">{eliminando ? 'Eliminando...' : 'Eliminar mi cuenta y mis datos'}</p>
         </button>
       </div>

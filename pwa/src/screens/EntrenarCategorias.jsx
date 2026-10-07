@@ -63,7 +63,7 @@ function Fila({ item, categorias, onGuardar }) {
           disabled={estado === 'guardando'}
           className="rounded-xl bg-ink text-paper px-3.5 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-60"
         >
-          <Check size={14} /> {estado === 'guardando' ? 'Guardando…' : 'Guardar regla'}
+          <Check size={16} /> {estado === 'guardando' ? 'Guardando…' : 'Guardar regla'}
         </button>
       </div>
       <label className="flex items-center gap-2 text-xs text-ink-soft mt-2">

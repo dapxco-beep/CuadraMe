@@ -222,7 +222,7 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
       <div className="px-5 mt-4" data-testid="resultado-multiple">
         <div className="text-center">
           <div className="w-14 h-14 rounded-full bg-accent-soft text-accent flex items-center justify-center mx-auto mb-3">
-            <Check size={26} />
+            <Check size={24} />
           </div>
           <p className="text-lg font-semibold">
             {totalImportados} {totalImportados === 1 ? 'movimiento importado' : 'movimientos importados'}
@@ -407,8 +407,8 @@ export default function SubidaMultiple({ archivosIniciales = [], cuentaInicial =
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{a.nombre}</p>
                   <p className={`text-xs mt-0.5 flex items-center gap-1 ${a.estado === 'error' || a.estado === 'falta_clave' ? 'text-danger' : a.estado === 'listo' ? 'text-accent' : 'text-ink-soft'}`}>
-                    {a.estado === 'procesando' && <Loader2 size={12} className="animate-spin" />}
-                    {a.estado === 'error' || a.estado === 'falta_clave' ? <AlertTriangle size={12} /> : null}
+                    {a.estado === 'procesando' && <Loader2 size={16} className="animate-spin" />}
+                    {a.estado === 'error' || a.estado === 'falta_clave' ? <AlertTriangle size={16} /> : null}
                     {ETIQUETA_ARCHIVO[a.estado]}
                   </p>
                   {a.estado === 'listo' && (

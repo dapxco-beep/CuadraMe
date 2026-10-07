@@ -89,7 +89,7 @@ export default function CierreMes() {
     <div className="flex-1 overflow-y-auto pb-8 screen-enter">
       <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
-          <ArrowLeft size={18} />
+          <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-semibold flex-1">Cierre de mes</h1>
         {mes && (
@@ -130,7 +130,7 @@ export default function CierreMes() {
 
             {informe.categoria_que_mas_subio && (
               <div className="rounded-2xl bg-paper-raised border border-line p-4 mt-3 flex gap-3">
-                <TrendingUp size={18} className="text-danger shrink-0 mt-0.5" />
+                <TrendingUp size={20} className="text-danger shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium">Lo que más subió: {informe.categoria_que_mas_subio.categoria}</p>
                   <p className="text-xs text-ink-soft">

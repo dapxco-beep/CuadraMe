@@ -85,7 +85,7 @@ export default function Presupuesto() {
               className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
               aria-label="Mover plata entre categorías"
             >
-              <ArrowLeftRight size={17} className="text-ink-soft" />
+              <ArrowLeftRight size={20} className="text-ink-soft" />
             </button>
           )}
           <button
@@ -105,13 +105,13 @@ export default function Presupuesto() {
           onClick={() => setMostrarIngreso(true)}
           className="flex items-center gap-1.5 rounded-full border border-line bg-paper-raised px-3.5 py-2 text-xs font-semibold min-h-[36px]"
         >
-          <HandCoins size={14} className="text-accent" /> Repartir un ingreso
+          <HandCoins size={16} className="text-accent" /> Repartir un ingreso
         </button>
         <button
           onClick={() => setMostrarConfig(true)}
           className="flex items-center gap-1.5 rounded-full border border-line bg-paper-raised px-3.5 py-2 text-xs font-semibold min-h-[36px]"
         >
-          <SlidersHorizontal size={14} className="text-ink-soft" /> Ajustes
+          <SlidersHorizontal size={16} className="text-ink-soft" /> Ajustes
         </button>
       </div>
 
@@ -120,7 +120,7 @@ export default function Presupuesto() {
         className="mx-6 mt-4 card-marca bg-accent-soft border border-accent/20 p-3.5 flex items-center gap-3"
       >
         <span className="w-10 h-10 rounded-xl bg-paper-raised flex items-center justify-center shrink-0">
-          <PieChart size={18} className="text-accent" />
+          <PieChart size={20} className="text-accent" />
         </span>
         <div className="flex-1">
           <p className="text-sm font-semibold">En qué gasto mi plata</p>
@@ -132,7 +132,7 @@ export default function Presupuesto() {
       {!cargando && tendencias && (
         <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp size={15} className="text-ink-soft" />
+            <TrendingUp size={16} className="text-ink-soft" />
             <p className="text-sm font-semibold">Tendencia mensual</p>
           </div>
           <GraficoTendencia meses={tendencias.meses ?? []} />
@@ -155,7 +155,7 @@ export default function Presupuesto() {
       {!cargando && flujoCaja && flujoCaja.meses.length > 0 && (
         <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
           <div className="flex items-center gap-2 mb-3">
-            <CalendarClock size={15} className="text-ink-soft" />
+            <CalendarClock size={16} className="text-ink-soft" />
             <p className="text-sm font-semibold">Proyección de saldo</p>
           </div>
           <div className="flex items-stretch gap-2">
@@ -256,7 +256,7 @@ export default function Presupuesto() {
                             {formatCOP(p.gastado)} / {formatCOP(p.limite)}
                           </p>
                           <button onClick={() => eliminar(p.id)} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label="Cerrar">
-                            <X size={14} />
+                            <X size={16} />
                           </button>
                         </div>
                       </div>

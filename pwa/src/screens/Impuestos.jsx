@@ -93,7 +93,7 @@ export default function Impuestos() {
           className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
           aria-label="Volver"
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-semibold flex-1">Impuestos</h1>
         <select
@@ -294,7 +294,7 @@ export default function Impuestos() {
               </button>
             </div>
             <p className="text-[11px] text-ink-soft mt-2 flex items-start gap-1.5">
-              <FileText size={12} className="shrink-0 mt-0.5" />
+              <FileText size={16} className="shrink-0 mt-0.5" />
               Para el PDF, elige "Guardar como PDF" en la ventana de impresión de tu dispositivo.
             </p>
           </section>
