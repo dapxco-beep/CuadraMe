@@ -1,17 +1,17 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ChevronDown, Mail, RefreshCw, ShieldCheck } from 'lucide-react'
+import { ChevronDown, Mail, ShieldCheck } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/AuthContext'
 import { useDialogos } from '../lib/DialogosContext'
 import ModalConsentimiento from './ModalConsentimiento'
 
 /**
- * Conectar o desconectar Gmail y sincronizar. La sincronización la maneja el centro (el mismo
- * botón "Sincronizar todo" de arriba): aquí solo se pide con `onSincronizar` y se pinta el progreso.
+ * Conectar o desconectar Gmail. Sincronizar lo hace el botón «Sincronizar todo» del centro (y su
+ * barra de progreso): aquí no hay un segundo botón igual.
  *   estado: GET /correos/gmail/estado   ·   onCambio(): recarga el centro
  */
-export default function ConexionGmail({ estado, sincronizando, onSincronizar, onCambio }) {
+export default function ConexionGmail({ estado, onCambio }) {
   const { confirmar } = useDialogos()
   const usuario = useAuth()?.usuario
   const [params] = useSearchParams()
@@ -104,17 +104,7 @@ export default function ConexionGmail({ estado, sincronizando, onSincronizar, on
               <p className="text-sm font-semibold truncate">{estado.email}</p>
               <p className="text-xs text-ink-soft">Conectado · solo lectura</p>
             </div>
-          </div>
-          <div className="flex gap-2 mt-3">
-            <button
-              onClick={onSincronizar}
-              disabled={sincronizando}
-              className="flex-1 flex items-center justify-center gap-1.5 bg-ink text-paper font-semibold rounded-xl py-2.5 text-sm disabled:opacity-60"
-            >
-              <RefreshCw size={14} className={sincronizando ? 'animate-spin' : ''} aria-hidden="true" />
-              {sincronizando ? 'Sincronizando...' : 'Sincronizar ahora'}
-            </button>
-            <button onClick={desconectar} className="px-4 rounded-xl border border-line text-sm text-ink-soft">
+            <button onClick={desconectar} className="shrink-0 px-3 min-h-[40px] rounded-xl border border-line text-xs font-semibold text-ink-soft">
               Desconectar
             </button>
           </div>

@@ -515,12 +515,7 @@ export default function Sincronizacion() {
         abierto={abiertos.correo}
         onToggle={() => alternar('correo')}
       >
-        <ConexionGmail
-          estado={gmail}
-          sincronizando={sincronizando}
-          onSincronizar={() => sincronizar()}
-          onCambio={cargar}
-        />
+        <ConexionGmail estado={gmail} onCambio={cargar} />
 
         {conectado && (
           <>

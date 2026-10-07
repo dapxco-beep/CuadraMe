@@ -4,6 +4,16 @@
 
 ---
 
+## 🆕 Centro «Traer movimientos» (pendiente de tu aprobación)
+
+- **Una sola pantalla** (`/sincronizacion`, `pwa/src/screens/Sincronizacion.jsx`) reemplaza a Correos, Conciliación, Importar archivo y el tablero de Conexiones. Arriba: estado y «Sincronizar todo»; luego tres bloques plegables con contador: **Desde tu correo** (Gmail, notificaciones por revisar, extractos), **Subir archivos** (zona única PDF/Excel/CSV, varios a la vez, cola con progreso, revisión consolidada por cuenta y archivo con «Seleccionar todo lo que falta», «Recordar», avisos de «periodo ya conciliado» y de líneas que no se pudieron leer) y **Por revisar** (por confirmar, por categorizar, bancos sin cuenta, cuadrícula cuenta × mes). Con cero pendientes cada bloque queda en «Todo al día». El total «por resolver» es el mismo de Inicio (`tareas.length` de `GET /sincronizacion/estado`).
+- **Rutas viejas redirigen** (`RedirigirAlCentro`): `/correos`, `/conciliacion`, `/importar`, `/conexiones` abren el bloque que corresponde (conservan `?gmail=…`, `historialId`, cuenta y mes). Se borraron `Correos.jsx` y `Conciliacion.jsx`; `ImportarArchivo` queda solo para elegir columnas a mano (hoja dentro de «Subir archivos»); `Conexiones` es una hoja desde el botón «Conexiones».
+- **Correos aprobados con nombre real:** `extraer_comercio` lee el concepto del asunto/cuerpo («Compra en Juan Valdez», «Envío a Ana», «Pago de servicios»); si un banco no dice más, «Gasto/Ingreso/Traslado sin detalle» (nunca el remitente). La descripción del movimiento ya no lleva « (correo)» (el origen sigue en `fuente="email"`). `POST /correos/{id}/aprobar` responde 400 si el monto es ≤ 0 y acepta `monto` opcional; `GET /correos/pendientes` marca `falta_monto`. Los correos sin monto siguen sin ofrecerse (el sync los ignora, a propósito); la tarjeta de la PWA pide el monto si alguna llega así.
+- **API (solo campos nuevos):** `ProcesarExtractoResponse.cuenta_id` (al reabrir una revisión), `CorreoGastoOut.falta_monto`, `AprobarCorreoRequest.monto`.
+- ⏳ El menú (BottomNav/BarraLateral) aún lista Correos y Conciliar extracto por separado: lo ajusta el agente de menú; mientras tanto esos enlaces redirigen al centro.
+
+---
+
 ## 🆕 Revisión de salida a producción (2026-10-03) — lo que necesita tu mano
 
 1. **Activar RLS en Supabase (5 min, importante).** Abre Supabase → SQL Editor y ejecuta `backend/supabase/habilitar_rls.sql`. Las tablas viven en el esquema público; sin RLS cualquiera con la clave `anon` (que va dentro del JS de la app) podría leerlas directo, saltándose el backend. El backend no se afecta. No pude verificar si ya estaba activado, así que ejecútalo igual: es idempotente.
