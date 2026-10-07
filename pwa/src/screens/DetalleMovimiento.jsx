@@ -23,7 +23,7 @@ import {
   direccionDe,
 } from '../lib/traslados'
 
-const ETIQUETA_TIPO = { income: 'Ingreso', expense: 'Gasto', transfer: 'Traslado ↔' }
+const ETIQUETA_TIPO = { income: 'Ingreso', expense: 'Gasto', transfer: 'Traslado' }
 
 function fechaParaInput(fechaISO) {
   return fechaISO.slice(0, 10)
