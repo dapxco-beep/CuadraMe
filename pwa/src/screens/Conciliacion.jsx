@@ -14,6 +14,7 @@ import SubidaMultiple from '../components/SubidaMultiple'
 import ZonaSubida from '../components/ZonaSubida'
 import { useDialogos } from '../lib/DialogosContext'
 import { tipoDeArchivo } from '../lib/subidaMultiple'
+import { nombreMes } from '../lib/sincronizacion'
 import { clavesFilas, filasAImportar, gemelasFaltantes } from '../lib/conciliacionClaves'
 
 function fileToBase64(file) {
@@ -83,7 +84,11 @@ export default function Conciliacion() {
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: CATEGORIAS } = useCategorias()
   const { avisar } = useDialogos()
-  const [cuentaId, setCuentaId] = useState(cuentas[0]?.id || '')
+  // Desde Sincronización ("Subir el extracto de este mes") llegan la cuenta y el mes preseleccionados.
+  const cuentaDeEstado = location.state?.cuentaId
+  const [cuentaId, setCuentaId] = useState(
+    (cuentaDeEstado && cuentas.some((c) => c.id === cuentaDeEstado) ? cuentaDeEstado : '') || cuentas[0]?.id || ''
+  )
   const [password, setPassword] = useState('')
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState('')
@@ -217,6 +222,13 @@ export default function Conciliacion() {
             Sube el PDF de tu extracto bancario (o varios a la vez, también Excel o CSV) y compáralo con tus movimientos registrados.
             Detectamos automáticamente lo que falta por registrar.
           </p>
+
+          {location.state?.mes && (
+            <p role="status" className="rounded-2xl bg-accent-soft text-sm font-medium px-4 py-3 mb-4">
+              Sube el extracto de <span className="capitalize">{nombreMes(location.state.mes)}</span>
+              {cuentas.find((c) => c.id === cuentaId) ? ` de ${cuentas.find((c) => c.id === cuentaId).nombre}` : ''}.
+            </p>
+          )}
 
           {cuentas.length > 1 && (
             <div className="mb-3">

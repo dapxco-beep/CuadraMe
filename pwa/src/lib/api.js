@@ -320,7 +320,8 @@ export const api = {
     request(`/correos/lista?filtro=${filtro}&limite=${limite}&offset=${offset}`),
   conexionesEstado: () => request('/conexiones/estado'),
   // Pantalla Sincronización: grilla cuentas x meses, tareas y cola de categorías por preguntar.
-  sincronizacionEstado: () => request('/sincronizacion/estado'),
+  // `hasta` ('YYYY-MM') desplaza la ventana de meses; el backend actual la ignora (siempre los últimos 6).
+  sincronizacionEstado: (hasta) => request(`/sincronizacion/estado${hasta ? `?hasta=${hasta}` : ''}`),
   sincronizacionPorCategorizar: (offset = 0, limite = 10) =>
     request(`/sincronizacion/por-categorizar?limite=${limite}&offset=${offset}`),
   correosPendientes: () => request('/correos/pendientes'),

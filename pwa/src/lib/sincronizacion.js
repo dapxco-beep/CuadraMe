@@ -78,6 +78,39 @@ export function nombreMes(clave) {
   return a && m ? `${MESES[m - 1]} ${a}` : ''
 }
 
+const TIPOS_CUENTA = { ahorro: 'Ahorros', efectivo: 'Efectivo', credito: 'Crédito', inversion: 'Inversión' }
+
+// Nombre para la cuadrícula: si dos cuentas se llaman igual se les agrega su tipo (y los
+// últimos dígitos / alias de la tarjeta si lo tienen) para poder distinguirlas.
+// `filas` = cuentas de GET /sincronizacion/estado; `cuentas` = las del contexto (traen tipo y alias).
+export function nombresDesambiguados(filas, cuentas = []) {
+  const cuenta = (id) => cuentas.find((c) => c.id === id) || {}
+  const veces = {}
+  for (const f of filas || []) veces[f.nombre] = (veces[f.nombre] || 0) + 1
+  const salida = {}
+  const usados = {}
+  for (const f of filas || []) {
+    if (veces[f.nombre] < 2) {
+      salida[f.id] = f.nombre
+      continue
+    }
+    const c = cuenta(f.id)
+    const partes = [TIPOS_CUENTA[c.tipo] || c.tipo, c.alias_tarjeta ? `••${String(c.alias_tarjeta).slice(-4)}` : ''].filter(Boolean)
+    let nombre = partes.length ? `${f.nombre} (${partes.join(' ')})` : f.nombre
+    usados[nombre] = (usados[nombre] || 0) + 1
+    if (usados[nombre] > 1) nombre = `${nombre} #${usados[nombre]}` // mismo tipo y sin alias: al menos un número
+    salida[f.id] = nombre
+  }
+  return salida
+}
+
+// Mes anterior / siguiente de una clave 'YYYY-MM'.
+export function moverMes(clave, delta) {
+  const [a, m] = String(clave).split('-').map(Number)
+  const t = a * 12 + (m - 1) + delta
+  return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`
+}
+
 // Conciliar un extracto de Gmail: nunca sin cuenta elegida. Devuelve { ok, error, historialId }
 // (Correos y Sincronización usan esta misma función; el flujo de conciliación no cambia).
 export async function conciliarExtracto(ex, cuentaId) {
