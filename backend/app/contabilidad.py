@@ -54,6 +54,59 @@ PATRON_TRASLADO = re.compile(
     re.IGNORECASE,
 )
 
+# Marca que dejan los lectores de extractos en `notas` cuando la contraparte parece el propio
+# titular u otra cuenta propia: el movimiento SÍ mueve saldo (tiene dirección) y los informes
+# lo tratan como traslado solo si aparece su otra pata (ver tipos_efectivos).
+MARCA_TRASLADO_PROPIO = "posible_traslado_propio"
+
+# Dirección deducible con certeza de una descripción de transferencia (solo al inicio).
+_RE_SALE = re.compile(r"^\s*(?:para\b|enviaste\b|envio\b|transferencia\s+a\b|trf\s+a\b|transferiste\b)", re.IGNORECASE)
+_RE_ENTRA = re.compile(r"^\s*(?:de\b|recibiste\b|transferencia\s+de\b|trf\s+de\b|giro\s+de\b|te\s+enviaron\b)", re.IGNORECASE)
+
+
+def direccion_por_descripcion(descripcion: str) -> str | None:
+    """'expense' / 'income' si la descripción lo dice sin ambigüedad ('Para …', 'Enviaste a …',
+    'De …', 'Recibiste de …'); None si no. Pura."""
+    d = _sin_acentos(descripcion or "")
+    sale, entra = bool(_RE_SALE.search(d)), bool(_RE_ENTRA.search(d))
+    if sale == entra:
+        return None
+    return "expense" if sale else "income"
+
+
+def con_marca_traslado(notas: str | None) -> str:
+    n = notas or ""
+    return n if MARCA_TRASLADO_PROPIO in n else (f"{n} · {MARCA_TRASLADO_PROPIO}" if n else MARCA_TRASLADO_PROPIO)
+
+
+def delta_saldo(m) -> float:
+    """Cuánto mueve el saldo de SU cuenta un movimiento (regla única). Todo movimiento tiene
+    dirección: income suma, expense resta. Las dos patas de un traslado creado en la app
+    (tipo 'transfer', fuente transferencia_interna) llevan la dirección en notas: ':in' suma,
+    ':out' resta. Un 'transfer' heredado sin dirección (importado antes de esta regla) vale 0:
+    no se puede saber hacia dónde fue; la migración retipar_transfers.sql lo corrige.
+    Los importados 'sin saldo' (el banco ya lo reflejaba) nunca lo movieron."""
+    if _g(m, "fuente") == FUENTE_IMPORTADO_SIN_SALDO:
+        return 0.0
+    tipo, monto = _g(m, "tipo"), float(_g(m, "monto", 0) or 0)
+    if tipo == "income":
+        return monto
+    if tipo == "expense":
+        return -monto
+    if tipo == "transfer" and _g(m, "fuente") == FUENTE_TRANSFERENCIA:
+        notas = _g(m, "notas") or ""
+        return monto if notas.endswith(":in") else -monto if notas.endswith(":out") else 0.0
+    return 0.0
+
+
+def tipo_con_direccion(tipo: str | None, descripcion: str = "") -> str | None:
+    """Todo movimiento importado tiene dirección. 'income'/'expense' pasan igual; un 'transfer'
+    heredado (extractos viejos guardados) se resuelve por la descripción o devuelve None."""
+    if tipo in ("income", "expense"):
+        return tipo
+    return direccion_por_descripcion(descripcion)
+
+
 PATRON_INTERES = re.compile(r"\binter[eé]s(?:es)?\b", re.IGNORECASE)
 
 VENTANA_EMPAREJAR_SEG = 2 * 86400

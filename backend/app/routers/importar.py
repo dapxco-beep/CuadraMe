@@ -27,7 +27,8 @@ from app.autocat import ClasificadorUsuario, aplicar_a_anteriores, clasificar_lo
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, puede_editar_cuenta
 from app.conciliacion import auditar_movimientos, compute_fingerprint
-from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_IMPORTADO_SIN_SALDO, es_pago_tarjeta
+from app.conciliacion import es_transferencia_propia
+from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_IMPORTADO_SIN_SALDO, con_marca_traslado, es_pago_tarjeta
 from app.database import get_db
 from app.importador_tabular import MAX_BYTES, MAX_FILAS, CAMPOS, ErrorArchivo, analizar
 from app.limites import verificar_limite
@@ -71,6 +72,12 @@ class ConfirmarRequest(BaseModel):
     nombre_archivo: str = Field(default="archivo", max_length=200)
     filas: list[FilaImportar] = Field(max_length=MAX_FILAS)
     ajustar_saldo: bool = True
+
+
+def _notas_importado(notas: str, descripcion: str) -> str:
+    """Si la contraparte parece el propio titular, deja la marca de posible traslado propio
+    (el movimiento mueve saldo igual; los informes lo emparejan con su otra pata)."""
+    return con_marca_traslado(notas) if es_transferencia_propia(descripcion) else notas
 
 
 def _decodificar(b64: str) -> bytes:
@@ -213,7 +220,7 @@ def confirmar(
             descripcion=f.descripcion.strip(), categoria=categoria, tipo=f.tipo, monto=f.monto,
             # Sin ajustar saldo, la marca evita que editar/borrar luego mueva el saldo.
             fuente=FUENTE_IMPORTACION if data.ajustar_saldo else FUENTE_IMPORTADO_SIN_SALDO,
-            notas=f"Importado de {data.nombre_archivo[:80]}", **auto,
+            notas=_notas_importado(f"Importado de {data.nombre_archivo[:80]}", f.descripcion), **auto,
         ))
         neto += f.monto if f.tipo == "income" else -f.monto
         importados += 1

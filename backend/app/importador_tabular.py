@@ -20,6 +20,9 @@ import re
 import unicodedata
 from datetime import date, datetime, timedelta
 
+from app.conciliacion import es_transferencia_propia
+from app.contabilidad import MARCA_TRASLADO_PROPIO
+
 MAX_BYTES = 5 * 1024 * 1024
 MAX_FILAS = 3000          # movimientos aceptados por archivo
 MAX_FILAS_LEIDAS = 20000  # filas crudas que se recorren buscando datos
@@ -446,6 +449,8 @@ def filas_a_movimientos(filas: list[list], mapeo: dict, opciones: dict | None = 
             "monto": round(abs(monto_firmado), 2),
             "tipo": "income" if monto_firmado > 0 else "expense",
             "saldo": saldo,
+            # Dirección siempre explícita (signo / columnas débito-crédito); la pista solo avisa.
+            **({"pista": MARCA_TRASLADO_PROPIO} if es_transferencia_propia(desc) else {}),
         })
     return {"movimientos": movimientos, "errores": errores, "ignoradas": ignoradas, "truncado": truncado}
 

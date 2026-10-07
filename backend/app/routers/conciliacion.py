@@ -14,6 +14,7 @@ from app.autocat import (
 from app.wallet import ORIGENES_RAPIDOS
 from app.compartidos import cuenta_accesible, puede_editar_cuenta
 from app.conciliacion import (
+    es_transferencia_propia,
     auditar_movimientos,
     compute_fingerprint,
     detectar_banco,
@@ -25,6 +26,7 @@ from app.conciliacion import (
     fijar_nombre_titular,
     parse_texto_con_regex,
 )
+from app.contabilidad import con_marca_traslado, tipo_con_direccion
 from app.database import get_db
 from app.extractos_conciliados import evidencia_conciliado
 from app.models import Cuenta, HistorialExtracto, Movimiento, Perfil
@@ -47,6 +49,17 @@ from app.schemas import (
 CONFIANZA_AUTOIMPORT_DEFAULT = 0.75
 
 router = APIRouter(prefix="/conciliacion", tags=["conciliacion"])
+
+
+def _tipo_y_notas(item: dict, notas: str) -> tuple[str | None, str]:
+    """Todo movimiento importado tiene dirección: (tipo income/expense, notas). Un 'transfer'
+    heredado de un extracto guardado antes se resuelve por la descripción; si no se puede,
+    tipo None y NO se importa (mejor omitir que mover el saldo en la dirección equivocada).
+    Si la contraparte parece el propio titular, las notas llevan la marca de traslado propio."""
+    tipo = tipo_con_direccion(item.get("tipo"), item.get("descripcion", ""))
+    if tipo and (item.get("pista") or es_transferencia_propia(item.get("descripcion", ""))):
+        notas = con_marca_traslado(notas)
+    return tipo, notas
 
 
 def _autoimportar_activo(db: Session, usuario_id: str) -> bool:
@@ -142,27 +155,25 @@ def procesar_extracto(
             continue
         clasif = modelo.clasificar(item["descripcion"])
 
-        if autoimportar and not via_ia and clasif and clasif["confianza"] >= umbral:
+        tipo_dir, notas_auto = _tipo_y_notas(item, f"Auto-importado desde extracto {banco} (confianza {clasif['confianza'] if clasif else 0})")
+        if autoimportar and not via_ia and clasif and clasif["confianza"] >= umbral and tipo_dir:
             fecha_dt = parse_bank_date(item["fecha"])
             movimiento = Movimiento(
                 usuario_id=usuario.id,
                 cuenta_id=cuenta.id,
                 descripcion=item["descripcion"],
                 categoria=clasif["categoria"],
-                tipo=item["tipo"],
+                tipo=tipo_dir,
                 monto=item["monto"],
                 fecha=fecha_dt or ahora_co(),
                 fuente="conciliacion_auto",
-                notas=f"Auto-importado desde extracto {banco} (confianza {clasif['confianza']})",
+                notas=notas_auto,
                 **datos_auto(origen_de(clasif.get("fuente")) or "similar"),
             )
             db.add(movimiento)
             db.flush()  # id del movimiento, para poder deshacer
 
-            if item["tipo"] == "income":
-                cuenta.saldo += item["monto"]
-            elif item["tipo"] == "expense":
-                cuenta.saldo -= item["monto"]
+            cuenta.saldo += item["monto"] if tipo_dir == "income" else -item["monto"]
 
             item["estado"] = "importado"
             item["auto"] = True
@@ -431,10 +442,15 @@ def importar_faltantes(
     explicados = Counter(i.get("fingerprint") for i in review if i.get("estado") in ("exacto", "importado"))
     ya_registrados = {fp: n - explicados[fp] for fp, n in en_libro.items() if n > explicados[fp]}
     duplicados_omitidos = 0
+    sin_direccion = 0
 
     for item in review:
         fp = item.get("fingerprint")
         if fp not in fingerprints or item.get("estado") != "faltante":
+            continue
+        tipo_dir, notas_mov = _tipo_y_notas(item, f"Importado desde extracto {historial.banco_detectado}")
+        if not tipo_dir:
+            sin_direccion += 1  # 'transfer' viejo sin dirección deducible: se omite, no se adivina
             continue
         if ya_registrados.get(fp, 0) > 0:
             ya_registrados[fp] -= 1
@@ -459,19 +475,16 @@ def importar_faltantes(
             cuenta_id=cuenta.id,
             descripcion=item["descripcion"],
             categoria=categoria,
-            tipo=item["tipo"],
+            tipo=tipo_dir,
             monto=item["monto"],
             fecha=parse_bank_date(item["fecha"]) or historial.creado_en,
             fuente="conciliacion_extracto",
-            notas=f"Importado desde extracto {historial.banco_detectado}",
+            notas=notas_mov,
             **auto,
         )
         db.add(movimiento)
 
-        if item["tipo"] == "income":
-            cuenta.saldo += item["monto"]
-        elif item["tipo"] == "expense":
-            cuenta.saldo -= item["monto"]
+        cuenta.saldo += item["monto"] if tipo_dir == "income" else -item["monto"]
 
         item["estado"] = "importado"
         importados += 1
@@ -495,7 +508,7 @@ def importar_faltantes(
         "ok": True, "importados": importados, "sin_categoria_clara": sin_categoria_clara,
         "categorizados_auto": categorizados_auto, "reglas_guardadas": reglas_guardadas,
         "anteriores_actualizados": anteriores_actualizados, "reglas_omitidas": reglas_omitidas,
-        "duplicados_omitidos": duplicados_omitidos,
+        "duplicados_omitidos": duplicados_omitidos, "sin_direccion": sin_direccion,
     }
 
 

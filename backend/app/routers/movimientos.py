@@ -1,4 +1,4 @@
-import re
+﻿import re
 import uuid
 from datetime import datetime, timedelta
 
@@ -24,7 +24,7 @@ from app.autocat import (
 from app.classifier import aplicar_reglas, build_model, classify
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, cuentas_ids_accesibles, puede_editar_cuenta
-from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_APORTE_META, FUENTE_IMPORTADO_SIN_SALDO, es_pago_tarjeta
+from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_APORTE_META, FUENTE_IMPORTADO_SIN_SALDO, delta_saldo, es_pago_tarjeta
 from app.database import get_db
 from app.fx import convertir_a_cop
 from app.limites import verificar_limite
@@ -78,8 +78,8 @@ _PENDIENTE_REVISION = or_(
 
 
 def _delta_saldo(tipo: str, monto: float) -> float:
-    """Cuánto cambia el saldo de la cuenta por un movimiento. 'transfer'
-    importado de un extracto no mueve saldo (el banco ya lo reflejó)."""
+    """Cuánto cambia el saldo por (tipo, monto): income suma, expense resta. Solo un 'transfer'
+    heredado sin dirección vale 0; los traslados de la app se resuelven en _delta_de (notas)."""
     if tipo == "income":
         return monto
     if tipo == "expense":
@@ -90,9 +90,7 @@ def _delta_saldo(tipo: str, monto: float) -> float:
 def _delta_de(mov: Movimiento) -> float:
     """Como _delta_saldo pero respetando los importados 'sin saldo': nunca tocaron
     el saldo al crearse, así que editarlos o borrarlos tampoco debe tocarlo."""
-    if mov.fuente == FUENTE_IMPORTADO_SIN_SALDO:
-        return 0.0
-    return _delta_saldo(mov.tipo, mov.monto)
+    return delta_saldo(mov)
 
 
 def _fecha_o_400(valor: str, campo: str) -> datetime:

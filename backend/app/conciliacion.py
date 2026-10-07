@@ -9,6 +9,8 @@ import re
 import unicodedata
 from datetime import datetime, timedelta
 
+from app.contabilidad import MARCA_TRASLADO_PROPIO
+
 MESES = {
     "ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6,
     "jul": 7, "ago": 8, "sep": 9, "oct": 10, "nov": 11, "dic": 12,
@@ -164,9 +166,15 @@ def es_transferencia_propia(desc: str) -> bool:
     return False
 
 
+def _pista(desc: str) -> dict:
+    """{'pista': 'posible_traslado_propio'} cuando la contraparte parece el titular o una cuenta
+    propia; {} si no. El movimiento conserva su dirección (income/expense) y mueve saldo."""
+    return {"pista": MARCA_TRASLADO_PROPIO} if es_transferencia_propia(desc) else {}
+
+
 def _tipo_por_signo(monto: float, desc: str) -> str:
-    if es_transferencia_propia(desc):
-        return "transfer"
+    """Siempre con dirección: el signo manda (una transferencia que sale es 'expense', la que
+    entra es 'income'); nunca 'transfer'."""
     if re.search(r"gravamen", desc, re.IGNORECASE):
         return "expense"
     return "income" if monto > 0 else "expense"
@@ -375,7 +383,7 @@ def _parse_nequi_con_perdidas(texto: str) -> tuple[list[dict], int]:
         firmados += valor
         movimientos.append({
             "fecha": f"{m.group(3)}-{m.group(2)}-{m.group(1)}", "descripcion": desc, "monto": abs(valor),
-            "tipo": _tipo_por_signo(valor, desc), "referencia": "", "saldo": None,
+            "tipo": _tipo_por_signo(valor, desc), "referencia": "", "saldo": None, **_pista(desc),
         })
 
     # Cadena del extracto: saldo anterior + abonos - cargos = saldo actual.
@@ -446,8 +454,8 @@ def _parse_nu_por_lineas(texto: str, anio: str) -> list[dict]:
         movimientos.append({
             "fecha": f"{anio}-{mes:02d}-{int(m.group(1)):02d}",
             "descripcion": desc, "monto": monto,
-            "tipo": "transfer" if es_transferencia_propia(desc) else ("income" if positivo else "expense"),
-            "referencia": "", "saldo": None,
+            "tipo": "income" if positivo else "expense",
+            "referencia": "", "saldo": None, **_pista(desc),
         })
     return movimientos
 
@@ -482,11 +490,11 @@ def _parse_nu(texto: str, anio: str) -> tuple[list[dict], int]:
             descartados += 1
             continue
         signo = -1 if m.group(4) == "-" else 1
-        tipo = "transfer" if es_transferencia_propia(desc) else ("income" if signo > 0 else "expense")
+        tipo = "income" if signo > 0 else "expense"
         movimientos.append({
             "fecha": f"{anio}-{mes:02d}-{int(m.group(1)):02d}",
             "descripcion": desc, "monto": abs(monto), "tipo": tipo,
-            "referencia": "", "saldo": None,
+            "referencia": "", "saldo": None, **_pista(desc),
         })
     return movimientos, descartados
 
@@ -505,11 +513,11 @@ def _parse_bancolombia(texto: str) -> list[dict]:
         if debito == 0 and credito == 0:
             continue
         monto = debito if debito > 0 else credito
-        tipo = "income" if credito > 0 else ("transfer" if re.search(r"transfer", desc, re.IGNORECASE) else "expense")
+        tipo = "income" if credito > 0 else "expense"  # débito = sale, crédito = entra (nunca 'transfer')
         movimientos.append({
             "fecha": f"{anio}-{m.group(2)}-{m.group(1)}",
             "descripcion": desc, "monto": abs(monto), "tipo": tipo,
-            "referencia": "", "saldo": None,
+            "referencia": "", "saldo": None, **_pista(desc),
         })
     return movimientos
 

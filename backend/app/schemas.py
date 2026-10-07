@@ -838,6 +838,7 @@ class MovimientoReview(BaseModel):
     razon_categoria: Optional[str] = None  # por qué se sugiere esa categoría
     auto: bool = False  # importado solo (ajuste "importar lo que reconozco"): se puede deshacer
     movimiento_id: Optional[str] = None  # id del movimiento creado al auto-importar
+    pista: Optional[str] = None  # 'posible_traslado_propio': la contraparte parece el titular; mueve saldo igual
 
 
 class ProcesarExtractoResponse(BaseModel):
