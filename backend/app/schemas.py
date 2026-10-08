@@ -198,6 +198,9 @@ class MovimientoCreate(BaseModel):
     categoria: Optional[str] = Field(default=None, max_length=60)
     fecha: Optional[datetime] = None
     notas: Optional[str] = Field(default="", max_length=1000)
+    # Si ya tienes ese gasto registrado por otro canal (atajo, correo, extracto) la app avisa (409)
+    # en vez de duplicarlo; con true se guarda de todos modos («es otro gasto igual»).
+    confirmar_nuevo: bool = False
 
 
 class MovimientoUpdate(BaseModel):
@@ -230,6 +233,11 @@ class MovimientoOut(BaseModel):
     notas: str
     cat_origen: Optional[str] = None
     cat_confirmada: Optional[bool] = True
+    # Por dónde llegó (manual | atajo | correo | extracto | importacion) y qué canales lo confirmaron
+    # (insignia «Registrado desde...»). Opcionales: los movimientos viejos pueden no traerlos.
+    origen: Optional[str] = None
+    canales: Optional[list[str]] = None
+    conciliado_en: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -259,6 +267,9 @@ class MovimientoRapidoCreate(BaseModel):
     fecha: Optional[str] = None  # ISO o dd/mm/aaaa; si no se entiende se usa la hora actual
     moneda: Optional[str] = Field(default=None, max_length=5)
     fuente: str = Field(default="shortcut", max_length=30)  # shortcut | wallet | sms | email
+    # Opcional: identificador único de la transacción (si el Atajo lo tiene). Un reintento con el mismo id
+    # jamás crea otro movimiento, sin importar cuánto tiempo pase.
+    id_transaccion: Optional[str] = Field(default=None, max_length=80)
 
     @model_validator(mode="before")
     @classmethod
@@ -300,6 +311,7 @@ class MovimientoRapidoOut(MovimientoOut):
     duplicado: bool = False
     por_confirmar: bool = False
     cuenta_nombre: Optional[str] = None
+    ya_estaba_por: Optional[str] = None  # canal por el que ya estaba registrado ('correo', 'extracto', 'manual'...)
 
 
 class RecategorizarMasivoRequest(BaseModel):
@@ -673,6 +685,8 @@ class CorreoGastoOut(BaseModel):
     confianza: float
     estado: str
     movimiento_id: Optional[str]
+    # Solo en estado 'ya_registrado': el movimiento que ya existía {descripcion, monto, fecha, canales}.
+    registrado_como: Optional[dict] = None
     # Calculados al leer (no son columnas): quién envió el correo y qué cuenta le corresponde.
     banco_detectado: Optional[str] = None
     cuenta_sugerida_id: Optional[str] = None
@@ -869,6 +883,7 @@ class ProcesarExtractoResponse(BaseModel):
     autoimportar_activo: bool = False  # el ajuste 'importar solo lo que reconozco con certeza'
     completados: int = 0  # movimientos rápidos completados con los datos del banco
     sobrantes: int = 0  # registrados en el periodo que no aparecen en el extracto
+    borrados_antes: int = 0  # líneas que coinciden con un movimiento que borraste: no se vuelven a crear
     periodo_desde: Optional[str] = None  # ISO, primer movimiento del extracto
     periodo_hasta: Optional[str] = None
     parece_extracto: bool = True  # False: el archivo no parece un extracto (carta, factura...); no se importa nada

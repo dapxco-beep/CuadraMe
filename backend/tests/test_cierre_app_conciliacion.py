@@ -193,9 +193,14 @@ def test_no_toca_conciliados_ni_los_que_no_son_rapidos_y_sobrantes_son_del_perio
     estados, r = cruce([ext(20_000)], [ya, manual, viejo, libre])
     assert estados == [("completado", "OK")]
     assert r["sobrantes"] == []
-    # sin 'libre': el conciliado se ignora, el manual cae al aproximado clásico
+    # sin 'libre': el conciliado se ignora. Regla central de duplicados: el movimiento escrito a mano
+    # con el MISMO monto y día también se concilia con el banco (antes solo salía como «aproximado»).
     estados, r = cruce([ext(20_000)], [ya, manual, viejo])
-    assert estados == [("aproximado", "MAN")]
+    assert estados == [("completado", "MAN")]
+    # ...pero con otro monto (más allá del redondeo) lo manual NO se toca: cae al aproximado clásico
+    manual_cercano = fila("MAN2", (12, 0), 20_300, rapido=False)
+    estados, r = cruce([ext(20_000)], [ya, manual_cercano, viejo])
+    assert estados == [("aproximado", "MAN2")]
 
 
 def test_emparejar_rapidos_ignora_filas_sin_fecha():

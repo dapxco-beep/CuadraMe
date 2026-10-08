@@ -64,6 +64,8 @@ from app.models import Categoria, ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo,
 from app.routers.consentimientos import exigir_consentimiento, tiene_consentimiento
 from app.routers.conciliacion import procesar_extracto
 from app.utiles import utc_a_co
+from app.duplicados import absorber_correos
+from app import duplicados as dup
 from app.schemas import (
     AprobarCorreoRequest,
     ClavePdfIn,
@@ -103,9 +105,17 @@ def _con_cuenta(db: Session, usuario_id: str, correos: list[CorreoGasto]) -> lis
     (o `falta_cuenta` si el usuario no tiene una de ese banco)."""
     cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).all()
     clasificador = ClasificadorUsuario(db, usuario_id) if any(c.estado == "pendiente" for c in correos) else None
+    registrados = {}
+    ids_reg = [c.movimiento_id for c in correos if c.estado == "ya_registrado" and c.movimiento_id]
+    if ids_reg:
+        movs = dup.anotar_canales(db, db.query(Movimiento).filter(Movimiento.id.in_(ids_reg)).all())
+        registrados = {m.id: {"descripcion": m.descripcion, "monto": m.monto, "fecha": m.fecha.isoformat() if m.fecha else None,
+                              "tipo": m.tipo, "canales": m.canales} for m in movs}
     salida = []
     for c in correos:
         o = CorreoGastoOut.model_validate(c)
+        if c.estado == "ya_registrado":
+            o.registrado_como = registrados.get(c.movimiento_id)
         o.banco_detectado, o.cuenta_sugerida_id, o.falta_cuenta = inferir_cuenta_por_remitente(c.remitente, cuentas, f"{c.asunto} {c.snippet}")
         o.falta_monto = (c.monto or 0) <= 0
         if o.banco_detectado and not o.falta_cuenta and not o.cuenta_sugerida_id:
@@ -573,6 +583,15 @@ def _lote_de_sincronizacion(db: Session, usuario_id: str, perfil: Perfil, comple
     modelo = ClasificadorUsuario(db, usuario_id)
     cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).all()
     _correr_lote(gmail, db, usuario_id, sync, label_id, modelo, cuentas, _clave_pdf(db, usuario_id))
+    # Los correos de gastos que YA tienen su movimiento (atajo, a mano, extracto...) no son novedad:
+    # se enlazan a él y no salen en «Por revisar». Lo que el usuario borró tampoco resucita.
+    absorbidos = absorber_correos(db, usuario_id, cuentas=cuentas)
+    quitar = absorbidos["ya_registrados"] + absorbidos["descartados"]
+    if quitar:
+        if sync.en_curso:
+            sync.nuevos = max(0, (sync.nuevos or 0) - quitar)
+        else:
+            sync.ultimo_nuevos = max(0, (sync.ultimo_nuevos or 0) - quitar)
     if sync.en_curso:
         despues_n, despues_e = (sync.nuevos or 0), (sync.extractos_nuevos or 0)
     else:
@@ -724,14 +743,15 @@ def cron_sincronizar(db: Session = Depends(get_db), x_cron_secret: str = Header(
 
 @router.get("/lista", response_model=list[CorreoGastoOut])
 def listar_correos(
-    filtro: str = Query("nuevos", pattern="^(nuevos|aprobados|ignorados|descartados|todos)$"),
+    filtro: str = Query("nuevos", pattern="^(nuevos|aprobados|ignorados|descartados|ya_registrados|todos)$"),
     limite: int = Query(30, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
     """Correos leídos por estado, de a `limite` ('cargar más' con `offset`)."""
-    estados = {"nuevos": "pendiente", "aprobados": "aprobado", "ignorados": "ignorado", "descartados": "descartado"}
+    estados = {"nuevos": "pendiente", "aprobados": "aprobado", "ignorados": "ignorado", "descartados": "descartado",
+               "ya_registrados": "ya_registrado"}
     q = db.query(CorreoGasto).filter(CorreoGasto.usuario_id == usuario.id)
     if filtro != "todos":
         q = q.filter(CorreoGasto.estado == estados[filtro])
@@ -904,6 +924,8 @@ def borrar_clave_pdf(
 def listar_pendientes(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
+    # Autocuración: lo que ya tiene su movimiento (llegó antes por otro canal) no se ofrece para revisar.
+    absorber_correos(db, usuario.id)
     return _con_cuenta(db, usuario.id, (
         db.query(CorreoGasto)
         .filter(
@@ -1052,6 +1074,7 @@ def aprobar_correo(
         cat_confirmada=correo.categoria_sugerida == "Otros" or bool(data.categoria),
     )
     db.add(movimiento)
+    dup.nuevo_movimiento(db, movimiento, dup.ORIGEN_CORREO, dup.huella_correo(correo.gmail_msg_id))
 
     if tipo == "income":
         cuenta.saldo += correo.monto
@@ -1084,3 +1107,26 @@ def descartar_correo(
     db.commit()
     db.refresh(correo)
     return correo
+
+
+@router.post("/{correo_id}/no-es-duplicado", response_model=CorreoGastoOut)
+def correo_no_es_duplicado(
+    correo_id: str,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«Mostrar de todos modos / No es duplicado»: un correo que se dio por ya registrado era OTRO
+    gasto igual. Vuelve a «Por revisar» y no se vuelve a esconder (ni al sincronizar de nuevo)."""
+    correo = (
+        db.query(CorreoGasto)
+        .filter(CorreoGasto.id == correo_id, CorreoGasto.usuario_id == usuario.id)
+        .first()
+    )
+    if not correo:
+        raise HTTPException(status_code=404, detail="Correo no encontrado")
+    if correo.estado != "ya_registrado":
+        raise HTTPException(status_code=400, detail="Este correo no estaba marcado como ya registrado")
+    dup.mostrar_de_todos_modos(db, usuario.id, correo)
+    db.commit()
+    db.refresh(correo)
+    return _con_cuenta(db, usuario.id, [correo])[0]

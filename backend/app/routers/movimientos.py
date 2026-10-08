@@ -10,6 +10,7 @@ from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user, get_current_user_by_api_key
 from sqlalchemy import and_, or_
 
+from app import duplicados as dup
 from app.clave_comercio import clave_comercio, huella_en_descripcion
 from app.autocat import (
     ClasificadorUsuario,
@@ -140,7 +141,7 @@ def listar_movimientos(
     if por_revisar:
         query = query.filter(_PENDIENTE_REVISION)
 
-    return query.order_by(Movimiento.fecha.desc()).offset(offset).limit(limit).all()
+    return dup.anotar_canales(db, query.order_by(Movimiento.fecha.desc()).offset(offset).limit(limit).all())
 
 
 @router.get("/por-revisar/conteo")
@@ -283,6 +284,7 @@ def obtener_movimiento(
     )
     if not mov:
         raise HTTPException(status_code=404, detail="Movimiento no encontrado")
+    dup.anotar_canales(db, [mov])
     return mov
 
 
@@ -296,6 +298,24 @@ def crear_movimiento(
     if not cuenta or not puede_editar_cuenta(db, usuario.id, cuenta):
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
     cuenta = bloquear_cuenta(db, cuenta.id)  # saldo consistente si llegan dos registros a la vez
+
+    # ¿Ya lo tienes por el atajo, el correo, el extracto...? Se avisa en vez de duplicarlo
+    # (otro gasto igual de verdad: se reenvía con confirmar_nuevo=true).
+    if data.tipo in ("income", "expense") and not data.confirmar_nuevo:
+        pareja = dup.buscar_pareja(db, usuario.id, dup.Cand(
+            id="nuevo", origen=dup.ORIGEN_MANUAL, tipo=data.tipo, monto=float(data.monto),
+            fecha=data.fecha or ahora_co(), cuentas=frozenset({cuenta.id}), texto=data.descripcion,
+            moneda=cuenta.moneda or "COP"))
+        if pareja is not None and not pareja.fantasma:
+            m = pareja.ref
+            raise HTTPException(status_code=409, detail={
+                "codigo": "posible_duplicado",
+                "mensaje": f"Ya tienes este {'ingreso' if data.tipo == 'income' else 'gasto'} registrado desde "
+                           f"{dup.ETIQUETA_CANAL[dup.origen_de_movimiento(m)]}: «{m.descripcion}». "
+                           "¿Es otro igual o es el mismo?",
+                "movimiento_id": m.id,
+                "canal": dup.origen_de_movimiento(m),
+            })
 
     categoria = data.categoria
     auto = datos_auto(None)
@@ -319,10 +339,14 @@ def crear_movimiento(
     )
     db.add(movimiento)
     cuenta.saldo += _delta_saldo(data.tipo, data.monto)
+    if data.tipo in ("income", "expense"):
+        dup.nuevo_movimiento(db, movimiento, dup.ORIGEN_MANUAL)
 
     db.commit()
     db.refresh(movimiento)
     registrar_actividad_hoy(db, usuario.id)
+    if data.tipo in ("income", "expense"):
+        dup.absorber_correos(db, usuario.id)  # los correos de este gasto ya no salen en «Por revisar»
     return movimiento
 
 
@@ -531,6 +555,7 @@ def eliminar_masivo(
     borrables = sorted((m for m in movs if m.fuente != FUENTE_TRANSFERENCIA), key=lambda m: m.cuenta_id)
     try:
         for mov in borrables:
+            dup.descartar_movimiento(db, mov)
             _borrar_normal(db, usuario, mov)
     except HTTPException:
         db.rollback()
@@ -584,6 +609,7 @@ def eliminar_movimiento(
         _eliminar_transferencia(db, usuario, mov)
         return {"ok": True}
 
+    dup.descartar_movimiento(db, mov)  # el correo/extracto equivalente no lo resucita
     _borrar_normal(db, usuario, mov)
     db.commit()
     return {"ok": True}
@@ -672,6 +698,8 @@ def _registrar_movimiento_rapido(
     origen_auto: str | None = None,
     detectar_duplicado: bool = False,
     empate_out: list | None = None,
+    id_transaccion: str | None = None,
+    absorbido_out: list | None = None,
 ) -> tuple[Movimiento, Cuenta, bool]:
     """Crea el movimiento de un registro automático y devuelve (movimiento,
     cuenta, duplicado).
@@ -722,7 +750,18 @@ def _registrar_movimiento_rapido(
     nota_usuario = (descripcion or "").strip()
     if es_cierre and not nota_usuario:
         descripcion = f"Movimiento en {cuenta.nombre}"
+    # Huella de ESTE disparo del atajo: un reintento (o el mismo aviso llegando otra vez) nunca crea otro.
+    huella = dup.huella_atajo(cuenta.id, tipo, monto, descripcion, momento, id_transaccion)
     if detectar_duplicado:
+        previa = dup.buscar_huella(db, usuario_id, huella, (dup.ESTADO_VIGENTE,))
+        if previa is not None and previa.movimiento_id:
+            ya = db.query(Movimiento).filter(Movimiento.id == previa.movimiento_id).first()
+            # Con id de transacción explícito, el mismo id SIEMPRE es el mismo pago. Con la huella por
+            # minuto, solo si el movimiento sigue siendo de ese momento (como el reintento de ±2 min).
+            if ya is not None and (huella.startswith("tx:") or dup.origen_de_movimiento(ya) != dup.ORIGEN_ATAJO
+                                   or abs(ya.fecha - momento) <= timedelta(minutes=2)):
+                cuenta_ya = db.query(Cuenta).filter(Cuenta.id == ya.cuenta_id).first() or cuenta
+                return ya, cuenta_ya, True
         # Cierre de app: el Atajo no trae comercio, así que un reintento se
         # reconoce por monto+cuenta+tipo en ±1 min. Wallet/atajo: ±2 min y mismo comercio.
         ventana = timedelta(minutes=1 if es_cierre else 2)
@@ -739,7 +778,35 @@ def _registrar_movimiento_rapido(
             filtros.append(func.lower(Movimiento.descripcion) == descripcion.lower())
         existente = db.query(Movimiento).filter(*filtros).first()
         if existente:
+            if dup.origen_de_movimiento(existente) != dup.ORIGEN_ATAJO and not es_cierre:
+                # No es un reintento del atajo: es el mismo gasto que ya llegó por otro canal. Se confirma.
+                dup.confirmar_por_canal(db, existente, dup.ORIGEN_ATAJO, huella, descripcion=descripcion,
+                                        fecha=momento, hora_real=True)
+                db.commit()
+                db.refresh(existente)
+                if absorbido_out is not None:
+                    absorbido_out.append(dup.origen_de_movimiento(existente))
             return existente, cuenta, True
+
+        # ¿Ya lo tienes por otro canal (escrito a mano, el correo del banco, el extracto)? Entonces el
+        # atajo lo CONFIRMA y lo completa en vez de crear otro. El cierre de app no trae comercio:
+        # solo se deduplica contra sí mismo (arriba) y lo cruza luego el extracto.
+        if not es_cierre:
+            ent = dup.Cand(
+                id="atajo", origen=dup.ORIGEN_ATAJO, tipo=tipo, monto=float(monto), fecha=momento,
+                cuentas=frozenset({cuenta.id} | {c.id for c in empate}), texto=descripcion or "",
+                moneda=moneda_cuenta, con_hora=True)
+            pareja = dup.buscar_pareja(db, usuario_id, ent)
+            if pareja is not None and not pareja.fantasma:
+                ya = pareja.ref
+                dup.confirmar_por_canal(db, ya, dup.ORIGEN_ATAJO, huella, descripcion=descripcion,
+                                        fecha=momento, hora_real=True)
+                db.commit()
+                db.refresh(ya)
+                if absorbido_out is not None:
+                    absorbido_out.append(dup.origen_de_movimiento(ya))
+                cuenta_ya = db.query(Cuenta).filter(Cuenta.id == ya.cuenta_id).first() or cuenta
+                return ya, cuenta_ya, True
 
     # Sin nota no hay nada que clasificar: el cierre de app queda en 'Otros'.
     resultado = None if (es_cierre and not nota_usuario) else _clasificar(db, usuario_id, descripcion)
@@ -763,10 +830,12 @@ def _registrar_movimiento_rapido(
     )
     db.add(movimiento)
     cuenta.saldo += _delta_saldo(tipo, monto)
+    dup.nuevo_movimiento(db, movimiento, dup.ORIGEN_ATAJO, huella)
 
     db.commit()
     db.refresh(movimiento)
     registrar_actividad_hoy(db, usuario_id)
+    dup.absorber_correos(db, usuario_id)  # los correos de esta compra ya no salen en «Por revisar»
     return movimiento, cuenta, False
 
 
@@ -787,6 +856,7 @@ def crear_movimiento_rapido(
     fuente = data.fuente if data.fuente in ("apple_pay", "google_pay") else ("wallet" if es_wallet else data.fuente)
     origen = ORIGEN_CIERRE_APP if es_cierre else (ORIGEN_WALLET if es_wallet else ORIGEN_ATAJO)
     empate: list = []
+    absorbido: list = []
     mov, cuenta, duplicado = _registrar_movimiento_rapido(
         db,
         usuario.id,
@@ -801,9 +871,15 @@ def crear_movimiento_rapido(
         origen_auto=origen,
         detectar_duplicado=True,
         empate_out=empate,
+        id_transaccion=data.id_transaccion,
+        absorbido_out=absorbido,
     )
     signo = "Ingreso" if mov.tipo == "income" else "Gasto"
-    if duplicado:
+    if duplicado and absorbido:
+        # Ya estaba por otro canal: el atajo lo confirmó, no se creó otro.
+        mensaje = (f"Ya lo tenías registrado desde {dup.ETIQUETA_CANAL[absorbido[0]]}: {signo.lower()} de "
+                   f"{formato_cop(mov.monto)} en {mov.descripcion}. No lo dupliqué.")
+    elif duplicado:
         mensaje = f"Ya lo tenías: {signo.lower()} de {formato_cop(mov.monto)} en {mov.descripcion}."
     else:
         mensaje = f"{signo} de {formato_cop(mov.monto)} en {mov.descripcion} ({cuenta.nombre}). Confírmalo en CuadraMe."
@@ -830,6 +906,7 @@ def crear_movimiento_rapido(
         duplicado=duplicado,
         por_confirmar=mov.cat_confirmada is False,
         cuenta_nombre=cuenta.nombre,
+        ya_estaba_por=absorbido[0] if absorbido else None,
     )
 
 

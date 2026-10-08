@@ -20,6 +20,7 @@ import BarraProgreso from '../components/BarraProgreso'
 import BloqueCentro from '../components/BloqueCentro'
 import ConexionGmail from '../components/ConexionGmail'
 import CorreosPorRevisar from '../components/CorreosPorRevisar'
+import CorreosYaRegistrados from '../components/CorreosYaRegistrados'
 import CrearCuentaBanco from '../components/CrearCuentaBanco'
 import ExtractosYaConciliados from '../components/ExtractosYaConciliados'
 import Hoja from '../components/Hoja'
@@ -541,6 +542,7 @@ export default function Sincronizacion() {
                   onCuentaCreada={cargar}
                 />
               )}
+              <CorreosYaRegistrados cantidad={estado?.correos_ya_registrados || 0} onCambio={cargar} />
               {correosIgnorados === null ? (
                 <button onClick={verCorreosIgnorados} className="text-xs text-ink-soft mt-3 underline min-h-[32px]">Ver correos ignorados</button>
               ) : (

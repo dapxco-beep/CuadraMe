@@ -252,7 +252,7 @@ def crear_gasto(
         mov = crear_movimiento(
             MovimientoCreate(
                 cuenta_id=cuenta.id, descripcion=data.descripcion.strip(), monto=monto_mov, tipo="expense",
-                categoria=data.categoria, fecha=fecha, notas="Gasto compartido",
+                categoria=data.categoria, fecha=fecha, notas="Gasto compartido", confirmar_nuevo=True,
             ),
             db=db, usuario=usuario,
         )

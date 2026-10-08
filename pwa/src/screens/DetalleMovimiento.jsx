@@ -12,6 +12,7 @@ import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { esAuto } from '../lib/comercio'
 import { HojaCambiarCategoria, InsigniaAuto } from '../components/CategorizacionAuto'
+import InsigniaCanales from '../components/InsigniaCanales'
 import { parchearEnCaches, quitarDeCaches } from '../lib/useEstadoLista'
 import {
   cambiosEsReal,
@@ -472,6 +473,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
             </div>
           )}
           <Fila label="Origen" valor={nombreOrigen(movimiento.fuente)} />
+          {!esTransferencia && <InsigniaCanales canales={movimiento.canales} />}
           {movimiento.notas && !esTransferencia && <Fila label="Notas" valor={movimiento.notas} />}
         </div>
       )}

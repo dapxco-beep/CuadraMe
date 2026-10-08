@@ -282,6 +282,7 @@ def confirmar_movimiento(
             categoria=data.categoria,
             fecha=data.fecha,
             notas="Registrado con CuadraMe AI",
+            confirmar_nuevo=True,  # la persona ya confirmó en la tarjeta del asistente
         ),
         db,
         usuario,

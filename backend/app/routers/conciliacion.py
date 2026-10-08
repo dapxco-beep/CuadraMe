@@ -1,5 +1,6 @@
 import json
 from collections import Counter
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -12,10 +13,13 @@ from app.autocat import (
     ClasificadorUsuario, aplicar_a_anteriores, ajustar_a_categorias_usuario, datos_auto,
     guardar_regla_aprendida, origen_de,
 )
+from app import duplicados as dup
+from app.conciliacion import _CUENTA_UNICA
 from app.wallet import ORIGENES_RAPIDOS
 from app.compartidos import cuenta_accesible, puede_editar_cuenta
 from app.conciliacion import (
     es_transferencia_propia,
+    _cand_extracto,
     auditar_movimientos,
     compute_fingerprint,
     detectar_banco,
@@ -27,7 +31,7 @@ from app.conciliacion import (
     fijar_nombre_titular,
     parse_texto_con_regex,
 )
-from app.contabilidad import con_marca_traslado, tipo_con_direccion
+from app.contabilidad import con_marca_traslado, delta_saldo, tipo_con_direccion
 from app.cuentas_banco import aviso_cuenta_distinta
 from app.database import get_db
 from app.extractos_conciliados import evidencia_conciliado
@@ -140,7 +144,8 @@ def procesar_extracto(
         # La huella del ledger (_cargar_ledger) usa el id de la cuenta; con el nombre
         # nunca coincidían y los movimientos ya registrados salían como "aproximados".
         mov["cuenta"] = cuenta.id
-    resultado = auditar_movimientos(movimientos, ledger, cruzar_rapidos=True)
+    resultado = auditar_movimientos(movimientos, ledger, cruzar_rapidos=True,
+                                    descartados=_descartados(db, usuario.id, cuenta.id, movimientos))
     # ¿Ese mes de esa cuenta ya estaba conciliado? Se mira ANTES de auto-importar o completar
     # nada (si no, este mismo archivo contaría). Solo avisa: no bloquea ni duplica (hay huella).
     ya_conciliado = _periodo_ya_conciliado(db, usuario.id, cuenta.id, resultado["review"])
@@ -175,6 +180,7 @@ def procesar_extracto(
             )
             db.add(movimiento)
             db.flush()  # id del movimiento, para poder deshacer
+            dup.nuevo_movimiento(db, movimiento, dup.ORIGEN_EXTRACTO, _huella_linea(db, usuario.id, item))
 
             cuenta.saldo += item["monto"] if tipo_dir == "income" else -item["monto"]
 
@@ -211,12 +217,19 @@ def procesar_extracto(
     db.flush()  # para tener historial.id y marcarlo en los movimientos completados
 
     # Completar con el banco los movimientos rápidos emparejados (1:1).
-    ids_completar = {i["match_id"] for i in resultado["review"] if i["estado"] == "completado"}
+    ids_completar = {i["match_id"] for i in resultado["review"] if i["estado"] in ("completado", "exacto") and i.get("match_id")}
     registrados = (
         {m.id: m for m in db.query(Movimiento).filter(Movimiento.id.in_(ids_completar), Movimiento.usuario_id == usuario.id).all()}
         if ids_completar else {}
     )
     for item in resultado["review"]:
+        if item["estado"] == "exacto" and item.get("match_id"):
+            # Línea idéntica a algo que ya estaba: también queda cruzada con el banco (si no lo estaba).
+            mov = registrados.get(item["match_id"])
+            if mov is not None and mov.conciliado_en is None and dup.origen_de_movimiento(mov) != dup.ORIGEN_EXTRACTO:
+                mov.conciliado_en, mov.extracto_id = ahora_co(), historial.id
+                dup.registrar_canal(db, mov, dup.ORIGEN_EXTRACTO, _huella_linea(db, usuario.id, item))
+            continue
         if item["estado"] != "completado":
             continue
         mov = registrados.get(item["match_id"])
@@ -227,7 +240,8 @@ def procesar_extracto(
             resultado["faltantes"] += 1
             resultado["completados"] -= 1
             continue
-        _completar_con_extracto(db, mov, item, historial.id, modelo, usuario.id)
+        _completar_con_extracto(db, mov, item, historial.id, modelo, usuario.id, cuenta=cuenta,
+                                huella=_huella_linea(db, usuario.id, item))
 
     # Registrados que no aparecen en el extracto: se guardan en la revisión.
     for s in resultado.get("sobrantes", []):
@@ -239,11 +253,13 @@ def procesar_extracto(
     historial.review_json = json.dumps(resultado["review"], default=str)
     db.commit()
     db.refresh(historial)
+    dup.absorber_correos(db, usuario.id)  # correos de lo que acaba de entrar (o conciliarse) ya no salen por revisar
     completados, sobrantes = _contar_review(resultado["review"])
 
     return ProcesarExtractoResponse(
         autoimportar_activo=autoimportar,
-        ya_registrados=resultado["exactos"] + resultado["aproximados"] + completados,
+        ya_registrados=resultado["exactos"] + resultado["aproximados"] + completados + resultado.get("borrados_antes", 0),
+        borrados_antes=resultado.get("borrados_antes", 0),
         propuesta_tarjeta=_propuesta_tarjeta(cuenta, texto_plano),
         aviso_cuenta=aviso_cuenta_distinta(cuenta, texto_plano[:6000], db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()),
         ok=True,
@@ -261,6 +277,48 @@ def procesar_extracto(
         ya_conciliado=ya_conciliado,
         **_periodo(resultado["review"]),
     )
+
+
+def _huella_linea(db: Session, usuario_id: str, item: dict) -> str:
+    """Huella de una línea del extracto: su fingerprint + un ordinal (dos líneas idénticas el mismo día
+    son dos movimientos distintos). Cuenta también las que el usuario ya borró."""
+    fp = item.get("fingerprint") or ""
+    return dup.huella_extracto(fp, dup.siguiente_ordinal(db, usuario_id, f"ext:{fp}"))
+
+
+def _absorbidas_por_otro_canal(db: Session, usuario_id: str, cuenta, items: list[dict]) -> dict:
+    """{id(item): Movimiento existente | None (None = lo borraste antes)} de las líneas que otro canal
+    ya registró. Emparejamiento 1:1 con la regla central, solo contra lo que aún no está conciliado."""
+    if not items:
+        return {}
+    entrantes = []
+    for n, it in enumerate(items):
+        c = _cand_extracto(n, it)
+        c.cuentas = frozenset({cuenta.id})
+        entrantes.append(c)
+    fechas = [c.fecha for c in entrantes]
+    desde, hasta = min(fechas) - timedelta(days=4), max(fechas) + timedelta(days=5)
+    existentes = [e for e in dup.existentes_para(db, usuario_id, {cuenta.id}, desde, hasta, fantasmas=True)
+                  if e.fantasma or e.ref.conciliado_en is None]
+    existentes.sort(key=lambda e: e.fecha)
+    salida = {}
+    for i, j, _p in dup.emparejar(entrantes, existentes):
+        salida[id(items[i])] = None if existentes[j].fantasma else existentes[j].ref
+    return salida
+
+
+def _descartados(db: Session, usuario_id: str, cuenta_id: str, movimientos: list[dict]) -> dict:
+    """Lo que el usuario borró de esta cuenta (por huella de línea y por la foto del movimiento):
+    una línea del extracto que coincide con eso NO resucita el movimiento."""
+    fechas = [d for d in (parse_bank_date(m.get("fecha")) for m in movimientos) if d]
+    fantasmas = []
+    if fechas:
+        fantasmas = [f for f in dup.fantasmas_de(db, usuario_id, {cuenta_id}, min(fechas) - timedelta(days=4),
+                                                 max(fechas) + timedelta(days=5))
+                     if dup.ORIGEN_EXTRACTO not in f.canales]
+        for f in fantasmas:
+            f.cuentas = _CUENTA_UNICA
+    return {"fingerprints": dup.huellas_extracto_descartadas(db, usuario_id, cuenta_id), "fantasmas": fantasmas}
 
 
 def _no_parece_extracto(banco: str, motivo: str) -> ProcesarExtractoResponse:
@@ -344,7 +402,9 @@ def obtener_review(
         completados=completados,
         sobrantes=sobrantes,
         auto_importados=sum(1 for i in review if i.get("auto") and i.get("estado") == "importado"),
-        ya_registrados=historial.exactos + historial.aproximados + completados,
+        ya_registrados=historial.exactos + historial.aproximados + completados
+        + sum(1 for i in review if i.get("estado") == "borrado_antes"),
+        borrados_antes=sum(1 for i in review if i.get("estado") == "borrado_antes"),
         **_periodo(review),
     )
 
@@ -391,6 +451,7 @@ def deshacer_auto_importados(
                 cuenta.saldo -= mov.monto
             elif mov.tipo == "expense":
                 cuenta.saldo += mov.monto
+            dup.olvidar_movimiento(db, mov)  # deshacer NO cuenta como borrado del usuario: la línea puede volver
             db.delete(mov)
             item["estado"] = "faltante"
             deshechos += 1
@@ -443,11 +504,21 @@ def importar_faltantes(
     # mismo día (dos envíos de $20.000 a la misma persona) son DOS, no un duplicado. De lo
     # registrado con una huella solo sobra para "duplicado" lo que este mismo extracto aún
     # no explica (sus líneas ya exactas o importadas).
-    en_libro = Counter(r["fingerprint"] for r in _cargar_ledger(db, usuario.id, cuenta.id))
+    # Lo que ESTE extracto ya cruzó (movimientos completados con su texto del banco) tampoco cuenta como
+    # «ya registrado» de otra línea idéntica: dos cafés iguales del banco con uno solo registrado son dos.
+    completados_aqui = {i.get("match_id") for i in review if i.get("estado") == "completado"}
+    en_libro = Counter(r["fingerprint"] for r in _cargar_ledger(db, usuario.id, cuenta.id)
+                       if r["id"] not in completados_aqui)
     explicados = Counter(i.get("fingerprint") for i in review if i.get("estado") in ("exacto", "importado"))
     ya_registrados = {fp: n - explicados[fp] for fp, n in en_libro.items() if n > explicados[fp]}
     duplicados_omitidos = 0
     sin_direccion = 0
+
+    # Regla central: entre calcular la revisión y confirmarla, el atajo, el correo o la app pudieron
+    # registrar alguna de estas líneas. Esas se CONCILIAN con lo que ya existe; solo se insertan las
+    # líneas sin pareja (y las que borraste antes no resucitan).
+    absorbidas = _absorbidas_por_otro_canal(
+        db, usuario.id, cuenta, [i for i in review if i.get("fingerprint") in fingerprints and i.get("estado") == "faltante"])
 
     for item in review:
         fp = item.get("fingerprint")
@@ -456,6 +527,16 @@ def importar_faltantes(
         tipo_dir, notas_mov = _tipo_y_notas(item, f"Importado desde extracto {historial.banco_detectado}")
         if not tipo_dir:
             sin_direccion += 1  # 'transfer' viejo sin dirección deducible: se omite, no se adivina
+            continue
+        if id(item) in absorbidas:
+            existente = absorbidas[id(item)]
+            if existente is None:
+                item["estado"] = "borrado_antes"
+            else:
+                _completar_con_extracto(db, existente, item, historial.id, modelo, usuario.id, cuenta=cuenta,
+                                        huella=_huella_linea(db, usuario.id, item))
+                item["estado"] = "completado"
+            duplicados_omitidos += 1
             continue
         if ya_registrados.get(fp, 0) > 0:
             ya_registrados[fp] -= 1
@@ -488,6 +569,7 @@ def importar_faltantes(
             **auto,
         )
         db.add(movimiento)
+        dup.nuevo_movimiento(db, movimiento, dup.ORIGEN_EXTRACTO, _huella_linea(db, usuario.id, item))
 
         cuenta.saldo += item["monto"] if tipo_dir == "income" else -item["monto"]
 
@@ -509,6 +591,7 @@ def importar_faltantes(
         historial.estado = "conciliado"
 
     db.commit()
+    dup.absorber_correos(db, usuario.id)
     return {
         "ok": True, "importados": importados, "sin_categoria_clara": sin_categoria_clara,
         "categorizados_auto": categorizados_auto, "reglas_guardadas": reglas_guardadas,
@@ -550,6 +633,7 @@ def _cargar_ledger(db: Session, usuario_id: str, cuenta_id: str) -> list[dict]:
         .filter(Movimiento.usuario_id == usuario_id, Movimiento.cuenta_id == cuenta_id)
         .all()
     )
+    canales = dup.canales_de(db, usuario_id, [m.id for m in movimientos])
     ledger = []
     for m in movimientos:
         fp = compute_fingerprint(m.fecha, m.monto, cuenta_id, m.descripcion, m.tipo)
@@ -563,40 +647,71 @@ def _cargar_ledger(db: Session, usuario_id: str, cuenta_id: str) -> list[dict]:
             "fingerprint": fp,
             "rapido": es_movimiento_rapido(m),
             "conciliado": m.conciliado_en is not None,
+            "extracto_id": m.extracto_id,
+            # Canal de origen y canales que ya lo confirmaron (regla central, app/duplicados.py).
+            # Lo que no es una compra de un canal (traslados, aportes a metas) no se empareja.
+            "origen": dup.origen_de_movimiento(m),
+            "canales": canales.get(m.id, set()),
+            "flexible": "Original:" in (m.notas or ""),
+            "emparejable": dup.es_emparejable(m),
         })
     return ledger
 
 
-def _completar_con_extracto(db: Session, mov: Movimiento, item: dict, historial_id: str, modelo, usuario_id: str) -> None:
-    """Completa un movimiento rápido con los datos reales del banco.
+def _completar_con_extracto(db: Session, mov: Movimiento, item: dict, historial_id: str, modelo, usuario_id: str,
+                            cuenta: Cuenta | None = None, huella: str | None = None) -> None:
+    """Concilia con el banco un movimiento que YA existía (atajo, correo, a mano...). No inserta nada.
 
-    - La descripción pasa a ser la del banco; si el usuario había escrito una
-      propia (nota del Atajo, voz) se conserva en `notas`. La descripción de
-      Wallet no cuenta como propia: ya es el comercio.
-    - Categoría: si la nota ya la había clasificado, se respeta; si seguía en
-      'Otros', se sugiere con el clasificador usando el texto del banco.
-    - Queda conciliado (no se vuelve a emparejar) y, si la categoría ya no es
-      'Otros', confirmado (sale de la bandeja 'por confirmar').
-    El monto y el saldo NO se tocan: si difieren, se informa en la revisión."""
+    - Movimiento rápido (atajo/voz/cierre de app): la descripción pasa a ser la del banco; si el
+      usuario había escrito una propia se conserva en `notas`. La descripción de Wallet no cuenta
+      como propia: ya es el comercio. Si seguía en 'Otros' se sugiere categoría con el texto del
+      banco y, si ya no es 'Otros', queda confirmado (sale de «por confirmar»).
+    - Correo o a mano: la descripción y la categoría que ya tenía NO se tocan (el banco suele escribir
+      un texto críptico); solo se concilia.
+    - Fecha: si la que había era aproximada (a mano, sin hora) se corrige con la del banco. Una hora
+      real (atajo/correo) se respeta.
+    - Monto: si difiere solo por redondeo (≤ $1) se corrige al exacto del banco y el saldo de la
+      cuenta se ajusta por esa diferencia. Una diferencia mayor (propina, conversión de moneda) NO
+      se toca: se informa en la revisión.
+    - Queda conciliado (no se vuelve a emparejar) y anota 'extracto' como canal que lo confirmó."""
     propia = (mov.descripcion or "").strip()
-    es_propia = bool(propia) and not propia.startswith(DESCRIPCION_POR_DEFECTO) and mov.fuente not in ("wallet", "apple_pay", "google_pay")
-    if es_propia and normalize_texto(propia) != normalize_texto(item["descripcion"]):
-        mov.notas = ((mov.notas + " · ") if mov.notas else "") + f"Nota: {propia}"
-    mov.descripcion = item["descripcion"]
+    monto_antes = mov.monto
+    if es_movimiento_rapido(mov):
+        es_propia = bool(propia) and not propia.startswith(DESCRIPCION_POR_DEFECTO) and mov.fuente not in ("wallet", "apple_pay", "google_pay")
+        if es_propia and normalize_texto(propia) != normalize_texto(item["descripcion"]):
+            mov.notas = ((mov.notas + " · ") if mov.notas else "") + f"Nota: {propia}"
+        mov.descripcion = item["descripcion"]
 
-    categoria = mov.categoria or "Otros"
-    if categoria == "Otros":
-        clasif = modelo.clasificar(item["descripcion"])
-        if clasif:
-            categoria = ajustar_a_categorias_usuario(db, usuario_id, clasif["categoria"])
-    mov.categoria = categoria
-    if categoria != "Otros":
-        mov.cat_confirmada = True
+        categoria = mov.categoria or "Otros"
+        if categoria == "Otros":
+            clasif = modelo.clasificar(item["descripcion"])
+            if clasif:
+                categoria = ajustar_a_categorias_usuario(db, usuario_id, clasif["categoria"])
+        mov.categoria = categoria
+        if categoria != "Otros":
+            mov.cat_confirmada = True
+    else:
+        categoria = mov.categoria or "Otros"
+
+    fecha_banco = parse_bank_date(item.get("fecha"))
+    if fecha_banco and mov.fecha and fecha_banco.date() != mov.fecha.date():
+        sin_hora = (mov.fecha.hour, mov.fecha.minute, mov.fecha.second) == (0, 0, 0)
+        if sin_hora or dup.origen_de_movimiento(mov) in (dup.ORIGEN_MANUAL, dup.ORIGEN_IMPORTACION):
+            mov.fecha = fecha_banco.replace(hour=mov.fecha.hour, minute=mov.fecha.minute, second=mov.fecha.second)
+    dif = float(item.get("monto") or 0) - float(mov.monto or 0)
+    moneda = ((cuenta.moneda if cuenta is not None else None) or "COP").upper()
+    if dif and abs(dif) <= (dup.TOLERANCIA_REDONDEO_COP if moneda == "COP" else dup.TOLERANCIA_REDONDEO_OTRA):
+        antes = delta_saldo(mov)
+        mov.monto = float(item["monto"])
+        if cuenta is not None:
+            cuenta.saldo += delta_saldo(mov) - antes
+
     mov.conciliado_en = ahora_co()
     mov.extracto_id = historial_id
+    dup.registrar_canal(db, mov, dup.ORIGEN_EXTRACTO, huella)
     item["categoria_sugerida"] = categoria
     item["descripcion_registrada"] = propia
-    item["monto_registrado"] = mov.monto
+    item["monto_registrado"] = monto_antes
 
 
 def _contar_review(review: list[dict]) -> tuple[int, int]:

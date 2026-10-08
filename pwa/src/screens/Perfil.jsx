@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Mail, Receipt, Check, ChevronRight, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
+import { Bell, Mail, Receipt, Check, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -146,6 +146,14 @@ export default function Perfil() {
           <Link to="/movimientos" className="flex items-center gap-3 px-4 py-3.5">
             <List size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Todos mis movimientos</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/buscar-duplicados" className="flex items-center gap-3 px-4 py-3.5">
+            <CopyCheck size={20} className="text-accent shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Buscar movimientos repetidos</p>
+              <p className="text-xs text-ink-soft mt-0.5">Si un gasto quedó anotado dos veces, lo juntamos</p>
+            </div>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/compartir" className="flex items-center gap-3 px-4 py-3.5">

@@ -55,6 +55,7 @@ export default function Agregar() {
   const [mostrarFecha, setMostrarFecha] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const [posibleDuplicado, setPosibleDuplicado] = useState(null) // mensaje del servidor si ya lo tiene por otro canal
   const carruselRef = useRef(null)
   const montoRef = useRef(null)
   const [params] = useSearchParams()
@@ -145,8 +146,9 @@ export default function Agregar() {
     })
   }
 
-  async function guardar() {
+  async function guardar(confirmarNuevo = false) {
     setError('')
+    setPosibleDuplicado(null)
     if (!cuentaId) return setError('Crea una cuenta primero')
     if (!monto || Number(monto) <= 0) return setError('Ingresa un monto válido')
     if (!esTransferencia && !descripcion.trim()) return setError('Ingresa una descripción')
@@ -172,6 +174,7 @@ export default function Agregar() {
         tipo,
         categoria: categoria || undefined,
         fecha: fecha ? `${fecha}T12:00:00` : undefined,
+        ...(confirmarNuevo ? { confirmar_nuevo: true } : {}),
       })
       await recargarCuentas()
       // Un ingreso abre la sugerencia de reparto (fijos, ahorro, gasto libre); el
@@ -182,7 +185,12 @@ export default function Agregar() {
       }
       volver()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      // Ya lo tienes por otro canal (atajo, correo, extracto): se pregunta en vez de duplicarlo.
+      if (err.status === 409 && err.detalle?.codigo === 'posible_duplicado') {
+        setPosibleDuplicado(err.detalle.mensaje || err.message)
+      } else {
+        setError(err.message || 'No se pudo guardar')
+      }
     } finally {
       setGuardando(false)
     }
@@ -434,9 +442,31 @@ export default function Agregar() {
 
       {error && <p className="px-5 text-sm text-danger mb-3">{error}</p>}
 
+      {posibleDuplicado && (
+        <div className="mx-5 mb-4 rounded-2xl border border-accent bg-accent-soft p-4" role="alert" data-testid="posible-duplicado">
+          <p className="text-sm font-semibold">Parece que ya lo tienes</p>
+          <p className="text-sm mt-1">{posibleDuplicado}</p>
+          <div className="flex flex-col gap-2 mt-3">
+            <button
+              onClick={volver}
+              className="rounded-xl bg-ink text-paper py-2.5 min-h-[44px] text-sm font-semibold"
+            >
+              Es el mismo, no lo agregues
+            </button>
+            <button
+              onClick={() => guardar(true)}
+              disabled={guardando}
+              className="rounded-xl border border-line bg-paper-raised py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
+            >
+              Es otro gasto igual, agrégalo
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="px-5">
         <button
-          onClick={guardar}
+          onClick={() => guardar()}
           disabled={guardando}
           className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
         >

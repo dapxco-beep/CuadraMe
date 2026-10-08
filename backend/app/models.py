@@ -168,6 +168,42 @@ class Movimiento(Base):
     # completa con los datos del banco y queda conciliado (no se vuelve a tocar).
     conciliado_en = Column(DateTime, nullable=True)
     extracto_id = Column(String, nullable=True)
+    # Deduplicación entre canales (app/duplicados.py). Ambas opcionales: los movimientos
+    # viejos no las tienen y se deducen de `fuente` (ver duplicados.origen_de_movimiento).
+    #   origen: manual | atajo | correo | extracto | importacion  (por dónde NACIÓ el movimiento)
+    #   huella_externa: identificador del canal de origen (id del mensaje de Gmail, huella de la
+    #                   línea del extracto, id de transacción o huella del disparo del atajo).
+    origen = Column(String, nullable=True)
+    huella_externa = Column(String, nullable=True)
+
+
+class HuellaOrigen(Base):
+    """Un canal que confirmó (o descartó) un movimiento: «el correo X», «la línea Y del extracto».
+
+    Sirve para tres cosas: 1) un reintento o re-sincronización del MISMO canal nunca duplica
+    (la huella ya existe); 2) saber por qué canales llegó un movimiento (insignia «Registrado
+    desde: atajo + correo»); 3) recordar lo que el usuario borró: al borrar un movimiento sus
+    filas pasan a 'descartado' (con una foto de cuenta/tipo/monto/fecha) y el correo o extracto
+    equivalente que llegue después NO resucita el movimiento."""
+    __tablename__ = "huellas_origen"
+    __table_args__ = (
+        Index("ix_huellas_usuario_huella", "usuario_id", "huella"),
+        Index("ix_huellas_movimiento", "movimiento_id"),
+    )
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    movimiento_id = Column(String, nullable=True)
+    huella = Column(String, nullable=False)
+    origen = Column(String, nullable=False)
+    estado = Column(String, default="vigente")  # vigente | descartado | no_duplicado
+    # Foto del movimiento (para reconocer, ya borrado, el correo/extracto que llegue después).
+    cuenta_id = Column(String, nullable=True)
+    tipo = Column(String, nullable=True)
+    monto = Column(Float, nullable=True)
+    fecha = Column(DateTime, nullable=True)
+    clave = Column(String, nullable=True)
+    creado_en = Column(DateTime, default=datetime.utcnow)
 
 
 class Presupuesto(Base):

@@ -24,6 +24,7 @@ from app.routers import (
     cuentas,
     cuotas_tarjeta,
     deudas,
+    duplicados,
     exportar,
     extracto_tarjeta,
     facturas,
@@ -110,6 +111,13 @@ if engine.dialect.name == "postgresql":
         conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS api_key_ultimo_uso TIMESTAMP"))
         # Monitor de crecimiento: fecha de alta del perfil (supabase/migraciones/perfil_creado_en.sql).
         conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS creado_en TIMESTAMP"))
+        # Deduplicación entre canales (supabase/migraciones/duplicados_canales.sql). Opcionales.
+        conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS origen VARCHAR NULL"))
+        conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS huella_externa VARCHAR NULL"))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_movimientos_huella "
+            "ON movimientos (usuario_id, huella_externa)"
+        ))
         # Casi toda consulta filtra por cuenta y ordena/filtra por fecha.
         conn.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_movimientos_cuenta_fecha "
@@ -175,6 +183,7 @@ app.include_router(metas.router)
 app.include_router(recurrentes.router)
 app.include_router(deudas.router)
 app.include_router(conciliacion.router)
+app.include_router(duplicados.router)
 app.include_router(perfil.router)
 app.include_router(correos.router)
 app.include_router(insights.router)

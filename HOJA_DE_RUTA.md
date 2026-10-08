@@ -187,6 +187,7 @@ Estas funciones ya están en el código y desplegadas, pero apagadas hasta que c
 - Conciliación de extractos: categoría visible y editable antes de importar, aviso post-importación si algo quedó en "Otros"
 - Registro por voz/Siri (con parser propio de montos en español colombiano)
 - Sentry + backup diario por correo + alerta semanal de uso (código listo, pendiente activar claves)
+- Sin duplicados entre canales (app, atajo, correo, extracto, archivo): regla central en `backend/app/duplicados.py` — huella por canal, emparejamiento 1:1 (monto sin tolerancia salvo redondeo, ventana de fechas por canal), correos que ya tienen movimiento salen como «ya registrado» (no en «Por revisar»), el extracto concilia en vez de insertar, lo borrado no resucita, insignia «Registrado desde» y herramienta «Buscar movimientos repetidos» (Perfil). Columnas nuevas pendientes de aprobar para producción: `movimientos.origen`, `movimientos.huella_externa` y tabla `huellas_origen` (`supabase/migraciones/duplicados_canales.sql`; datos viejos con `backend/tools/calcular_huellas.py`, sin ejecutar).
 
 ---
 
