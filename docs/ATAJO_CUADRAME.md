@@ -1,6 +1,6 @@
 # Atajos de CuadraMe para iPhone
 
-Dos atajos pequeños, en lugar de uno grande, para que sean fáciles de armar en el celular. La versión paso a paso con maquetas está en `docs/crear-atajos-cuadrame.html`.
+Dos atajos pequeños, en lugar de uno grande. Los clientes los instalan por enlace de iCloud (no los arman). La versión paso a paso con maquetas está en `docs/crear-atajos-cuadrame.html`.
 
 | Atajo | Lo llama | Qué recibe | Qué hace |
 |---|---|---|---|
@@ -82,13 +82,21 @@ Si en CuadraMe no existe la cuenta que el cliente elige, no aparece en la lista:
 | No corre sola | Quedó con "Preguntar antes de ejecutar" | Desactívalo |
 | Pregunta cada vez que miras el saldo | El disparador salta al cerrar la app | Toca "No" |
 
-## Compartir con los clientes
+## Cómo llegan los atajos a los clientes (por enlace de iCloud)
 
-1. Vacía el Texto de la clave en cada atajo y deja la pregunta de importación.
-2. Mantén pulsado cada atajo → **Compartir → Copiar enlace de iCloud**.
-3. Se revisan por dentro (clave vacía, propiedades elegidas, pregunta de importación) leyendo el enlace de iCloud.
-4. Se pegan los dos enlaces en `pwa/src/screens/ConectarDispositivo.jsx` (hoy solo existe la constante `ATAJO_ICLOUD_URL`, para el de Apple Pay; falta añadir la del cierre).
-5. Si cambias un atajo, el enlace nuevo es otro. Quien ya lo instaló conserva su versión.
+El cliente ya NO arma nada: en Perfil → Conectar tu celular sigue 3 pasos (crear y copiar su clave, instalar el atajo de pagos, instalar el atajo de cierre) y crea las dos automatizaciones. Al instalar cada atajo, iOS le hace la pregunta de importación «Pega tu clave de Cuádrame» y pega la clave.
+
+| Atajo | Constante en `pwa/src/screens/ConectarDispositivo.jsx` | Enlace |
+|---|---|---|
+| CuadraMe Apple Pay | `ATAJO_ICLOUD_URL` | https://www.icloud.com/shortcuts/8b2de178aff84465a938df4a5ef9c0dc |
+| CuadraMe Cierre | `ATAJO_CIERRE_URL` | https://www.icloud.com/shortcuts/d34fa153ac844631baf36d8e158f7bf4 |
+
+Para actualizar un atajo:
+1. Vacía el Texto de la clave y deja la pregunta de importación «Pega tu clave de Cuádrame».
+2. Mantén pulsado el atajo → **Compartir → Copiar enlace de iCloud**.
+3. Revisa por dentro el enlace (clave vacía, propiedades elegidas, pregunta de importación).
+4. Pega el enlace nuevo en la constante correspondiente. Quien ya instaló el atajo conserva su versión: avísale que lo vuelva a instalar.
+5. La pantalla conserva un bloque plegado «Avanzado: armar los atajos a mano (si el enlace falla)» con las acciones de las secciones de arriba.
 
 ## Lo que Apple no permite
 

@@ -26,6 +26,7 @@ export default function CamposCuentaNueva({ tipo, valores, onCambio }) {
     <div className="mb-4" data-testid="campos-tarjeta">
       <label className="block mb-3">
         <span className="text-xs text-ink-soft">Cupo total</span>
+        <span className="block text-[11px] text-ink-soft">El máximo que el banco te deja gastar con la tarjeta. Lo encuentras en la app de tu banco, en el detalle de la tarjeta.</span>
         <input
           value={valores.cupo}
           onChange={(e) => set('cupo', e.target.value.replace(/[^\d.,]/g, ''))}
@@ -74,7 +75,7 @@ export default function CamposCuentaNueva({ tipo, valores, onCambio }) {
         </label>
       </div>
       <p className="text-[11px] text-ink-soft mb-3">
-        El corte es el día en que el banco cierra tu extracto; el pago es la fecha límite para pagarlo sin intereses.
+        El corte es el día en que el banco cierra tu extracto; el pago es la fecha límite para pagarlo sin intereses. Los dos los encuentras en la app de tu banco, en el detalle de la tarjeta o en tu extracto.
       </p>
       <label className="block">
         <span className="text-xs text-ink-soft">Tasa efectiva anual % (opcional)</span>

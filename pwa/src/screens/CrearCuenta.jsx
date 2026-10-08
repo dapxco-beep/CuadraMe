@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { Mail, Sparkles, Wallet } from 'lucide-react'
 import { api } from '../lib/api'
 import { EncabezadoMarca } from '../brand/Marca'
-import SelectorCuenta from '../components/SelectorCuenta'
+import SelectorCuenta, { TIPOS_CUENTA } from '../components/SelectorCuenta'
+import AgregarOtraDelBanco from '../components/AgregarOtraDelBanco'
 import CamposCuentaNueva, { CAMPOS_VACIOS } from '../components/CamposCuentaNueva'
-import { datosCuentaNueva, validarTarjetaNueva } from '../lib/cuentaNueva'
+import { datosCuentaNueva, productoAlterno, validarTarjetaNueva } from '../lib/cuentaNueva'
+import { marcarRecorridoPendiente } from '../lib/recorrido'
+import { useAuth } from '../lib/AuthContext'
 import { useAlertaVisible } from '../lib/useAlertaVisible'
 
 const PASOS_BIENVENIDA = [
@@ -59,6 +62,13 @@ function Bienvenida({ onContinuar }) {
 }
 
 export default function CrearCuenta({ onCreada }) {
+  const { usuario } = useAuth() || {}
+  // Cuenta nueva: al entrar a Inicio se abre solo el recorrido guiado (una vez).
+  function terminar(cuenta) {
+    marcarRecorridoPendiente(usuario?.id || "anon")
+    onCreada(cuenta)
+  }
+
   const [paso, setPaso] = useState('bienvenida')
   const [nombre, setNombre] = useState('')
   const [tipo, setTipo] = useState('ahorro')
@@ -68,6 +78,12 @@ export default function CrearCuenta({ onCreada }) {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const refError = useAlertaVisible(error)
+  // Banco elegido con los chips y lo ya creado de ese banco: tras crear una cuenta se ofrece
+  // la otra (ahorros <-> tarjeta de crédito) sin volver a elegir banco.
+  const [banco, setBanco] = useState('')
+  const [creada, setCreada] = useState(null) // { cuenta, banco, tipo, nombre }
+  const [hechos, setHechos] = useState({ banco: '', tipos: [] })
+  const [version, setVersion] = useState(0) // remonta el selector al pasar a «la otra cuenta»
 
   async function guardar() {
     setError('')
@@ -80,7 +96,14 @@ export default function CrearCuenta({ onCreada }) {
     setGuardando(true)
     try {
       const cuenta = await api.crearCuenta(datosCuentaNueva({ nombre, tipo, icono, moneda, ...campos }))
-      onCreada(cuenta)
+      const tiposDelBanco = hechos.banco === banco ? hechos.tipos : []
+      const alterno = productoAlterno(tipo)
+      if (banco && alterno && !tiposDelBanco.includes(alterno)) {
+        setHechos({ banco, tipos: [...tiposDelBanco, tipo] })
+        setCreada({ cuenta, banco, tipo, nombre: nombre.trim() })
+      } else {
+        terminar(cuenta)
+      }
     } catch (err) {
       setError(err.message || 'No se pudo crear la cuenta')
     } finally {
@@ -88,8 +111,35 @@ export default function CrearCuenta({ onCreada }) {
     }
   }
 
+  function agregarOtra() {
+    const alterno = productoAlterno(creada.tipo)
+    const t = TIPOS_CUENTA.find((x) => x.id === alterno)
+    setTipo(alterno)
+    setIcono(t.icono)
+    setNombre(`${creada.banco}${t.sufijo}`)
+    setCampos(CAMPOS_VACIOS)
+    setError('')
+    setCreada(null)
+    setVersion((v) => v + 1)
+  }
+
   if (paso === 'bienvenida') {
     return <Bienvenida onContinuar={() => setPaso('formulario')} />
+  }
+
+  if (creada) {
+    return (
+      <div className="flex-1 overflow-y-auto flex flex-col justify-center px-6 py-10 screen-enter">
+        <AgregarOtraDelBanco
+          banco={creada.banco}
+          tipoCreado={creada.tipo}
+          nombreCreada={creada.nombre}
+          onAgregar={agregarOtra}
+          onListo={() => terminar(creada.cuenta)}
+          textoListo="No, continuar"
+        />
+      </div>
+    )
   }
 
   return (
@@ -101,6 +151,9 @@ export default function CrearCuenta({ onCreada }) {
 
       <div className="mb-4">
         <SelectorCuenta
+          key={version}
+          bancoInicial={version > 0 ? banco : ''}
+          onBanco={setBanco}
           nombre={nombre}
           setNombre={setNombre}
           tipo={tipo}

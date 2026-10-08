@@ -23,7 +23,7 @@ vi.mock('../lib/CategoriasContext', () => ({
 }))
 
 import { DialogosProvider } from '../lib/DialogosContext'
-import ConectarDispositivo, { ATAJO_ICLOUD_URL } from '../screens/ConectarDispositivo'
+import ConectarDispositivo, { ATAJO_ICLOUD_URL, ATAJO_CIERRE_URL } from '../screens/ConectarDispositivo'
 import SubidaMultiple from '../components/SubidaMultiple'
 
 const montar = (ui, estado) =>
@@ -36,8 +36,9 @@ const montar = (ui, estado) =>
 beforeEach(() => Object.values(api).forEach((f) => f.mockReset()))
 
 describe('guía de los dos atajos', () => {
-  it('explica dos atajos con sus automatizaciones y conserva el aviso "llega pronto"', () => {
-    expect(ATAJO_ICLOUD_URL).toBe('')
+  it('explica dos atajos instalables por enlace con sus automatizaciones', () => {
+    expect(ATAJO_ICLOUD_URL).toBe('https://www.icloud.com/shortcuts/8b2de178aff84465a938df4a5ef9c0dc')
+    expect(ATAJO_CIERRE_URL).toBe('https://www.icloud.com/shortcuts/d34fa153ac844631baf36d8e158f7bf4')
     api.apiKey.mockResolvedValue({ api_key: 'k' })
     montar(<ConectarDispositivo />)
     expect(screen.getByText('Dos atajos, dos tipos de automatización')).toBeInTheDocument()
@@ -46,7 +47,9 @@ describe('guía de los dos atajos', () => {
     expect(screen.getByText(/Automatización 2: cierre de una app/)).toBeInTheDocument()
     expect(screen.getByText(/Se cierra/, { selector: 'b' })).toBeInTheDocument()
     expect(screen.getAllByText(/¿Hiciste algún movimiento\?/).length).toBeGreaterThan(0)
-    expect(screen.getByText(/llega pronto/)).toBeInTheDocument()
+    expect(screen.queryByText(/llega pronto/)).toBeNull()
+    expect(screen.getByRole('link', { name: /Instalar atajo de pagos/ })).toHaveAttribute('href', ATAJO_ICLOUD_URL)
+    expect(screen.getByRole('link', { name: /Instalar atajo de cierre/ })).toHaveAttribute('href', ATAJO_CIERRE_URL)
   })
 
   it('"Probar registro rápido" crea un movimiento por confirmar con fuente cierre_app', async () => {

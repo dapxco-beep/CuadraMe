@@ -15,10 +15,11 @@ import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { ENTIDADES_FINANCIERAS_CO } from '../lib/entidadesFinancierasCO'
 import TarjetaCuenta from '../components/TarjetaCuenta'
-import SelectorCuenta from '../components/SelectorCuenta'
+import SelectorCuenta, { TIPOS_CUENTA } from '../components/SelectorCuenta'
+import AgregarOtraDelBanco from '../components/AgregarOtraDelBanco'
 import PanelTarjetaCredito from '../components/PanelTarjetaCredito'
 import CamposCuentaNueva, { CAMPOS_VACIOS } from '../components/CamposCuentaNueva'
-import { datosCuentaNueva, validarTarjetaNueva } from '../lib/cuentaNueva'
+import { datosCuentaNueva, productoAlterno, validarTarjetaNueva } from '../lib/cuentaNueva'
 import BotonOjo from '../components/BotonOjo'
 import Hoja from '../components/Hoja'
 import { useAlertaVisible } from '../lib/useAlertaVisible'
@@ -192,7 +193,12 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
   const [moneda, setMoneda] = useState(cuenta?.moneda || 'COP')
   const [campos, setCampos] = useState(CAMPOS_VACIOS)
   const [alias, setAlias] = useState(cuenta?.alias_tarjeta || '')
-  const { cuentas: todas = [] } = useCuentas() || {}
+  const { cuentas: todas = [], recargar: recargarCuentas } = useCuentas() || {}
+  // Banco elegido con los chips: tras crear la cuenta se ofrece la otra del mismo banco (ahorros <-> tarjeta).
+  const [banco, setBanco] = useState('')
+  const [creada, setCreada] = useState(null) // { banco, tipo, nombre }
+  const [hechos, setHechos] = useState({ banco: '', tipos: [] })
+  const [version, setVersion] = useState(0)
   // Otras cuentas del mismo banco (ahorros + tarjeta): ahí el alias/últimos 4 dígitos es lo que desempata.
   const hermanas = cuenta ? mismasDelBanco(cuenta, todas).filter((c) => c.id !== cuenta.id) : []
   const [guardando, setGuardando] = useState(false)
@@ -215,6 +221,14 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
         await api.editarCuenta(cuenta.id, { nombre: nombre.trim(), tipo, icono, alias_tarjeta: alias.trim() })
       } else {
         await api.crearCuenta(datosCuentaNueva({ nombre, tipo, icono, moneda, alias, ...campos }))
+        const tiposDelBanco = hechos.banco === banco ? hechos.tipos : []
+        if (banco && productoAlterno(tipo) && !tiposDelBanco.includes(productoAlterno(tipo))) {
+          // La lista de atrás ya se actualiza; la hoja sigue abierta para ofrecer «la otra» del banco.
+          setHechos({ banco, tipos: [...tiposDelBanco, tipo] })
+          setCreada({ banco, tipo, nombre: nombre.trim() })
+          recargarCuentas?.()
+          return
+        }
       }
       onGuardada()
     } catch (err) {
@@ -240,6 +254,33 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
       setError(err.message || 'No se pudo eliminar')
       setEliminando(false)
     }
+  }
+
+  function agregarOtra() {
+    const alterno = productoAlterno(creada.tipo)
+    const t = TIPOS_CUENTA.find((x) => x.id === alterno)
+    setTipo(alterno)
+    setIcono(t.icono)
+    setNombre(`${creada.banco}${t.sufijo}`)
+    setCampos(CAMPOS_VACIOS)
+    setAlias('')
+    setError('')
+    setCreada(null)
+    setVersion((v) => v + 1)
+  }
+
+  if (creada) {
+    return (
+      <Hoja onCerrar={onClose} ariaLabel="Cuenta creada">
+        <AgregarOtraDelBanco
+          banco={creada.banco}
+          tipoCreado={creada.tipo}
+          nombreCreada={creada.nombre}
+          onAgregar={agregarOtra}
+          onListo={onClose}
+        />
+      </Hoja>
+    )
   }
 
   return (
@@ -285,6 +326,9 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
       ) : (
         <div className="mb-4">
           <SelectorCuenta
+            key={version}
+            bancoInicial={version > 0 ? banco : ''}
+            onBanco={setBanco}
             nombre={nombre}
             setNombre={setNombre}
             tipo={tipo}

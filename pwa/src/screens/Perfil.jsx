@@ -8,6 +8,7 @@ import { useDialogos } from '../lib/DialogosContext'
 import SeccionSeguridad from '../components/SeccionSeguridad'
 import SeccionPrivacidad from '../components/SeccionPrivacidad'
 import AsistentePrimerUso from '../components/AsistentePrimerUso'
+import RecorridoEntrada from '../components/RecorridoEntrada'
 import ClaveAtajo from '../components/ClaveAtajo'
 import { useClaveAtajo } from '../lib/useClaveAtajo'
 import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../lib/push'
@@ -120,6 +121,7 @@ export default function Perfil() {
       </section>
 
       {/* Lo que desaparece de Inicio al completarse (u ocultarse) sigue aquí para repasarlo */}
+      <RecorridoEntrada />
       <AsistentePrimerUso variante="perfil" />
 
       <section className="mx-6 mt-6">

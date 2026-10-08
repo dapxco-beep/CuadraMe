@@ -33,6 +33,30 @@ export function datosCuentaNueva({ nombre, tipo, icono, moneda, saldo, cupo, deb
   return datos
 }
 
+// ── Cuenta guiada por banco ────────────────────────────────────────────────
+// Un mismo banco suele dar dos productos: la cuenta de ahorros/débito y la tarjeta de crédito.
+// Estas reglas puras dicen cuál es «la otra» para ofrecerla justo después de crear la primera.
+
+/** 'Nu Colombia' -> 'Nu' (el nombre que la persona dice en voz alta). */
+export function nombreCortoBanco(banco) {
+  return String(banco || '').replace(/\s+Colombia$/i, '').trim() || String(banco || '').trim()
+}
+
+/** Tipo que NO acaba de crear: ahorro -> credito, credito -> ahorro. null si no aplica (efectivo, inversión). */
+export function productoAlterno(tipo) {
+  if (tipo === 'ahorro') return 'credito'
+  if (tipo === 'credito') return 'ahorro'
+  return null
+}
+
+/** Texto del botón «Agregar también mi tarjeta de crédito Nu» / «…mi cuenta de ahorros Nu». */
+export function textoAgregarAlterno(banco, tipoCreado) {
+  const alterno = productoAlterno(tipoCreado)
+  if (!alterno || !banco) return ''
+  const corto = nombreCortoBanco(banco)
+  return alterno === 'credito' ? `Agregar también mi tarjeta de crédito ${corto}` : `Agregar también mi cuenta de ahorros ${corto}`
+}
+
 // null si todo está bien; si no, el mensaje para el cliente.
 export function validarTarjetaNueva({ corte, pago, tasa }) {
   const dia = (v) => v === '' || (Number(v) >= 1 && Number(v) <= 31)

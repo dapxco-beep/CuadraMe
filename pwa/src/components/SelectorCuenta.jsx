@@ -64,8 +64,38 @@ function ChipBanco({ nombre, activo, onClick }) {
   )
 }
 
+// Pregunta en lenguaje simple al elegir un banco: cada opción explica en una línea qué es.
+const PRODUCTOS = [
+  { id: 'ahorro', titulo: 'Mi cuenta de ahorros o débito', explica: 'Gastas plata que ya tienes: cada pago se descuenta de tu saldo.' },
+  { id: 'credito', titulo: 'Mi tarjeta de crédito', explica: 'Gastas plata del banco y la devuelves después: cada compra suma a lo que debes.' },
+]
+
+function PreguntaProducto({ tipo, onElegir }) {
+  return (
+    <section aria-label="Cuenta de ahorros o tarjeta de crédito" data-testid="pregunta-producto">
+      <p className="text-xs text-ink-soft mb-1.5">¿Es tu cuenta de ahorros/débito o tu tarjeta de crédito?</p>
+      <div className="grid gap-2" role="group" aria-label="¿Es tu cuenta de ahorros/débito o tu tarjeta de crédito?">
+        {PRODUCTOS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            aria-pressed={tipo === p.id}
+            onClick={() => onElegir(p.id)}
+            className={`text-left rounded-2xl border px-3.5 py-3 min-h-[44px] transition-colors ${
+              tipo === p.id ? 'bg-accent-soft border-accent' : 'border-line bg-paper-raised'
+            }`}
+          >
+            <span className={`block text-sm font-semibold ${tipo === p.id ? 'text-accent' : ''}`}>{p.titulo}</span>
+            <span className="block text-xs text-ink-soft mt-0.5">{p.explica}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export default function SelectorCuenta({
-  nombre, setNombre, tipo, setTipo, setIcono, moneda, setMoneda, mostrarMoneda = true, bancoInicial = '',
+  nombre, setNombre, tipo, setTipo, setIcono, moneda, setMoneda, mostrarMoneda = true, bancoInicial = '', onBanco,
 }) {
   const [pais, setPais] = useState('CO')
   const [verTodas, setVerTodas] = useState(false)
@@ -74,6 +104,12 @@ export default function SelectorCuenta({
   const [banco, setBanco] = useState(bancoInicial)
 
   const tipoActual = TIPOS_CUENTA.find((t) => t.id === tipo) || TIPOS_CUENTA[0]
+
+  // Quien usa el selector (formularios) se entera del banco para ofrecer luego «la otra cuenta del banco».
+  useEffect(() => {
+    onBanco?.(banco)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [banco])
 
   useEffect(() => {
     if (bancoInicial) setNombre(`${bancoInicial}${tipoActual.sufijo}`)
@@ -169,6 +205,8 @@ export default function SelectorCuenta({
           </button>
         </section>
       )}
+
+      {banco && (tipo === 'ahorro' || tipo === 'credito') && <PreguntaProducto tipo={tipo} onElegir={(id) => elegirTipo(TIPOS_CUENTA.find((t) => t.id === id))} />}
 
       <section aria-label="Datos de la cuenta">
         <input

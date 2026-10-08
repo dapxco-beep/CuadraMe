@@ -15,6 +15,7 @@ import MazoCuentas from '../components/MazoCuentas'
 import ArbolFinanciero from '../components/ArbolFinanciero'
 import CarruselDescubrir from '../components/CarruselDescubrir'
 import AsistentePrimerUso from '../components/AsistentePrimerUso'
+import RecorridoEntrada from '../components/RecorridoEntrada'
 import { etapaPorScore } from '../lib/saludFinanciera'
 import ResumenSaldo from '../components/ResumenSaldo'
 import PreguntaMovimiento from '../components/PreguntaMovimiento'
@@ -198,6 +199,7 @@ export default function Inicio() {
       )}
 
       {/* Primeros pasos: solo mientras falte algo (y no se haya ocultado); luego vive en Perfil */}
+      <RecorridoEntrada variante="inicio" />
       <AsistentePrimerUso variante="inicio" />
 
       {/* ≥1024 px: dos columnas (lo principal | el resto plegado). En teléfono los wrappers

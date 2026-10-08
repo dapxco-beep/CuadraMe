@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ChevronDown, LifeBuoy, Mail, Search } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
 import GuiaInstalar from '../components/GuiaInstalar'
+import RecorridoEntrada from '../components/RecorridoEntrada'
 import Icono from '../components/Icono'
 import { Boton, CampoTexto } from '../components/ui'
 import { agruparPorTema, buscarPreguntas, PREGUNTAS } from '../lib/ayuda'
@@ -132,6 +133,8 @@ export default function Ayuda() {
           {buscando ? `${resultados.length} ${resultados.length === 1 ? 'respuesta' : 'respuestas'}` : ''}
         </p>
       </div>
+
+      {!buscando && <RecorridoEntrada />}
 
       {resultados.length === 0 ? (
         <EstadoVacio

@@ -8,9 +8,13 @@ import { useClaveAtajo } from '../lib/useClaveAtajo'
 const API_URL = 'https://backend-production-aeab.up.railway.app/movimientos/rapido'
 const API_URL_VOZ = 'https://backend-production-aeab.up.railway.app/movimientos/rapido-voz'
 
-// Enlace de iCloud del Atajo ya armado ("Agregar atajo" en un toque). Mientras esté
-// vacío se muestra "pronto" y las instrucciones para armarlo a mano con acciones nativas.
-export const ATAJO_ICLOUD_URL = ''
+// Enlaces de iCloud de los dos atajos ya armados: el cliente NO construye nada, solo los instala
+// y, cuando iOS le pregunta «Pega tu clave de Cuádrame», pega la clave del paso 1.
+//  - Pagos con Apple Pay (la automatización «Transacción» le entrega comercio, monto y tarjeta).
+//  - Cierre de la app del banco (pregunta «¿Hiciste algún movimiento?»).
+// Si un enlace cambia, quien ya instaló el atajo conserva su versión: hay que pegar el nuevo aquí.
+export const ATAJO_ICLOUD_URL = 'https://www.icloud.com/shortcuts/8b2de178aff84465a938df4a5ef9c0dc'
+export const ATAJO_CIERRE_URL = 'https://www.icloud.com/shortcuts/d34fa153ac844631baf36d8e158f7bf4'
 
 const JSON_DEL_ATAJO = `{
   "comercio": "<Comercio de la transacción>",
@@ -182,6 +186,33 @@ function CapturaAutomatizacion() {
       <Fila y={28} ancho={70} resaltada etiqueta="Transacción" />
       <Fila y={54} ancho={90} etiqueta="Tus tarjetas" />
       <Fila y={80} ancho={110} etiqueta="Ejecutar inmediatamente" />
+    </Pantalla>
+  )
+}
+
+// Lo que verá la persona al instalar un atajo: iOS pregunta por la clave y ella la pega.
+function CapturaPegarClave({ titulo = 'CuadraMe Apple Pay' }) {
+  return (
+    <Pantalla titulo={`Dibujo: al instalar ${titulo}, iOS pregunta «Pega tu clave de Cuádrame»; mantén presionado y elige Pegar`}>
+      <text x="14" y="20" fontSize="10" fontWeight="700" className="fill-ink">{titulo}</text>
+      <text x="14" y="38" fontSize="8" className="fill-ink-soft">Pega tu clave de Cuádrame</text>
+      <rect x="14" y="44" width="192" height="24" rx="8" className="fill-paper-raised stroke-accent" strokeWidth="1.5" />
+      <text x="22" y="60" fontSize="9" className="fill-ink">cdm_a1b2c3…</text>
+      <rect x="120" y="72" width="54" height="20" rx="8" className="fill-ink" />
+      <text x="147" y="85" fontSize="8" fontWeight="700" textAnchor="middle" className="fill-paper">Pegar</text>
+      <rect x="14" y="96" width="192" height="16" rx="8" className="fill-accent" />
+      <text x="110" y="107" fontSize="8" fontWeight="700" textAnchor="middle" className="fill-paper-raised">Agregar atajo</text>
+    </Pantalla>
+  )
+}
+
+function CapturaCierreApp() {
+  return (
+    <Pantalla titulo="Dibujo: automatización personal con el disparador App, marcando Se cierra">
+      <text x="14" y="20" fontSize="10" fontWeight="700" className="fill-ink">Nueva automatización</text>
+      <Fila y={28} ancho={60} resaltada etiqueta="App" />
+      <Fila y={54} ancho={90} etiqueta="Se cierra" />
+      <Fila y={80} ancho={110} etiqueta="Ejecutar atajo" />
     </Pantalla>
   )
 }
@@ -429,118 +460,135 @@ export default function ConectarDispositivo() {
           </section>
 
           <section className="mx-6 mt-6" aria-label="Guía para iPhone">
-            <h2 className="text-[15px] font-semibold mb-3">Guía paso a paso</h2>
+            <h2 className="text-[15px] font-semibold mb-3">Tres pasos, sin armar nada</h2>
             <ol className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
-              <Paso n={1} titulo="Copia tu clave" dibujo={<CapturaClave />}>
-                <p>Es la llave que le dice al Atajo que los pagos son tuyos.</p>
+              <Paso n={1} titulo="Crea tu clave y cópiala" dibujo={<CapturaClave />}>
+                <p>Es la llave que le dice al atajo que los pagos son tuyos. Tócala para copiarla: la vas a pegar en el paso 2 y en el 3.</p>
                 <div className="mt-2"><ClaveAtajo {...claveAtajo} /></div>
               </Paso>
 
-              <Paso n={2} titulo="Agrega el Atajo" dibujo={<CapturaAtajo />}>
-                {ATAJO_ICLOUD_URL ? (
-                  <a
-                    href={ATAJO_ICLOUD_URL}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-accent text-white text-sm font-semibold py-2.5 px-4"
-                  >
-                    <Download size={16} /> Agregar el Atajo
-                  </a>
-                ) : (
-                  <p className="rounded-xl bg-accent-soft text-accent text-xs font-semibold px-3 py-2 inline-block">
-                    El Atajo de un toque llega pronto. Mientras tanto, créalo en 1 minuto así:
-                  </p>
-                )}
-                <details className="rounded-xl border border-line p-3" open={!ATAJO_ICLOUD_URL}>
-                  <summary className="text-sm font-semibold text-ink cursor-pointer">Armar el Atajo a mano</summary>
-                  <ol className="list-decimal pl-5 mt-2 space-y-2 text-sm">
-                    <li>
-                      Abre <b>Atajos</b> → pestaña «Atajos» → <b>+</b>. Nómbralo «CuadraMe Apple Pay».{' '}
-                      <a href="shortcuts://create-shortcut" className="text-accent font-semibold inline-flex items-center gap-0.5">
-                        Abrir Atajos <ExternalLink size={16} />
-                      </a>
-                    </li>
-                    <li>
-                      Añade la acción <b>Obtener contenido de URL</b>. URL:
-                      <span className="block break-all text-xs text-ink mt-1">{API_URL}</span>
-                      <BotonCopiar texto={API_URL} etiqueta="Copiar URL" className="border border-line text-ink mt-1.5 py-1.5" />
-                    </li>
-                    <li>Toca «Mostrar más»: <b>Método</b> = POST, <b>Cuerpo de la solicitud</b> = JSON.</li>
-                    <li>
-                      Agrega estos campos de texto y, en cada valor, toca la variable <b>Entrada de atajo</b> y elige la
-                      propiedad que corresponde (Comercio, Importe, Tarjeta o pase, Fecha; los nombres pueden variar un
-                      poco según tu iOS):
-                      <pre className="mt-1.5 text-[11px] leading-relaxed whitespace-pre-wrap rounded-lg bg-paper p-2.5 border border-line text-ink">{JSON_DEL_ATAJO}</pre>
-                    </li>
-                    <li>
-                      En <b>Encabezados</b> agrega <b>X-Api-Key</b> = tu clave (la del paso 1) y{' '}
-                      <b>Content-Type</b> = application/json.
-                    </li>
-                    <li>
-                      Añade <b>Obtener valor del diccionario</b> → clave <b>mensaje</b>, y después{' '}
-                      <b>Mostrar notificación</b> con ese valor: verás «Gasto de $18.500 en Juan Valdez…» al pagar.
-                    </li>
-                    <li>
-                      Para el cierre de una app crea un <b>segundo Atajo</b>, «CuadraMe Cierre», más corto: acción{' '}
-                      <b>Texto</b> con tu clave; <b>Elegir del menú</b> «¿Hiciste algún movimiento?» con Gasto / Ingreso /
-                      No (en «No» pon <b>Detener este atajo</b>; en «Gasto» pon un <b>Texto</b> «gasto» y en «Ingreso» un <b>Texto</b> «ingreso»: no las dejes vacías); <b>Solicitar entrada</b>{' '}
-                      (número) «¿Cuánto fue?» y <b>Establecer variable</b> <b>monto</b>; antes de eso, una acción <b>Obtener contenido de URL</b> (método GET, dirección terminada en <b>/movimientos/cuentas-rapido</b>, encabezado X-Api-Key) y <b>Elegir de la lista</b> «¿En qué cuenta?» para escoger tu cuenta; <b>Solicitar entrada</b> (texto)
-                      «¿En qué?» y <b>Establecer variable</b> <b>nota</b>. Luego <b>Obtener contenido de URL</b> igual que
-                      arriba, con este cuerpo, y por último <b>Obtener valor del diccionario</b> (mensaje) y{' '}
-                      <b>Mostrar notificación</b>:
-                      <pre className="mt-1.5 text-[11px] leading-relaxed whitespace-pre-wrap rounded-lg bg-paper p-2.5 border border-line text-ink">{JSON_CIERRE_APP}</pre>
-                      Si dejas la nota vacía, se guarda como «Movimiento en» y el nombre de la cuenta.
-                    </li>
-                  </ol>
-                </details>
-              </Paso>
-
-              <Paso n={3} titulo="Automatización 1: pagos con Apple Pay" dibujo={<CapturaAutomatizacion />}>
+              <Paso n={2} titulo="Instala el atajo de pagos" dibujo={<CapturaPegarClave />}>
                 <p>
-                  En <b>Atajos → Automatización → +</b> elige <b>Transacción</b>, selecciona tus tarjetas de Wallet,
-                  marca <b>Ejecutar inmediatamente</b> y como acción elige el Atajo «CuadraMe Apple Pay».
+                  Toca el botón. Se abre la app <b>Atajos</b> y te pregunta <b>«Pega tu clave de Cuádrame»</b>: mantén
+                  presionado, elige <b>Pegar</b> y toca <b>Agregar atajo</b>.
                 </p>
-                <a href="shortcuts://" className="text-accent font-semibold text-sm inline-flex items-center gap-1">
-                  Abrir Atajos <ExternalLink size={16} />
+                <a
+                  href={ATAJO_ICLOUD_URL}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-accent text-white text-sm font-semibold py-2.5 px-4 min-h-11"
+                >
+                  <Download size={16} /> Instalar atajo de pagos
                 </a>
-                <p className="text-xs">
-                  Tip: si tu tarjeta de Wallet se llama distinto a tu cuenta, ponle un «alias de tarjeta» a la cuenta
-                  (Perfil → Ver y editar mis cuentas) y los pagos caerán en la cuenta correcta.
-                </p>
               </Paso>
 
-              <Paso n={4} titulo="Automatización 2: cierre de una app (una por app)">
+              <Paso n={3} titulo="Instala el atajo de cierre y activa las automatizaciones" dibujo={<CapturaPegarClave titulo="CuadraMe Cierre" />}>
                 <p>
-                  En <b>Atajos → Automatización → +</b> elige <b>App</b>, marca <b>Se cierra</b> y elige la app (Nequi,
-                  Daviplata o tu banco). Añade <b>una sola acción</b>: <b>Ejecutar atajo</b> → «CuadraMe Cierre».
+                  Igual que antes: toca el botón, pega la misma clave cuando la pida y toca <b>Agregar atajo</b>.
                 </p>
-                <p className="text-xs">
-                  Desactiva «Preguntar antes de ejecutar». Repite esto una vez por cada app que quieras vigilar: el mismo
-                  Atajo te pregunta en qué cuenta fue el movimiento. Si tu cuenta no sale en la lista, créala primero en
-                  Cuentas.
-                </p>
-              </Paso>
-
-              <Paso n={5} titulo="Qué verás">
+                <a
+                  href={ATAJO_CIERRE_URL}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-accent text-white text-sm font-semibold py-2.5 px-4 min-h-11"
+                >
+                  <Download size={16} /> Instalar atajo de cierre
+                </a>
                 <p>
-                  <span className="font-semibold text-ink">Al pagar con Apple Pay:</span> una notificación «Gasto de $18.500
-                  en Juan Valdez…» y el movimiento queda «por confirmar» en CuadraMe.
-                </p>
-                <p>
-                  <span className="font-semibold text-ink">Al cerrar tu banco:</span> el celular pregunta «¿Hiciste algún
-                  movimiento?». Con «Gasto» o «Ingreso» te pide el monto y una nota opcional; con «No» no pasa nada.
-                </p>
-                <p>
-                  <span className="font-semibold text-ink">Al subir tu extracto:</span> los movimientos se completan con los
-                  datos del banco y los que no aparecen te los mostramos aparte.
-                </p>
-              </Paso>
-
-              <Paso n={6} titulo="Haz las pruebas">
-                <p>
-                  Baja a «Pruebas». «Enviar un pago de prueba» simula Apple Pay y «Probar registro rápido» simula el cierre
-                  de la app. Si ves «¡Funciona!», ya estás listo.
+                  Falta que el celular los ejecute solo. En <b>Atajos → Automatización → +</b> crea estas dos
+                  (una vez y listo):
                 </p>
               </Paso>
             </ol>
+
+            <div className="mt-3 rounded-2xl bg-paper-raised border border-line p-4 space-y-5" data-testid="automatizaciones">
+              <div>
+                <h3 className="text-sm font-semibold" id="auto-pagos">Automatización 1: pagos con Apple Pay</h3>
+                <div className="mt-2 max-w-[260px]"><CapturaAutomatizacion /></div>
+                <ol className="list-decimal pl-5 mt-2 space-y-1 text-sm text-ink-soft" aria-labelledby="auto-pagos">
+                  <li>Toca <b>Transacción</b> (cuando recibas un pago de Wallet) y elige tus tarjetas.</li>
+                  <li>Toca <b>Siguiente</b> → <b>Ejecutar atajo</b> → «CuadraMe Apple Pay».</li>
+                  <li>Marca <b>Ejecutar inmediatamente</b>.</li>
+                </ol>
+                <p className="text-xs text-ink-soft mt-2">
+                  Tip: si tu tarjeta de Wallet se llama distinto a tu cuenta, ponle un «alias de tarjeta» a la cuenta
+                  (Perfil → Ver y editar mis cuentas) y los pagos caerán en la cuenta correcta.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold" id="auto-cierre">Automatización 2: cierre de una app (una por app)</h3>
+                <div className="mt-2 max-w-[260px]"><CapturaCierreApp /></div>
+                <ol className="list-decimal pl-5 mt-2 space-y-1 text-sm text-ink-soft" aria-labelledby="auto-cierre">
+                  <li>Toca <b>App</b>, elige la app de tu banco (Nequi, Daviplata…) y marca <b>Se cierra</b> (desmarca «Se abre»).</li>
+                  <li>Toca <b>Siguiente</b> → <b>Ejecutar atajo</b> → «CuadraMe Cierre».</li>
+                  <li>Marca <b>Ejecutar inmediatamente</b>. Repite por cada app que quieras vigilar.</li>
+                </ol>
+                <p className="text-xs text-ink-soft mt-2">
+                  Al cerrar esa app el celular pregunta «¿Hiciste algún movimiento?». Si no, toca «No».
+                </p>
+              </div>
+              <a href="shortcuts://" className="text-accent font-semibold text-sm inline-flex items-center gap-1 min-h-11">
+                Abrir Atajos <ExternalLink size={16} />
+              </a>
+            </div>
+
+            <div className="mt-3 rounded-2xl bg-paper-raised border border-line p-4 space-y-3">
+              <h3 className="text-sm font-semibold">Qué verás</h3>
+              <p className="text-sm text-ink-soft">
+                <span className="font-semibold text-ink">Al pagar con Apple Pay:</span> una notificación «Gasto de $18.500
+                en Juan Valdez…» y el movimiento queda «por confirmar» en CuadraMe.
+              </p>
+              <p className="text-sm text-ink-soft">
+                <span className="font-semibold text-ink">Al cerrar tu banco:</span> el celular pregunta «¿Hiciste algún
+                movimiento?». Con «Gasto» o «Ingreso» te pide el monto y una nota opcional; con «No» no pasa nada.
+              </p>
+              <p className="text-sm text-ink-soft">
+                <span className="font-semibold text-ink">Al subir tu extracto:</span> los movimientos se completan con los
+                datos del banco y los que no aparecen te los mostramos aparte.
+              </p>
+              <p className="text-sm text-ink-soft">
+                Para comprobar que todo quedó bien, baja a «Pruebas» y toca «Enviar un pago de prueba».
+              </p>
+            </div>
+
+            <details className="rounded-xl border border-line p-3">
+              <summary className="text-sm font-semibold text-ink cursor-pointer">Avanzado: armar los atajos a mano (si el enlace falla)</summary>
+              <ol className="list-decimal pl-5 mt-2 space-y-2 text-sm">
+                <li>
+                  Abre <b>Atajos</b> → pestaña «Atajos» → <b>+</b>. Nómbralo «CuadraMe Apple Pay».{' '}
+                  <a href="shortcuts://create-shortcut" className="text-accent font-semibold inline-flex items-center gap-0.5">
+                    Abrir Atajos <ExternalLink size={16} />
+                  </a>
+                </li>
+                <li>
+                  Añade la acción <b>Obtener contenido de URL</b>. URL:
+                  <span className="block break-all text-xs text-ink mt-1">{API_URL}</span>
+                  <BotonCopiar texto={API_URL} etiqueta="Copiar URL" className="border border-line text-ink mt-1.5 py-1.5" />
+                </li>
+                <li>Toca «Mostrar más»: <b>Método</b> = POST, <b>Cuerpo de la solicitud</b> = JSON.</li>
+                <li>
+                  Agrega estos campos de texto y, en cada valor, toca la variable <b>Entrada de atajo</b> y elige la
+                  propiedad que corresponde (Comercio, Importe, Tarjeta o pase, Fecha; los nombres pueden variar un
+                  poco según tu iOS):
+                  <pre className="mt-1.5 text-[11px] leading-relaxed whitespace-pre-wrap rounded-lg bg-paper p-2.5 border border-line text-ink">{JSON_DEL_ATAJO}</pre>
+                </li>
+                <li>
+                  En <b>Encabezados</b> agrega <b>X-Api-Key</b> = tu clave (la del paso 1) y{' '}
+                  <b>Content-Type</b> = application/json.
+                </li>
+                <li>
+                  Añade <b>Obtener valor del diccionario</b> → clave <b>mensaje</b>, y después{' '}
+                  <b>Mostrar notificación</b> con ese valor: verás «Gasto de $18.500 en Juan Valdez…» al pagar.
+                </li>
+                <li>
+                  Para el cierre de una app crea un <b>segundo Atajo</b>, «CuadraMe Cierre», más corto: acción{' '}
+                  <b>Texto</b> con tu clave; <b>Elegir del menú</b> «¿Hiciste algún movimiento?» con Gasto / Ingreso /
+                  No (en «No» pon <b>Detener este atajo</b>; en «Gasto» pon un <b>Texto</b> «gasto» y en «Ingreso» un <b>Texto</b> «ingreso»: no las dejes vacías); <b>Solicitar entrada</b>{' '}
+                  (número) «¿Cuánto fue?» y <b>Establecer variable</b> <b>monto</b>; antes de eso, una acción <b>Obtener contenido de URL</b> (método GET, dirección terminada en <b>/movimientos/cuentas-rapido</b>, encabezado X-Api-Key) y <b>Elegir de la lista</b> «¿En qué cuenta?» para escoger tu cuenta; <b>Solicitar entrada</b> (texto)
+                  «¿En qué?» y <b>Establecer variable</b> <b>nota</b>. Luego <b>Obtener contenido de URL</b> igual que
+                  arriba, con este cuerpo, y por último <b>Obtener valor del diccionario</b> (mensaje) y{' '}
+                  <b>Mostrar notificación</b>:
+                  <pre className="mt-1.5 text-[11px] leading-relaxed whitespace-pre-wrap rounded-lg bg-paper p-2.5 border border-line text-ink">{JSON_CIERRE_APP}</pre>
+                  Si dejas la nota vacía, se guarda como «Movimiento en» y el nombre de la cuenta.
+                </li>
+              </ol>
+            </details>
           </section>
           <PruebaConexion apiKey={apiKey} conRegistroRapido />
         </>
