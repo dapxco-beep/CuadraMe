@@ -6,6 +6,7 @@ from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
 from app.factura import FacturaError, analizar_factura, validar_imagen
 from app.limites import verificar_limite
+from app.limites_diarios import consumir_cupo_diario
 from app.routers.categorias import _asegurar_categorias_base
 from app.routers.consentimientos import exigir_consentimiento
 from app.routers.movimientos import _clasificar
@@ -30,6 +31,7 @@ def escanear(
     exigir_consentimiento(db, usuario.id, "ia")  # Ley 1581: la foto va a un proveedor de IA
     # Cada lectura es una llamada a un modelo de visión: tope por usuario, como la IA de chat.
     verificar_limite(f"factura:{usuario.id}", 10, 3600, "Llegaste al límite de facturas por hora. Podrás escanear otra en {espera}.")
+    consumir_cupo_diario(db, usuario.id, "factura")
     try:
         datos = validar_imagen(data.imagen_base64, data.mime)
         categorias = [c.nombre for c in _asegurar_categorias_base(db, usuario.id) if c.activa]

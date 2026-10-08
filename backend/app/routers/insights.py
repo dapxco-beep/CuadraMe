@@ -10,6 +10,7 @@ from app import asistente_consultas as consultas
 from app import informe as inf
 from app.asistente_datos import cargar_datos
 from app.limites import verificar_limite
+from app.limites_diarios import consumir_cupo_diario
 from app.utiles import ahora_co
 from app.alertas_proactivas import detectar_cobros_duplicados, detectar_comisiones
 from app.auth import UsuarioActual, get_current_user
@@ -176,6 +177,7 @@ def preguntar(
     movimientos, para no exceder el contexto del modelo)."""
     # Cada pregunta cuesta una llamada a la IA: tope por usuario.
     verificar_limite(f"preguntar:{usuario.id}", 20, 3600, "Llegaste al límite de preguntas por hora. Intenta más tarde.")
+    consumir_cupo_diario(db, usuario.id, "preguntar")
 
     # 1) Las preguntas típicas (en qué gasté más, cuánto gasté en X, comparar
     #    meses, presupuesto...) se resuelven con CÁLCULO del backend, el mismo

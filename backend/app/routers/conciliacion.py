@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.limites import verificar_limite
+from app.limites_diarios import consumir_cupo_diario
 from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
 from app.autocat import (
@@ -86,6 +87,7 @@ def procesar_extracto(
 
     # 60 por hora: la subida múltiple procesa hasta 10 archivos de golpe.
     verificar_limite(f"extracto:{usuario.id}", 60, 3600, "Subiste muchos extractos seguidos. Podrás subir más en {espera}.")
+    consumir_cupo_diario(db, usuario.id, "extracto")
     texto_plano = pdf_a_texto(data.pdf_base64, data.password)
     banco = detectar_banco(texto_plano) if texto_plano else "desconocido"
 

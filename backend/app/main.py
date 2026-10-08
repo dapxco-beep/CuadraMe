@@ -7,6 +7,7 @@ from app.config import settings
 from app.database import Base, engine
 from app.rls import asegurar_rls
 from app import models_asistente  # noqa: F401  (registra la tabla uso_asistente para create_all)
+from app import limites_diarios  # noqa: F401  (registra la tabla uso_diario para create_all)
 from app.routers import (
     ahorcado,
     asistente,

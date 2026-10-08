@@ -5,6 +5,9 @@ Protege lo que cuesta dinero o recursos —preguntas a la IA (OpenRouter),
 lectura de PDFs, sincronización de Gmail— y los endpoints que se autentican
 solo con API key.
 
+Los topes DIARIOS por usuario (IA, facturas, extractos, Gmail, importar) viven aparte,
+en la base, en limites_diarios.py: sobreviven a despliegues y a varias réplicas.
+
 IMPORTANTE: el contador vive en la memoria de CADA proceso. Con N réplicas el
 límite efectivo se multiplica por N (y se reinicia en cada despliegue). Por eso
 Railway debe quedarse en 1 réplica mientras no exista un almacén compartido
