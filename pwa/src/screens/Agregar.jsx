@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
-import { Calendar, Camera, Image as ImagenIcono, Sparkles, Users, X } from 'lucide-react'
+import { Calendar, Camera, Image as ImagenIcono, Info, Sparkles, Users, X } from 'lucide-react'
+import Icono from '../components/Icono'
 import { api } from '../lib/api'
 import { prepararImagen } from '../lib/imagen'
 import { formatCOP, formatMoneda } from '../lib/format'
@@ -394,6 +395,15 @@ export default function Agregar() {
               </button>
             ))}
           </div>
+          {destinosPosibles.find((c) => c.id === destinoId)?.tipo === 'credito' && (
+            <p role="note" data-testid="aviso-pago-tarjeta" className="mt-2 rounded-xl bg-accent-soft text-ink p-3 text-xs flex gap-2">
+              <Icono icono={Info} tam="sm" className="text-accent mt-0.5" />
+              <span>
+                <b>Esto no es un gasto nuevo, es pagar lo que ya compraste.</b> Tu deuda en la tarjeta baja y el gasto ya
+                lo contaste cuando hiciste la compra. Si pagas el total del extracto antes de la fecha límite, no pagas intereses.
+              </span>
+            </p>
+          )}
           {cuentaActual && destinosPosibles.find((c) => c.id === destinoId)?.moneda !== cuentaActual.moneda && (
             <p className="text-xs text-danger mt-2">Las cuentas tienen monedas distintas; aún no se pueden transferir entre sí.</p>
           )}

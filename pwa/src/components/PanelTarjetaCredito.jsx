@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { formatMoneda, formatPorcentaje } from '../lib/format'
 import Hoja from './Hoja'
 import ComprasACuotas from './ComprasACuotas'
+import Ayudita from './Ayudita'
 
 const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
@@ -114,7 +115,7 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
           {t.utilizacion_pct != null && (
             <>
               <div className="flex justify-between text-xs mb-1.5">
-                <span className="font-semibold">Cupo usado</span>
+                <span className="font-semibold">Cupo usado <Ayudita termino="cupo" /></span>
                 <span className={`font-semibold ${nivel.texto}`}>{formatPorcentaje(t.utilizacion_pct)}</span>
               </div>
               <div
@@ -143,13 +144,13 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
 
           <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
             <div>
-              <p className="text-ink-soft">Próximo corte</p>
+              <p className="text-ink-soft">Próximo corte <Ayudita termino="fecha-de-corte" /></p>
               <p className="font-semibold">
                 {fechaCorta(t.proximo_corte)} <span className="font-normal text-ink-soft">{enDias(t.dias_para_corte)}</span>
               </p>
             </div>
             <div>
-              <p className="text-ink-soft">Fecha límite de pago</p>
+              <p className="text-ink-soft">Fecha límite de pago <Ayudita termino="fecha-de-pago" /></p>
               <p className="font-semibold">
                 {fechaCorta(t.proximo_pago)} <span className="font-normal text-ink-soft">{enDias(t.dias_para_pago)}</span>
               </p>
@@ -162,12 +163,14 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
             <div className="mt-3 rounded-xl bg-paper p-3 text-xs space-y-1">
               <p>
                 <span className="text-ink-soft">{t.pago_minimo_del_extracto ? 'Pago mínimo (de tu extracto): ' : 'Pago mínimo estimado: '}</span>
-                <span className="font-semibold">{formatMoneda(t.pago_minimo ?? t.pago_minimo_estimado, cuenta.moneda)}</span>
+                <span className="font-semibold">{formatMoneda(t.pago_minimo ?? t.pago_minimo_estimado, cuenta.moneda)}</span>{' '}
+                <Ayudita termino="pago-minimo" />
               </p>
               {t.interes_estimado != null ? (
                 <p>
                   <span className="text-ink-soft">Interés si no pagas el total: </span>
-                  <span className="font-semibold text-danger">~{formatMoneda(t.interes_estimado, cuenta.moneda)} al mes</span>
+                  <span className="font-semibold text-danger">~{formatMoneda(t.interes_estimado, cuenta.moneda)} al mes</span>{' '}
+                  <Ayudita termino="intereses" />
                 </p>
               ) : (
                 <p className="text-ink-soft">Agrega la tasa efectiva anual para estimar los intereses.</p>

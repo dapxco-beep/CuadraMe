@@ -1,5 +1,5 @@
 import {
-  Activity, Bot, CalendarCheck, CreditCard, Database, Gift, GraduationCap, Home, Landmark, Lightbulb, List, PieChart, PiggyBank,
+  Activity, Bot, BookOpen, CalendarCheck, CreditCard, Database, Gift, GraduationCap, Home, Landmark, Lightbulb, List, PieChart, PiggyBank,
   LifeBuoy, Receipt, RefreshCw, Repeat, Settings, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Sprout, Tag,
   TrendingUp, User, Wallet,
 } from 'lucide-react'
@@ -70,6 +70,7 @@ export const GRUPOS = [
     icon: Settings,
     items: [
       { to: '/perfil', icon: User, label: 'Perfil', palabras: 'cuenta usuario pin seguridad tema notificaciones' },
+      { to: '/aprende', icon: BookOpen, label: 'Aprende', palabras: 'lecciones glosario educacion finanzas tarjeta credito debito interes cupo presupuesto fraude que es' },
       { to: '/ayuda', icon: LifeBuoy, label: 'Ayuda', palabras: 'preguntas frecuentes dudas soporte como funciona extracto clave pdf gmail primeros pasos' },
       { to: '/legal/privacidad', icon: ShieldCheck, label: 'Privacidad', palabras: 'datos legal terminos politica' },
       { to: '/conectar-dispositivo', icon: Smartphone, label: 'Conectar dispositivo', palabras: 'atajo iphone android wallet celular' },

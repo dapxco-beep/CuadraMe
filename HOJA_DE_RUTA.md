@@ -4,6 +4,13 @@
 
 ---
 
+## 🆕 CuadraMe educativo: consejos, «Aprende» y débito vs crédito (pendiente de tu aprobación)
+
+- **Consejos personalizados sin IA externa:** `GET /consejos` (`backend/app/consejos.py`, reglas puras y probadas con casos sintéticos). Cada consejo trae `id` estable (con el periodo), prioridad, título, texto llano, cifra del usuario y acción a una pantalla; el cuerpo lleva el aviso «Orientación educativa, no es asesoría financiera». Reglas: categoría que sube >30 %, gastos hormiga, pago solo del mínimo, utilización de cupo >30 %, fondo de emergencia (3–6 meses de SUS gastos), ahorro sin meta, sin presupuesto, deudas (avalancha vs bola de nieve / deuda cara), suscripciones detectadas, ingreso sin repartir (50/30/20), movimientos sin categoría, débito vs crédito y fechas de corte/pago. Agregar una regla = una función en `REGLAS`. Sin cambios de base de datos.
+- **PWA:** tarjeta «Consejo para ti» en Inicio (`ConsejoParaTi`, carrusel de hasta 3; lo descartado se guarda en el dispositivo por id), pantalla **Aprende** (`/aprende`, menú Más → Ajustes) con 11 microlecciones y glosario con buscador (todo el texto en `pwa/src/lib/aprende.js`), y `<Ayudita termino="cupo">` («¿qué es esto?») en Tarjetas, Cuentas y Presupuesto. Cuentas y detalle muestran «Débito / Ahorros» vs «Tarjeta de crédito» con lo que significa cada saldo, y al pagar una tarjeta (Agregar → Transferir, y en el detalle del movimiento) se avisa que no es un gasto nuevo.
+
+---
+
 ## 🆕 Producto para salir a vender (2026-10-07) — pendiente de tu aprobación
 
 - **Resumen semanal por correo (opt-in, apagado por defecto):** `GET/PUT /resumen/preferencias` (interruptor en Perfil → «Correo») y cron `POST /resumen/cron/semanal` (header `X-Cron-Secret`). Idempotente por usuario y semana ISO (`marcas_cron`, clave `resumen_correo_semanal`), un fallo no frena a los demás (la marca se libera para reintentar), sin gastos ni avisos no manda nada. **Cron NO creado**: domingo 18:00 hora Colombia. Columnas nuevas `ajustes_usuario.resumen_correo` y `.email_resumen` (las agrega `main.py`; SQL suelto en `backend/supabase/migraciones/resumen_semanal.sql`, NO ejecutado). Ojo: `RESEND_FROM` por defecto es el remitente de pruebas de Resend y solo escribe al dueño de la cuenta; para clientes hace falta dominio verificado.

@@ -282,6 +282,8 @@ export const api = {
   resumenPreferencias: () => request('/resumen/preferencias'),
   guardarResumenPreferencias: (correo) => request('/resumen/preferencias', { method: 'PUT', body: { correo } }),
   recordatorios: () => request('/recordatorios'),
+  // Consejos personalizados («Consejo para ti» en Inicio): reglas del servidor, sin IA externa
+  consejos: () => request('/consejos'),
   recordatorioDiario: () => request('/perfil/recordatorio-diario'),
   actualizarRecordatorioDiario: (activo) =>
     request('/perfil/recordatorio-diario', { method: 'PUT', body: { activo } }),

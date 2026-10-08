@@ -464,3 +464,30 @@ def test_rutas_con_api_key_rechazan_clave_falsa():
                                                                                    "descripcion": "x", "texto": "x"})
         assert r.status_code == 401, ruta
         assert client.request(metodo, ruta).status_code in (401, 422)
+
+
+# ── 5. /consejos: GET sin ids, clasificado como LISTA (B no ve datos de A); aquí además el control ──
+def test_consejos_solo_muestran_datos_del_propio_usuario():
+    """D tiene una tarjeta al 80 % del cupo (genera un consejo que nombra la tarjeta). B no ve nada de D
+    y D sí lo ve: así la prueba de lectura de B no es vacía."""
+    from app.derechos_titular import borrar_todo
+
+    D = UsuarioActual(id="aisl-d", email="d-aisl@test.com", nombre="Consejos D")
+    assert "/consejos" in LISTAS  # clasificado: lo recorre test_lecturas_de_b_no_muestran_datos_de_a
+    try:
+        como(D)
+        _ok(client.post("/cuentas", json={"nombre": "ZZD Tarjeta", "tipo": "credito", "saldo": -4_000_000,
+                                          "cupo_total": 5_000_000, "dia_corte": 10, "dia_pago": 25}))
+        propios = _ok(client.get("/consejos"))
+        assert "ZZD Tarjeta" in json.dumps(propios) and propios["aviso"]
+        como(B)
+        ajeno = client.get("/consejos")
+        assert ajeno.status_code == 200 and "zzd" not in ajeno.text.lower()
+        como(A)
+        assert "zzd" not in client.get("/consejos").text.lower()
+    finally:
+        db = SessionLocal()
+        try:
+            borrar_todo(db, D.id, D.email)
+        finally:
+            db.close()
