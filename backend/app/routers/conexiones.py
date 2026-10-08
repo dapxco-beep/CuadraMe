@@ -10,6 +10,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
+from app.claves_api import tiene_clave
 from app.compartidos import cuentas_ids_accesibles
 from app.conciliacion import parse_bank_date
 from app.database import get_db
@@ -79,7 +80,7 @@ def _atajo(db: Session, usuario_id: str, perfil: Perfil | None) -> dict:
         )
         .scalar() or 0
     )
-    datos = {"tiene_clave": bool(perfil and perfil.api_key), "ultimo_uso": _iso(ultimo), "movimientos_7d": recibidos}
+    datos = {"tiene_clave": bool(perfil and tiene_clave(db, perfil)), "ultimo_uso": _iso(ultimo), "movimientos_7d": recibidos}
     if not datos["tiene_clave"]:
         return _semaforo("ambar", "Aún no tienes clave: genérala para conectar el Atajo de tu iPhone.", **datos)
     if not ultimo:
