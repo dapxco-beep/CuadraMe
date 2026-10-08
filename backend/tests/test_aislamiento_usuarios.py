@@ -399,7 +399,7 @@ SIN_ID_DE_RECURSO = {
     "/planificacion/config", "/planificacion/distribuir-ingreso", "/planificacion/plan-meta", "/push/suscribir",
     "/push/desuscribir", "/push/probar", "/reglas-categoria/aprender", "/reglas-categoria", "/categorias",
     "/cuentas", "/presupuestos", "/cierre-mes/{mes}", "/cierre-mes/{mes}/generar", "/gastos-compartidos/contactos", "/cuentas/invitaciones/pendientes",
-    "/correos/{correo_id}/aprobar", "/movimientos/rapido-voz",
+    "/correos/{correo_id}/aprobar", "/movimientos/rapido-voz", "/resumen/preferencias",
 }
 # Rutas sin sesión de usuario por diseño (crons con secreto, callbacks firmados, API key, webhook firmado, públicas).
 SIN_SESION = {
@@ -408,7 +408,7 @@ SIN_SESION = {
     "/movimientos/rapido-voz", "/pagos/webhook", "/patrimonio/cron/snapshot-mensual",
     "/patrimonio/cron/actualizar-precios", "/push/vapid-public-key", "/push/cron/revisar-presupuestos",
     "/push/cron/aportes-automaticos", "/push/cron/premiar-presupuestos-mes", "/push/cron/resumen-semanal",
-    "/push/cron/recordar-registro", "/push/cron/recordar-recurrentes",
+    "/push/cron/recordar-registro", "/push/cron/recordar-recurrentes", "/resumen/cron/semanal",
 }
 
 
