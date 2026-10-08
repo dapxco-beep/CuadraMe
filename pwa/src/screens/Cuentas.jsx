@@ -5,7 +5,8 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { Link } from 'react-router-dom'
 import { useBloqueo } from '../lib/BloqueoContext'
-import { textoActualizado } from '../lib/saldos'
+import { etiquetaCuenta, textoActualizado } from '../lib/saldos'
+import Ayudita from '../components/Ayudita'
 import DetalleCuenta from '../components/DetalleCuenta'
 import ResumenSaldo from '../components/ResumenSaldo'
 import { ArrowLeft, CreditCard, Pencil, Plus, Trash2, Users, X, Wallet } from 'lucide-react'
@@ -25,12 +26,11 @@ import Hoja from '../components/Hoja'
 import { useAlertaVisible } from '../lib/useAlertaVisible'
 
 const tipos = [
-  { id: 'ahorro', label: 'Ahorros' },
+  { id: 'ahorro', label: 'Débito / Ahorros' },
   { id: 'efectivo', label: 'Efectivo' },
-  { id: 'credito', label: 'Crédito' },
+  { id: 'credito', label: 'Tarjeta de crédito' },
   { id: 'inversion', label: 'Inversión' },
 ]
-const tipoLabel = Object.fromEntries(tipos.map((t) => [t.id, t.label]))
 
 export default function Cuentas() {
   const volver = useVolver('/')
@@ -129,9 +129,13 @@ export default function Cuentas() {
                   >
                     <Pencil size={16} />
                   </button>
-                  <span className="text-[11px] text-ink-soft">{tipoLabel[c.tipo] || c.tipo}</span>
+                  <span className="text-[11px] text-ink-soft text-center max-w-[76px] leading-tight">{etiquetaCuenta(c).etiqueta}</span>
                 </div>
               </div>
+              {/* Qué significa el número de esta cuenta: saldo disponible (tuyo) vs lo que debes (tarjeta) */}
+              <p className="mt-1.5 px-1 text-[11px] text-ink-soft" data-testid="significado-saldo">
+                {etiquetaCuenta(c).significado} <Ayudita termino={etiquetaCuenta(c).termino} />
+              </p>
               {/* Las cuentas de crédito son tarjetas reales: cupo, corte y pago */}
               {c.tipo === 'credito' && <PanelTarjetaCredito cuenta={c} onCambio={recargar} />}
             </div>

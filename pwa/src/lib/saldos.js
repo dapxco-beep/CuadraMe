@@ -34,7 +34,33 @@ export function cupoDisponible(cuenta) {
   return cuenta?.tarjeta?.cupo_disponible ?? null
 }
 
-export const TIPO_LABEL = { ahorro: 'Ahorros', efectivo: 'Efectivo', credito: 'Tarjetas de crédito', inversion: 'Inversión' }
+// Etiqueta clara de qué ES una cuenta y qué significa su saldo. La diferencia débito/crédito es lo que más
+// confunde: en una cuenta de ahorros el número es plata TUYA; en una tarjeta de crédito es lo que DEBES.
+//  - etiqueta: el nombre corto del tipo ("Débito / Ahorros" | "Tarjeta de crédito" | ...)
+//  - significado: qué dice el número que se ve
+//  - termino: id del glosario de «Aprende» para el botón «¿qué es esto?»
+export function etiquetaCuenta(cuenta) {
+  switch (cuenta?.tipo) {
+    case 'credito':
+      return {
+        etiqueta: 'Tarjeta de crédito',
+        significado: 'Lo que ves es lo que debes al banco, no plata tuya. Pagarla no es un gasto nuevo.',
+        termino: 'credito',
+      }
+    case 'efectivo':
+      return { etiqueta: 'Efectivo', significado: 'Plata tuya que tienes en la mano.', termino: 'saldo-disponible' }
+    case 'inversion':
+      return { etiqueta: 'Inversión', significado: 'Plata tuya invertida; su valor puede subir o bajar.', termino: 'saldo-disponible' }
+    default:
+      return {
+        etiqueta: 'Débito / Ahorros',
+        significado: 'Saldo disponible: plata tuya que puedes usar ya.',
+        termino: 'saldo-disponible',
+      }
+  }
+}
+
+export const TIPO_LABEL ={ ahorro: 'Ahorros', efectivo: 'Efectivo', credito: 'Tarjetas de crédito', inversion: 'Inversión' }
 
 // Modos del selector del héroe: total | moneda | tipo
 export function filasPorModo(modo, resumen) {

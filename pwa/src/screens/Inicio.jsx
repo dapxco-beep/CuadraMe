@@ -20,6 +20,7 @@ import { etapaPorScore } from '../lib/saludFinanciera'
 import ResumenSaldo from '../components/ResumenSaldo'
 import PreguntaMovimiento from '../components/PreguntaMovimiento'
 import Recordatorios from '../components/Recordatorios'
+import ConsejoParaTi from '../components/ConsejoParaTi'
 import SeccionPlegable from '../components/SeccionPlegable'
 import Sparkline, { resumenTendencia } from '../components/Sparkline'
 import Icono from '../components/Icono'
@@ -289,6 +290,7 @@ export default function Inicio() {
 
           {/* Recordatorios útiles: pago de tarjeta, presupuesto al 80 % y extractos por revisar (descartables) */}
           <Recordatorios />
+          <ConsejoParaTi />
         </div>
 
         <div className="col">

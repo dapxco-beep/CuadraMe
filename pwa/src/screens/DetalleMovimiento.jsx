@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { EsqueletoPantalla } from '../components/Esqueletos'
 import { useParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
-import { ArrowLeft, ArrowLeftRight, Pencil, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, Info, Pencil, Trash2, X } from 'lucide-react'
+import { CATEGORIA_PAGO_TARJETA, esPagoTarjeta } from '../lib/contabilidad'
 import Icono from '../components/Icono'
 import { formatFechaLarga, formatMoneda, nombreOrigen } from '../lib/format'
 import { api } from '../lib/api'
@@ -378,6 +379,16 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           {cuenta && <Fila label="Cuenta" valor={cuenta.nombre} />}
           <Fila label="Fecha" valor={formatFechaLarga(movimiento.fecha)} />
           <Fila label="Tipo" valor={etiquetaTipo(movimiento)} />
+          {(movimiento.categoria === CATEGORIA_PAGO_TARJETA || esPagoTarjeta(movimiento.descripcion) ||
+            (cuenta?.tipo === 'credito' && (movimiento.tipo === 'income' || (movimiento.notas || '').endsWith(':in')))) && (
+            <p role="note" data-testid="aviso-pago-tarjeta" className="px-4 py-3 text-xs bg-accent-soft flex gap-2">
+              <Icono icono={Info} tam="sm" className="text-accent mt-0.5" />
+              <span>
+                <b>Esto no es un gasto nuevo, es pagar lo que ya compraste.</b> El gasto ya se contó cuando hiciste la compra
+                con la tarjeta; por eso este pago no suma a tus gastos del mes.
+              </span>
+            </p>
+          )}
           {puedeMarcar && (
             <div className="px-4 py-3.5">
               {esPosibleTraslado(movimiento) && (

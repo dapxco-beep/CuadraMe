@@ -13,6 +13,7 @@ import ConfigPlanificacion from '../components/ConfigPlanificacion'
 import SugerenciaIngreso from '../components/SugerenciaIngreso'
 import { PERIODOS, etiquetaPeriodo, textoRango } from '../lib/planificacion'
 import Hoja from '../components/Hoja'
+import Ayudita from '../components/Ayudita'
 
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -139,7 +140,7 @@ export default function Presupuesto() {
 
           {tendencias.proyeccion && (
           <div className="mt-4 pt-4 border-t border-line">
-            <p className="text-xs text-ink-soft">Proyección de gasto este mes</p>
+            <p className="text-xs text-ink-soft">Proyección de gasto este mes <Ayudita termino="proyeccion" /></p>
             <p className="text-xl font-bold mt-0.5">
               {formatCOP(tendencias.proyeccion.gasto_proyectado_mes)}
             </p>
@@ -278,7 +279,7 @@ export default function Presupuesto() {
                       )}
                       {p.proy && p.proy.arrastre > 0 && (
                         <p className="text-[11px] text-gold mt-1.5">
-                          Incluye {formatCOP(p.proy.arrastre)} que te sobraron del periodo anterior
+                          Incluye {formatCOP(p.proy.arrastre)} que te sobraron del periodo anterior <Ayudita termino="sobrante" />
                         </p>
                       )}
                       {p.proy && p.proy.mensaje && (
@@ -412,6 +413,9 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
         ))}
       </div>
 
+      <p className="text-xs text-ink-soft mb-1">
+        Pon un tope de gasto para esta categoría y te avisamos antes de pasarte. <Ayudita termino="limite-presupuesto" />
+      </p>
       <input
         value={limite}
         onChange={(e) => setLimite(e.target.value.replace(/\D/g, ''))}

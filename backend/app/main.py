@@ -18,6 +18,7 @@ from app.routers import (
     compartir,
     conciliacion,
     conexiones,
+    consejos,
     consentimientos,
     correos,
     cuentas,
@@ -200,6 +201,7 @@ app.include_router(cuotas_tarjeta.router)
 app.include_router(extracto_tarjeta.router)
 app.include_router(resumen.router)
 app.include_router(recordatorios.router)
+app.include_router(consejos.router)
 from app.routers import sincronizacion  # noqa: E402
 
 app.include_router(sincronizacion.router)

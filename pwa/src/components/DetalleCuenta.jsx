@@ -4,7 +4,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { FileUp, Scale, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
-import { cupoDisponible, deudaTarjeta, esCredito, textoActualizado } from '../lib/saldos'
+import { cupoDisponible, deudaTarjeta, esCredito, etiquetaCuenta, textoActualizado } from '../lib/saldos'
+import Ayudita from './Ayudita'
 import Hoja from './Hoja'
 import { leerMonto } from '../lib/cuentaNueva'
 
@@ -50,11 +51,15 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
       {det && (
         <>
           <div className="rounded-2xl bg-paper-raised border border-line p-4">
-            <p className="t-kicker text-ink-soft">{credito ? 'Debes' : 'Saldo actual'}</p>
+            <p className="text-[11px] font-semibold text-accent" data-testid="tipo-cuenta">{etiquetaCuenta(c).etiqueta}</p>
+            <p className="t-kicker text-ink-soft mt-1">{credito ? 'Debes' : 'Saldo actual'}</p>
             <p className="text-3xl t-display mt-1" data-testid="saldo-detalle">
               {fmt(credito ? deudaTarjeta(c) : det.saldo_actual, c.moneda)}
             </p>
             <p className="text-xs text-ink-soft mt-1">{textoActualizado(det.ultimo_movimiento)}</p>
+            <p className="text-xs text-ink-soft mt-2" data-testid="significado-saldo">
+              {etiquetaCuenta(c).significado} <Ayudita termino={etiquetaCuenta(c).termino} />
+            </p>
             {credito && cupoDisponible(c) != null && (
               <p className="text-sm mt-2">
                 <span className="text-ink-soft">Disponible del cupo: </span>
