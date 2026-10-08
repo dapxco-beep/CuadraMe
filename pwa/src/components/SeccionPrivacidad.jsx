@@ -4,6 +4,7 @@ import { ChevronRight, Download, ShieldCheck, Trash2 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useDialogos } from '../lib/DialogosContext'
 import { desactivarPush } from '../lib/push'
+import BorrarMiCuenta from './BorrarMiCuenta'
 import { FINALIDADES, formatearFechaCO, ORDEN_OPCIONALES, VERSION_TEXTOS } from '../lib/consentimientos'
 
 // Perfil -> "Privacidad y datos": ver y revocar cada autorización, descargar mis datos
@@ -13,6 +14,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
   const [estado, setEstado] = useState(null)
   const [historial, setHistorial] = useState(null)
   const [ocupado, setOcupado] = useState('')
+  const [borrando, setBorrando] = useState(false)
 
   function cargar() {
     Promise.resolve().then(() => api.consentimientos()).then(setEstado).catch(() => {})
@@ -55,7 +57,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
 
   async function descargar() {
     try {
-      await api.exportarExcel()
+      await api.descargarMisDatos()
     } catch (err) {
       avisar(err.message || 'No se pudo descargar tus datos')
     }
@@ -120,21 +122,33 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
         )}
         <button onClick={descargar} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
           <Download size={20} className="text-accent shrink-0" />
-          <p className="flex-1 text-sm font-medium">Descargar mis datos (Excel)</p>
+          <div className="flex-1">
+            <p className="text-sm font-medium">Descargar mis datos</p>
+            <p className="text-xs text-ink-soft mt-0.5">Un archivo ZIP con todo lo que CuadraMe guarda de ti. Se abre en Excel.</p>
+          </div>
         </button>
         <Link to="/legal/autorizacion-datos" className="flex items-center gap-3 px-4 py-3.5">
           <p className="flex-1 text-sm font-medium">Ver textos legales</p>
           <ChevronRight size={16} className="text-ink-soft" />
         </Link>
         <button
-          onClick={onEliminarCuenta}
+          onClick={() => setBorrando(true)}
           disabled={eliminando}
           className="w-full flex items-center gap-3 px-4 py-3.5 text-left text-danger disabled:opacity-60"
         >
           <Trash2 size={20} className="shrink-0" />
-          <p className="flex-1 text-sm font-medium">{eliminando ? 'Eliminando...' : 'Eliminar mi cuenta y mis datos'}</p>
+          <p className="flex-1 text-sm font-medium">{eliminando ? 'Borrando...' : 'Borrar mi cuenta y todos mis datos'}</p>
         </button>
       </div>
+
+      {borrando && (
+        <BorrarMiCuenta
+          eliminando={eliminando}
+          onCancelar={() => setBorrando(false)}
+          onDescargar={descargar}
+          onConfirmar={(palabra) => onEliminarCuenta(palabra)}
+        />
+      )}
     </section>
   )
 }

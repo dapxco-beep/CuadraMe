@@ -15,7 +15,7 @@ import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../li
 export default function Perfil() {
   const { theme, setTheme } = useTheme()
   const { usuario, logout } = useAuth()
-  const { confirmar, avisar } = useDialogos()
+  const { avisar } = useDialogos()
   const claveAtajo = useClaveAtajo()
   const [permisoPush, setPermisoPush] = useState('default')
   const [cargandoPush, setCargandoPush] = useState(false)
@@ -91,15 +91,11 @@ export default function Perfil() {
     }
   }
 
-  async function eliminarMiCuenta() {
-    const ok = await confirmar(
-      'Se borrarán para siempre tus cuentas, movimientos, presupuestos, metas y todo lo demás. No se puede deshacer. Si quieres conservar tus datos, primero expórtalos desde Movimientos.',
-      { titulo: '¿Eliminar tu cuenta y todos tus datos?', confirmarTexto: 'Sí, eliminar todo', peligro: true }
-    )
-    if (!ok) return
+  // La confirmación (escribir ELIMINAR) ya la pidió la hoja de Privacidad: aquí solo se ejecuta.
+  async function eliminarMiCuenta(palabra) {
     setEliminandoCuenta(true)
     try {
-      await api.eliminarMiCuenta()
+      await api.eliminarMiCuenta(palabra)
       await logout()
     } catch (err) {
       setEliminandoCuenta(false)

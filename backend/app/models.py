@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy.orm import deferred
-from sqlalchemy import Column, String, Float, DateTime, Boolean, Integer, UniqueConstraint
+from sqlalchemy import Column, String, Float, DateTime, Boolean, Integer, Index, UniqueConstraint
 
 from app.database import Base
 from app.utiles import ahora_co
@@ -140,6 +140,11 @@ class ReglaCategoria(Base):
 
 class Movimiento(Base):
     __tablename__ = "movimientos"
+    __table_args__ = (
+        # Casi toda consulta filtra por cuenta o por usuario Y por rango de fechas (ver supabase/migraciones/indices_rendimiento.sql).
+        Index("ix_movimientos_cuenta_fecha", "cuenta_id", "fecha"),
+        Index("ix_movimientos_usuario_fecha", "usuario_id", "fecha"),
+    )
 
     id = Column(String, primary_key=True, default=gen_uuid)
     usuario_id = Column(String, nullable=False, index=True)
@@ -243,6 +248,7 @@ class Deuda(Base):
 
 class CorreoGasto(Base):
     __tablename__ = "correos_gastos"
+    __table_args__ = (Index("ix_correos_gastos_usuario_estado", "usuario_id", "estado"),)
 
     id = Column(String, primary_key=True, default=gen_uuid)
     usuario_id = Column(String, nullable=False, index=True)
@@ -266,7 +272,10 @@ class ExtractoCorreo(Base):
     """Extracto bancario (PDF adjunto) detectado en el Gmail del usuario.
     NO guarda el PDF: solo metadatos. Para conciliar se vuelve a descargar."""
     __tablename__ = "extractos_correo"
-    __table_args__ = (UniqueConstraint("usuario_id", "gmail_msg_id", "archivo", name="uq_extracto_correo"),)
+    __table_args__ = (
+        UniqueConstraint("usuario_id", "gmail_msg_id", "archivo", name="uq_extracto_correo"),
+        Index("ix_extractos_correo_usuario_estado", "usuario_id", "estado"),
+    )
 
     id = Column(String, primary_key=True, default=gen_uuid)
     usuario_id = Column(String, nullable=False, index=True)

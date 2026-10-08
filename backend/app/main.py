@@ -6,6 +6,7 @@ from sqlalchemy import text
 from app.config import settings
 from app.database import Base, engine
 from app.rls import asegurar_rls
+from app.seguridad import SeguridadMiddleware, limpiar_evento_sentry
 from app import models_asistente  # noqa: F401  (registra la tabla uso_asistente para create_all)
 from app import limites_diarios  # noqa: F401  (registra la tabla uso_diario para create_all)
 from app.routers import (
@@ -124,6 +125,8 @@ if settings.sentry_dsn:
         # ninguno por muestreo en una beta con pocos usuarios.
         traces_sample_rate=0.1,
         send_default_pii=False,  # no mandar datos personales del usuario a Sentry
+        include_local_variables=False,  # las variables locales traen tokens, claves de PDF y montos
+        before_send=limpiar_evento_sentry,
     )
 
 # En producción no se exponen /docs, /redoc ni /openapi.json: son un mapa
@@ -140,6 +143,11 @@ app = FastAPI(
 from app import errores_atajo  # noqa: E402
 
 errores_atajo.registrar(app)
+
+# Va ANTES que CORS a propósito: add_middleware apila de afuera hacia adentro, así que
+# CORS queda como capa externa y hasta un 413 sale con sus cabeceras CORS (si no, el
+# navegador lo mostraría como "error de red" en vez del mensaje claro).
+app.add_middleware(SeguridadMiddleware, con_csp=_es_prod)
 
 app.add_middleware(
     CORSMiddleware,

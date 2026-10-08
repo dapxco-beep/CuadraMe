@@ -18,11 +18,28 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
 
 
+# Un extracto real tiene pocas páginas. Sin tope, un PDF de miles de páginas dejaría
+# el servidor (compartido por todos los clientes) procesando minutos para un solo usuario.
+MAX_PAGINAS_EXTRACTO = 60
+
+
+def _decodificar_pdf(pdf_base64: str) -> bytes | None:
+    """Bytes del PDF, o None si el base64 está roto o lo decodificado no es un PDF
+    (el archivo debe empezar por %PDF-; así no se le entregan a pdfplumber cosas raras)."""
+    try:
+        datos = base64.b64decode(pdf_base64.split(",", 1)[-1])
+    except (ValueError, TypeError):
+        return None
+    return datos if datos[:1024].lstrip().startswith(b"%PDF-") else None
+
+
 def pdf_a_texto(pdf_base64: str, password: str = "") -> str:
-    pdf_bytes = base64.b64decode(pdf_base64)
+    pdf_bytes = _decodificar_pdf(pdf_base64)
+    if pdf_bytes is None:
+        return ""
     try:
         with pdfplumber.open(io.BytesIO(pdf_bytes), password=password or None) as pdf:
-            paginas = [pagina.extract_text() or "" for pagina in pdf.pages]
+            paginas = [pagina.extract_text() or "" for pagina in pdf.pages[:MAX_PAGINAS_EXTRACTO]]
         return "\n".join(paginas)
     except Exception:
         return ""
@@ -30,8 +47,11 @@ def pdf_a_texto(pdf_base64: str, password: str = "") -> str:
 
 def pdf_pide_clave(pdf_base64: str, password: str = "") -> bool:
     """True si el PDF no se pudo abrir por estar protegido (falta la clave o es incorrecta)."""
+    pdf_bytes = _decodificar_pdf(pdf_base64)
+    if pdf_bytes is None:
+        return False
     try:
-        with pdfplumber.open(io.BytesIO(base64.b64decode(pdf_base64)), password=password or None):
+        with pdfplumber.open(io.BytesIO(pdf_bytes), password=password or None):
             return False
     except Exception as e:  # pdfminer envuelve PDFPasswordIncorrect
         return "password" in repr(e).lower()

@@ -57,6 +57,7 @@ from app.gmail_oauth import (
     intercambiar_code,
     leer_state,
     obtener_email,
+    revocar_token,
     url_autorizacion,
 )
 from app.models import Categoria, ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil, SyncGmail
@@ -177,7 +178,11 @@ def gmail_callback(
     if not usuario_id:
         raise HTTPException(status_code=400, detail="Estado OAuth inválido o expirado")
 
-    tokens = intercambiar_code(code)
+    try:
+        tokens = intercambiar_code(code)
+    except Exception:  # noqa: BLE001 - código vencido/reusado: volver a la app, no mostrar un 500
+        logger.warning("Google rechazó el código de autorización de Gmail")
+        return RedirectResponse(url=f"{settings.pwa_url}/#/correos?gmail=error")
     refresh_token = tokens.get("refresh_token")
     if not refresh_token:
         # Google no reenvía refresh_token si el usuario ya había autorizado antes
@@ -209,6 +214,7 @@ def desconectar_gmail(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
     perfil = _get_or_create_perfil(db, usuario.id)
+    revocar_token(perfil.gmail_refresh_token_enc)  # que Google también invalide el acceso
     perfil.gmail_conectado = False
     perfil.gmail_refresh_token_enc = None
     perfil.gmail_email = None
@@ -218,7 +224,7 @@ def desconectar_gmail(
 
 @router.post("/gmail/etiqueta")
 def actualizar_etiqueta(
-    etiqueta: str,
+    etiqueta: str = Query(max_length=80),
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):

@@ -152,27 +152,29 @@ def estado(
     # ── Movimientos por cuenta y mes: 1 consulta agrupada por mes (índice cuenta+fecha).
     conteo: dict[tuple[str, str], dict] = {}
     if ids_cuentas:
-        for (a, m), clave in zip(meses, claves):
-            sig = _siguiente(a, m)
-            filas = (
-                db.query(
-                    Movimiento.cuenta_id,
-                    func.count(Movimiento.id),
-                    # Conciliado = cruzado con un extracto o importado desde uno (mismo criterio que
-                    # extractos_conciliados.evidencia_conciliado, pero en una sola consulta agrupada).
-                    func.coalesce(func.sum(case((or_(Movimiento.conciliado_en.isnot(None), Movimiento.fuente.in_(FUENTES_CONCILIACION)), 1), else_=0)), 0),
-                    func.coalesce(func.sum(case((Movimiento.cat_confirmada.is_(False), 1), else_=0)), 0),
-                )
-                .filter(
-                    Movimiento.cuenta_id.in_(ids_cuentas),
-                    Movimiento.fecha >= _inicio_mes(a, m),
-                    Movimiento.fecha < _inicio_mes(*sig),
-                )
-                .group_by(Movimiento.cuenta_id)
-                .all()
+        # UNA consulta agrupada por cuenta y mes (antes, una por mes: hasta 24 consultas).
+        anio_mes = func.extract("year", Movimiento.fecha), func.extract("month", Movimiento.fecha)
+        filas = (
+            db.query(
+                Movimiento.cuenta_id,
+                *anio_mes,
+                func.count(Movimiento.id),
+                # Conciliado = cruzado con un extracto o importado desde uno (mismo criterio que
+                # extractos_conciliados.evidencia_conciliado, pero en una sola consulta agrupada).
+                func.coalesce(func.sum(case((or_(Movimiento.conciliado_en.isnot(None), Movimiento.fuente.in_(FUENTES_CONCILIACION)), 1), else_=0)), 0),
+                func.coalesce(func.sum(case((Movimiento.cat_confirmada.is_(False), 1), else_=0)), 0),
             )
-            for cuenta_id, total, conc, por_conf in filas:
-                conteo[(cuenta_id, clave)] = {"movimientos": int(total), "conciliados": int(conc), "por_confirmar": int(por_conf)}
+            .filter(
+                Movimiento.cuenta_id.in_(ids_cuentas),
+                Movimiento.fecha >= _inicio_mes(*meses[0]),
+                Movimiento.fecha < _inicio_mes(*_siguiente(*meses[-1])),
+            )
+            .group_by(Movimiento.cuenta_id, *anio_mes)
+            .all()
+        )
+        for cuenta_id, a, m, total, conc, por_conf in filas:
+            conteo[(cuenta_id, _clave(int(a), int(m)))] = {
+                "movimientos": int(total), "conciliados": int(conc), "por_confirmar": int(por_conf)}
 
     # ── Extractos de Gmail (solo metadatos, pocos): a qué cuenta y mes pertenecen.
     # Si el periodo ya se concilió (p. ej. subiste el archivo a mano), el extracto de

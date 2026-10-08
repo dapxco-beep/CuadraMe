@@ -27,3 +27,16 @@ def utc_a_co(dt: datetime | None) -> datetime | None:
     except Exception:  # sin tzdata en el contenedor
         zona = _ZONA_CO
     return dt.replace(tzinfo=timezone.utc).astimezone(zona).replace(tzinfo=None)
+
+
+_INICIOS_DE_FORMULA = ("=", "+", "-", "@", chr(9), chr(13))
+
+
+def celda_segura(valor):
+    """Texto seguro para CSV/Excel: si empieza por = + - @ (o tab/enter) Excel lo ejecuta
+    como FORMULA. Las descripciones llegan de correos y PDFs de terceros, así que un asunto
+    como "=HYPERLINK(...)" se ejecutaría al abrir la descarga. Se antepone una comilla
+    simple, que Excel muestra como texto. Los números y fechas no se tocan."""
+    if isinstance(valor, str) and valor.startswith(_INICIOS_DE_FORMULA):
+        return "'" + valor
+    return valor

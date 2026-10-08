@@ -15,7 +15,8 @@ from app.config import settings
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke"
+GMAIL_SCOPE ="https://www.googleapis.com/auth/gmail.readonly"
 REDIRECT_URI = f"{settings.api_base_url}/correos/oauth/callback"
 
 
@@ -85,6 +86,22 @@ def obtener_email(access_token: str) -> str:
     )
     resp.raise_for_status()
     return resp.json().get("emailAddress", "")
+
+
+def revocar_token(refresh_token_enc: str | None) -> bool:
+    """Le pide a Google que invalide el refresh token (que el acceso a Gmail muera de
+    verdad, no solo en nuestra base). Devuelve True si Google lo confirmó. Nunca lanza:
+    desconectar o borrar la cuenta debe funcionar aunque Google esté caído o el token
+    ya estuviera revocado; en ese caso el usuario puede quitarlo en
+    myaccount.google.com/permissions."""
+    if not refresh_token_enc:
+        return False
+    try:
+        token = descifrar(refresh_token_enc)
+        resp = httpx.post(GOOGLE_REVOKE_URL, params={"token": token}, timeout=10)
+        return resp.status_code == 200
+    except Exception:  # noqa: BLE001 - best effort; sin registrar el token
+        return False
 
 
 def cliente_gmail(refresh_token_enc: str):

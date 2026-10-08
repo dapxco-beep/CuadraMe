@@ -19,7 +19,7 @@ from app.fx import convertir_a_cop
 from app.impuestos import AVISO, CATEGORIAS_FISCALES, calcular_gmf, organizar_deducibles
 from app.models import Cuenta, Movimiento
 from app.models_fiscal import AjusteUsuario, MarcaFiscal
-from app.utiles import ahora_co
+from app.utiles import ahora_co, celda_segura
 
 router = APIRouter(prefix="/impuestos", tags=["impuestos"])
 
@@ -202,8 +202,8 @@ def exportar_excel(
     for c in det[1]:
         c.font = Font(bold=True)
     for i in d["deducibles"]["items"]:
-        det.append([i["fecha"], i["descripcion"], i["monto"], CATEGORIAS_FISCALES.get(i["categoria_fiscal"], ("Otro",))[0],
-                    "Confirmado por ti" if i["estado"] == "confirmado" else "Sugerido (sin revisar)", i["soporte"]])
+        det.append([i["fecha"], celda_segura(i["descripcion"]), i["monto"], CATEGORIAS_FISCALES.get(i["categoria_fiscal"], ("Otro",))[0],
+                    "Confirmado por ti" if i["estado"] == "confirmado" else "Sugerido (sin revisar)", celda_segura(i["soporte"])])
     det.column_dimensions["A"].width = 12
     det.column_dimensions["B"].width = 44
     det.column_dimensions["C"].width = 16

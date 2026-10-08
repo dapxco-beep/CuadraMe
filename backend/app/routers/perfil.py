@@ -1,16 +1,17 @@
 import logging
+from typing import Literal
 
-import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
-from app.config import settings
-from app.database import Base, get_db
-from app.models import Cuenta, CuentaCompartida, HistorialExtracto, InvitacionCuenta, Movimiento, Perfil
+from app.database import get_db
+from app.derechos_titular import armar_json, armar_zip, borrar_todo, recopilar
+from app.limites import verificar_limite
+from app.models import Perfil
 from app.claves_api import asignar_clave_nueva, tiene_clave
-from app.models_gastos import GastoCompartido, GrupoGasto, MiembroGrupoGasto, ParteGasto
+from app.utiles import ahora_co
 from app.schemas import ConfianzaAutoimportUpdate, EliminarCuentaRequest
 
 router = APIRouter(prefix="/perfil", tags=["perfil"])
@@ -125,6 +126,31 @@ def actualizar_autoimportar_extractos(
     return {"activo": bool(perfil.autoimportar_extractos)}
 
 
+
+
+@router.get("/mis-datos")
+def descargar_mis_datos(
+    formato: Literal["zip", "json"] = "zip",
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Derecho de acceso y portabilidad (Ley 1581 de 2012): todo lo que CuadraMe guarda
+    del usuario. ZIP con un JSON completo + un CSV por tabla (abren en Excel), o solo el
+    JSON con ?formato=json. Se limita a 5 por hora: armar el archivo recorre todas las tablas."""
+    verificar_limite(f"mis-datos:{usuario.id}", 5, 3600, "Ya descargaste tus datos varias veces. Intenta de nuevo en {espera}.")
+    datos = recopilar(db, usuario.id, usuario.email)
+    hoy = ahora_co().strftime("%Y-%m-%d")
+    if formato == "json":
+        return Response(
+            content=armar_json(datos, usuario.email), media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename=cuadrame_mis_datos_{hoy}.json"},
+        )
+    return Response(
+        content=armar_zip(datos, usuario.email), media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=cuadrame_mis_datos_{hoy}.zip"},
+    )
+
+
 @router.post("/eliminar-cuenta")
 def eliminar_cuenta(
     data: EliminarCuentaRequest,
@@ -132,79 +158,15 @@ def eliminar_cuenta(
     usuario: UsuarioActual = Depends(get_current_user),
 ):
     """Derecho de supresión (Ley 1581 de 2012): borra TODOS los datos del usuario.
-    Es irreversible. Se exige la palabra ELIMINAR para evitar llamadas accidentales."""
+    Es irreversible. Se exige la palabra ELIMINAR para evitar llamadas accidentales.
+    Solo actúa sobre la sesión de quien llama: nadie puede borrar la cuenta de otro.
+    La lógica vive en app/derechos_titular.py (también revoca el permiso de Gmail)."""
     if data.confirmacion.strip().upper() != "ELIMINAR":
         raise HTTPException(status_code=400, detail='Para confirmar, envía confirmacion="ELIMINAR"')
 
-    uid = usuario.id
-    mis_cuentas = [c.id for c in db.query(Cuenta.id).filter(Cuenta.usuario_id == uid).all()]
-
-    # 1) Movimientos que yo registré en cuentas AJENAS (compartidas conmigo): se
-    #    devuelve su efecto al saldo del dueño antes de borrarlos, para no dejarle
-    #    el saldo descuadrado.
-    from app.routers.movimientos import _delta_saldo
-
-    ajenos = (
-        db.query(Movimiento)
-        .filter(Movimiento.usuario_id == uid, Movimiento.cuenta_id.notin_(mis_cuentas or [""]))
-        .all()
-    )
-    for m in ajenos:
-        cuenta = db.query(Cuenta).filter(Cuenta.id == m.cuenta_id).first()
-        if cuenta:
-            cuenta.saldo -= _delta_saldo(m.tipo, m.monto)
-
-    # 2) Todo lo que cuelga de mis cuentas, sin importar quién lo escribió.
-    if mis_cuentas:
-        db.query(Movimiento).filter(Movimiento.cuenta_id.in_(mis_cuentas)).delete(synchronize_session=False)
-        db.query(HistorialExtracto).filter(HistorialExtracto.cuenta_id.in_(mis_cuentas)).delete(synchronize_session=False)
-        db.query(CuentaCompartida).filter(CuentaCompartida.cuenta_id.in_(mis_cuentas)).delete(synchronize_session=False)
-        db.query(InvitacionCuenta).filter(InvitacionCuenta.cuenta_id.in_(mis_cuentas)).delete(synchronize_session=False)
-
-    # 3) Invitaciones que hice o recibí.
-    db.query(InvitacionCuenta).filter(InvitacionCuenta.invitado_por == uid).delete(synchronize_session=False)
-    if usuario.email:
-        db.query(InvitacionCuenta).filter(
-            InvitacionCuenta.email_invitado == usuario.email.lower()
-        ).delete(synchronize_session=False)
-
-    # 4) Tablas hijas SIN usuario_id: cuelgan de grupos y gastos compartidos del
-    #    usuario y quedarían huérfanas (con nombres/montos de terceros) si solo se
-    #    borrara por usuario_id. Se borran por sus padres, antes que ellos.
-    mis_grupos = db.query(GrupoGasto.id).filter(GrupoGasto.usuario_id == uid)
-    mis_gastos = db.query(GastoCompartido.id).filter(GastoCompartido.usuario_id == uid)
-    db.query(MiembroGrupoGasto).filter(MiembroGrupoGasto.grupo_id.in_(mis_grupos)).delete(synchronize_session=False)
-    db.query(ParteGasto).filter(ParteGasto.gasto_id.in_(mis_gastos)).delete(synchronize_session=False)
-
-    # 5) Cualquier tabla con columna usuario_id (perfil, cuentas, presupuestos, metas,
-    #    deudas, rachas, push...). Recorrer el metadata evita olvidar una tabla nueva.
-    for tabla in Base.metadata.sorted_tables:
-        if "usuario_id" in tabla.c:
-            db.execute(tabla.delete().where(tabla.c.usuario_id == uid))
-    db.commit()
-
-    auth_eliminado = False
-    aviso = None
-    if settings.supabase_service_role_key:
-        try:
-            resp = httpx.delete(
-                f"{settings.supabase_url}/auth/v1/admin/users/{uid}",
-                headers={
-                    "apikey": settings.supabase_service_role_key,
-                    "Authorization": f"Bearer {settings.supabase_service_role_key}",
-                },
-                timeout=15,
-            )
-            auth_eliminado = resp.status_code in (200, 204)
-            if not auth_eliminado:
-                logger.error("Supabase Auth respondió %s al borrar el usuario %s", resp.status_code, uid)
-        except httpx.HTTPError:
-            logger.exception("No se pudo borrar el usuario %s de Supabase Auth", uid)
-        if not auth_eliminado:
-            # Los datos ya se borraron (commit arriba): no se pierde ese avance.
-            aviso = "Tus datos se borraron, pero no pudimos cerrar tu acceso; escríbenos a soporte"
-
-    respuesta = {"ok": True, "auth_eliminado": auth_eliminado}
-    if aviso:
-        respuesta["aviso"] = aviso
+    resultado = borrar_todo(db, usuario.id, usuario.email)
+    respuesta = {"ok": True, "auth_eliminado": resultado["auth_eliminado"],
+                 "gmail_revocado": resultado["gmail_revocado"]}
+    if resultado["aviso"]:
+        respuesta["aviso"] = resultado["aviso"]
     return respuesta

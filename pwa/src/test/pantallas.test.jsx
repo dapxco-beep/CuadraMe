@@ -222,13 +222,15 @@ describe('DetalleMovimiento', () => {
 })
 
 describe('Perfil', () => {
-  it('eliminar cuenta exige confirmar', async () => {
+  it('eliminar cuenta exige escribir ELIMINAR (no basta un toque)', async () => {
     montar(<Perfil />)
-    await userEvent.click(await screen.findByText('Eliminar mi cuenta y mis datos'))
-    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    await userEvent.click(await screen.findByText('Borrar mi cuenta y todos mis datos'))
+    const borrar = await screen.findByRole('button', { name: 'Borrar todo' })
+    expect(borrar).toBeDisabled()
     expect(api.eliminarMiCuenta).not.toHaveBeenCalled()
-    await userEvent.click(screen.getByText('Sí, eliminar todo'))
-    await waitFor(() => expect(api.eliminarMiCuenta).toHaveBeenCalled())
+    await userEvent.type(screen.getByLabelText(/escribe ELIMINAR/), 'ELIMINAR')
+    await userEvent.click(borrar)
+    await waitFor(() => expect(api.eliminarMiCuenta).toHaveBeenCalledWith('ELIMINAR'))
   })
 })
 

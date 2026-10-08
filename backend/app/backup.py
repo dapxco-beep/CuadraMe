@@ -20,6 +20,10 @@ from app.database import Base, engine
 logger = logging.getLogger(__name__)
 
 
+# La clave del Atajo antigua estaba en claro: no debe viajar por correo (el hash sí; sirve para restaurar).
+COLUMNAS_NO_RESPALDADAS = {"api_key"}
+
+
 def _serializable(valor):
     if isinstance(valor, (datetime, date)):
         return valor.isoformat()
@@ -42,7 +46,8 @@ def exportar_base_de_datos() -> bytes:
                 continue
             filas = conn.execute(tabla.select()).mappings().all()
             data[nombre_tabla] = [
-                {k: _serializable(v) for k, v in dict(fila).items()} for fila in filas
+                {k: _serializable(v) for k, v in dict(fila).items() if k not in COLUMNAS_NO_RESPALDADAS}
+                for fila in filas
             ]
 
     payload = json.dumps(
