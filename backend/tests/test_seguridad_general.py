@@ -86,14 +86,14 @@ def test_cuerpo_normal_llega_intacto_al_endpoint():
 # ── Pagos ─────────────────────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("url,valida", [
-    ("https://pwa-seven-ecru.vercel.app/#/perfil", True),
-    ("https://pwa-seven-ecru.vercel.app", True),
+    ("https://cuadrame.dapx.shop/#/perfil", True),
+    ("https://cuadrame.dapx.shop", True),
     ("http://localhost:5173/#/perfil", True),
-    ("https://pwa-seven-ecru.vercel.app.malo.com/", False),
-    ("https://malo.com/https://pwa-seven-ecru.vercel.app", False),
-    ("https://pwa-seven-ecru.vercel.app@malo.com/", False),
-    ("https://usuario:clave@pwa-seven-ecru.vercel.app/", False),
-    ("http://pwa-seven-ecru.vercel.app/", False),
+    ("https://cuadrame.dapx.shop.malo.com/", False),
+    ("https://malo.com/https://cuadrame.dapx.shop", False),
+    ("https://cuadrame.dapx.shop@malo.com/", False),
+    ("https://usuario:clave@cuadrame.dapx.shop/", False),
+    ("http://cuadrame.dapx.shop/", False),
     ("http://localhost.malo.com/", False),
     ("javascript:alert(1)", False),
     ("", False),
@@ -103,7 +103,7 @@ def test_url_de_retorno_de_stripe(url, valida):
 
 
 def test_checkout_rechaza_url_parecida():
-    r = client.post("/pagos/checkout", params={"success_url": "https://pwa-seven-ecru.vercel.app.malo.com/",
+    r = client.post("/pagos/checkout", params={"success_url": "https://cuadrame.dapx.shop.malo.com/",
                                                "cancel_url": "http://localhost:5173/"})
     assert r.status_code == 400
 
