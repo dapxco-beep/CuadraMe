@@ -30,7 +30,7 @@ export default function ResumenSaldo({ resumen, bolsillo, className = '' }) {
             type="button"
             aria-pressed={modo === m.id}
             onClick={() => setModo(m.id)}
-            className={`rounded-full px-3 py-1 text-[11px] font-semibold border border-current ${modo === m.id ? 'bg-[color-mix(in_srgb,currentColor_16%,transparent)]' : 'opacity-70'}`}
+            className={`relative before:absolute before:-inset-y-[9px] before:inset-x-0 before:content-[''] rounded-full px-3 py-1 text-[11px] font-semibold border border-current ${modo === m.id ? 'bg-[color-mix(in_srgb,currentColor_16%,transparent)]' : 'opacity-70'}`}
           >
             {m.label}
           </button>

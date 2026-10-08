@@ -43,3 +43,33 @@ export function formatVeces(n) {
   const r = Math.round(Number(n) * 10) / 10
   return `${String(r).replace('.', ',')} ${r === 1 ? 'vez' : 'veces'}`
 }
+
+// Fecha legible para personas: '1 de agosto de 2026'. Si trae hora real (no medianoche ni
+// mediodía de relleno de un archivo) la agrega: '1 de agosto de 2026, 3:45 p. m.'
+export function formatFechaLarga(valor) {
+  const d = new Date(valor)
+  if (Number.isNaN(d.getTime())) return '—'
+  const dia = d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+  const h = d.getHours()
+  if (d.getMinutes() === 0 && d.getSeconds() === 0 && (h === 0 || h === 12)) return dia
+  return `${dia}, ${d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })}`
+}
+
+// El campo `fuente` del backend es un código interno; esto lo traduce a algo que entienda cualquiera.
+const ORIGENES = {
+  manual: 'Lo anotaste tú',
+  email: 'Correo del banco',
+  ai: 'Asistente',
+  wallet: 'Pago con el celular',
+  recurrente: 'Pago recurrente',
+  importacion_archivo: 'Archivo importado',
+  conciliacion_extracto: 'Extracto del banco',
+  conciliacion_auto: 'Extracto del banco',
+  transferencia_interna: 'Traslado entre tus cuentas',
+  ajuste_saldo: 'Ajuste de saldo',
+  cierre_app: 'Cierre de mes',
+  aporte_meta: 'Aporte a una meta',
+}
+export function nombreOrigen(fuente) {
+  return ORIGENES[fuente] || 'Otro'
+}

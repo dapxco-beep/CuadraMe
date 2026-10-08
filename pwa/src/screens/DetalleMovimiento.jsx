@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, ArrowLeftRight, Pencil, Trash2, X } from 'lucide-react'
 import Icono from '../components/Icono'
-import { formatMoneda } from '../lib/format'
+import { formatFechaLarga, formatMoneda, nombreOrigen } from '../lib/format'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
@@ -368,7 +368,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                 </button>
                 <button
                   onClick={() => setCambiandoCategoria(true)}
-                  className="flex-1 rounded-xl border border-line py-2.5 text-sm font-semibold"
+                  className="flex-1 rounded-xl border border-line py-2.5 min-h-[44px] text-sm font-semibold"
                 >
                   Cambiar
                 </button>
@@ -376,7 +376,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
             </div>
           )}
           {cuenta && <Fila label="Cuenta" valor={cuenta.nombre} />}
-          <Fila label="Fecha" valor={new Date(movimiento.fecha).toLocaleString('es-CO')} />
+          <Fila label="Fecha" valor={formatFechaLarga(movimiento.fecha)} />
           <Fila label="Tipo" valor={etiquetaTipo(movimiento)} />
           {puedeMarcar && (
             <div className="px-4 py-3.5">
@@ -395,7 +395,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                       )
                     }
                     disabled={trasladando}
-                    className="rounded-xl border border-line py-2.5 text-sm font-semibold disabled:opacity-60"
+                    className="rounded-xl border border-line py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
                   >
                     {direccion === 'income' ? 'Es un ingreso real' : 'Es un gasto real'}
                   </button>
@@ -404,7 +404,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                     <button
                       onClick={() => aplicarTraslado(cambiosMarcarTraslado(movimiento), 'Marcado como traslado entre tus cuentas')}
                       disabled={trasladando}
-                      className="rounded-xl bg-accent text-white py-2.5 text-sm font-semibold disabled:opacity-60"
+                      className="rounded-xl bg-accent text-white py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
                     >
                       Marcar como traslado entre mis cuentas
                     </button>
@@ -417,7 +417,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                           )
                         }
                         disabled={trasladando}
-                        className="rounded-xl border border-line py-2.5 text-sm font-semibold disabled:opacity-60"
+                        className="rounded-xl border border-line py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
                       >
                         {direccion === 'income' ? 'Es un ingreso real' : 'Es un gasto real'}
                       </button>
@@ -427,7 +427,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                 <button
                   onClick={buscarContraparte}
                   disabled={trasladando}
-                  className="rounded-xl border border-line py-2.5 text-sm font-semibold disabled:opacity-60"
+                  className="rounded-xl border border-line py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
                 >
                   Vincular con su contraparte
                 </button>
@@ -460,7 +460,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
               )}
             </div>
           )}
-          <Fila label="Origen" valor={movimiento.fuente} />
+          <Fila label="Origen" valor={nombreOrigen(movimiento.fuente)} />
           {movimiento.notas && !esTransferencia && <Fila label="Notas" valor={movimiento.notas} />}
         </div>
       )}

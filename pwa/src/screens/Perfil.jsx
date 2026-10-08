@@ -302,11 +302,11 @@ export default function Perfil() {
               aria-checked={permisoPush === 'granted'}
               aria-label="Alertas de presupuesto"
               className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${
-                permisoPush === 'granted' ? 'bg-accent' : 'bg-line'
+                permisoPush === 'granted' ? 'bg-accent' : 'bg-ink-soft/35'
               } disabled:opacity-60`}
             >
               <span
-                className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
                   permisoPush === 'granted' ? 'translate-x-5' : 'translate-x-0.5'
                 }`}
               />
@@ -326,10 +326,10 @@ export default function Perfil() {
               role="switch"
               aria-checked={recordatorio}
               aria-label="Recordatorio diario"
-              className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${recordatorio ? 'bg-accent' : 'bg-line'}`}
+              className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${recordatorio ? 'bg-accent' : 'bg-ink-soft/35'}`}
             >
               <span
-                className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
                   recordatorio ? 'translate-x-5' : 'translate-x-0.5'
                 }`}
               />

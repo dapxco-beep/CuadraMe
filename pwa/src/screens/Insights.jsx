@@ -52,6 +52,8 @@ export default function Insights() {
   }, [periodoResumen.desde, periodoResumen.hasta])
 
   useEffect(() => {
+    // Solo cuando ya hay conversación: al abrir la pantalla (lista vacía) saltaba hasta el final
+    if (mensajes.length === 0) return
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [mensajes])
 

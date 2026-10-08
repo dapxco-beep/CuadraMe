@@ -149,7 +149,7 @@ export default function CierreMes() {
           </>
         )}
 
-        <label className="flex items-start gap-2 text-xs mt-6">
+        <label className="flex items-start gap-2 text-xs mt-6 min-h-[44px]">
           <input type="checkbox" checked={correo} onChange={alternarCorreo} className="w-4 h-4 mt-0.5 accent-accent" />
           <span>Enviarme también el cierre por correo (por defecto solo recibes una notificación en la app)</span>
         </label>

@@ -72,6 +72,8 @@ const nuevoArchivo = (f, cuentas, cuentaInicial) => ({
  * `revisionInicial={{ historialId }}` abre directo la revisión de un extracto ya procesado
  * (el de un correo, un enlace o una notificación) sin volver a subir nada.
  */
+const TANDA_FILAS = 100
+
 export default function SubidaMultiple({
   archivosIniciales = [], cuentaInicial = '', revisionInicial = null, onCancelar, onImportado, onManual,
 }) {
@@ -91,6 +93,8 @@ export default function SubidaMultiple({
   const [importando, setImportando] = useState(false)
   const [resultados, setResultados] = useState([])
   const [error, setError] = useState('')
+  // Con archivos de miles de filas, pintar todas congela el celular: se muestran por tandas.
+  const [filasMostradas, setFilasMostradas] = useState({}) // id de archivo -> cuántas filas se pintan
   const archivosRef = useRef(archivos)
   archivosRef.current = archivos
   const montado = useRef(true)
@@ -396,7 +400,7 @@ export default function SubidaMultiple({
                     <p className="text-xs text-ink-soft rounded-2xl border border-line bg-paper px-4 py-3">Todo lo de este archivo ya estaba registrado.</p>
                   ) : (
                     <div className="rounded-2xl bg-paper border border-line divide-y divide-line overflow-hidden">
-                      {visibles.map((it, idx) => {
+                      {visibles.slice(0, filasMostradas[a.id] || TANDA_FILAS).map((it, idx) => {
                         const clave = `${a.id}:${it.k}`
                         const marcado = seleccion.has(clave)
                         const repetido = it.estado === 'repetido'
@@ -413,7 +417,7 @@ export default function SubidaMultiple({
                                 aria-label={`Importar ${it.descripcion}`}
                               />
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{it.descripcion}</p>
+                                <p className="text-sm font-medium break-words line-clamp-2">{it.descripcion}</p>
                                 <p className="text-xs text-danger">
                                   {it.fecha} ·{' '}
                                   {repetido ? `Ya está en ${it.repetidoDe}` : it.estado === 'posible' ? 'Posible duplicado' : 'Falta registrar'}
@@ -451,6 +455,15 @@ export default function SubidaMultiple({
                           </div>
                         )
                       })}
+                      {visibles.length > (filasMostradas[a.id] || TANDA_FILAS) && (
+                        <button
+                          type="button"
+                          onClick={() => setFilasMostradas((p) => ({ ...p, [a.id]: (p[a.id] || TANDA_FILAS) + TANDA_FILAS }))}
+                          className="w-full min-h-[44px] text-sm font-semibold text-accent"
+                        >
+                          Mostrar {Math.min(TANDA_FILAS, visibles.length - (filasMostradas[a.id] || TANDA_FILAS))} más (faltan {visibles.length - (filasMostradas[a.id] || TANDA_FILAS)})
+                        </button>
+                      )}
                     </div>
                   )}
                   {a.sobrantes?.length > 0 && (

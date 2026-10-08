@@ -465,6 +465,19 @@ button, a {
     max-width: 720px;
     margin-inline: auto;
   }
+  /* Pantallas previas al shell (autorización de datos, bienvenida, bloqueo): sin barra
+     lateral, así que se centran con un ancho de lectura en vez de estirarse a 1920 px */
+  #root > .screen-enter,
+  #root > .contents > .screen-enter {
+    width: 100%;
+    max-width: 640px;
+    margin-inline: auto;
+  }
+  .pantalla-centrada {
+    width: 100%;
+    max-width: 480px;
+    margin-inline: auto;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -574,6 +587,31 @@ button, a {
 
 /* Secciones plegables (Inicio): el contenido se abre/cierra sin saltos de altura bruscos */
 .plegable-cuerpo[hidden] { display: none; }
+
+/* Zona táctil mínima de 44 px en pantallas táctiles. Los controles pequeños (chips, enlaces
+   de texto, iconos de 28 px) no cambian de tamaño ni de sitio: solo crece, sin verse, el área
+   donde cuenta el toque. Si el control ya mide ≥ 44 px, min() deja el margen en 0 y no pasa
+   nada. Excluye lo ya posicionado (absolute/fixed/sticky) para no moverlo. */
+@media (pointer: coarse) {
+  :is(button, [role='button'], [role='tab'], a[href], summary):not(.absolute, .fixed, .sticky) {
+    position: relative;
+  }
+  :is(button, [role='button'], [role='tab'], a[href], summary):not(.sin-zona-tactil)::after {
+    content: '';
+    position: absolute;
+    top: min(0px, calc((100% - 44px) / 2));
+    bottom: min(0px, calc((100% - 44px) / 2));
+    left: min(0px, calc((100% - 44px) / 2));
+    right: min(0px, calc((100% - 44px) / 2));
+  }
+  /* Los campos no pueden usar el truco anterior (no admiten ::after): crecen de verdad */
+  select,
+  input[type='date'],
+  input[type='month'],
+  input[type='range'] {
+    min-height: 44px;
+  }
+}
 
 /* Impresión / "Guardar como PDF" (pantalla Impuestos) */
 .print-only { display: none; }

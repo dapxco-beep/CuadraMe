@@ -67,7 +67,7 @@ export default function Login() {
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-center px-8 py-10">
+    <div className="flex-1 flex flex-col justify-center px-8 py-10 pantalla-centrada">
       <EncabezadoMarca titulo={modo === 'login' ? 'CuadraMe — inicia sesión' : 'CuadraMe — crea tu cuenta'} />
 
       <form onSubmit={onSubmit} className="flex flex-col gap-3">

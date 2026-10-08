@@ -27,7 +27,7 @@ const PASOS_BIENVENIDA = [
 
 function Bienvenida({ onContinuar }) {
   return (
-    <div className="flex-1 flex flex-col justify-center px-8 py-10">
+    <div className="flex-1 flex flex-col justify-center px-8 py-10 pantalla-centrada">
       <EncabezadoMarca titulo="Bienvenido a CuadraMe" lema="Esto es lo que puedes hacer" />
 
       <div className="flex flex-col gap-3 mb-8">

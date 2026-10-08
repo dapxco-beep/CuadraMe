@@ -56,7 +56,13 @@ export function BloqueExtracto({ t, moneda }) {
           <>Para no pagar intereses: {formatMoneda(t.falta_para_evitar_intereses, moneda)}</>
         )}
       </p>
-      {t.vencido && <p className="text-danger mt-1">El plazo ya pasó: paga cuanto antes para frenar los intereses.</p>}
+      {t.vencido && (
+        <p className="text-danger mt-1">
+          {t.total_del_banco
+            ? "El plazo ya pasó: paga cuanto antes para frenar los intereses."
+            : "Según tus fechas, este plazo ya pasó. Si ya pagaste, registra el pago o ajusta el saldo; si no, págalo cuanto antes."}
+        </p>
+      )}
       {!pagado && !t.vencido && t.dias_para_limite != null && t.dias_para_limite <= 7 && (
         <p className={`mt-1 font-medium ${t.dias_para_limite <= 3 ? 'text-danger' : 'text-gold'}`} data-testid="aviso-dias-pago">
           {t.dias_para_limite === 0 ? 'Hoy vence tu pago.' : `Te quedan ${t.dias_para_limite} ${t.dias_para_limite === 1 ? 'día' : 'días'} para el pago.`}
@@ -178,7 +184,7 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
 
       <button
         onClick={() => setEditando(true)}
-        className="mt-3 flex items-center gap-1.5 text-sm text-accent font-medium"
+        className="mt-1 flex items-center gap-1.5 text-sm text-accent font-medium min-h-[44px]"
       >
         <Pencil size={16} /> {configurada ? 'Editar datos de la tarjeta' : 'Configurar tarjeta'}
       </button>
