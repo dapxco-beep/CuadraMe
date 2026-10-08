@@ -217,7 +217,7 @@ export default function Inicio() {
               </p>
               {gastarHoy !== null && <p className="text-xs mt-1.5 opacity-90">Sin quedar mal el resto del mes</p>}
 
-              {bolsillo && (
+              {bolsillo && !(resumen && !resumen.hay_movimientos && !saldoTotal) && (
                 <div className="mt-4 flex items-start gap-3">
                   {cuadra ? (
                     <SelloCuadre size={26} />

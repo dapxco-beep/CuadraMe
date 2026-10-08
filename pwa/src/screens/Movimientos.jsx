@@ -1,8 +1,9 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
+import { Boton } from '../components/ui'
 import { Link, useLocation, useNavigationType, useSearchParams } from 'react-router-dom'
-import { ArrowLeftRight, Check, ChevronDown, Download, Search, Shuffle, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeftRight, Check, ChevronDown, Download, ListChecks, Search, Shuffle, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
 import Icono from '../components/Icono'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
@@ -934,6 +935,19 @@ export default function Movimientos() {
             <div role="alert" className="mx-5 rounded-3xl bg-danger-soft border border-danger/30 p-6 text-center">
               <p className="text-sm text-danger">{errorCarga}</p>
             </div>
+          ) : filtrados.length === 0 && chipsActivos.length === 0 && !f.revisar && !f.cat && !f.conf && !f.comercio ? (
+            // Sin ningún filtro y sin filas: la persona aún no tiene movimientos (no es "búsqueda sin resultados")
+            <EstadoVacio
+              icono={ListChecks}
+              titulo="Aún no tienes movimientos"
+              texto="Anota el primero o trae los de tu banco: aquí los verás ordenados por día."
+              className="mx-5"
+            >
+              <div className="mt-4 flex flex-col gap-2">
+                <Boton to="/agregar" bloque>Anotar un movimiento</Boton>
+                <Boton to="/sincronizacion" variante="secundario" bloque>Traer movimientos del banco</Boton>
+              </div>
+            </EstadoVacio>
           ) : filtrados.length === 0 ? (
             <EstadoVacio
               icono={Search}

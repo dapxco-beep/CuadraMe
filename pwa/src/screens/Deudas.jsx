@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { useVolver } from '../lib/useVolver'
 import { useEstadoLista } from '../lib/useEstadoLista'
-import { ArrowLeft, Plus, X } from 'lucide-react'
+import { ArrowLeft, Landmark, Plus, X } from 'lucide-react'
+import { EstadoVacio } from '../brand/Marca'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
@@ -81,9 +82,20 @@ export default function Deudas() {
           </button>
         </div>
       ) : deudas.length === 0 ? (
-        <div className="mx-5 mt-6 rounded-2xl bg-paper-raised border border-line p-8 text-center">
-          <p className="text-sm text-ink-soft">No tienes deudas registradas</p>
-        </div>
+        <EstadoVacio
+          icono={Landmark}
+          titulo="No tienes deudas registradas"
+          texto="Si debes un crédito o un préstamo, anótalo y te ayudo a planear cómo pagarlo."
+          className="mx-5 mt-6"
+        >
+          <button
+            type="button"
+            onClick={() => setMostrarForm(true)}
+            className="mt-4 min-h-[44px] px-5 rounded-xl border border-line text-sm font-semibold text-accent"
+          >
+            Agregar una deuda
+          </button>
+        </EstadoVacio>
       ) : (
         <div className="mx-5 mt-4 space-y-3">
           {deudas.map((d, i) => (

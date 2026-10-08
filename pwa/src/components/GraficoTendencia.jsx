@@ -208,10 +208,10 @@ export default function GraficoTendencia({ meses = [], rangoInicial = 6 }) {
       )}
 
       <div className="flex gap-4 mt-3 flex-wrap">
-        <label className="flex items-center gap-2 text-xs text-ink-soft min-h-[32px]">
+        <label className="flex items-center gap-2 text-xs text-ink-soft min-h-[44px]">
           <input type="checkbox" checked={ahorro} onChange={(e) => setAhorro(e.target.checked)} /> Mostrar ahorro neto
         </label>
-        <label className="flex items-center gap-2 text-xs text-ink-soft min-h-[32px]">
+        <label className="flex items-center gap-2 text-xs text-ink-soft min-h-[44px]">
           <input type="checkbox" checked={vacios} onChange={(e) => setVacios(e.target.checked)} /> Mostrar meses sin datos
         </label>
       </div>
