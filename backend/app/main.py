@@ -39,9 +39,11 @@ from app.routers import (
     perfil,
     presupuestos,
     push,
+    recordatorios,
     recurrentes,
     reglas,
     reportes,
+    resumen,
 )
 
 Base.metadata.create_all(bind=engine)
@@ -95,6 +97,9 @@ if engine.dialect.name == "postgresql":
         conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS alias_tarjeta VARCHAR"))
         conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS recordatorio_diario BOOLEAN DEFAULT FALSE"))
         conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS ultimo_recordatorio VARCHAR"))
+        # Resumen semanal por correo (supabase/migraciones/resumen_semanal.sql).
+        conn.execute(text("ALTER TABLE ajustes_usuario ADD COLUMN IF NOT EXISTS resumen_correo BOOLEAN DEFAULT FALSE"))
+        conn.execute(text("ALTER TABLE ajustes_usuario ADD COLUMN IF NOT EXISTS email_resumen VARCHAR"))
         # Cruce con el extracto (supabase/migraciones/cierre_app_conciliacion.sql).
         conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS conciliado_en TIMESTAMP NULL"))
         conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS extracto_id VARCHAR NULL"))
@@ -183,6 +188,8 @@ app.include_router(informes.router)
 app.include_router(conexiones.router)
 app.include_router(cuotas_tarjeta.router)
 app.include_router(extracto_tarjeta.router)
+app.include_router(resumen.router)
+app.include_router(recordatorios.router)
 from app.routers import sincronizacion  # noqa: E402
 
 app.include_router(sincronizacion.router)

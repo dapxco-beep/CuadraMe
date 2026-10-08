@@ -36,8 +36,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((resp) => {
-          const copia = resp.clone()
-          caches.open(CACHE_SHELL).then((c) => c.put('/', copia))
+          // Solo la app (/) alimenta el caché del shell: otras páginas estáticas, como
+          // /bienvenida.html, no deben pisarlo.
+          if (url.pathname === '/') {
+            const copia = resp.clone()
+            caches.open(CACHE_SHELL).then((c) => c.put('/', copia))
+          }
           return resp
         })
         .catch(async () => (await caches.match('/')) || Response.error())

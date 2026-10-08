@@ -4,6 +4,16 @@
 
 ---
 
+## 🆕 Producto para salir a vender (2026-10-07) — pendiente de tu aprobación
+
+- **Resumen semanal por correo (opt-in, apagado por defecto):** `GET/PUT /resumen/preferencias` (interruptor en Perfil → «Correo») y cron `POST /resumen/cron/semanal` (header `X-Cron-Secret`). Idempotente por usuario y semana ISO (`marcas_cron`, clave `resumen_correo_semanal`), un fallo no frena a los demás (la marca se libera para reintentar), sin gastos ni avisos no manda nada. **Cron NO creado**: domingo 18:00 hora Colombia. Columnas nuevas `ajustes_usuario.resumen_correo` y `.email_resumen` (las agrega `main.py`; SQL suelto en `backend/supabase/migraciones/resumen_semanal.sql`, NO ejecutado). Ojo: `RESEND_FROM` por defecto es el remitente de pruebas de Resend y solo escribe al dueño de la cuenta; para clientes hace falta dominio verificado.
+- **Recordatorios en Inicio:** `GET /recordatorios` (pago de tarjeta en ≤5 días, presupuesto ≥80 %, extractos de Gmail por revisar). Tarjetas descartables; lo descartado se guarda en el dispositivo con una clave que cambia cuando hay una situación nueva.
+- **Página pública** `pwa/public/bienvenida.html` (sin login, sin JS, con Open Graph). El `canonical`/`og:*` apuntan al dominio actual de Vercel: cambiarlos cuando haya dominio. De paso, `sw.js` ya no guarda en el caché del shell otras páginas que no sean `/`.
+- **Legal:** borradores en `docs/legal/` (con lo que debes decidir en `PENDIENTES_DANIEL.md`) y pantallas de la app alineadas con el código (Gmail también busca sin etiqueta, Resend, Sentry, copias de seguridad, transferencia internacional). La versión de textos sigue en 1.1 a propósito.
+- **Checklist final:** `docs/SALIDA_A_PRODUCCION.md`.
+
+---
+
 ## 🆕 Traslados con dirección y saldo correcto (2026-10-06) — pendiente de tu aprobación
 
 **Defecto corregido:** los renglones de transferencia de un extracto (Nequi "Transfer", Nu "Transferencia"…) se guardaban como `transfer` sin dirección: no movían el saldo y no se sabía si entraron o salieron. Regla nueva: **todo movimiento tiene dirección (income/expense) y siempre mueve el saldo**; que sea traslado propio (neutral) o gasto/ingreso real lo decide `contabilidad.tipos_efectivos`, no el tipo.

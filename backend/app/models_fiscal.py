@@ -19,6 +19,10 @@ class AjusteUsuario(Base):
     cuenta_exenta_gmf_id = Column(String, nullable=True)  # la ley permite UNA cuenta exenta por titular
     cierre_correo = Column(Boolean, default=False)  # opt-in: por defecto NO se manda correo
     email_cierre = Column(String, nullable=True)  # correo guardado al activarlo (los crons no tienen el token del usuario)
+    # Resumen semanal por correo (opt-in, apagado por defecto). Se guarda el correo al activarlo
+    # por la misma razón: el cron no tiene la sesión del usuario.
+    resumen_correo = Column(Boolean, default=False)
+    email_resumen = Column(String, nullable=True)
     actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 

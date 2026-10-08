@@ -38,12 +38,13 @@ export default function AutorizacionDatos() {
           <h2 className="font-semibold mb-1.5">2. Acceso opcional a mi cuenta de Gmail</h2>
           <p>
             Solo si yo activo esta función de forma explícita desde la aplicación, autorizo a CuadraMe
-            a acceder, en modo de solo lectura, a los correos de mi bandeja de Gmail que yo mismo
-            etiquete con la etiqueta que configure (por defecto "gastos"), con el único fin de sugerir
-            movimientos financieros a partir de notificaciones bancarias. Entiendo que:
+            a acceder, en modo de solo lectura, a los correos de mi Gmail con la etiqueta que
+            configure (por defecto "gastos") y a las notificaciones bancarias y extractos en PDF que
+            detecte por remitente y palabras clave, con el único fin de sugerir movimientos
+            financieros. Entiendo que:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 mt-1.5">
-            <li>CuadraMe no accede a correos sin esa etiqueta.</li>
+            <li>CuadraMe no envía, borra ni modifica mis correos.</li>
             <li>Puedo revocar este acceso en cualquier momento desde la sección "Correos" de la aplicación.</li>
             <li>Al revocarlo, CuadraMe deja de tener acceso a mi cuenta de Gmail de inmediato.</li>
           </ul>
@@ -72,7 +73,7 @@ export default function AutorizacionDatos() {
           <h2 className="font-semibold mb-1.5">5. Transferencia a encargados del tratamiento</h2>
           <p>
             Autorizo que mis datos sean almacenados y procesados por los proveedores de infraestructura
-            técnica que DAPX utiliza para operar CuadraMe (actualmente Supabase, Railway y Vercel),
+            técnica que DAPX utiliza para operar CuadraMe (actualmente Supabase, Railway, Vercel, Resend para correos y copias de seguridad, y Sentry para errores técnicos),
             quienes actúan como encargados del tratamiento bajo instrucciones de DAPX y sujetos a
             condiciones de confidencialidad.
           </p>

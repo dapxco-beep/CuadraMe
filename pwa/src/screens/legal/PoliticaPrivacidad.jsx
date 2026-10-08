@@ -31,7 +31,7 @@ export default function PoliticaPrivacidad() {
           <ul className="list-disc pl-5 space-y-1.5">
             <li><b>Datos de registro:</b> nombre y correo electrónico (o los que tu cuenta de Google comparta si inicias sesión así).</li>
             <li><b>Datos financieros que tú ingresas:</b> nombres de cuentas, saldos, movimientos, categorías, presupuestos, metas de ahorro, deudas.</li>
-            <li><b>Datos de correos bancarios (opcional):</b> si conectas tu Gmail, accedemos únicamente a los correos con la etiqueta que tú elijas (por defecto "gastos"), en modo de solo lectura, para sugerir movimientos. No leemos el resto de tu bandeja.</li>
+            <li><b>Datos de correos bancarios (opcional):</b> si conectas tu Gmail, leemos, en modo de solo lectura, los correos con la etiqueta que tú elijas (por defecto "gastos") y, además, buscamos notificaciones de bancos y extractos en PDF por remitente y palabras clave. No enviamos, borramos ni modificamos correos. De los correos que detectamos como movimientos guardamos remitente, asunto, un fragmento del texto y los datos extraídos (monto, comercio, fecha); del resto no guardamos nada.</li>
             <li><b>Extractos bancarios en PDF (opcional):</b> si subes un extracto, se procesa para extraer movimientos y se compara contra tu historial. El texto extraído no se comparte con terceros salvo lo indicado en la sección 5.</li>
             <li><b>Datos técnicos:</b> dirección IP, tipo de dispositivo, y datos de uso básicos para operar y dar soporte al servicio.</li>
           </ul>
@@ -61,7 +61,8 @@ export default function PoliticaPrivacidad() {
           <h2 className="font-semibold mb-1.5">5. Con quién compartimos tus datos</h2>
           <p>No vendemos ni arrendamos tus datos personales. Los compartimos únicamente con:</p>
           <ul className="list-disc pl-5 space-y-1.5 mt-1.5">
-            <li><b>Proveedores de infraestructura técnica</b> que almacenan y procesan los datos en nuestro nombre bajo condiciones de confidencialidad: Supabase (base de datos y autenticación), Railway (servidores), Vercel (hosting del frontend), Google (API de Gmail, solo si tú la conectas).</li>
+            <li><b>Proveedores de infraestructura técnica</b> que almacenan y procesan los datos en nuestro nombre bajo condiciones de confidencialidad: Supabase (base de datos y autenticación), Railway (servidores), Vercel (hosting del frontend), Google (API de Gmail, solo si tú la conectas), OpenRouter (inteligencia artificial, solo si usas el asistente o subes fotos de facturas), Resend (envío de correos: el resumen semanal y el cierre de mes si los activas, y las copias de seguridad internas) y Sentry (registro de errores técnicos, configurado para no recibir datos personales).</li>
+            <li><b>Servicios de notificaciones push</b> del navegador o del teléfono (Apple, Google o Mozilla), solo si activas las notificaciones: reciben el aviso cifrado, no tus movimientos.</li>
             <li><b>Autoridades competentes</b>, únicamente cuando exista un requerimiento legal válido.</li>
           </ul>
           <p className="mt-2">
@@ -95,6 +96,15 @@ export default function PoliticaPrivacidad() {
             Patrimonio, impuestos y cierre de mes: los activos, valores y deudas que registres, las marcas de gastos posiblemente deducibles (con su nota de soporte, solo texto) y los informes mensuales que generamos se guardan en tu cuenta. Son información de apoyo y no constituyen asesoría tributaria ni financiera. El cierre de mes llega por notificación y, solo si lo activas, por correo electrónico (Resend).
           </p>
           <p>
+            Resumen semanal por correo: viene apagado. Si lo activas en Perfil, guardamos tu correo de la cuenta para escribirte cada domingo con lo que gastaste esa semana, las categorías donde más se fue la plata, presupuestos casi agotados y pagos de tarjeta próximos. Lo apagas en el mismo lugar y dejamos de escribirte.
+          </p>
+          <p>
+            Copias de seguridad: cada día se genera una copia de la base de datos de CuadraMe y se envía por correo (Resend) al administrador del servicio, para poder restaurar el servicio si algo falla. Incluye los datos de tu cuenta, pero nunca la clave de tus PDF ni contraseñas. Si eliminas tu cuenta, tus datos desaparecen de la base de datos de inmediato, pero las copias ya generadas se van reemplazando y pueden conservar tus datos por un tiempo limitado.
+          </p>
+          <p>
+            Ubicación de los datos: los proveedores de infraestructura pueden procesar tus datos en servidores fuera de Colombia (transferencia internacional). Los escogemos por sus medidas de seguridad y por actuar como encargados bajo nuestras instrucciones.
+          </p>
+          <p>
             Importación de archivos: los CSV/Excel que subas se leen en el momento para proponerte movimientos; el archivo no se almacena.
           </p>
         </section>
@@ -123,8 +133,9 @@ export default function PoliticaPrivacidad() {
           </ul>
           <p className="mt-2">
             Puedes ejercer estos derechos escribiendo a dapxco@gmail.com, o directamente desde la
-            aplicación: desconectando tu Gmail en cualquier momento (Correos → Desconectar), eliminando
-            cuentas o movimientos individualmente, o solicitando la eliminación total de tu cuenta.
+            aplicación, en Perfil → Privacidad y datos: ver y revocar cada autorización, descargar tus
+            datos y eliminar tu cuenta. También puedes desconectar tu Gmail en cualquier momento o
+            eliminar cuentas y movimientos individualmente.
           </p>
         </section>
 
@@ -155,7 +166,7 @@ export default function PoliticaPrivacidad() {
 
         <div className="rounded-2xl bg-accent-soft p-4 mt-6">
           <p className="text-xs text-ink">
-            <b>Nota:</b> este documento es un borrador preparado como base de trabajo, alineado a la
+            <b>BORRADOR PARA REVISIÓN DE ABOGADO.</b> Este documento es un borrador preparado como base de trabajo, alineado a la
             Ley 1581 de 2012 y el Decreto 1377 de 2013. Antes de operar con usuarios reales, debe ser
             revisado por un abogado colombiano especializado en protección de datos, en particular:
             (1) el registro de la base de datos ante el Registro Nacional de Bases de Datos (RNBD) de

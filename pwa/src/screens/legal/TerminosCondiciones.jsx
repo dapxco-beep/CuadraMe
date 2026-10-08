@@ -141,8 +141,8 @@ export default function TerminosCondiciones() {
         <section>
           <h2 className="font-semibold mb-1.5">10. Eliminación de cuenta y datos</h2>
           <p>
-            Puedes solicitar la eliminación de tu cuenta y de todos tus datos personales en cualquier
-            momento escribiendo a dapxco@gmail.com. Procesaremos la solicitud dentro de los plazos
+            Puedes eliminar tu cuenta y todos tus datos personales en cualquier momento desde Perfil →
+            Privacidad y datos, o escribiendo a dapxco@gmail.com. Procesaremos la solicitud dentro de los plazos
             establecidos por la Ley 1581 de 2012.
           </p>
         </section>
@@ -165,7 +165,7 @@ export default function TerminosCondiciones() {
 
         <div className="rounded-2xl bg-accent-soft p-4 mt-6">
           <p className="text-xs text-ink">
-            <b>Nota:</b> este documento es un borrador preparado como base de trabajo. Antes de operar
+            <b>BORRADOR PARA REVISIÓN DE ABOGADO.</b> Este documento es un borrador preparado como base de trabajo. Antes de operar
             con usuarios reales, debe ser revisado y validado por un abogado colombiano especializado
             en protección de datos y derecho digital/fintech, especialmente en lo referente a: (1)
             responsabilidad por categorización automática y proyecciones financieras, (2)

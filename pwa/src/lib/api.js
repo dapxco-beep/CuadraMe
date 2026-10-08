@@ -276,6 +276,10 @@ export const api = {
       headers: apiKey ? { 'X-Api-Key': apiKey } : undefined,
       body: { tipo: 'gasto', monto: '1.000', descripcion: 'Prueba de registro rápido', fuente: 'cierre_app' },
     }),
+  // Resumen semanal por correo (opt-in) y recordatorios de las tarjetas del Inicio
+  resumenPreferencias: () => request('/resumen/preferencias'),
+  guardarResumenPreferencias: (correo) => request('/resumen/preferencias', { method: 'PUT', body: { correo } }),
+  recordatorios: () => request('/recordatorios'),
   recordatorioDiario: () => request('/perfil/recordatorio-diario'),
   actualizarRecordatorioDiario: (activo) =>
     request('/perfil/recordatorio-diario', { method: 'PUT', body: { activo } }),

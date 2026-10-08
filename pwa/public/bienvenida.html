@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CuadraMe — Cuadra tus cuentas, simple y al día</title>
+  <meta name="description" content="CuadraMe te ayuda a ver para dónde se va tu plata: registra tus gastos, ponles presupuesto y cuadra tus cuentas con tus extractos. Hecha en Colombia, en pesos.">
+  <meta name="theme-color" content="#a83f0d">
+  <meta name="robots" content="index, follow">
+  <!-- Dominio pendiente de definir: cuando exista, cambiar estas URLs absolutas (canonical y og:*). -->
+  <link rel="canonical" href="https://pwa-seven-ecru.vercel.app/bienvenida.html">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="es_CO">
+  <meta property="og:site_name" content="CuadraMe">
+  <meta property="og:title" content="CuadraMe — Cuadra tus cuentas, simple y al día">
+  <meta property="og:description" content="Registra tus gastos, ponles presupuesto y cuadra tus cuentas con tus extractos. Hecha en Colombia, en pesos.">
+  <meta property="og:url" content="https://pwa-seven-ecru.vercel.app/bienvenida.html">
+  <meta property="og:image" content="https://pwa-seven-ecru.vercel.app/icons/icon-512.png">
+  <meta property="og:image:alt" content="Logo de CuadraMe">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="CuadraMe — Cuadra tus cuentas, simple y al día">
+  <meta name="twitter:description" content="Registra tus gastos, ponles presupuesto y cuadra tus cuentas con tus extractos.">
+  <style>
+    :root {
+      --ink: #221f19; --ink-soft: #5d5748; --paper: #f6efe2; --raised: #ffffff; --line: #e3d6bf;
+      --accent: #a83f0d; --accent-ink: #fff7ee; --accent-soft: #fbe4d3; --gold: #7a5a0a;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ink: #f5f1e8; --ink-soft: #b8b09c; --paper: #17140f; --raised: #221f19; --line: #332e24;
+        --accent: #e8823f; --accent-ink: #17140f; --accent-soft: #332615; --gold: #e8bc63;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    body {
+      margin: 0; background: var(--paper); color: var(--ink); line-height: 1.6; font-size: 17px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .envoltura { width: min(100% - 40px, 960px); margin-inline: auto; }
+    a { color: var(--accent); }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+    .salto { position: absolute; left: -999px; top: 8px; background: var(--raised); color: var(--ink); padding: 10px 14px; border-radius: 8px; z-index: 10; }
+    .salto:focus { left: 8px; }
+    header.sitio { padding: 18px 0; }
+    header.sitio .envoltura { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .marca { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; color: var(--ink); text-decoration: none; }
+    .marca img { width: 32px; height: 32px; border-radius: 8px; }
+    .boton {
+      display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 26px;
+      border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 17px; text-decoration: none;
+    }
+    .boton:hover { filter: brightness(1.08); }
+    .boton.chico { min-height: 44px; padding: 0 20px; font-size: 15px; }
+    .boton.claro { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+    .heroe { padding: 36px 0 56px; }
+    .heroe h1 { font-size: clamp(2rem, 6vw, 3.1rem); line-height: 1.15; margin: 0 0 16px; letter-spacing: -0.02em; max-width: 18ch; }
+    .heroe p.lead { font-size: clamp(1.05rem, 2.6vw, 1.25rem); color: var(--ink-soft); max-width: 40ch; margin: 0 0 28px; }
+    .heroe .acciones { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .heroe small { display: block; margin-top: 14px; color: var(--ink-soft); font-size: 14px; }
+    section.bloque { padding: 48px 0; border-top: 1px solid var(--line); }
+    h2 { font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.2; margin: 0 0 8px; letter-spacing: -0.01em; }
+    .sub { color: var(--ink-soft); margin: 0 0 28px; max-width: 56ch; }
+    .rejilla { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .tarjeta { background: var(--raised); border: 1px solid var(--line); border-radius: 18px; padding: 22px; }
+    .tarjeta h3 { margin: 0 0 6px; font-size: 18px; }
+    .tarjeta p { margin: 0; color: var(--ink-soft); font-size: 16px; }
+    .num { display: inline-flex; width: 36px; height: 36px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); align-items: center; justify-content: center; font-weight: 800; margin-bottom: 12px; }
+    .dos { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .si, .no { border-radius: 18px; padding: 22px; border: 1px solid var(--line); background: var(--raised); }
+    .si h3, .no h3 { margin: 0 0 10px; font-size: 18px; }
+    ul.lista { margin: 0; padding-left: 20px; color: var(--ink); }
+    ul.lista li { margin: 6px 0; }
+    details { background: var(--raised); border: 1px solid var(--line); border-radius: 14px; margin: 0 0 10px; }
+    summary { cursor: pointer; font-weight: 700; padding: 16px 18px; min-height: 48px; list-style-position: inside; }
+    details > p { margin: 0; padding: 0 18px 16px; color: var(--ink-soft); }
+    .cierre { text-align: center; padding: 56px 0; }
+    .cierre h2 { margin-bottom: 18px; }
+    footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--ink-soft); font-size: 14px; }
+    footer nav { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-bottom: 10px; }
+    footer a { display: inline-block; padding: 8px 0; }
+  </style>
+</head>
+<body>
+  <a class="salto" href="#contenido">Saltar al contenido</a>
+
+  <header class="sitio">
+    <div class="envoltura">
+      <a class="marca" href="/bienvenida.html" aria-label="CuadraMe, inicio">
+        <img src="/icons/favicon-64.png" width="32" height="32" alt="">CuadraMe
+      </a>
+      <a class="boton chico claro" href="/">Ya tengo cuenta</a>
+    </div>
+  </header>
+
+  <main id="contenido">
+    <section class="heroe">
+      <div class="envoltura">
+        <h1>Sabe para dónde se va tu plata.</h1>
+        <p class="lead">CuadraMe es una app para llevar tus finanzas personales en pesos: anotas lo que gastas, le pones un tope a cada categoría y compruebas que lo tuyo cuadre con lo que dice tu banco.</p>
+        <div class="acciones">
+          <a class="boton" href="/">Empezar</a>
+          <a class="boton claro" href="#como-funciona">Cómo funciona</a>
+        </div>
+        <small>Hoy es gratis. Se usa desde el navegador del celular o del computador, sin instalar nada.</small>
+      </div>
+    </section>
+
+    <section class="bloque" id="que-es" aria-labelledby="t-que-es">
+      <div class="envoltura">
+        <h2 id="t-que-es">Qué es CuadraMe</h2>
+        <p class="sub">Un cuaderno de cuentas que se ocupa de las partes aburridas. Tú decides qué anotar; la app suma, ordena y te avisa.</p>
+        <div class="rejilla">
+          <div class="tarjeta"><h3>Tus gastos, en orden</h3><p>Registra ingresos y gastos a mano, o deja que la app los sugiera desde tus correos del banco. Cada movimiento queda en una categoría.</p></div>
+          <div class="tarjeta"><h3>Presupuestos con aviso</h3><p>Pones un tope por categoría y la app te avisa cuando vas llegando. También te recuerda cuándo vence el pago de tu tarjeta.</p></div>
+          <div class="tarjeta"><h3>Que lo tuyo cuadre</h3><p>Sube el extracto de tu banco en PDF y lo comparamos con lo que registraste, para encontrar lo que falta o está de más.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="bloque" id="como-funciona" aria-labelledby="t-como">
+      <div class="envoltura">
+        <h2 id="t-como">Cómo funciona, en 3 pasos</h2>
+        <p class="sub">Puedes empezar en cinco minutos y sumar lo demás cuando quieras.</p>
+        <div class="rejilla">
+          <div class="tarjeta"><span class="num" aria-hidden="true">1</span><h3>Crea tu cuenta y tus cuentas</h3><p>Te registras con tu correo y agregas tus cuentas, tarjetas y efectivo con su saldo de hoy.</p></div>
+          <div class="tarjeta"><span class="num" aria-hidden="true">2</span><h3>Registra lo que gastas</h3><p>A mano, desde un atajo del celular, o conectando tu Gmail para que la app encuentre los avisos de tu banco. Tú confirmas cada uno.</p></div>
+          <div class="tarjeta"><span class="num" aria-hidden="true">3</span><h3>Mira y ajusta</h3><p>Ves cuánto puedes gastar hoy, en qué se va la plata y qué está por vencer. Si quieres, cada domingo te llega un resumen por correo.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="bloque" id="privacidad" aria-labelledby="t-priv">
+      <div class="envoltura">
+        <h2 id="t-priv">Tu privacidad, sin letra chiquita</h2>
+        <p class="sub">Conectar Gmail es opcional. Si lo haces, esto es lo que pasa:</p>
+        <div class="dos">
+          <div class="si">
+            <h3>Lo que sí lee CuadraMe</h3>
+            <ul class="lista">
+              <li>Con permiso de <b>solo lectura</b>, los correos con la etiqueta que tú elijas.</li>
+              <li>Avisos de movimientos de bancos y extractos en PDF, que busca por remitente y palabras clave.</li>
+              <li>De lo que detecta guarda el remitente, el asunto, un fragmento y los datos del movimiento (monto, comercio, fecha). Los PDF no se guardan.</li>
+            </ul>
+          </div>
+          <div class="no">
+            <h3>Lo que no hace</h3>
+            <ul class="lista">
+              <li>No envía, borra ni modifica tus correos.</li>
+              <li>No guarda tus correos que no son del banco.</li>
+              <li>No pide ni guarda las claves de tu banco, ni se conecta a tus cuentas ni mueve tu plata.</li>
+              <li>No vende tus datos.</li>
+            </ul>
+          </div>
+        </div>
+        <p class="sub" style="margin-top:20px">Puedes desconectar Gmail, descargar tus datos o borrar tu cuenta cuando quieras desde tu Perfil. Para el asistente con inteligencia artificial y las fotos de facturas se envía a un proveedor externo solo lo necesario para responderte, y únicamente si tú usas esas funciones. Lee la <a href="/#/legal/privacidad">política de privacidad</a> y los <a href="/#/legal/terminos">términos</a>.</p>
+      </div>
+    </section>
+
+    <section class="bloque" id="preguntas" aria-labelledby="t-preg">
+      <div class="envoltura">
+        <h2 id="t-preg">Preguntas frecuentes</h2>
+        <p class="sub">&nbsp;</p>
+        <details><summary>¿Cuánto cuesta?</summary><p>Hoy todas las funciones son gratis. Si algún día hay planes de pago, te avisaremos antes y de forma clara.</p></details>
+        <details><summary>¿CuadraMe es un banco o mueve mi plata?</summary><p>No. No es una entidad financiera, no guarda dinero ni hace pagos o transferencias. Es una herramienta para organizar y entender tus finanzas con la información que tú registras o autorizas.</p></details>
+        <details><summary>¿Se conecta directamente a mi banco?</summary><p>No. La información llega porque tú la anotas, porque subes un extracto o porque conectas tu Gmail y la app encuentra los avisos que tu banco te envía por correo.</p></details>
+        <details><summary>¿Tengo que conectar mi Gmail?</summary><p>No, es opcional. Sin Gmail puedes registrar a mano, subir extractos en PDF o archivos de Excel y usar atajos del celular.</p></details>
+        <details><summary>¿Se equivoca la app al categorizar?</summary><p>Puede pasar. Las categorías y los datos que la app sugiere los revisas y confirmas tú, y la app aprende de tus correcciones.</p></details>
+        <details><summary>¿Cómo borro mis datos?</summary><p>Desde Perfil, en «Privacidad y datos», puedes descargar tu información y eliminar tu cuenta. También puedes escribirnos.</p></details>
+        <details><summary>¿Funciona en iPhone y Android?</summary><p>Sí, desde el navegador del celular, y puedes agregarla a tu pantalla de inicio como si fuera una app. Los atajos de registro rápido existen para iPhone y para Android (con Tasker).</p></details>
+        <details><summary>¿Recibiré correos todo el tiempo?</summary><p>No. El resumen semanal por correo viene apagado: solo lo recibes si lo activas en Perfil, y lo apagas ahí mismo.</p></details>
+      </div>
+    </section>
+
+    <section class="bloque cierre">
+      <div class="envoltura">
+        <h2>Empieza a cuadrar tus cuentas</h2>
+        <a class="boton" href="/">Empezar</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="envoltura">
+      <nav aria-label="Información legal y contacto">
+        <a href="/#/legal/terminos">Términos y condiciones</a>
+        <a href="/#/legal/privacidad">Política de privacidad</a>
+        <a href="mailto:dapxco@gmail.com">dapxco@gmail.com</a>
+      </nav>
+      <p style="margin:0">CuadraMe es una herramienta de organización personal; no es asesoría financiera ni tributaria. Hecha en Colombia por DAPX.</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,138 @@
+"""Resumen semanal por correo: arma los datos de la semana y la plantilla HTML.
+
+Funciones sin efectos secundarios (salvo `enviar_correo`, que habla con Resend).
+El cron y el control de idempotencia viven en routers/resumen.py."""
+import html
+import logging
+from datetime import datetime, timedelta
+
+import httpx
+from sqlalchemy.orm import Session
+
+from app.compartidos import cuentas_ids_accesibles
+from app.config import settings
+from app.contabilidad import gastos_por_categoria
+from app.recordatorios import presupuestos_altos, tarjetas_por_vencer
+
+logger = logging.getLogger(__name__)
+
+DIAS_SEMANA = 7
+DIAS_VENCIMIENTO_CORREO = 7  # el correo mira una semana adelante
+
+
+def _pesos(n: float) -> str:
+    return f"${n:,.0f}".replace(",", ".")
+
+
+def datos_semana(db: Session, usuario_id: str, hoy: datetime) -> dict:
+    """Todo lo que lleva el correo de UN usuario. `vacio` = no hay nada que contar
+    (sin gastos ni avisos): en ese caso no se manda correo."""
+    ids = cuentas_ids_accesibles(db, usuario_id)
+    por_cat = gastos_por_categoria(db, ids, hoy - timedelta(days=DIAS_SEMANA)) if ids else {}
+    ordenadas = sorted(por_cat.items(), key=lambda kv: -kv[1])
+    total = sum(por_cat.values())
+    datos = {
+        "desde": (hoy - timedelta(days=DIAS_SEMANA)).date().isoformat(),
+        "hasta": hoy.date().isoformat(),
+        "total_gastos": round(total),
+        "top_categorias": [{"categoria": c, "monto": round(m)} for c, m in ordenadas[:3]],
+        "presupuestos": presupuestos_altos(db, usuario_id, hoy),
+        "tarjetas": tarjetas_por_vencer(db, usuario_id, hoy, DIAS_VENCIMIENTO_CORREO),
+    }
+    datos["vacio"] = not (datos["total_gastos"] or datos["presupuestos"] or datos["tarjetas"])
+    return datos
+
+
+def _cuando(dias: int) -> str:
+    return "hoy" if dias == 0 else "mañana" if dias == 1 else f"en {dias} días"
+
+
+def asunto(datos: dict) -> str:
+    return f"Tu semana en CuadraMe: gastaste {_pesos(datos['total_gastos'])}" if datos["total_gastos"] else "Tu semana en CuadraMe"
+
+
+def texto_plano(datos: dict, nombre: str = "") -> str:
+    """Versión sin formato (clientes de correo que no muestran HTML)."""
+    l = [f"Hola{', ' + nombre if nombre else ''}. Así te fue esta semana ({datos['desde']} al {datos['hasta']}).", ""]
+    l.append(f"Gastaste {_pesos(datos['total_gastos'])}.")
+    if datos["top_categorias"]:
+        l += ["", "Donde más se fue la plata:"] + [f"- {c['categoria']}: {_pesos(c['monto'])}" for c in datos["top_categorias"]]
+    if datos["presupuestos"]:
+        l += ["", "Presupuestos casi agotados:"] + [
+            f"- {p['categoria']}: {p['pct']} % ({_pesos(p['gastado'])} de {_pesos(p['limite'])})" for p in datos["presupuestos"]
+        ]
+    if datos["tarjetas"]:
+        l += ["", "Próximos pagos de tarjeta:"] + [
+            f"- {t['nombre']}: {_pesos(t['monto'])} {_cuando(t['dias'])} ({t['fecha']})" for t in datos["tarjetas"]
+        ]
+    l += ["", f"Abre CuadraMe: {settings.pwa_url}",
+          "Recibes este correo porque lo activaste en Perfil. Puedes apagarlo ahí mismo cuando quieras."]
+    return "\n".join(l)
+
+
+def _fila(izq: str, der: str) -> str:
+    return (
+        '<tr><td style="padding:8px 0;border-bottom:1px solid #eadfcd;font-size:15px;color:#221f19">' + izq + "</td>"
+        '<td align="right" style="padding:8px 0;border-bottom:1px solid #eadfcd;font-size:15px;font-weight:700;color:#221f19;white-space:nowrap">'
+        + der + "</td></tr>"
+    )
+
+
+def _bloque(titulo: str, filas: list[str]) -> str:
+    if not filas:
+        return ""
+    return (
+        '<h2 style="margin:28px 0 4px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#7a5a0a">'
+        + html.escape(titulo) + '</h2><table role="presentation" width="100%" cellpadding="0" cellspacing="0">'
+        + "".join(filas) + "</table>"
+    )
+
+
+def html_correo(datos: dict, nombre: str = "") -> str:
+    """Plantilla sobria de marca: papel crema, naranja CuadraMe, tipografía del sistema
+    y estilos en línea (los clientes de correo ignoran las hojas de estilo). Todo texto
+    que viene del usuario (categorías, nombres de tarjeta) se escapa."""
+    e = html.escape
+    saludo = f"Hola, {e(nombre)}" if nombre else "Hola"
+    cats = [_fila(e(c["categoria"]), _pesos(c["monto"])) for c in datos["top_categorias"]]
+    pres = [_fila(e(p["categoria"]), f"{p['pct']} %") for p in datos["presupuestos"]]
+    tarj = [_fila(f"{e(t['nombre'])} <span style='color:#6b6455;font-size:13px'>{_cuando(t['dias'])}</span>", _pesos(t["monto"]))
+            for t in datos["tarjetas"]]
+    cuerpo = (
+        _bloque("Donde más se fue la plata", cats)
+        + _bloque("Presupuestos casi agotados", pres)
+        + _bloque("Próximos pagos de tarjeta", tarj)
+    )
+    return f"""<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tu semana en CuadraMe</title></head>
+<body style="margin:0;padding:0;background:#f6efe2;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6efe2"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden">
+<tr><td style="background:#a83f0d;padding:18px 24px;color:#fff7ee;font-size:18px;font-weight:800">CuadraMe</td></tr>
+<tr><td style="padding:24px">
+<p style="margin:0 0 4px;font-size:15px;color:#6b6455">{saludo}. Tu semana, del {e(datos['desde'])} al {e(datos['hasta'])}:</p>
+<p style="margin:0;font-size:34px;font-weight:800;color:#221f19">{_pesos(datos['total_gastos'])}</p>
+<p style="margin:2px 0 0;font-size:14px;color:#6b6455">gastados en la semana</p>
+{cuerpo}
+<p style="margin:28px 0 0"><a href="{e(settings.pwa_url)}" style="display:inline-block;background:#a83f0d;color:#fff7ee;text-decoration:none;font-weight:700;font-size:15px;padding:12px 22px;border-radius:999px">Abrir CuadraMe</a></p>
+</td></tr>
+<tr><td style="padding:16px 24px;background:#faf5ea;font-size:12px;line-height:1.5;color:#6b6455">
+Recibes este correo porque activaste el resumen semanal en tu Perfil. Para dejar de recibirlo, entra a CuadraMe, abre Perfil y apaga &laquo;Resumen semanal por correo&raquo;.
+</td></tr></table></td></tr></table></body></html>"""
+
+
+def enviar_correo(destino: str, asunto_: str, html_: str, texto: str) -> bool:
+    """Envía por Resend. False (sin lanzar) si no hay clave configurada; lanza si Resend falla,
+    para que el cron libere la marca y reintente en la siguiente corrida."""
+    if not settings.resend_api_key:
+        logger.warning("resumen: RESEND_API_KEY no configurada, no se envió el correo")
+        return False
+    r = httpx.post(
+        "https://api.resend.com/emails",
+        headers={"Authorization": f"Bearer {settings.resend_api_key}"},
+        json={"from": settings.resend_from, "to": [destino], "subject": asunto_, "html": html_, "text": texto},
+        timeout=20,
+    )
+    r.raise_for_status()
+    return True

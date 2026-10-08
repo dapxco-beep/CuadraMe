@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Receipt, Check, ChevronRight, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
+import { Bell, Mail, Receipt, Check, ChevronRight, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -20,6 +20,7 @@ export default function Perfil() {
   const [permisoPush, setPermisoPush] = useState('default')
   const [cargandoPush, setCargandoPush] = useState(false)
   const [recordatorio, setRecordatorio] = useState(false)
+  const [resumenCorreo, setResumenCorreo] = useState({ activo: false, email: '', cargando: false })
   const [confianza, setConfianza] = useState(0.75)
   const [guardandoConfianza, setGuardandoConfianza] = useState(false)
   const [eliminandoCuenta, setEliminandoCuenta] = useState(false)
@@ -28,7 +29,22 @@ export default function Perfil() {
     estadoPermiso().then(setPermisoPush)
     api.confianzaAutoimport().then((r) => setConfianza(r.confianza_autoimport)).catch(() => {})
     Promise.resolve().then(() => api.recordatorioDiario()).then((r) => setRecordatorio(!!r.activo)).catch(() => {})
+    Promise.resolve().then(() => api.resumenPreferencias?.())
+      .then((r) => r && setResumenCorreo({ activo: !!r.correo, email: r.email || '', cargando: false }))
+      .catch(() => {})
   }, [])
+
+  async function toggleResumenCorreo() {
+    const nuevo = !resumenCorreo.activo
+    setResumenCorreo((r) => ({ ...r, activo: nuevo, cargando: true }))
+    try {
+      await api.guardarResumenPreferencias(nuevo)
+      setResumenCorreo((r) => ({ ...r, cargando: false }))
+    } catch (err) {
+      setResumenCorreo((r) => ({ ...r, activo: !nuevo, cargando: false }))
+      avisar(err.message || 'No pudimos cambiar el resumen por correo. Intenta de nuevo.')
+    }
+  }
 
   async function toggleRecordatorio() {
     const nuevo = !recordatorio
@@ -232,6 +248,37 @@ export default function Perfil() {
             <p className="flex-1 text-sm font-medium">Tu árbol financiero</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
+        </div>
+      </section>
+
+      <section className="mx-6 mt-8">
+        <div className="flex items-center gap-2 mb-3">
+          <Mail size={16} className="text-ink-soft" aria-hidden="true" />
+          <h2 className="text-[15px] font-semibold">Correo</h2>
+        </div>
+        <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-medium" id="etq-resumen-correo">Resumen semanal por correo</p>
+            <p className="text-xs text-ink-soft mt-0.5">
+              Cada domingo te escribimos a {resumenCorreo.email || 'tu correo'} con lo que gastaste, en qué se fue más la
+              plata y qué pagos vienen. Puedes apagarlo cuando quieras.
+            </p>
+          </div>
+          <button
+            onClick={toggleResumenCorreo}
+            disabled={resumenCorreo.cargando}
+            role="switch"
+            aria-checked={resumenCorreo.activo}
+            aria-labelledby="etq-resumen-correo"
+            data-testid="switch-resumen-correo"
+            className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${resumenCorreo.activo ? 'bg-accent' : 'bg-line'}`}
+          >
+            <span
+              className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                resumenCorreo.activo ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
         </div>
       </section>
 
