@@ -808,6 +808,17 @@ def crear_movimiento_rapido(
     )
 
 
+@router.post("/rapido-prueba", response_model=MovimientoRapidoOut)
+def crear_movimiento_rapido_prueba(
+    data: MovimientoRapidoCreate,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Gemelo de /rapido autenticado con la SESIÓN (no con la clave API): permite probar la
+    conexión desde la app aunque la clave guardada ya no se pueda leer (solo se guarda su hash)."""
+    return crear_movimiento_rapido(data, db, usuario)
+
+
 @router.post("/rapido-voz", response_model=MovimientoPorVozResponse)
 def crear_movimiento_por_voz(
     data: MovimientoPorVozCreate,

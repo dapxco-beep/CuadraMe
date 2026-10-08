@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Check, CheckCircle2, Copy, Download, ExternalLink, Send, ShieldCheck } from 'lucide-react'
 import { api } from '../lib/api'
+import ClaveAtajo from '../components/ClaveAtajo'
+import { useClaveAtajo } from '../lib/useClaveAtajo'
 
 const API_URL = 'https://backend-production-aeab.up.railway.app/movimientos/rapido'
 const API_URL_VOZ = 'https://backend-production-aeab.up.railway.app/movimientos/rapido-voz'
@@ -312,7 +314,7 @@ function BloquePrueba({ apiKey, enviar, texto, boton, exito }) {
         <p className="text-sm text-ink-soft">{texto}</p>
         <button
           onClick={probar}
-          disabled={!apiKey || estado === 'enviando'}
+          disabled={estado === 'enviando'}
           className="w-full mt-3 flex items-center justify-center gap-2 bg-accent text-white font-semibold rounded-2xl py-3 text-sm disabled:opacity-50"
         >
           <Send size={16} /> {estado === 'enviando' ? 'Enviando...' : boton}
@@ -352,12 +354,9 @@ function AvisoPrivacidad() {
 
 export default function ConectarDispositivo() {
   const volver = useVolver('/perfil')
-  const [apiKey, setApiKey] = useState(null)
+  const claveAtajo = useClaveAtajo()
+  const apiKey = claveAtajo.clave // null si la clave guardada ya no se puede leer (solo existe su hash)
   const [plataforma, setPlataforma] = useState('ios')
-
-  useEffect(() => {
-    api.apiKey().then((r) => setApiKey(r.api_key)).catch(() => {})
-  }, [])
 
   const scriptAndroid = apiKey ? SCRIPT_ANDROID(apiKey) : null
 
@@ -434,7 +433,7 @@ export default function ConectarDispositivo() {
             <ol className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
               <Paso n={1} titulo="Copia tu clave" dibujo={<CapturaClave />}>
                 <p>Es la llave que le dice al Atajo que los pagos son tuyos.</p>
-                <BotonCopiar texto={apiKey || ''} etiqueta="Copiar mi clave" disabled={!apiKey} className="bg-accent text-white" />
+                <div className="mt-2"><ClaveAtajo {...claveAtajo} /></div>
               </Paso>
 
               <Paso n={2} titulo="Agrega el Atajo" dibujo={<CapturaAtajo />}>
@@ -567,9 +566,16 @@ export default function ConectarDispositivo() {
             <h2 className="text-[15px] font-semibold mb-3">Script (Tasker JavaScriptlet)</h2>
             <div className="rounded-2xl bg-paper-raised border border-line p-3">
               <pre className="text-[11px] leading-relaxed overflow-x-auto whitespace-pre text-ink-soft max-h-64 overflow-y-auto">
-                {scriptAndroid || <span className="skeleton inline-block h-3.5 w-48 align-middle" role="status" aria-label="Preparando tu script" />}
+                {scriptAndroid || (claveAtajo.cargando
+                  ? <span className="skeleton inline-block h-3.5 w-48 align-middle" role="status" aria-label="Preparando tu script" />
+                  : 'Tu clave guardada ya no se puede mostrar, así que el script no se puede armar. Crea una clave nueva aquí abajo y aparecerá listo para copiar.')}
               </pre>
             </div>
+            {!scriptAndroid && !claveAtajo.cargando && (
+              <div className="rounded-2xl bg-paper-raised border border-line p-3 mt-3">
+                <ClaveAtajo {...claveAtajo} />
+              </div>
+            )}
             <div className="flex gap-2 mt-3">
               <BotonCopiar texto={scriptAndroid || ''} etiqueta="Copiar script" disabled={!scriptAndroid} className="flex-1 bg-accent text-white py-3 rounded-2xl" />
               <button
@@ -614,9 +620,17 @@ export default function ConectarDispositivo() {
               <BotonCopiar texto={API_URL_VOZ} etiqueta="" className="w-11 h-11 shrink-0 bg-paper !p-0" />
             </div>
             <p className="text-xs text-ink-soft mb-1.5 font-medium uppercase tracking-wide">Tu clave (X-Api-Key)</p>
-            <div className="rounded-2xl bg-paper-raised border border-line p-3 flex items-center gap-2">
-              <p className="text-xs flex-1 truncate">{apiKey || <span className="skeleton inline-block h-3.5 w-40 align-middle" role="status" aria-label="Cargando tu clave" />}</p>
-              <BotonCopiar texto={apiKey || ''} etiqueta="" disabled={!apiKey} className="w-11 h-11 shrink-0 bg-paper !p-0" />
+            <div className="rounded-2xl bg-paper-raised border border-line p-3">
+              {apiKey ? (
+                <div className="flex items-center gap-2">
+                  <p className="text-xs flex-1 truncate">{apiKey}</p>
+                  <BotonCopiar texto={apiKey} etiqueta="" className="w-11 h-11 shrink-0 bg-paper !p-0" />
+                </div>
+              ) : (
+                <p className="text-xs text-ink-soft">
+                  {claveAtajo.cargando ? 'Cargando tu clave…' : 'Tu clave está guardada de forma segura; la copiaste en el paso 1. Si la perdiste, crea una nueva allí.'}
+                </p>
+              )}
             </div>
             <p className="text-xs text-ink-soft mt-3">
               Todo se configura con acciones visuales dentro de la app «Atajos» de Apple, sin instalar nada más.

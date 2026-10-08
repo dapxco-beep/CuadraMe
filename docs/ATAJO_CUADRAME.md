@@ -95,3 +95,12 @@ Si en CuadraMe no existe la cuenta que el cliente elige, no aparece en la lista:
 - Leer las notificaciones de otras apps.
 - Crear la automatización por el cliente: cada uno la crea en su Atajos.
 - Saber qué app se cerró o si hubo un movimiento: por eso el Texto con el nombre de la cuenta y la pregunta.
+
+## La clave del Atajo (guardada como hash)
+
+- CuadraMe ya no guarda tu clave en claro: guarda solo una "huella" (SHA-256) y las primeras letras (`cdm_ab12…`).
+- La clave completa se muestra **una sola vez**, al crearla o al pulsar «Crear una clave nueva». Aparece un aviso: «Cópiala ahora, no se vuelve a mostrar». Pégala enseguida en el Atajo.
+- Si ya existe una clave guardada, la app dice «Tu clave empieza por cdm_ab12…». Si la perdiste, crea una nueva; el Atajo del iPhone dejará de funcionar hasta que pegues la nueva.
+- Las claves antiguas siguen funcionando sin que hagas nada: al usarse por primera vez el servidor las convierte a huella solo.
+- «Probar conexión» ya no necesita leer la clave guardada: usa tu sesión (`POST /movimientos/rapido-prueba`, mismo registro que `/rapido`). Si acabas de crear la clave, la prueba usa esa clave y revisa el camino real del Atajo.
+- Para el equipo: las columnas `api_key_hash` y `api_key_prefijo` se crean con `backend/supabase/migraciones/api_key_hash.sql` (idempotente, pendiente de aprobar). Mientras no existan, todo sigue en claro como antes y la app muestra la clave como siempre.

@@ -259,19 +259,21 @@ export const api = {
   movimientosPorConfirmar: () => request('/movimientos/por-confirmar'),
   // Pago de prueba del asistente de instalación: usa la API key, igual que el Atajo real,
   // para comprobar de punta a punta que la clave y la conexión funcionan.
+  // Sin `apiKey` (la clave guardada ya no se puede leer: solo existe su hash) la prueba usa la
+  // sesión del usuario en /rapido-prueba, que ejecuta exactamente el mismo registro.
   pagoDePrueba: (apiKey) =>
-    request('/movimientos/rapido', {
+    request(apiKey ? '/movimientos/rapido' : '/movimientos/rapido-prueba', {
       method: 'POST',
-      auth: false,
-      headers: { 'X-Api-Key': apiKey },
+      auth: !apiKey,
+      headers: apiKey ? { 'X-Api-Key': apiKey } : undefined,
       body: { comercio: 'Pago de prueba CuadraMe', monto: '1.000', tarjeta: 'Prueba CuadraMe', moneda: 'COP', fuente: 'wallet' },
     }),
   // Prueba del "registro al cerrar la app": igual que el Atajo (sin comercio, fuente cierre_app).
   registroRapidoDePrueba: (apiKey) =>
-    request('/movimientos/rapido', {
+    request(apiKey ? '/movimientos/rapido' : '/movimientos/rapido-prueba', {
       method: 'POST',
-      auth: false,
-      headers: { 'X-Api-Key': apiKey },
+      auth: !apiKey,
+      headers: apiKey ? { 'X-Api-Key': apiKey } : undefined,
       body: { tipo: 'gasto', monto: '1.000', descripcion: 'Prueba de registro rápido', fuente: 'cierre_app' },
     }),
   recordatorioDiario: () => request('/perfil/recordatorio-diario'),

@@ -218,7 +218,7 @@ describe('Conectar tu celular', () => {
     expect(ATAJO_ICLOUD_URL).toBe('')
     api.apiKey.mockResolvedValue({ api_key: 'cm_clave_secreta' })
     montar(<ConectarDispositivo />)
-    expect(screen.getByRole('button', { name: 'Copiar mi clave' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Copiar clave' })).toBeInTheDocument()
     expect(screen.getByText(/llega pronto/)).toBeInTheDocument()
     expect(screen.getAllByText(/Obtener contenido de URL/).length).toBeGreaterThan(0)
     expect(screen.getByText(/Transacción/, { selector: 'b' })).toBeInTheDocument()

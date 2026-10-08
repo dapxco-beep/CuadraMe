@@ -142,7 +142,7 @@ describe('Conexiones y estado', () => {
     montar(null, '/conexiones')
     fireEvent.click(await screen.findByRole('button', { name: /Probar conexión/ }))
     expect(await screen.findByText(/¡Llegó!/)).toBeTruthy()
-    expect(api.pagoDePrueba).toHaveBeenCalledWith('cdm_x')
+    expect(api.pagoDePrueba).toHaveBeenCalledWith(undefined)  // sin leer la clave guardada: la prueba usa la sesión
     expect(api.eliminarMovimiento).toHaveBeenCalledWith('m1')
   })
 

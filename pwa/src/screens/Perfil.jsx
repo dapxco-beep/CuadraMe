@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Receipt, Check, ChevronRight, Copy, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
+import { Bell, Receipt, Check, ChevronRight, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -8,14 +8,15 @@ import { useDialogos } from '../lib/DialogosContext'
 import SeccionSeguridad from '../components/SeccionSeguridad'
 import SeccionPrivacidad from '../components/SeccionPrivacidad'
 import AsistentePrimerUso from '../components/AsistentePrimerUso'
+import ClaveAtajo from '../components/ClaveAtajo'
+import { useClaveAtajo } from '../lib/useClaveAtajo'
 import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../lib/push'
 
 export default function Perfil() {
   const { theme, setTheme } = useTheme()
   const { usuario, logout } = useAuth()
   const { confirmar, avisar } = useDialogos()
-  const [apiKey, setApiKey] = useState(null)
-  const [copiado, setCopiado] = useState(false)
+  const claveAtajo = useClaveAtajo()
   const [permisoPush, setPermisoPush] = useState('default')
   const [cargandoPush, setCargandoPush] = useState(false)
   const [recordatorio, setRecordatorio] = useState(false)
@@ -24,7 +25,6 @@ export default function Perfil() {
   const [eliminandoCuenta, setEliminandoCuenta] = useState(false)
 
   useEffect(() => {
-    api.apiKey().then((r) => setApiKey(r.api_key)).catch(() => {})
     estadoPermiso().then(setPermisoPush)
     api.confianzaAutoimport().then((r) => setConfianza(r.confianza_autoimport)).catch(() => {})
     Promise.resolve().then(() => api.recordatorioDiario()).then((r) => setRecordatorio(!!r.activo)).catch(() => {})
@@ -72,27 +72,6 @@ export default function Perfil() {
       avisar(err.message || 'No pudimos activar las notificaciones. Revisa que tu navegador las permita.')
     } finally {
       setCargandoPush(false)
-    }
-  }
-
-  async function copiarApiKey() {
-    if (!apiKey) return
-    await navigator.clipboard.writeText(apiKey)
-    setCopiado(true)
-    setTimeout(() => setCopiado(false), 2000)
-  }
-
-  async function regenerarApiKey() {
-    const ok = await confirmar(
-      'Los atajos que ya configuraste dejarán de funcionar hasta que actualices la clave ahí.',
-      { titulo: 'Esto desactiva tu clave anterior', confirmarTexto: 'Regenerar', peligro: true }
-    )
-    if (!ok) return
-    try {
-      const { api_key } = await api.regenerarApiKey()
-      setApiKey(api_key)
-    } catch (err) {
-      avisar(err.message || 'No pudimos crear la clave nueva. Intenta de nuevo.')
     }
   }
 
@@ -328,28 +307,7 @@ export default function Perfil() {
             Tasker en Android) o por voz con Siri. Requiere algo de configuración manual — si solo
             quieres registrar rápido desde la app, no necesitas esto.
           </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 text-xs bg-paper rounded-xl px-3 py-2.5 truncate">
-              {apiKey || <span className="skeleton inline-block h-3.5 w-40 align-middle" role="status" aria-label="Cargando tu clave" />}
-            </code>
-            <button
-              onClick={copiarApiKey}
-              disabled={!apiKey}
-              className="shrink-0 w-11 h-11 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
-              aria-label="Copiar"
-            >
-              <Copy size={16} className={copiado ? 'text-accent' : 'text-ink-soft'} />
-            </button>
-            <button
-              onClick={regenerarApiKey}
-              disabled={!apiKey}
-              className="shrink-0 w-11 h-11 rounded-xl bg-paper flex items-center justify-center disabled:opacity-50"
-              aria-label="Regenerar"
-            >
-              <RefreshCw size={16} className="text-ink-soft" />
-            </button>
-          </div>
-          {copiado && <p className="text-xs text-accent mt-2">Copiada al portapapeles</p>}
+          <ClaveAtajo {...claveAtajo} />
           <Link
             to="/conectar-dispositivo"
             className="flex items-center justify-center gap-1.5 mt-3 text-sm text-accent font-semibold"

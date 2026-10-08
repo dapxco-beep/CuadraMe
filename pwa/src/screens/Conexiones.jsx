@@ -156,20 +156,31 @@ function TarjetaAtajo({ a, recargar }) {
   const [aviso, setAviso] = useState('')
   const [error, setError] = useState('')
   const [probando, setProbando] = useState(false)
+  // Clave completa: solo existe en memoria justo después de crearla (el servidor guarda su hash).
+  const [claveNueva, setClaveNueva] = useState(null)
 
   async function copiar() {
     setError('')
     try {
-      const { api_key } = await api.apiKey()
-      await navigator.clipboard.writeText(api_key)
+      let clave = claveNueva
+      if (!clave) {
+        // Claves antiguas aún en claro siguen pudiéndose leer; las nuevas ya no.
+        const r = await api.apiKey()
+        clave = r.api_key
+      }
+      if (!clave) {
+        setError('Por seguridad tu clave ya no se puede copiar. Si la perdiste, pulsa «Clave nueva».')
+        return
+      }
+      await navigator.clipboard.writeText(clave)
       setAviso('Clave copiada.')
     } catch {
-      setError('No se pudo copiar. Cópiala desde Perfil > Registro automático.')
+      setError('No se pudo copiar. Inténtalo de nuevo o crea una clave nueva.')
     }
   }
 
   async function regenerar() {
-    const ok = await confirmar('La clave actual dejará de funcionar: tendrás que pegar la nueva en tu Atajo.', {
+    const ok = await confirmar('Tu Atajo del iPhone dejará de funcionar hasta que pegues la clave nueva en él.', {
       titulo: '¿Generar una clave nueva?',
       confirmarTexto: 'Generar y revocar la anterior',
       peligro: true,
@@ -177,8 +188,9 @@ function TarjetaAtajo({ a, recargar }) {
     if (!ok) return
     setError('')
     try {
-      await api.regenerarApiKey()
-      setAviso('Clave nueva generada. La anterior ya no sirve; cópiala y pégala en tu Atajo.')
+      const r = await api.regenerarApiKey()
+      setClaveNueva(r.api_key || null)
+      setAviso('Clave nueva lista. Cópiala ahora: no se vuelve a mostrar. La anterior ya no sirve.')
       recargar()
     } catch (err) {
       setError(err.message || 'No se pudo generar la clave')
@@ -190,8 +202,9 @@ function TarjetaAtajo({ a, recargar }) {
     setError('')
     setAviso('')
     try {
-      const { api_key } = await api.apiKey()
-      const r = await api.pagoDePrueba(api_key)
+      // Sin leer la clave guardada: con la clave recién creada prueba el camino real del Atajo;
+      // si no, el servidor registra la prueba con tu sesión.
+      const r = await api.pagoDePrueba(claveNueva || undefined)
       const lista = await api.movimientosPorConfirmar()
       if (!lista.some((m) => m.id === r.id)) throw new Error('Se envió pero no apareció por confirmar. Intenta de nuevo.')
       // El pago de prueba no es real: se borra para no descuadrar el saldo.
@@ -214,6 +227,9 @@ function TarjetaAtajo({ a, recargar }) {
       </div>
       {error && <p className="text-xs text-danger mt-2">{error}</p>}
       {aviso && !error && <p className="text-xs font-semibold mt-2" role="status">{aviso}</p>}
+      {claveNueva && (
+        <code data-testid="clave-nueva" className="block text-xs bg-paper rounded-xl px-3 py-2.5 mt-2 break-all select-all">{claveNueva}</code>
+      )}
       <div className="grid grid-cols-3 gap-2 mt-3">
         <Boton onClick={copiar} className="border border-line">
           <Copy size={16} /> Copiar clave
