@@ -699,23 +699,23 @@ export default function Movimientos() {
 
   const campo = 'rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-xs'
   const botonChip = (activo) =>
-    `shrink-0 text-sm px-4 py-1.5 min-h-[36px] rounded-full border font-medium ${
+    `shrink-0 text-sm px-4 py-1.5 min-h-[44px] rounded-full border font-medium ${
       activo ? 'bg-accent text-white border-accent' : 'border-accent text-accent'
     }`
 
   return (
     <div ref={raiz} className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
-      <header className="px-5 pantalla-top pb-4 flex items-center justify-between">
+      <header className="px-5 pantalla-top pb-4 flex flex-wrap items-center justify-between gap-y-2">
         <h1 className="text-2xl font-semibold">Movimientos</h1>
         {modoSeleccion ? (
           <button onClick={salirModoSeleccion} className="text-sm text-accent font-medium min-h-[44px] px-2">
             Cancelar
           </button>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={() => setModoSeleccion(true)}
-              className="text-xs text-ink-soft font-medium px-3 py-1.5 rounded-full border border-line"
+              className="text-xs text-ink-soft font-medium px-3 min-h-[44px] rounded-full border border-line"
             >
               Seleccionar
             </button>
@@ -903,7 +903,7 @@ export default function Movimientos() {
                       key={v.texto}
                       aria-pressed={f.comercio === v.id}
                       onClick={() => cambiarParams({ vista: v.id ? 'comercio' : '' })}
-                      className={`text-sm px-4 min-h-[36px] rounded-full font-medium ${
+                      className={`text-sm px-4 min-h-[44px] rounded-full font-medium ${
                         f.comercio === v.id ? 'bg-ink text-paper' : 'text-ink-soft'
                       }`}
                     >

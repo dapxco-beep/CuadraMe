@@ -123,7 +123,7 @@ export default function Ayuda() {
             type="search"
             value={consulta}
             onChange={(e) => setConsulta(e.target.value)}
-            placeholder="Escribe una palabra: extracto, Gmail, clave…"
+            placeholder="Busca: extracto, Gmail, clave…"
             autoComplete="off"
             enterKeyHint="search"
           />

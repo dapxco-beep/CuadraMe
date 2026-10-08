@@ -27,7 +27,7 @@ export default function NuevaPassword() {
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-center px-8 py-10">
+    <div className="flex-1 flex flex-col justify-center px-8 py-10 pantalla-centrada">
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold">Crea una contraseña nueva</h1>
         <p className="text-sm text-ink-soft mt-1">Después de guardarla entras directo a tu cuenta</p>

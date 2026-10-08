@@ -698,7 +698,7 @@ export default function Sincronizacion() {
                 <div key={m.id} className="rounded-2xl bg-paper border border-line p-3.5" data-testid={`cat-${m.id}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate">{m.descripcion}</p>
+                      <p className="text-sm font-semibold break-words line-clamp-2">{m.descripcion}</p>
                       <p className="text-xs text-ink-soft">
                         {m.categoria === 'Otros' ? 'Sin categoría' : `Puse ${iconoDe(m.categoria)} ${m.categoria}`}
                       </p>
@@ -710,14 +710,14 @@ export default function Sincronizacion() {
                     disabled={ocupados.has(m.id)}
                     onChange={(e) => categorizar(m, e.target.value)}
                     aria-label={`Categoría de ${m.descripcion}`}
-                    className="w-full mt-2.5 rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-sm"
+                    className="w-full mt-2.5 rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-[13px]"
                   >
-                    <option value="">{m.categoria === 'Otros' ? 'Elige la categoría' : `Confirmar o cambiar (${m.categoria})`}</option>
+                    <option value="">{m.categoria === 'Otros' ? 'Elige la categoría' : `Confirmar o cambiar: ${m.categoria}`}</option>
                     {nombres.map((n) => (
                       <option key={n} value={n}>{iconoDe(n)} {n}</option>
                     ))}
                   </select>
-                  <label className="flex items-center gap-2 mt-2 text-xs text-ink-soft min-h-[32px]">
+                  <label className="flex items-center gap-2 mt-1 text-xs text-ink-soft min-h-[44px]">
                     <input
                       type="checkbox"
                       checked={recordar[m.id] !== false}
@@ -753,14 +753,14 @@ export default function Sincronizacion() {
                 </div>
               )}
               <div role="table" aria-label="Estado de cada cuenta en los últimos meses">
-                <div role="row" className="grid grid-cols-[minmax(0,1.5fr)_repeat(6,minmax(0,1fr))] gap-1 items-end mb-1.5">
+                <div role="row" className="grid grid-cols-[minmax(76px,1.4fr)_repeat(6,minmax(0,1fr))] gap-1 items-end mb-1.5">
                   <span role="columnheader" className="text-[11px] text-ink-soft">Cuenta</span>
                   {meses.map((m) => (
                     <span key={m.clave} role="columnheader" className="text-[11px] text-ink-soft text-center capitalize">{m.etiqueta}</span>
                   ))}
                 </div>
                 {filasCuentas.map((c) => (
-                  <div key={c.id} role="row" className="grid grid-cols-[minmax(0,1.5fr)_repeat(6,minmax(0,1fr))] gap-1 items-center mb-1">
+                  <div key={c.id} role="row" className="grid grid-cols-[minmax(76px,1.4fr)_repeat(6,minmax(0,1fr))] gap-1 items-center mb-1">
                     <span role="rowheader" title={nombreFila[c.id]} className="text-xs font-medium leading-tight break-words line-clamp-3 pr-1">{nombreFila[c.id]}</span>
                     {c.meses.map((m) => {
                       const e = estadoCelda(m.estado)
@@ -789,7 +789,7 @@ export default function Sincronizacion() {
                           .filter(Boolean).join(' y ')}
                       </p>
                     </div>
-                    <button onClick={() => setCrearBanco(s.banco)} className="shrink-0 rounded-xl bg-accent text-white text-xs font-semibold px-3 py-2 min-h-[36px]">
+                    <button onClick={() => setCrearBanco(s.banco)} className="shrink-0 rounded-xl bg-accent text-white text-xs font-semibold px-3 py-2 min-h-[44px]">
                       Crear cuenta {s.banco}
                     </button>
                   </div>

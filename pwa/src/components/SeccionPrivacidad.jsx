@@ -97,9 +97,9 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
                   aria-label={FINALIDADES[f].titulo}
                   disabled={ocupado === f}
                   onClick={() => cambiar(f, !x.aceptado)}
-                  className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${x.aceptado ? 'bg-accent' : 'bg-line'} disabled:opacity-60`}
+                  className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${x.aceptado ? 'bg-accent' : 'bg-ink-soft/35'} disabled:opacity-60`}
                 >
-                  <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${x.aceptado ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  <span className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${x.aceptado ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
               </div>
             )

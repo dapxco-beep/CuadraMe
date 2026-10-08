@@ -138,7 +138,7 @@ export default function Cuentas() {
 
           <Link
             to="/compartir"
-            className="flex items-center justify-center gap-2 text-sm text-accent font-medium py-2"
+            className="flex items-center justify-center gap-2 text-sm text-accent font-medium py-2 min-h-[44px]"
           >
             <Users size={16} /> Compartir una cuenta con alguien
           </Link>

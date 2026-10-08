@@ -34,7 +34,7 @@ export function segmentosDona(categorias, max = MAX_SEGMENTOS) {
 function Dona({ segmentos, total, fmt }) {
   let acumulado = 0
   return (
-    <svg viewBox="0 0 42 42" className="w-40 h-40 shrink-0" role="img" aria-label={`Gasto por categoría, total ${fmt(total)}`}>
+    <svg viewBox="0 0 42 42" className="w-28 h-28 min-[400px]:w-36 min-[400px]:h-36 sm:w-40 sm:h-40 shrink-0" role="img" aria-label={`Gasto por categoría, total ${fmt(total)}`}>
       <circle cx="21" cy="21" r="15.9155" fill="none" stroke="var(--color-line)" strokeWidth="5" />
       {segmentos.map((s, i) => {
         const largo = Math.max(s.pct - 0.6, 0.2) // pequeña separación entre segmentos
@@ -183,8 +183,8 @@ export default function Informe() {
                 {segmentos.map((s, i) => (
                   <li key={s.nombre} className="flex items-center gap-2 text-xs">
                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLORES[i % COLORES.length] }} aria-hidden="true" />
-                    <span className="flex-1 truncate">{s.nombre}</span>
-                    <span className="font-semibold">{String(s.pct).replace('.', ',')} %</span>
+                    <span className="flex-1 min-w-0 leading-tight break-words">{s.nombre}</span>
+                    <span className="font-semibold shrink-0 whitespace-nowrap">{String(s.pct).replace('.', ',')} %</span>
                   </li>
                 ))}
               </ul>
@@ -231,7 +231,7 @@ export default function Informe() {
                           <ul className="space-y-1" aria-label={`Movimientos de ${c.categoria}`}>
                             {det.movimientos.map((m) => (
                               <li key={m.id}>
-                                <Link to={`/movimientos/${m.id}`} className="flex items-center justify-between gap-3 py-1.5 text-xs min-h-[36px]">
+                                <Link to={`/movimientos/${m.id}`} className="flex items-center justify-between gap-3 py-1.5 text-xs min-h-[44px]">
                                   <span className="min-w-0">
                                     <span className="block font-medium truncate">{m.descripcion}</span>
                                     <span className="text-ink-soft">{m.fecha.slice(0, 10)}</span>
