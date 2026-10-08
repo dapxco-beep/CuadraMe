@@ -6,6 +6,8 @@ import { parsearMontoEscrito } from '../lib/centro'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import CrearCuentaBanco from './CrearCuentaBanco'
+import SelectorCuentaBanco from './SelectorCuentaBanco'
+import { cuentaRecordada } from '../lib/cuentasBanco'
 import RecordarRegla, { RECORDAR_INICIAL } from './RecordarRegla'
 
 /**
@@ -26,7 +28,13 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
 
   // Solo vale una cuenta que exista: la elegida a mano o la que el servidor dedujo del banco.
   const existe = (id) => (id && cuentas.some((c) => c.id === id) ? id : '')
-  const cuentaElegida = (c) => existe(cuentaPorCorreo[c.id]) || existe(c.cuenta_sugerida_id)
+  // Si el banco tiene varias cuentas y no hay ganadora, se usa la que la persona eligió antes
+  // para ese banco + tipo (solo entre las candidatas: nunca una de otro banco).
+  const recordada = (c) => {
+    const id = cuentaRecordada(c.banco_detectado, c.producto_detectado, cuentas)
+    return id && (!c.cuentas_candidatas?.length || c.cuentas_candidatas.includes(id)) ? id : ''
+  }
+  const cuentaElegida = (c) => existe(cuentaPorCorreo[c.id]) || existe(c.cuenta_sugerida_id) || (c.pregunta_cuenta ? recordada(c) : '')
   // Monto que se aprobaría: el del correo o, si no se pudo leer, el que escribe la persona.
   const sinMonto = (c) => !(c.monto > 0)
   const montoDe = (c) => (sinMonto(c) ? parsearMontoEscrito(montoPorCorreo[c.id]) : c.monto)
@@ -158,17 +166,19 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
                 />
               )}
 
-              <select
+              <SelectorCuentaBanco
+                className="mt-3"
+                cuentas={cuentas}
                 value={cuentaId}
-                onChange={(e) => setCuentaPorCorreo((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                aria-label={`Cuenta de ${c.comercio}`}
-                className="w-full mt-3 rounded-xl border border-line bg-paper-raised px-3 py-2 text-xs"
-              >
-                <option value="">{c.falta_cuenta ? `No tienes cuenta ${c.banco_detectado}` : 'Elige la cuenta'}</option>
-                {cuentas.map((cu) => (
-                  <option key={cu.id} value={cu.id}>{cu.nombre}</option>
-                ))}
-              </select>
+                onChange={(id) => setCuentaPorCorreo((prev) => ({ ...prev, [c.id]: id }))}
+                ariaLabel={`Cuenta de ${c.comercio}`}
+                vacio={c.falta_cuenta ? `No tienes cuenta ${c.banco_detectado}` : 'Elige la cuenta'}
+                banco={c.banco_detectado}
+                producto={c.producto_detectado}
+                pregunta={c.pregunta_cuenta}
+                sugeridaId={c.cuenta_sugerida_id}
+                candidatas={c.cuentas_candidatas}
+              />
               {c.falta_cuenta && (
                 <button onClick={() => setCrearCuenta({ banco: c.banco_detectado, id: c.id })} className="mt-2 text-xs font-semibold text-accent min-h-[32px]">
                   Crear cuenta {c.banco_detectado}

@@ -27,6 +27,7 @@ from app.extractos_conciliados import (
     mes_del_extracto,
     periodo_en_asunto,
 )
+from app.cuentas_banco import pregunta_de_cuentas, producto_de_texto
 from app.extractos_gmail import (
     MAX_PDF_BYTES,
     abrir_pdf,
@@ -35,6 +36,7 @@ from app.extractos_gmail import (
     construir_query_extractos,
     construir_query_notificaciones,
     contiene_palabra_extracto,
+    candidatas_banco,
     cuentas_del_banco,
     descargar_adjunto,
     detectar_periodo,
@@ -103,8 +105,18 @@ def _con_cuenta(db: Session, usuario_id: str, correos: list[CorreoGasto]) -> lis
     salida = []
     for c in correos:
         o = CorreoGastoOut.model_validate(c)
-        o.banco_detectado, o.cuenta_sugerida_id, o.falta_cuenta = inferir_cuenta_por_remitente(c.remitente, cuentas)
+        o.banco_detectado, o.cuenta_sugerida_id, o.falta_cuenta = inferir_cuenta_por_remitente(c.remitente, cuentas, f"{c.asunto} {c.snippet}")
         o.falta_monto = (c.monto or 0) <= 0
+        if o.banco_detectado and not o.falta_cuenta and not o.cuenta_sugerida_id:
+            # Banco con varias cuentas y sin ganador claro: la app pregunta en vez de adivinar.
+            cands, o.producto_detectado = candidatas_banco(
+                o.banco_detectado, detectar_ultimos4(f"{c.asunto} {c.snippet}"), cuentas, f"{c.asunto} {c.snippet}"
+            )
+            if len(cands) > 1:
+                o.cuentas_candidatas = [x.id for x in cands]
+                o.pregunta_cuenta = pregunta_de_cuentas(cands)
+        elif o.cuenta_sugerida_id:
+            o.producto_detectado = producto_de_texto(f"{c.asunto} {c.snippet}")
         if c.estado == "pendiente":
             o.preguntar_categoria = c.categoria_sugerida == "Otros"
             # La razón se recalcula: solo vale si la categoría sigue siendo la que sugirió el clasificador.
@@ -288,7 +300,7 @@ def _analizar_adjunto(gmail, db: Session, fila: ExtractoCorreo, adjunto: dict, c
         if banco_texto not in ("generico", "desconocido") and not fila.banco:
             fila.banco = banco_texto.capitalize()
         fila.periodo = detectar_periodo(texto, f"{fila.archivo} {fila.asunto}")
-        fila.cuenta_sugerida_id = sugerir_cuenta(fila.banco, detectar_ultimos4(texto), cuentas)
+        fila.cuenta_sugerida_id = sugerir_cuenta(fila.banco, detectar_ultimos4(texto), cuentas, texto[:6000])
         fila.estado = "nuevo"
         _marcar_si_conciliado(db, fila)
     else:
@@ -746,12 +758,18 @@ def listar_extractos(
             HistorialExtracto.id.in_([f.historial_id for f in filas if f.historial_id] or [""]),
         )
     }
+    cuentas_usuario = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
     salida = []
     for f in filas:
         o = ExtractoCorreoOut.model_validate(f)
         # Extractos viejos pueden no traer el banco guardado: se deduce del remitente.
         o.banco = o.banco or banco_por_remitente(f.remitente) or ""
         o.cruzados = cruzados.get(f.historial_id)
+        if o.banco and not o.cuenta_sugerida_id and f.estado in ("nuevo", "falta_clave", "error"):
+            cands = cuentas_del_banco(o.banco, cuentas_usuario)
+            if len(cands) > 1:
+                o.cuentas_candidatas = [x.id for x in cands]
+                o.pregunta_cuenta = pregunta_de_cuentas(cands)
         if f.estado == ESTADO_YA_CONCILIADO and o.cruzados is None:
             ev = evidencia_conciliado(db, usuario.id, f.cuenta_sugerida_id, mes_del_extracto(f.periodo, None))
             o.cruzados = ev["cruzados"] if ev else None
@@ -989,7 +1007,7 @@ def aprobar_correo(
         # Nunca se asume una cuenta: si el correo es de un banco que el usuario
         # no tiene como cuenta, se le dice cuál crear.
         cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
-        banco, _sug, falta = inferir_cuenta_por_remitente(correo.remitente, cuentas)
+        banco, _sug, falta = inferir_cuenta_por_remitente(correo.remitente, cuentas, f"{correo.asunto} {correo.snippet}")
         if falta:
             raise HTTPException(status_code=400, detail=f"No tienes una cuenta {banco}: créala o elige otra")
         raise HTTPException(status_code=400, detail="Elige la cuenta a la que pertenece este movimiento")

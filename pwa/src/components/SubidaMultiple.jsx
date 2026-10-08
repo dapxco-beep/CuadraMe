@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, Check, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react'
+import { productoDeTexto, recordarCuenta, textoOpcionCuenta } from '../lib/cuentasBanco'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
@@ -367,6 +368,12 @@ export default function SubidaMultiple({
                   </p>
                   <AvisoYaConciliado info={a.yaConciliado} cuenta={nombreCuenta(a.cuentaId)} className="mb-2" />
                   <PropuestaTarjeta propuesta={a.propuestaTarjeta} cuentaId={a.cuentaId} className="mb-2" />
+                  {a.avisoCuenta && (
+                    <p className="flex items-start gap-1.5 text-xs font-medium text-accent mb-2" role="status" data-testid="aviso-cuenta">
+                      <AlertTriangle size={16} className="shrink-0" aria-hidden="true" />
+                      <span>{a.avisoCuenta}</span>
+                    </p>
+                  )}
                   <AvisoCategorizados n={a.autoImportados} className="mb-2" />
                   {a.descartados > 0 && (
                     <p className="rounded-2xl bg-accent-soft px-3.5 py-2.5 text-xs mb-2" role="status" data-testid="aviso-descartados">
@@ -536,11 +543,11 @@ export default function SubidaMultiple({
                   <select
                     aria-label={`Cuenta de ${a.nombre}`}
                     value={a.cuentaId}
-                    onChange={(e) => parchar(a.id, { cuentaId: e.target.value })}
+                    onChange={(e) => { recordarCuenta(cuentas.find((x) => x.id === e.target.value)?.nombre, productoDeTexto(a.nombre), e.target.value); parchar(a.id, { cuentaId: e.target.value }) }}
                     className="w-full mt-0.5 rounded-xl border border-line bg-paper-raised px-3 py-2 text-xs"
                   >
                     {cuentas.map((c) => (
-                      <option key={c.id} value={c.id}>{c.icono} {c.nombre}</option>
+                      <option key={c.id} value={c.id}>{c.icono} {textoOpcionCuenta(c, cuentas)}</option>
                     ))}
                   </select>
                 </label>

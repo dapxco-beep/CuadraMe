@@ -8,7 +8,8 @@ import { useBloqueo } from '../lib/BloqueoContext'
 import { textoActualizado } from '../lib/saldos'
 import DetalleCuenta from '../components/DetalleCuenta'
 import ResumenSaldo from '../components/ResumenSaldo'
-import { ArrowLeft, Pencil, Plus, Trash2, Users, X, Wallet } from 'lucide-react'
+import { ArrowLeft, CreditCard, Pencil, Plus, Trash2, Users, X, Wallet } from 'lucide-react'
+import { etiquetaTipo, mismasDelBanco } from '../lib/cuentasBanco'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
@@ -191,6 +192,9 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
   const [moneda, setMoneda] = useState(cuenta?.moneda || 'COP')
   const [campos, setCampos] = useState(CAMPOS_VACIOS)
   const [alias, setAlias] = useState(cuenta?.alias_tarjeta || '')
+  const { cuentas: todas = [] } = useCuentas() || {}
+  // Otras cuentas del mismo banco (ahorros + tarjeta): ahí el alias/últimos 4 dígitos es lo que desempata.
+  const hermanas = cuenta ? mismasDelBanco(cuenta, todas).filter((c) => c.id !== cuenta.id) : []
   const [guardando, setGuardando] = useState(false)
   const [eliminando, setEliminando] = useState(false)
   const [error, setError] = useState('')
@@ -307,9 +311,18 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
           className="w-full mt-1 rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm outline-none focus:border-accent"
         />
         <span className="block text-[11px] text-ink-soft mt-1">
-          Cuando pagues con el celular, asignamos el pago a esta cuenta si el nombre de la tarjeta contiene este texto.
-          Puedes poner varios separados por coma.
+          Cuando pagues con el celular, asignamos el pago a esta cuenta si el nombre de la tarjeta contiene este texto
+          o sus últimos 4 dígitos. Puedes poner varios separados por coma.
         </span>
+        {hermanas.length > 0 && (
+          <span className="flex items-start gap-1.5 text-[11px] font-medium text-accent mt-1.5" data-testid="aviso-alias-banco">
+            <CreditCard size={16} className="shrink-0" aria-hidden="true" />
+            <span>
+              Tienes más de una cuenta de este banco ({hermanas.map((c) => `${c.nombre}: ${etiquetaTipo(c) || 'otra'}`).join(', ')}).
+              Para que CuadraMe no se confunda, escribe aquí los últimos 4 dígitos de ESTA tarjeta (ej. «Visa 1234»).
+            </span>
+          </span>
+        )}
       </label>
 
       {esEdicion && (

@@ -2,6 +2,7 @@
 // interfaz para poder probarla: validación, cola secuencial que aguanta fallos,
 // normalización de lo que devuelve cada endpoint y deduplicación entre archivos.
 import { claveComercio } from './comercio'
+import { cuentaRecordada, esCredito, marcaDe, productoDeTexto } from './cuentasBanco'
 
 export const MAX_ARCHIVOS = 10
 export const MAX_BYTES_PDF = 15 * 1024 * 1024 // igual que el servidor (~15 MB decodificado)
@@ -40,7 +41,20 @@ export function sugerirCuenta(nombreArchivo, cuentas, porDefecto = '') {
     const nombre = sinTildes(c.nombre)
     return nombre.length >= 3 && n.includes(nombre)
   })
-  return hit?.id || porDefecto || cuentas[0]?.id || ''
+  if (hit) return hit.id
+  // Banco con varias cuentas ('extracto_nu_tarjeta.pdf' con «Nu Colombia» y «Nu Tarjeta»):
+  // el tipo que insinúa el nombre del archivo, o lo que la persona eligió antes para ese banco.
+  const delBanco = cuentas.filter((c) => marcaDe(c.nombre).some((w) => n.split(/[^a-z0-9]+/).includes(w)))
+  if (delBanco.length > 1) {
+    const producto = productoDeTexto(nombreArchivo)
+    const deTipo = producto ? delBanco.filter((c) => esCredito(c) === (producto === 'credito')) : delBanco
+    if (deTipo.length === 1) return deTipo[0].id
+    const recordada = cuentaRecordada(delBanco[0].nombre, producto, cuentas)
+    if (recordada && delBanco.some((c) => c.id === recordada)) return recordada
+  } else if (delBanco.length === 1) {
+    return delBanco[0].id
+  }
+  return porDefecto || cuentas[0]?.id || ''
 }
 
 /** 'dd/mm/aaaa', 'dd-mm-aaaa' o ISO -> 'aaaa-mm-dd' (o '' si no se entiende). */
@@ -101,6 +115,7 @@ export function normalizarPdf(r) {
     completados: (r.review || []).filter((m) => m.estado === 'completado').map(filaInfo),
     sobrantes: (r.review || []).filter((m) => m.estado === 'sobrante').map(filaInfo),
     propuestaTarjeta: r.propuesta_tarjeta || null,
+    avisoCuenta: r.aviso_cuenta || null, // el PDF parece de otro producto del mismo banco (tarjeta vs ahorros)
   }
 }
 

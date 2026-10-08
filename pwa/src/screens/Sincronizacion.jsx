@@ -27,6 +27,8 @@ import PasosCentro from '../components/PasosCentro'
 import SubirArchivos from '../components/SubirArchivos'
 import Conexiones from './Conexiones'
 import { mensajeAmable } from '../lib/mensajes'
+import SelectorCuentaBanco from '../components/SelectorCuentaBanco'
+import { cuentaRecordada, productoDeTexto } from '../lib/cuentasBanco'
 
 // "Traer movimientos": UN solo centro para todo lo que trae movimientos a CuadraMe.
 //   Arriba: estado y «Sincronizar todo».  Luego tres bloques plegables con contador:
@@ -269,7 +271,13 @@ export default function Sincronizacion() {
   }
 
   // ── Extractos ──────────────────────────────────────────────────────
-  const cuentaElegida = (ex) => cuentaPorExtracto[ex.id] || ex.cuenta_sugerida_id || ''
+  // Banco con varias cuentas sin ganadora: se usa la que la persona eligió antes para ese banco + tipo.
+  const recordadaExt = (ex) => {
+    if (!ex.pregunta_cuenta) return ''
+    const id = cuentaRecordada(ex.banco, productoDeTexto(`${ex.asunto || ''} ${ex.archivo || ''}`), cuentas)
+    return id && (!ex.cuentas_candidatas?.length || ex.cuentas_candidatas.includes(id)) ? id : ''
+  }
+  const cuentaElegida = (ex) => cuentaPorExtracto[ex.id] || ex.cuenta_sugerida_id || recordadaExt(ex) || ''
   const nombreCuenta = (id) => cuentas.find((c) => c.id === id)?.nombre
 
   async function conciliar(ex) {
@@ -896,20 +904,19 @@ function FilaExtracto({ ex, cuentas, cuentaId, nombreCuenta, ocupado, onCuenta, 
       </div>
 
       {puedeConciliar && (
-        <select
+        <SelectorCuentaBanco
+          className="mt-3"
+          cuentas={cuentas}
           value={cuentaId}
-          onChange={(e) => onCuenta(e.target.value)}
-          aria-label={`Cuenta del extracto ${banco}`}
-          required
-          className="w-full mt-3 rounded-xl border border-line bg-paper-raised px-3 py-2 text-xs"
-        >
-          <option value="">{sinBanco ? 'Elige la cuenta (obligatorio)' : 'Elige la cuenta'}</option>
-          {cuentas.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nombre}{c.id === ex.cuenta_sugerida_id ? ' (sugerida)' : ''}
-            </option>
-          ))}
-        </select>
+          onChange={onCuenta}
+          ariaLabel={`Cuenta del extracto ${banco}`}
+          vacio={sinBanco ? 'Elige la cuenta (obligatorio)' : 'Elige la cuenta'}
+          banco={ex.banco}
+          producto={productoDeTexto(`${ex.asunto || ''} ${ex.archivo || ''}`)}
+          pregunta={ex.pregunta_cuenta}
+          sugeridaId={ex.cuenta_sugerida_id}
+          candidatas={ex.cuentas_candidatas}
+        />
       )}
 
       <div className="flex gap-2 mt-3">

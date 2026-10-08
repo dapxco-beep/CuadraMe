@@ -36,7 +36,7 @@ from app.wallet import (
     fecha_razonable,
     formato_cop,
     coincide_cuenta,
-    mapear_cuenta,
+    mapear_cuenta_ex,
     parse_fecha,
 )
 from app.models import Categoria, Cuenta, Meta, Movimiento, ReglaCategoria
@@ -671,11 +671,15 @@ def _registrar_movimiento_rapido(
     moneda: str | None = None,
     origen_auto: str | None = None,
     detectar_duplicado: bool = False,
+    empate_out: list | None = None,
 ) -> tuple[Movimiento, Cuenta, bool]:
     """Crea el movimiento de un registro automático y devuelve (movimiento,
     cuenta, duplicado).
 
-    - La cuenta sale del alias/nombre de la tarjeta (ver wallet.mapear_cuenta).
+    - La cuenta sale del alias/nombre de la tarjeta (ver wallet.mapear_cuenta_ex). Si el banco
+      tiene varias cuentas (débito y crédito) el tipo que insinúa la tarjeta desempata; si de
+      verdad no hay forma, se registra en la de uso más reciente (el movimiento queda "por
+      confirmar", así que no se pierde) y `empate_out` recibe las candidatas para avisar.
     - Con `origen_auto` ('wallet' | 'atajo') el movimiento se crea de inmediato
       (los saldos quedan bien) pero marcado "por confirmar", con el mismo
       mecanismo de la categorización automática (cat_confirmada=False).
@@ -686,7 +690,17 @@ def _registrar_movimiento_rapido(
     # tanto abusos como un atajo mal configurado que se quede en bucle.
     verificar_limite(f"rapido:{usuario_id}", 120, 3600, "Demasiados registros rápidos seguidos. Intenta en un rato.")
     cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).order_by(Cuenta.nombre).all()
-    cuenta, _como = mapear_cuenta(cuentas, tarjeta, cuenta_nombre, moneda)
+    # Uso reciente por cuenta: solo sirve para desempatar entre cuentas del mismo banco
+    # (p. ej. 'Nu Colombia' ahorros y 'Nu Tarjeta' crédito) cuando el Wallet no dio pistas.
+    ultimo_uso = dict(
+        db.query(Movimiento.cuenta_id, func.max(Movimiento.fecha))
+        .filter(Movimiento.usuario_id == usuario_id)
+        .group_by(Movimiento.cuenta_id)
+        .all()
+    ) if len(cuentas) > 1 else None
+    cuenta, _como, empate = mapear_cuenta_ex(cuentas, tarjeta, cuenta_nombre, moneda, ultimo_uso)
+    if empate and empate_out is not None:
+        empate_out.extend(empate)
     if not cuenta:
         raise HTTPException(status_code=404, detail="El usuario no tiene ninguna cuenta creada")
 
@@ -772,6 +786,7 @@ def crear_movimiento_rapido(
     descripcion = data.comercio or data.descripcion  # en cierre_app puede ser None: la nota es opcional
     fuente = data.fuente if data.fuente in ("apple_pay", "google_pay") else ("wallet" if es_wallet else data.fuente)
     origen = ORIGEN_CIERRE_APP if es_cierre else (ORIGEN_WALLET if es_wallet else ORIGEN_ATAJO)
+    empate: list = []
     mov, cuenta, duplicado = _registrar_movimiento_rapido(
         db,
         usuario.id,
@@ -785,12 +800,22 @@ def crear_movimiento_rapido(
         moneda=data.moneda,
         origen_auto=origen,
         detectar_duplicado=True,
+        empate_out=empate,
     )
     signo = "Ingreso" if mov.tipo == "income" else "Gasto"
     if duplicado:
         mensaje = f"Ya lo tenías: {signo.lower()} de {formato_cop(mov.monto)} en {mov.descripcion}."
     else:
         mensaje = f"{signo} de {formato_cop(mov.monto)} en {mov.descripcion} ({cuenta.nombre}). Confírmalo en CuadraMe."
+    if empate and not duplicado:
+        otras = [c for c in empate if c.id != cuenta.id]
+        mensaje += (
+            f" Ojo: tu banco tiene varias cuentas ({', '.join(c.nombre for c in empate)}) y no supe cuál es "
+            f"esta tarjeta, así que lo guardé en {cuenta.nombre}"
+            + (f" (la que más usas). Si era {' o '.join(c.nombre for c in otras)}, corrígelo al confirmar. " if otras else ". ")
+            + "Para que no se confunda: en CuadraMe, Cuentas > editar cuenta > «Alias de la tarjeta», pon los últimos 4 dígitos "
+            "o el nombre que muestra Wallet."
+        )
     # Si el Atajo pidió una cuenta que no existe, el movimiento cayó en otra: se dice,
     # para que no se registre en silencio en la cuenta equivocada.
     if data.cuenta and not data.tarjeta and not coincide_cuenta(cuenta, data.cuenta):

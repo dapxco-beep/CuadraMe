@@ -10,6 +10,8 @@ import re
 import unicodedata
 from datetime import datetime, timedelta, timezone
 
+from app.cuentas_banco import filtrar_por_producto, palabras_marca, producto_de_cuenta, producto_de_texto
+
 # Fuentes que nacen de un registro automático y piden "¿es tuyo?" al usuario.
 FUENTES_POR_CONFIRMAR = ("wallet", "apple_pay", "google_pay", "shortcut", "sms", "cierre_app")
 ORIGEN_WALLET = "wallet"
@@ -119,19 +121,34 @@ def coincide_cuenta(cuenta, nombre: str | None) -> bool:
     return cn in _norm(cuenta.nombre) or any(cn in a for a in alias_de(cuenta))
 
 
-def mapear_cuenta(cuentas: list, tarjeta: str | None, cuenta_nombre: str | None = None, moneda: str | None = None):
-    """Elige la cuenta del usuario a la que corresponde el pago.
+def _decidir_empate(grupo: list, producto: str | None, ultimo_uso: dict | None):
+    """De varias cuentas que encajan igual: 1) el TIPO (crédito/débito) según el texto de la
+    tarjeta; 2) si sigue el empate, la de uso más reciente. Devuelve (cuenta, empate) donde
+    `empate` lista las cuentas que quedaron empatadas (vacío si se resolvió bien)."""
+    grupo = filtrar_por_producto(grupo, producto)
+    if len(grupo) == 1:
+        return grupo[0], []
+    uso = ultimo_uso or {}
+    elegida = max(grupo, key=lambda c: (uso.get(c.id) is not None, uso.get(c.id) or 0))
+    return elegida, grupo
 
-    Devuelve (cuenta, como) con como en: alias | digitos | nombre | cuenta | primera.
-    Orden: alias de tarjeta (parcial) -> últimos 4 dígitos -> nombre de la cuenta
-    contra el de la tarjeta -> parámetro 'cuenta' -> la primera cuenta."""
+
+def mapear_cuenta_ex(cuentas: list, tarjeta: str | None, cuenta_nombre: str | None = None,
+                     moneda: str | None = None, ultimo_uso: dict | None = None):
+    """Como `mapear_cuenta` pero devuelve (cuenta, como, empate).
+
+    `como` agrega: tipo (el texto decía crédito/débito y eso desempató) y empate (de verdad
+    había dos cuentas posibles del mismo banco y no hay dígitos, alias ni pista de tipo:
+    se toma la de uso más reciente según `ultimo_uso` {cuenta_id: fecha} y `empate` trae
+    las candidatas para avisarle a la persona)."""
     if not cuentas:
-        return None, None
+        return None, None, []
     if moneda:
         misma = [c for c in cuentas if (c.moneda or "COP").upper() == moneda.upper()]
         if misma:
             cuentas = misma
     t = _norm(tarjeta)
+    producto = producto_de_texto(f"{tarjeta or ''} {cuenta_nombre or ''}")
 
     if t:
         mejor, puntaje = None, 0
@@ -140,35 +157,67 @@ def mapear_cuenta(cuentas: list, tarjeta: str | None, cuenta_nombre: str | None 
                 if len(a) >= 3 and (a in t or t in a) and len(a) > puntaje:
                     mejor, puntaje = c, len(a)
         if mejor:
-            return mejor, "alias"
+            return mejor, "alias", []
 
         ultimos = re.findall(r"\d{4}", t)
         if ultimos:
             d = ultimos[-1]
             for c in cuentas:
                 if any(d in a for a in alias_de(c)) or d in _norm(c.nombre):
-                    return c, "digitos"
+                    return c, "digitos", []
 
-        mejor, puntaje = None, 0
         palabras_t = {w for w in t.split() if len(w) >= 4}
+        marca_t = palabras_marca(t)
+        puntajes = []
         for c in cuentas:
             n = _norm(c.nombre)
-            if len(n) >= 3 and (n in t or t in n):
+            if len(n) >= 3 and n in t:
                 p = 100 + len(n)
+            elif len(n) >= 3 and t in n:
+                # La tarjeta es solo una parte del nombre ('Nu' dentro de 'Nu Colombia' y 'Nu Tarjeta'):
+                # vale lo que coincide, no el largo del nombre; así un nombre más largo no gana por serlo.
+                p = 100 + len(t)
             else:
                 p = sum(len(w) for w in set(n.split()) & palabras_t)
-            if p > puntaje:
-                mejor, puntaje = c, p
-        if mejor:
-            return mejor, "nombre"
+                if not p:  # marca corta ('nu', 'rappi'): vale menos que un nombre completo
+                    p = sum(len(w) for w in palabras_marca(n) & marca_t)
+            if p:
+                puntajes.append((p, c))
+        if puntajes:
+            tope = max(p for p, _ in puntajes)
+            grupo = [c for p, c in puntajes if p == tope]
+            # El texto dice crédito/débito pero la ganadora es del otro tipo: si otra cuenta
+            # del mismo banco sí es del tipo pedido, esa manda.
+            if producto and not any(producto_de_cuenta(c) == producto for c in grupo):
+                otras = [c for _, c in puntajes if producto_de_cuenta(c) == producto]
+                if len(otras) == 1:
+                    return otras[0], "tipo", []
+            cuenta, empate = _decidir_empate(grupo, producto, ultimo_uso)
+            if empate:
+                return cuenta, "empate", empate
+            return cuenta, ("tipo" if len(grupo) > 1 else "nombre"), []
 
     cn = _norm(cuenta_nombre)
     if cn:
-        for c in cuentas:
-            if cn in _norm(c.nombre) or any(cn in a for a in alias_de(c)):
-                return c, "cuenta"
+        grupo = [c for c in cuentas if cn in _norm(c.nombre) or any(cn in a for a in alias_de(c))]
+        if grupo:
+            cuenta, empate = _decidir_empate(grupo, producto, ultimo_uso)
+            if empate:
+                return cuenta, "empate", empate
+            return cuenta, ("tipo" if len(grupo) > 1 else "cuenta"), []
 
-    return cuentas[0], "primera"
+    return cuentas[0], "primera", []
+
+
+def mapear_cuenta(cuentas: list, tarjeta: str | None, cuenta_nombre: str | None = None, moneda: str | None = None):
+    """Elige la cuenta del usuario a la que corresponde el pago.
+
+    Devuelve (cuenta, como) con como en: alias | digitos | nombre | tipo | cuenta | empate | primera.
+    Orden: alias de tarjeta (parcial) -> últimos 4 dígitos -> nombre de la cuenta
+    contra el de la tarjeta (con el TIPO crédito/débito como desempate cuando el banco tiene
+    varias cuentas) -> parámetro 'cuenta' -> la primera cuenta."""
+    cuenta, como, _ = mapear_cuenta_ex(cuentas, tarjeta, cuenta_nombre, moneda)
+    return cuenta, como
 
 
 def formato_cop(monto: float) -> str:

@@ -41,9 +41,18 @@ CATEGORIAS_NEUTRAS = {"transferencia", "pago de tarjeta", "ajuste de saldo", "ap
 # "pago tarjeta", "pago de tarjeta de crédito", "abono a TC", "pago visa", "pago tarj credito".
 # NO casa con "pago con tarjeta en Éxito" (eso es una COMPRA): después de pago/abono solo
 # se admiten conectores (de, a, la, mi, total, mínimo), no "con".
+# También "Pago Nu Tarjeta", "Pago Bancolombia TC" (el banco va ENTRE el verbo y la palabra tarjeta:
+# caso típico del pago de la tarjeta Nu desde la cuenta Nu). Solo con entidades conocidas, para no
+# confundirlo con una compra.
+_ENTIDAD_TARJETA = (
+    r"nu|nubank|nu\s+colombia|bancolombia|davivienda|bbva|banco\s+de\s+bogota|bogota|falabella|rappi|rappicard|"
+    r"lulo|scotiabank|colpatria|itau|av\s+villas|banco\s+popular|occidente|santander|citibank|tuya|exito"
+)
 PATRON_PAGO_TARJETA = re.compile(
     r"\b(?:pagos?|abonos?|pagaste|abonaste)\s+(?:(?:de|a|la|mi|tu|total|minimo|del)\s+)*"
-    r"(?:tarjeta|tarj\.?|tc|tdc|t\.c\.?|visa|master\s?card|amex|american\s+express|diners)\b",
+    r"(?:tarjeta|tarj\.?|tc|tdc|t\.c\.?|visa|master\s?card|amex|american\s+express|diners)\b"
+    r"|\b(?:pagos?|abonos?|pagaste|abonaste)\s+(?:(?:de|a|la|mi|tu|total|minimo|del)\s+)*"
+    rf"(?:{_ENTIDAD_TARJETA})\s+(?:tarjeta|tarj\.?|tc|tdc|t\.c\.?|credito)\b",
     re.IGNORECASE,
 )
 

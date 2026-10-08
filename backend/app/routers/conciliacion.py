@@ -28,6 +28,7 @@ from app.conciliacion import (
     parse_texto_con_regex,
 )
 from app.contabilidad import con_marca_traslado, tipo_con_direccion
+from app.cuentas_banco import aviso_cuenta_distinta
 from app.database import get_db
 from app.extractos_conciliados import evidencia_conciliado
 from app.models import Cuenta, HistorialExtracto, Movimiento, Perfil
@@ -244,6 +245,7 @@ def procesar_extracto(
         autoimportar_activo=autoimportar,
         ya_registrados=resultado["exactos"] + resultado["aproximados"] + completados,
         propuesta_tarjeta=_propuesta_tarjeta(cuenta, texto_plano),
+        aviso_cuenta=aviso_cuenta_distinta(cuenta, texto_plano[:6000], db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()),
         ok=True,
         historial_id=historial.id,
         banco_detectado=banco,

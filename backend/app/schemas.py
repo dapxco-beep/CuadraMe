@@ -677,6 +677,10 @@ class CorreoGastoOut(BaseModel):
     banco_detectado: Optional[str] = None
     cuenta_sugerida_id: Optional[str] = None
     falta_cuenta: bool = False
+    # El banco tiene varias cuentas (p. ej. ahorros y tarjeta) y no hay cómo saber cuál: se pregunta.
+    cuentas_candidatas: list[str] = []
+    pregunta_cuenta: Optional[str] = None
+    producto_detectado: Optional[str] = None  # credito | debito | None
     # El monto no se pudo leer del correo (<= 0): hay que pedirlo antes de aprobar.
     falta_monto: bool = False
     # Por qué se sugirió esa categoría ('por tu regla «rappi»'); None si la eligió el usuario
@@ -741,6 +745,9 @@ class ExtractoCorreoOut(BaseModel):
     recibido_en: Optional[datetime]
     # Solo en extractos procesados: movimientos que se cruzaron (exactos + aproximados).
     cruzados: Optional[int] = None
+    # Banco con varias cuentas sin ganador claro: ids posibles y la pregunta en lenguaje simple.
+    cuentas_candidatas: list[str] = []
+    pregunta_cuenta: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -872,6 +879,8 @@ class ProcesarExtractoResponse(BaseModel):
     # Solo si la cuenta es una tarjeta de crédito y el extracto trae datos legibles:
     # {cambios, datos, texto}. Es una PROPUESTA: se aplica solo si el cliente pulsa 'Aplicar'.
     propuesta_tarjeta: Optional[dict] = None
+    # Aviso (no bloquea): el extracto parece de otro producto del mismo banco (tarjeta vs ahorros).
+    aviso_cuenta: Optional[str] = None
 
 
 class ImportarFaltantesRequest(BaseModel):

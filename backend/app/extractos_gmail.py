@@ -17,6 +17,8 @@ from datetime import datetime
 
 import pdfplumber
 
+from app.cuentas_banco import filtrar_por_producto, producto_de_texto
+
 # ── Remitentes conocidos ────────────────────────────────────────────
 # Para ampliar la cobertura basta con agregar una línea: dominio -> nombre.
 # Se compara contra el dominio del remitente y sus subdominios
@@ -304,7 +306,7 @@ def cuentas_del_banco(banco: str, cuentas: list) -> list:
     return [c for c in cuentas if _puntaje_banco(banco_n, palabras, _sin_acentos(getattr(c, "nombre", "")))]
 
 
-def inferir_cuenta_por_remitente(remitente: str, cuentas: list) -> tuple[str | None, str | None, bool]:
+def inferir_cuenta_por_remitente(remitente: str, cuentas: list, texto: str = "") -> tuple[str | None, str | None, bool]:
     """(banco, cuenta_sugerida_id, falta_cuenta) para una notificación de correo.
     Sin banco reconocido no se adivina nada: el usuario debe elegir. Si el
     banco se reconoce pero el usuario no tiene cuenta de ese banco,
@@ -314,25 +316,34 @@ def inferir_cuenta_por_remitente(remitente: str, cuentas: list) -> tuple[str | N
         return None, None, False
     if not cuentas_del_banco(banco, cuentas):
         return banco, None, True
-    return banco, sugerir_cuenta(banco, "", cuentas), False
+    return banco, sugerir_cuenta(banco, detectar_ultimos4(texto), cuentas, texto), False
 
 
-def sugerir_cuenta(banco: str, ultimos4: str, cuentas: list) -> str | None:
-    """Elige la cuenta del usuario que mejor encaja con el extracto. Compara
-    el nombre del banco (sin acentos) y, si lo hay, los últimos 4 dígitos con
-    el nombre de la cuenta. Solo devuelve algo si hay un ganador claro."""
-    banco_n, palabras = _claves_banco(banco)
-    puntajes: list[tuple[int, object]] = []
-    for c in cuentas:
-        nombre = _sin_acentos(getattr(c, "nombre", ""))
-        puntaje = _puntaje_banco(banco_n, palabras, nombre)
-        if ultimos4 and ultimos4 in nombre:
-            puntaje += 3
-        if puntaje:
-            puntajes.append((puntaje, c))
-    if not puntajes:
-        return None
-    puntajes.sort(key=lambda x: -x[0])
-    if len(puntajes) > 1 and puntajes[0][0] == puntajes[1][0]:
-        return None
-    return puntajes[0][1].id
+def _ultimos4_de_cuenta(cuenta) -> set[str]:
+    """Últimos 4 dígitos que la cuenta declara: en el alias de la tarjeta o en el nombre."""
+    bruto = f"{getattr(cuenta, 'alias_tarjeta', '') or ''} {getattr(cuenta, 'nombre', '') or ''}"
+    return set(re.findall(r"(?<!\d)(\d{4})(?!\d)", bruto))
+
+
+def candidatas_banco(banco: str, ultimos4: str, cuentas: list, texto: str = "") -> tuple[list, str | None]:
+    """(cuentas del banco que siguen en pie, producto detectado) tras usar dígitos y TIPO.
+    Si queda más de una, es ambiguo y hay que preguntar (nunca adivinar)."""
+    cands = cuentas_del_banco(banco, cuentas)
+    producto = producto_de_texto(texto)
+    if len(cands) > 1 and ultimos4:
+        con_digitos = [c for c in cands if ultimos4 in _ultimos4_de_cuenta(c)]
+        if con_digitos:
+            return con_digitos, producto
+    if len(cands) > 1:
+        cands = filtrar_por_producto(cands, producto)
+    return cands, producto
+
+
+def sugerir_cuenta(banco: str, ultimos4: str, cuentas: list, texto: str = "") -> str | None:
+    """Elige la cuenta del usuario que mejor encaja con el extracto/correo. Compara
+    el nombre del banco (sin acentos); si el banco tiene varias cuentas desempata con los
+    últimos 4 dígitos (en el alias o el nombre) y con el TIPO que insinúa el `texto`
+    (tarjeta de crédito/cupo/pago mínimo -> crédito; cuenta de ahorros/Cajita -> débito).
+    Solo devuelve algo si hay un ganador claro."""
+    cands, _ = candidatas_banco(banco, ultimos4, cuentas, texto)
+    return cands[0].id if len(cands) == 1 else None
