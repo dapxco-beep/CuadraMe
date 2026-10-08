@@ -37,6 +37,21 @@ class Settings(BaseSettings):
     # Exigir el consentimiento específico (Gmail / IA) antes de usar esas funciones. Solo se apaga en pruebas.
     exigir_consentimientos: bool = True
 
+    # ── Monitor de capacidad y crecimiento (metricas/cron/avisos-crecimiento) ──
+    # Correo de Daniel (dueño): recibe los avisos y es el único que ve «Salud del negocio».
+    admin_email: str = ""
+    # Límites del plan gratuito de Resend; si se sube de plan, cambiar las variables en Railway.
+    resend_limite_dia: int = 100
+    resend_limite_mes: int = 3000
+    # Plan gratuito de Supabase: 500 MB de base.
+    supabase_db_limite_mb: int = 500
+    # Tope de usuarios con Gmail mientras la app de Google no está verificada.
+    gmail_tope_usuarios: int = 100
+    # Referencia de preguntas a la IA por mes antes de revisar el saldo de OpenRouter.
+    ia_preguntas_mes_aviso: int = 3000
+    # Errores 5xx en 24 h (en este proceso) a partir de los cuales se avisa.
+    errores_5xx_aviso: int = 20
+
     class Config:
         env_file = ".env"
 

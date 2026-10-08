@@ -404,7 +404,8 @@ SIN_ID_DE_RECURSO = {
 # Rutas sin sesión de usuario por diseño (crons con secreto, callbacks firmados, API key, webhook firmado, públicas).
 SIN_SESION = {
     "/backup/cron/enviar", "/cierre-mes/cron/cerrar-mes", "/correos/oauth/callback", "/correos/cron/sincronizar",
-    "/metricas/uso", "/metricas/cron/revisar-uso-semanal", "/movimientos/cuentas-rapido", "/movimientos/rapido",
+    "/metricas/uso", "/metricas/cron/revisar-uso-semanal", "/metricas/cron/avisos-crecimiento",
+    "/movimientos/cuentas-rapido", "/movimientos/rapido",
     "/movimientos/rapido-voz", "/pagos/webhook", "/patrimonio/cron/snapshot-mensual",
     "/patrimonio/cron/actualizar-precios", "/push/vapid-public-key", "/push/cron/revisar-presupuestos",
     "/push/cron/aportes-automaticos", "/push/cron/premiar-presupuestos-mes", "/push/cron/resumen-semanal",

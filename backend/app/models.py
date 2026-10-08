@@ -44,6 +44,9 @@ class Perfil(Base):
     # Última vez que alguien usó la API key (Atajo de iPhone, Tasker...): alimenta el semáforo de "Conexiones".
     api_key_ultimo_uso = Column(DateTime, nullable=True)
     actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Cuándo se creó el perfil (= primer uso): alimenta la tendencia de usuarios de «Salud del negocio».
+    # Los perfiles anteriores quedan en NULL y se estiman con su primer movimiento.
+    creado_en = Column(DateTime, default=datetime.utcnow, nullable=True)
 
 
 class Cuenta(Base):

@@ -89,4 +89,6 @@ def enviar_backup_por_correo() -> dict:
         timeout=30,
     )
     resp.raise_for_status()
+    from app.crecimiento import registrar_correo_enviado  # cuenta el envío para el monitor de Resend
+    registrar_correo_enviado()
     return {"ok": True, "bytes": len(contenido_gz)}

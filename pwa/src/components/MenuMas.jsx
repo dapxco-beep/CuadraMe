@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Clock, Search, SearchX, X } from 'lucide-react'
 import Hoja from './Hoja'
 import Icono from './Icono'
-import { buscarDestinos, GRUPOS, leerRecientes, rutaCoincide } from '../lib/navegacion'
+import { useAuth } from '../lib/AuthContext'
+import { buscarDestinos, DESTINO_ADMIN, esAdminVisible, GRUPOS, leerRecientes, rutaCoincide } from '../lib/navegacion'
 
 // Menú «Más»: los destinos agrupados por tema, con buscador arriba y «Recientes».
 // Se usa en la barra inferior (teléfono) y en el riel (iPad vertical).
@@ -28,6 +29,7 @@ function Destino({ item, pathname, onIr, compacto = false }) {
 
 export function HojaMas({ onCerrar, pathname }) {
   const navigate = useNavigate()
+  const admin = esAdminVisible(useAuth()?.usuario?.email)
   const [consulta, setConsulta] = useState('')
   const recientes = useMemo(() => leerRecientes(), [])
   const resultados = useMemo(() => buscarDestinos(consulta), [consulta])
@@ -144,6 +146,18 @@ export function HojaMas({ onCerrar, pathname }) {
                   </ul>
                 </section>
               ))}
+              {admin && (
+                <section aria-labelledby="mas-admin" className="mt-4">
+                  <h3 id="mas-admin" className="t-kicker text-ink-soft mb-2">
+                    Administración
+                  </h3>
+                  <ul className="grid grid-cols-2 gap-2">
+                    <li>
+                      <Destino item={DESTINO_ADMIN} pathname={pathname} onIr={irA} />
+                    </li>
+                  </ul>
+                </section>
+              )}
             </>
           )}
         </>

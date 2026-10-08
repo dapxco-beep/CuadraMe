@@ -48,6 +48,7 @@ const Wrapped = lazy(() => import('./screens/Wrapped'))
 const Informe = lazy(() => import('./screens/Informe'))
 const Perfil = lazy(() => import('./screens/Perfil'))
 const Ayuda = lazy(() => import('./screens/Ayuda'))
+const SaludNegocio = lazy(() => import('./screens/SaludNegocio'))
 const TerminosCondiciones = lazy(() => import('./screens/legal/TerminosCondiciones'))
 const PoliticaPrivacidad = lazy(() => import('./screens/legal/PoliticaPrivacidad'))
 const AutorizacionDatos = lazy(() => import('./screens/legal/AutorizacionDatos'))
@@ -120,6 +121,7 @@ function AppGate() {
         <Route path="/cierre-mes" element={<CierreMes />} />
         <Route path="/perfil" element={<Perfil />} />
         <Route path="/ayuda" element={<Ayuda />} />
+        <Route path="/salud-negocio" element={<SaludNegocio />} />
         <Route path="/legal/terminos" element={<TerminosCondiciones />} />
         <Route path="/legal/privacidad" element={<PoliticaPrivacidad />} />
         <Route path="/legal/autorizacion-datos" element={<AutorizacionDatos />} />

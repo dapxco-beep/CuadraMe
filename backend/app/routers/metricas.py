@@ -13,7 +13,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.auth import cron_autorizado
+from app.auth import UsuarioActual, cron_autorizado, get_current_user
+from app.crecimiento import armar_panel, es_admin, procesar_avisos, registrar_correo_enviado
 from app.config import settings
 from app.database import get_db
 from app.models import Movimiento, Perfil
@@ -118,4 +119,30 @@ def cron_revisar_uso_semanal(
         timeout=30,
     )
     resp.raise_for_status()
+    registrar_correo_enviado()
     return {"ok": True, "enviado": True, "procesados": 1, "fallidos": 0, **uso}
+
+
+@router.post("/cron/avisos-crecimiento")
+def cron_avisos_crecimiento(
+    x_cron_secret: str = Header(default=""),
+    db: Session = Depends(get_db),
+):
+    """Monitor de capacidad y crecimiento. Pensado para correr a diario (08:00 Bogotá).
+    Idempotente por umbral (marcas_cron): repetirlo no repite el mismo aviso. Cada medición y
+    cada recurso son tolerantes a fallos. Detalle y umbrales: app/crecimiento.py."""
+    if not cron_autorizado(x_cron_secret):
+        raise HTTPException(status_code=401, detail="No autorizado")
+    return procesar_avisos(db)
+
+
+@router.get("/panel")
+def panel_salud_negocio(
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«Salud del negocio»: solo el administrador (ADMIN_EMAIL). Para cualquier otra persona responde
+    404, igual que una ruta que no existe, para no revelar que hay un panel."""
+    if not es_admin(usuario.email):
+        raise HTTPException(status_code=404, detail="No encontrado")
+    return armar_panel(db)

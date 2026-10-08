@@ -15,8 +15,10 @@ Una página. Para el detalle de cada cosa, mira `HOJA_DE_RUTA.md`. Aquí solo ha
 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `API_BASE_URL`, `PWA_URL`, `CORS_ORIGINS_EXTRA`, `CORS_ORIGIN_REGEX`,
 `OPENROUTER_API_KEY`, `RESEND_API_KEY`, `RESEND_FROM`, `BACKUP_EMAIL`, `SOPORTE_EMAIL`,
 `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY_PEM`, `VAPID_SUBJECT`, `SENTRY_DSN`, `ENVIRONMENT`,
+`ADMIN_EMAIL` (tu correo: recibe los avisos y es el único que ve el panel), y opcionales con el valor del plan gratuito por defecto:
+`RESEND_LIMITE_DIA` (100), `RESEND_LIMITE_MES` (3000), `SUPABASE_DB_LIMITE_MB` (500), `GMAIL_TOPE_USUARIOS` (100), `IA_PREGUNTAS_MES_AVISO` (3000), `ERRORES_5XX_AVISO` (20),
 `GMAIL_MODO_PRUEBAS`, `EXIGIR_CONSENTIMIENTOS` (debe quedar en `true`), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_LIFETIME_COP` (solo si se cobra).
-**Vercel (PWA):** `VITE_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SENTRY_DSN`.
+**Vercel (PWA):** `VITE_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SENTRY_DSN`, `VITE_ADMIN_EMAIL` (opcional: solo muestra el acceso «Salud del negocio» en el menú a ese correo; la seguridad la pone el backend con `ADMIN_EMAIL`).
 Una variable nueva en el código debe existir en Railway/Vercel **antes** del deploy.
 
 ## 3. Crons (cron-job.org, `POST` con header `X-Cron-Secret`, hora Colombia)
@@ -36,9 +38,30 @@ Los 7 base se crean con `backend/cronjobs/crear_crons.py`. Los demás se agregan
 | `/cierre-mes/cron/cerrar-mes` | diario 07:00 |
 | `/correos/cron/sincronizar` | cada 3 horas (`0 */3 * * *`) |
 | `/patrimonio/cron/snapshot-mensual` | diario (opcional) |
+| **`/metricas/cron/avisos-crecimiento`** (nuevo) | **diario 08:00 hora Bogotá** (`0 8 * * *`; monitor de capacidad, ver 3b) |
 
 Las respuestas traen `{ok, procesados, fallidos, ...}`. El resumen por correo añade `enviados`, `ya_enviados` y `sin_datos`.
 Aviso: `crear_crons.py` aún no incluye `/resumen/cron/semanal`; créalo a mano o agrégalo a la lista `JOBS` (no se hizo para no tocar horarios sin aprobación).
+
+## 3b. Monitor de capacidad y crecimiento (te avisa antes de que algo se llene)
+`POST /metricas/cron/avisos-crecimiento` (header `X-Cron-Secret`) corre **a diario a las 08:00 hora Bogotá**. El cron **aún NO está creado en cron-job.org** (no se tocan horarios sin tu aprobación): créalo a mano o agrégalo a `JOBS` de `crear_crons.py`.
+- **Idempotente por umbral:** cada umbral se avisa una sola vez (marca en `marcas_cron`, usuario `sistema`, clave `crec:<recurso>:<umbral>`). Si en una corrida se cruzan varios, solo se manda el más alto. Los recursos que se reinician (Resend del día / del mes, IA del mes) se vuelven a armar al cambiar de día o mes. Si el correo falla, las marcas se liberan y se reintenta en la próxima corrida. Cada medición es tolerante: si una falla, queda «sin dato» y el resto sigue.
+- **Destino:** `ADMIN_EMAIL` por Resend. Sin esa variable (o sin `RESEND_API_KEY`) los avisos solo quedan en el log de Railway. Cada aviso también va a Sentry (nivel info/warning, texto genérico sin datos personales).
+- **Resumen semanal:** los lunes (hora Colombia) llega «CuadraMe: resumen semanal de crecimiento» (nuevos, activos, base %, Gmail, IA).
+- **Panel:** `GET /metricas/panel` (solo `ADMIN_EMAIL`; cualquier otro usuario recibe 404) y la pantalla «Salud del negocio» (Más > Administración, ruta `#/salud-negocio`).
+- **Aproximaciones a tener presentes:** el contador de errores 5xx vive en memoria del proceso (se reinicia en cada despliegue; la verdad está en Sentry). El tamaño de la base es `pg_database_size` (incluye índices y tablas del sistema, parecido a lo que mide Supabase). Los correos salidos se cuentan en `uso_diario` (usuario `sistema`) desde que se despliega esto. La fecha de alta de usuarios es `perfiles.creado_en` (columna nueva, la agrega `main.py` al arrancar; `backend/supabase/migraciones/perfil_creado_en.sql`); los perfiles anteriores se estiman con su primer movimiento.
+
+| Recurso | Límite de referencia | Avisa a | Qué hacer |
+|---|---|---|---|
+| Usuarios con Gmail | 100 (`GMAIL_TOPE_USUARIOS`, sin verificación de Google) | 60 / 80 / 90 / 100 | Iniciar YA la verificación de la app en Google Cloud (tarda semanas). Al aprobarse: `GMAIL_MODO_PRUEBAS=false`. |
+| Tamaño de la base | 500 MB (`SUPABASE_DB_LIMITE_MB`, plan gratuito) | 60 / 80 / 90 % | Subir a Supabase Pro (Billing) y ajustar `SUPABASE_DB_LIMITE_MB`. |
+| Correos del día (Resend) | 100 (`RESEND_LIMITE_DIA`) | 80 / 90 / 100 % | Plan de pago de Resend o reducir envíos; actualizar las variables. |
+| Correos del mes (Resend) | 3000 (`RESEND_LIMITE_MES`) | 60 / 80 / 90 / 100 % | Igual que arriba. |
+| Preguntas a la IA del mes | 3000 (`IA_PREGUNTAS_MES_AVISO`, referencia) | 80 / 100 % | Revisar saldo en OpenRouter; subir la referencia o bajar topes de `limites_diarios.py`. |
+| Movimientos guardados | 200 000 (referencia) | 60 / 80 / 100 % | Mirar tamaño real en Supabase; planear Supabase Pro. |
+| Usuarios activos (7 días) | 300 (referencia de Railway Hobby) | 60 / 80 / 100 % | Pasar Railway a plan de pago / más recursos. **Ojo con varias réplicas:** los límites por hora (`limites.py`) y el chat viven en memoria de cada réplica; hay que moverlos a la base antes de escalar a más de una. |
+| Errores 5xx (24 h) | 20 (`ERRORES_5XX_AVISO`) | al superarlo (1 vez al día) | Revisar Sentry y logs de Railway; si es memoria/CPU, subir el plan. |
+| Usuarios que tocaron un tope diario | 3 en 7 días | al superarlo (1 vez a la semana) | Ver si es abuso o un cliente que necesita un plan mayor (`limites_diarios.py`). |
 
 ## 4. Verificación después del despliegue (10 minutos)
 1. `GET /health` responde `{"ok": true}`.

@@ -210,6 +210,8 @@ function limpiar(p) {
 }
 
 export const api = {
+  // Solo la administración (el servidor responde 404 a cualquier otra persona).
+  panelNegocio: () => request('/metricas/panel'),
   cuentas: () => request('/cuentas'),
   crearCuenta: (data) => request('/cuentas', { method: 'POST', body: data }),
   editarCuenta: (id, data) => request(`/cuentas/${id}`, { method: 'PUT', body: data }),

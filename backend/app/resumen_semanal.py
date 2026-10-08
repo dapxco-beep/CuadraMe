@@ -135,4 +135,6 @@ def enviar_correo(destino: str, asunto_: str, html_: str, texto: str) -> bool:
         timeout=20,
     )
     r.raise_for_status()
+    from app.crecimiento import registrar_correo_enviado  # cuenta el envío para el monitor de Resend
+    registrar_correo_enviado()
     return True

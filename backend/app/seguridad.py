@@ -14,6 +14,8 @@ para validar el JSON; así el costo extra es casi nulo y el código sigue siendo
 """
 import json
 
+from app.monitor import registrar_5xx
+
 # Rutas que reciben archivos en base64 (hasta ~15 MB de archivo -> ~20 MB de texto).
 RUTAS_CON_ARCHIVOS = (
     "/conciliacion/procesar",
@@ -64,6 +66,28 @@ class SeguridadMiddleware:
         self.cabeceras = [h for h in CABECERAS_SEGURIDAD if con_csp or h[0] != b"content-security-policy"]
 
     async def __call__(self, scope, receive, send):
+        """Envuelve la lógica real para contar los 5xx (monitor de capacidad): los que la app
+        responde (status >= 500) y los que escapan como excepción (los convierte en 500 el
+        servidor, fuera de este middleware). Solo cuenta; no guarda nada de la petición."""
+        if scope["type"] != "http":
+            return await self._manejar(scope, receive, send)
+        contado = False
+
+        async def send_contando(mensaje):
+            nonlocal contado
+            if mensaje["type"] == "http.response.start" and mensaje.get("status", 0) >= 500 and not contado:
+                contado = True
+                registrar_5xx()
+            await send(mensaje)
+
+        try:
+            return await self._manejar(scope, receive, send_contando)
+        except Exception:
+            if not contado:
+                registrar_5xx()
+            raise
+
+    async def _manejar(self, scope, receive, send):
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
 

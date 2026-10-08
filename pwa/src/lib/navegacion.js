@@ -1,5 +1,5 @@
 import {
-  Bot, CalendarCheck, CreditCard, Database, Gift, GraduationCap, Home, Landmark, Lightbulb, List, PieChart, PiggyBank,
+  Activity, Bot, CalendarCheck, CreditCard, Database, Gift, GraduationCap, Home, Landmark, Lightbulb, List, PieChart, PiggyBank,
   LifeBuoy, Receipt, RefreshCw, Repeat, Settings, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Sprout, Tag,
   TrendingUp, User, Wallet,
 } from 'lucide-react'
@@ -80,6 +80,16 @@ export const GRUPOS = [
 export const EXTRA_BUSQUEDA = [
   { to: '/compartir', icon: Gift, label: 'Compartir resumen', palabras: 'imagen' },
 ]
+
+// Destino SOLO para quien administra CuadraMe. No está en GRUPOS ni en el buscador: se agrega aparte
+// cuando el correo de la sesión coincide con VITE_ADMIN_EMAIL. Es solo comodidad visual; la seguridad
+// la pone el servidor (GET /metricas/panel responde 404 a cualquier otra persona).
+export const DESTINO_ADMIN = { to: '/salud-negocio', icon: Activity, label: 'Salud del negocio' }
+
+export function esAdminVisible(email) {
+  const admin = String(import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase()
+  return Boolean(admin) && String(email || '').trim().toLowerCase() === admin
+}
 
 // Lista plana del menú «Más» (lo que antes era ITEMS_MAS)
 export const ITEMS_MAS = GRUPOS.flatMap((g) => g.items.map((i) => ({ ...i, grupo: g.id })))

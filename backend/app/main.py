@@ -107,6 +107,8 @@ if engine.dialect.name == "postgresql":
         # Tablero "Conexiones": último uso de la API key (Atajo de iPhone).
         # (Como SQL suelto: supabase/migraciones/sync_gmail_conexiones.sql.)
         conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS api_key_ultimo_uso TIMESTAMP"))
+        # Monitor de crecimiento: fecha de alta del perfil (supabase/migraciones/perfil_creado_en.sql).
+        conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS creado_en TIMESTAMP"))
         # Casi toda consulta filtra por cuenta y ordena/filtra por fecha.
         conn.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_movimientos_cuenta_fecha "

@@ -6,9 +6,10 @@ import { useTheme } from '../lib/ThemeContext'
 import { HojaMas } from './MenuMas'
 import Icono from './Icono'
 import {
-  GRUPOS, ITEMS_MAS, PRINCIPALES, buscarDestinos, estaEnMas, guardarGruposCerrados, leerGruposCerrados,
-  leerRecientes, rutaCoincide,
+  DESTINO_ADMIN, GRUPOS, ITEMS_MAS, PRINCIPALES, buscarDestinos, esAdminVisible, estaEnMas, guardarGruposCerrados,
+  leerGruposCerrados, leerRecientes, rutaCoincide,
 } from '../lib/navegacion'
+import { useAuth } from '../lib/AuthContext'
 
 // Navegación de pantallas anchas.
 //  - modo "riel" (iPad vertical, 768-1023 px): 72 px, ícono + etiqueta corta; «Más» abre el
@@ -98,6 +99,7 @@ function EnlaceLateral({ item, end }) {
 
 function Lateral() {
   const { theme, setTheme } = useTheme() || {}
+  const admin = esAdminVisible(useAuth()?.usuario?.email)
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const info = TEMA_INFO[theme] || TEMA_INFO.auto
@@ -231,6 +233,12 @@ function Lateral() {
               </section>
             )
           })}
+          {admin && (
+            <section className="mt-2" aria-label="Administración">
+              <p className="t-kicker text-ink-soft px-3 mt-1 mb-1">Administración</p>
+              <EnlaceLateral item={DESTINO_ADMIN} />
+            </section>
+          )}
         </>
       )}
 
