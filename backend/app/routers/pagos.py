@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -22,6 +24,23 @@ def _get_or_create_perfil(db: Session, usuario_id: str) -> Perfil:
     return perfil
 
 
+def _url_de_retorno_valida(url: str) -> bool:
+    """Compara el ORIGEN (esquema + host + puerto), no el inicio del texto: con
+    startswith, 'https://pwa-seven-ecru.vercel.app.malo.com' o 'http://localhost.malo.com'
+    pasaban el filtro y Stripe devolvía al usuario a un sitio ajeno tras pagar."""
+    try:
+        u = urlparse(url)
+        permitido = urlparse(settings.pwa_url)
+        puerto = u.port
+    except ValueError:
+        return False
+    if u.username or u.password:
+        return False
+    if u.scheme == "https" and u.hostname and u.hostname == permitido.hostname and puerto in (None, permitido.port):
+        return True
+    return u.scheme == "http" and u.hostname in ("localhost", "127.0.0.1")
+
+
 @router.get("/plan")
 def obtener_plan(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
@@ -38,7 +57,7 @@ def crear_checkout(
     usuario: UsuarioActual = Depends(get_current_user),
 ):
     for url in (success_url, cancel_url):
-        if not (url.startswith(settings.pwa_url) or url.startswith("http://localhost")):
+        if not _url_de_retorno_valida(url):
             raise HTTPException(status_code=400, detail="URL de retorno no permitida")
 
     perfil = _get_or_create_perfil(db, usuario.id)
@@ -68,6 +87,10 @@ def crear_checkout(
 
 @router.post("/webhook")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    if not settings.stripe_webhook_secret:
+        # Sin secreto configurado, Stripe calcularía la firma con una clave vacía y
+        # cualquiera podría fabricar un "pago completado" y volverse Pro gratis.
+        raise HTTPException(status_code=503, detail="Webhook no configurado")
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
 

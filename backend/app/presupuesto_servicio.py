@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app import planificacion as plan
 from app.compartidos import cuentas_ids_accesibles
-from app.contabilidad import tipos_cuenta_de, tipos_efectivos
+from app.contabilidad import TiposCuenta, tipos_efectivos
 from app.fx import convertir_a_cop
 from app.models import Cuenta, Movimiento, Presupuesto
 from app.models_planificacion import ConfigPlanificacion
@@ -60,10 +60,51 @@ def _dt(d) -> datetime:
 class GastosPorRango:
     """Suma gastos por categoría y rango de fechas, convirtiendo a COP."""
 
+    # Ventana que se trae de la base de una sola vez. Cada presupuesto pide su periodo
+    # actual y 1-3 anteriores; antes eso eran 2 consultas por cada pedido (5 presupuestos =
+    # 20+ consultas, 80 con 20 presupuestos). Ahora: una consulta de movimientos para toda
+    # la ventana y se filtra en memoria. Cubre hasta ~4 meses atrás y 1 mes adelante.
+    ATRAS_DIAS = 130
+    ADELANTE_DIAS = 35
+
     def __init__(self, db: Session, uid: str):
         self.db = db
         self.ids = cuentas_ids_accesibles(db, uid)
-        self.monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(self.ids)).all()}
+        self._tipos = None
+        self.monedas = {}
+        if self.ids:
+            cuentas = db.query(Cuenta).filter(Cuenta.id.in_(self.ids)).all()
+            self.monedas = {c.id: c.moneda for c in cuentas}
+            # Mismo contenido que tipos_cuenta_de(), sin repetir la consulta de cuentas.
+            self._tipos = self._tipos_desde(cuentas)
+        self._ventana = None  # (desde, hasta, [movimientos])
+        self._por_rango = {}  # (desde, hasta) -> {categoría: gasto}
+
+    @staticmethod
+    def _tipos_desde(cuentas):
+        out = TiposCuenta()
+        out.monedas = {}
+        for c in cuentas:
+            out[c.id] = c.tipo
+            out.monedas[c.id] = c.moneda
+        return out
+
+    def _movimientos(self, desde: datetime, hasta: datetime) -> list:
+        """Movimientos con fecha en [desde, hasta), tomados de la ventana en memoria
+        (que se amplía si el pedido cae fuera de ella)."""
+        v = self._ventana
+        if v is None or desde < v[0] or hasta > v[1]:
+            ini = desde - timedelta(days=self.ATRAS_DIAS)
+            fin = hasta + timedelta(days=self.ADELANTE_DIAS)
+            if v is not None:
+                ini, fin = min(ini, v[0]), max(fin, v[1])
+            movs = (
+                self.db.query(Movimiento)
+                .filter(Movimiento.cuenta_id.in_(self.ids), Movimiento.fecha >= ini, Movimiento.fecha < fin)
+                .all()
+            )
+            self._ventana = v = (ini, fin, movs)
+        return [m for m in v[2] if desde <= m.fecha < hasta]
 
     def gastado(self, categoria: str, inicio, fin) -> float:
         # Regla contable (contabilidad.py): no cuentan los pagos de tarjeta ni los
@@ -71,22 +112,24 @@ class GastosPorRango:
         # poder emparejar traslados que caen en el borde.
         if not self.ids:
             return 0.0
-        desde, hasta = _dt(inicio), _dt(fin)
-        movs = (
-            self.db.query(Movimiento)
-            .filter(
-                Movimiento.cuenta_id.in_(self.ids),
-                Movimiento.fecha >= desde - timedelta(days=3),
-                Movimiento.fecha < hasta + timedelta(days=3),
-            )
-            .all()
-        )
-        te = tipos_efectivos(movs, tipos_cuenta_de(self.db, self.ids))
-        return sum(
-            convertir_a_cop(m.monto, self.monedas.get(m.cuenta_id, "COP"))
-            for m in movs
-            if m.categoria == categoria and desde <= m.fecha < hasta and te[m.id] == "expense"
-        )
+        return self._gasto_por_categoria(_dt(inicio), _dt(fin)).get(categoria, 0.0)
+
+    def _gasto_por_categoria(self, desde: datetime, hasta: datetime) -> dict[str, float]:
+        """{categoría: gasto en COP} del rango. Se calcula UNA vez por rango: varios
+        presupuestos comparten el mismo periodo, y emparejar traslados (tipos_efectivos)
+        es lo más caro; con 20 presupuestos se repetía 80 veces."""
+        clave = (desde, hasta)
+        hecho = self._por_rango.get(clave)
+        if hecho is None:
+            movs = self._movimientos(desde - timedelta(days=3), hasta + timedelta(days=3))
+            te = tipos_efectivos(movs, self._tipos)
+            hecho = {}
+            for m in movs:
+                if desde <= m.fecha < hasta and te[m.id] == "expense":
+                    hecho[m.categoria] = hecho.get(m.categoria, 0.0) + convertir_a_cop(
+                        m.monto, self.monedas.get(m.cuenta_id, "COP"))
+            self._por_rango[clave] = hecho
+        return hecho
 
 
 def proyectar_presupuesto(p: Presupuesto, cfg: ConfigPlanificacion, gastos: GastosPorRango,

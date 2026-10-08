@@ -6,7 +6,7 @@ from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
 from app.conciliacion import normalize_texto
 from app.database import get_db
-from app.compartidos import cuentas_ids_accesibles
+from app.compartidos import cuentas_ids_accesibles, exigir_cuenta_propia
 from app.contabilidad import tipos_cuenta_de, tipos_efectivos
 from app.deteccion import detectar_recurrentes
 from app.finanzas import calc_estado_recurrente
@@ -52,6 +52,7 @@ def crear_recurrente(
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
+    exigir_cuenta_propia(db, usuario.id, data.cuenta_id)
     rec = Recurrente(usuario_id=usuario.id, **data.model_dump())
     db.add(rec)
     db.commit()

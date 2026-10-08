@@ -4,6 +4,7 @@ a otro por email a ver o editar una cuenta específica. El resto del sistema
 sigue funcionando en base a `usuario_id` (movimientos, presupuestos, etc. no
 se comparten, solo la cuenta y sus movimientos asociados vía cuenta_id).
 """
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models import Cuenta, CuentaCompartida
@@ -59,3 +60,15 @@ def cuenta_accesible(db: Session, usuario_id: str, cuenta_id: str) -> Cuenta | N
         .first()
     )
     return cuenta if compartida else None
+
+
+def exigir_cuenta_propia(db: Session, usuario_id: str, cuenta_id: str | None) -> None:
+    """Para guardar el id de una cuenta DENTRO de otro registro (recurrente, deuda...):
+    debe ser del propio usuario. Si no, bastaría conocer el id de una cuenta ajena
+    para atar a ella un pago. Responde 404 (igual que si no existiera) para no
+    confirmar que el id pertenece a alguien más."""
+    if not cuenta_id:
+        return
+    existe = db.query(Cuenta.id).filter(Cuenta.id == cuenta_id, Cuenta.usuario_id == usuario_id).first()
+    if not existe:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")

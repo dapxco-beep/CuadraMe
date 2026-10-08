@@ -17,7 +17,9 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.claves_api import buscar_perfil_por_clave
-from app.limites import bloquear_si_demasiados_fallos, ip_cliente, registrar_fallo_api_key
+from app.limites import bloquear_si_demasiados_fallos, ip_cliente, registrar_fallo_api_key, verificar_limite
+
+LIMITE_GENERAL_POR_MINUTO = 240
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="noop", auto_error=False)
 
@@ -57,6 +59,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> UsuarioActual:
             algorithms=["ES256", "RS256"],
             audience="authenticated",
             leeway=30,  # tolera pequeño desfase de reloj entre máquinas
+            # Un token sin vencimiento valdría para siempre: se exige que traiga exp y sub.
+            options={"require": ["exp", "sub"]},
         )
     except jwt.PyJWTError:
         raise credentials_exception
@@ -65,6 +69,12 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> UsuarioActual:
     email = payload.get("email", "")
     if not usuario_id:
         raise credentials_exception
+
+    # Tope general por usuario (todas las rutas): una pantalla normal hace ~10 peticiones;
+    # 240 por minuto deja mucho margen, y frena un cliente roto en bucle o un abuso que
+    # le quitaría capacidad a los demás clientes. Los endpoints caros tienen además su tope propio.
+    verificar_limite(f"api:{usuario_id}", LIMITE_GENERAL_POR_MINUTO, 60,
+                     "Demasiadas solicitudes seguidas. Espera unos segundos e inténtalo de nuevo.")
 
     meta = payload.get("user_metadata") or {}
     nombre = meta.get("nombre") or meta.get("full_name") or meta.get("name") or ""

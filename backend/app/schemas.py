@@ -192,23 +192,23 @@ class CuentaCompartidaOut(BaseModel):
 
 class MovimientoCreate(BaseModel):
     cuenta_id: str
-    descripcion: str
+    descripcion: str = Field(max_length=300)
     monto: float = Field(gt=0)
     tipo: Literal["income", "expense", "transfer"]
-    categoria: Optional[str] = None
+    categoria: Optional[str] = Field(default=None, max_length=60)
     fecha: Optional[datetime] = None
-    notas: Optional[str] = ""
+    notas: Optional[str] = Field(default="", max_length=1000)
 
 
 class MovimientoUpdate(BaseModel):
     """Todos los campos son opcionales: solo se cambia lo que se envía."""
     cuenta_id: Optional[str] = None
-    descripcion: Optional[str] = None
+    descripcion: Optional[str] = Field(default=None, max_length=300)
     monto: Optional[float] = Field(default=None, gt=0)
     tipo: Optional[Literal["income", "expense", "transfer"]] = None
-    categoria: Optional[str] = None
+    categoria: Optional[str] = Field(default=None, max_length=60)
     fecha: Optional[datetime] = None
-    notas: Optional[str] = None
+    notas: Optional[str] = Field(default=None, max_length=1000)
 
 
 class TransferenciaCreate(BaseModel):
@@ -363,8 +363,8 @@ class AdivinarLetraRequest(BaseModel):
 
 
 class ReglaCategoriaCreate(BaseModel):
-    patron: str = Field(min_length=1)
-    categoria: str
+    patron: str = Field(min_length=1, max_length=100)
+    categoria: str = Field(max_length=60)
     tipo: Optional[str] = None
     prioridad: int = 0
 
@@ -401,7 +401,7 @@ class ClasificarResponse(BaseModel):
 
 
 class PresupuestoCreate(BaseModel):
-    categoria: str
+    categoria: str = Field(max_length=60)
     limite: float = Field(gt=0)
     periodo: str = "monthly"
     alerta_pct: int = 80
@@ -512,8 +512,8 @@ class ReporteMensual(BaseModel):
 # ── Metas de ahorro ──────────────────────────────────────
 
 class MetaCreate(BaseModel):
-    nombre: str
-    descripcion: Optional[str] = ""
+    nombre: str = Field(max_length=80)
+    descripcion: Optional[str] = Field(default="", max_length=500)
     monto_objetivo: float = Field(gt=0)
     monto_actual: float = Field(default=0, ge=0)
     icono: str = "🎯"
@@ -557,14 +557,14 @@ class MetaOut(BaseModel):
 # ── Gastos recurrentes ──────────────────────────────────────
 
 class RecurrenteCreate(BaseModel):
-    nombre: str
+    nombre: str = Field(max_length=80)
     monto: float = Field(gt=0)
     tipo: str = "expense"
-    categoria: str = "Otros"
+    categoria: str = Field(default="Otros", max_length=60)
     cuenta_id: Optional[str] = None
     dia_del_mes: int = Field(default=1, ge=1, le=31)
     alerta_dias_antes: int = 2
-    notas: Optional[str] = ""
+    notas: Optional[str] = Field(default="", max_length=500)
 
 
 class RecurrenteOut(BaseModel):
@@ -598,9 +598,9 @@ class RecurrenteSugerido(BaseModel):
 # ── Deudas ──────────────────────────────────────
 
 class DeudaCreate(BaseModel):
-    nombre: str
+    nombre: str = Field(max_length=80)
     tipo: str = "credito"
-    entidad: Optional[str] = ""
+    entidad: Optional[str] = Field(default="", max_length=80)
     saldo_inicial: float
     saldo_actual: Optional[float] = None
     tasa_mensual: float = 0
@@ -609,7 +609,7 @@ class DeudaCreate(BaseModel):
     dia_corte: Optional[int] = None
     dia_pago: int = 1
     cuenta_pago_id: Optional[str] = None
-    notas: Optional[str] = ""
+    notas: Optional[str] = Field(default="", max_length=500)
 
 
 class DeudaOut(BaseModel):

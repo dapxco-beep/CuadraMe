@@ -13,6 +13,7 @@ from app.compartidos import cuentas_ids_accesibles
 from app.contabilidad import tipos_cuenta_de, tipos_efectivos
 from app.database import get_db
 from app.models import Movimiento
+from app.utiles import celda_segura
 
 router = APIRouter(prefix="/exportar", tags=["exportar"])
 
@@ -54,8 +55,8 @@ def exportar_csv(
     writer.writerow(["Fecha", "Descripción", "Categoría", "Tipo", "Monto", "Fuente", "Notas", "Cuenta en resúmenes como"])
     for m in movimientos:
         writer.writerow([
-            m.fecha.strftime("%Y-%m-%d"), m.descripcion, m.categoria,
-            m.tipo, m.monto, m.fuente, m.notas, etiquetas[m.id],
+            m.fecha.strftime("%Y-%m-%d"), celda_segura(m.descripcion), celda_segura(m.categoria),
+            m.tipo, m.monto, m.fuente, celda_segura(m.notas), etiquetas[m.id],
         ])
 
     buffer.seek(0)
@@ -87,8 +88,8 @@ def exportar_excel(
 
     for m in movimientos:
         ws.append([
-            m.fecha.strftime("%Y-%m-%d"), m.descripcion, m.categoria,
-            m.tipo, m.monto, m.fuente, m.notas, etiquetas[m.id],
+            m.fecha.strftime("%Y-%m-%d"), celda_segura(m.descripcion), celda_segura(m.categoria),
+            m.tipo, m.monto, m.fuente, celda_segura(m.notas), etiquetas[m.id],
         ])
 
     for col in ws.columns:

@@ -389,7 +389,11 @@ export const api = {
     request(`/categorias/${id}${moverA ? '?mover_a=' + encodeURIComponent(moverA) : ''}`, { method: 'DELETE' }),
   reordenarCategorias: (ids) => request('/categorias/orden', { method: 'PUT', body: { ids } }),
 
-  eliminarMiCuenta: () => request('/perfil/eliminar-cuenta', { method: 'POST', body: { confirmacion: 'ELIMINAR' } }),
+  // Derecho de supresión: el backend exige la palabra escrita por la persona.
+  eliminarMiCuenta: (confirmacion = 'ELIMINAR') =>
+    request('/perfil/eliminar-cuenta', { method: 'POST', body: { confirmacion } }),
+  // Derecho de acceso: ZIP con todo lo que CuadraMe guarda de la persona (JSON + un CSV por tabla).
+  descargarMisDatos: () => descargarArchivo('/perfil/mis-datos', 'cuadrame_mis_datos.zip'),
   apiKey: () => request('/perfil/api-key'),
   regenerarApiKey: () => request('/perfil/api-key/regenerar', { method: 'POST' }),
   confianzaAutoimport: () => request('/perfil/confianza-autoimport'),

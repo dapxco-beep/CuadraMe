@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
+from app.compartidos import exigir_cuenta_propia
 from app.database import get_db
 from app.estrategia_deudas import comparar_estrategias
 from app.contabilidad import CATEGORIA_PAGO_TARJETA
@@ -76,6 +77,7 @@ def crear_deuda(
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
+    exigir_cuenta_propia(db, usuario.id, data.cuenta_pago_id)
     payload = data.model_dump()
     if payload.get("saldo_actual") is None:
         payload["saldo_actual"] = payload["saldo_inicial"]
