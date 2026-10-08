@@ -1,6 +1,8 @@
 // Componentes de identidad CuadraMe. La geometría vive en ./geometria.js (compartida
 // con el script de íconos y el canvas del Wrapped).
 import { CUERPO, FICHA, CHECK } from './geometria'
+import Cuadri from './Cuadri'
+import { useMostrarCuadri } from '../lib/cuadri'
 
 // Isotipo: el cuadrado al que le falta una pieza + la ficha que lo completa.
 //  - cuadra=true  → la ficha dorada con ✓ está en su sitio ("tus cuentas cuadran")
@@ -83,10 +85,12 @@ export function SelloCuadre({ size = 24, animar = true, className = '' }) {
 }
 
 // Loader de marca: reemplaza los "Cargando..." de texto plano.
+// Con «Mostrar a Cuadri» activado, quien espera ve a Cuadri contento; si no, el isotipo de siempre.
 export function CargandoMarca({ texto = 'Cargando', className = '' }) {
+  const [conCuadri] = useMostrarCuadri()
   return (
     <div role="status" className={`flex-1 flex flex-col items-center justify-center gap-3 ${className}`}>
-      <Isotipo size={52} fichaClassName="ficha-loop" />
+      {conCuadri ? <Cuadri pose="feliz" size={72} /> : <Isotipo size={52} fichaClassName="ficha-loop" />}
       <p className="text-xs text-ink-soft">{texto}…</p>
     </div>
   )
@@ -110,11 +114,14 @@ export function IlustracionVacia({ icono: Icono, size = 104, className = '' }) {
   )
 }
 
-// Estado vacío de marca: ilustración + mensaje (+ acción opcional como children).
-export function EstadoVacio({ icono, titulo, texto, className = 'mx-5 mt-6', children }) {
+// Estado vacío de marca: Cuadri (o, si la persona lo apagó, la ilustración del hueco) + mensaje
+// (+ acción opcional como children). `pose` por defecto señala hacia lo que falta; usa 'feliz'
+// para vacíos buenos ("nada pendiente") y 'preocupado' solo si de verdad algo salió mal.
+export function EstadoVacio({ icono, titulo, texto, className = 'mx-5 mt-6', pose = 'senalando', children }) {
+  const [conCuadri] = useMostrarCuadri()
   return (
     <div className={`card-marca bg-paper-raised border border-line px-6 py-7 text-center ${className}`}>
-      <IlustracionVacia icono={icono} size={92} />
+      {conCuadri ? <Cuadri pose={pose} size={96} className="mx-auto" /> : <IlustracionVacia icono={icono} size={92} />}
       <p className="text-sm font-semibold mt-3">{titulo}</p>
       {texto && <p className="text-xs text-ink-soft mt-1">{texto}</p>}
       {children}
@@ -126,9 +133,14 @@ export function EstadoVacio({ icono, titulo, texto, className = 'mx-5 mt-6', chi
 // isotipo, wordmark y lema. `titulo` es el h1 (solo para lectores de pantalla,
 // porque el wordmark ya es el título visual).
 export function EncabezadoMarca({ titulo = 'CuadraMe', lema = 'Cuadra tus cuentas, simple y al día' }) {
+  const [conCuadri] = useMostrarCuadri()
   return (
     <div className="patron-libro-suave card-marca bg-paper-raised border border-line text-center px-6 py-8 mb-7">
-      <Isotipo size={68} titulo="CuadraMe" className="mx-auto" fichaClassName="sello-pop" />
+      {conCuadri ? (
+        <Cuadri pose="feliz" size={96} className="mx-auto" />
+      ) : (
+        <Isotipo size={68} titulo="CuadraMe" className="mx-auto" fichaClassName="sello-pop" />
+      )}
       <h1 className="sr-only">{titulo}</h1>
       <p className="wordmark text-[32px] mt-4 text-ink" aria-hidden="true">
         Cuadra<b>Me</b>

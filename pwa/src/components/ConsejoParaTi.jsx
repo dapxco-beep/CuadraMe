@@ -4,6 +4,8 @@ import { ChevronLeft, ChevronRight, Lightbulb, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { AVISO_EDUCATIVO } from '../lib/aprende'
 import Icono from './Icono'
+import Cuadri from '../brand/Cuadri'
+import { useMostrarCuadri } from '../lib/cuadri'
 import { Boton } from './ui'
 
 const LLAVE = 'cuadrame:consejos-descartados'
@@ -41,6 +43,7 @@ export default function ConsejoParaTi() {
   const [descartados, setDescartados] = useState(leerDescartados)
   const [indice, setIndice] = useState(0)
   const toque = useRef(null)
+  const [conCuadri] = useMostrarCuadri()
 
   useEffect(() => {
     let activo = true
@@ -90,9 +93,15 @@ export default function ConsejoParaTi() {
       }}
     >
       <div className="flex items-center gap-2 px-4 pt-3">
-        <span className="w-7 h-7 rounded-lg bg-accent-soft text-accent flex items-center justify-center shrink-0">
-          <Icono icono={Lightbulb} tam="sm" />
-        </span>
+        {conCuadri ? (
+          // Cuadri «habla» en los consejos educativos y se preocupa (suave) en los avisos de prioridad 1–2.
+          // Nunca juzga el gasto: solo acompaña. El texto del consejo es el que comunica.
+          <Cuadri pose={c.prioridad <= 2 ? 'preocupado' : 'hablando'} size={40} className="-ml-1" />
+        ) : (
+          <span className="w-7 h-7 rounded-lg bg-accent-soft text-accent flex items-center justify-center shrink-0">
+            <Icono icono={Lightbulb} tam="sm" />
+          </span>
+        )}
         <h2 className="t-kicker flex-1">Consejo para ti</h2>
         <button
           type="button"

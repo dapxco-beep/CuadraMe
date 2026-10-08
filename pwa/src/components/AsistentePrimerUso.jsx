@@ -11,6 +11,8 @@ import {
 import BarraProgreso from './BarraProgreso'
 import GuiaInstalar from './GuiaInstalar'
 import Icono from './Icono'
+import CelebracionCuadri from '../brand/CelebracionCuadri'
+import { FRASES } from '../lib/cuadri'
 import { Boton } from './ui'
 
 // «Primeros pasos»: lista guiada para quien llega por primera vez. NINGÚN paso se marca a mano:
@@ -187,7 +189,10 @@ export default function AsistentePrimerUso({ variante = 'inicio' }) {
   const { progreso, pasos } = p
   const enInicio = variante === 'inicio'
   // En Inicio: solo mientras falte algo y no se haya ocultado. En Perfil siempre.
-  if (enInicio && (progreso.completo || p.oculto)) return null
+  if (enInicio && (progreso.completo || p.oculto)) {
+    // Al completar los primeros pasos Cuadri celebra una sola vez (breve, descartable, sin bloquear).
+    return progreso.completo ? <CelebracionCuadri id="primeros-pasos" titulo="¡Primeros pasos listos!" texto={FRASES.celebraPasos[0]} /> : null
+  }
 
   const siguiente = siguientePaso(pasos)
   const visibles = enInicio && !verTodos ? pasos.filter((x) => x.id === siguiente?.id) : pasos

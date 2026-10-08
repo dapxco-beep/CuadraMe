@@ -11,6 +11,8 @@ import AsistentePrimerUso from '../components/AsistentePrimerUso'
 import RecorridoEntrada from '../components/RecorridoEntrada'
 import ClaveAtajo from '../components/ClaveAtajo'
 import { useClaveAtajo } from '../lib/useClaveAtajo'
+import Cuadri from '../brand/Cuadri'
+import { useMostrarCuadri } from '../lib/cuadri'
 import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../lib/push'
 
 export default function Perfil() {
@@ -18,6 +20,7 @@ export default function Perfil() {
   const { usuario, logout } = useAuth()
   const { avisar } = useDialogos()
   const claveAtajo = useClaveAtajo()
+  const [mostrarCuadri, cambiarCuadri] = useMostrarCuadri()
   const [permisoPush, setPermisoPush] = useState('default')
   const [cargandoPush, setCargandoPush] = useState(false)
   const [recordatorio, setRecordatorio] = useState(false)
@@ -373,7 +376,7 @@ export default function Perfil() {
       <section className="mx-6 mt-8">
         <div className="flex items-center gap-2 mb-3">
           <Palette size={16} className="text-ink-soft" />
-          <h2 className="text-[15px] font-semibold">Tema y diseño</h2>
+          <h2 className="text-[15px] font-semibold">Apariencia</h2>
         </div>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
           {THEMES.map((t) => (
@@ -394,6 +397,31 @@ export default function Perfil() {
               {theme === t.id && <Check size={20} className="text-accent shrink-0" />}
             </button>
           ))}
+        </div>
+        {/* Cuadri, la mascota: se guarda solo en este dispositivo y viene activado */}
+        <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3 mt-3">
+          <Cuadri pose="feliz" size={52} siempre animar={false} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium" id="etq-mostrar-cuadri">Mostrar a Cuadri</p>
+            <p className="text-xs text-ink-soft mt-0.5">La mascota de CuadraMe acompaña el recorrido, los consejos y las celebraciones. Se guarda en este dispositivo.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => cambiarCuadri(!mostrarCuadri)}
+            role="switch"
+            aria-checked={mostrarCuadri}
+            aria-labelledby="etq-mostrar-cuadri"
+            data-testid="switch-mostrar-cuadri"
+            className="shrink-0 min-h-11 w-14 flex items-center justify-center"
+          >
+            <span className={`block w-12 h-7 rounded-full transition-colors relative ${mostrarCuadri ? 'bg-accent' : 'bg-line'}`}>
+              <span
+                className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                  mostrarCuadri ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </span>
+          </button>
         </div>
       </section>
 

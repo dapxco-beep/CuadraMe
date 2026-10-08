@@ -4,6 +4,8 @@ import { AlertTriangle, ArrowLeft, Check, Info, Send, Sparkles, X } from 'lucide
 import { api } from '../lib/api'
 import { formatCOP, formatPorcentaje } from '../lib/format'
 import { Isotipo } from '../brand/Marca'
+import Cuadri from '../brand/Cuadri'
+import { FRASES, useMostrarCuadri } from '../lib/cuadri'
 import { EVENTO_RESUELTO } from '../components/ConsentimientoGlobal'
 
 // CuadraMe AI. Principios de esta pantalla:
@@ -245,6 +247,7 @@ export default function Asistente() {
   const [mensajes, setMensajes] = useState([])
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const [conCuadri] = useMostrarCuadri()
   const [sugerencias, setSugerencias] = useState({ preguntas: [], oportunidades: [] })
   const fin = useRef(null)
 
@@ -316,7 +319,7 @@ export default function Asistente() {
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
-        <Isotipo size={26} />
+        {conCuadri ? <Cuadri pose={enviando ? 'hablando' : 'feliz'} size={44} /> : <Isotipo size={26} />}
         <div>
           <h1 className="t-title text-lg leading-tight">CuadraMe AI</h1>
           <p className="text-[11px] text-ink-soft">Conoce tus cifras · te pide permiso antes de guardar</p>
@@ -326,6 +329,7 @@ export default function Asistente() {
       <div className="flex-1 overflow-y-auto px-6 pb-3 space-y-3" aria-live="polite">
         {mensajes.length === 0 && (
           <div className="pt-3">
+            {conCuadri && <p className="text-sm font-medium mb-1">{FRASES.asistente[0]}</p>}
             <p className="text-sm text-ink-soft">
               Pregúntame por tu plata, registra un gasto escribiéndolo (<em>«gasté 18.000 en almuerzo con Nequi»</em>) o
               simula una decisión (<em>«¿puedo comprar un celular de 4 millones?»</em>).
@@ -369,9 +373,11 @@ export default function Asistente() {
               {m.texto}
             </div>
           ) : (
+            <div key={i} className="max-w-[96%] flex items-start gap-2">
+            {/* Avatar de Cuadri: quieto salvo en la última respuesta; preocupado si falló */}
+            <Cuadri pose={m.tipo === 'error' ? 'preocupado' : 'feliz'} size={34} animar={i === mensajes.length - 1} className="mt-1" />
             <div
-              key={i}
-              className={`max-w-[92%] rounded-2xl border px-3.5 py-3 text-sm ${
+              className={`min-w-0 flex-1 rounded-2xl border px-3.5 py-3 text-sm ${
                 m.tipo === 'error' ? 'bg-danger-soft border-danger/30 text-danger' : 'bg-paper-raised border-line'
               }`}
             >
@@ -390,6 +396,7 @@ export default function Asistente() {
               )}
               <Fuentes fuentes={m.fuentes} />
             </div>
+            </div>
           )
         )}
         {pendiente && !enviando && (
@@ -397,7 +404,7 @@ export default function Asistente() {
             Para responder «{pendiente}» necesito tu autorización de IA. Al aceptarla la envío sola.
           </p>
         )}
-        {enviando && <p className="text-xs text-ink-soft">Pensando…</p>}
+        {enviando && <p className="text-xs text-ink-soft">{conCuadri ? FRASES.asistentePensando[0] : 'Pensando…'}</p>}
         <div ref={fin} />
       </div>
 

@@ -153,7 +153,9 @@ describe('AsistentePrimerUso', () => {
       const inicio = montar(<AsistentePrimerUso variante="inicio" />)
       await waitFor(() => expect(api.conexionesEstado).toHaveBeenCalled())
       await new Promise((r) => setTimeout(r, 20))
-      expect(inicio.container).toBeEmptyDOMElement()
+      // El checklist ya no aparece; solo queda la celebración breve de Cuadri (descartable).
+      expect(inicio.container.querySelector('[data-testid="celebracion-cuadri"]')).not.toBeNull()
+      expect(screen.queryByText('Primeros pasos')).not.toBeInTheDocument()
       inicio.unmount()
       montar(<AsistentePrimerUso variante="perfil" />)
       expect(await screen.findByText('Todo listo')).toBeInTheDocument()

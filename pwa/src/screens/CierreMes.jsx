@@ -4,6 +4,8 @@ import { ArrowLeft, Lightbulb, TrendingUp } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP, formatPorcentaje } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
+import CelebracionCuadri from '../brand/CelebracionCuadri'
+import { FRASES } from '../lib/cuadri'
 
 function mesAnterior() {
   const d = new Date()
@@ -109,6 +111,10 @@ export default function CierreMes() {
               {cargando ? 'Generando...' : 'Generar cierre'}
             </button>
           </div>
+        )}
+
+        {informe && informe.ahorro > 0 && (
+          <CelebracionCuadri id={`cierre-${mes}`} titulo={`Cierre de ${mes}`} texto={FRASES.celebraMes[0]} />
         )}
 
         {informe && (

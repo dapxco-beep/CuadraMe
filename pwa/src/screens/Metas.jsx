@@ -11,12 +11,15 @@ import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import Hoja from '../components/Hoja'
 import BarraProgreso from '../components/BarraProgreso'
+import CelebracionCuadri from '../brand/CelebracionCuadri'
+import { FRASES, yaCelebrado } from '../lib/cuadri'
 
 export default function Metas() {
   const volver = useVolver('/perfil')
   const [metas, setMetas] = useState([])
   const [cargando, setCargando] = useState(true)
   const raiz = useRef(null)
+  const celebrable = useRef(null)
   useEstadoLista('/metas', { contenedorRef: raiz, listo: !cargando }) // al volver, misma posición
   const [mostrarForm, setMostrarForm] = useState(false)
   const [aportando, setAportando] = useState(null)
@@ -65,6 +68,14 @@ export default function Metas() {
           </button>
         </div>
       </header>
+
+      {/* Cuadri celebra una meta cumplida (una sola vez por meta, breve y descartable) */}
+      {!cargando && (() => {
+        // se fija la primera vez: al marcarse como celebrada no debe saltar a otra meta y desmontar el aviso
+        if (!celebrable.current) celebrable.current = metas.find((m) => m.completada && !yaCelebrado(`meta-${m.id}`)) || null
+        const lograda = celebrable.current
+        return lograda ? <CelebracionCuadri id={`meta-${lograda.id}`} titulo={`¡Lograste «${lograda.nombre}»!`} texto={FRASES.celebraMeta[0]} /> : null
+      })()}
 
       {cargando ? (
         <EsqueletoLista filas={3} className="mx-5 mt-6" etiqueta="Cargando tus metas" />

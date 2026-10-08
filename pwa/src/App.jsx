@@ -16,6 +16,8 @@ import BandejaPorConfirmar from './components/BandejaPorConfirmar'
 import RedirigirAlCentro from './components/RedirigirAlCentro'
 import SplashMarca, { splashPendiente } from './brand/SplashMarca'
 import { CargandoMarca } from './brand/Marca'
+import ErrorAmable from './brand/ErrorAmable'
+import { MSG_SIN_CONEXION } from './lib/mensajesBase'
 import Login from './screens/Login'
 import CrearCuenta from './screens/CrearCuenta'
 import Inicio from './screens/Inicio'
@@ -73,14 +75,7 @@ function AppGate() {
   }
 
   if (error && cuentas.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">
-        <p className="text-sm text-danger">{error}</p>
-        <button onClick={recargar} className="text-sm text-accent font-medium">
-          Reintentar
-        </button>
-      </div>
-    )
+    return <ErrorAmable sinConexion={error === MSG_SIN_CONEXION} detalle={error} onAccion={recargar} />
   }
 
   if (cuentas.length === 0) {
@@ -220,10 +215,11 @@ function PuertaAutorizacion({ children }) {
   if (estado === 'cargando') return <CargandoMarca />
   if (estado === 'error') {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">
-        <p className="text-sm text-danger">No pudimos verificar tu autorización de datos. Revisa tu conexión.</p>
-        <button onClick={cargar} className="text-sm text-accent font-medium">Reintentar</button>
-      </div>
+      <ErrorAmable
+        sinConexion
+        texto="No pudimos verificar tu autorización de datos. Revisa tu conexión y vuelve a intentarlo."
+        onAccion={cargar}
+      />
     )
   }
   if (estado === 'requiere') {

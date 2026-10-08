@@ -5,6 +5,7 @@ import {
   ShieldAlert, Receipt, Scale, Snowflake, Coffee, TrendingUp, Wallet,
 } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
+import Cuadri from '../brand/Cuadri'
 import Icono from '../components/Icono'
 import { Boton, CampoTexto } from '../components/ui'
 import { AVISO_EDUCATIVO, buscarGlosario, buscarLecciones, GLOSARIO, LECCIONES } from '../lib/aprende'
@@ -135,7 +136,8 @@ export default function Aprende() {
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-xl font-semibold">Aprende</h1>
+        <h1 className="text-xl font-semibold flex-1">Aprende</h1>
+        <Cuadri pose="senalando" size={56} />
       </header>
 
       <p className="mx-5 mt-1 t-cuerpo text-ink-soft">

@@ -2,6 +2,7 @@ import { Fragment, useEffect, useId, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ChevronDown, LifeBuoy, Mail, Search } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
+import Cuadri from '../brand/Cuadri'
 import GuiaInstalar from '../components/GuiaInstalar'
 import RecorridoEntrada from '../components/RecorridoEntrada'
 import Icono from '../components/Icono'
@@ -114,7 +115,8 @@ export default function Ayuda() {
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-xl font-semibold">Ayuda</h1>
+        <h1 className="text-xl font-semibold flex-1">Ayuda</h1>
+        <Cuadri pose="senalando" size={56} />
       </header>
 
       <div className="mx-5 mt-3">

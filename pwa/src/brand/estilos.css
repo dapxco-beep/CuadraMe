@@ -112,3 +112,68 @@
     animation-duration: 0.01s !important;
   }
 }
+
+/* ═══ Cuadri, la mascota ═══════════════════════════════════════════════
+   Colores desde las variables del tema (claro/oscuro cambian solos). La cara usa tinta fija
+   (#221f19) porque el cuerpo terracota es vivo en ambos temas. La animación solo existe bajo
+   .cuadri-anima, clase que el componente enciende únicamente mientras Cuadri está a la vista
+   y no hay "ahorro de datos"; con "reducir movimiento" se apaga del todo. */
+.cuadri { overflow: visible; flex-shrink: 0; }
+.cuadri .cu-relleno-cuerpo { fill: var(--c-brand); }
+.cuadri .cu-trazo-cuerpo { stroke: var(--c-brand); }
+.cuadri .cu-relleno-ficha { fill: var(--c-brand-2); }
+.cuadri .cu-trazo-check { stroke: var(--c-brand-ink); }
+.cuadri .cu-relleno-pie { fill: color-mix(in srgb, var(--c-brand) 60%, black); }
+.cuadri .cu-relleno-mejilla { fill: color-mix(in srgb, var(--c-brand) 55%, white); }
+
+.cuadri-anima .cu-cuerpo { transform-origin: 32px 58px; animation: cu-bote 1.25s ease-in-out infinite; }
+@keyframes cu-bote {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  45% { transform: translateY(-3px) scale(0.985, 1.02); }
+  85% { transform: translateY(0) scale(1.02, 0.975); }
+}
+.cuadri-anima .cu-ojos { transform-box: fill-box; transform-origin: center; animation: cu-parpadeo 3.4s infinite; }
+@keyframes cu-parpadeo {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96.5% { transform: scaleY(0.08); }
+}
+.cuadri-anima .cu-habla { transform-box: fill-box; transform-origin: center top; animation: cu-habla 0.42s ease-in-out infinite alternate; }
+@keyframes cu-habla {
+  from { transform: scaleY(0.35); }
+  to { transform: scaleY(1.25); }
+}
+.cuadri-anima .cu-saluda { transform-origin: 58px 44px; animation: cu-saluda 1.2s ease-in-out infinite alternate; }
+@keyframes cu-saluda {
+  from { transform: rotate(-132deg); }
+  to { transform: rotate(-160deg); }
+}
+.cuadri-anima .cu-pop { transform-box: fill-box; transform-origin: center; animation: cu-pop 0.6s cubic-bezier(0.22, 1, 0.36, 1) infinite alternate; }
+@keyframes cu-pop {
+  from { transform: scale(1); }
+  to { transform: scale(1.12) rotate(4deg); }
+}
+.cuadri-anima .cu-sombra { transform-origin: 32px 64px; animation: cu-sombra 1.25s ease-in-out infinite; }
+@keyframes cu-sombra {
+  0%, 100% { transform: scaleX(1); opacity: 0.25; }
+  45% { transform: scaleX(0.88); opacity: 0.16; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cuadri *, .cuadri-anima * { animation: none !important; }
+}
+
+/* Globo de Cuadri: la frase sale de su lado (esquina marcada, como la marca) */
+.globo-cuadri {
+  border-radius: 14px 14px 14px 4px;
+  background: var(--color-paper-raised);
+  border: 1px solid var(--color-line);
+}
+
+/* Aviso de celebración: entra desde abajo; sin movimiento, aparece sin animar */
+@keyframes cuadri-entra {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.cuadri-celebra { animation: cuadri-entra 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .cuadri-celebra { animation: none; }
+}

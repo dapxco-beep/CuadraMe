@@ -10,6 +10,8 @@ import {
 import BarraProgreso from './BarraProgreso'
 import Icono from './Icono'
 import IlustracionRecorrido from './IlustracionesRecorrido'
+import Cuadri from '../brand/Cuadri'
+import { FRASES, POSE_RECORRIDO, useMostrarCuadri } from '../lib/cuadri'
 import { Boton } from './ui'
 
 const FOCUSABLES = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
@@ -29,6 +31,7 @@ export default function Recorrido({ desde = 0, onCerrar }) {
   const uid = usuario?.id || 'anon'
   const navegar = useNavigate()
   const reducir = useReducedMotion()
+  const [conCuadri] = useMostrarCuadri()
   const idTitulo = useId()
   const [indice, setIndice] = useState(() => acotar(desde))
   const [direccion, setDireccion] = useState(1)
@@ -145,7 +148,14 @@ export default function Recorrido({ desde = 0, onCerrar }) {
           <div className="max-w-md mx-auto">
             <IlustracionRecorrido id={paso.id} />
           </div>
-          <h2 id={idTitulo} ref={titulo} tabIndex={-1} className="t-h1 mt-5 outline-none">
+          {conCuadri && FRASES.recorrido[paso.id] && (
+            // Cuadri guía: saluda al inicio, señala la zona de cada paso y celebra al final.
+            <div className="flex items-end gap-2 mt-3" data-testid="recorrido-cuadri">
+              <Cuadri pose={POSE_RECORRIDO[paso.id] || 'feliz'} size={72} />
+              <p className="globo-cuadri px-3 py-2 text-[13px] text-ink mb-2">{FRASES.recorrido[paso.id]}</p>
+            </div>
+          )}
+          <h2 id={idTitulo} ref={titulo} tabIndex={-1} className="t-h1 mt-3 outline-none">
             {paso.titulo}
           </h2>
           <p className="t-cuerpo mt-2 text-[15px] leading-relaxed">{paso.texto}</p>
