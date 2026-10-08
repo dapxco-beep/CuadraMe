@@ -223,6 +223,11 @@ SECCIONES: dict[str, dict[str, str]] = {
         "transferencia nequi": "Transferencias", "transferencia daviplata": "Transferencias", "nequi": "Transferencias",
         "daviplata": "Transferencias", "bre b": "Transferencias", "bre-b": "Transferencias", "envio bre b": "Transferencias",
         "transferencia bre b": "Transferencias", "movii": "Transferencias",
+        # billeteras: mover plata entre bolsillos/personas, no un gasto de consumo.
+        # (Más específicas que 'mercado' -> Comida y 'rappi' -> Comida, por eso ganan.)
+        "mercado pago": "Transferencias", "mercadopago": "Transferencias",
+        "rappi pay": "Transferencias", "rappipay": "Transferencias",
+        "transferencia inmediata": "Transferencias", "transferencia inmediata bre b": "Transferencias",
         "transferencia entre cuentas": "Transferencias", "traslado entre cuentas": "Transferencias",
     },
 }
@@ -261,6 +266,21 @@ TRANSFERENCIA_PERSONA_INICIO = {"para": "expense", "de": "income"}
 # ...y estas solo si ninguna palabra clave del diccionario aplica.
 TRANSFERENCIA_PERSONA_DEBIL = ["pago a", "transferencia", "transf"]
 TRANSFERENCIA_ENTRADA = {"recibiste de", "giro de", "trf de", "transferencia de", "recarga desde", "otros bancos de"}
+
+
+# Bre-B (llaves, transferencias inmediatas entre bancos): es plata que se mueve entre
+# personas/cuentas, NUNCA 'Otros'. Se evalúa antes que el diccionario. Las variantes
+# comunes en extractos: 'Bre-B', 'BREB', 'Bre B', 'transferencia inmediata', 'envío por llave'.
+BRE_B_FRASES = ["bre b", "breb", "transferencia inmediata", "transferencias inmediatas", "pago inmediato", "envio por llave", "pago con llave"]
+# Si además aparece alguna de estas palabras, el dinero ENTRÓ.
+BRE_B_PALABRAS_ENTRADA = {"recibida", "recibido", "recibiste", "recibi", "recibio", "abono", "abonado", "entrada"}
+
+# Pasarelas/datáfonos que anteponen su nombre al comercio real: 'BOLD*Cafe Luna',
+# 'PAYU*SPOTIFY', 'MP*Rappi'. Se clasifica lo que va DESPUÉS del asterisco.
+PASARELAS = [
+    "bold", "payu", "epayco", "wompi", "mercadopago", "mercado pago", "mp", "rappipay", "rappi pay",
+    "sumup", "addi", "placetopay", "pse", "openpay", "kushki", "zona virtual", "izipay", "redeban", "credibanco",
+]
 
 
 def entradas() -> list[tuple[str, str, str]]:
