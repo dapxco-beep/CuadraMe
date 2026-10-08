@@ -425,6 +425,15 @@ export const api = {
   editarCorreo: (id, data) => request(`/correos/${id}`, { method: 'PATCH', body: data }),
   aprobarCorreo: (id, cuentaId, extra = {}) => request(`/correos/${id}/aprobar`, { method: 'POST', body: { cuenta_id: cuentaId, ...extra } }),
   descartarCorreo: (id) => request(`/correos/${id}/descartar`, { method: 'POST' }),
+  // «Mostrar de todos modos / No es duplicado»: un correo que se dio por ya registrado era otro gasto igual.
+  correoNoEsDuplicado: (id) => request(`/correos/${id}/no-es-duplicado`, { method: 'POST' }),
+  correosYaRegistrados: (limite = 50) => request(`/correos/lista?filtro=ya_registrados&limite=${limite}&offset=0`),
+  // Buscar duplicados: sugiere grupos de movimientos repetidos; unir conserva uno; nada se borra solo.
+  buscarDuplicados: () => request('/duplicados/buscar', { sinCache: true }),
+  unirDuplicados: (conservarId, unirIds) =>
+    request('/duplicados/unir', { method: 'POST', body: { conservar_id: conservarId, unir_ids: unirIds } }),
+  noEsDuplicado: (movimientoIds) =>
+    request('/duplicados/no-es-duplicado', { method: 'POST', body: { movimiento_ids: movimientoIds } }),
   extractosCorreo: (estado, offset = 0, limite = 50) =>
     request(`/correos/extractos?limite=${limite}&offset=${offset}${estado ? `&estado=${estado}` : ''}`),
   conciliarExtractoCorreo: (id, cuentaId) =>

@@ -17,6 +17,7 @@ from app.auth import UsuarioActual, get_current_user
 from app.autocat import patron_de_comercio
 from app.compartidos import cuentas_ids_accesibles
 from app.database import get_db
+from app.duplicados import absorber_correos
 from app.extractos_conciliados import (  # noqa: F401
     ESTADO_YA_CONCILIADO, FUENTES_CONCILIACION, depurar_conciliados, mes_del_extracto,
 )
@@ -231,6 +232,12 @@ def estado(
     desde_bandeja = hoy - timedelta(days=DIAS_BANDEJA)
     n_categorizar = _cola_categorizar(db, ids_accesibles, desde_bandeja).count()
     n_confirmar = db.query(func.count(Movimiento.id)).filter(_cond_bandeja(ids_accesibles, desde_bandeja)).scalar() or 0
+    absorber_correos(db, usuario.id)  # lo que ya tiene su movimiento no cuenta como «por revisar»
+    n_ya_registrados = (
+        db.query(func.count(CorreoGasto.id))
+        .filter(CorreoGasto.usuario_id == usuario.id, CorreoGasto.estado == "ya_registrado")
+        .scalar() or 0
+    )
     n_correos = (
         db.query(func.count(CorreoGasto.id))
         .filter(CorreoGasto.usuario_id == usuario.id, CorreoGasto.estado == "pendiente", CorreoGasto.monto > 0)
@@ -261,6 +268,7 @@ def estado(
         "cuentas": filas_cuentas,
         "sin_cuenta": sin_cuenta,
         "tareas": tareas,
+        "correos_ya_registrados": n_ya_registrados,
         "ultima_sync": sync.ultima_sync.isoformat() if sync and sync.ultima_sync else None,
     }
 

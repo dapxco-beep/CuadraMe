@@ -10,6 +10,10 @@ import unicodedata
 from datetime import datetime, timedelta
 
 from app.contabilidad import MARCA_TRASLADO_PROPIO
+from app.duplicados import Cand, ORIGEN_ATAJO, ORIGEN_EXTRACTO, ORIGEN_MANUAL, emparejar
+
+# El libro que se compara es de UNA sola cuenta: para la regla central todas comparten la misma.
+_CUENTA_UNICA = frozenset({"_cuenta"})
 
 MESES = {
     "ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6,
@@ -684,12 +688,37 @@ def emparejar_rapidos(items: list[dict], candidatos: list[dict], excluidos: set 
     return resultado
 
 
-def _auditar_con_cruce_rapido(movimientos_extracto: list[dict], ledger: list[dict]) -> dict:
-    """Variante con cruce 1:1 de movimientos rápidos. Orden de prioridad:
-    1) exactos por huella, 2) rápidos pendientes ('completado'), 3) aproximado
-    clásico contra el resto del ledger, 4) faltante. Los ya conciliados no se
+def _cand_extracto(i: int, mov: dict) -> Cand:
+    """Una línea del extracto como aviso entrante de la regla central de duplicados."""
+    fecha = parse_bank_date(mov.get("fecha"))
+    hora = hora_del_extracto(mov)
+    if fecha and hora:
+        fecha = fecha.replace(hour=hora[0], minute=hora[1], second=hora[2])
+    return Cand(id=str(i), origen=ORIGEN_EXTRACTO, tipo=mov.get("tipo"), monto=abs(float(mov.get("monto") or 0)),
+                fecha=fecha or datetime(1970, 1, 1), cuentas=_CUENTA_UNICA, texto=mov.get("descripcion", ""),
+                con_hora=hora is not None, ref=mov)
+
+
+def _cand_ledger(r: dict) -> Cand:
+    """Una fila del libro (ya filtrada por cuenta) como movimiento existente. Los datos de canal
+    (`origen`, `canales`, `flexible`) los pone _cargar_ledger; sin ellos, rápido = atajo."""
+    origen = r.get("origen") or (ORIGEN_ATAJO if r.get("rapido") else ORIGEN_MANUAL)
+    return Cand(id=r.get("id"), origen=origen, tipo=r.get("tipo"), monto=abs(float(r.get("monto") or 0)),
+                fecha=r["fecha"], cuentas=_CUENTA_UNICA, texto=r.get("descripcion", ""),
+                flexible=bool(r.get("flexible")), canales=frozenset(set(r.get("canales") or ()) | {origen}),
+                con_hora=True, ref=r)
+
+
+def _auditar_con_cruce_rapido(movimientos_extracto: list[dict], ledger: list[dict], descartados: dict | None = None) -> dict:
+    """Variante con cruce 1:1 contra TODO lo ya registrado (regla central, app/duplicados.py).
+    Orden de prioridad: 1) exactos por huella, 2) 'completado': el movimiento que ya tenías por
+    el atajo, el correo, a mano... pendiente de conciliar (1:1; los del atajo toleran propina o
+    conversión, el resto solo redondeo), 3) 'borrado_antes': algo que el usuario borró, 4)
+    aproximado clásico contra el resto del ledger, 5) faltante. Los ya conciliados no se
     tocan. Además lista los 'sobrantes': rápidos pendientes del periodo del
-    extracto que el banco no muestra (error de monto o aún no reflejado)."""
+    extracto que el banco no muestra (error de monto o aún no reflejado).
+
+    `descartados` = {"fingerprints": Counter, "fantasmas": [Cand]} con lo que el usuario borró."""
     fingerprints = []
     for mov in movimientos_extracto:
         fecha_dt = parse_bank_date(mov.get("fecha"))
@@ -697,6 +726,7 @@ def _auditar_con_cruce_rapido(movimientos_extracto: list[dict], ledger: list[dic
 
     estados: dict[int, str] = {}
     usados: set = set()
+    match_ids_exactos: dict[int, str] = {}
     por_huella: dict[str, list[dict]] = {}
     for r in ledger:
         if r.get("fingerprint"):
@@ -706,16 +736,43 @@ def _auditar_con_cruce_rapido(movimientos_extracto: list[dict], ledger: list[dic
         if libres:
             usados.add(libres[0].get("id"))
             estados[i] = "exacto"
+            match_ids_exactos[i] = libres[0].get("id")
 
+    # 2) El resto se cruza 1:1 con lo que ya tenías sin conciliar, venga del canal que venga.
     pendientes = [i for i in range(len(movimientos_extracto)) if i not in estados]
-    candidatos = [r for r in ledger if r.get("rapido") and not r.get("conciliado") and r.get("id") not in usados]
-    cruce = emparejar_rapidos([movimientos_extracto[i] for i in pendientes], candidatos)
-    match_ids: dict[int, str] = {}
-    for pos, row in cruce.items():
+    libres_ledger = sorted(
+        (r for r in ledger if not r.get("conciliado") and r.get("id") not in usados and r.get("fecha")
+         and r.get("emparejable", True) and r.get("tipo") in ("income", "expense")),
+        key=lambda r: r["fecha"])
+    candidatos = [r for r in libres_ledger if r.get("rapido")]  # para los «sobrantes»
+    entrantes = [_cand_extracto(i, movimientos_extracto[i]) for i in pendientes]
+    existentes = [_cand_ledger(r) for r in libres_ledger]
+    match_ids: dict[int, str] = dict(match_ids_exactos)
+    for pos, j, _p in emparejar(entrantes, existentes):
         i = pendientes[pos]
         estados[i] = "completado"
-        match_ids[i] = row.get("id")
-        usados.add(row.get("id"))
+        match_ids[i] = libres_ledger[j].get("id")
+        usados.add(libres_ledger[j].get("id"))
+
+    # 3) Lo que el usuario borró no resucita: por huella de línea y por datos (la foto del movimiento).
+    if descartados:
+        por_fp = dict(descartados.get("fingerprints") or {})
+        fantasmas = list(descartados.get("fantasmas") or [])
+        for i in range(len(movimientos_extracto)):
+            if i in estados:
+                continue
+            if por_fp.get(fingerprints[i], 0) > 0:
+                por_fp[fingerprints[i]] -= 1
+                estados[i] = "borrado_antes"
+        # Cada foto borrada absorbe UNA sola línea: se empareja y se retira, hasta que no haya más parejas.
+        while fantasmas:
+            pend = [i for i in range(len(movimientos_extracto)) if i not in estados]
+            nuevos = emparejar([_cand_extracto(i, movimientos_extracto[i]) for i in pend], fantasmas)
+            if not nuevos:
+                break
+            pos, j, _p = nuevos[0]
+            estados[pend[pos]] = "borrado_antes"
+            fantasmas = [f for k, f in enumerate(fantasmas) if k != j]
 
     resto = [r for r in ledger if not r.get("rapido") and not r.get("conciliado") and r.get("id") not in usados]
     for i, mov in enumerate(movimientos_extracto):
@@ -756,11 +813,13 @@ def _auditar_con_cruce_rapido(movimientos_extracto: list[dict], ledger: list[dic
         "aproximados": cuenta("aproximado"),
         "faltantes": cuenta("faltante"),
         "completados": cuenta("completado"),
+        "borrados_antes": cuenta("borrado_antes"),
         "sobrantes": sobrantes,
     }
 
 
-def auditar_movimientos(movimientos_extracto: list[dict], ledger: list[dict], cruzar_rapidos: bool = False) -> dict:
+def auditar_movimientos(movimientos_extracto: list[dict], ledger: list[dict], cruzar_rapidos: bool = False,
+                        descartados: dict | None = None) -> dict:
     """
     Compara movimientos del extracto contra el ledger existente.
     Clasifica cada uno como: exacto (fingerprint/fecha+monto igual),
@@ -775,7 +834,7 @@ def auditar_movimientos(movimientos_extracto: list[dict], ledger: list[dict], cr
     ignorados = len(movimientos_extracto) - len(con_valor)
     movimientos_extracto = con_valor
     if cruzar_rapidos:
-        resultado = _auditar_con_cruce_rapido(movimientos_extracto, ledger)
+        resultado = _auditar_con_cruce_rapido(movimientos_extracto, ledger, descartados)
         resultado["ignorados_en_cero"] = ignorados
         return resultado
     review = []

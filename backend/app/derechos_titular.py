@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import Base
 from app.gmail_oauth import revocar_token
-from app.models import CorreoGasto, Cuenta, ExtractoCorreo, Movimiento, Perfil
+from app.models import CorreoGasto, Cuenta, ExtractoCorreo, HuellaOrigen, Movimiento, Perfil
 from app.models_fiscal import MarcaFiscal
 from app.models_gastos import GastoCompartido, GrupoGasto
 from app.utiles import ahora_co, celda_segura
@@ -174,6 +174,9 @@ def borrar_todo(db: Session, usuario_id: str, email: str = "") -> dict:
         # Rastros de OTROS usuarios (editores de una cuenta compartida) que apuntan a estos movimientos.
         db.query(CorreoGasto).filter(CorreoGasto.movimiento_id.in_(movs_en_mis_cuentas)).update(
             {CorreoGasto.movimiento_id: None}, synchronize_session=False)
+        # Huellas de canal (dedup) de cualquier usuario que apunten a estas cuentas o movimientos.
+        db.query(HuellaOrigen).filter(or_(HuellaOrigen.cuenta_id.in_(mis_cuentas),
+                                          HuellaOrigen.movimiento_id.in_(movs_en_mis_cuentas))).delete(synchronize_session=False)
         db.query(ExtractoCorreo).filter(ExtractoCorreo.cuenta_sugerida_id.in_(mis_cuentas)).update(
             {ExtractoCorreo.cuenta_sugerida_id: None}, synchronize_session=False)
         db.query(Movimiento).filter(Movimiento.cuenta_id.in_(mis_cuentas)).delete(synchronize_session=False)

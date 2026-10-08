@@ -26,7 +26,8 @@ from app.auth import UsuarioActual, get_current_user
 from app.autocat import ClasificadorUsuario, aplicar_a_anteriores, clasificar_lote_detalle, datos_auto, guardar_regla_aprendida
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, puede_editar_cuenta
-from app.conciliacion import auditar_movimientos, compute_fingerprint
+from app import duplicados as dup
+from app.conciliacion import _CUENTA_UNICA, _cand_ledger, auditar_movimientos, compute_fingerprint
 from app.conciliacion import es_transferencia_propia
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_IMPORTADO_SIN_SALDO, con_marca_traslado, es_pago_tarjeta
 from app.database import get_db
@@ -114,6 +115,26 @@ def _ledger_del_rango(db: Session, usuario_id: str, cuenta_id: str, movs: list[d
     return [r for r in _cargar_ledger(db, usuario_id, cuenta_id) if r["fecha"] and desde <= r["fecha"] <= hasta]
 
 
+def _marcar_ya_registrados_por_otro_canal(auditoria: dict, ledger: list[dict]) -> None:
+    """Regla central de duplicados: una fila 'nueva' que en realidad ya registró el atajo, el correo
+    o la app (mismo monto, ±3 días, 1:1) se muestra como «posible duplicado», no como nueva."""
+    nuevas = [it for it in auditoria["review"] if it["estado"] == "faltante"]
+    libres = sorted((r for r in ledger if not r.get("conciliado") and r.get("emparejable", True)
+                     and r.get("tipo") in ("income", "expense")), key=lambda r: r["fecha"])
+    if not nuevas or not libres:
+        return
+    entrantes = []
+    for n, it in enumerate(nuevas):
+        entrantes.append(dup.Cand(
+            id=str(n), origen=dup.ORIGEN_IMPORTACION, tipo=it["tipo"], monto=abs(float(it["monto"])),
+            fecha=datetime.fromisoformat(it["fecha"]), cuentas=_CUENTA_UNICA, texto=it["descripcion"]))
+    for i, j, _p in dup.emparejar(entrantes, [_cand_ledger(r) for r in libres]):
+        nuevas[i]["estado"] = "aproximado"
+        nuevas[i]["match_id"] = libres[j].get("id")
+        auditoria["aproximados"] += 1
+        auditoria["faltantes"] -= 1
+
+
 @router.post("/vista-previa")
 def vista_previa(
     data: VistaPreviaRequest,
@@ -145,7 +166,9 @@ def vista_previa(
     movs = analisis.pop("movimientos")
     for m in movs:
         m["cuenta"] = cuenta.id  # la huella del ledger usa el id de la cuenta (ver _cargar_ledger)
-    auditoria = auditar_movimientos(movs, _ledger_del_rango(db, usuario.id, cuenta.id, movs))
+    ledger = _ledger_del_rango(db, usuario.id, cuenta.id, movs)
+    auditoria = auditar_movimientos(movs, ledger)
+    _marcar_ya_registrados_por_otro_canal(auditoria, ledger)
     clf = ClasificadorUsuario(db, usuario.id)
     clasifs = [clf.clasificar(m["descripcion"]) for m in movs]
 
@@ -217,13 +240,16 @@ def confirmar(
         auto = datos_auto(origen if categoria == sugerida else None)
         if not auto["cat_confirmada"]:
             auto_categorizados += 1
-        db.add(Movimiento(
+        nuevo = Movimiento(
             usuario_id=usuario.id, cuenta_id=cuenta.id, fecha=datetime.fromisoformat(f.fecha),
             descripcion=f.descripcion.strip(), categoria=categoria, tipo=f.tipo, monto=f.monto,
             # Sin ajustar saldo, la marca evita que editar/borrar luego mueva el saldo.
             fuente=FUENTE_IMPORTACION if data.ajustar_saldo else FUENTE_IMPORTADO_SIN_SALDO,
             notas=_notas_importado(f"Importado de {data.nombre_archivo[:80]}", f.descripcion), **auto,
-        ))
+        )
+        db.add(nuevo)
+        dup.nuevo_movimiento(db, nuevo, dup.ORIGEN_IMPORTACION,
+                             dup.huella_archivo(fp, dup.siguiente_ordinal(db, usuario.id, f"imp:{fp}")))
         neto += f.monto if f.tipo == "income" else -f.monto
         importados += 1
         if f.recordar and categoria and categoria != "Otros":
@@ -246,6 +272,7 @@ def confirmar(
     db.commit()
     if importados:
         registrar_actividad_hoy(db, usuario.id)
+        dup.absorber_correos(db, usuario.id)
     return {"ok": True, "importados": importados, "duplicados_omitidos": omitidos,
             "categorizados_auto": auto_categorizados, "reglas_guardadas": reglas_guardadas,
             "anteriores_actualizados": anteriores_actualizados, "reglas_omitidas": reglas_omitidas,

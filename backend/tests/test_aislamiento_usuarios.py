@@ -301,6 +301,10 @@ ATAQUES = [
     ("PATCH", "/correos/{correo}", {"monto": 1}),
     ("POST", "/correos/{correo}/aprobar", {"cuenta_id": "{cuenta}", "monto": 5}),
     ("POST", "/correos/{correo}/descartar", None),
+    ("POST", "/correos/{correo}/no-es-duplicado", None),  # «Mostrar de todos modos» de un correo ajeno
+    # buscar y unir duplicados: B no puede unir, ni marcar «no es duplicado», movimientos de A
+    ("POST", "/duplicados/unir", {"conservar_id": "{mov}", "unir_ids": ["{mov2}"]}),
+    ("POST", "/duplicados/no-es-duplicado", {"movimiento_ids": ["{mov}", "{mov2}"]}),
     ("POST", "/correos/extractos/{extracto}/conciliar", {"cuenta_id": "{cuenta}"}),
     ("POST", "/correos/extractos/{extracto}/descartar", None),
     # conciliación (historial de extractos)
