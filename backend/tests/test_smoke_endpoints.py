@@ -94,7 +94,7 @@ def test_flujo_completo_con_datos_no_da_500():
 
     # clasificación, voz y atajo por API key
     assert client.post("/movimientos/clasificar", json={"descripcion": "Rappi domicilio"}).status_code == 200
-    api_key = client.get("/perfil/api-key").json()["api_key"]
+    api_key = client.post("/perfil/api-key/regenerar").json()["api_key"]  # la clave ya no se puede releer: solo se ve al crearla
     r = client.post("/movimientos/rapido", headers={"X-Api-Key": api_key},
                     json={"monto": 12_000, "tipo": "expense", "descripcion": "Tinto", "cuenta": "Efectivo"})
     assert r.status_code == 200, r.text

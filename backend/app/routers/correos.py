@@ -11,11 +11,12 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, cron_autorizado, get_current_user
-from app.crons import Corrida
+from app.crons import Corrida, MarcaCron, reclamar_marca
 from app.push import enviar_push
 from app.autocat import ClasificadorUsuario, aplicar_a_anteriores, guardar_regla_aprendida
 from app.config import settings
 from app.limites import verificar_limite
+from app.limites_diarios import consumir_cupo_diario
 from app.database import get_db
 from app.conciliacion import detectar_banco
 from app.contabilidad import con_marca_traslado
@@ -577,6 +578,7 @@ def sincronizar(
     ventana larga. Cada llamada hace un lote y devuelve el progreso; repetirla
     hasta `completado` (reanuda donde quedó, sin duplicar)."""
     verificar_limite(f"sync-gmail:{usuario.id}", 80, 3600, "Sincronizaste muchas veces seguidas. Intenta en unos minutos.")
+    consumir_cupo_diario(db, usuario.id, "sync-gmail")
     perfil = _get_or_create_perfil(db, usuario.id)
     if not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
         raise HTTPException(status_code=400, detail="Gmail no está conectado")
@@ -616,6 +618,8 @@ def sincronizar(
 # ── Cron: sincronización periódica ─────────────────────────────────
 
 PRESUPUESTO_CRON_SEGUNDOS = 45  # tiempo total por llamada; lo que falte sigue en la próxima (cursor)
+MAX_USUARIOS_POR_CRON = 40  # tope de usuarios por llamada (con 100+ usuarios se reparte en varias)
+CLAVE_INTENTO_CRON = "gmail_cron_intento"  # marca por usuario con el último intento del cron
 _reloj = time.monotonic  # se puede sustituir en pruebas
 
 
@@ -650,16 +654,26 @@ def cron_sincronizar(db: Session = Depends(get_db), x_cron_secret: str = Header(
         .all()
     )
     ultimas = {s.usuario_id: s.ultima_sync for s in db.query(SyncGmail).all()}
-    perfiles.sort(key=lambda p: (ultimas.get(p.usuario_id) or datetime.min, p.usuario_id))
+    # Justicia con 100+ usuarios: va primero a quien lleva MÁS tiempo sin que el cron lo
+    # intente (nunca intentado = primero). Se ordena por el último INTENTO, no por la última
+    # sincronización completa: así quien tiene una corrida larga en curso, o falla siempre,
+    # no se queda al frente acaparando el presupuesto de tiempo. ISO en UTC ordena como texto.
+    intentos = {m.usuario_id: m.valor for m in db.query(MarcaCron).filter(MarcaCron.clave == CLAVE_INTENTO_CRON)}
+    perfiles.sort(key=lambda p: (intentos.get(p.usuario_id, ""), ultimas.get(p.usuario_id) or datetime.min, p.usuario_id))
 
     corrida = Corrida(db)
     nuevos = sin_consentimiento = desconectados = avisados = 0
     pendientes_por_tiempo = 0
     for i, perfil in enumerate(perfiles):
-        if _reloj() - inicio >= PRESUPUESTO_CRON_SEGUNDOS:
+        # Dos topes: tiempo total y usuarios por llamada. Lo que falte sigue en la próxima
+        # ejecución (el cursor de cada usuario y el orden por último intento lo retoman).
+        if _reloj() - inicio >= PRESUPUESTO_CRON_SEGUNDOS or i >= MAX_USUARIOS_POR_CRON:
             pendientes_por_tiempo = len(perfiles) - i
             break
         uid = perfil.usuario_id
+        # Se anota el intento ANTES de trabajar: si el usuario falla o se corta el proceso,
+        # igual pasa al final de la fila en lugar de bloquear a los demás.
+        reclamar_marca(db, uid, CLAVE_INTENTO_CRON, datetime.utcnow().isoformat())
         with corrida.aislar(uid):
             if not tiene_consentimiento(db, uid, "lectura_correo"):
                 sin_consentimiento += 1
@@ -756,6 +770,7 @@ def conciliar_extracto(
     existente (/conciliacion/procesar). Devuelve la misma respuesta, con el
     historial_id para abrir la revisión."""
     verificar_limite(f"conciliar-gmail:{usuario.id}", 60, 3600, "Conciliaste muchos extractos seguidos. Podrás seguir en {espera}.")
+    consumir_cupo_diario(db, usuario.id, "conciliar-gmail")
     fila = (
         db.query(ExtractoCorreo)
         .filter(ExtractoCorreo.id == extracto_id, ExtractoCorreo.usuario_id == usuario.id)

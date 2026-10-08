@@ -2,6 +2,7 @@ import secrets
 import uuid
 from datetime import datetime
 
+from sqlalchemy.orm import deferred
 from sqlalchemy import Column, String, Float, DateTime, Boolean, Integer, UniqueConstraint
 
 from app.database import Base
@@ -22,7 +23,13 @@ class Perfil(Base):
     usuario_id = Column(String, primary_key=True)  # UUID de Supabase Auth
     plan = Column(String, default="free")  # free | pro
     stripe_customer_id = Column(String, nullable=True)
-    api_key = Column(String, unique=True, index=True, default=gen_api_key)
+    # Clave en claro: SOLO de perfiles antiguos aún no migrados. Las claves nuevas se
+    # guardan como hash (ver app/claves_api.py) y esta columna queda en NULL.
+    api_key = Column(String, unique=True, index=True, nullable=True)
+    # `deferred`: no entra en los SELECT de Perfil, así la app arranca aunque la columna
+    # aún no exista en la base (script supabase/migraciones/api_key_hash.sql).
+    api_key_hash = deferred(Column(String, unique=True, index=True, nullable=True))
+    api_key_prefijo = deferred(Column(String, nullable=True))
     gmail_conectado = Column(Boolean, default=False)
     gmail_refresh_token_enc = Column(String, nullable=True)  # cifrado con Fernet
     gmail_email = Column(String, nullable=True)

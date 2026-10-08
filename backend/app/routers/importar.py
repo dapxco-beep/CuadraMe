@@ -32,6 +32,7 @@ from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_IMPORTADO_SIN_SALDO,
 from app.database import get_db
 from app.importador_tabular import MAX_BYTES, MAX_FILAS, CAMPOS, ErrorArchivo, analizar
 from app.limites import verificar_limite
+from app.limites_diarios import consumir_cupo_diario
 from app.models import HistorialExtracto, Movimiento, ReglaCategoria
 from app.rachas import registrar_actividad_hoy
 from app.routers.conciliacion import _cargar_ledger, _periodo_ya_conciliado
@@ -121,6 +122,7 @@ def vista_previa(
 ):
     cuenta = _cuenta_editable(db, usuario, data.cuenta_id)
     verificar_limite(f"importar:{usuario.id}", 60, 3600, "Subiste muchos archivos seguidos. Podrás subir más en {espera}.")
+    consumir_cupo_diario(db, usuario.id, "importar")
     contenido = _decodificar(data.archivo_base64)
 
     mapeo = None

@@ -11,6 +11,9 @@ import re
 import unicodedata
 
 from app.diccionario_categorias import (
+    BRE_B_FRASES,
+    BRE_B_PALABRAS_ENTRADA,
+    PASARELAS,
     INVERSION_PRIORITARIA,
     TRANSFERENCIA_ENTRADA,
     TRANSFERENCIA_PERSONA_INICIO,
@@ -82,8 +85,51 @@ def _transferencia_al_inicio(texto_pad: str) -> dict | None:
     return None
 
 
+_RE_PASARELA = re.compile(
+    r"(?<![a-z0-9])(" + "|".join(re.escape(p).replace(r"\ ", r"\s*") for p in sorted(PASARELAS, key=len, reverse=True))
+    + r")\s*\*\s*([^*]+)$",
+    re.IGNORECASE,
+)
+
+
+def _comercio_tras_pasarela(descripcion: str) -> dict | None:
+    """'BOLD*Cafe Luna' / 'PAYU*SPOTIFY': el comercio real va tras el asterisco, así que
+    se clasifica solo ese nombre (el de la pasarela no dice nada del gasto)."""
+    m = _RE_PASARELA.search(descripcion or "")
+    if not m:
+        return None
+    comercio = m.group(2).strip()
+    texto_pad = f" {normalizar(comercio)} "
+    if texto_pad.strip() == "":
+        return None
+    for _n, _l, pat, prefijo, categoria, tipo, original in _INDICE:
+        if _coincide(texto_pad, pat, prefijo):
+            pasarela = m.group(1).upper()
+            return {
+                "categoria": categoria, "tipo": tipo, "confianza": 0.75, "fuente": "diccionario",
+                "palabra": original, "razon": f"por el comercio «{comercio}» (pagado con {pasarela})",
+            }
+    return None
+
+
+def _bre_b(texto_pad: str) -> dict | None:
+    """Bre-B / transferencia inmediata -> Transferencias; el tipo depende de si se recibió."""
+    for frase in BRE_B_FRASES:
+        if _coincide(texto_pad, normalizar(frase), False):
+            entra = any(f" {p} " in texto_pad for p in BRE_B_PALABRAS_ENTRADA)
+            return {
+                "categoria": "Transferencias", "tipo": "income" if entra else "expense", "confianza": 0.5,
+                "fuente": "diccionario", "palabra": frase, "razon": f"por palabra clave «{frase}»",
+            }
+    return None
+
+
 def clasificar_por_diccionario(descripcion: str) -> dict | None:
     texto_pad = f" {normalizar(descripcion)} "
+
+    r = _comercio_tras_pasarela(descripcion) or _bre_b(texto_pad)
+    if r:
+        return r
 
     r = _inversion_prioritaria(texto_pad) or _transferencia(texto_pad, TRANSFERENCIA_PERSONA_FUERTE) \
         or _transferencia_al_inicio(texto_pad)

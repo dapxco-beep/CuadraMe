@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
+from app.claves_api import buscar_perfil_por_clave
 from app.limites import bloquear_si_demasiados_fallos, ip_cliente, registrar_fallo_api_key
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="noop", auto_error=False)
@@ -78,7 +79,7 @@ def get_current_user_by_api_key(
     # Tope de intentos con clave inválida por IP (ver limites.py): 30 cada 10 min.
     ip = ip_cliente(request)
     bloquear_si_demasiados_fallos(ip)
-    perfil = db.query(Perfil).filter(Perfil.api_key == x_api_key).first()
+    perfil = buscar_perfil_por_clave(db, x_api_key)
     if not perfil:
         registrar_fallo_api_key(ip)
         raise HTTPException(status_code=401, detail="API key inválida")

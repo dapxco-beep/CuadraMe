@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from app.auth import UsuarioActual, get_current_user
 from app.config import settings
 from app.database import Base, get_db
-from app.models import Cuenta, CuentaCompartida, HistorialExtracto, InvitacionCuenta, Movimiento, Perfil, gen_api_key
+from app.models import Cuenta, CuentaCompartida, HistorialExtracto, InvitacionCuenta, Movimiento, Perfil
+from app.claves_api import asignar_clave_nueva, tiene_clave
 from app.models_gastos import GastoCompartido, GrupoGasto, MiembroGrupoGasto, ParteGasto
 from app.schemas import ConfianzaAutoimportUpdate, EliminarCuentaRequest
 
@@ -23,10 +24,6 @@ def _get_or_create_perfil(db: Session, usuario_id: str) -> Perfil:
         db.add(perfil)
         db.commit()
         db.refresh(perfil)
-    if not perfil.api_key:
-        perfil.api_key = gen_api_key()
-        db.commit()
-        db.refresh(perfil)
     return perfil
 
 
@@ -35,7 +32,15 @@ def obtener_api_key(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
     perfil = _get_or_create_perfil(db, usuario.id)
-    return {"api_key": perfil.api_key}
+    if not tiene_clave(db, perfil):
+        # Primera vez: se crea y se muestra completa (única ocasión, junto con regenerar).
+        return {"api_key": asignar_clave_nueva(db, perfil), "tiene_clave": True, "nueva": True}
+    if perfil.api_key:
+        # Clave antigua aún en claro (se migra a hash la primera vez que el Atajo la use).
+        return {"api_key": perfil.api_key, "tiene_clave": True, "nueva": False}
+    # Ya guardada como hash: no se puede mostrar. Solo el prefijo para reconocerla.
+    return {"api_key": None, "tiene_clave": True, "nueva": False, "prefijo": perfil.api_key_prefijo,
+            "mensaje": "Por seguridad tu clave ya no se puede mostrar. Si la perdiste, genera una nueva."}
 
 
 class RecordatorioUpdate(BaseModel):
@@ -68,10 +73,8 @@ def regenerar_api_key(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
     perfil = _get_or_create_perfil(db, usuario.id)
-    perfil.api_key = gen_api_key()
-    perfil.api_key_ultimo_uso = None  # la clave nueva aún no se ha usado
-    db.commit()
-    return {"api_key": perfil.api_key}
+    clave = asignar_clave_nueva(db, perfil)  # también reinicia api_key_ultimo_uso
+    return {"api_key": clave, "tiene_clave": True, "nueva": True}
 
 
 @router.get("/confianza-autoimport")
