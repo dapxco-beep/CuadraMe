@@ -1,0 +1,66 @@
+name: CI
+
+# Solo verifica (pruebas + build). No despliega nada: el deploy sigue siendo manual por CLI.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Si llega un commit nuevo a la misma rama, cancela la corrida anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    # Sin secretos reales: la base es SQLite local (por defecto en config.py) y conftest.py
+    # fija CRON_SECRET de prueba. Nunca pongas DATABASE_URL de producción aquí.
+    env:
+      CRON_SECRET: secreto-de-prueba
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14" # la misma que usa el desarrollo local
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - run: python -m pytest tests -q
+
+  pwa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: pwa
+    # Valores ficticios: solo para que el bundle compile y las pruebas importen supabase.
+    env:
+      VITE_SUPABASE_URL: https://ficticio.supabase.co
+      VITE_SUPABASE_ANON_KEY: clave-ficticia
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+
+      - run: npm ci
+
+      - run: npx vitest run
+
+      - run: npm run build

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent from './userEvent.js'
 import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 

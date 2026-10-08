@@ -1,7 +1,7 @@
 // Tras autorizar la IA, la pregunta pendiente se reenvía sola y los chips de sugerencias siguen.
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent from './userEvent.js'
 import { MemoryRouter } from 'react-router-dom'
 
 const api = vi.hoisted(() => ({}))

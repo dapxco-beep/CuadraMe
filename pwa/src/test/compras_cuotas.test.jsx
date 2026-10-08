@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent from './userEvent.js'
 
 const api = vi.hoisted(() => ({}))
 vi.mock('../lib/api', () => ({ api }))

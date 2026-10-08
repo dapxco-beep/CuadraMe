@@ -2,7 +2,7 @@
 // listas de la revisión de conciliación.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent from './userEvent.js'
 import { MemoryRouter } from 'react-router-dom'
 
 const api = vi.hoisted(() => ({

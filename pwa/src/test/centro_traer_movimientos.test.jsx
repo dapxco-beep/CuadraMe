@@ -2,7 +2,7 @@
 // archivos con uno fallido, correos con comercio y monto 0, y contadores que suman el mismo total.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent from './userEvent.js'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 
 const CUENTAS = [

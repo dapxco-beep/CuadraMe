@@ -1,7 +1,7 @@
 // Saldo actual claro (etiquetas, tarjetas, ajuste), autorización de datos y aviso de Gmail por invitación.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent from './userEvent.js'
 import { MemoryRouter } from 'react-router-dom'
 
 const api = vi.hoisted(() => ({

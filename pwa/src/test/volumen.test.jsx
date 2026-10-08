@@ -2,7 +2,7 @@
 // Movimientos no pinta las ~1.500 filas a la vez y que seguir usándola (buscar, seleccionar todo) funciona.
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent from './userEvent.js'
 import { MemoryRouter } from 'react-router-dom'
 
 const TOTAL = 1500

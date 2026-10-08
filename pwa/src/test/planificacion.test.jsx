@@ -1,7 +1,7 @@
 // Planificación: ayudas puras con números verificados a mano + componentes con la API simulada.
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent from './userEvent.js'
 import { MemoryRouter } from 'react-router-dom'
 
 const api = vi.hoisted(() => ({}))
