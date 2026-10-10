@@ -29,6 +29,7 @@ import SelectorCategoria from '../components/SelectorCategoria'
 import Hoja from '../components/Hoja'
 import TablaMovimientos from '../components/TablaMovimientos'
 import DetalleMovimiento from './DetalleMovimiento'
+import EtiquetaOrigen from '../components/EtiquetaOrigen'
 
 const TAMANO_PAGINA = 200
 const MAX_LOTES = 15 // tope de seguridad al re-pedir lo ya cargado (3.000 movimientos)
@@ -131,6 +132,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
         <div className="min-w-0 flex-1">
           <Link to={`/movimientos/${m.id}`} onClick={alClic} className="block pt-2.5 min-w-0">
             <p className="text-sm font-semibold truncate">{m.descripcion}</p>
+            <EtiquetaOrigen origen={m.origen} canales={m.canales} className="mt-0.5" />
           </Link>
           <div className="flex items-center flex-wrap gap-y-1 pt-0.5 pb-2.5">
             {esTransfer ? (

@@ -311,7 +311,7 @@ def estado(
         ("extractos_sin_leer", "Extractos que no pudimos leer",
          "Sube el archivo de nuevo o agrega esos movimientos a mano.", n_no_leyo, "/sincronizacion#extractos"),
         ("posibles_duplicados", "Posibles movimientos repetidos",
-         "Parecen el mismo gasto: dime si es el mismo o es otro.", n_duplicados, "/duplicados"),
+         "Parecen el mismo gasto: dime si es el mismo o es otro.", n_duplicados, "/buscar-duplicados"),
     ]
     tareas = [
         {"id": i, "titulo": t, "detalle": d, "cantidad": int(n), "ruta": r}

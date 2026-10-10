@@ -4,7 +4,7 @@ import { useVolver } from '../lib/useVolver'
 import { useEstadoLista } from '../lib/useEstadoLista'
 import {
   ArrowLeft, CheckCheck, CheckCircle2, ChevronLeft, ChevronRight, FileCheck2, FileText, KeyRound, Mail, Plug, RefreshCw, Tag,
-  Upload, Wallet, X,
+  Upload, Wallet, X, AlertTriangle, CopyCheck, FilePlus2, Pencil,
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
@@ -25,6 +25,7 @@ import CrearCuentaBanco from '../components/CrearCuentaBanco'
 import EstadoClavePdf, { textoEstadoClave } from '../components/EstadoClavePdf'
 import ExtractosYaConciliados from '../components/ExtractosYaConciliados'
 import PuntoDePartida from '../components/PuntoDePartida'
+import { BOTON_TAREA, LEYENDA_COBERTURA, separarEstados, textoDetalleCelda, textoOrigenes } from '../lib/estadoTraer'
 import Hoja from '../components/Hoja'
 import PasosCentro from '../components/PasosCentro'
 import SubirArchivos from '../components/SubirArchivos'
@@ -77,6 +78,8 @@ const ICONO_TAREA = {
   movimientos_por_categorizar: Tag,
   movimientos_por_confirmar: CheckCheck,
   correos_por_revisar: Mail,
+  extractos_sin_leer: AlertTriangle,
+  posibles_duplicados: CopyCheck,
 }
 
 export default function Sincronizacion() {
@@ -95,6 +98,7 @@ export default function Sincronizacion() {
   const [ignorados, setIgnorados] = useState(null) // extractos ignorados; null = no cargados
   const [correosIgnorados, setCorreosIgnorados] = useState(null)
   const [verTodos, setVerTodos] = useState(false)
+  const [verTodosAlDia, setVerTodosAlDia] = useState(false)
   const [cola, setCola] = useState({ items: [], total: 0 })
   const [cargando, setCargando] = useState(true)
   const raiz = useRef(null)
@@ -272,6 +276,10 @@ export default function Sincronizacion() {
         return abrirBloque('revisar', 'sinc-cuentas')
       case 'movimientos_por_categorizar':
         return abrirBloque('revisar', 'sinc-categorizar')
+      case 'extractos_sin_leer':
+        return pedirSubir({ manual: false })
+      case 'posibles_duplicados':
+        return navigate(t.ruta)
       default:
         return navigate(t.ruta)
     }
@@ -450,6 +458,7 @@ export default function Sincronizacion() {
 
   // Lo ya conciliado no es pendiente: va aparte, plegado.
   const { pendientes, conciliados } = separarExtractos(extractos)
+  const { alDia } = separarEstados(estado?.extractos)
   const visibles = verTodos ? pendientes : pendientes.slice(0, EXTRACTOS_VISIBLES)
   const alternar = (b) => setAbiertos((a) => ({ ...a, [b]: !a[b] }))
 
@@ -532,28 +541,203 @@ export default function Sincronizacion() {
             {ultima ? `Todo al día · última vez ${ultima}` : 'Todo al día'}
           </p>
         ) : (
-          <ul className="flex flex-col gap-2 mt-3" aria-label="Por resolver">
-            {tareas.map((t) => {
-              const Icono = ICONO_TAREA[t.id] || CheckCheck
-              return (
-                <li key={t.id}>
-                  <button
-                    onClick={() => accionTarea(t)}
-                    data-testid={`tarea-${t.id}`}
-                    className="w-full rounded-2xl bg-paper-raised border border-line px-3.5 py-2.5 min-h-[48px] flex items-center gap-3 text-left"
-                  >
-                    <span className="w-8 h-8 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
-                      <Icono size={16} aria-hidden="true" />
-                    </span>
-                    <span className="flex-1 min-w-0 text-sm font-semibold leading-tight">{t.titulo}</span>
-                    <span className="text-sm font-bold text-accent" aria-label={`${t.cantidad} pendientes`}>{t.cantidad}</span>
-                    <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
-                  </button>
-                </li>
-              )
-            })}
+          <div className="mt-4" data-testid="por-hacer">
+            <h2 className="text-[15px] font-semibold">Por hacer</h2>
+            <p className="text-xs text-ink-soft">Solo lo que necesita que tú decidas.</p>
+            <ul className="flex flex-col gap-2 mt-2" aria-label="Por resolver">
+              {tareas.map((t) => {
+                const Icono = ICONO_TAREA[t.id] || CheckCheck
+                return (
+                  <li key={t.id}>
+                    <button
+                      onClick={() => accionTarea(t)}
+                      data-testid={`tarea-${t.id}`}
+                      className="w-full rounded-2xl bg-paper-raised border border-line px-3.5 py-3 min-h-[48px] flex items-center gap-3 text-left"
+                    >
+                      <span className="w-8 h-8 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
+                        <Icono size={16} aria-hidden="true" />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm font-semibold leading-tight">{t.titulo}</span>
+                        <span className="block text-xs text-ink-soft mt-0.5">{t.detalle}</span>
+                        <span className="inline-block mt-1.5 rounded-lg bg-accent text-paper-raised text-xs font-semibold px-3 py-1.5">{BOTON_TAREA[t.id] || 'Resolver'}</span>
+                      </span>
+                      <span className="text-sm font-bold text-accent" aria-label={`${t.cantidad} pendientes`}>{t.cantidad}</span>
+                      <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+            <button onClick={() => pedirSubir({ manual: true })} className="mt-2 text-xs font-semibold text-accent underline min-h-[44px]">
+              Mi banco no está
+            </button>
+          </div>
+        )}
+      </section>
+
+      {/* Al día: una línea humana por extracto, aunque no se haya agregado nada */}
+      <section className="mx-6 mt-5" aria-label="Al día" data-testid="al-dia-extractos">
+        <h2 className="text-[15px] font-semibold">Al día</h2>
+        {alDia.length === 0 ? (
+          <p className="text-xs text-ink-soft mt-1">Cuando revises un extracto, aquí queda lo que pasó con cada uno.</p>
+        ) : (
+          <ul className="mt-2 rounded-2xl bg-paper-raised border border-line divide-y divide-line">
+            {alDia.slice(0, verTodosAlDia ? alDia.length : 5).map((x) => (
+              <li key={x.id} className="px-3.5 py-2.5 flex items-start gap-2" data-testid={`al-dia-${x.id}`}>
+                <CheckCircle2 size={16} className="text-cuadra shrink-0 mt-0.5" aria-hidden="true" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs leading-snug">{x.frase}</p>
+                  <p className="text-[11px] text-ink-soft mt-0.5">
+                    Vino por {textoOrigenes(x.origenes)}
+                    {x.duplicadas_detectadas ? ` · ${x.duplicadas_detectadas} ya las habías registrado y se juntaron, sin repetir` : ''}
+                    {x.copias > 1 ? ` · ${x.copias} copias del mismo extracto, se cuenta una vez` : ''}
+                  </p>
+                </div>
+                {x.historial_id && (
+                  <button onClick={() => pedirSubir({ historialId: x.historial_id })} className="text-xs font-semibold text-accent min-h-[44px] px-1 shrink-0">Ver</button>
+                )}
+              </li>
+            ))}
+            {alDia.length > 5 && (
+              <li><button onClick={() => setVerTodosAlDia((v) => !v)} className="w-full min-h-[44px] text-xs font-semibold text-accent">{verTodosAlDia ? 'Ver menos' : `Ver los ${alDia.length}`}</button></li>
+            )}
           </ul>
         )}
+      </section>
+
+      {/* Cobertura por mes y cuenta */}
+      <section className="mx-6 mt-5" aria-label="Cobertura por mes">
+        <h2 className="text-[15px] font-semibold">Cobertura por mes</h2>
+        <Sub id="sinc-cuentas" titulo="Cuentas por mes" cuenta={sinCuenta.length}>
+          {filasCuentas.length === 0 ? (
+            <p className="text-sm text-ink-soft">Aún no tienes cuentas.</p>
+          ) : (
+            <div className="rounded-2xl bg-paper border border-line p-3">
+              {!ventanaFija && (
+                <div className="flex items-center justify-between mb-2" aria-label="Ventana de meses">
+                  <button onClick={() => moverVentana(-1)} className="flex items-center gap-1 text-xs font-semibold text-accent min-h-[40px] pr-3">
+                    <ChevronLeft size={16} aria-hidden="true" /> Meses anteriores
+                  </button>
+                  {hasta && (
+                    <button onClick={() => moverVentana(1)} className="flex items-center gap-1 text-xs font-semibold text-accent min-h-[40px] pl-3">
+                      Meses siguientes <ChevronRight size={16} aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+              )}
+              <div role="table" aria-label="Estado de cada cuenta en los últimos meses">
+                <div role="row" className="grid grid-cols-[minmax(76px,1.4fr)_repeat(6,minmax(0,1fr))] gap-1 items-end mb-1.5">
+                  <span role="columnheader" className="text-[11px] text-ink-soft">Cuenta</span>
+                  {meses.map((m) => (
+                    <span key={m.clave} role="columnheader" className="text-[11px] text-ink-soft text-center capitalize">{m.etiqueta}</span>
+                  ))}
+                </div>
+                {filasCuentas.map((c) => (
+                  <div key={c.id} role="row" className="grid grid-cols-[minmax(76px,1.4fr)_repeat(6,minmax(0,1fr))] gap-1 items-center mb-1">
+                    <span role="rowheader" title={nombreFila[c.id]} className="text-xs font-medium leading-tight break-words line-clamp-3 pr-1">{nombreFila[c.id]}</span>
+                    {c.meses.map((m) => {
+                      const e = estadoCelda(m.estado)
+                      const activa = detalle?.cuentaId === c.id && detalle?.mes === m.mes
+                      return (
+                        <div key={m.mes} role="cell" className="contents">
+                          <button
+                            onClick={() => setDetalle(activa ? null : { cuentaId: c.id, mes: m.mes })}
+                            aria-pressed={activa}
+                            aria-label={`${nombreFila[c.id]}, ${nombreMes(m.mes)}: ${e.texto}`}
+                            className={`h-10 rounded-lg border text-sm font-semibold flex items-center justify-center ${e.clase} ${activa ? 'ring-2 ring-ink' : ''}`}
+                          >
+                            <span aria-hidden="true">{e.simbolo}</span>
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+                {sinCuenta.map((s) => (
+                  <div key={s.banco} className="mt-2 rounded-xl border border-dashed border-accent/50 bg-accent-soft/50 px-3 py-2.5 flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold">Sin cuenta · {s.banco}</p>
+                      <p className="text-[11px] text-ink-soft">
+                        {[s.correos ? `${s.correos} ${s.correos === 1 ? 'correo' : 'correos'}` : '', s.extractos ? `${s.extractos} ${s.extractos === 1 ? 'extracto' : 'extractos'}` : '']
+                          .filter(Boolean).join(' y ')}
+                      </p>
+                    </div>
+                    <button onClick={() => setCrearBanco(s.banco)} className="shrink-0 rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3 py-2 min-h-[44px]">
+                      Crear cuenta {s.banco}
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <ul className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-[11px] text-ink-soft" aria-label="Leyenda">
+                {LEYENDA_COBERTURA.map(({ clave, texto }) => (
+                  <li key={clave}><span aria-hidden="true">{ESTADOS_CELDA[clave].simbolo}</span> {texto}</li>
+                ))}
+              </ul>
+
+              {celdaDetalle && cuentaDetalle && (
+                <div className="mt-3 rounded-xl bg-paper-raised border border-line p-3" role="region" aria-label="Detalle del mes">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold capitalize">{nombreFila[cuentaDetalle.id]} · {nombreMes(celdaDetalle.mes)}</p>
+                      <p className="text-xs font-medium mt-0.5">
+                        <span aria-hidden="true">{estadoCelda(celdaDetalle.estado).simbolo}</span> {estadoCelda(celdaDetalle.estado).texto}
+                      </p>
+                    </div>
+                    <button onClick={() => setDetalle(null)} aria-label="Cerrar detalle" className="w-11 h-11 flex items-center justify-center text-ink-soft">
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <p className="text-xs text-ink-soft mt-2">
+                    {textoDetalleCelda(celdaDetalle)}
+                    {celdaDetalle.extractos ? ` · ${celdaDetalle.extractos} ${celdaDetalle.extractos === 1 ? 'extracto' : 'extractos'}` : ''}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {celdaDetalle.estado === 'extracto_pendiente' && (
+                      <button onClick={() => abrirBloque('correo', 'sinc-extractos')} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5">Revisar extracto</button>
+                    )}
+                    {celdaDetalle.estado === 'falta_clave' && (
+                      <button onClick={() => { setMostrarClave(true); abrirBloque('correo', 'sinc-clave') }} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5">Poner clave</button>
+                    )}
+                    {(celdaDetalle.estado === 'sin_extracto' || celdaDetalle.estado === 'vacio') && (
+                      <button
+                        onClick={() => pedirSubir({ cuentaId: cuentaDetalle.id, mes: celdaDetalle.mes })}
+                        className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5"
+                      >
+                        Subir el extracto de este mes
+                      </button>
+                    )}
+                    {celdaDetalle.estado === 'sin_extracto' && (
+                      <button onClick={() => (conectado ? sincronizar() : abrirBloque('correo'))} className="rounded-xl border border-line text-xs font-semibold px-3.5 py-2.5">
+                        {conectado ? 'Buscar extracto' : 'Conectar Gmail'}
+                      </button>
+                    )}
+                    {celdaDetalle.movimientos > 0 && (
+                      <button onClick={() => navigate('/movimientos')} className="rounded-xl border border-line text-xs font-semibold px-3.5 py-2.5">Ver movimientos</button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Sub>
+      </section>
+
+      {/* Traer más: las tres vías de entrada, aparte del estado */}
+      <section className="mx-6 mt-5" aria-label="Traer más">
+        <h2 className="text-[15px] font-semibold">Traer más</h2>
+        <div className="grid grid-cols-3 gap-2 mt-2">
+          <button onClick={() => abrirBloque('correo')} className="rounded-2xl bg-paper-raised border border-line min-h-[64px] px-2 flex flex-col items-center justify-center gap-1 text-xs font-semibold">
+            <Mail size={20} aria-hidden="true" /> Desde mi correo
+          </button>
+          <button onClick={() => pedirSubir({})} className="rounded-2xl bg-paper-raised border border-line min-h-[64px] px-2 flex flex-col items-center justify-center gap-1 text-xs font-semibold">
+            <FilePlus2 size={20} aria-hidden="true" /> Subir un archivo
+          </button>
+          <button onClick={() => navigate('/agregar')} className="rounded-2xl bg-paper-raised border border-line min-h-[64px] px-2 flex flex-col items-center justify-center gap-1 text-xs font-semibold">
+            <Pencil size={20} aria-hidden="true" /> Agregar a mano
+          </button>
+        </div>
       </section>
 
       {/* a) Desde tu correo */}
@@ -775,119 +959,6 @@ export default function Sincronizacion() {
           )}
         </Sub>
 
-        <Sub id="sinc-cuentas" titulo="Cuentas por mes" cuenta={sinCuenta.length}>
-          {filasCuentas.length === 0 ? (
-            <p className="text-sm text-ink-soft">Aún no tienes cuentas.</p>
-          ) : (
-            <div className="rounded-2xl bg-paper border border-line p-3">
-              {!ventanaFija && (
-                <div className="flex items-center justify-between mb-2" aria-label="Ventana de meses">
-                  <button onClick={() => moverVentana(-1)} className="flex items-center gap-1 text-xs font-semibold text-accent min-h-[40px] pr-3">
-                    <ChevronLeft size={16} aria-hidden="true" /> Meses anteriores
-                  </button>
-                  {hasta && (
-                    <button onClick={() => moverVentana(1)} className="flex items-center gap-1 text-xs font-semibold text-accent min-h-[40px] pl-3">
-                      Meses siguientes <ChevronRight size={16} aria-hidden="true" />
-                    </button>
-                  )}
-                </div>
-              )}
-              <div role="table" aria-label="Estado de cada cuenta en los últimos meses">
-                <div role="row" className="grid grid-cols-[minmax(76px,1.4fr)_repeat(6,minmax(0,1fr))] gap-1 items-end mb-1.5">
-                  <span role="columnheader" className="text-[11px] text-ink-soft">Cuenta</span>
-                  {meses.map((m) => (
-                    <span key={m.clave} role="columnheader" className="text-[11px] text-ink-soft text-center capitalize">{m.etiqueta}</span>
-                  ))}
-                </div>
-                {filasCuentas.map((c) => (
-                  <div key={c.id} role="row" className="grid grid-cols-[minmax(76px,1.4fr)_repeat(6,minmax(0,1fr))] gap-1 items-center mb-1">
-                    <span role="rowheader" title={nombreFila[c.id]} className="text-xs font-medium leading-tight break-words line-clamp-3 pr-1">{nombreFila[c.id]}</span>
-                    {c.meses.map((m) => {
-                      const e = estadoCelda(m.estado)
-                      const activa = detalle?.cuentaId === c.id && detalle?.mes === m.mes
-                      return (
-                        <div key={m.mes} role="cell" className="contents">
-                          <button
-                            onClick={() => setDetalle(activa ? null : { cuentaId: c.id, mes: m.mes })}
-                            aria-pressed={activa}
-                            aria-label={`${nombreFila[c.id]}, ${nombreMes(m.mes)}: ${e.texto}`}
-                            className={`h-10 rounded-lg border text-sm font-semibold flex items-center justify-center ${e.clase} ${activa ? 'ring-2 ring-ink' : ''}`}
-                          >
-                            <span aria-hidden="true">{e.simbolo}</span>
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
-                {sinCuenta.map((s) => (
-                  <div key={s.banco} className="mt-2 rounded-xl border border-dashed border-accent/50 bg-accent-soft/50 px-3 py-2.5 flex items-center gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold">Sin cuenta · {s.banco}</p>
-                      <p className="text-[11px] text-ink-soft">
-                        {[s.correos ? `${s.correos} ${s.correos === 1 ? 'correo' : 'correos'}` : '', s.extractos ? `${s.extractos} ${s.extractos === 1 ? 'extracto' : 'extractos'}` : '']
-                          .filter(Boolean).join(' y ')}
-                      </p>
-                    </div>
-                    <button onClick={() => setCrearBanco(s.banco)} className="shrink-0 rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3 py-2 min-h-[44px]">
-                      Crear cuenta {s.banco}
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <ul className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-[11px] text-ink-soft" aria-label="Leyenda">
-                {['conciliado', 'extracto_pendiente', 'falta_clave', 'sin_extracto'].map((k) => (
-                  <li key={k}><span aria-hidden="true">{ESTADOS_CELDA[k].simbolo}</span> {ESTADOS_CELDA[k].texto}</li>
-                ))}
-              </ul>
-
-              {celdaDetalle && cuentaDetalle && (
-                <div className="mt-3 rounded-xl bg-paper-raised border border-line p-3" role="region" aria-label="Detalle del mes">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold capitalize">{nombreFila[cuentaDetalle.id]} · {nombreMes(celdaDetalle.mes)}</p>
-                      <p className="text-xs font-medium mt-0.5">
-                        <span aria-hidden="true">{estadoCelda(celdaDetalle.estado).simbolo}</span> {estadoCelda(celdaDetalle.estado).texto}
-                      </p>
-                    </div>
-                    <button onClick={() => setDetalle(null)} aria-label="Cerrar detalle" className="w-11 h-11 flex items-center justify-center text-ink-soft">
-                      <X size={16} />
-                    </button>
-                  </div>
-                  <p className="text-xs text-ink-soft mt-2">
-                    {celdaDetalle.movimientos} {celdaDetalle.movimientos === 1 ? 'movimiento' : 'movimientos'} · {celdaDetalle.conciliados} ya coinciden con el banco · {celdaDetalle.por_confirmar} por confirmar
-                    {celdaDetalle.extractos ? ` · ${celdaDetalle.extractos} ${celdaDetalle.extractos === 1 ? 'extracto' : 'extractos'}` : ''}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {celdaDetalle.estado === 'extracto_pendiente' && (
-                      <button onClick={() => abrirBloque('correo', 'sinc-extractos')} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5">Revisar extracto</button>
-                    )}
-                    {celdaDetalle.estado === 'falta_clave' && (
-                      <button onClick={() => { setMostrarClave(true); abrirBloque('correo', 'sinc-clave') }} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5">Poner clave</button>
-                    )}
-                    {(celdaDetalle.estado === 'sin_extracto' || celdaDetalle.estado === 'vacio') && (
-                      <button
-                        onClick={() => pedirSubir({ cuentaId: cuentaDetalle.id, mes: celdaDetalle.mes })}
-                        className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5"
-                      >
-                        Subir el extracto de este mes
-                      </button>
-                    )}
-                    {celdaDetalle.estado === 'sin_extracto' && (
-                      <button onClick={() => (conectado ? sincronizar() : abrirBloque('correo'))} className="rounded-xl border border-line text-xs font-semibold px-3.5 py-2.5">
-                        {conectado ? 'Buscar extracto' : 'Conectar Gmail'}
-                      </button>
-                    )}
-                    {celdaDetalle.movimientos > 0 && (
-                      <button onClick={() => navigate('/movimientos')} className="rounded-xl border border-line text-xs font-semibold px-3.5 py-2.5">Ver movimientos</button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </Sub>
       </BloqueCentro>
       </div>
       </div>

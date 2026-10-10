@@ -5,10 +5,13 @@ import { api } from './api'
 // Estado de una celda cuenta x mes -> cómo se dice y se pinta.
 // El color nunca va solo: cada estado trae símbolo y texto.
 export const ESTADOS_CELDA = {
-  conciliado: { simbolo: '✓', texto: 'Revisado', clase: 'bg-cuadra-soft text-cuadra border-cuadra/30' },
+  // Verde: al día. Amarillo: falta algo. Gris: sin extracto. Tachado: anterior a tu fecha de inicio.
+  conciliado: { simbolo: '✓', texto: 'Al día', clase: 'bg-cuadra-soft text-cuadra border-cuadra/30' },
+  parcial: { simbolo: '⚠', texto: 'Falta algo', clase: 'bg-accent-soft text-accent border-accent/40' },
   extracto_pendiente: { simbolo: '⚠', texto: 'Por revisar', clase: 'bg-accent-soft text-accent border-accent/40' },
-  falta_clave: { simbolo: '🔑', texto: 'Falta la clave', clase: 'bg-danger-soft text-danger border-danger/40' },
+  falta_clave: { simbolo: '🔑', texto: 'Falta la clave', clase: 'bg-accent-soft text-accent border-accent/40' },
   sin_extracto: { simbolo: '—', texto: 'Sin extracto', clase: 'bg-paper-raised text-ink-soft border-line' },
+  anterior: { simbolo: '✕', texto: 'Anterior a tu fecha de inicio', clase: 'bg-transparent text-ink-soft/60 border-line line-through' },
   vacio: { simbolo: '·', texto: 'Sin datos', clase: 'bg-transparent text-ink-soft/50 border-transparent' },
 }
 
