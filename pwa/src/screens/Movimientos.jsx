@@ -27,6 +27,7 @@ import {
 import { InsigniaAuto } from '../components/CategorizacionAuto'
 import SelectorCategoria from '../components/SelectorCategoria'
 import Hoja from '../components/Hoja'
+import TablaMovimientos from '../components/TablaMovimientos'
 import DetalleMovimiento from './DetalleMovimiento'
 
 const TAMANO_PAGINA = 200
@@ -357,6 +358,7 @@ export default function Movimientos() {
     [filtrados, f.comercio, f.orden]
   )
   const recientes = useMemo(() => categoriasRecientes(movimientos, CATEGORIAS), [movimientos, CATEGORIAS])
+  const vistaActiva = f.comercio ? 'comercio' : lateral && f.tabla ? 'tabla' : 'lista'
   const filtrosVisibles = mostrarFiltros || lateral || !!(f.cuenta || f.desde || f.hasta || f.tipo)
 
   // --- Ventana (virtualización por días) ---
@@ -689,6 +691,19 @@ export default function Movimientos() {
   }
 
   const nombreCuenta = (id) => cuentas.find((c) => c.id === id)?.nombre || 'Cuenta'
+  const nombreCuentaTabla = useCallback((id) => cuentas.find((c) => c.id === id)?.nombre || 'Cuenta', [cuentas])
+  const enTabla = lateral && f.tabla && !f.comercio
+  const alternarTodos = useCallback(
+    (marcar) => {
+      if (marcar) {
+        setModoSeleccion(true)
+        setSeleccionados(new Set(filtrados.map((m) => m.id)))
+      } else {
+        setSeleccionados(new Set())
+      }
+    },
+    [filtrados]
+  )
   const chipsActivos = [
     f.q && { k: 'q', texto: `Texto: ${f.q}` },
     f.cuenta && { k: 'cuenta', texto: nombreCuenta(f.cuenta) },
@@ -897,15 +912,16 @@ export default function Movimientos() {
               <div className="px-5 mb-4 flex items-center gap-2">
                 <div role="group" aria-label="Vista" className="inline-flex rounded-full border border-line p-0.5 bg-paper-raised">
                   {[
-                    { id: false, texto: 'Lista' },
-                    { id: true, texto: 'Por comercio' },
+                    { id: 'lista', texto: 'Lista' },
+                    ...(lateral ? [{ id: 'tabla', texto: 'Tabla' }] : []),
+                    { id: 'comercio', texto: 'Por comercio' },
                   ].map((v) => (
                     <button
                       key={v.texto}
-                      aria-pressed={f.comercio === v.id}
-                      onClick={() => cambiarParams({ vista: v.id ? 'comercio' : '' })}
+                      aria-pressed={vistaActiva === v.id}
+                      onClick={() => cambiarParams({ vista: v.id === 'lista' ? '' : v.id })}
                       className={`text-sm px-4 min-h-[44px] rounded-full font-medium ${
-                        f.comercio === v.id ? 'bg-ink text-paper' : 'text-ink-soft'
+                        vistaActiva === v.id ? 'bg-ink text-paper' : 'text-ink-soft'
                       }`}
                     >
                       {v.texto}
@@ -1021,6 +1037,19 @@ export default function Movimientos() {
                 </div>
               ))}
             </div>
+          ) : enTabla ? (
+            <TablaMovimientos
+              items={filtrados}
+              iconoDe={iconoDe}
+              monedaDe={monedaDe}
+              nombreCuenta={nombreCuentaTabla}
+              seleccionados={seleccionados}
+              panelId={panelId}
+              onToggle={alternar}
+              onToggleTodos={alternarTodos}
+              onAbrir={abrirPanel}
+              onChip={abrirChip}
+            />
           ) : (
             <div className="mx-5 relative pl-5">
               <div className="absolute left-[9px] top-1.5 bottom-1.5 w-0.5 bg-line" />
