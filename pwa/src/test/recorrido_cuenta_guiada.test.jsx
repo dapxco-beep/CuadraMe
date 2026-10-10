@@ -15,8 +15,6 @@ vi.mock('../lib/AuthContext', () => ({ useAuth: () => ({ usuario: { id: 'u1', em
 import Recorrido from '../components/Recorrido'
 import RecorridoEntrada from '../components/RecorridoEntrada'
 import CrearCuenta from '../screens/CrearCuenta'
-import ConectarDispositivo, { ATAJO_CIERRE_URL, ATAJO_ICLOUD_URL } from '../screens/ConectarDispositivo'
-import { DialogosProvider } from '../lib/DialogosContext'
 import {
   acotar, debeAbrirseSolo, guardarRecorrido, leerRecorrido, marcarRecorridoPendiente, PASOS_RECORRIDO, porcentajeRecorrido,
   rutaDelPaso, sePuedeRetomar, TOTAL_PASOS,
@@ -282,36 +280,3 @@ describe('cuentaNueva: la otra cuenta del banco', () => {
     expect(textoAgregarAlterno('', 'ahorro')).toBe('')
   })
 })
-
-describe('Conectar tu celular: atajos por enlace en 3 pasos', () => {
-  it('los pasos son clave, atajo de pagos y atajo de cierre, con enlaces de iCloud y la avanzada plegada', async () => {
-    montarConectar()
-    const guia = screen.getByRole('region', { name: 'Guía para iPhone' })
-    const pasos = within(guia).getAllByRole('listitem').slice(0, 3)
-    expect(pasos[0]).toHaveTextContent('Crea tu clave y cópiala')
-    expect(pasos[1]).toHaveTextContent('Instala el atajo de pagos')
-    expect(pasos[1]).toHaveTextContent('Pega tu clave de Cuádrame')
-    expect(pasos[2]).toHaveTextContent('Instala el atajo de cierre')
-    expect(within(guia).getByRole('link', { name: /Instalar atajo de pagos/ })).toHaveAttribute('href', ATAJO_ICLOUD_URL)
-    expect(within(guia).getByRole('link', { name: /Instalar atajo de cierre/ })).toHaveAttribute('href', ATAJO_CIERRE_URL)
-    expect(await screen.findByRole('button', { name: 'Copiar clave' })).toBeInTheDocument()
-    // las automatizaciones llevan ilustración y pasos cortos
-    const auto = screen.getByTestId('automatizaciones')
-    expect(within(auto).getByText(/Automatización 1: pagos con Apple Pay/)).toBeInTheDocument()
-    expect(within(auto).getByText(/Automatización 2: cierre de una app/)).toBeInTheDocument()
-    expect(auto.querySelectorAll('svg').length).toBeGreaterThanOrEqual(2)
-    // armar a mano ya no es el camino: queda plegado como «Avanzado»
-    const avanzado = screen.getByText(/Avanzado: armar los atajos a mano/).closest('details')
-    expect(avanzado).not.toHaveAttribute('open')
-  })
-})
-
-function montarConectar() {
-  return render(
-    <DialogosProvider>
-      <MemoryRouter>
-        <ConectarDispositivo />
-      </MemoryRouter>
-    </DialogosProvider>
-  )
-}

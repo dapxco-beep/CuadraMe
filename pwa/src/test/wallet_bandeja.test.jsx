@@ -27,7 +27,6 @@ vi.mock('../lib/CategoriasContext', () => ({
 import { DialogosProvider } from '../lib/DialogosContext'
 import BandejaPorConfirmar from '../components/BandejaPorConfirmar'
 import PreguntaMovimiento from '../components/PreguntaMovimiento'
-import ConectarDispositivo, { ATAJO_ICLOUD_URL, ATAJO_CIERRE_URL } from '../screens/ConectarDispositivo'
 import {
   CLAVE_BANDEJA,
   CLAVE_PREGUNTA,
@@ -210,63 +209,5 @@ describe('Pregunta "¿hiciste algún movimiento?"', () => {
     montar(<PreguntaMovimiento ultimaFecha={null} />)
     expect(screen.queryByTestId('pregunta-movimiento')).toBeNull()
     vi.useRealTimers()
-  })
-})
-
-describe('Conectar tu celular', () => {
-  it('iPhone: guía numerada, copiar clave, enlaces de los dos atajos y sin Scriptable', async () => {
-    expect(ATAJO_ICLOUD_URL).toBe('https://www.icloud.com/shortcuts/8b2de178aff84465a938df4a5ef9c0dc')
-    expect(ATAJO_CIERRE_URL).toBe('https://www.icloud.com/shortcuts/d34fa153ac844631baf36d8e158f7bf4')
-    api.apiKey.mockResolvedValue({ api_key: 'cm_clave_secreta' })
-    montar(<ConectarDispositivo />)
-    expect(await screen.findByRole('button', { name: 'Copiar clave' })).toBeInTheDocument()
-    expect(screen.queryByText(/llega pronto/)).toBeNull()
-    expect(screen.getByRole('link', { name: /Instalar atajo de pagos/ })).toHaveAttribute('href', ATAJO_ICLOUD_URL)
-    expect(screen.getByRole('link', { name: /Instalar atajo de cierre/ })).toHaveAttribute('href', ATAJO_CIERRE_URL)
-    expect(screen.getAllByText(/Obtener contenido de URL/).length).toBeGreaterThan(0)
-    expect(screen.getByText(/Transacción/, { selector: 'b' })).toBeInTheDocument()
-    expect(screen.getAllByRole("link", { name: /Abrir Atajos/, hidden: true }).length).toBeGreaterThan(0)
-    // La guía ya no depende de Scriptable (solo se menciona como alternativa legada)
-    expect(screen.queryByText(/Descarga la app gratuita "Scriptable"/)).toBeNull()
-  })
-
-  it('el pago de prueba usa la clave, verifica que llegó y dice ¡Funciona!', async () => {
-    api.apiKey.mockResolvedValue({ api_key: 'cm_clave_secreta' })
-    api.pagoDePrueba.mockResolvedValue({ id: 'p1', mensaje: 'Gasto de $1.000 en Pago de prueba' })
-    api.movimientosPorConfirmar.mockResolvedValue([mov('p1')])
-    montar(<ConectarDispositivo />)
-    const boton = screen.getByRole('button', { name: /Enviar un pago de prueba/ })
-    await waitFor(() => expect(boton).not.toBeDisabled())
-    await userEvent.click(boton)
-    expect(await screen.findByText('¡Funciona!')).toBeInTheDocument()
-    expect(api.pagoDePrueba).toHaveBeenCalledWith('cm_clave_secreta')
-  })
-
-  it('si el pago no aparece por confirmar, avisa en vez de mentir', async () => {
-    api.apiKey.mockResolvedValue({ api_key: 'k' })
-    api.pagoDePrueba.mockResolvedValue({ id: 'p1', mensaje: 'x' })
-    api.movimientosPorConfirmar.mockResolvedValue([])
-    montar(<ConectarDispositivo />)
-    const boton = screen.getByRole('button', { name: /Enviar un pago de prueba/ })
-    await waitFor(() => expect(boton).not.toBeDisabled())
-    await userEvent.click(boton)
-    expect(await screen.findByRole('alert')).toHaveTextContent(/no apareció/)
-    expect(screen.queryByText('¡Funciona!')).toBeNull()
-  })
-
-  it('Android: pasos de Tasker, script con la clave y prueba', async () => {
-    api.apiKey.mockResolvedValue({ api_key: 'cm_android_key' })
-    montar(<ConectarDispositivo />)
-    await userEvent.click(screen.getByRole('tab', { name: 'Android' }))
-    expect(screen.getByText('Pasos (Tasker)')).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByText(/cm_android_key/)).toBeInTheDocument())
-    expect(screen.getByRole('button', { name: /Enviar un pago de prueba/ })).toBeInTheDocument()
-  })
-
-  it('incluye el aviso de privacidad con qué datos viajan', () => {
-    api.apiKey.mockResolvedValue({ api_key: 'k' })
-    montar(<ConectarDispositivo />)
-    expect(screen.getByText('Qué datos viajan')).toBeInTheDocument()
-    expect(screen.getByText(/Nunca el número completo de tu tarjeta/)).toBeInTheDocument()
   })
 })

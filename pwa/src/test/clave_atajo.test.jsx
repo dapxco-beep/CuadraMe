@@ -28,6 +28,8 @@ const montar = () =>
 
 beforeEach(() => {
   Object.values(api).forEach((f) => f.mockReset())
+  localStorage.clear()
+  localStorage.setItem('cuadrame:atajo-paso', '0') // abre directo en «Copia tu clave»
 })
 
 describe('Clave del Atajo', () => {
@@ -53,12 +55,12 @@ describe('Clave del Atajo', () => {
     api.apiKey.mockResolvedValue({ api_key: null, tiene_clave: true, prefijo: 'cdm_ab12…' })
     api.pagoDePrueba.mockResolvedValue({ id: 'p1', mensaje: 'ok' })
     api.movimientosPorConfirmar.mockResolvedValue([{ id: 'p1' }])
+    localStorage.setItem('cuadrame:atajo-paso', '3') // pantalla de prueba
     montar()
-    await screen.findByText(/cdm_ab12…/)
-    const boton = screen.getByRole('button', { name: /Enviar un pago de prueba/ })
+    const boton = await screen.findByRole('button', { name: /Probar ahora/ })
     expect(boton).not.toBeDisabled()
     await userEvent.click(boton)
-    expect(await screen.findByText('¡Funciona!')).toBeInTheDocument()
+    expect(await screen.findByText('La prueba llegó a CuadraMe')).toBeInTheDocument()
     expect(api.pagoDePrueba).toHaveBeenCalledWith(null)
   })
 

@@ -7,7 +7,7 @@ import { useDialogos } from '../lib/DialogosContext'
 //     si es nueva, aviso de que no se vuelve a mostrar.
 //  2) Ya existe pero guardada de forma segura: solo «empieza por cdm_ab12…» + «Crear una clave nueva».
 //  3) Aún no hay estado (cargando) o no hay clave.
-export default function ClaveAtajo({ clave, cargando, tieneClave, prefijo, recienCreada, crearNueva }) {
+export default function ClaveAtajo({ clave, cargando, tieneClave, prefijo, recienCreada, crearNueva, grande = false }) {
   const { confirmar, avisar } = useDialogos()
   const [copiado, setCopiado] = useState(false)
   const [creando, setCreando] = useState(false)
@@ -56,16 +56,34 @@ export default function ClaveAtajo({ clave, cargando, tieneClave, prefijo, recie
             </p>
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <code className="flex-1 text-xs bg-paper rounded-xl px-3 py-2.5 break-all select-all">{clave}</code>
-          <button
-            onClick={copiar}
-            className="shrink-0 h-11 px-3 rounded-xl bg-accent text-white text-sm font-semibold flex items-center gap-1.5"
-            aria-label="Copiar clave"
-          >
-            {copiado ? <Check size={16} /> : <Copy size={16} />} {copiado ? 'Copiada' : 'Copiar'}
-          </button>
-        </div>
+        {grande ? (
+          <>
+            <code className="block text-xs bg-paper rounded-xl px-3 py-2.5 break-all select-all mb-3">{clave}</code>
+            <button
+              onClick={copiar}
+              className="btn btn-primario btn-bloque inline-flex items-center justify-center gap-2"
+              aria-label="Copiar clave"
+            >
+              {copiado ? <Check size={20} /> : <Copy size={20} />} {copiado ? 'Clave copiada' : 'Copiar mi clave'}
+            </button>
+            {copiado && (
+              <p role="status" className="text-sm text-cuadra mt-2 font-semibold">
+                Listo, ya la tienes copiada. Toca «Siguiente».
+              </p>
+            )}
+          </>
+        ) : (
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-xs bg-paper rounded-xl px-3 py-2.5 break-all select-all">{clave}</code>
+            <button
+              onClick={copiar}
+              className="shrink-0 h-11 px-3 rounded-xl bg-accent text-white text-sm font-semibold flex items-center gap-1.5"
+              aria-label="Copiar clave"
+            >
+              {copiado ? <Check size={16} /> : <Copy size={16} />} {copiado ? 'Copiada' : 'Copiar'}
+            </button>
+          </div>
+        )}
         {!recienCreada && (
           <button onClick={nueva} disabled={creando} className="text-xs text-ink-soft underline mt-2">
             {creando ? 'Creando...' : 'Crear una clave nueva'}

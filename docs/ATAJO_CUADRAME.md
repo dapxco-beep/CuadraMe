@@ -68,7 +68,7 @@ Si en CuadraMe no existe la cuenta que el cliente elige, no aparece en la lista:
 1. **Cierre de app.** Abre y cierra la app configurada: sale el menú. Elige Gasto, `1000` y una nota. Llega la notificación de CuadraMe.
 2. **En CuadraMe.** Aparece "Detectamos 1 movimiento". En **Perfil → Conexiones** el atajo muestra "último uso hace 1 min".
 3. **Apple Pay.** Compra pequeña con Apple Pay: aviso en unos 5 segundos.
-4. "Enviar un pago de prueba" en Conectar dispositivo prueba el servidor, no los atajos.
+4. «Probar ahora» prueba el servidor y la cuenta, no los atajos; la señal real es que el paso se marque solo cuando llega el primer pago del iPhone.
 
 ## Errores frecuentes
 
@@ -82,21 +82,38 @@ Si en CuadraMe no existe la cuenta que el cliente elige, no aparece en la lista:
 | No corre sola | Quedó con "Preguntar antes de ejecutar" | Desactívalo |
 | Pregunta cada vez que miras el saldo | El disparador salta al cerrar la app | Toca "No" |
 
-## Cómo llegan los atajos a los clientes (por enlace de iCloud)
+## Cómo lo ve el cliente: «Registro automático al pagar con el iPhone»
 
-El cliente ya NO arma nada: en Perfil → Conectar tu celular sigue 3 pasos (crear y copiar su clave, instalar el atajo de pagos, instalar el atajo de cierre) y crea las dos automatizaciones. Al instalar cada atajo, iOS le hace la pregunta de importación «Pega tu clave de Cuádrame» y pega la clave.
+Pantalla `pwa/src/screens/ConectarDispositivo.jsx` (ruta `/conectar-dispositivo`). De cara al cliente ya no se llama «atajo» ni «Conectar dispositivo». Un solo flujo, una cosa por pantalla:
 
-| Atajo | Constante en `pwa/src/screens/ConectarDispositivo.jsx` | Enlace |
+| Pantalla | Qué hace |
+|---|---|
+| Intro | «Cada vez que pagas con Apple Pay, CuadraMe lo anota solo». Etiqueta «Funciona en iPhone». En Android/PC explica que use correo o extractos y enlaza a Sincronización (no queda vacía) |
+| Paso 1 de 3 · Copia tu clave | Botón grande «Copiar mi clave» que confirma. La clave completa solo se ve al crearla |
+| Paso 2 de 3 · Instala el atajo | Abre `ATAJO_ICLOUD_URL`. «Cuando te lo pida, pega la clave» |
+| Paso 3 de 3 · Actívalo en Wallet | Automatización «Transacción» en 4 pasos numerados con ilustración. Dentro, plegado y opcional, el segundo atajo «Para registrar pagos en efectivo o en cuentas sin Apple Pay» (`ATAJO_CIERRE_URL` + automatización App → Se cierra) |
+| Probar | Botón «Probar ahora» (ver abajo) |
+| Listo | Se muestra solo cuando el atajo real ya envió algo |
+
+El paso se recuerda en el celular (`localStorage`, clave `cuadrame:atajo-paso`) y hay botón Atrás. Todo lo técnico (armar a mano, Android con Tasker, Siri por voz) vive plegado bajo «Avanzado» (`components/AtajoAvanzado.jsx`) y no se pinta hasta abrirlo.
+
+| Atajo | Constante | Enlace |
 |---|---|---|
 | CuadraMe Apple Pay | `ATAJO_ICLOUD_URL` | https://www.icloud.com/shortcuts/8b2de178aff84465a938df4a5ef9c0dc |
 | CuadraMe Cierre | `ATAJO_CIERRE_URL` | https://www.icloud.com/shortcuts/d34fa153ac844631baf36d8e158f7bf4 |
+
+## Verificación en vivo
+
+- **Detección automática (sin marcar a mano):** la pantalla consulta `GET /conexiones/estado` y mira `atajo.ultimo_uso` (último uso real de la clave API). Mientras espera repite cada 6 s. Si aparece, muestra «¡Listo! Tu primer pago de prueba llegó». El mismo dato marca el paso «atajo» del asistente de primer uso.
+- **«Probar ahora»:** usa `POST /movimientos/rapido-prueba` con la SESIÓN (no con la clave), así NO altera el «último uso de la clave», que queda reservado para el atajo real. Comprueba que el pago aparece en «por confirmar». Prueba el servidor y la cuenta, no el iPhone.
+- **Errores en lenguaje simple** (`pwa/src/lib/atajoPrueba.js`): 404 → «Aún no tienes dónde anotar el pago» con botón a Cuentas (Nu, Nequi…); 401 → sesión cerrada; 429 → espera; sin red → sin conexión; no apareció en «por confirmar» → repite. Si la prueba sale bien pero el iPhone no envía nada, se listan las 3 causas típicas: clave mal pegada, atajo no instalado, automatización que pregunta antes de correr.
+- Sin cambios de backend: se reutilizan `rapido-prueba`, `conexiones/estado` y los mensajes de `errores_atajo.py`.
 
 Para actualizar un atajo:
 1. Vacía el Texto de la clave y deja la pregunta de importación «Pega tu clave de Cuádrame».
 2. Mantén pulsado el atajo → **Compartir → Copiar enlace de iCloud**.
 3. Revisa por dentro el enlace (clave vacía, propiedades elegidas, pregunta de importación).
 4. Pega el enlace nuevo en la constante correspondiente. Quien ya instaló el atajo conserva su versión: avísale que lo vuelva a instalar.
-5. La pantalla conserva un bloque plegado «Avanzado: armar los atajos a mano (si el enlace falla)» con las acciones de las secciones de arriba.
 
 ## Lo que Apple no permite
 
@@ -110,5 +127,5 @@ Para actualizar un atajo:
 - La clave completa se muestra **una sola vez**, al crearla o al pulsar «Crear una clave nueva». Aparece un aviso: «Cópiala ahora, no se vuelve a mostrar». Pégala enseguida en el Atajo.
 - Si ya existe una clave guardada, la app dice «Tu clave empieza por cdm_ab12…». Si la perdiste, crea una nueva; el Atajo del iPhone dejará de funcionar hasta que pegues la nueva.
 - Las claves antiguas siguen funcionando sin que hagas nada: al usarse por primera vez el servidor las convierte a huella solo.
-- «Probar conexión» ya no necesita leer la clave guardada: usa tu sesión (`POST /movimientos/rapido-prueba`, mismo registro que `/rapido`). Si acabas de crear la clave, la prueba usa esa clave y revisa el camino real del Atajo.
+- «Probar ahora» ya no necesita leer la clave guardada: usa tu sesión (`POST /movimientos/rapido-prueba`, mismo registro que `/rapido`). Si acabas de crear la clave, la prueba usa esa clave y revisa el camino real del Atajo.
 - Para el equipo: las columnas `api_key_hash` y `api_key_prefijo` se crean con `backend/supabase/migraciones/api_key_hash.sql` (idempotente, pendiente de aprobar). Mientras no existan, todo sigue en claro como antes y la app muestra la clave como siempre.

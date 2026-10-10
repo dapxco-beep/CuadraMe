@@ -56,10 +56,10 @@ export const PASOS = [
   },
   {
     id: 'atajo',
-    titulo: 'Registra tus pagos con Apple Pay',
-    apoyo: 'Cada pago con tu iPhone queda anotado solo. Toma unos 3 minutos.',
+    titulo: 'Activa el registro automático con tu iPhone',
+    apoyo: 'Cada pago con Apple Pay queda anotado solo. Toma menos de 2 minutos.',
     ruta: '/conectar-dispositivo',
-    accion: 'Instalar el atajo',
+    accion: 'Activarlo',
     solo: 'ios',
   },
   {
