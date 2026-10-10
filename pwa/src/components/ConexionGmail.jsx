@@ -7,7 +7,7 @@ import { useDialogos } from '../lib/DialogosContext'
 import ModalConsentimiento from './ModalConsentimiento'
 
 /**
- * Conectar o desconectar Gmail. Sincronizar lo hace el botón «Sincronizar todo» del centro (y su
+ * Conectar o desconectar Gmail. Sincronizar lo hace el botón «Traer todo ahora» del centro (y su
  * barra de progreso): aquí no hay un segundo botón igual.
  *   estado: GET /correos/gmail/estado   ·   onCambio(): recarga el centro
  */
@@ -38,7 +38,7 @@ export default function ConexionGmail({ estado, onCambio }) {
   }
 
   async function desconectar() {
-    const ok = await confirmar('Se dejarán de sincronizar tus correos bancarios.', {
+    const ok = await confirmar('Dejaremos de leer los avisos de tu banco en tu correo.', {
       titulo: '¿Desconectar Gmail?',
       confirmarTexto: 'Desconectar',
       peligro: true,

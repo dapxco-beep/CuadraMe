@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowLeftRight, Bot, ChevronRight, CreditCard, Gift, HeartPulse, Landmark, LayoutGrid, Lightbulb, ListChecks, PieChart,
+  ArrowLeftRight, Bot, ChevronDown, ChevronRight, CreditCard, Gift, HeartPulse, Landmark, LayoutGrid, Lightbulb, ListChecks, PieChart,
   PiggyBank, Plus, RefreshCw, Repeat, Sparkles, Wallet,
 } from 'lucide-react'
 import { IlustracionVacia, Isotipo, Monto, SelloCuadre } from '../brand/Marca'
@@ -27,6 +27,12 @@ import Icono from '../components/Icono'
 import { Boton } from '../components/ui'
 import { Bloque, EsqueletoFila } from '../components/Esqueletos'
 import { textoActualizado } from '../lib/saldos'
+import InicioSimple from '../components/InicioSimple'
+import { useModoMenu } from '../lib/modoSimple'
+import { armarCamino, leerEstado } from '../lib/primerUso'
+import { fechaHace, gastosDeLaSemana, siguientePasoInicio } from '../lib/inicioSimple'
+
+const DIAS_CUENTA_NUEVA = 14
 
 // Patrimonio y el resto de pantallas viven en «Más»; aquí quedan a un toque los más usados.
 const ACCESOS_RAPIDOS = [
@@ -88,7 +94,8 @@ function EsqueletoInicio() {
 }
 
 export default function Inicio() {
-  const { usuario } = useAuth()
+  const { usuario, session } = useAuth()
+  const { completo } = useModoMenu()
   const { iconoDe } = useCategorias()
   const { fmt } = useBloqueo()
   const primerNombre = (usuario?.nombre || '').trim().split(/\s+/)[0]
@@ -105,6 +112,9 @@ export default function Inicio() {
   const [cargando, setCargando] = useState(true)
   const [errorCarga, setErrorCarga] = useState('')
   const [intento, setIntento] = useState(0)
+  const [verMas, setVerMas] = useState(false)
+  const [semana, setSemana] = useState(null)
+  const [sinCategorizar, setSinCategorizar] = useState(0)
 
   useEffect(() => {
     let activo = true
@@ -118,6 +128,8 @@ export default function Inicio() {
       })
       .catch((err) => activo && setErrorCarga(err.message || 'No se pudo cargar tu información'))
       .finally(() => activo && setCargando(false))
+    // Gastos de la semana (opcional: sin dato, el bloque muestra un guion)
+    Promise.resolve().then(() => api.movimientos(200, 0, { desde: fechaHace(6) })).then((l) => activo && Array.isArray(l) && setSemana(gastosDeLaSemana(l))).catch(() => {})
     api.disponibleHoy().then((d) => activo && setDisponible(d)).catch(() => {})
     api.enMiBolsillo().then((b) => activo && setBolsillo(b)).catch(() => {})
     // Desglose del saldo (disponible / tarjetas / por moneda y tipo). Si falla, el héroe sigue funcionando.
@@ -126,7 +138,7 @@ export default function Inicio() {
     // Aviso solo si algo se rompió (semáforo rojo); si el tablero falla, no se muestra nada.
     Promise.resolve().then(() => api.conexionesEstado?.()).then((c) => activo && setConexionFalla(!!c?.hay_falla)).catch(() => {})
     // Cuántas cosas esperan en «Traer movimientos» (si falla, el acceso se muestra sin número).
-    Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && setTareasSync(s?.tareas?.length ?? null)).catch(() => {})
+    Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && (setTareasSync(s?.tareas?.length ?? null), setSinCategorizar((s?.tareas || []).find((t) => t.id === 'movimientos_por_categorizar')?.cantidad || 0))).catch(() => {})
     // Tendencia del gasto de los últimos meses para la mini gráfica (opcional: sin datos no se dibuja).
     Promise.resolve().then(() => api.tendencias?.(6)).then((t) => activo && setTendencia(t?.meses ?? null)).catch(() => {})
     return () => {
@@ -155,6 +167,17 @@ export default function Inicio() {
   const diferencia = bolsillo ? bolsillo.disponible_real : null
   const cuadra = diferencia === null ? null : diferencia >= 0
   const gastarHoy = bolsillo ? bolsillo.disponible_real_por_dia : null
+  const antiguo = (() => {
+    const t = Date.parse(session?.user?.created_at || '')
+    return Number.isFinite(t) && Date.now() - t > DIAS_CUENTA_NUEVA * 86_400_000
+  })()
+  // «Mira tu resumen» cuenta como hecho si ya lo abrió (se recuerda en el celular) o si la cuenta no es nueva.
+  const resumenVisto = antiguo || leerEstado(usuario?.id || 'anon').resumenVisto
+  // Disponible = lo que hay en cuentas de ahorro y efectivo (sin tarjetas); mientras llega, el saldo total.
+  const gastarSaldo = resumen?.disponible_cop ?? saldoTotal
+  // Mientras el camino de 3 pasos esté en pantalla, él es el «siguiente paso» (no se repite otro).
+  const enCamino = armarCamino({ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }).some((p) => !p.hecho)
+  const siguienteInicio = siguientePasoInicio({ cuentas: cuentas.length, movimientos: movimientos.length, sinCategorizar })
   const hayPorResolver = (tareasSync || 0) > 0 || conexionFalla
 
   const gastosMensuales = (tendencia || []).map((m) => Number(m.gastos)).filter((v) => Number.isFinite(v))
@@ -200,11 +223,38 @@ export default function Inicio() {
       )}
 
       {/* Primeros pasos: solo mientras falte algo (y no se haya ocultado); luego vive en Perfil */}
+      <AsistentePrimerUso variante="inicio" camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />
       <RecorridoEntrada variante="inicio" />
-      <AsistentePrimerUso variante="inicio" />
+
+      {/* Modo simple: tres bloques y un «Ver más»; con «Mostrar todas las funciones», todo a la vista */}
+      {!completo && (
+        <>
+          <InicioSimple
+            saldo={gastarSaldo}
+            gastosSemana={semana}
+            recientes={movimientos.slice(0, 3)}
+            siguiente={enCamino ? null : siguienteInicio}
+            fmt={fmt}
+            iconoDe={iconoDe}
+            cuadra={cuadra !== false}
+          />
+          <div className="mx-6 mt-3">
+            <button
+              type="button"
+              aria-expanded={verMas}
+              onClick={() => setVerMas((v) => !v)}
+              className="min-h-11 w-full flex items-center justify-center gap-1 text-sm font-semibold text-accent"
+            >
+              {verMas ? 'Ver menos' : 'Ver más'}
+              <Icono icono={ChevronDown} tam="sm" className={verMas ? 'rotate-180' : ''} />
+            </button>
+          </div>
+        </>
+      )}
 
       {/* ≥1024 px: dos columnas (lo principal | el resto plegado). En teléfono los wrappers
           no existen visualmente y el orden es: héroe, dos acciones, secciones. */}
+      {(completo || verMas) && (
       <div className="dos-col">
         <div className="col">
           {/* BLOQUE 1 — protagonista: cuánto puedes gastar hoy + estado de cuadre + saldo total */}
@@ -309,7 +359,7 @@ export default function Inicio() {
                   Ajustar saldo
                 </Boton>
                 <Boton to="/sincronizacion" state={{ abrir: 'subir' }} variante="secundario" tam="sm" className="flex-1">
-                  Conciliar con mi banco
+                  Comparar con mi banco
                 </Boton>
               </div>
             </SeccionPlegable>
@@ -484,6 +534,7 @@ export default function Inicio() {
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }

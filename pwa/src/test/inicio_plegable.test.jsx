@@ -32,6 +32,7 @@ function montar(ui = <Inicio />) {
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
+  localStorage.setItem('cuadrame:modo-completo:u1', '1') // el Inicio con todas las secciones (modo completo)
   Object.assign(api, {
     cuentas: vi.fn().mockResolvedValue([{ id: 'c1', nombre: 'Bancolombia', saldo: 1_000_000, moneda: 'COP', tipo: 'ahorro', icono: '🏦' }]),
     movimientos: vi.fn().mockResolvedValue([

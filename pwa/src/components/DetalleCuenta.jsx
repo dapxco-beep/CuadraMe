@@ -13,7 +13,7 @@ import { leerMonto } from '../lib/cuentaNueva'
 // movimientos y las dos acciones para que el saldo coincida con el banco:
 //  - Ajustar saldo: escribes el saldo real y la app crea un movimiento "Ajuste de saldo"
 //    que mueve el saldo pero NO cuenta como gasto ni ingreso en los reportes.
-//  - Conciliar con mi banco: sube el extracto o un Excel/CSV y se comparan movimientos.
+//  - Comparar con mi banco: sube el extracto o un Excel/CSV y se comparan movimientos.
 export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
   const { fmt } = useBloqueo()
   const navigate = useNavigate()
@@ -79,7 +79,7 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
             </div>
           </div>
           <p className="text-[11px] text-ink-soft mt-1.5">
-            No incluyen pagos de tarjeta, traslados entre tus cuentas ni ajustes de saldo.
+            No incluyen pagos de tarjeta, la plata que pasaste entre tus cuentas ni ajustes de saldo.
           </p>
 
           <div className="grid grid-cols-1 gap-2 mt-4">
@@ -104,7 +104,7 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
               onClick={() => navigate('/sincronizacion', { state: { abrir: 'subir' } })}
               className="flex items-center justify-center gap-2 rounded-2xl border border-line bg-paper-raised py-3.5 text-sm font-semibold"
             >
-              <FileUp size={16} className="text-accent" /> Conciliar con mi banco
+              <FileUp size={16} className="text-accent" /> Comparar con mi banco
             </button>
             <p className="text-[11px] text-ink-soft text-center">
               Sube el extracto en PDF, o <Link to="/sincronizacion" state={{ abrir: 'subir', manual: true }} className="text-accent font-medium">importa un Excel o CSV</Link> del banco.

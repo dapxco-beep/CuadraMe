@@ -204,7 +204,7 @@ export default function EntrenarCategorias() {
                 <b>{r.categoria_sugerida}</b>
               </p>
               <p className="text-xs text-accent mt-0.5">{r.razon}</p>
-              <p className="text-[11px] text-ink-soft mt-0.5">Huella del comercio: «{r.huella || '—'}»</p>
+              <p className="text-[11px] text-ink-soft mt-0.5">Nombre con el que lo reconozco: «{r.huella || '—'}»</p>
             </li>
           ))}
         </ul>

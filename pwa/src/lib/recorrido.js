@@ -1,7 +1,7 @@
 // Reglas puras del recorrido guiado («tour») que ve quien entra a una cuenta nueva: qué pasos hay,
 // qué recuerda el celular (avance, saltado, terminado) y cuándo se abre solo. Sin React.
 //
-// Pensado para gente que no es técnica: un paso por área, 1–2 frases, una ilustración y un botón
+// Pensado para gente que no es técnica: 4 tarjetas, 1–2 frases, una ilustración y un botón
 // «Probar ahora» que lleva a esa pantalla. Si la persona sale, retoma donde iba desde Perfil o Ayuda.
 
 export const CLAVE_RECORRIDO = 'cuadrame:recorrido'
@@ -9,88 +9,41 @@ export const CLAVE_RECORRIDO = 'cuadrame:recorrido'
 export const PASOS_RECORRIDO = [
   {
     id: 'inicio',
-    area: 'Inicio',
-    titulo: 'Tu plata de un vistazo',
+    area: 'Qué es',
+    titulo: 'Te muestra a dónde se va tu plata',
     texto:
-      'Arriba ves cuánta plata tienes hoy. «Disponible» es lo que hay en tus cuentas de ahorros y efectivo, listo para gastar: no cuenta tus tarjetas de crédito.',
+      'Anotas lo que entra y lo que sale, y CuadraMe te dice cuánta plata tienes y en qué la gastas. Sin hojas de cálculo.',
     ruta: '/',
     accion: 'Ir a Inicio',
   },
   {
-    id: 'cuentas',
-    area: 'Cuentas',
-    titulo: 'Cuentas: débito o tarjeta',
-    texto:
-      'Una cuenta de ahorros o débito es plata que ya tienes: lo que pagas baja tu saldo. Una tarjeta de crédito es plata del banco: lo que compras es deuda, por eso la tarjeta resta.',
-    detalle:
-      'Ejemplo con Nu: tu cuenta de ahorros Nu tiene $500.000. Tu tarjeta de crédito Nu tiene un cupo de $2.000.000 y llevas $300.000 gastados: debes $300.000 y aún puedes gastar $1.700.000. El corte es el día en que el banco cierra tu cuenta del mes; el pago es la fecha límite para no pagar intereses.',
-    ruta: '/cuentas',
-    accion: 'Ver mis cuentas',
-  },
-  {
     id: 'traer',
-    area: 'Traer movimientos',
-    titulo: 'Que los movimientos lleguen solos',
+    area: 'Tus movimientos',
+    titulo: 'Los movimientos llegan sin escribirlos',
     texto:
-      'Elige lo que más te sirva: tu correo (avisos del banco), el extracto en PDF, un Excel, o el atajo de Apple Pay en iPhone para anotar cada pago al instante.',
+      'Usa el correo de tu banco, el extracto en PDF o un Excel. También puedes anotar uno a mano. Elige lo que te quede más fácil.',
     detalle:
-      'Correo: ideal para empezar, sin escribir nada. Extracto: lo más exacto, lo cruzamos con lo que ya registraste. Excel: para traer un historial viejo de una vez. Atajo de Apple Pay: solo iPhone, anota el pago en el momento.',
+      'Correo: ideal para empezar, sin escribir nada. Extracto: lo más exacto, lo comparamos con lo que ya anotaste. Excel: para traer de una vez un historial viejo. Atajo de Apple Pay: solo iPhone y es opcional; anota cada pago al instante.',
     ruta: '/sincronizacion',
     accion: 'Traer movimientos',
   },
   {
-    id: 'movimientos',
-    area: 'Movimientos',
-    titulo: 'Ponle categoría a cada gasto',
-    texto:
-      'Cada gasto o ingreso tiene una categoría (Comida, Transporte…). Toca los chips o desliza para asignarla. La app aprende y la próxima vez lo hace sola.',
-    detalle:
-      'Si pasas plata de una cuenta tuya a otra (de tu banco a Nequi), es un traslado: no es un gasto ni un ingreso porque la plata sigue siendo tuya, y no cuenta en tus informes.',
-    ruta: '/movimientos',
-    accion: 'Ver movimientos',
-  },
-  {
-    id: 'presupuesto',
-    area: 'Presupuesto',
-    titulo: 'Cuánto puedes gastar',
-    texto:
-      'Ponle un límite al mes a cada categoría. Una barra te muestra cuánto llevas y te avisamos antes de pasarte.',
-    ruta: '/presupuesto',
-    accion: 'Hacer mi presupuesto',
-  },
-  {
-    id: 'metas',
-    area: 'Metas y deudas',
-    titulo: 'Ahorra para algo, paga lo que debes',
-    texto:
-      'En Metas guardas para un viaje o un fondo de emergencia y ves cuánto falta. En Deudas ves lo que debes y cuánto ahorras pagando primero la más cara.',
-    ruta: '/metas',
-    accion: 'Crear una meta',
-  },
-  {
     id: 'informes',
-    area: 'Informes',
-    titulo: 'En qué se va tu plata',
+    area: 'Tu plata',
+    titulo: 'Mira en qué gastas más',
     texto:
-      'Un informe claro por categoría y por comercio. Sirve para entender tus hábitos y decidir qué recortar sin sufrir.',
+      'Cada gasto tiene un tipo (comida, transporte…). Así ves cuánto se va en cada cosa y puedes ponerte un límite al mes.',
+    detalle:
+      'Si pasas plata de una cuenta tuya a otra (de tu banco a Nequi), no es un gasto ni un ingreso: la plata sigue siendo tuya, y no cuenta en tus informes.',
     ruta: '/informe',
-    accion: 'Ver mi informe',
-  },
-  {
-    id: 'asistente',
-    area: 'Asistente de IA',
-    titulo: 'Pregúntale a tu plata',
-    texto:
-      'Escribe como hablas: «¿cuánto gasté en domicilios este mes?». El asistente mira tus movimientos y te responde. Solo lee tus datos si tú lo autorizas.',
-    ruta: '/asistente',
-    accion: 'Probar el asistente',
+    accion: 'Ver mi resumen',
   },
   {
     id: 'privacidad',
     area: 'Privacidad',
     titulo: 'Tus datos son tuyos',
     texto:
-      'Con el correo solo leemos los avisos de bancos y billeteras. No leemos tus correos personales, no enviamos ni borramos nada y puedes quitar el permiso cuando quieras. También puedes descargar o borrar tus datos.',
+      'Del correo solo leemos los avisos de tu banco. No leemos tus correos personales, no enviamos ni borramos nada y puedes quitar el permiso cuando quieras.',
     ruta: '/ayuda?p=gmail-seguro',
     accion: 'Leer más',
   },
@@ -144,8 +97,11 @@ export function guardarRecorrido(uid = 'anon', cambios = {}) {
 /** Al crear la primera cuenta: el recorrido se abrirá solo la primera vez que se entre a Inicio. */
 export const marcarRecorridoPendiente = (uid = 'anon') => guardarRecorrido(uid, { pendiente: true, terminado: false, saltado: false, paso: 0 })
 
-/** ¿Debe abrirse solo? Solo si está pendiente (cuenta nueva) y la persona no lo cerró antes. */
-export const debeAbrirseSolo = (e) => !!e?.pendiente && !e.terminado && !e.saltado
+/**
+ * El recorrido es OPCIONAL («Conoce CuadraMe en 1 minuto»): nunca se abre solo. Quien llega lo primero
+ * que ve es el camino de 3 pasos de Inicio. (Se conserva la función por si algo la importa.)
+ */
+export const debeAbrirseSolo = () => false
 
 /** ¿Hay un recorrido a medias que se pueda retomar? */
 export const sePuedeRetomar = (e) => !!e?.empezado && !e.terminado && !e.saltado && !e.pendiente

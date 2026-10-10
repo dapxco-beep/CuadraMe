@@ -96,7 +96,7 @@ describe('Saldo actual claro', () => {
     api.ajustarSaldo.mockResolvedValue({ ok: true })
     envolver(<DetalleCuenta cuentaId="c1" onClose={() => {}} />)
     expect(await screen.findByTestId('saldo-detalle')).toHaveTextContent('1.500.000')
-    expect(screen.getByText('Conciliar con mi banco')).toBeInTheDocument()
+    expect(screen.getByText('Comparar con mi banco')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /Ajustar saldo/ }))
     fireEvent.change(screen.getByLabelText('Saldo real'), { target: { value: '1300000' } })
     expect(screen.getByTestId('vista-previa-ajuste')).toHaveTextContent(/-.*200\.000.*No cuenta como gasto ni ingreso/)

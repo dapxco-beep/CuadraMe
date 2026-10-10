@@ -131,7 +131,7 @@ export default function CierreMes() {
                   <Fila etiqueta="Patrimonio del mes" valor={`${informe.patrimonio.variacion >= 0 ? '+' : '-'}${formatCOP(Math.abs(informe.patrimonio.variacion))}`} />
                 )}
               </div>
-              <p className="text-[11px] text-ink-soft mt-2">No incluye pagos de tarjeta ni traslados entre tus cuentas, para no contar dos veces.</p>
+              <p className="text-[11px] text-ink-soft mt-2">No incluye pagos de tarjeta ni la plata que pasaste entre tus cuentas, para no contar dos veces.</p>
             </div>
 
             {informe.categoria_que_mas_subio && (

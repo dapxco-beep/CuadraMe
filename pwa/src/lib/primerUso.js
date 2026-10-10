@@ -71,6 +71,41 @@ export const PASOS = [
   },
 ]
 
+// ── El camino de 3 pasos (primer uso) ─────────────────────────────────────────
+// Una sola meta, explícita: «Ver a dónde se va tu plata en 5 minutos». Tres pasos y nada más; lo demás
+// (instalar la app, avisos, atajo…) llega DESPUÉS como «Mejora tu experiencia».
+export const META_CAMINO = 'Ver a dónde se va tu plata en 5 minutos'
+
+export const CAMINO = [
+  {
+    id: 'cuenta',
+    titulo: 'Crea tu cuenta',
+    apoyo: 'Efectivo, Nequi o tu banco: la que más uses.',
+    ruta: '/cuentas',
+    accion: 'Crear mi cuenta',
+  },
+  {
+    id: 'movimientos',
+    titulo: 'Trae tus movimientos',
+    apoyo: 'Desde tu correo, el extracto del banco o un Excel. No necesitas instalar nada más.',
+    ruta: '/sincronizacion',
+    accion: 'Traer movimientos',
+  },
+  {
+    id: 'resumen',
+    titulo: 'Mira tu resumen',
+    apoyo: 'Verás en qué se va tu plata, por tipo de gasto.',
+    ruta: '/informe',
+    accion: 'Ver mi resumen',
+  },
+]
+
+/** Pasos del camino con `hecho` calculado: cuentas ≥ 1, movimientos ≥ 1 y resumen visto. */
+export function armarCamino({ cuentas = 0, movimientos = 0, resumenVisto = false } = {}) {
+  const hechoDe = { cuenta: cuentas >= 1, movimientos: movimientos >= 1, resumen: !!resumenVisto && movimientos >= 1 }
+  return CAMINO.map((p) => ({ ...p, hecho: !!hechoDe[p.id] }))
+}
+
 /**
  * Pasos que le corresponden a este dispositivo, cada uno con `hecho` calculado del estado real.
  *   datos: { cuentas, instalada, permisoPush, pushActivo, gmailConectado, atajoUsado, hayExtracto }
@@ -103,13 +138,13 @@ export function resumenProgreso(pasos) {
 export const siguientePaso = (pasos) => pasos.find((p) => !p.resuelto) || null
 
 // ── Memoria del celular (solo conveniencia: si no hay almacenamiento, todo funciona igual) ──
-const VACIO = { oculto: false, saltados: [] }
+const VACIO = { oculto: false, saltados: [], resumenVisto: false }
 
 export function leerEstado(uid = 'anon') {
   try {
     const todo = JSON.parse(localStorage.getItem(CLAVE_ESTADO) || '{}')
     const e = todo?.[uid]
-    return { oculto: !!e?.oculto, saltados: Array.isArray(e?.saltados) ? e.saltados : [] }
+    return { oculto: !!e?.oculto, saltados: Array.isArray(e?.saltados) ? e.saltados : [], resumenVisto: !!e?.resumenVisto }
   } catch {
     return { ...VACIO }
   }

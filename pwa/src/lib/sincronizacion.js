@@ -6,7 +6,7 @@ import { api } from './api'
 // El color nunca va solo: cada estado trae símbolo y texto.
 export const ESTADOS_CELDA = {
   conciliado: { simbolo: '✓', texto: 'Conciliado', clase: 'bg-cuadra-soft text-cuadra border-cuadra/30' },
-  extracto_pendiente: { simbolo: '⚠', texto: 'Por conciliar', clase: 'bg-accent-soft text-accent border-accent/40' },
+  extracto_pendiente: { simbolo: '⚠', texto: 'Por revisar', clase: 'bg-accent-soft text-accent border-accent/40' },
   falta_clave: { simbolo: '🔑', texto: 'Falta la clave', clase: 'bg-danger-soft text-danger border-danger/40' },
   sin_extracto: { simbolo: '—', texto: 'Sin extracto', clase: 'bg-paper-raised text-ink-soft border-line' },
   vacio: { simbolo: '·', texto: 'Sin datos', clase: 'bg-transparent text-ink-soft/50 border-transparent' },
@@ -45,7 +45,7 @@ export function textoEstadoExtracto(ex) {
     case 'ya_conciliado':
       return ex.cruzados != null ? `Conciliado · ${textoCruzados(ex.cruzados)}` : 'Conciliado'
     case 'nuevo':
-      return 'Nuevo · listo para conciliar'
+      return 'Nuevo · listo para revisar'
     case 'falta_clave':
       return 'Falta la clave del PDF'
     case 'descartado':
@@ -116,5 +116,5 @@ export function moverMes(clave, delta) {
 export async function conciliarExtracto(ex, cuentaId) {
   if (!cuentaId) return { ok: false, error: 'Elige la cuenta del extracto' }
   const r = await api.conciliarExtractoCorreo(ex.id, cuentaId)
-  return r?.ok ? { ok: true, historialId: r.historial_id } : { ok: false, error: r?.error || 'No se pudo conciliar el extracto' }
+  return r?.ok ? { ok: true, historialId: r.historial_id } : { ok: false, error: r?.error || 'No pudimos revisar el extracto' }
 }

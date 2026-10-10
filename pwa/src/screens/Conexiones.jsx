@@ -76,7 +76,7 @@ function TarjetaGmail({ g, ir, recargar }) {
       if (!r?.ok) setError(mensajeAmable(r?.error, { porDefecto: 'No pudimos traer tus correos. Intenta de nuevo.' }))
       else setResultado(resumenSync(r))
     } catch (err) {
-      if (activo.current) setError(err.message || 'No se pudo sincronizar')
+      if (activo.current) setError(err.message || 'No pudimos traer los movimientos')
     } finally {
       if (activo.current) {
         setProgreso(null)
@@ -94,7 +94,7 @@ function TarjetaGmail({ g, ir, recargar }) {
       {g.conectado && (
         <>
           <p className="text-xs mt-2 truncate">
-            {g.email} · {g.ultima_sync ? `última sincronización ${haceCuanto(g.ultima_sync)}` : 'sin sincronizar todavía'}
+            {g.email} · {g.ultima_sync ? `última vez ${haceCuanto(g.ultima_sync)}` : 'todavía no se traen movimientos'}
           </p>
           <div className="grid grid-cols-3 gap-2 mt-3">
             <Dato etiqueta="correos leídos" valor={g.correos_leidos} />
@@ -134,7 +134,7 @@ function TarjetaGmail({ g, ir, recargar }) {
         {g.conectado ? (
           <Boton onClick={sincronizar} disabled={sincronizando} className="flex-1 bg-ink text-paper">
             <RefreshCw size={16} className={sincronizando ? 'animate-spin' : ''} />
-            {sincronizando ? 'Sincronizando...' : 'Sincronizar todo'}
+            {sincronizando ? 'Trayendo movimientos...' : 'Traer todo ahora'}
           </Boton>
         ) : (
           <Boton onClick={() => ir('correo')} className="flex-1 bg-ink text-paper">
@@ -264,7 +264,7 @@ function TarjetaConciliacion({ c, ir }) {
                   onClick={() => ir('subir', { historialId: f.historial_id })}
                   className="w-full mt-2 border border-line"
                 >
-                  Conciliar ahora
+                  Revisar ahora
                 </Boton>
               </>
             ) : (

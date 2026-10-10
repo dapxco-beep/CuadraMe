@@ -35,7 +35,7 @@ beforeEach(() => Object.values(api).forEach((f) => f.mockReset()))
 describe('aviso de periodo ya conciliado', () => {
   it('dice cuenta, mes y movimientos cruzados, y deja seguir', () => {
     montar(<AvisoYaConciliado info={{ mes: '2026-09', cruzados: 12 }} cuenta="Nu" />)
-    expect(screen.getByText('Este periodo de Nu ya está conciliado: ¿revisarlo de nuevo?')).toBeInTheDocument()
+    expect(screen.getByText('Este periodo de Nu ya lo revisamos con tu extracto: ¿quieres revisarlo otra vez?')).toBeInTheDocument()
     expect(screen.getByText(/Septiembre 2026 · 12 movimientos cruzados/)).toBeInTheDocument()
     expect(screen.getByText(/no se duplica/)).toBeInTheDocument()
   })
@@ -61,7 +61,7 @@ describe('aviso de periodo ya conciliado', () => {
     const pdf = new File(['%PDF-1.4'], 'sep.pdf', { type: 'application/pdf' })
     montar(<SubidaMultiple archivosIniciales={[pdf]} cuentaInicial="c1" onCancelar={vi.fn()} />)
     await userEvent.click(screen.getByRole('button', { name: /Procesar/ }))
-    expect(await screen.findByText('Este periodo de Nu ya está conciliado: ¿revisarlo de nuevo?')).toBeInTheDocument()
+    expect(await screen.findByText('Este periodo de Nu ya lo revisamos con tu extracto: ¿quieres revisarlo otra vez?')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Revisar/ })).toBeEnabled()
   })
 })

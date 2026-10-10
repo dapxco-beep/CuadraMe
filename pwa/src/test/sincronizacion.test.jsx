@@ -118,14 +118,14 @@ describe('helpers de Sincronización', () => {
 
   it('dice el estado de cada extracto en palabras', () => {
     expect(textoEstadoExtracto({ estado: 'procesado', cruzados: 18 })).toBe('Conciliado · 18 movimientos cruzados')
-    expect(textoEstadoExtracto({ estado: 'nuevo' })).toBe('Nuevo · listo para conciliar')
+    expect(textoEstadoExtracto({ estado: 'nuevo' })).toBe('Nuevo · listo para revisar')
     expect(textoEstadoExtracto({ estado: 'falta_clave' })).toBe('Falta la clave del PDF')
     expect(textoEstadoExtracto({ estado: 'descartado' })).toBe('Ignorado')
   })
 
   it('cada estado de celda trae símbolo y texto (el color nunca va solo)', () => {
     expect(estadoCelda('conciliado')).toMatchObject({ simbolo: '✓', texto: 'Conciliado' })
-    expect(estadoCelda('extracto_pendiente')).toMatchObject({ simbolo: '⚠', texto: 'Por conciliar' })
+    expect(estadoCelda('extracto_pendiente')).toMatchObject({ simbolo: '⚠', texto: 'Por revisar' })
     expect(estadoCelda('falta_clave')).toMatchObject({ simbolo: '🔑' })
     expect(estadoCelda('sin_extracto')).toMatchObject({ simbolo: '—' })
     expect(estadoCelda('raro').texto).toBe('Sin datos')
@@ -145,14 +145,14 @@ describe('pantalla Sincronización', () => {
     const tarjetas = screen.getAllByTestId(/^tarea-/).map((t) => t.getAttribute('data-testid'))
     expect(tarjetas).toEqual(['tarea-falta_clave', 'tarea-extractos_por_conciliar', 'tarea-sin_cuenta', 'tarea-movimientos_por_categorizar', 'tarea-correos_por_revisar'])
     expect(screen.queryByTestId('tarea-movimientos_por_confirmar')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Sincronizar todo' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Traer todo ahora' })).toBeTruthy()
   })
 
-  it('sin tareas muestra "Todo al día" con la fecha de la última sincronización', async () => {
+  it('sin tareas muestra "Todo al día" con la fecha de la última vez', async () => {
     api.sincronizacionEstado.mockResolvedValue({ ...ESTADO, tareas: [], sin_cuenta: [], ultima_sync: new Date(Date.now() - 2 * 3600 * 1000).toISOString().replace('Z', '') })
     montar()
     const vacio = await screen.findByTestId('todo-al-dia')
-    expect(vacio.textContent).toMatch(/Todo al día · última sincronización hace 2 h/)
+    expect(vacio.textContent).toMatch(/Todo al día · última vez hace 2 h/)
     expect(screen.getByTestId('resumen-tareas').textContent).toBe('Todo al día')
     // Cada bloque con cero pendientes queda en «Todo al día».
     expect(screen.getByTestId('al-dia-sinc-correo')).toBeTruthy()
@@ -164,7 +164,7 @@ describe('pantalla Sincronización', () => {
     await screen.findByText('Tienes 5 cosas por resolver')
     expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, junio 2026: Conciliado' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, julio 2026: Falta la clave' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, agosto 2026: Por conciliar' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, agosto 2026: Por revisar' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Bancolombia Ahorros, septiembre 2026: Sin extracto' }))
     const det = screen.getByRole('region', { name: 'Detalle del mes' })
     expect(within(det).getByText(/4 movimientos · 0 conciliados · 1 por confirmar/)).toBeTruthy()
@@ -189,18 +189,18 @@ describe('pantalla Sincronización', () => {
     montar()
     await screen.findByText('Tienes 5 cosas por resolver')
     const nuevo = screen.getByTestId('extracto-e1')
-    expect(within(nuevo).getByText('Nuevo · listo para conciliar')).toBeTruthy()
+    expect(within(nuevo).getByText('Nuevo · listo para revisar')).toBeTruthy()
     expect(within(nuevo).getByText('Cuenta: Bancolombia Ahorros')).toBeTruthy()
-    // Lo ya conciliado no es pendiente: va en una sección plegada 'Ya conciliados (N)'.
+    // Lo ya conciliado no es pendiente: va en una sección plegada 'Extractos ya revisados (N)'.
     expect(screen.queryByText('Conciliado · 18 movimientos cruzados')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /Ya conciliados \(1\)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Extractos ya revisados \(1\)/ }))
     expect(screen.getByText(/18 movimientos cruzados/)).toBeTruthy()
     expect(within(screen.getByTestId('extracto-e4')).getByText('Falta la clave del PDF')).toBeTruthy()
 
     // Sin banco detectado: se dice, y la cuenta es obligatoria.
     const sinBanco = screen.getByTestId('extracto-e2')
     expect(within(sinBanco).getByText(/Banco sin identificar/)).toBeTruthy()
-    const boton = within(sinBanco).getByRole('button', { name: 'Conciliar' })
+    const boton = within(sinBanco).getByRole('button', { name: 'Revisar extracto' })
     expect(boton.disabled).toBe(true)
     fireEvent.change(within(sinBanco).getByLabelText(/Cuenta del extracto/), { target: { value: 'nu' } })
     expect(boton.disabled).toBe(false)
@@ -210,7 +210,7 @@ describe('pantalla Sincronización', () => {
       ok: true, historial_id: 'h1', cuenta_id: 'bc', banco_detectado: 'Bancolombia', total_movimientos: 1, descartados: 0,
       review: [{ fingerprint: 'f1', fecha: '2026-09-02', descripcion: 'Compra D1', monto: 1000, tipo: 'expense', estado: 'faltante' }],
     })
-    fireEvent.click(within(nuevo).getByRole('button', { name: 'Conciliar' }))
+    fireEvent.click(within(nuevo).getByRole('button', { name: 'Revisar extracto' }))
     await waitFor(() => expect(api.conciliarExtractoCorreo).toHaveBeenCalledWith('e1', 'bc'))
     expect(await screen.findByTestId('revision-multiple')).toBeTruthy()
     expect(api.obtenerReviewExtracto).toHaveBeenCalledWith('h1')
@@ -232,7 +232,7 @@ describe('pantalla Sincronización', () => {
     await waitFor(() => expect(api.recategorizarComercio).toHaveBeenCalledWith('m2', { categoria: 'Transporte', aplicar_a_todos: false, patron: 'Uber' }))
   })
 
-  it('Sincronizar todo lee Gmail por lotes con progreso y resume lo nuevo', async () => {
+  it('Traer todo ahora lee Gmail por lotes con progreso y resume lo nuevo', async () => {
     let terminar
     const segundo = new Promise((res) => { terminar = res })
     api.sincronizarCorreos
@@ -240,7 +240,7 @@ describe('pantalla Sincronización', () => {
       .mockReturnValueOnce(segundo)
     montar()
     await screen.findByText('Tienes 5 cosas por resolver')
-    fireEvent.click(screen.getByRole('button', { name: 'Sincronizar todo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Traer todo ahora' }))
     expect(await screen.findByText('Leí 120 de 340')).toBeTruthy()
     terminar({ ok: true, completado: true, leidos: 340, total_estimado: 340, nuevos: 12, extractos_nuevos: 2, extractos_encontrados: 2 })
     expect(await screen.findByText(/Leí 340 correos\. Encontré 12 movimientos nuevos y 2 extractos\./)).toBeTruthy()

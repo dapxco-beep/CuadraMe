@@ -32,7 +32,7 @@ import SelectorCuentaBanco from '../components/SelectorCuentaBanco'
 import { cuentaRecordada, productoDeTexto } from '../lib/cuentasBanco'
 
 // "Traer movimientos": UN solo centro para todo lo que trae movimientos a CuadraMe.
-//   Arriba: estado y «Sincronizar todo».  Luego tres bloques plegables con contador:
+//   Arriba: estado y «Traer todo ahora».  Luego tres bloques plegables con contador:
 //   Desde tu correo (Gmail) · Subir archivos (PDF/Excel/CSV) · Por revisar.
 // Todo lo que muestra viene de GET /sincronizacion/estado (una llamada) más lo propio de cada
 // bloque; las rutas viejas (/correos, /conciliacion, /importar, /conexiones) redirigen aquí.
@@ -224,7 +224,7 @@ export default function Sincronizacion() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cargando])
 
-  // ── Sincronizar todo (Gmail por lotes) ─────────────────────────────
+  // ── Traer todo ahora (Gmail por lotes) ─────────────────────────────
   const sincronizando = Boolean(progreso)
 
   async function sincronizar(silencioso = false) {
@@ -295,7 +295,7 @@ export default function Sincronizacion() {
         await cargar()
       }
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudo conciliar el extracto')
+      setAvisoExt(err.message || 'No pudimos revisar el extracto')
     } finally {
       if (montado.current) {
         setOcupados((s) => {
@@ -338,7 +338,7 @@ export default function Sincronizacion() {
       await api.guardarClavePdf(claveInput.trim())
       setClaveInput('')
       setClaveConfigurada(true)
-      setAvisoExt('Clave guardada. Toca «Sincronizar todo» para abrir esos extractos.')
+      setAvisoExt('Clave guardada. Toca «Traer todo ahora» para abrir esos extractos.')
     } catch (err) {
       setAvisoExt(err.message || 'No se pudo guardar la clave')
     }
@@ -455,7 +455,7 @@ export default function Sincronizacion() {
             className="w-full flex items-center justify-center gap-2 bg-ink text-paper font-semibold rounded-2xl py-3.5 text-[15px] disabled:opacity-60"
           >
             <RefreshCw size={16} className={sincronizando ? 'animate-spin' : ''} aria-hidden="true" />
-            {sincronizando ? 'Sincronizando...' : 'Sincronizar todo'}
+            {sincronizando ? 'Trayendo movimientos...' : 'Traer todo ahora'}
           </button>
         ) : (
           <button
@@ -470,7 +470,7 @@ export default function Sincronizacion() {
             <div className="mt-3">
               <BarraProgreso
                 pct={progreso.total_estimado ? Math.min(100, Math.round((progreso.leidos / progreso.total_estimado) * 100)) : 0}
-                label="Progreso de la sincronización"
+                label="Progreso de la búsqueda de movimientos"
                 className="h-2 rounded-full bg-line overflow-hidden"
                 fillClass=""
               />
@@ -489,7 +489,7 @@ export default function Sincronizacion() {
         {tareas.length === 0 ? (
           <p className="flex items-center justify-center gap-1.5 text-xs text-ink-soft mt-3" data-testid="todo-al-dia">
             <CheckCircle2 size={14} className="text-cuadra" aria-hidden="true" />
-            {ultima ? `Todo al día · última sincronización ${ultima}` : 'Todo al día'}
+            {ultima ? `Todo al día · última vez ${ultima}` : 'Todo al día'}
           </p>
         ) : (
           <ul className="flex flex-col gap-2 mt-3" aria-label="Por resolver">
@@ -823,7 +823,7 @@ export default function Sincronizacion() {
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
                     {celdaDetalle.estado === 'extracto_pendiente' && (
-                      <button onClick={() => abrirBloque('correo', 'sinc-extractos')} className="rounded-xl bg-accent text-white text-xs font-semibold px-3.5 py-2.5">Conciliar</button>
+                      <button onClick={() => abrirBloque('correo', 'sinc-extractos')} className="rounded-xl bg-accent text-white text-xs font-semibold px-3.5 py-2.5">Revisar extracto</button>
                     )}
                     {celdaDetalle.estado === 'falta_clave' && (
                       <button onClick={() => { setMostrarClave(true); abrirBloque('correo', 'sinc-clave') }} className="rounded-xl bg-accent text-white text-xs font-semibold px-3.5 py-2.5">Poner clave</button>
@@ -923,7 +923,7 @@ function FilaExtracto({ ex, cuentas, cuentaId, nombreCuenta, ocupado, onCuenta, 
 
       <div className="flex gap-2 mt-3">
         {ex.estado === 'procesado' && ex.historial_id && (
-          <button onClick={onVer} className="flex-1 border border-line rounded-xl py-2.5 text-sm font-semibold">Ver conciliación</button>
+          <button onClick={onVer} className="flex-1 border border-line rounded-xl py-2.5 text-sm font-semibold">Ver qué se encontró</button>
         )}
         {puedeConciliar && (
           <button
@@ -931,7 +931,7 @@ function FilaExtracto({ ex, cuentas, cuentaId, nombreCuenta, ocupado, onCuenta, 
             disabled={ocupado || !cuentaId}
             className="flex-1 bg-accent text-white font-semibold rounded-xl py-2.5 text-sm disabled:opacity-50"
           >
-            {ocupado ? 'Conciliando...' : 'Conciliar'}
+            {ocupado ? 'Revisando...' : 'Revisar extracto'}
           </button>
         )}
         {ex.estado === 'falta_clave' && (

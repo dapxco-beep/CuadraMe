@@ -13,6 +13,7 @@ import ClaveAtajo from '../components/ClaveAtajo'
 import { useClaveAtajo } from '../lib/useClaveAtajo'
 import Cuadri from '../brand/Cuadri'
 import { useMostrarCuadri } from '../lib/cuadri'
+import { useModoMenu } from '../lib/modoSimple'
 import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../lib/push'
 
 export default function Perfil() {
@@ -20,6 +21,7 @@ export default function Perfil() {
   const { usuario, logout } = useAuth()
   const { avisar } = useDialogos()
   const claveAtajo = useClaveAtajo()
+  const { completo, setCompleto } = useModoMenu()
   const [mostrarCuadri, cambiarCuadri] = useMostrarCuadri()
   const [permisoPush, setPermisoPush] = useState('default')
   const [cargandoPush, setCargandoPush] = useState(false)
@@ -123,6 +125,33 @@ export default function Perfil() {
         </div>
       </section>
 
+      {/* Modo simple: por defecto el menú muestra solo lo esencial; aquí se muestran todas las funciones */}
+      <section className="mx-6 mt-6" aria-label="Qué funciones ver">
+        <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium" id="etq-todas-funciones">Mostrar todas las funciones</p>
+            <p className="text-xs text-ink-soft mt-0.5">
+              {completo
+                ? 'Ves todo: metas, deudas, impuestos, patrimonio y más.'
+                : 'Ahora ves solo lo básico. Actívalo para ver metas, deudas, impuestos y más.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCompleto(!completo)}
+            role="switch"
+            aria-checked={completo}
+            aria-labelledby="etq-todas-funciones"
+            data-testid="switch-todas-funciones"
+            className="shrink-0 min-h-11 w-14 flex items-center justify-center"
+          >
+            <span className={`block w-12 h-7 rounded-full transition-colors relative ${completo ? 'bg-accent' : 'bg-line'}`}>
+              <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${completo ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </span>
+          </button>
+        </div>
+      </section>
+
       {/* Lo que desaparece de Inicio al completarse (u ocultarse) sigue aquí para repasarlo */}
       <RecorridoEntrada />
       <AsistentePrimerUso variante="perfil" />
@@ -168,7 +197,7 @@ export default function Perfil() {
       </section>
 
       <section className="mx-6 mt-6">
-        <h2 className="text-[15px] font-semibold mb-3">Registro automático</h2>
+        <h2 className="text-[15px] font-semibold mb-3">Traer tus movimientos</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
           <Link to="/sincronizacion" className="flex items-center gap-3 px-4 py-3.5">
             <RefreshCw size={20} className="text-accent shrink-0" />
@@ -181,10 +210,10 @@ export default function Perfil() {
         </div>
 
         <div className="rounded-2xl bg-paper-raised border border-line p-4 mt-3">
-          <p className="text-sm font-medium">Qué tan seguro debe estar para auto-importar</p>
+          <p className="text-sm font-medium">¿Cuándo registrar un movimiento sin preguntarte?</p>
           <p className="text-xs text-ink-soft mt-0.5 mb-3">
-            Al conciliar un extracto, un movimiento se registra solo (sin pedirte que lo revises)
-            cuando la categoría detectada supera este nivel de seguridad.
+            Cuando lees un extracto del banco, CuadraMe registra el movimiento sin preguntarte si está
+            muy seguro de la categoría. Más estricto = te pregunta más seguido.
           </p>
           <input
             type="range"
@@ -203,6 +232,7 @@ export default function Perfil() {
         </div>
       </section>
 
+      {completo && (
       <section className="mx-6 mt-6">
         <h2 className="text-[15px] font-semibold mb-3">Planeación</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
@@ -238,7 +268,9 @@ export default function Perfil() {
           </Link>
         </div>
       </section>
+      )}
 
+      {completo && (
       <section className="mx-6 mt-6">
         <h2 className="text-[15px] font-semibold mb-3">Extra</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
@@ -259,6 +291,7 @@ export default function Perfil() {
           </Link>
         </div>
       </section>
+      )}
 
       <section className="mx-6 mt-8">
         <div className="flex items-center gap-2 mb-3">
@@ -349,6 +382,7 @@ export default function Perfil() {
 
       <SeccionSeguridad />
 
+      {completo && (
       <section className="mx-6 mt-8">
         <div className="flex items-center gap-2 mb-3">
           <Link2 size={16} className="text-ink-soft" />
@@ -372,6 +406,7 @@ export default function Perfil() {
           </Link>
         </div>
       </section>
+      )}
 
       <section className="mx-6 mt-8">
         <div className="flex items-center gap-2 mb-3">

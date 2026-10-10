@@ -7,14 +7,12 @@ import {
 } from '../lib/recorrido'
 import Icono from './Icono'
 import Recorrido from './Recorrido'
-import { Boton } from './ui'
 
 /**
- * Puerta de entrada al recorrido guiado.
- *  - variante="inicio": lo abre solo la primera vez que una cuenta NUEVA entra a Inicio; si la persona
- *    lo dejó a medias (o fue a «Probar ahora») muestra una tarjeta «Sigue con tu recorrido».
+ * Puerta de entrada al recorrido «Conoce CuadraMe en 1 minuto» (4 tarjetas). Es OPCIONAL: nunca se abre solo.
+ *  - variante="inicio": una fila discreta bajo el camino de 3 pasos («Conoce CuadraMe en 1 minuto»); si lo
+ *    dejó a medias dice «Seguir el recorrido». Desaparece al terminarlo o descartarlo.
  *  - variante="enlace": fila para Perfil y Ayuda: «Ver recorrido otra vez» (o «Continuar recorrido»).
- * Al terminar, vuelve a Inicio, donde sigue la lista de «Primeros pasos».
  */
 export default function RecorridoEntrada({ variante = 'enlace' }) {
   const { usuario } = useAuth() || {}
@@ -41,26 +39,25 @@ export default function RecorridoEntrada({ variante = 'enlace' }) {
   return (
     <>
       {variante === 'inicio' ? (
-        retomable &&
+        !estado.terminado &&
+        !estado.saltado &&
         !abierto && (
-          <section aria-label="Recorrido de CuadraMe" data-testid="recorrido-retomar" className="mx-6 mt-3 tarjeta p-4">
-            <div className="flex items-center gap-2">
-              <span className="w-9 h-9 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
-                <Icono icono={Compass} tam="md" />
-              </span>
-              <div className="flex-1 min-w-0">
-                <h2 className="t-h2">Sigue con tu recorrido</h2>
-                <p className="t-apoyo">Vas en el paso {estado.paso + 1} de {TOTAL_PASOS}.</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 mt-3">
-              <Boton tam="sm" icono={Play} onClick={abrir}>Continuar</Boton>
+          <section aria-label="Recorrido de CuadraMe" data-testid="recorrido-retomar" className="mx-6 mt-2">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={abrir}
+                className="min-h-11 flex items-center gap-2 text-sm font-semibold text-accent text-left"
+              >
+                <Icono icono={retomable ? Play : Compass} tam="sm" />
+                {retomable ? 'Seguir el recorrido de 1 minuto' : 'Conoce CuadraMe en 1 minuto'}
+              </button>
               <button
                 type="button"
                 onClick={() => setEstado(guardarRecorrido(uid, { saltado: true }))}
                 className="min-h-11 px-2 text-xs font-medium text-ink-soft"
               >
-                Ahora no
+                No, gracias
               </button>
             </div>
           </section>
@@ -76,10 +73,10 @@ export default function RecorridoEntrada({ variante = 'enlace' }) {
             <Icono icono={Compass} tam="md" className="text-accent" />
             <span className="flex-1">
               <span className="block text-sm font-medium">
-                {estado.terminado || !estado.empezado ? 'Ver recorrido otra vez' : 'Continuar el recorrido'}
+                {estado.terminado || estado.saltado || !estado.empezado ? 'Conoce CuadraMe en 1 minuto' : 'Continuar el recorrido'}
               </span>
               <span className="block text-xs text-ink-soft mt-0.5">
-                Un paseo de {TOTAL_PASOS} pasos por todo lo que puedes hacer en CuadraMe.
+                {TOTAL_PASOS} tarjetas cortas: qué es, cómo traer tu información y cómo se ven tus gastos.
               </span>
             </span>
           </button>

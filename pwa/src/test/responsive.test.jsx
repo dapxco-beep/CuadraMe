@@ -51,6 +51,8 @@ function montar(ancho, ruta = '/', contenido = <p>Pantalla</p>) {
   )
 }
 
+beforeEach(() => localStorage.setItem('cuadrame:modo-completo:anon', '1')) // menús completos
+
 describe('Shell responsive', () => {
   it('<768 px: barra inferior con el + central y sin riel ni barra lateral', () => {
     const { container } = montar(390)

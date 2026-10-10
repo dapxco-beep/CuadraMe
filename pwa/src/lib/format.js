@@ -65,7 +65,7 @@ const ORIGENES = {
   importacion_archivo: 'Archivo importado',
   conciliacion_extracto: 'Extracto del banco',
   conciliacion_auto: 'Extracto del banco',
-  transferencia_interna: 'Traslado entre tus cuentas',
+  transferencia_interna: 'Plata entre tus cuentas',
   ajuste_saldo: 'Ajuste de saldo',
   cierre_app: 'Cierre de mes',
   aporte_meta: 'Aporte a una meta',

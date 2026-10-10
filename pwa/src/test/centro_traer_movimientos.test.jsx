@@ -303,13 +303,13 @@ describe('contadores y estados', () => {
       .mockResolvedValueOnce({ ok: true, completado: false, leidos: 10, total_estimado: 40 })
       .mockReturnValueOnce(new Promise((res) => { terminar = res }))
     montarCentro()
-    fireEvent.click(await screen.findByRole('button', { name: 'Sincronizar todo' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Traer todo ahora' }))
     expect(await screen.findByText('Leí 10 de 40')).toBeTruthy()
-    const barra = screen.getByRole('progressbar', { name: 'Progreso de la sincronización' })
+    const barra = screen.getByRole('progressbar', { name: 'Progreso de la búsqueda de movimientos' })
     expect(barra).toHaveAttribute('aria-valuenow', '25')
     expect(barra.closest('[aria-live="polite"]')).toBeTruthy()
     terminar({ ok: true, completado: true, leidos: 40, total_estimado: 40, nuevos: 0, extractos_encontrados: 0 })
-    await waitFor(() => expect(screen.queryByRole('progressbar', { name: 'Progreso de la sincronización' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('progressbar', { name: 'Progreso de la búsqueda de movimientos' })).toBeNull())
   })
 
   it('error de carga con «Reintentar»', async () => {

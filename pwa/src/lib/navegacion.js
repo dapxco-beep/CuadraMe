@@ -48,7 +48,7 @@ export const GRUPOS = [
     icon: Lightbulb,
     items: [
       { to: '/informe', icon: PieChart, label: 'Informe', palabras: 'en que gasto categoria comercios reporte' },
-      { to: '/insights', icon: Sparkles, label: 'Insights', palabras: 'consejos hallazgos' },
+      { to: '/insights', icon: Sparkles, label: 'Hallazgos', palabras: 'insights consejos descubrimientos' },
       { to: '/asistente', icon: Bot, label: 'Asistente', palabras: 'cuadrame ai ia pregunta chat' },
       { to: '/ahorcado', icon: Sprout, label: 'Árbol financiero', palabras: 'salud puntaje ahorcado vidas' },
     ],
@@ -94,6 +94,57 @@ export function esAdminVisible(email) {
 
 // Lista plana del menú «Más» (lo que antes era ITEMS_MAS)
 export const ITEMS_MAS = GRUPOS.flatMap((g) => g.items.map((i) => ({ ...i, grupo: g.id })))
+
+// ── Modo simple ──────────────────────────────────────────────────────────
+// Lo esencial a la vista; el resto, en el grupo plegado «Más funciones» con una frase de qué hace
+// cada una. Las rutas NO cambian: siguen abriendo por enlace directo y por el buscador.
+export const MAS_FUNCIONES_ID = 'mas-funciones'
+const RUTAS_ESENCIALES = ['/sincronizacion', '/perfil', '/ayuda']
+
+export const EXPLICACION = {
+  '/cuentas': 'Tus bancos, tarjetas y efectivo, cada uno con su saldo.',
+  '/deudas': 'Lo que debes y cuál conviene pagar primero.',
+  '/recurrentes': 'Pagos que se repiten, como el arriendo o una suscripción.',
+  '/impuestos': 'Cuánto te cobran por el 4x1000 y qué te sirve para la renta.',
+  '/metas': 'Guarda plata poco a poco para algo que quieres.',
+  '/patrimonio': 'Todo lo que tienes menos todo lo que debes.',
+  '/cierre-mes': 'Un balance de cómo te fue en el mes.',
+  '/resumen': 'Tu mes contado en diapositivas para compartir.',
+  '/informe': 'En qué gastas más, por tipo de gasto y por lugar.',
+  '/insights': 'Datos curiosos que encontramos en tus gastos.',
+  '/asistente': 'Pregúntale a CuadraMe cosas sobre tu plata.',
+  '/ahorcado': 'Un puntaje de qué tan sana va tu plata.',
+  '/categorias': 'Los tipos de gasto: comida, transporte, salud…',
+  '/entrenar-categorias': 'Enséñale a CuadraMe cómo clasificas tus gastos.',
+  '/reglas-categoria': 'Si un lugar siempre es del mismo tipo, que se ponga solo.',
+  '/aprende': 'Lecciones cortas, de un minuto, sobre plata.',
+  '/legal/privacidad': 'Qué datos usamos y cómo los cuidamos.',
+  '/conectar-dispositivo': 'Anota solos los pagos que haces con tu celular (opcional).',
+}
+
+/**
+ * Grupos del menú según el modo. `enUso`: rutas de funciones que la persona ya usa (tiene metas,
+ * deudas…): suben solas a «Lo que ya usas». En modo completo son los GRUPOS de siempre.
+ */
+export function gruposSegunModo({ completo = false, enUso = [] } = {}) {
+  if (completo) return GRUPOS
+  const porRuta = Object.fromEntries(ITEMS_MAS.map((i) => [i.to, i]))
+  const conExplica = (i) => ({ ...i, explica: EXPLICACION[i.to] })
+  const esenciales = RUTAS_ESENCIALES.map((to) => porRuta[to]).filter(Boolean)
+  const usadas = ITEMS_MAS.filter((i) => enUso.includes(i.to) && !RUTAS_ESENCIALES.includes(i.to)).map(conExplica)
+  const resto = ITEMS_MAS.filter((i) => !RUTAS_ESENCIALES.includes(i.to) && !enUso.includes(i.to)).map(conExplica)
+  return [
+    { id: 'esencial', titulo: 'Lo esencial', items: esenciales },
+    ...(usadas.length ? [{ id: 'en-uso', titulo: 'Lo que ya usas', items: usadas }] : []),
+    { id: MAS_FUNCIONES_ID, titulo: 'Más funciones', plegado: true, items: resto },
+  ]
+}
+
+/** Destinos extra del riel (iPad vertical) junto a los principales. */
+export function extrasRiel({ completo = false } = {}) {
+  const por = Object.fromEntries(ITEMS_MAS.map((i) => [i.to, i]))
+  return completo ? [por['/patrimonio'], por['/sincronizacion']] : [por['/sincronizacion']]
+}
 
 // Todo lo que el buscador puede encontrar (incluye las pantallas principales)
 export const TODOS_LOS_DESTINOS = [...PRINCIPALES, ...ITEMS_MAS, ...EXTRA_BUSQUEDA]

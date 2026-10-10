@@ -38,6 +38,7 @@ const bolsillo = (disponible_real) => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  localStorage.setItem('cuadrame:modo-completo:u1', '1') // estas pruebas miran el menú y el Inicio completos
   Object.assign(api, {
     cuentas: vi.fn().mockResolvedValue([{ id: 'c1', nombre: 'Bancolombia', saldo: 1_000_000, moneda: 'COP', tipo: 'ahorro', icono: '🏦' }]),
     movimientos: vi.fn().mockResolvedValue([]),

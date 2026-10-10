@@ -6,7 +6,8 @@ import { useAuth } from '../lib/AuthContext'
 import { activarPush, estadoPermiso, pushSoportado } from '../lib/push'
 import { mensajeDeError } from '../lib/mensajes'
 import {
-  armarPasos, detectarDispositivo, estaInstalada, guardarEstado, leerEstado, resumenProgreso, siguientePaso,
+  armarCamino, armarPasos, detectarDispositivo, estaInstalada, guardarEstado, leerEstado, META_CAMINO, resumenProgreso,
+  siguientePaso,
 } from '../lib/primerUso'
 import BarraProgreso from './BarraProgreso'
 import GuiaInstalar from './GuiaInstalar'
@@ -80,7 +81,69 @@ function usePrimerUso() {
     saltar: (id) => cambiarMemoria({ ...memoria, saltados: [...new Set([...memoria.saltados, id])] }),
     retomar: (id) => cambiarMemoria({ ...memoria, saltados: memoria.saltados.filter((s) => s !== id) }),
     recargar: cargar,
+    resumenVisto: memoria.resumenVisto,
+    marcarResumenVisto: () => cambiarMemoria({ ...memoria, resumenVisto: true }),
   }
+}
+
+// El camino de 3 pasos: UNA meta, tres pasos visibles, una barra de avance y un solo botón (el del
+// paso que sigue). Cada paso se marca solo, según lo que de verdad hay en la cuenta.
+function CaminoDeTres({ pasos, onResumen }) {
+  const hechos = pasos.filter((x) => x.hecho).length
+  const siguiente = pasos.find((x) => !x.hecho)
+  return (
+    <section aria-label="Tu camino de 3 pasos" data-testid="camino-primer-uso" className="mx-6 mt-3 tarjeta p-4">
+      <div className="flex items-start gap-2.5">
+        <span className="w-9 h-9 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
+          <Icono icono={Rocket} tam="md" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="t-kicker text-ink-soft">Tu meta</p>
+          <h2 className="t-h2 leading-snug">{META_CAMINO}</h2>
+        </div>
+      </div>
+      <BarraProgreso
+        pct={Math.round((hechos / pasos.length) * 100)}
+        label="Avance de tu camino"
+        texto={`${hechos} de ${pasos.length} pasos`}
+        className="h-2 rounded-full bg-line overflow-hidden mt-3"
+      />
+      <p className="t-apoyo mt-1.5" data-testid="progreso-camino">
+        {hechos} de {pasos.length} pasos
+      </p>
+      <ol className="mt-2 divide-y divide-line" aria-label="Los 3 pasos">
+        {pasos.map((paso, i) => {
+          const esSiguiente = paso.id === siguiente?.id
+          return (
+            <li key={paso.id} className="py-3" data-paso={paso.id} data-estado={paso.hecho ? 'hecho' : esSiguiente ? 'siguiente' : 'pendiente'}>
+              <div className="flex items-start gap-3">
+                <span className={`mt-0.5 ${paso.hecho ? 'text-accent' : 'text-ink-soft'}`}>
+                  <Icono icono={paso.hecho ? CircleCheck : Circle} tam="md" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className={`t-cuerpo font-semibold ${paso.hecho ? 'text-ink-soft' : ''}`}>
+                    <span aria-hidden="true">{i + 1}. </span>
+                    {paso.titulo}
+                    <span className="sr-only">{paso.hecho ? ' (hecho)' : esSiguiente ? ' (el que sigue)' : ' (pendiente)'}</span>
+                  </p>
+                  {esSiguiente && (
+                    <>
+                      <p className="t-apoyo mt-0.5">{paso.apoyo}</p>
+                      <div className="mt-2">
+                        <Boton tam="sm" to={paso.ruta} onClick={paso.id === 'resumen' ? onResumen : undefined}>
+                          {paso.accion}
+                        </Boton>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+    </section>
+  )
 }
 
 function AvisoPrivacidadGmail() {
@@ -162,7 +225,9 @@ function FilaPaso({ paso, destacado, onGuia, onSaltar, onRetomar, onActivar, act
   )
 }
 
-export default function AsistentePrimerUso({ variante = 'inicio' }) {
+// `camino` ({ cuentas, movimientos }) lo pasa Inicio: con él, primero va el camino de 3 pasos y, al
+// completarlo, esta lista pasa a llamarse «Mejora tu experiencia» (instalar, avisos, atajo…).
+export default function AsistentePrimerUso({ variante = 'inicio', camino = null }) {
   const p = usePrimerUso()
   const [verTodos, setVerTodos] = useState(false)
   const [guia, setGuia] = useState(false)
@@ -185,9 +250,14 @@ export default function AsistentePrimerUso({ variante = 'inicio' }) {
     }
   }
 
-  if (!p.cargado) return null
-  const { progreso, pasos } = p
   const enInicio = variante === 'inicio'
+  const pasosCamino = camino && enInicio ? armarCamino({ ...camino, resumenVisto: p.resumenVisto || camino.resumenVisto }) : null
+  if (pasosCamino && pasosCamino.some((x) => !x.hecho)) return <CaminoDeTres pasos={pasosCamino} onResumen={p.marcarResumenVisto} />
+
+  if (!p.cargado) return null
+  // Con el camino completo, «Cuentas» ya está hecho: la lista de mejoras trae solo lo demás.
+  const pasos = pasosCamino ? p.pasos.filter((x) => x.id !== 'cuentas') : p.pasos
+  const progreso = pasosCamino ? resumenProgreso(pasos) : p.progreso
   // En Inicio: solo mientras falte algo y no se haya ocultado. En Perfil siempre.
   if (enInicio && (progreso.completo || p.oculto)) {
     // Al completar los primeros pasos Cuadri celebra una sola vez (breve, descartable, sin bloquear).
@@ -196,12 +266,12 @@ export default function AsistentePrimerUso({ variante = 'inicio' }) {
 
   const siguiente = siguientePaso(pasos)
   const visibles = enInicio && !verTodos ? pasos.filter((x) => x.id === siguiente?.id) : pasos
-  const titulo = progreso.completo ? 'Todo listo' : 'Primeros pasos'
+  const titulo = progreso.completo ? 'Todo listo' : pasosCamino ? 'Mejora tu experiencia' : 'Primeros pasos'
   const resumen = `${progreso.resueltos} de ${progreso.total}`
 
   return (
     <section
-      aria-label="Primeros pasos"
+      aria-label={pasosCamino ? 'Mejora tu experiencia' : 'Primeros pasos'}
       data-testid={`primeros-pasos-${variante}`}
       className={enInicio ? 'mx-6 mt-3 tarjeta p-4' : 'mx-6 mt-6'}
     >

@@ -37,7 +37,7 @@ function guardarDescartados(ids) {
  * en un carrusel descartable. Si falla la carga o no hay consejos, no pinta nada.
  * Orientación educativa: no recomienda productos ni inversiones.
  */
-export default function ConsejoParaTi() {
+export default function ConsejoParaTi({ max = MAX_VISIBLES }) {
   const [lista, setLista] = useState([])
   const [aviso, setAviso] = useState(AVISO_EDUCATIVO)
   const [descartados, setDescartados] = useState(leerDescartados)
@@ -61,7 +61,7 @@ export default function ConsejoParaTi() {
     }
   }, [])
 
-  const visibles = lista.filter((c) => !descartados.includes(c.id)).slice(0, MAX_VISIBLES)
+  const visibles = lista.filter((c) => !descartados.includes(c.id)).slice(0, max)
   if (!visibles.length) return null
 
   const i = Math.min(indice, visibles.length - 1)
