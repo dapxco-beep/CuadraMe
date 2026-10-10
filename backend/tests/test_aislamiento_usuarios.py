@@ -317,6 +317,7 @@ ATAQUES = [
     # conciliación (historial de extractos)
     ("GET", "/conciliacion/historial/{historial}", None),
     ("POST", "/conciliacion/historial/{historial}/deshacer-auto", None),
+    ("POST", "/conciliacion/historial/{historial}/resolver-dudosos", {"mismos": ["zz"]}),
     ("POST", "/conciliacion/historial/{historial}/importar", {"fingerprints": ["zz"]}),
     ("DELETE", "/conciliacion/historial/{historial}", None),
     ("POST", "/conciliacion/procesar", {"pdf_base64": "AAAA", "cuenta_id": "{cuenta}"}),
