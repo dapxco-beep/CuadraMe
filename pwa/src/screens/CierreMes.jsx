@@ -43,7 +43,7 @@ export default function CierreMes() {
         setLista(l)
         setMes(l[0]?.mes || mesAnterior())
       })
-      .catch((e) => setError(e.message || 'No se pudo cargar'))
+      .catch((e) => setError(e.message || 'No se pudo cargar. Revisa tu conexión e intenta de nuevo.'))
   }, [])
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export default function CierreMes() {
       listaRef.current = [...(listaRef.current || []), { mes }]
       setInforme(nuevo)
     } catch (e) {
-      setError(e.message || 'No se pudo generar')
+      setError(e.message || 'No se pudo generar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setCargando(false)
     }
@@ -81,7 +81,7 @@ export default function CierreMes() {
       await api.guardarCierrePreferencias(nuevo)
     } catch {
       setCorreo(!nuevo)
-      avisar('No se pudo guardar')
+      avisar('No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 

@@ -84,7 +84,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
       })
       mostrar(r)
     } catch (err) {
-      setError(err.message || 'No se pudo leer el archivo')
+      setError(err.message || 'No se pudo leer el archivo. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setCargando(false)
     }
@@ -167,7 +167,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
       await recargarCuentas()
       setResultado(r)
     } catch (err) {
-      setError(err.message || 'No se pudo importar')
+      setError(err.message || 'No se pudo importar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setCargando(false)
     }

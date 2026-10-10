@@ -33,7 +33,7 @@ export default function ConexionGmail({ estado, onCambio }) {
       const { url } = await api.gmailConectar()
       window.location.href = url
     } catch (err) {
-      setError(err.message || 'No se pudo iniciar la conexión con Gmail')
+      setError(err.message || 'No se pudo iniciar la conexión con Gmail. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -48,7 +48,7 @@ export default function ConexionGmail({ estado, onCambio }) {
       await api.gmailDesconectar()
       onCambio?.()
     } catch (err) {
-      setError(err.message || 'No se pudo desconectar')
+      setError(err.message || 'No se pudo desconectar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 

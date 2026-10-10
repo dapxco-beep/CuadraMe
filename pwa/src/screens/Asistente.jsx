@@ -89,7 +89,7 @@ function TarjetaPropuesta({ msg, onResuelto }) {
       })
       onResuelto('confirmado')
     } catch (e) {
-      setError(e.message || 'No se pudo guardar')
+      setError(e.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
       setGuardando(false)
     }
   }
@@ -171,7 +171,7 @@ function TarjetaPlan({ msg, onResuelto }) {
       })
       onResuelto('confirmado')
     } catch (e) {
-      setError(e.message || 'No se pudo crear el plan')
+      setError(e.message || 'No se pudo crear el plan. Revisa tu conexión e intenta de nuevo.')
       setGuardando(false)
     }
   }

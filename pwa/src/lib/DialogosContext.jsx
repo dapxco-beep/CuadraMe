@@ -23,7 +23,7 @@ export function DialogosProvider({ children }) {
   const avisar = useCallback((mensaje, tipo = 'error', opciones = {}) => {
     clearTimeout(temporizador.current)
     setToast({ mensaje, tipo, accion: opciones.accion || null })
-    temporizador.current = setTimeout(() => setToast(null), opciones.duracion || (opciones.accion ? 5000 : 4000))
+    temporizador.current = setTimeout(() => setToast(null), opciones.duracion || (opciones.accion ? 7000 : 4000))
   }, [])
 
   useEffect(() => () => clearTimeout(temporizador.current), [])
@@ -64,7 +64,7 @@ export function DialogosProvider({ children }) {
                     setToast(null)
                     toast.accion.onClick()
                   }}
-                  className="shrink-0 font-bold underline underline-offset-2 px-2 py-1 -my-1 -mr-1"
+                  className="shrink-0 font-bold underline underline-offset-2 px-3 min-h-11 -my-2 -mr-2"
                 >
                   {toast.accion.texto}
                 </button>

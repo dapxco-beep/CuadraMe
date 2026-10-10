@@ -87,8 +87,8 @@ describe('Extractos ya conciliados', () => {
     fireEvent.click(boton)
     const fila = screen.getByTestId('conciliado-e2')
     expect(within(fila).getByText(/Nu Colombia · septiembre 2026/)).toBeTruthy()
-    expect(within(fila).getByText(/Bancolombia Ahorros · 12 movimientos cruzados/)).toBeTruthy()
-    expect(within(screen.getByTestId('conciliado-e3')).getByText('1 movimiento cruzado')).toBeTruthy()
+    expect(within(fila).getByText(/Bancolombia Ahorros · 12 movimientos coinciden con el banco/)).toBeTruthy()
+    expect(within(screen.getByTestId('conciliado-e3')).getByText('1 movimiento coincide con el banco')).toBeTruthy()
   })
 
   it('«Revisar de nuevo» no bloquea: vuelve a abrir la revisión', async () => {

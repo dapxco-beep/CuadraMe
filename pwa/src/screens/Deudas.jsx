@@ -34,7 +34,7 @@ export default function Deudas() {
     try {
       setDeudas(await api.deudas())
     } catch (err) {
-      setError(err.message || 'No se pudieron cargar tus deudas')
+      setError(err.message || 'No se pudieron cargar tus deudas. Revisa tu conexión e intenta de nuevo.')
     }
     setCargando(false)
   }
@@ -181,7 +181,7 @@ function FormDeuda({ onClose, onGuardada }) {
       })
       onGuardada()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -285,7 +285,7 @@ function FormPago({ deuda, onClose, onPagado }) {
       await api.pagarDeuda(deuda.id, Number(monto))
       onPagado()
     } catch (err) {
-      setError(err.message || 'No se pudo registrar el pago')
+      setError(err.message || 'No se pudo registrar el pago. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }

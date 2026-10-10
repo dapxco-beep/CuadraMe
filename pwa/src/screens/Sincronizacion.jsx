@@ -175,7 +175,7 @@ export default function Sincronizacion() {
       setCola({ items: porCat?.items || [], total: porCat?.total || 0 })
       setError('')
     } catch (err) {
-      if (montado.current) setError(err.message || 'No se pudo cargar')
+      if (montado.current) setError(err.message || 'No se pudo cargar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       if (montado.current) setCargando(false)
     }
@@ -324,7 +324,7 @@ export default function Sincronizacion() {
       const lista = await api.extractosCorreo('descartado')
       setIgnorados(Array.isArray(lista) ? lista : [])
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudieron cargar los ignorados')
+      setAvisoExt(err.message || 'No se pudieron cargar los ignorados. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -333,7 +333,7 @@ export default function Sincronizacion() {
       const lista = await api.correosLista('ignorados', 0, 30)
       setCorreosIgnorados(Array.isArray(lista) ? lista : [])
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudieron cargar los correos ignorados')
+      setAvisoExt(err.message || 'No se pudieron cargar los correos ignorados. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -368,7 +368,7 @@ export default function Sincronizacion() {
       if (hayProtegidos && typeof api.probarClavePdf === 'function') await probarClave()
       else setAvisoExt('Clave guardada. Toca «Traer todo ahora» para abrir esos extractos.')
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudo guardar la clave')
+      setAvisoExt(err.message || 'No se pudo guardar la clave. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -378,7 +378,7 @@ export default function Sincronizacion() {
       setClaveInfo((c) => ({ ...c, configurada: false }))
       setPruebaClave({ resultado: null, mensaje: '', error: '' })
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudo borrar la clave')
+      setAvisoExt(err.message || 'No se pudo borrar la clave. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -394,7 +394,7 @@ export default function Sincronizacion() {
       })
       await cargar()
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudo cambiar la categoría')
+      setAvisoExt(err.message || 'No se pudo cambiar la categoría. Revisa tu conexión e intenta de nuevo.')
     } finally {
       if (montado.current) {
         setOcupados((s) => {
@@ -569,9 +569,9 @@ export default function Sincronizacion() {
 
         {conectado && (
           <>
-            <Sub id="sinc-correos" titulo="Notificaciones por revisar" cuenta={nCorreos}>
+            <Sub id="sinc-correos" titulo="Avisos de tu banco por revisar" cuenta={nCorreos}>
               {correos.length === 0 ? (
-                <AlDia texto="No hay correos por revisar" />
+                <AlDia texto="No hay avisos por revisar" />
               ) : (
                 <CorreosPorRevisar
                   correos={correos}
@@ -856,7 +856,7 @@ export default function Sincronizacion() {
                     </button>
                   </div>
                   <p className="text-xs text-ink-soft mt-2">
-                    {celdaDetalle.movimientos} {celdaDetalle.movimientos === 1 ? 'movimiento' : 'movimientos'} · {celdaDetalle.conciliados} conciliados · {celdaDetalle.por_confirmar} por confirmar
+                    {celdaDetalle.movimientos} {celdaDetalle.movimientos === 1 ? 'movimiento' : 'movimientos'} · {celdaDetalle.conciliados} ya coinciden con el banco · {celdaDetalle.por_confirmar} por confirmar
                     {celdaDetalle.extractos ? ` · ${celdaDetalle.extractos} ${celdaDetalle.extractos === 1 ? 'extracto' : 'extractos'}` : ''}
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">

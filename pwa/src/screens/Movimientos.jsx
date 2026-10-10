@@ -302,7 +302,7 @@ export default function Movimientos() {
       })
       .catch((err) => {
         if (mia !== peticion.current || silencioso) return
-        setErrorCarga(err.message || 'No se pudieron cargar los movimientos')
+        setErrorCarga(err.message || 'No se pudieron cargar los movimientos. Revisa tu conexión e intenta de nuevo.')
       })
       .finally(() => mia === peticion.current && setCargando(false))
     recargarConteo()
@@ -467,7 +467,7 @@ export default function Movimientos() {
       } catch (err) {
         // Falló: se devuelve todo como estaba
         setMovimientos((prev) => prev.map((m) => (idSet.has(m.id) ? { ...m, categoria: previos.find((p) => p.id === m.id).categoria } : m)))
-        avisar(err.message || 'No se pudo cambiar la categoría')
+        avisar(err.message || 'No se pudo cambiar la categoría. Revisa tu conexión e intenta de nuevo.')
         return
       }
       recargarConteo()
@@ -501,7 +501,7 @@ export default function Movimientos() {
           }
           recargarConteo()
         } catch {
-          avisar('No se pudo deshacer')
+          avisar('No se pudo deshacer. Revisa tu conexión e intenta de nuevo.')
         }
       }
       // Con "aplicar a los anteriores" cambiaron movimientos que no están en pantalla: sin Deshacer
@@ -542,7 +542,7 @@ export default function Movimientos() {
         setMovimientos((prev) => prev.map((x) => (x.id === m.id ? { ...x, cat_confirmada: true, cat_origen: null } : x)))
         recargarConteo()
       } catch {
-        avisar('No se pudo confirmar la categoría')
+        avisar('No se pudo confirmar la categoría. Revisa tu conexión e intenta de nuevo.')
       }
     },
     [avisar, recargarConteo]
@@ -561,7 +561,7 @@ export default function Movimientos() {
       setHayMas(hay)
       recargarConteo()
     } catch {
-      avisar('No se pudieron confirmar')
+      avisar('No se pudieron confirmar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -572,7 +572,7 @@ export default function Movimientos() {
       setMovimientos((prev) => [...prev, ...siguientes])
       setHayMas(siguientes.length === TAMANO_PAGINA)
     } catch {
-      avisar('No se pudieron cargar más movimientos')
+      avisar('No se pudieron cargar más movimientos. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setCargandoMas(false)
     }
@@ -583,7 +583,7 @@ export default function Movimientos() {
     try {
       await (formato === 'xlsx' ? api.exportarExcel() : api.exportarCSV())
     } catch {
-      avisar('No se pudo exportar')
+      avisar('No se pudo exportar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setExportando(false)
     }
@@ -632,7 +632,7 @@ export default function Movimientos() {
       )
       salirModoSeleccion()
     } catch (err) {
-      avisar(err.message || 'No se pudieron mover')
+      avisar(err.message || 'No se pudieron mover. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setAplicando(false)
     }
@@ -668,7 +668,7 @@ export default function Movimientos() {
       )
       salirModoSeleccion()
     } catch (err) {
-      avisar(err.message || 'No se pudieron eliminar')
+      avisar(err.message || 'No se pudieron eliminar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setAplicando(false)
     }
@@ -772,7 +772,9 @@ export default function Movimientos() {
               </div>
 
               <div className="px-5 mb-3 flex gap-2 overflow-x-auto no-scrollbar lg:flex-wrap lg:overflow-visible">
-                {(conteo.total > 0 || f.revisar) && (
+                {/* Sin repetir la misma lista con dos nombres: «Por revisar» no sale si es idéntica a «Sin categorizar»,
+                    y «Por confirmar» solo sale cuando hay además otra clase de pendientes. */}
+                {(((conteo.total > 0) && !(conteo.otros > 0 && conteo.auto === 0)) || f.revisar) && (
                   <button onClick={() => cambiarParams({ revisar: !f.revisar })} aria-pressed={f.revisar} className={botonChip(f.revisar)}>
                     Por revisar{conteo.total > 0 ? ` (${conteo.total})` : ''}
                   </button>
@@ -786,7 +788,7 @@ export default function Movimientos() {
                     Sin categorizar{conteo.otros > 0 ? ` (${conteo.otros})` : ''}
                   </button>
                 )}
-                {(conteo.auto > 0 || f.conf) && (
+                {((conteo.auto > 0 && conteo.otros > 0) || f.conf) && (
                   <button onClick={() => cambiarParams({ conf: !f.conf })} aria-pressed={f.conf} className={botonChip(f.conf)}>
                     Por confirmar{conteo.auto > 0 ? ` (${conteo.auto})` : ''}
                   </button>

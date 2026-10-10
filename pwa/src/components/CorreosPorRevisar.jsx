@@ -70,7 +70,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
       else await api.aprobarCorreo(c.id, cuentaId)
       onResuelto?.(c)
     } catch (err) {
-      setError(err.message || 'No se pudo aprobar el movimiento')
+      setError(err.message || 'No se pudo aprobar el movimiento. Revisa tu conexión e intenta de nuevo.')
     } finally {
       ocupar(c.id, false)
     }
@@ -84,7 +84,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
       await api.descartarCorreo(c.id)
       onResuelto?.(c)
     } catch (err) {
-      setError(err.message || 'No se pudo descartar')
+      setError(err.message || 'No se pudo descartar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       ocupar(c.id, false)
     }

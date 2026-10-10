@@ -33,7 +33,7 @@ export default function Categorias() {
       await api.editarCategoria(cat.id, { activa: !cat.activa })
       recargar()
     } catch (err) {
-      avisar(err.message || 'No se pudo cambiar')
+      avisar(err.message || 'No se pudo cambiar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -47,7 +47,7 @@ export default function Categorias() {
       await api.reordenarCategorias(ids)
       recargar()
     } catch (err) {
-      avisar(err.message || 'No se pudo reordenar')
+      avisar(err.message || 'No se pudo reordenar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -252,7 +252,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
       }
       onGuardada()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -276,7 +276,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
         setMoverDe(err.detalle)
         setDestino(activas.find((c) => c.id !== categoria.id)?.nombre || '')
       } else {
-        setError(err.message || 'No se pudo eliminar')
+        setError(err.message || 'No se pudo eliminar. Revisa tu conexión e intenta de nuevo.')
       }
       setEliminando(false)
     }
@@ -290,7 +290,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
       await api.eliminarCategoria(categoria.id, destino)
       onEliminada()
     } catch (err) {
-      setError(err.message || 'No se pudo eliminar')
+      setError(err.message || 'No se pudo eliminar. Revisa tu conexión e intenta de nuevo.')
       setEliminando(false)
     }
   }
@@ -314,7 +314,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
               moverDe.movimientos ? `${moverDe.movimientos} movimientos` : null,
               moverDe.reglas ? `${moverDe.reglas} reglas` : null,
               moverDe.presupuestos ? `${moverDe.presupuestos} presupuesto` : null,
-              moverDe.recurrentes ? `${moverDe.recurrentes} recurrentes` : null,
+              moverDe.recurrentes ? `${moverDe.recurrentes} ${moverDe.recurrentes === 1 ? 'pago fijo' : 'pagos fijos'}` : null,
             ]
               .filter(Boolean)
               .join(', ')}

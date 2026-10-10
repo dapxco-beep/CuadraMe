@@ -5,7 +5,7 @@ import { api } from './api'
 // Estado de una celda cuenta x mes -> cómo se dice y se pinta.
 // El color nunca va solo: cada estado trae símbolo y texto.
 export const ESTADOS_CELDA = {
-  conciliado: { simbolo: '✓', texto: 'Conciliado', clase: 'bg-cuadra-soft text-cuadra border-cuadra/30' },
+  conciliado: { simbolo: '✓', texto: 'Revisado', clase: 'bg-cuadra-soft text-cuadra border-cuadra/30' },
   extracto_pendiente: { simbolo: '⚠', texto: 'Por revisar', clase: 'bg-accent-soft text-accent border-accent/40' },
   falta_clave: { simbolo: '🔑', texto: 'Falta la clave', clase: 'bg-danger-soft text-danger border-danger/40' },
   sin_extracto: { simbolo: '—', texto: 'Sin extracto', clase: 'bg-paper-raised text-ink-soft border-line' },
@@ -35,7 +35,7 @@ export function separarExtractos(lista) {
 }
 
 export function textoCruzados(n) {
-  return `${n} ${n === 1 ? 'movimiento cruzado' : 'movimientos cruzados'}`
+  return n === 1 ? '1 movimiento coincide con el banco' : `${n} movimientos coinciden con el banco`
 }
 
 // Estado de un extracto de Gmail dicho en palabras.
@@ -43,7 +43,7 @@ export function textoEstadoExtracto(ex) {
   switch (ex?.estado) {
     case 'procesado':
     case 'ya_conciliado':
-      return ex.cruzados != null ? `Conciliado · ${textoCruzados(ex.cruzados)}` : 'Conciliado'
+      return ex.cruzados != null ? `Revisado · ${textoCruzados(ex.cruzados)}` : 'Revisado'
     case 'nuevo':
       return 'Nuevo · listo para revisar'
     case 'falta_clave':

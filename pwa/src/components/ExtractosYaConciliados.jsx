@@ -34,7 +34,7 @@ export default function ExtractosYaConciliados({ items, nombreCuenta = () => '',
                 </p>
                 <p className="text-xs text-ink-soft truncate">
                   {cuenta ? `${cuenta} · ` : ''}
-                  {ex.cruzados != null ? textoCruzados(ex.cruzados) : 'Conciliado'}
+                  {ex.cruzados != null ? textoCruzados(ex.cruzados) : 'Revisado'}
                 </p>
                 {(ex.historial_id && onVer) || (ex.estado === 'ya_conciliado' && cuenta && onRevisar) ? (
                   <div className="flex gap-3 mt-1.5">

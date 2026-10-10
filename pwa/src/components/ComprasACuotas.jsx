@@ -42,7 +42,7 @@ export default function ComprasACuotas({ cuenta }) {
       await api.pagarCuotaTarjeta(id)
       await cargar()
     } catch (err) {
-      setError(err.message || 'No se pudo marcar la cuota')
+      setError(err.message || 'No se pudo marcar la cuota. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -53,7 +53,7 @@ export default function ComprasACuotas({ cuenta }) {
       setQuitando(null)
       await cargar()
     } catch (err) {
-      setError(err.message || 'No se pudo quitar')
+      setError(err.message || 'No se pudo quitar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -148,7 +148,7 @@ function FormCuotas({ cuenta, onClose, onGuardada }) {
       })
       await onGuardada()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
       setGuardando(false)
     }
   }

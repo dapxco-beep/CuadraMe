@@ -79,7 +79,7 @@ export const PREGUNTAS = [
       'CuadraMe intenta unirlos por fecha, hora y monto. Si no lo logra, verás los dos.',
       '- Abre el movimiento repetido y toca **Eliminar**.',
       '- Si llegó como «por confirmar», tócalo y elige **Descartar**.',
-      'Cuando subes un extracto, la conciliación te muestra lo que se repite para que no lo cuentes dos veces.',
+      'Cuando subes un extracto, CuadraMe te muestra lo que ya tenías registrado para que no lo cuentes dos veces.',
     ],
     palabras: 'duplicado repetido doble dos veces cobro repetido eliminar',
     accion: { texto: 'Ver mis movimientos', to: '/movimientos' },
@@ -103,7 +103,7 @@ export const PREGUNTAS = [
     respuesta: [
       'El saldo de CuadraMe es lo que pusiste al crear la cuenta más lo que has registrado desde entonces. Si falta registrar algo, no va a coincidir.',
       '- **Rápido:** en «Cuentas» toca **Ajustar saldo** y escribe lo que dice tu banco hoy.',
-      '- **A fondo:** sube el extracto y toca **Conciliar**. Te muestra qué movimientos del banco no están en CuadraMe.',
+      '- **A fondo:** sube el extracto y toca **Revisar extracto**. Te muestra qué movimientos del banco no están en CuadraMe.',
     ],
     palabras: 'saldo diferente no cuadra descuadrado ajustar corregir plata',
     accion: { texto: 'Ajustar saldo', to: '/cuentas' },

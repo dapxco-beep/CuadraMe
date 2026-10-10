@@ -23,7 +23,7 @@ export default function SugerenciaIngreso({ monto: montoInicial, cuentaId, onClo
     try {
       setSug(await api.distribuirIngreso(Number(valor)))
     } catch (err) {
-      setError(err.message || 'No se pudo calcular la sugerencia')
+      setError(err.message || 'No se pudo calcular la sugerencia. Revisa tu conexión e intenta de nuevo.')
     }
     setCargando(false)
   }
@@ -45,7 +45,7 @@ export default function SugerenciaIngreso({ monto: montoInicial, cuentaId, onClo
       onAplicado?.()
       onClose()
     } catch (err) {
-      setError(err.message || 'No se pudo apartar el dinero')
+      setError(err.message || 'No se pudo apartar el dinero. Revisa tu conexión e intenta de nuevo.')
     }
     setAplicando(false)
   }

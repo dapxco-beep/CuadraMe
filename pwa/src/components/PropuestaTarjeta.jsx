@@ -31,7 +31,7 @@ export default function PropuestaTarjeta({ propuesta, cuentaId, className = '' }
       await recargar?.()
       setEstado('aplicada')
     } catch (err) {
-      setError(err.message || 'No se pudo actualizar la tarjeta')
+      setError(err.message || 'No se pudo actualizar la tarjeta. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setAplicando(false)
     }

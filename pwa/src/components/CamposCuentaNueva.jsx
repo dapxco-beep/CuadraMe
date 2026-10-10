@@ -11,14 +11,17 @@ export default function CamposCuentaNueva({ tipo, valores, onCambio }) {
   const set = (k, v) => onCambio({ ...valores, [k]: v })
   if (tipo !== 'credito') {
     return (
-      <input
-        value={valores.saldo}
-        onChange={(e) => set('saldo', e.target.value.replace(/[^\d.,]/g, ''))}
-        inputMode="decimal"
-        placeholder="Saldo actual (opcional)"
-        aria-label="Saldo actual"
-        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
-      />
+      <div className="mb-4">
+        <p className="text-xs text-ink-soft mb-1.5">¿Cuánta plata tienes hoy en esta cuenta? Si no sabes, déjalo vacío.</p>
+        <input
+          value={valores.saldo}
+          onChange={(e) => set('saldo', e.target.value.replace(/[^\d.,]/g, ''))}
+          inputMode="decimal"
+          placeholder="Saldo actual (opcional)"
+          aria-label="Saldo actual"
+          className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"
+        />
+      </div>
     )
   }
   const debes = leerMonto(valores.debes)

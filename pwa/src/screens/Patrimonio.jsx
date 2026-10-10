@@ -40,7 +40,7 @@ export default function Patrimonio() {
       // Extra: si falla, el resto de la pantalla no se afecta.
       api.descomposicionPatrimonio().then((r) => setDescomposicion(r?.meses || [])).catch(() => {})
     } catch (err) {
-      setError(err.message || 'No se pudo cargar tu patrimonio')
+      setError(err.message || 'No pudimos cargar tu patrimonio. Revisa tu conexión e intenta de nuevo.')
     }
     setCargando(false)
   }
@@ -63,6 +63,8 @@ export default function Patrimonio() {
           <Plus size={20} />
         </button>
       </header>
+
+      <p className="mx-5 text-xs text-ink-soft">Tu patrimonio es todo lo que tienes menos todo lo que debes.</p>
 
       {cargando && !datos ? (
         <div className="mx-5 mt-3 space-y-3">
@@ -116,7 +118,7 @@ export default function Patrimonio() {
                   <IlustracionVacia icono={Landmark} size={92} className="mb-3" />
                   <p className="text-sm text-ink-soft mb-3">
                     {vacio
-                      ? 'Aún no hay nada que contar. Agrega tu primer CDT, fondo, inmueble o vehículo.'
+                      ? 'Un activo es algo tuyo que vale plata: un CDT, un fondo, una casa o un vehículo. Agrega el primero.'
                       : 'Agrega tus CDT, fondos, acciones, inmuebles o vehículos para ver tu patrimonio completo.'}
                   </p>
                   <button onClick={() => setFormulario({})} className="text-sm font-semibold text-accent">
@@ -353,7 +355,7 @@ function FormActivo({ activo, onClose, onGuardado }) {
       else await api.crearActivo(payload)
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -371,7 +373,7 @@ function FormActivo({ activo, onClose, onGuardado }) {
       await api.eliminarActivo(activo.id)
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No se pudo eliminar')
+      setError(err.message || 'No se pudo eliminar. Revisa tu conexión e intenta de nuevo.')
       setGuardando(false)
     }
   }

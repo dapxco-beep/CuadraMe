@@ -26,7 +26,7 @@ export default function CuentasAmigos() {
       setMonedas(s.monedas)
       setGastos(g)
     } catch (e) {
-      setError(e.message || 'No se pudieron cargar las cuentas con amigos')
+      setError(e.message || 'No se pudieron cargar las cuentas con amigos. Revisa tu conexión e intenta de nuevo.')
     }
     setCargando(false)
   }, [grupoId])
@@ -46,7 +46,7 @@ export default function CuentasAmigos() {
       avisar('Pago registrado', 'ok')
       cargar()
     } catch (e) {
-      avisar(e.message || 'No se pudo registrar el pago')
+      avisar(e.message || 'No se pudo registrar el pago. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -59,7 +59,7 @@ export default function CuentasAmigos() {
       await api.eliminarGastoCompartido(g.id)
       cargar()
     } catch (e) {
-      avisar(e.message || 'No se pudo quitar el gasto')
+      avisar(e.message || 'No se pudo quitar el gasto. Revisa tu conexión e intenta de nuevo.')
     }
   }
 

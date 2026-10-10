@@ -225,7 +225,7 @@ describe('Crear cuenta guiado', () => {
     await userEvent.type(screen.getByLabelText('Cupo total'), '2.000.000')
     await userEvent.type(screen.getByLabelText('Día de corte'), '15')
     await userEvent.type(screen.getByLabelText('Día de pago'), '30')
-    await userEvent.click(screen.getByText('Continuar'))
+    await userEvent.click(screen.getByText('Crear mi cuenta'))
 
     await waitFor(() =>
       expect(api.crearCuenta).toHaveBeenCalledWith(
@@ -239,7 +239,7 @@ describe('Crear cuenta guiado', () => {
     // vuelve al formulario con el mismo banco y la cuenta de ahorros elegida
     expect(screen.getByLabelText('Nombre de la cuenta')).toHaveValue('Nu Colombia')
     expect(within(screen.getByTestId('pregunta-producto')).getByRole('button', { name: /Mi cuenta de ahorros/ })).toHaveAttribute('aria-pressed', 'true')
-    await userEvent.click(screen.getByText('Continuar'))
+    await userEvent.click(screen.getByText('Crear mi cuenta'))
     await waitFor(() => expect(api.crearCuenta).toHaveBeenCalledTimes(2))
     expect(api.crearCuenta).toHaveBeenLastCalledWith(expect.objectContaining({ nombre: 'Nu Colombia', tipo: 'ahorro' }))
     await waitFor(() => expect(onCreada).toHaveBeenCalledTimes(1)) // ya tiene las dos: no vuelve a preguntar
@@ -251,7 +251,7 @@ describe('Crear cuenta guiado', () => {
     montar(<CrearCuenta onCreada={onCreada} />)
     await userEvent.click(screen.getByText(/Empezar/))
     await userEvent.click(screen.getByRole('button', { name: /Bancolombia/ }))
-    await userEvent.click(screen.getByText('Continuar'))
+    await userEvent.click(screen.getByText('Crear mi cuenta'))
     await userEvent.click(await screen.findByRole('button', { name: 'Agregar también mi tarjeta de crédito Bancolombia' }))
     expect(screen.getByLabelText('Nombre de la cuenta')).toHaveValue('Bancolombia Crédito')
     expect(api.crearCuenta).toHaveBeenCalledTimes(1)
@@ -263,7 +263,7 @@ describe('Crear cuenta guiado', () => {
     await userEvent.click(screen.getByText(/Empezar/))
     await userEvent.click(screen.getByRole('button', { name: /Efectivo/ }))
     expect(screen.queryByTestId('pregunta-producto')).toBeNull()
-    await userEvent.click(screen.getByText('Continuar'))
+    await userEvent.click(screen.getByText('Crear mi cuenta'))
     await waitFor(() => expect(onCreada).toHaveBeenCalledTimes(1))
   })
 })

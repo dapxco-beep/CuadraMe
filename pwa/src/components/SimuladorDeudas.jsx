@@ -84,7 +84,7 @@ export default function SimuladorDeudas() {
     try {
       setResultado(await api.estrategiaDeudas(Number(extra) || 0))
     } catch (err) {
-      setError(err.message || 'No se pudo simular')
+      setError(err.message || 'No se pudo simular. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setCargando(false)
     }

@@ -53,7 +53,7 @@ describe('navegacion.js (fuente única)', () => {
   it('agrupa los destinos por tema con los nombres pedidos', () => {
     expect(GRUPOS.map((g) => g.titulo)).toEqual(['Dinero', 'Ahorro e inversión', 'Entender', 'Datos', 'Ajustes'])
     const etiquetas = (id) => GRUPOS.find((g) => g.id === id).items.map((i) => i.label)
-    expect(etiquetas('dinero')).toEqual(['Cuentas', 'Deudas', 'Recurrentes', 'Impuestos'])
+    expect(etiquetas('dinero')).toEqual(['Cuentas', 'Deudas', 'Pagos fijos', 'Impuestos'])
     expect(etiquetas('datos')).toContain('Traer movimientos')
     expect(ITEMS_MAS.find((i) => i.label === 'Traer movimientos').to).toBe('/sincronizacion')
     expect(etiquetas('ajustes')).toEqual(['Perfil', 'Aprende', 'Ayuda', 'Privacidad', 'Registro automático'])
@@ -90,7 +90,7 @@ describe('Menú «Más» del teléfono', () => {
     await userEvent.type(buscador, 'categorias')
     // sin acentos encuentra «Categorías» y «Entrenar categorías»; desaparecen los encabezados
     expect(within(hoja).getByRole('link', { name: 'Categorías' })).toBeInTheDocument()
-    expect(within(hoja).getByRole('link', { name: 'Entrenar categorías' })).toBeInTheDocument()
+    expect(within(hoja).getByRole('link', { name: 'Enseñar categorías' })).toBeInTheDocument()
     expect(within(hoja).queryByRole('link', { name: 'Deudas' })).toBeNull()
     expect(within(hoja).queryByRole('heading', { name: 'Dinero' })).toBeNull()
 
