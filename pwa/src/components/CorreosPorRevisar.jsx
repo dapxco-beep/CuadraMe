@@ -6,6 +6,7 @@ import { parsearMontoEscrito } from '../lib/centro'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import CrearCuentaBanco from './CrearCuentaBanco'
+import InputMonto from './InputMonto'
 import SelectorCuentaBanco from './SelectorCuentaBanco'
 import { cuentaRecordada } from '../lib/cuentasBanco'
 import RecordarRegla, { RECORDAR_INICIAL } from './RecordarRegla'
@@ -116,10 +117,9 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
               {falta && (
                 <label className="block mt-2">
                   <span className="text-xs font-medium text-accent">No pude leer el monto. Escríbelo para aprobar.</span>
-                  <input
-                    inputMode="decimal"
+                  <InputMonto
                     value={montoPorCorreo[c.id] || ''}
-                    onChange={(e) => setMontoPorCorreo((p) => ({ ...p, [c.id]: e.target.value }))}
+                    onValor={(v) => setMontoPorCorreo((p) => ({ ...p, [c.id]: v }))}
                     placeholder="Monto, ej. 25.000"
                     aria-label={`Monto de ${c.comercio}`}
                     className="w-full mt-1 rounded-xl border border-line bg-paper-raised px-3 py-2 text-sm outline-none focus:border-accent"

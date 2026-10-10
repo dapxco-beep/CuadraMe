@@ -5,6 +5,7 @@ import { formatMoneda } from '../lib/format'
 import { calcularCuota, mesAnio } from '../lib/cuotas'
 import { leerMonto } from '../lib/cuentaNueva'
 import Hoja from './Hoja'
+import InputMonto from './InputMonto'
 
 const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 function fechaCorta(iso) {
@@ -167,10 +168,9 @@ function FormCuotas({ cuenta, onClose, onGuardada }) {
       </label>
       <label className="block mb-3">
         <span className="text-xs text-ink-soft">Valor de la compra</span>
-        <input
+        <InputMonto
           value={monto}
-          onChange={(e) => setMonto(e.target.value.replace(/[^\d.,]/g, ''))}
-          inputMode="decimal"
+          onValor={setMonto}
           placeholder="Ej. 1.200.000"
           aria-label="Valor de la compra"
           className={campo}

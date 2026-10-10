@@ -11,6 +11,7 @@ import DonaDistribucion from '../components/DonaDistribucion'
 import GraficoDescomposicion from '../components/GraficoDescomposicion'
 import { Isotipo, Monto, IlustracionVacia } from '../brand/Marca'
 import Hoja from '../components/Hoja'
+import InputMonto from '../components/InputMonto'
 
 const MONEDAS = ['COP', 'USD', 'EUR']
 const CLASES_ACTIVO = ['cdt', 'fondo', 'etf', 'accion', 'cripto', 'inmueble', 'vehiculo']
@@ -428,7 +429,7 @@ function FormActivo({ activo, onClose, onGuardado }) {
       {esCDT && (
         <>
           <Campo etiqueta="Capital invertido">
-            <input value={capital} onChange={(e) => setCapital(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
+            <InputMonto value={capital} onValor={setCapital} className={claseInput} />
           </Campo>
           <Campo etiqueta="Tasa efectiva anual (%)">
             <input value={tasaEA} onChange={(e) => setTasaEA(soloNumero(e.target.value))} inputMode="decimal" placeholder="Ej. 12.5" className={claseInput} />
@@ -472,11 +473,11 @@ function FormActivo({ activo, onClose, onGuardado }) {
       {esBien && (
         <>
           <Campo etiqueta="Valor estimado actual">
-            <input value={precio} onChange={(e) => setPrecio(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
+            <InputMonto value={precio} onValor={setPrecio} className={claseInput} />
           </Campo>
           <div className="grid grid-cols-2 gap-3">
             <Campo etiqueta="Costo de compra (opcional)">
-              <input value={costoAdq} onChange={(e) => setCostoAdq(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
+              <InputMonto value={costoAdq} onValor={setCostoAdq} className={claseInput} />
             </Campo>
             <Campo etiqueta="Fecha de compra (opcional)">
               <input type="date" value={fechaAdq} onChange={(e) => setFechaAdq(e.target.value)} className={claseInput} />

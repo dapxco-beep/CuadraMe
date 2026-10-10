@@ -10,6 +10,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import { ENTIDADES_FINANCIERAS_CO } from '../lib/entidadesFinancierasCO'
 import SimuladorDeudas from '../components/SimuladorDeudas'
 import Hoja from '../components/Hoja'
+import InputMonto from '../components/InputMonto'
 
 const urgenciaColor = {
   critico: 'text-danger',
@@ -214,17 +215,15 @@ function FormDeuda({ onClose, onGuardada }) {
           <option key={e} value={e} />
         ))}
       </datalist>
-      <input
+      <InputMonto entero
         value={saldoInicial}
-        onChange={(e) => setSaldoInicial(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
+        onValor={setSaldoInicial}
         placeholder="Saldo actual de la deuda"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
-      <input
+      <InputMonto entero
         value={cuotaMensual}
-        onChange={(e) => setCuotaMensual(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
+        onValor={setCuotaMensual}
         placeholder="Cuota mensual"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
@@ -300,10 +299,9 @@ function FormPago({ deuda, onClose, onPagado }) {
         </button>
       </div>
 
-      <input
+      <InputMonto entero
         value={monto}
-        onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
+        onValor={setMonto}
         placeholder="Monto a pagar"
         autoFocus
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"

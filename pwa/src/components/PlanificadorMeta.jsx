@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import Hoja from './Hoja'
+import InputMonto from './InputMonto'
 
 // 'YYYY-MM' -> último día de ese mes a mediodía (ISO local), p. ej. '2027-12' -> '2027-12-31T12:00:00'
 export function finDeMes(ym) {
@@ -88,11 +89,11 @@ export default function PlanificadorMeta({ onClose, onCreada }) {
       </div>
       <p className="text-xs text-ink-soft mb-4">Dime cuánto y para cuándo; yo calculo cuánto aportar según lo que de verdad ahorras.</p>
 
-      <input value={objetivo} onChange={(e) => setObjetivo(e.target.value.replace(/\D/g, ''))} inputMode="numeric"
+      <InputMonto entero value={objetivo} onValor={setObjetivo}
         placeholder="¿Cuánto quieres reunir? (ej. 12000000)" aria-label="Monto que quieres reunir" className={campo} />
       <label className="text-xs text-ink-soft">¿Para qué mes?</label>
       <input type="month" value={mes} onChange={(e) => setMes(e.target.value)} aria-label="Mes objetivo" className={`${campo} mt-1`} />
-      <input value={saldo} onChange={(e) => setSaldo(e.target.value.replace(/\D/g, ''))} inputMode="numeric"
+      <InputMonto entero value={saldo} onValor={setSaldo}
         placeholder="Lo que ya tienes para esta meta (opcional)" aria-label="Saldo actual" className={campo} />
       <input value={tasa} onChange={(e) => setTasa(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal"
         placeholder="Rendimiento % E.A. si lo inviertes (opcional)" aria-label="Rendimiento EA" className={campo} />

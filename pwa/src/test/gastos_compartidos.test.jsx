@@ -100,7 +100,7 @@ describe('Foto de factura en Agregar', () => {
     fireEvent.change(screen.getByLabelText('Tomar foto de factura'), { target: { files: [foto()] } })
     expect(await screen.findByText('Revisa los datos antes de guardar')).toBeInTheDocument()
     expect(api.escanearFactura).toHaveBeenCalledWith('AAAA', 'image/jpeg')
-    expect(screen.getByPlaceholderText('0')).toHaveValue('145900')
+    expect(screen.getByPlaceholderText('0')).toHaveValue('145.900')
     expect(screen.getByPlaceholderText(/¿En qué fue/)).toHaveValue('Restaurante El Cielo')
     expect(screen.getByText(/Propina/)).toBeInTheDocument()
     expect(api.crearMovimiento).not.toHaveBeenCalled()
@@ -138,7 +138,7 @@ describe('Dividir gasto', () => {
     await userEvent.type(screen.getByPlaceholderText('0'), '100000')
     await userEvent.click(screen.getByText('Dividir'))
     expect(await screen.findByText('Dividir gasto')).toBeInTheDocument()
-    expect(screen.getByLabelText('Total')).toHaveValue('100000')
+    expect(screen.getByLabelText('Total')).toHaveValue('100.000')
   })
 
   it('divide en partes iguales y guarda mostrando la parte propia', async () => {

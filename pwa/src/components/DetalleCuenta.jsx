@@ -8,6 +8,7 @@ import { cupoDisponible, deudaTarjeta, esCredito, etiquetaCuenta, textoActualiza
 import Ayudita from './Ayudita'
 import Hoja from './Hoja'
 import { leerMonto } from '../lib/cuentaNueva'
+import InputMonto from './InputMonto'
 
 // Detalle de UNA cuenta: saldo actual sin ambigüedad, cómo va el mes, últimos
 // movimientos y las dos acciones para que el saldo coincida con el banco:
@@ -172,10 +173,9 @@ function FormAjuste({ cuenta, onHecho }) {
         <span className="text-xs text-ink-soft">
           {credito ? '¿Cuánto debes hoy en esta tarjeta?' : '¿Cuál es el saldo real que ves en tu banco?'}
         </span>
-        <input
+        <InputMonto negativo
           value={valor}
-          onChange={(e) => setValor(e.target.value.replace(/[^\d.,-]/g, ''))}
-          inputMode="decimal"
+          onValor={setValor}
           placeholder="Ej. 1500000"
           aria-label={credito ? 'Lo que debes hoy' : 'Saldo real'}
           className="w-full rounded-2xl border border-line bg-paper px-4 py-3.5 text-sm outline-none focus:border-accent mt-1"

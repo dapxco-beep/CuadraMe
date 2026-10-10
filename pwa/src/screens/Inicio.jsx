@@ -30,7 +30,8 @@ import { textoActualizado } from '../lib/saldos'
 import InicioSimple from '../components/InicioSimple'
 import { useModoMenu } from '../lib/modoSimple'
 import { armarCamino, leerEstado } from '../lib/primerUso'
-import { fechaHace, gastosDeLaSemana, siguientePasoInicio } from '../lib/inicioSimple'
+import { estadoCuadre } from '../lib/cuadre'
+import { fechaHace,gastosDeLaSemana, siguientePasoInicio } from '../lib/inicioSimple'
 
 const DIAS_CUENTA_NUEVA = 14
 
@@ -164,8 +165,10 @@ export default function Inicio() {
 
   // "Cuadrar" = lo que tienes alcanza para lo que ya comprometiste este mes
   // (gastos fijos pendientes + aportes a metas). La diferencia es lo que falta.
-  const diferencia = bolsillo ? bolsillo.disponible_real : null
-  const cuadra = diferencia === null ? null : diferencia >= 0
+  const estadoCu = estadoCuadre({ cuentas, bolsillo, movimientos, resumen })
+  const diferencia = bolsillo ? estadoCu.diferencia : null
+  // Solo «falta» pinta el isotipo roto; sin datos o parcial no se afirma ni se niega nada.
+  const cuadra = estadoCu.estado === 'cuadra' ? true : estadoCu.estado === 'falta' ? false : null
   const gastarHoy = bolsillo ? bolsillo.disponible_real_por_dia : null
   const antiguo = (() => {
     const t = Date.parse(session?.user?.created_at || '')
@@ -271,9 +274,9 @@ export default function Inicio() {
               </p>
               {gastarHoy !== null && <p className="text-xs mt-1.5 opacity-90">Sin quedar mal el resto del mes</p>}
 
-              {bolsillo && !(resumen && !resumen.hay_movimientos && !saldoTotal) && (
-                <div className="mt-4 flex items-start gap-3">
-                  {cuadra ? (
+              {bolsillo && estadoCu.estado !== 'sin_datos' && (
+                <div className="mt-4 flex items-start gap-3" data-estado-cuadre={estadoCu.estado}>
+                  {estadoCu.estado === 'cuadra' ? (
                     <SelloCuadre size={26} />
                   ) : (
                     <span className="shrink-0 mt-0.5">
@@ -282,12 +285,17 @@ export default function Inicio() {
                   )}
                   <div className="min-w-0">
                     <p className="text-sm font-bold leading-snug">
-                      {cuadra ? 'Tus cuentas cuadran' : `Te faltan ${fmt(-diferencia)} por cuadrar`}
+                      {estadoCu.estado === 'cuadra' && 'Tus cuentas cuadran'}
+                      {estadoCu.estado === 'falta' && `Te faltan ${fmt(-diferencia)} por cuadrar`}
+                      {estadoCu.estado === 'parcial' && 'Aún no podemos decirte si cuadran'}
                     </p>
                     <p className="text-xs mt-0.5 leading-relaxed opacity-90">
-                      {cuadra
-                        ? `Tras gastos fijos y metas de este mes te sobran ${fmt(diferencia)}.`
-                        : 'Tus gastos fijos y metas de este mes superan lo que tienes en cuentas.'}
+                      {estadoCu.estado === 'cuadra' &&
+                        `Tras gastos fijos y metas de este mes te sobran ${fmt(diferencia)}.`}
+                      {estadoCu.estado === 'falta' &&
+                        'Tus gastos fijos y metas de este mes superan lo que tienes en cuentas.'}
+                      {estadoCu.estado === 'parcial' &&
+                        'Hay cuentas en $0 sin movimientos. Pon su saldo real o trae sus movimientos para ver el cuadre completo.'}
                     </p>
                   </div>
                 </div>

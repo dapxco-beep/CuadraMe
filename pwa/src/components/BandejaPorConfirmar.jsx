@@ -13,6 +13,7 @@ import {
   marcarBandejaAbierta,
   recordarBandejaCerrada,
 } from '../lib/bandeja'
+import InputMonto from './InputMonto'
 
 function hora(fecha) {
   const d = new Date(String(fecha).replace(' ', 'T'))
@@ -309,10 +310,9 @@ function FormEdicion({ m, cuentas, ocupado, onCancelar, onGuardar }) {
       <p className="text-sm font-semibold truncate">{m.descripcion}</p>
       <label className="block">
         <span className="text-[11px] text-ink-soft">Monto</span>
-        <input
+        <InputMonto
           value={monto}
-          onChange={(e) => setMonto(e.target.value.replace(/[^\d.,]/g, ''))}
-          inputMode="decimal"
+          onValor={setMonto}
           aria-label="Monto"
           className={campo}
         />

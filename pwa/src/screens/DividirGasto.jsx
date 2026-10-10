@@ -5,6 +5,7 @@ import { ArrowLeft, Plus, Users } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatMoneda } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
+import InputMonto from '../components/InputMonto'
 
 const MODOS = [
   { id: 'iguales', label: 'Iguales' },
@@ -178,11 +179,10 @@ export default function DividirGasto() {
           placeholder="¿Qué se pagó? (ej. Cena, Airbnb)"
           className={campo}
         />
-        <input
+        <InputMonto entero
           aria-label="Total"
           value={monto}
-          onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
-          inputMode="numeric"
+          onValor={setMonto}
           placeholder="Total"
           className={`${campo} w-32 text-right tabular-nums`}
         />

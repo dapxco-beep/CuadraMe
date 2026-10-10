@@ -1,4 +1,5 @@
 import { leerMonto } from '../lib/cuentaNueva'
+import InputMonto from './InputMonto'
 
 const campo = 'w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mt-1'
 
@@ -11,10 +12,9 @@ export default function CamposCuentaNueva({ tipo, valores, onCambio }) {
   const set = (k, v) => onCambio({ ...valores, [k]: v })
   if (tipo !== 'credito') {
     return (
-      <input
+      <InputMonto
         value={valores.saldo}
-        onChange={(e) => set('saldo', e.target.value.replace(/[^\d.,]/g, ''))}
-        inputMode="decimal"
+        onValor={(v) => set('saldo', v)}
         placeholder="Saldo actual (opcional)"
         aria-label="Saldo actual"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
@@ -27,10 +27,9 @@ export default function CamposCuentaNueva({ tipo, valores, onCambio }) {
       <label className="block mb-3">
         <span className="text-xs text-ink-soft">Cupo total</span>
         <span className="block text-[11px] text-ink-soft">El máximo que el banco te deja gastar con la tarjeta. Lo encuentras en la app de tu banco, en el detalle de la tarjeta.</span>
-        <input
+        <InputMonto
           value={valores.cupo}
-          onChange={(e) => set('cupo', e.target.value.replace(/[^\d.,]/g, ''))}
-          inputMode="decimal"
+          onValor={(v) => set('cupo', v)}
           placeholder="Ej. 5.000.000"
           aria-label="Cupo total"
           className={campo}
@@ -38,10 +37,9 @@ export default function CamposCuentaNueva({ tipo, valores, onCambio }) {
       </label>
       <label className="block mb-3">
         <span className="text-xs text-ink-soft">¿Cuánto debes hoy?</span>
-        <input
+        <InputMonto
           value={valores.debes}
-          onChange={(e) => set('debes', e.target.value.replace(/[^\d.,]/g, ''))}
-          inputMode="decimal"
+          onValor={(v) => set('debes', v)}
           placeholder="Lo que has gastado y aún no pagas"
           aria-label="Cuánto debes hoy"
           className={campo}

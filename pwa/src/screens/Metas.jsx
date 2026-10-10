@@ -13,6 +13,7 @@ import Hoja from '../components/Hoja'
 import BarraProgreso from '../components/BarraProgreso'
 import CelebracionCuadri from '../brand/CelebracionCuadri'
 import { FRASES, yaCelebrado } from '../lib/cuadri'
+import InputMonto from '../components/InputMonto'
 
 export default function Metas() {
   const volver = useVolver('/perfil')
@@ -215,17 +216,15 @@ function FormMeta({ onClose, onGuardada }) {
         placeholder="Nombre (ej. Viaje a Cartagena)"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
-      <input
+      <InputMonto entero
         value={montoObjetivo}
-        onChange={(e) => setMontoObjetivo(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
+        onValor={setMontoObjetivo}
         placeholder="Monto objetivo (ej. 5000000)"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
-      <input
+      <InputMonto entero
         value={montoActual}
-        onChange={(e) => setMontoActual(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
+        onValor={setMontoActual}
         placeholder="Ya tienes ahorrado (opcional)"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
       />
@@ -247,10 +246,9 @@ function FormMeta({ onClose, onGuardada }) {
 
       {ahorroAutomatico && (
         <div className="rounded-2xl bg-accent-soft p-3 mb-4 space-y-3">
-          <input
+          <InputMonto entero
             value={aporteAutomatico}
-            onChange={(e) => setAporteAutomatico(e.target.value.replace(/\D/g, ''))}
-            inputMode="numeric"
+            onValor={setAporteAutomatico}
             placeholder="Cuánto apartar cada mes"
             className="w-full rounded-xl border border-line bg-paper px-3.5 py-3 text-sm outline-none focus:border-accent"
           />
@@ -324,10 +322,9 @@ function FormAporte({ meta, onClose, onAportado }) {
         </button>
       </div>
 
-      <input
+      <InputMonto entero
         value={monto}
-        onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
+        onValor={setMonto}
         placeholder="Monto a aportar"
         autoFocus
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"

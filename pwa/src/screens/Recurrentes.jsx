@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { formatCOP, formatVeces } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import Hoja from '../components/Hoja'
+import InputMonto from '../components/InputMonto'
 
 const estadoColor = {
   pagado: 'text-accent',
@@ -240,10 +241,9 @@ function FormRecurrente({ onClose, onGuardado }) {
         placeholder="Nombre (ej. Netflix, Arriendo)"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
-      <input
+      <InputMonto entero
         value={monto}
-        onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
+        onValor={setMonto}
         placeholder="Monto"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />

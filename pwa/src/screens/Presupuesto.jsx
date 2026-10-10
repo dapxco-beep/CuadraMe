@@ -14,6 +14,7 @@ import SugerenciaIngreso from '../components/SugerenciaIngreso'
 import { PERIODOS, etiquetaPeriodo, textoRango } from '../lib/planificacion'
 import Hoja from '../components/Hoja'
 import Ayudita from '../components/Ayudita'
+import InputMonto from '../components/InputMonto'
 
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -416,10 +417,9 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
       <p className="text-xs text-ink-soft mb-1">
         Pon un tope de gasto para esta categoría y te avisamos antes de pasarte. <Ayudita termino="limite-presupuesto" />
       </p>
-      <input
+      <InputMonto entero
         value={limite}
-        onChange={(e) => setLimite(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
+        onValor={setLimite}
         placeholder={`Límite ${etiquetaPeriodo(periodo).toLowerCase()} (ej. 500000)`}
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
       />
@@ -496,10 +496,9 @@ function FormMoverSobre({ presupuestos, onClose, onMovido }) {
         ))}
       </select>
 
-      <input
+      <InputMonto entero
         value={monto}
-        onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
+        onValor={setMonto}
         placeholder="Monto a mover"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
       />

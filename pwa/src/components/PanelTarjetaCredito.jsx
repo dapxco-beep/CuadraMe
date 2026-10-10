@@ -5,6 +5,7 @@ import { formatMoneda, formatPorcentaje } from '../lib/format'
 import Hoja from './Hoja'
 import ComprasACuotas from './ComprasACuotas'
 import Ayudita from './Ayudita'
+import InputMonto from './InputMonto'
 
 const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
@@ -252,10 +253,9 @@ function FormTarjeta({ cuenta, onClose, onGuardada }) {
 
       <label className="block mb-3">
         <span className="text-xs text-ink-soft">Cupo total</span>
-        <input
+        <InputMonto
           value={cupo}
-          onChange={(e) => setCupo(e.target.value.replace(/[^\d.]/g, ''))}
-          inputMode="decimal"
+          onValor={setCupo}
           placeholder="Ej. 5000000"
           aria-label="Cupo total"
           className={`${campo} mt-1`}

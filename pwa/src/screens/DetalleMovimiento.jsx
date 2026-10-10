@@ -15,6 +15,7 @@ import { esAuto } from '../lib/comercio'
 import { HojaCambiarCategoria, InsigniaAuto } from '../components/CategorizacionAuto'
 import InsigniaCanales from '../components/InsigniaCanales'
 import { parchearEnCaches, quitarDeCaches } from '../lib/useEstadoLista'
+import InputMonto from '../components/InputMonto'
 import {
   cambiosEsReal,
   cambiosMarcarTraslado,
@@ -270,11 +271,10 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           </label>
           <label className="block">
             <span className="text-xs text-ink-soft">Monto</span>
-            <input
+            <InputMonto
               className={`${campo} mt-1`}
-              inputMode="decimal"
               value={form.monto}
-              onChange={(e) => setForm({ ...form, monto: e.target.value.replace(/[^\d.]/g, '') })}
+              onValor={(v) => setForm({ ...form, monto: v })}
             />
           </label>
           {movimiento.tipo !== 'transfer' && (

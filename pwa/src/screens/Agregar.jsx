@@ -10,6 +10,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import SugerenciaIngreso from '../components/SugerenciaIngreso'
 import { useCategorias } from '../lib/CategoriasContext'
 import TarjetaCuenta from '../components/TarjetaCuenta'
+import InputMonto from '../components/InputMonto'
 
 function hoyISO() {
   const d = new Date()
@@ -316,11 +317,10 @@ export default function Agregar() {
       <div className="flex flex-col items-center justify-center px-8 py-8">
         <div className="flex items-baseline gap-1">
           <span className="text-3xl font-semibold text-ink-soft">$</span>
-          <input
+          <InputMonto entero
             value={monto}
-            onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
+            onValor={setMonto}
             placeholder="0"
-            inputMode="numeric"
             ref={montoRef}
             aria-label="Monto"
             className="bg-transparent outline-none text-6xl font-semibold text-center w-full tabular-nums placeholder:text-ink-soft/40"
