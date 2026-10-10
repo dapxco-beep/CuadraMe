@@ -293,8 +293,8 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
         elif h is not None:
             conteo = conteo_de_historial(h)
             estado = estado_de_conteo(conteo, h.estado)
-        elif e.estado == ESTADO_YA_CONCILIADO:
-            # El periodo ya estaba conciliado por otro lado (sin revisión guardada que contar).
+        elif e.estado in (ESTADO_YA_CONCILIADO, "procesado"):
+            # Ya resuelto sin revisión guardada que contar (periodo conciliado por otro lado).
             conteo, estado = dict(_VACIO), AL_DIA
         else:  # nuevo, o «procesado» cuya revisión se borró: hay que volver a revisarlo
             conteo, estado = dict(_VACIO), POR_REVISAR
@@ -343,7 +343,9 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
         estado = mejor["estado"]
         # Si el grupo ya tiene una revisión buena, las copias sin abrir NO son pendientes: es el mismo extracto.
         if mejor["historial"] is None and len(lista) > 1:
-            estado = max((c["estado"] for c in lista), key=lambda s: (s in PIDEN_ACCION, s))
+            estados = [c["estado"] for c in lista]
+            # Una copia ya resuelta del mismo extracto manda sobre las que nadie ha abierto.
+            estado = AL_DIA if AL_DIA in estados else max(estados, key=lambda s: (s in PIDEN_ACCION, s))
         salida.append(_item(
             clave=mejor["clave"], extracto_id=mejor["extracto_id"], historial_id=mejor["historial_id"],
             cuenta_id=mejor["cuenta_id"], cuenta=mejor["cuenta"], banco=mejor["banco"], periodo=mejor["periodo"],
