@@ -11,9 +11,12 @@ from app.seguridad import SeguridadMiddleware, limpiar_evento_sentry
 from app import models_asistente  # noqa: F401  (registra la tabla uso_asistente para create_all)
 from app import limites_diarios  # noqa: F401  (registra la tabla uso_diario para create_all)
 from app import models_comentarios  # noqa: F401  (registra la tabla comentarios para create_all)
+from app import models_avisos  # noqa: F401  (registra eventos_actividad y ajustes_avisos para create_all)
+from app import avisos as avisos_servicio  # noqa: F401  (registra la tabla eventos_actividad y los ganchos de activación)
 from app.routers import (
     ahorcado,
     asistente,
+    avisos,
     backup,
     categorias,
     cierre,
@@ -230,6 +233,7 @@ app.include_router(resumen.router)
 app.include_router(recordatorios.router)
 app.include_router(consejos.router)
 app.include_router(comentarios.router)
+app.include_router(avisos.router)
 from app.routers import sincronizacion  # noqa: E402
 
 app.include_router(sincronizacion.router)

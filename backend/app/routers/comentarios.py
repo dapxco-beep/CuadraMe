@@ -17,10 +17,10 @@ from pydantic import BaseModel
 from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
+from app import avisos
 from app.auth import UsuarioActual, get_current_user
-from app.config import settings
-from app.crecimiento import SISTEMA, _enviar, destino_admin, es_admin
-from app.crons import liberar_marca, reclamar_marca
+from app.crecimiento import SISTEMA, es_admin
+from app.crons import reclamar_marca
 from app.database import get_db
 from app.limites import verificar_limite
 from app.limites_diarios import consumir_cupo_diario
@@ -90,31 +90,24 @@ class MarcarVistos(BaseModel):
 
 
 def _aviso_admin(tipo: str, mensaje: str, pantalla: str | None) -> None:
-    """Correo breve a ADMIN_EMAIL: al llegar un «problema» o al juntarse 5 comentarios nuevos.
-    Máximo 1 por hora (marca por hora en la base). Nunca lanza: avisar no puede romper el envío."""
+    """Avisa a la administración por el mecanismo común de avisos (app/avisos.py): un «problema» es
+    un evento `comentario_problema`; al juntarse 5 comentarios nuevos, un `comentarios_pendientes`
+    (máximo 1 por hora). El push/correo, el tope de ruido y el panel «Actividad reciente» los pone
+    ese mecanismo: aquí ya no se envía ningún correo propio. Nunca lanza: avisar no rompe el envío.
+    Sin texto del comentario en el aviso (puede traer datos personales): solo tipo y pantalla."""
     from app.database import SessionLocal
 
     db = SessionLocal()
     try:
-        nuevos = db.query(func.count(Comentario.id)).filter(Comentario.estado == "nuevo").scalar() or 0
-        if tipo != "problema" and nuevos < UMBRAL_AVISO_NUEVOS:
+        if tipo == "problema":
+            avisos.registrar_evento("comentario_problema", meta={"pantalla": pantalla or ""})
             return
-        destino = destino_admin()
-        if not destino or not settings.resend_api_key:
-            logger.info("Comentarios: %d nuevos (último: %s). Sin ADMIN_EMAIL/Resend: solo log.", nuevos, tipo)
+        nuevos = db.query(func.count(Comentario.id)).filter(Comentario.estado == "nuevo").scalar() or 0
+        if nuevos < UMBRAL_AVISO_NUEVOS:
             return
         hora = ahora_co().strftime("%Y-%m-%d %H")
-        if not reclamar_marca(db, SISTEMA, CLAVE_AVISO, hora):
-            return  # ya se avisó en esta hora
-        asunto = "CuadraMe: alguien reportó un problema" if tipo == "problema" else f"CuadraMe: {nuevos} comentarios nuevos"
-        cuerpo = (f"Tienes {nuevos} comentario(s) sin revisar en el buzón.\n\n"
-                  f"Último ({tipo}{', en ' + pantalla if pantalla else ''}):\n{mensaje[:300]}\n\n"
-                  "Ábrelos en la app: Perfil > Salud del negocio > Comentarios.")
-        try:
-            _enviar(destino, asunto, cuerpo)
-        except Exception:  # noqa: BLE001
-            liberar_marca(db, SISTEMA, CLAVE_AVISO)  # que el próximo comentario pueda reintentar
-            logger.warning("Comentarios: no se pudo enviar el aviso al administrador", exc_info=True)
+        if reclamar_marca(db, SISTEMA, CLAVE_AVISO, hora):  # ya se avisó en esta hora: no repetir
+            avisos.registrar_evento("comentarios_pendientes", meta={"nuevos": nuevos})
     except Exception:  # noqa: BLE001
         logger.warning("Comentarios: fallo preparando el aviso", exc_info=True)
     finally:

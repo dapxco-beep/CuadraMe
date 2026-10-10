@@ -10,13 +10,14 @@ os.environ.setdefault("DATABASE_URL", f"sqlite:///{os.path.join(tempfile.mkdtemp
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import limites  # noqa: E402
+from app import avisos, crecimiento, limites  # noqa: E402
 from app.auth import UsuarioActual, get_current_user  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.crons import MarcaCron  # noqa: E402
 from app.database import SessionLocal  # noqa: E402
 from app.limites_diarios import UsoDiario  # noqa: E402
 from app.main import app  # noqa: E402
+from app.models_avisos import EventoActividad  # noqa: E402
 from app.models_comentarios import Comentario  # noqa: E402
 from app.routers import comentarios as rc  # noqa: E402
 
@@ -38,6 +39,8 @@ def _ambiente(monkeypatch):
     monkeypatch.setattr(settings, "resend_api_key", "re_clave_de_prueba")
     db = SessionLocal()
     db.query(Comentario).delete()
+    db.query(EventoActividad).delete()
+    avisos.reiniciar_para_pruebas()
     db.query(MarcaCron).filter(MarcaCron.clave == rc.CLAVE_AVISO).delete()
     db.query(UsoDiario).filter(UsoDiario.accion == "comentario").delete()
     db.commit()
@@ -50,8 +53,11 @@ def _ambiente(monkeypatch):
 
 @pytest.fixture
 def correos(monkeypatch):
+    """El aviso va por el mecanismo común (app/avisos.py): se captura el envío a Resend y se corre en línea."""
     enviados = []
-    monkeypatch.setattr(rc, "_enviar", lambda destino, asunto, texto: enviados.append((destino, asunto, texto)))
+    monkeypatch.setattr(avisos, "SINCRONO", True)
+    monkeypatch.setattr(avisos, "enviar_push", lambda *a, **k: 0)
+    monkeypatch.setattr(crecimiento, "_enviar", lambda destino, asunto, texto: enviados.append((destino, asunto, texto)))
     return enviados
 
 
@@ -242,14 +248,16 @@ def test_csv_seguro_contra_formulas(correos):
 
 
 # ── Aviso al administrador ─────────────────────────────────────────────────────────────
-def test_problema_avisa_por_correo_y_solo_una_vez_por_hora(correos):
+def test_problema_avisa_por_correo_sin_texto_ni_correo_de_la_persona(correos):
     assert enviar(tipo="problema", mensaje="Se cae al subir").status_code == 200
-    assert len(correos) == 1
+    assert len(correos) == 1  # un solo correo (el mecanismo común; ya no hay uno propio del buzón)
     destino, asunto, texto = correos[0]
-    assert destino == "dueno@cuadrame.test" and "problema" in asunto and "Se cae al subir" in texto
-    assert U1.email not in texto  # el correo de la persona no viaja en el aviso
-    enviar(tipo="problema", mensaje="Otro más")
-    assert len(correos) == 1  # tope: 1 por hora
+    assert destino == "dueno@cuadrame.test" and "Problema reportado" in asunto
+    assert "Se cae al subir" not in texto  # el texto libre del comentario no viaja en el aviso
+    assert U1.email not in texto  # ni el correo de la persona
+    db = SessionLocal()
+    assert db.query(EventoActividad).filter(EventoActividad.tipo == "comentario_problema").count() == 1
+    db.close()
 
 
 def test_un_comentario_normal_no_avisa_pero_5_nuevos_si(correos):
@@ -257,7 +265,9 @@ def test_un_comentario_normal_no_avisa_pero_5_nuevos_si(correos):
         enviar()
     assert correos == []
     enviar()
-    assert len(correos) == 1 and "5 comentarios nuevos" in correos[0][1]
+    assert len(correos) == 1 and "Comentarios sin revisar" in correos[0][1]
+    enviar()
+    assert len(correos) == 1  # máximo 1 por hora
 
 
 def test_sin_admin_email_no_envia_y_no_falla(correos, monkeypatch):
@@ -270,9 +280,11 @@ def test_si_el_correo_falla_el_comentario_igual_se_guarda(monkeypatch):
     def _roto(*a):
         raise RuntimeError("Resend caído")
 
-    monkeypatch.setattr(rc, "_enviar", _roto)
+    monkeypatch.setattr(avisos, "SINCRONO", True)
+    monkeypatch.setattr(avisos, "enviar_push", lambda *a, **k: 0)
+    monkeypatch.setattr(crecimiento, "_enviar", _roto)
     assert enviar(tipo="problema").status_code == 200
     db = SessionLocal()
     assert db.query(Comentario).count() == 1
-    assert db.query(MarcaCron).filter(MarcaCron.clave == rc.CLAVE_AVISO).count() == 0  # liberada para reintentar
+    assert db.query(EventoActividad).filter(EventoActividad.tipo == "comentario_problema").count() == 1  # queda en el panel
     db.close()

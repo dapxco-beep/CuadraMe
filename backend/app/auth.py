@@ -78,7 +78,12 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> UsuarioActual:
 
     meta = payload.get("user_metadata") or {}
     nombre = meta.get("nombre") or meta.get("full_name") or meta.get("name") or ""
-    return UsuarioActual(id=usuario_id, email=email, nombre=nombre)
+    usuario = UsuarioActual(id=usuario_id, email=email, nombre=nombre)
+    # Avisos al administrador: primera vez que se ve a esta persona (en segundo plano; nunca falla).
+    from app import avisos
+
+    avisos.visto(usuario)
+    return usuario
 
 
 def get_current_user_by_api_key(

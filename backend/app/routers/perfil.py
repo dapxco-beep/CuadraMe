@@ -10,6 +10,7 @@ from app import punto_partida
 from app.routers.cuentas import ajustar_saldo as ajustar_saldo_cuenta
 from app.schemas import AjusteSaldoRequest
 
+from app import avisos
 from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
 from app.derechos_titular import armar_json, armar_zip, borrar_todo, recopilar
@@ -170,6 +171,7 @@ def eliminar_cuenta(
         raise HTTPException(status_code=400, detail='Para confirmar, envía confirmacion="ELIMINAR"')
 
     resultado = borrar_todo(db, usuario.id, usuario.email)
+    avisos.cuenta_eliminada(usuario.id)  # se anota sin datos de la persona (ni id ni correo)
     respuesta = {"ok": True, "auth_eliminado": resultado["auth_eliminado"],
                  "gmail_revocado": resultado["gmail_revocado"]}
     if resultado["aviso"]:

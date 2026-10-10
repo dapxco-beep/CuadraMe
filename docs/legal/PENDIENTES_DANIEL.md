@@ -24,3 +24,10 @@
 - No se declaraba que cada día se envía por correo una copia de la base de datos al administrador. Añadido (retención por validar).
 - Se hablaba de eliminar la cuenta «escribiendo al correo», pero la app ya permite hacerlo en Perfil → Privacidad y datos. Corregido.
 - Se añadió el resumen semanal por correo (opt-in) y la nota de transferencias internacionales.
+
+## Avisos de actividad al administrador (finalidad y datos)
+- **Finalidad:** administración y soporte del servicio (saber que el servicio se está usando, detectar problemas y atender a las personas). No se usan para publicidad, perfilamiento ni se comparten con terceros.
+- **Qué se guarda (`eventos_actividad`):** el tipo de hecho (registro, primera cuenta, Gmail conectado...), el identificador interno y el correo de la persona, la fecha y una frase corta. **No contienen datos financieros:** ni montos, ni descripciones de movimientos, ni saldos, ni nombres de cuentas, ni el texto de los comentarios.
+- **Qué sale por push y por correo al administrador:** solo el correo **enmascarado** (`d***@gmail.com`) y el hecho. El correo completo se ve únicamente en el panel del administrador (ADMIN_EMAIL), tras iniciar sesión.
+- **Supresión:** al eliminar su cuenta, sus eventos se borran con el resto de sus datos; solo queda un evento anónimo «Una persona eliminó su cuenta».
+- **Encargados:** el correo del aviso pasa por Resend y el push por el servicio de notificaciones del navegador (ya listados). Revisar con el abogado: añadir esta finalidad a la Política de tratamiento (actualmente no está declarada; publicar la nueva versión obliga a subir `VERSION_TEXTOS`) y definir el plazo de retención de `eventos_actividad` (propuesta: 12 meses).

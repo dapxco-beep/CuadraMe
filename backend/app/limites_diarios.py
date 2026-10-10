@@ -92,4 +92,10 @@ def consumir_cupo_diario(db: Session, usuario_id: str, accion: str) -> None:
         logger.warning("No se pudo consultar el cupo diario (%s); se deja pasar", accion, exc_info=True)
         return
     if agotado:
+        try:  # avisar al administrador (en segundo plano); nunca cambia la respuesta a la persona
+            from app import avisos
+
+            avisos.limite_alcanzado(usuario_id, accion, dia)
+        except Exception:  # noqa: BLE001
+            pass
         raise HTTPException(status_code=429, detail=mensaje_limite(accion))

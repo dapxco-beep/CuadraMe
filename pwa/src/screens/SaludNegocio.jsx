@@ -6,6 +6,7 @@ import { api } from '../lib/api'
 import { useAuth } from '../lib/AuthContext'
 import { esAdminVisible } from '../lib/navegacion'
 import { useVolver } from '../lib/useVolver'
+import ActividadAvisos from '../components/ActividadAvisos'
 import BarraProgreso from '../components/BarraProgreso'
 import Icono from '../components/Icono'
 import Sparkline from '../components/Sparkline'
@@ -149,6 +150,8 @@ export default function SaludNegocio() {
           <Sparkline valores={totales} resumen={`Usuarios acumulados en 30 días: de ${fmt(totales[0])} a ${fmt(totales[totales.length - 1])}`} className="text-accent" />
         </div>
       </Tarjeta>
+
+      <ActividadAvisos />
 
       {admin && (
         <Link to="/comentarios-admin" className="mx-5 mt-3 flex items-center gap-3 rounded-2xl bg-paper-raised border border-line px-4 py-3.5">

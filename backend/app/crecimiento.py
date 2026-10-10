@@ -404,9 +404,31 @@ def procesar_avisos(db: Session, ahora: datetime | None = None) -> dict:
                     liberar_marca(db, SISTEMA, f"crec:senal:{s['id']}")
                 corrida.fallidos += 1
 
+    _registrar_eventos(m, pendientes, señales_nuevas)
     resumen = _resumen_semanal(db, m, ahora)
     return {"ok": error is None, "enviado": enviado, "avisos": avisos, "resumen_semanal": resumen,
             "error": error, **corrida.resumen()}
+
+
+def _registrar_eventos(m: dict, pendientes: list, señales_nuevas: list) -> None:
+    """Deja constancia en «Actividad reciente» (y avisa por push). El correo de capacidad ya lo mandó
+    este monitor, por eso `sin_correo=True`: así no llegan dos correos por lo mismo. La clave única
+    por umbral/periodo hace que reintentar (porque el correo falló) no duplique el evento."""
+    try:
+        from app import avisos
+
+        for c, u, _claves in pendientes:
+            avisos.registrar_evento(
+                "umbral_capacidad", sin_correo=True, meta={"recurso": c["id"], "umbral": u},
+                clave_unica=f"umbral:{c['id']}:{u}:{_periodo(UMBRALES[c['id']][1], m)}",
+                texto=f"Llegaste al {u} % de {c['nombre']}")
+        for s in señales_nuevas:
+            if s["id"] == "errores_5xx":
+                avisos.registrar_evento(
+                    "errores_5xx_picos", sin_correo=True, meta={"errores_24h": s["actual"]},
+                    clave_unica=f"5xx:{m['dia']}", texto=f"{s['actual']} errores del servidor en 24 h")
+    except Exception:  # noqa: BLE001
+        logger.warning("Monitor: no se pudo registrar el evento de capacidad", exc_info=True)
 
 
 def _resumen_semanal(db: Session, m: dict, ahora: datetime) -> str:

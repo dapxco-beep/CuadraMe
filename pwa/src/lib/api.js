@@ -242,6 +242,14 @@ function limpiar(p) {
 export const api = {
   // Solo la administración (el servidor responde 404 a cualquier otra persona).
   panelNegocio: () => request('/metricas/panel'),
+  // Avisos de actividad (solo administración; el servidor responde 404 a cualquier otra persona).
+  actividadAvisos: (p = {}) => {
+    const q = new URLSearchParams(limpiar(p)).toString()
+    return request(`/avisos/actividad${q ? `?${q}` : ''}`, { sinCache: true })
+  },
+  preferenciasAvisos: () => request('/avisos/preferencias', { sinCache: true }),
+  guardarPreferenciasAvisos: (data) => request('/avisos/preferencias', { method: 'PUT', body: data }),
+  probarAvisos: () => request('/avisos/probar', { method: 'POST' }),
   // Buzón de opinión: cualquiera envía y ve lo suyo; lo demás es solo del administrador (404 al resto).
   enviarComentario: (data) => request('/comentarios', { method: 'POST', body: data }),
   misComentarios: () => request('/comentarios/mios', { sinCache: true }),

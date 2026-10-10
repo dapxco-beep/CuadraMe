@@ -63,6 +63,18 @@ Aviso: `crear_crons.py` aún no incluye `/resumen/cron/semanal`; créalo a mano 
 | Errores 5xx (24 h) | 20 (`ERRORES_5XX_AVISO`) | al superarlo (1 vez al día) | Revisar Sentry y logs de Railway; si es memoria/CPU, subir el plan. |
 | Usuarios que tocaron un tope diario | 3 en 7 días | al superarlo (1 vez a la semana) | Ver si es abuso o un cliente que necesita un plan mayor (`limites_diarios.py`). |
 
+## 3c. Avisos de actividad (te avisan cuando alguien se registra y demás)
+Eventos que quedan en la tabla `eventos_actividad` y se muestran en **Más > Salud del negocio > Actividad reciente** (funciona aunque no llegue ni push ni correo): `nuevo_registro`, `primera_cuenta`, `primer_movimiento`, `gmail_conectado`, `atajo_activado`, `cuenta_eliminada`, `comentario_problema` (y `comentarios_pendientes` al juntarse 5 sin revisar), `limite_alcanzado`, `umbral_capacidad`, `errores_5xx_picos`.
+- **Canales:** (a) push al celular del administrador, con la misma infraestructura de notificaciones (hay que **activarlas una vez en tu celular**: Salud del negocio > Qué te avisa y cuándo > «Activar en este celular»); (b) correo por Resend a `ADMIN_EMAIL`; (c) el panel.
+- **IMPORTANTE, remitente de Resend:** `RESEND_FROM` por defecto es `backup@resend.dev` (remitente de pruebas). Ese remitente **solo entrega al correo dueño de la cuenta de Resend**. Si `ADMIN_EMAIL` es otro correo, Resend responde 403 y los avisos por correo no llegan. Para recibirlos en otro correo: en Resend > Domains verifica un dominio (registros DNS) y define en Railway `RESEND_FROM="CuadraMe <avisos@tu-dominio>"`. Si el envío falla por eso, el backend deja un warning claro en el log, **no reintenta en bucle** (pausa de 6 horas), muestra el motivo en el panel y los avisos siguen llegando por push y en la lista.
+- **Quién avisa a quién:** solo `ADMIN_EMAIL`. El backend aprende tu id de usuario la primera vez que abres la app con ese correo (fila en `ajustes_avisos`). Sin suscripción push o sin `RESEND_API_KEY` el canal se omite sin error.
+- **Control de ruido:** máximo 20 avisos por hora (`MAX_AVISOS_POR_HORA` en `app/avisos.py`); lo que pase se agrupa en un solo «N eventos nuevos». En el panel eliges qué tipos avisan por push y por correo, silencias por horas y activas el «resumen diario».
+- **Privacidad:** el aviso muestra el correo enmascarado (`d***@gmail.com`), nunca nombres, montos ni descripciones de movimientos. El correo completo solo aparece en el panel del administrador. Al eliminar su cuenta una persona, sus eventos se borran y queda solo «Una persona eliminó su cuenta».
+- **Idempotencia:** `nuevo_registro` y las activaciones llevan una clave única por usuario (restricción de la base): dos peticiones simultáneas no duplican. Los usuarios que ya existían antes de estos avisos no se cuentan como «nuevos» (se detecta por `perfiles.creado_en`).
+- **Cron nuevo (no creado):** `POST /avisos/cron/resumen-diario`, diario 20:00 hora Bogotá (ya está en `JOBS` de `crear_crons.py`; créalo en cron-job.org con tu aprobación). Solo hace falta si usas «resumen diario» o para recoger lo agrupado por el tope.
+- **Base de datos:** tablas `eventos_actividad` y `ajustes_avisos`; el backend las crea al arrancar. Script con RLS, idempotente y **sin ejecutar**: `backend/supabase/migraciones/avisos_actividad.sql`.
+- **Aproximación:** el tope por hora y la pausa del correo viven en memoria del proceso (con varias réplicas, cada una cuenta lo suyo).
+
 ## 4. Verificación después del despliegue (10 minutos)
 1. `GET /health` responde `{"ok": true}`.
 2. Entra a la app con una cuenta de prueba, registra un movimiento y revisa que aparezca en Inicio.
@@ -73,6 +85,7 @@ Aviso: `crear_crons.py` aún no incluye `/resumen/cron/semanal`; créalo a mano 
 7. Un cron de prueba (p. ej. `/backup/cron/enviar`) responde 200 y el correo de respaldo llega.
 
 ## 5. Si algo falla
+- **Los avisos de actividad no llegan al correo:** casi siempre es `RESEND_FROM=backup@resend.dev` con un `ADMIN_EMAIL` distinto del dueño de la cuenta de Resend (ver 3c). Mira el aviso rojo en Salud del negocio > Qué te avisa y cuándo, o el warning `Resend rechazó el correo` en los logs.
 - **El deploy rompe la app:** vuelve al despliegue anterior (`railway redeploy` del anterior / «Promote» el deploy previo en Vercel). No hace falta tocar la base: los cambios de columnas son aditivos.
 - **Un cron responde 401:** `CRON_SECRET` distinto entre cron-job.org y Railway. **Responde 500:** mira los logs de Railway; los fallos por usuario no frenan a los demás y salen en `fallidos`.
 - **El resumen semanal no llega:** revisa `RESEND_API_KEY` y `RESEND_FROM` (dominio verificado). Si Resend falla, la marca de la semana se libera y la siguiente corrida reintenta. Resend apagado = `enviados: 0` sin error.
