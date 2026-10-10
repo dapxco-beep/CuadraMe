@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Compass, Play } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
@@ -6,7 +6,8 @@ import {
   debeAbrirseSolo, guardarRecorrido, leerRecorrido, sePuedeRetomar, TOTAL_PASOS,
 } from '../lib/recorrido'
 import Icono from './Icono'
-import Recorrido from './Recorrido'
+// El recorrido (ilustraciones y animaciones) pesa ~20 KB y se ve una sola vez: se baja al abrirlo.
+const Recorrido = lazy(() => import('./Recorrido'))
 
 /**
  * Puerta de entrada al recorrido «Conoce CuadraMe en 1 minuto» (4 tarjetas). Es OPCIONAL: nunca se abre solo.
@@ -82,7 +83,11 @@ export default function RecorridoEntrada({ variante = 'enlace' }) {
           </button>
         </section>
       )}
-      {abierto && <Recorrido desde={desde} onCerrar={alCerrar} />}
+      {abierto && (
+        <Suspense fallback={null}>
+          <Recorrido desde={desde} onCerrar={alCerrar} />
+        </Suspense>
+      )}
     </>
   )
 }

@@ -5,6 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 import { MSG_ERROR_SERVIDOR, MSG_SESION_VENCIDA, MSG_SIN_CONEXION } from './mensajesBase'
 import { mensajeAmable, mensajePorEstado } from './mensajes'
+import { avisarConexionOk, avisarDatosGuardados, olvidarVistos, recordarVisto, vistoSinRed, activarVistos } from './ultimoVisto'
 
 export { MSG_ERROR_SERVIDOR, MSG_SESION_VENCIDA, MSG_SIN_CONEXION }
 
@@ -28,6 +29,7 @@ async function cerrarSesionVencida() {
   if (cerrandoSesion) return
   cerrandoSesion = true
   invalidarCache()
+  olvidarVistos()
   try {
     borrarSeguridad()
     await supabase.auth.signOut()
@@ -64,9 +66,10 @@ export function invalidarCache() {
   generacion++
 }
 // Solo para pruebas y mediciones.
-export function configurarCache({ ttl, desactivar = false } = {}) {
+export function configurarCache({ ttl, desactivar = false, vistos: conVistos } = {}) {
   ttlCache = ttl ?? TTL_CACHE_MS
   cacheActiva = !desactivar
+  if (conVistos !== undefined) activarVistos(!!conVistos)
   invalidarCache()
 }
 export function estadisticasPeticiones(reiniciar = false) {
@@ -75,6 +78,21 @@ export function estadisticasPeticiones(reiniciar = false) {
   return copia
 }
 const copiar = (v) => (v !== null && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v)
+
+// Lecturas que index.html ya lanzó mientras bajaba el JS (ver el <script> de arranque). Se recogen UNA
+// vez, solo si llegan de la misma sesión y hace menos de 15 s; si fallaron, se pide normalmente.
+function recogerArranque(ruta, token) {
+  try {
+    const a = typeof window !== 'undefined' ? window.__arranque : null
+    if (!a || !token || a.t !== token || Date.now() - a.en > 15000) return null
+    const p = a.p[ruta]
+    if (!p) return null
+    delete a.p[ruta]
+    return p.then((v) => (v === undefined ? pedir(ruta, {}) : v))
+  } catch {
+    return null
+  }
+}
 
 async function request(path, opciones = {}) {
   const { method = 'GET', auth = true, sinCache = false } = opciones
@@ -86,14 +104,16 @@ async function request(path, opciones = {}) {
       invalidarCache() // las lecturas lanzadas mientras escribía pudieron ver el estado viejo
     }
   }
-  if (sinCache || !cacheActiva) {
-    estadisticas.red++
-    return pedir(path, opciones)
-  }
   let uid = 'anon'
+  let token = null
   if (auth) {
     const { data } = await supabase.auth.getSession()
     uid = data?.session?.user?.id || 'anon'
+    token = data?.session?.access_token || null
+  }
+  if (sinCache || !cacheActiva) {
+    estadisticas.red++
+    return pedir(path, opciones)
   }
   const clave = `${uid}|${path}`
   const guardada = cacheLecturas.get(clave)
@@ -108,14 +128,24 @@ async function request(path, opciones = {}) {
   }
   const gen = generacion
   estadisticas.red++
-  const promesa = pedir(path, opciones).then(
+  const promesa = (recogerArranque(path, token) || pedir(path, opciones)).then(
     (valor) => {
       if (ttlCache > 0 && gen === generacion) cacheLecturas.set(clave, { hasta: Date.now() + ttlCache, valor })
       if (lecturasEnVuelo.get(clave) === promesa) lecturasEnVuelo.delete(clave)
+      if (gen === generacion) recordarVisto(uid, path, valor)
+      avisarConexionOk()
       return valor
     },
     (err) => {
       if (lecturasEnVuelo.get(clave) === promesa) lecturasEnVuelo.delete(clave)
+      // Sin red: en vez de un error, lo último que se vio (y la app avisa que es una copia).
+      if (err?.sinConexion) {
+        const v = vistoSinRed(uid, path)
+        if (v !== undefined) {
+          avisarDatosGuardados()
+          return v
+        }
+      }
       throw err
     }
   )
@@ -550,3 +580,4 @@ export const api = {
   cierrePreferencias: () => request('/cierre-mes/preferencias'),
   guardarCierrePreferencias: (correo) => request('/cierre-mes/preferencias', { method: 'PUT', body: { correo } }),
 }
+

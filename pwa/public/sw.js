@@ -1,7 +1,7 @@
 // Service worker de CuadraMe: notificaciones push + caché del "shell" de la app
 // para que abra aunque no haya conexión. Los datos (API, Supabase) NUNCA se
 // cachean aquí: un saldo viejo mostrado como si fuera actual es peor que un error.
-const VERSION = 'v3'
+const VERSION = 'v4'
 const CACHE_SHELL = `cuadrame-shell-${VERSION}`
 const CACHE_ASSETS = `cuadrame-assets-${VERSION}`
 
@@ -30,20 +30,26 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return // API, Supabase, fuentes: directo a la red
 
-  // Navegación (abrir la app): red primero para recibir siempre la versión
-  // nueva; si no hay conexión, el último index.html guardado.
+  // Navegación (abrir la app): red primero para recibir siempre la versión nueva; si no hay
+  // conexión —o la red tarda más de 4 s (datos móviles malos)— el último index.html guardado,
+  // que abre al instante y trae sus archivos del caché. (Si tras un despliegue ese index.html
+  // viejo pide un archivo que ya no existe, la app se recarga sola una vez: ver main.jsx.)
   if (request.mode === 'navigate') {
+    const red = fetch(request).then((resp) => {
+      // Solo la app (/) alimenta el caché del shell: otras páginas estáticas, como
+      // /bienvenida.html, no deben pisarlo.
+      if (url.pathname === '/' && resp.ok) {
+        const copia = resp.clone()
+        caches.open(CACHE_SHELL).then((c) => c.put('/', copia))
+      }
+      return resp
+    })
+    const lenta = new Promise((resolver) => {
+      setTimeout(async () => resolver(url.pathname === '/' ? await caches.match('/') : undefined), 4000)
+    })
     event.respondWith(
-      fetch(request)
-        .then((resp) => {
-          // Solo la app (/) alimenta el caché del shell: otras páginas estáticas, como
-          // /bienvenida.html, no deben pisarlo.
-          if (url.pathname === '/') {
-            const copia = resp.clone()
-            caches.open(CACHE_SHELL).then((c) => c.put('/', copia))
-          }
-          return resp
-        })
+      Promise.race([red, lenta])
+        .then((resp) => resp || red)
         .catch(async () => (await caches.match('/')) || Response.error())
     )
     return

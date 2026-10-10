@@ -16,7 +16,7 @@
     "@capacitor/ios": "^8.5.2",
     "@fontsource/sora": "^5.3.0",
     "@sentry/react": "^11.1.0",
-    "@supabase/supabase-js": "^2.117.2",
+    "@supabase/auth-js": "^2.117.2",
     "framer-motion": "^13.4.4",
     "lucide-react": "^1.48.0",
     "react": "^19.2.8",

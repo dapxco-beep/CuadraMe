@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { IlustracionVacia, Isotipo, Monto, SelloCuadre } from '../brand/Marca'
 import { api } from '../lib/api'
+import { visto } from '../lib/ultimoVisto'
 import { useBloqueo } from '../lib/BloqueoContext'
 import BotonOjo from '../components/BotonOjo'
 import TarjetaSalud from '../components/TarjetaSalud'
@@ -99,21 +100,34 @@ export default function Inicio() {
   const { iconoDe } = useCategorias()
   const { fmt } = useBloqueo()
   const primerNombre = (usuario?.nombre || '').trim().split(/\s+/)[0]
-  const [cuentas, setCuentas] = useState([])
-  const [movimientos, setMovimientos] = useState([])
-  const [reporte, setReporte] = useState(null)
-  const [disponible, setDisponible] = useState(null)
-  const [bolsillo, setBolsillo] = useState(null)
-  const [resumen, setResumen] = useState(null)
-  const [tendencia, setTendencia] = useState(null)
+  // Lo último que se vio (si fue hace poco) pinta el Inicio AL INSTANTE; mientras tanto se pide lo
+  // nuevo y la pantalla se actualiza sola al llegar (ver api.leerVisto). Sin copia: esqueleto, como antes.
+  const [previo] = useState(() => ({
+    cuentas: visto.cuentas(),
+    movimientos: visto.movimientos(4),
+    reporte: visto.reporteMensual(),
+    disponible: visto.disponibleHoy(),
+    bolsillo: visto.enMiBolsillo(),
+    resumen: visto.resumenCuentas(),
+    tendencia: visto.tendencias(6),
+    semana: visto.movimientosDesde(200, fechaHace(6)),
+  }))
+  const hayPrevio = !!(previo.cuentas && previo.movimientos && previo.reporte)
+  const [cuentas, setCuentas] = useState(previo.cuentas || [])
+  const [movimientos, setMovimientos] = useState(previo.movimientos || [])
+  const [reporte, setReporte] = useState(previo.reporte || null)
+  const [disponible, setDisponible] = useState(previo.disponible || null)
+  const [bolsillo, setBolsillo] = useState(previo.bolsillo || null)
+  const [resumen, setResumen] = useState(previo.resumen || null)
+  const [tendencia, setTendencia] = useState(previo.tendencia?.meses ?? null)
   const [gmailConectado, setGmailConectado] = useState(true)
   const [conexionFalla, setConexionFalla] = useState(false)
   const [tareasSync, setTareasSync] = useState(null)
-  const [cargando, setCargando] = useState(true)
+  const [cargando, setCargando] = useState(!hayPrevio)
   const [errorCarga, setErrorCarga] = useState('')
   const [intento, setIntento] = useState(0)
   const [verMas, setVerMas] = useState(false)
-  const [semana, setSemana] = useState(null)
+  const [semana, setSemana] = useState(() => (Array.isArray(previo.semana) ? gastosDeLaSemana(previo.semana) : null))
   const [sinCategorizar, setSinCategorizar] = useState(0)
 
   useEffect(() => {

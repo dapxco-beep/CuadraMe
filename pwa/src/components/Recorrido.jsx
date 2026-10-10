@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, useReducedMotion } from 'framer-motion'
+import { m, useReducedMotion } from 'framer-motion'
 import { ArrowLeft, ArrowRight, ChevronDown, Sparkles, X } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import {
@@ -131,7 +131,7 @@ export default function Recorrido({ desde = 0, onCerrar }) {
       </div>
 
       <main className="flex-1 overflow-y-auto overflow-x-hidden">
-        <motion.div
+        <m.div
           key={indice}
           initial={inicio}
           animate={entrada}
@@ -173,7 +173,7 @@ export default function Recorrido({ desde = 0, onCerrar }) {
               {verEjemplo && <p className="t-cuerpo rounded-2xl bg-accent-soft p-3 mt-1">{paso.detalle}</p>}
             </div>
           )}
-        </motion.div>
+        </m.div>
       </main>
 
       <footer className="px-5 pt-2 pb-4 w-full max-w-xl mx-auto">

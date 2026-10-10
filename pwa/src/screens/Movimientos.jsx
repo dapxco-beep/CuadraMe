@@ -221,9 +221,11 @@ export default function Movimientos() {
   const consulta = useMemo(() => consultaServidor(f), [f])
   const consultaKey = JSON.stringify(consulta)
 
-  // --- Datos: arrancan del caché si se vuelve a una lista ya vista (pinta al instante) ---
-  const vuelve = useNavigationType() === 'POP' // al entrar tocando el menú se parte de cero
-  const [cacheInicial] = useState(() => (vuelve ? leerCacheLista(claveLista) : null))
+  // --- Datos: arrancan del caché si ya se vio esta lista (pinta al instante y se revalida) ---
+  // Al VOLVER (POP) se recupera también cuántos había y el scroll; al entrar tocando el menú se
+  // muestra lo último visto desde arriba, con la primera página, y se actualiza sola al llegar lo nuevo.
+  const vuelve = useNavigationType() === 'POP'
+  const [cacheInicial] = useState(() => leerCacheLista(claveLista))
   const [movimientos, setMovimientos] = useState(cacheInicial?.items || [])
   const [hayMas, setHayMas] = useState(!!cacheInicial?.hayMas)
   const [cargando, setCargando] = useState(!cacheInicial)
@@ -283,7 +285,9 @@ export default function Movimientos() {
     ultimaConsulta.current = consultaKey
     const objetivo = cambioFiltro
       ? TAMANO_PAGINA
-      : Math.max(TAMANO_PAGINA, guardado?.cantidad || 0, cacheInicial?.items?.length || 0)
+      : vuelve
+        ? Math.max(TAMANO_PAGINA, guardado?.cantidad || 0, cacheInicial?.items?.length || 0)
+        : TAMANO_PAGINA
     const mia = ++peticion.current
     if (!silencioso) {
       claveDeItems.current = null
@@ -650,15 +654,17 @@ export default function Movimientos() {
     )
     if (!ok) return
     setAplicando(true)
+    // Optimista: las filas salen de la lista al instante (el servidor tarda 150-300 ms por viaje).
+    // Las transferencias se omiten en el servidor, así que desde el principio no se quitan.
+    const previa = movimientos
+    const omitidas = new Set(movimientos.filter((m) => ids.includes(m.id) && m.fuente === 'transferencia_interna').map((m) => m.id))
+    const borrados = ids.filter((id) => !omitidas.has(id))
+    const set = new Set(borrados)
+    setMovimientos((prev) => prev.filter((m) => !set.has(m.id)))
     try {
       const r = await api.eliminarMovimientosMasivo(ids)
-      // Las transferencias se omiten en el servidor: solo salen de la lista las que de verdad se borraron
-      const omitidas = new Set(movimientos.filter((m) => ids.includes(m.id) && m.fuente === 'transferencia_interna').map((m) => m.id))
-      const borrados = ids.filter((id) => !omitidas.has(id))
-      const set = new Set(borrados)
       borrados.forEach((id) => quitarDeCaches(id))
-      setMovimientos((prev) => prev.filter((m) => !set.has(m.id)))
-      await recargarCuentas?.()
+      recargarCuentas?.() // los saldos se actualizan en segundo plano: no se espera
       recargarConteo()
       avisar(
         r.omitidos
@@ -668,6 +674,7 @@ export default function Movimientos() {
       )
       salirModoSeleccion()
     } catch (err) {
+      setMovimientos(previa) // no se pudo: vuelven a aparecer
       avisar(err.message || 'No se pudieron eliminar')
     } finally {
       setAplicando(false)

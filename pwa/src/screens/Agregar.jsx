@@ -4,6 +4,8 @@ import { useVolver } from '../lib/useVolver'
 import { Calendar, Camera, Image as ImagenIcono, Info, Sparkles, Users, X } from 'lucide-react'
 import Icono from '../components/Icono'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/AuthContext'
+import { encolarMovimiento } from '../lib/colaOffline'
 import { prepararImagen } from '../lib/imagen'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
@@ -41,6 +43,7 @@ export default function Agregar() {
   // así "atrás" nunca reabre el formulario ya guardado.
   const volver = useVolver('/')
   const { cuentas, recargar: recargarCuentas } = useCuentas()
+  const auth = useAuth()
   const { nombres: categoriasRapidas } = useCategorias()
   const [cuentaElegidaId, setCuentaId] = useState('')
   const [cuentaDestinoId, setCuentaDestinoId] = useState('')
@@ -185,6 +188,29 @@ export default function Agregar() {
       }
       volver()
     } catch (err) {
+      // Sin señal: el movimiento nuevo se guarda en el celular y sale solo cuando vuelve la red.
+      // (Transferencias y ediciones no: esas piden conexión para no pisar cambios.)
+      if (err.sinConexion && !esTransferencia && auth?.usuario?.id) {
+        const guardado = encolarMovimiento(auth.usuario.id, {
+          cuenta_id: cuentaId,
+          descripcion: descripcion.trim(),
+          monto: Number(monto),
+          tipo,
+          categoria: categoria || undefined,
+          fecha: fecha ? `${fecha}T12:00:00` : undefined,
+          ...(confirmarNuevo ? { confirmar_nuevo: true } : {}),
+        })
+        if (guardado) {
+          window.dispatchEvent(new CustomEvent('cuadrame:cola-cambio'))
+          window.dispatchEvent(
+            new CustomEvent('cuadrame:aviso', {
+              detail: { mensaje: 'Sin conexión: guardamos tu movimiento en el celular y lo enviamos cuando vuelva la señal.', tipo: 'info' },
+            })
+          )
+          volver()
+          return
+        }
+      }
       // Ya lo tienes por otro canal (atajo, correo, extracto): se pregunta en vez de duplicarlo.
       if (err.status === 409 && err.detalle?.codigo === 'posible_duplicado') {
         setPosibleDuplicado(err.detalle.mensaje || err.message)

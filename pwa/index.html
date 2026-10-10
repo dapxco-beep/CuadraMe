@@ -47,6 +47,47 @@
     <link rel="apple-touch-startup-image" href="/icons/splash/splash-1640x2360-oscuro.png" media="(device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)" />
     <!-- splash:fin -->
     <!-- La fuente Sora va autoalojada (@fontsource/sora, ver src/main.jsx): sin pedidos a Google Fonts. -->
+    <!-- Rendimiento en datos móviles: se abre la conexión con la API mientras todavía baja el JS
+         (ahorra el saludo TCP/TLS al arrancar) y se precargan las dos letras que se ven primero. -->
+    <link rel="preconnect" href="%VITE_API_URL%" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/node_modules/@fontsource/sora/files/sora-latin-400-normal.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/node_modules/@fontsource/sora/files/sora-latin-700-normal.woff2" />
+    <!-- Arranque en paralelo: si ya hay sesión vigente, las lecturas del Inicio salen AHORA, durante
+         la descarga y el análisis del JS, y api.js las recoge al estar listo (una sola vez, en 15 s).
+         Si algo falla o no hay sesión, no pasa nada: la app pide todo normalmente. Debe mantenerse
+         alineado con src/lib/arranque.js (mismas rutas). Sin datos sensibles en el HTML: solo se
+         lee el token que ya está en este celular y se manda a la API propia. -->
+    <script>
+      (function () {
+        try {
+          var API = '%VITE_API_URL%'
+          if (!API || API.charAt(0) === '%' || !window.fetch || !window.localStorage) return
+          var k = null
+          for (var i = 0; i < localStorage.length; i++) {
+            var n = localStorage.key(i)
+            if (n && /^sb-.+-auth-token$/.test(n)) { k = n; break }
+          }
+          if (!k) return
+          var s = JSON.parse(localStorage.getItem(k))
+          var t = s && s.access_token
+          if (!t || !s.expires_at || s.expires_at * 1000 < Date.now() + 120000) return
+          var d = new Date(); d.setDate(d.getDate() - 6)
+          var p2 = function (x) { return (x < 10 ? '0' : '') + x }
+          var desde = d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate())
+          var rutas = ['/consentimientos', '/cuentas', '/categorias?incluir_inactivas=true', '/movimientos?limit=4&offset=0',
+            '/reportes/mensual', '/movimientos?limit=200&offset=0&desde=' + desde, '/presupuestos/disponible-hoy',
+            '/presupuestos/en-mi-bolsillo', '/cuentas/resumen', '/correos/gmail/estado', '/conexiones/estado',
+            '/sincronizacion/estado', '/reportes/tendencias?meses=6']
+          var cab = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }
+          var a = (window.__arranque = { t: t, en: Date.now(), p: {} })
+          rutas.forEach(function (r) {
+            a.p[r] = fetch(API + r, { headers: cab })
+              .then(function (x) { return x.ok ? x.json() : undefined })
+              .catch(function () { return undefined })
+          })
+        } catch (e) {}
+      })()
+    </script>
     <!-- Tema antes del primer pintado: evita el destello claro→oscuro y deja listo el splash estático. -->
     <script>
       (function () {

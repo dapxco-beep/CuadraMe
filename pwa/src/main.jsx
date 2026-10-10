@@ -76,6 +76,29 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   })
 }
 
+// Tras un despliegue, una pestaña abierta puede pedir una pantalla (archivo con hash) que ya no
+// existe en el servidor. En vez de la pantalla de error, se recarga UNA vez para traer la versión
+// nueva (la marca en sessionStorage evita un bucle si el problema es otro).
+window.addEventListener('vite:preloadError', (event) => {
+  try {
+    if (sessionStorage.getItem('cuadrame_recarga_chunk') === '1') return
+    sessionStorage.setItem('cuadrame_recarga_chunk', '1')
+    event.preventDefault()
+    window.location.reload()
+  } catch {
+    /* sin almacenamiento: se deja el comportamiento normal */
+  }
+})
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    try {
+      sessionStorage.removeItem('cuadrame_recarga_chunk')
+    } catch {
+      /* nada */
+    }
+  }, 10000)
+})
+
 bloquearZoomPellizco()
 
 createRoot(document.getElementById('root')).render(

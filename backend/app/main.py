@@ -6,6 +6,7 @@ from sqlalchemy import text
 from app.config import settings
 from app.database import Base, engine
 from app.rls import asegurar_rls
+from app.compresion import GZipSelectivo
 from app.seguridad import SeguridadMiddleware, limpiar_evento_sentry
 from app import models_asistente  # noqa: F401  (registra la tabla uso_asistente para create_all)
 from app import limites_diarios  # noqa: F401  (registra la tabla uso_diario para create_all)
@@ -168,6 +169,10 @@ errores_atajo.registrar(app)
 # navegador lo mostraría como "error de red" en vez del mensaje claro).
 app.add_middleware(SeguridadMiddleware, con_csp=_es_prod)
 
+# Compresión gzip de lo que pasa de 1 KB (JSON de listas y reportes): ver app/compresion.py.
+# Va después de SeguridadMiddleware y antes de CORS: CORS sigue siendo la capa externa.
+app.add_middleware(GZipSelectivo)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -180,6 +185,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # El navegador recuerda el permiso (preflight) en vez de repetirlo antes de cada lectura:
+    # cada preflight es un viaje de ida y vuelta extra. Chrome limita este valor a 2 h.
+    max_age=7200,
 )
 
 app.include_router(cuentas.router)

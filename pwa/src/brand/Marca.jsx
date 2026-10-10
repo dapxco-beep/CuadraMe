@@ -89,7 +89,7 @@ export function SelloCuadre({ size = 24, animar = true, className = '' }) {
 export function CargandoMarca({ texto = 'Cargando', className = '' }) {
   const [conCuadri] = useMostrarCuadri()
   return (
-    <div role="status" className={`flex-1 flex flex-col items-center justify-center gap-3 ${className}`}>
+    <div role="status" className={`aparece-tarde flex-1 flex flex-col items-center justify-center gap-3 ${className}`}>
       {conCuadri ? <Cuadri pose="feliz" size={72} /> : <Isotipo size={52} fichaClassName="ficha-loop" />}
       <p className="text-xs text-ink-soft">{texto}…</p>
     </div>

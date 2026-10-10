@@ -16,7 +16,9 @@
 // Reglas de estilo: tú, frases cortas, sin jerga. Es orientación EDUCATIVA, no asesoría financiera:
 // nada de recomendar productos, inversiones ni prometer rendimientos.
 
-export const AVISO_EDUCATIVO = 'Orientación educativa, no es asesoría financiera.'
+import { AVISO_EDUCATIVO } from './avisoEducativo'
+
+export { AVISO_EDUCATIVO }
 
 export const LECCIONES = [
   {

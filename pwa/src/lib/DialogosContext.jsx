@@ -35,6 +35,13 @@ export function DialogosProvider({ children }) {
     return () => window.removeEventListener('cuadrame:sesion-vencida', alVencer)
   }, [avisar])
 
+  // Avisos de otras capas (p. ej. la cola sin conexión) llegan como evento: { mensaje, tipo }
+  useEffect(() => {
+    const alAviso = (e) => e.detail?.mensaje && avisar(e.detail.mensaje, e.detail.tipo || 'info')
+    window.addEventListener('cuadrame:aviso', alAviso)
+    return () => window.removeEventListener('cuadrame:aviso', alAviso)
+  }, [avisar])
+
   function responder(valor) {
     confirmacion?.resolve(valor)
     setConfirmacion(null)

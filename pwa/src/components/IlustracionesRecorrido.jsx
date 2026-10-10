@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from 'framer-motion'
+import { m, useReducedMotion } from 'framer-motion'
 
 // Ilustraciones del recorrido: SVG sencillos con los colores de la marca (se adaptan al modo oscuro
 // porque usan las clases de color del tema). Son decorativas (`aria-hidden`): el texto del paso dice
@@ -31,7 +31,7 @@ function Barra({ x, y, ancho, pct, clase = 'fill-accent', alto = 10 }) {
   return (
     <g>
       <rect x={x} y={y} width={ancho} height={alto} rx={alto / 2} className="fill-line" />
-      <motion.rect
+      <m.rect
         x={x} y={y} height={alto} rx={alto / 2} className={clase}
         initial={{ width: reducir ? ancho * pct : 0 }}
         animate={{ width: ancho * pct }}

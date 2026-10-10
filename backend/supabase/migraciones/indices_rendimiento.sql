@@ -37,7 +37,21 @@ CREATE INDEX IF NOT EXISTS ix_correos_gastos_usuario_estado
 CREATE INDEX IF NOT EXISTS ix_extractos_correo_usuario_estado
   ON public.extractos_correo (usuario_id, estado);
 
--- Verificación (solo lectura): debe listar los 5 índices.
+-- Deduplicación entre canales (atajo, correo, extracto, importación): cada movimiento nuevo busca su
+-- huella entre las del usuario y, al borrar/mover, sus huellas por movimiento. Sin estos índices
+-- esas búsquedas recorren toda la tabla de huellas. (main.py ya crea ix_movimientos_huella al
+-- arrancar; aquí queda por si se corre el script antes del primer despliegue.)
+CREATE INDEX IF NOT EXISTS ix_huellas_usuario_huella
+  ON public.huellas_origen (usuario_id, huella);
+
+CREATE INDEX IF NOT EXISTS ix_huellas_movimiento
+  ON public.huellas_origen (movimiento_id);
+
+CREATE INDEX IF NOT EXISTS ix_movimientos_huella
+  ON public.movimientos (usuario_id, huella_externa);
+
+-- Verificación (solo lectura): debe listar los 8 índices.
 -- SELECT indexname FROM pg_indexes WHERE schemaname = 'public'
 --   AND indexname IN ('ix_movimientos_cuenta_fecha', 'ix_movimientos_usuario_fecha', 'ix_movimientos_por_confirmar',
---                     'ix_correos_gastos_usuario_estado', 'ix_extractos_correo_usuario_estado');
+--                     'ix_correos_gastos_usuario_estado', 'ix_extractos_correo_usuario_estado',
+--                     'ix_huellas_usuario_huella', 'ix_huellas_movimiento', 'ix_movimientos_huella');

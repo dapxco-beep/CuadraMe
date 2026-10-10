@@ -5,6 +5,7 @@ import { ArrowLeftRight, CalendarClock, ChevronRight, HandCoins, PieChart, Plus,
 import { EstadoVacio } from '../brand/Marca'
 import { formatCOP, formatPorcentaje } from '../lib/format'
 import { api } from '../lib/api'
+import { visto } from '../lib/ultimoVisto'
 import GraficoTendencia from '../components/GraficoTendencia'
 import { useCategorias } from '../lib/CategoriasContext'
 import BarraProgreso from '../components/BarraProgreso'
@@ -17,17 +18,46 @@ import Ayudita from '../components/Ayudita'
 
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
+// Gasto del mes por categoría, a partir del reporte mensual.
+function gastosDe(reporte) {
+  const gastos = {}
+  ;(reporte?.top_categorias || []).forEach((c) => {
+    gastos[c.categoria] = c.monto
+  })
+  return gastos
+}
+
 export default function Presupuesto() {
-  const [presupuestos, setPresupuestos] = useState([])
-  const [gastosPorCategoria, setGastosPorCategoria] = useState({})
-  const [tendencias, setTendencias] = useState(null)
-  const [flujoCaja, setFlujoCaja] = useState(null)
-  const [cargando, setCargando] = useState(true)
+  // Lo último visto pinta la pantalla al instante; lo nuevo llega y la actualiza sola (sin esqueleto).
+  const [previo] = useState(() => {
+    const ps = visto.presupuestos()
+    const reporte = visto.reporteMensual()
+    if (!ps || !reporte) return null
+    return {
+      ps,
+      reporte,
+      tend: visto.tendencias(12) ?? null,
+      flujo: visto.flujoCajaFuturo() ?? null,
+      proy: visto.proyeccionPresupuestos() ?? null,
+    }
+  })
+  const [presupuestos, setPresupuestos] = useState(previo?.ps || [])
+  const [gastosPorCategoria, setGastosPorCategoria] = useState(() => gastosDe(previo?.reporte))
+  const [tendencias, setTendencias] = useState(previo?.tend || null)
+  const [flujoCaja, setFlujoCaja] = useState(previo?.flujo || null)
+  const [cargando, setCargando] = useState(!previo)
+  const [yaCargo, setYaCargo] = useState(!!previo)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [mostrarMover, setMostrarMover] = useState(false)
   const [animarBarras, setAnimarBarras] = useState(false)
-  const [proyecciones, setProyecciones] = useState({})
-  const [configPlan, setConfigPlan] = useState(null)
+  const [proyecciones, setProyecciones] = useState(() => {
+    const porId = {}
+    ;(previo?.proy?.items || []).forEach((i) => {
+      porId[i.presupuesto_id] = i
+    })
+    return porId
+  })
+  const [configPlan, setConfigPlan] = useState(previo?.proy?.config || null)
   const [mostrarConfig, setMostrarConfig] = useState(false)
   const [mostrarIngreso, setMostrarIngreso] = useState(false)
 
@@ -42,7 +72,8 @@ export default function Presupuesto() {
   }, [])
 
   async function cargar() {
-    setCargando(true)
+    // Solo la primera vez hay esqueleto; al recargar (tras borrar, crear...) se queda lo que ya se ve.
+    if (!yaCargo) setCargando(true)
     try {
       const [ps, reporte, tend, flujo, proy] = await Promise.all([
         api.presupuestos(),
@@ -53,11 +84,7 @@ export default function Presupuesto() {
         api.proyeccionPresupuestos().catch(() => null),
       ])
       setPresupuestos(ps)
-      const gastos = {}
-      reporte.top_categorias.forEach((c) => {
-        gastos[c.categoria] = c.monto
-      })
-      setGastosPorCategoria(gastos)
+      setGastosPorCategoria(gastosDe(reporte))
       setTendencias(tend)
       setFlujoCaja(flujo)
       const porId = {}
@@ -67,6 +94,7 @@ export default function Presupuesto() {
       setProyecciones(porId)
       setConfigPlan(proy?.config || null)
     } catch {}
+    setYaCargo(true)
     setCargando(false)
   }
 

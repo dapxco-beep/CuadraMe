@@ -212,7 +212,7 @@ body {
 .screen-enter {
   /* backwards (no both): al terminar no queda ningún transform, que volvería relativo
      cualquier `position: fixed` de los descendientes. */
-  animation: slide-up var(--dur-lento) var(--ease) backwards;
+  animation: slide-up var(--dur-normal) var(--ease) backwards; /* ≤200 ms: no frena la interacción */
 }
 
 /* Hojas abiertas (viven en el body) mientras la app está bloqueada con PIN */
@@ -298,8 +298,16 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
 .skeleton {
   background: linear-gradient(90deg, var(--color-line) 25%, color-mix(in srgb, var(--color-line) 50%, var(--color-paper-raised)) 50%, var(--color-line) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
+  /* El esqueleto aparece 250 ms tarde: si los datos llegan antes, no se ve parpadeo de «cargando». */
+  animation: shimmer 1.4s ease-in-out infinite, aparece-tarde 0.15s ease-out 250ms backwards;
   border-radius: 10px;
+}
+.aparece-tarde {
+  animation: aparece-tarde 0.15s ease-out 250ms backwards;
+}
+@keyframes aparece-tarde {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Línea del gráfico de patrimonio que se "dibuja" al aparecer (pathLength=1) */

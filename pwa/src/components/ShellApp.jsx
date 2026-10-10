@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import BottomNav from './BottomNav'
 import BarraLateral from './BarraLateral'
+import AvisoSinConexion from './AvisoSinConexion'
 import { useModoPantalla } from '../lib/useAncho'
 import { useAtajosTeclado } from '../lib/atajos'
 import { registrarReciente } from '../lib/navegacion'
@@ -24,6 +25,7 @@ export default function ShellApp({ children }) {
     <div className="app-shell" data-modo={modo}>
       {modo !== 'movil' && <BarraLateral modo={modo} />}
       <div className="app-contenido">
+        <AvisoSinConexion />
         {children}
         {modo === 'movil' && <BottomNav />}
       </div>

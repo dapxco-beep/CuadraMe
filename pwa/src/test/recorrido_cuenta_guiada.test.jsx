@@ -157,7 +157,7 @@ describe('RecorridoEntrada', () => {
     montar(<RecorridoEntrada variante="inicio" />)
     expect(screen.queryByRole('dialog')).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: /Conoce CuadraMe en 1 minuto/ }))
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(await screen.findByRole('dialog')).toBeInTheDocument() // el recorrido se baja al abrirlo (lazy)
   })
 
   it('«No, gracias» lo descarta y ya no vuelve a ofrecerse en Inicio', async () => {

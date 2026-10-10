@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
-import { MotionConfig } from 'framer-motion'
+import { LazyMotion, MotionConfig } from 'framer-motion'
 import { api } from './lib/api'
-import AutorizacionTratamiento from './screens/AutorizacionTratamiento'
+import { precargarArranque } from './lib/arranque'
 import ConsentimientoGlobal from './components/ConsentimientoGlobal'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from './lib/ThemeContext'
@@ -19,13 +19,19 @@ import { CargandoMarca } from './brand/Marca'
 import ErrorAmable from './brand/ErrorAmable'
 import { MSG_SIN_CONEXION } from './lib/mensajesBase'
 import Login from './screens/Login'
-import CrearCuenta from './screens/CrearCuenta'
 import Inicio from './screens/Inicio'
-import NuevaPassword from './screens/NuevaPassword'
+
+// El motor de animación (~35 KB) se baja aparte, después del primer pintado.
+const cargarAnimaciones = () => import('./lib/funcionesAnimacion').then((r) => r.default)
 
 // Cada pantalla se descarga solo cuando se abre (antes todo viajaba en un único
 // archivo de ~680KB). Login, Inicio y CrearCuenta quedan en el paquete principal
 // porque son lo primero que se ve.
+// Pantallas que casi nadie ve más de una vez (primera cuenta, autorización, clave nueva) tampoco
+// viajan en el paquete principal.
+const CrearCuenta = lazy(() => import('./screens/CrearCuenta'))
+const NuevaPassword = lazy(() => import('./screens/NuevaPassword'))
+const AutorizacionTratamiento = lazy(() => import('./screens/AutorizacionTratamiento'))
 const Cuentas = lazy(() => import('./screens/Cuentas'))
 const Movimientos = lazy(() => import('./screens/Movimientos'))
 const DetalleMovimiento = lazy(() => import('./screens/DetalleMovimiento'))
@@ -79,7 +85,11 @@ function AppGate() {
   }
 
   if (cuentas.length === 0) {
-    return <CrearCuenta onCreada={recargar} />
+    return (
+      <Suspense fallback={<Cargando />}>
+        <CrearCuenta onCreada={recargar} />
+      </Suspense>
+    )
   }
 
   return (
@@ -140,7 +150,13 @@ function AppRoutes() {
 
   if (cargando) return <CargandoMarca />
 
-  if (usuario && recuperando) return <NuevaPassword />
+  if (usuario && recuperando) {
+    return (
+      <Suspense fallback={<Cargando />}>
+        <NuevaPassword />
+      </Suspense>
+    )
+  }
 
   if (!usuario) {
     return (
@@ -211,6 +227,10 @@ function PuertaAutorizacion({ children }) {
       .catch(() => setEstado('error'))
   }, [])
   useEffect(cargar, [cargar])
+  // En paralelo con la verificación (no después): las lecturas del Inicio salen ya. Ver lib/arranque.js.
+  useEffect(() => {
+    precargarArranque()
+  }, [])
 
   if (estado === 'cargando') return <CargandoMarca />
   if (estado === 'error') {
@@ -245,6 +265,7 @@ export default function App() {
     // reducedMotion="user": con "reducir movimiento" del sistema, framer-motion desactiva
     // los desplazamientos/escalas (conserva solo fundidos de opacidad)
     <MotionConfig reducedMotion="user">
+    <LazyMotion features={cargarAnimaciones}>
     <ThemeProvider>
       {splash && <SplashMarca onFin={terminarSplash} />}
       <AuthProvider>
@@ -257,6 +278,7 @@ export default function App() {
         </BloqueoProvider>
       </AuthProvider>
     </ThemeProvider>
+    </LazyMotion>
     </MotionConfig>
   )
 }

@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { borrarSeguridad } from './seguridad'
+import { olvidarVistos } from './ultimoVisto'
+import { vaciarCola } from './colaOffline'
 
 const AuthContext = createContext(null)
 
@@ -18,6 +20,7 @@ export function AuthProvider({ children }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange((evento, s) => {
       setSession(s)
+      if (evento === 'SIGNED_OUT') olvidarVistos()
       if (evento === 'PASSWORD_RECOVERY') setRecuperando(true)
     })
 
@@ -50,6 +53,8 @@ export function AuthProvider({ children }) {
     // El PIN y la huella son de este dispositivo y de esta sesión: se borran
     // ANTES de salir para que, pase lo que pase con la red, no queden atrás.
     borrarSeguridad()
+    olvidarVistos()
+    vaciarCola()
     await supabase.auth.signOut()
   }
 

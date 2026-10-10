@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { m, useReducedMotion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import TarjetaCuenta from './TarjetaCuenta'
 
@@ -67,7 +67,7 @@ function Mazo({ cuentas, ultimos }) {
           if (!c || pos >= VISIBLES) return null
           const esFrente = pos === 0
           return (
-            <motion.div
+            <m.div
               key={c.id}
               className="absolute inset-x-0 top-0"
               style={{ zIndex: VISIBLES - pos, transformOrigin: 'top center', cursor: esFrente ? 'grab' : 'pointer' }}
@@ -84,7 +84,7 @@ function Mazo({ cuentas, ultimos }) {
               onTap={() => (esFrente ? navegar(`/cuentas?cuenta=${c.id}`) : traerAlFrente(pos))}
             >
               <TarjetaCuenta cuenta={c} ultimoMovimiento={ultimos ? (ultimos[c.id] ?? null) : undefined} />
-            </motion.div>
+            </m.div>
           )
         })}
       </div>

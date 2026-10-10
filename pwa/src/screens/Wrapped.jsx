@@ -3,7 +3,7 @@ import { DUR, EASE } from '../lib/tokens'
 import { EsqueletoTarjeta } from '../components/Esqueletos'
 import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, m } from 'framer-motion'
 import { ArrowLeft, ChevronLeft, ChevronRight, PieChart, Share2 } from 'lucide-react'
 import { nombreMesLargo } from '../lib/informe'
 import { formatPorcentaje } from '../lib/format'
@@ -215,7 +215,7 @@ export default function Wrapped() {
             <button type="button" aria-label="Siguiente" onClick={() => ir(i + 1)} className="absolute inset-y-0 right-0 w-1/3 z-10" />
 
             <AnimatePresence mode="wait" custom={dir}>
-              <motion.div
+              <m.div
                 key={d.id}
                 custom={dir}
                 initial={{ opacity: 0, x: dir * 40 }}
@@ -229,7 +229,7 @@ export default function Wrapped() {
                 <p className="text-sm text-[#a39c8a]">{d.titulo}</p>
                 <p className="text-4xl font-extrabold mt-2 break-words max-w-full">{d.valor}</p>
                 <p className="text-sm text-[#a39c8a] mt-3">{d.detalle}</p>
-              </motion.div>
+              </m.div>
             </AnimatePresence>
             <div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-1.5 text-[#b9b19e]" aria-hidden="true">
               <Isotipo size={18} />

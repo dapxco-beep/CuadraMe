@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { m, useReducedMotion } from 'framer-motion'
 import { CUERPO, FICHA, CHECK, FICHA_FUERA } from './geometria'
 
 const CLAVE = 'cuadrame_splash_visto'
@@ -28,8 +28,8 @@ export default function SplashMarca({ onFin }) {
     } catch {
       // sin almacenamiento: el splash volverá a salir en la próxima apertura
     }
-    const t1 = setTimeout(() => setSaliendo(true), reducir ? 450 : 1050)
-    const t2 = setTimeout(() => onFin?.(), reducir ? 470 : 1280)
+    const t1 = setTimeout(() => setSaliendo(true), reducir ? 300 : 750)
+    const t2 = setTimeout(() => onFin?.(), reducir ? 320 : 950)
     return () => {
       clearTimeout(t1)
       clearTimeout(t2)
@@ -50,13 +50,13 @@ export default function SplashMarca({ onFin }) {
     >
       <svg viewBox="0 0 64 64" width="112" height="112" aria-hidden="true" focusable="false" style={{ overflow: 'visible' }}>
         <path d={CUERPO} fill="var(--c-brand)" />
-        <motion.g
+        <m.g
           initial={reducir ? false : { x: FICHA_FUERA.x, y: FICHA_FUERA.y, opacity: 0 }}
           animate={{ x: 0, y: 0, opacity: 1 }}
           transition={f || { type: 'spring', stiffness: 380, damping: 17, delay: 0.18 }}
         >
           <path d={FICHA} fill="var(--c-brand-2)" />
-          <motion.path
+          <m.path
             d={CHECK}
             fill="none"
             stroke="var(--c-brand-ink)"
@@ -67,26 +67,26 @@ export default function SplashMarca({ onFin }) {
             animate={{ pathLength: 1 }}
             transition={f || { duration: 0.28, delay: 0.55, ease: 'easeOut' }}
           />
-        </motion.g>
+        </m.g>
       </svg>
       {/* El isotipo queda en el centro exacto (igual que el splash estático); el texto cuelga debajo */}
       <div className="absolute inset-x-0 text-center" style={{ top: 'calc(50% + 74px)' }}>
-      <motion.p
+      <m.p
         className="wordmark text-[34px] text-ink"
         initial={reducir ? false : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={f || { duration: 0.3, delay: 0.7 }}
       >
         Cuadra<b>Me</b>
-      </motion.p>
-      <motion.p
+      </m.p>
+      <m.p
         className="text-xs text-ink-soft mt-2"
         initial={reducir ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={f || { duration: 0.3, delay: 0.85 }}
       >
         Cuadra tus cuentas, simple y al día
-      </motion.p>
+      </m.p>
       </div>
     </div>
   )
