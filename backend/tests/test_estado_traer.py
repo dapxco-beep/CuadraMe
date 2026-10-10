@@ -256,3 +256,15 @@ def test_24_ordenes_la_pantalla_no_deja_nada_pendiente_ni_doble(orden, monkeypat
             assert x["leidas"] == x["ya_estaban"] + x["nuevas_agregadas"] + x["por_revisar"] + x["descartadas"] + x["anteriores"]
             assert x["leidas"] == 1 and x["por_revisar"] == 0
     assert e.saldo() == e.saldo0 - 45_000
+
+
+def test_el_recordatorio_de_inicio_cuenta_igual_que_traer_movimientos(monkeypatch):
+    """Inicio y Traer movimientos no pueden contar distinto: dos correos del mismo extracto son UNO."""
+    e = Escena(monkeypatch)
+    d = datetime(2026, 8, 28)
+    _poner_extractos(e.uid, e.cuenta["id"], [("nuevo", None, "01/08/2026 a 28/08/2026"), ("nuevo", None, "01/08/2026 a 28/08/2026")])
+    e.como()
+    rec = [r for r in client.get("/recordatorios").json() if r["tipo"] == "extractos"]
+    tareas = [t for t in _estado(e)["tareas"] if t["id"] == "extractos_por_conciliar"]
+    assert len(rec) == 1 and "1 extracto por revisar" in rec[0]["titulo"]
+    assert tareas[0]["cantidad"] == 1
