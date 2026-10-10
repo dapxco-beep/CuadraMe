@@ -93,7 +93,9 @@ export function normalizarPdf(r) {
       tipo: m.tipo,
       categoria: m.categoria_sugerida || 'Otros',
       razon: m.razon_categoria || null,
-      estado: m.estado === 'faltante' ? 'nuevo' : 'ya',
+      confianza: typeof m.confianza_categoria === 'number' ? m.confianza_categoria : null,
+      // 'anterior': antes de la fecha de inicio (punto de partida): no se ofrece ni se importa.
+      estado: m.estado === 'faltante' ? 'nuevo' : m.estado === 'anterior' ? 'anterior' : 'ya',
     }))
   const filaInfo = (m) => ({
     descripcion: m.descripcion,
@@ -107,6 +109,7 @@ export function normalizarPdf(r) {
     banco: r.banco_detectado || 'desconocido',
     periodo: r.periodo_desde ? { desde: r.periodo_desde, hasta: r.periodo_hasta } : periodoDe(items),
     items,
+    anteriores: items.filter((i) => i.estado === 'anterior').length,
     historialId: r.historial_id,
     autoImportados: r.auto_importados || 0,
     yaConciliado: r.ya_conciliado || null,
@@ -153,12 +156,14 @@ export function normalizarTabular(r) {
     tipo: p.tipo,
     categoria: p.categoria || 'Otros',
     razon: p.razon_categoria || null,
-    estado: p.estado === 'duplicado' ? 'ya' : p.estado === 'posible_duplicado' ? 'posible' : 'nuevo',
+    confianza: null,
+    estado: p.estado === 'duplicado' ? 'ya' : p.estado === 'posible_duplicado' ? 'posible' : p.estado === 'anterior' ? 'anterior' : 'nuevo',
   }))
   return {
     banco: 'Excel / CSV',
     periodo: periodoDe(items),
     items,
+    anteriores: items.filter((i) => i.estado === 'anterior').length,
     yaConciliado: r.ya_conciliado || null,
     descartados: r.resumen?.con_error || 0,
   }

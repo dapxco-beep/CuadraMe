@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.compartidos import cuentas_ids_accesibles
 from app.contabilidad import tipos_cuenta_de, tipos_efectivos
 from app.fx import convertir_a_cop
+from app import punto_partida
 from app.models import Cuenta, Movimiento
 
 # Se leen unos días de más en los bordes solo para poder emparejar traslados
@@ -31,6 +32,10 @@ def cargar_movs_efectivos(
         return []
     monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()}
     q = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids))
+    # Punto de partida: informes y asistente arrancan en esa fecha (lo anterior se oculta, no se borra).
+    inicio_pp = punto_partida.fecha_inicio(db, usuario_id)
+    if inicio_pp:
+        q = q.filter(Movimiento.fecha >= inicio_pp)
     if desde:
         q = q.filter(Movimiento.fecha >= desde - MARGEN_EMPAREJAR)
     if hasta:

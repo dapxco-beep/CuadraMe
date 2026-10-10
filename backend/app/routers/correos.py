@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import RedirectResponse
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, cron_autorizado, get_current_user
@@ -18,6 +19,7 @@ from app.config import settings
 from app.limites import verificar_limite
 from app.limites_diarios import consumir_cupo_diario
 from app.database import get_db
+from app import punto_partida
 from app.conciliacion import detectar_banco
 from app.contabilidad import con_marca_traslado
 from app.extractos_conciliados import (
@@ -69,6 +71,7 @@ from app import duplicados as dup
 from app.schemas import (
     AprobarCorreoRequest,
     ClavePdfIn,
+    ProbarClaveIn,
     ConciliarExtractoRequest,
     ExtractoCorreoOut,
     ProcesarExtractoRequest,
@@ -310,7 +313,13 @@ def _analizar_adjunto(gmail, db: Session, fila: ExtractoCorreo, adjunto: dict, c
         logger.warning("No se pudo descargar un adjunto del mensaje %s", fila.gmail_msg_id)
         fila.estado = "error"
         return
-    estado, texto, _ = abrir_pdf(pdf, claves_candidatas(clave))
+    estado, texto, clave_usada = abrir_pdf(pdf, claves_candidatas(clave))
+    # Resultado de la clave en ESTE extracto (nunca la clave): solo cuenta si había una guardada
+    # y el PDF la necesitaba (si abrió sin clave no dice nada de ella).
+    if clave and estado == "ok" and clave_usada:
+        fila.clave_resultado, fila.clave_probada_en = "ok", datetime.utcnow()
+    elif clave and estado == "falta_clave":
+        fila.clave_resultado, fila.clave_probada_en = "fallo", datetime.utcnow()
     if estado == "ok":
         banco_texto = detectar_banco(texto)
         if banco_texto not in ("generico", "desconocido") and not fila.banco:
@@ -366,12 +375,19 @@ def _listar(gmail, fase: str, desde: datetime, label_id: str | None, token: str 
     return gmail.users().messages().list(userId="me", maxResults=max_results, **kw).execute()
 
 
-def _iniciar_corrida(gmail, sync: SyncGmail, label_id: str | None, completa: bool, dias: int) -> None:
+def _iniciar_corrida(gmail, sync: SyncGmail, label_id: str | None, completa: bool, dias: int,
+                     inicio: datetime | None = None, modo: str | None = None) -> None:
+    """`inicio`/`modo`: punto de partida del usuario. Nunca se lee antes del inicio; en modo
+    «histórico» la primera lectura llega hasta esa fecha (no solo los últimos `dias`)."""
     ahora = datetime.utcnow()
     if completa or not sync.ultima_sync:
         desde = ahora - timedelta(days=dias)
+        if inicio and modo == "historico":
+            desde = inicio
     else:
         desde = sync.ultima_sync - timedelta(days=SOLAPE_DIAS)
+    if inicio and desde < inicio:
+        desde = inicio
     sync.en_curso = True
     sync.desde = desde
     sync.iniciada_en = ahora
@@ -571,7 +587,8 @@ def _lote_de_sincronizacion(db: Session, usuario_id: str, perfil: Perfil, comple
     sync = _get_or_create_sync(db, usuario_id)
     vencida = bool(sync.iniciada_en) and datetime.utcnow() - sync.iniciada_en > timedelta(hours=MAX_CORRIDA_HORAS)
     if completa or not sync.en_curso or vencida:
-        _iniciar_corrida(gmail, sync, label_id, completa, dias)
+        inicio_pp, modo_pp = punto_partida.desde_para_sync(db, usuario_id)
+        _iniciar_corrida(gmail, sync, label_id, completa, dias, inicio_pp, modo_pp)
     # Si la etiqueta desapareció a mitad de corrida, se salta esa fase.
     if sync.fase == "etiqueta" and not label_id:
         sync.fase, sync.fase_iniciada, sync.cursor_token, sync.cursor_ids = "notificaciones", False, None, "[]"
@@ -755,6 +772,9 @@ def listar_correos(
     q = db.query(CorreoGasto).filter(CorreoGasto.usuario_id == usuario.id)
     if filtro != "todos":
         q = q.filter(CorreoGasto.estado == estados[filtro])
+    inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
+    if inicio_pp and filtro == "nuevos":
+        q = q.filter(or_(CorreoGasto.recibido_en.is_(None), CorreoGasto.recibido_en >= inicio_pp))
     return _con_cuenta(db, usuario.id, q.order_by(CorreoGasto.creado_en.desc(), CorreoGasto.id).offset(offset).limit(limite).all())
 
 
@@ -785,9 +805,16 @@ def listar_extractos(
         )
     }
     cuentas_usuario = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
+    inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
+    fila_clave = db.query(ClavePdf).filter(ClavePdf.usuario_id == usuario.id).first()
     salida = []
     for f in filas:
+        # Antes del punto de partida: no se ofrece (ni se concilia) lo que la persona dejó fuera.
+        if f.estado in ("nuevo", "falta_clave", "error") and punto_partida.extracto_es_anterior(f.periodo, f.recibido_en, inicio_pp):
+            continue
         o = ExtractoCorreoOut.model_validate(f)
+        if f.estado == "falta_clave" or f.clave_resultado == "ok":
+            o.clave_estado = _resultado_clave(f, fila_clave)
         # Extractos viejos pueden no traer el banco guardado: se deduce del remitente.
         o.banco = o.banco or banco_por_remitente(f.remitente) or ""
         o.cruzados = cruzados.get(f.historial_id)
@@ -885,13 +912,168 @@ def descartar_extracto(
 
 # ── Clave de los PDF ───────────────────────────────────────────────
 
+def _nombre_extracto(f: ExtractoCorreo) -> str:
+    """Cómo lo reconoce la persona: banco y periodo («Davivienda agosto 2026»)."""
+    return " ".join(x for x in (f.banco or banco_por_remitente(f.remitente) or "", f.periodo or "") if x).strip() \
+        or f.archivo or f.asunto or "sin nombre"
+
+
+def _resultado_clave(f: ExtractoCorreo, fila_clave: ClavePdf | None) -> str:
+    """'abrio' | 'no_abrio' | 'por_probar' | 'sin_clave' para un extracto que pide clave o que ya se abrió con ella."""
+    if f.clave_resultado == "ok" and f.estado != "falta_clave":
+        return "abrio"
+    if not fila_clave:
+        return "sin_clave"
+    vigente = f.clave_probada_en and f.clave_probada_en >= (fila_clave.actualizado_en or datetime.min)
+    if f.clave_resultado == "fallo" and vigente:
+        return "no_abrio"  # esa clave ya se probó y no sirvió; hay que cambiarla
+    return "por_probar"
+
+
 @router.get("/clave-pdf")
 def estado_clave_pdf(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
-    """Solo dice si hay una clave guardada; nunca la devuelve."""
-    existe = db.query(ClavePdf).filter(ClavePdf.usuario_id == usuario.id).first() is not None
-    return {"configurada": existe}
+    """Estado de la clave de los PDF, sin revelarla nunca: si hay una guardada, cuántas, y por
+    extracto/banco cuáles abrió, cuáles no y cuáles están por probar."""
+    fila_clave = db.query(ClavePdf).filter(ClavePdf.usuario_id == usuario.id).first()
+    guardada = _clave_pdf(db, usuario.id) if fila_clave else None
+    inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
+    filas = (
+        db.query(ExtractoCorreo)
+        .filter(
+            ExtractoCorreo.usuario_id == usuario.id,
+            or_(ExtractoCorreo.estado == "falta_clave", ExtractoCorreo.clave_resultado == "ok"),
+            ExtractoCorreo.estado != "descartado",
+        )
+        .order_by(ExtractoCorreo.recibido_en.desc(), ExtractoCorreo.id)
+        .limit(100)
+        .all()
+    )
+    items, por_banco = [], {}
+    for f in filas:
+        if f.estado == "falta_clave" and punto_partida.extracto_es_anterior(f.periodo, f.recibido_en, inicio_pp):
+            continue
+        r = _resultado_clave(f, fila_clave)
+        banco = f.banco or banco_por_remitente(f.remitente) or "Sin identificar"
+        items.append({"id": f.id, "nombre": _nombre_extracto(f), "banco": banco, "periodo": f.periodo or "",
+                      "resultado": r, "estado": f.estado})
+        d = por_banco.setdefault(banco, {"banco": banco, "protegidos": 0, "abrieron": 0, "no_abrieron": 0, "por_probar": 0})
+        d["protegidos"] += 1
+        clave_d = {"abrio": "abrieron", "no_abrio": "no_abrieron"}.get(r, "por_probar")
+        d[clave_d] += 1
+    return {
+        "configurada": fila_clave is not None,
+        "cantidad_claves": len(claves_candidatas(guardada)) - 1 if guardada else 0,
+        "actualizada_en": fila_clave.actualizado_en.isoformat() if fila_clave and fila_clave.actualizado_en else None,
+        "protegidos": len(items),
+        "abrieron": sum(1 for i in items if i["resultado"] == "abrio"),
+        "no_abrieron": sum(1 for i in items if i["resultado"] == "no_abrio"),
+        "por_probar": sum(1 for i in items if i["resultado"] in ("por_probar", "sin_clave")),
+        "por_banco": sorted(por_banco.values(), key=lambda d: d["banco"]),
+        "extractos": items,
+    }
+
+
+MAX_PRUEBAS_CLAVE = 8  # extractos que se prueban por llamada (cada uno descarga un PDF de Gmail)
+
+
+def _plural(n: int, uno: str, varios: str) -> str:
+    return f"{n} {uno if n == 1 else varios}"
+
+
+def _mensaje_prueba(abrieron: int, fallidos: list[str], ilegibles: int, restantes: int) -> str:
+    partes = []
+    if abrieron:
+        partes.append(f"La clave funcionó en {_plural(abrieron, 'extracto', 'extractos')}.")
+    if len(fallidos) == 1:
+        partes.append(f"Esta clave no abrió el extracto {fallidos[0]}: revísala.")
+    elif fallidos:
+        partes.append(f"Esta clave no abrió {len(fallidos)} extractos ({', '.join(fallidos[:3])}"
+                      f"{'…' if len(fallidos) > 3 else ''}): revísala.")
+    if ilegibles:
+        partes.append(f"{_plural(ilegibles, 'extracto no se pudo', 'extractos no se pudieron')} descargar; intenta de nuevo.")
+    if restantes:
+        partes.append(f"Quedan {_plural(restantes, 'extracto', 'extractos')} por probar: vuelve a tocar «Probar la clave ahora».")
+    return " ".join(partes) or "No hay extractos protegidos por probar."
+
+
+@router.post("/clave-pdf/probar")
+def probar_clave_pdf(
+    data: ProbarClaveIn,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Prueba la clave guardada ahora mismo: en UN extracto (`extracto_id`) o en todos los que piden
+    clave. Descarga el PDF desde Gmail, intenta abrirlo, y si abre lo deja listo para conciliar.
+    Responde con el resultado explícito por extracto. No muestra ni registra la clave."""
+    fila_unica = None
+    if data.extracto_id:
+        fila_unica = (
+            db.query(ExtractoCorreo)
+            .filter(ExtractoCorreo.id == data.extracto_id, ExtractoCorreo.usuario_id == usuario.id)
+            .first()
+        )
+        if not fila_unica:
+            raise HTTPException(status_code=404, detail="Extracto no encontrado")
+    verificar_limite(f"probar-clave:{usuario.id}", 30, 3600, "Probaste la clave muchas veces seguidas. Podrás seguir en {espera}.")
+    perfil = _get_or_create_perfil(db, usuario.id)
+    if not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
+        raise HTTPException(status_code=400, detail="Gmail no está conectado")
+    clave = _clave_pdf(db, usuario.id)
+    if not clave:
+        return {"ok": False, "abrieron": 0, "no_abrieron": 0, "restantes": 0, "resultados": [],
+                "mensaje": "Todavía no hay una clave guardada. Escríbela arriba y toca Guardar."}
+
+    if fila_unica is not None:
+        objetivos, restantes = [fila_unica], 0
+    else:
+        todos = (
+            db.query(ExtractoCorreo)
+            .filter(ExtractoCorreo.usuario_id == usuario.id, ExtractoCorreo.estado == "falta_clave")
+            .order_by(ExtractoCorreo.recibido_en.desc(), ExtractoCorreo.id)
+            .all()
+        )
+        inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
+        todos = [f for f in todos if not punto_partida.extracto_es_anterior(f.periodo, f.recibido_en, inicio_pp)]
+        objetivos, restantes = todos[:MAX_PRUEBAS_CLAVE], max(0, len(todos) - MAX_PRUEBAS_CLAVE)
+
+    try:
+        gmail = cliente_gmail(perfil.gmail_refresh_token_enc)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Se perdió el acceso a Gmail. Conéctalo de nuevo.")
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
+    resultados, abrieron, fallidos, ilegibles = [], 0, [], 0
+    for f in objetivos:
+        nombre = _nombre_extracto(f)
+        try:
+            msg = gmail.users().messages().get(userId="me", id=f.gmail_msg_id, format="full").execute()
+            adj = next((a for a in listar_adjuntos_pdf(msg) if a["archivo"] == f.archivo), None)
+        except RefreshError:
+            raise HTTPException(status_code=400, detail="Se perdió el acceso a Gmail. Conéctalo de nuevo.")
+        except Exception:
+            adj = None
+        if not adj:
+            ilegibles += 1
+            resultados.append({"id": f.id, "nombre": nombre, "resultado": "no_descargo"})
+            continue
+        estado_antes = f.estado
+        _analizar_adjunto(gmail, db, f, adj, cuentas, clave)
+        if f.estado == "falta_clave":
+            fallidos.append(nombre)
+            resultados.append({"id": f.id, "nombre": _nombre_extracto(f), "resultado": "no_abrio"})
+        elif f.estado == "error":
+            f.estado = estado_antes  # el PDF no se pudo leer por otra razón: no se cambia lo que había
+            ilegibles += 1
+            resultados.append({"id": f.id, "nombre": nombre, "resultado": "no_descargo"})
+        else:
+            abrieron += 1
+            resultados.append({"id": f.id, "nombre": _nombre_extracto(f), "resultado": "abrio"})
+    db.commit()
+    return {
+        "ok": True, "abrieron": abrieron, "no_abrieron": len(fallidos), "restantes": restantes,
+        "resultados": resultados, "mensaje": _mensaje_prueba(abrieron, fallidos, ilegibles, restantes),
+    }
 
 
 @router.put("/clave-pdf")
@@ -926,16 +1108,15 @@ def listar_pendientes(
 ):
     # Autocuración: lo que ya tiene su movimiento (llegó antes por otro canal) no se ofrece para revisar.
     absorber_correos(db, usuario.id)
-    return _con_cuenta(db, usuario.id, (
-        db.query(CorreoGasto)
-        .filter(
-            CorreoGasto.usuario_id == usuario.id,
-            CorreoGasto.estado == "pendiente",
-            CorreoGasto.monto > 0,  # sin monto no hay nada que registrar ni conciliar
-        )
-        .order_by(CorreoGasto.creado_en.desc())
-        .all()
-    ))
+    q = db.query(CorreoGasto).filter(
+        CorreoGasto.usuario_id == usuario.id,
+        CorreoGasto.estado == "pendiente",
+        CorreoGasto.monto > 0,  # sin monto no hay nada que registrar ni conciliar
+    )
+    inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
+    if inicio_pp:  # los correos anteriores al punto de partida no se muestran (tampoco se borran)
+        q = q.filter(or_(CorreoGasto.recibido_en.is_(None), CorreoGasto.recibido_en >= inicio_pp))
+    return _con_cuenta(db, usuario.id, q.order_by(CorreoGasto.creado_en.desc()).all())
 
 
 def _validar_categoria(db: Session, usuario_id: str, categoria: str) -> None:

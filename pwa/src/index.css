@@ -113,6 +113,38 @@ html, body, #root {
   height: 100%;
 }
 
+/* ── Estable como app nativa ───────────────────────────────────────────
+   - touch-action: manipulation: sin zoom por doble toque (el scroll y los toques siguen igual).
+   - text-size-adjust: el navegador no re-escala el texto al girar el teléfono; el tamaño de
+     texto del sistema/navegador se respeta porque no se fija ningún px en <html>.
+   - Nada sobresale del ancho: ni siquiera una hoja o un elemento fixed mal medido ensancha la página.
+   - Campos de 16 px en el móvil: con menos, iOS Safari hace zoom al enfocarlos y la pantalla queda
+     «agrandada». Va fuera de @layer para ganarle a las utilidades text-xs/text-sm de Tailwind. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+@supports (overflow-x: clip) {
+  html, body {
+    overflow-x: clip;
+  }
+}
+button, a, input, select, textarea, label, summary, [role='button'] {
+  touch-action: manipulation;
+}
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 body {
   background: var(--color-paper);
   color: var(--color-ink);

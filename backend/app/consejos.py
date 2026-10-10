@@ -394,6 +394,11 @@ def reunir_datos(db, usuario_id: str, hoy: datetime) -> dict:
         cuentas.append(item)
 
     desde = hoy - timedelta(days=DIAS_HISTORIAL)
+    from app import punto_partida
+
+    inicio_pp = punto_partida.fecha_inicio(db, usuario_id)  # los consejos arrancan en el punto de partida
+    if inicio_pp and desde < inicio_pp:
+        desde = inicio_pp
     movs_db = (
         db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids), Movimiento.fecha >= desde).all() if ids else []
     )

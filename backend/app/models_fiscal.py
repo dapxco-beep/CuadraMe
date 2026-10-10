@@ -4,7 +4,7 @@ los routers, así create_all, el backup y "Eliminar mi cuenta" (que recorre las
 tablas con usuario_id) los cubren sin tocar nada más."""
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, String, UniqueConstraint
+from sqlalchemy import Boolean, Column, Date, DateTime, String, UniqueConstraint
 
 from app.database import Base
 from app.models import gen_uuid
@@ -23,6 +23,14 @@ class AjusteUsuario(Base):
     # por la misma razón: el cron no tiene la sesión del usuario.
     resumen_correo = Column(Boolean, default=False)
     email_resumen = Column(String, nullable=True)
+    # Punto de partida (ver app/punto_partida.py): 'hoy' | 'historico' | NULL (aún sin elegir).
+    # `punto_partida_fecha` es el primer día que cuenta: lo anterior se IGNORA al traer movimientos
+    # y se oculta (nunca se borra) de informes y consejos. `punto_partida_saldos` es un JSON
+    # {cuenta_id: {"inicial": n|null, "actual": n|null}} con lo que la persona declaró.
+    punto_partida_modo = Column(String, nullable=True)
+    punto_partida_fecha = Column(Date, nullable=True)
+    punto_partida_saldos = Column(String, nullable=True)
+    punto_partida_en = Column(DateTime, nullable=True)
     actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 

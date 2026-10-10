@@ -329,6 +329,10 @@ class ExtractoCorreo(Base):
     historial_id = Column(String, nullable=True)
     recibido_en = Column(DateTime, nullable=True)
     creado_en = Column(DateTime, default=datetime.utcnow)
+    # Resultado del último intento de abrirlo con la clave guardada: 'ok' | 'fallo' | NULL (nunca
+    # probado). Nunca guarda la clave. `clave_probada_en` permite saber si la clave se cambió después.
+    clave_resultado = Column(String, nullable=True)
+    clave_probada_en = Column(DateTime, nullable=True)
 
 
 class SyncGmail(Base):

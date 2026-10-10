@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Mail, Receipt, Check, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
+import { Bell, Flag, Mail, Receipt, Check, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -10,6 +10,7 @@ import SeccionPrivacidad from '../components/SeccionPrivacidad'
 import AsistentePrimerUso from '../components/AsistentePrimerUso'
 import RecorridoEntrada from '../components/RecorridoEntrada'
 import ClaveAtajo from '../components/ClaveAtajo'
+import PuntoDePartida from '../components/PuntoDePartida'
 import { useClaveAtajo } from '../lib/useClaveAtajo'
 import Cuadri from '../brand/Cuadri'
 import { useMostrarCuadri } from '../lib/cuadri'
@@ -381,6 +382,14 @@ export default function Perfil() {
       )}
 
       <SeccionSeguridad />
+
+      <section className="mx-6 mt-8" id="punto-de-partida" aria-labelledby="titulo-punto-de-partida">
+        <div className="flex items-center gap-2 mb-3">
+          <Flag size={16} className="text-ink-soft" aria-hidden="true" />
+          <h2 id="titulo-punto-de-partida" className="text-[15px] font-semibold">Punto de partida</h2>
+        </div>
+        <PuntoDePartida variante="perfil" />
+      </section>
 
       {completo && (
       <section className="mx-6 mt-8">

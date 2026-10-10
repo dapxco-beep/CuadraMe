@@ -14,6 +14,7 @@ from app.autocat import (
     guardar_regla_aprendida, origen_de,
 )
 from app import duplicados as dup
+from app import punto_partida
 from app.conciliacion import _CUENTA_UNICA
 from app.wallet import ORIGENES_RAPIDOS
 from app.compartidos import cuenta_accesible, puede_editar_cuenta
@@ -146,6 +147,16 @@ def procesar_extracto(
         mov["cuenta"] = cuenta.id
     resultado = auditar_movimientos(movimientos, ledger, cruzar_rapidos=True,
                                     descartados=_descartados(db, usuario.id, cuenta.id, movimientos))
+    # Punto de partida: lo anterior a la fecha de inicio no se ofrece para importar (no se borra
+    # ni se pierde: sale en la revisión como «anterior» y se puede traer cambiando la fecha).
+    inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
+    anteriores = 0
+    if inicio_pp:
+        for item in resultado["review"]:
+            if item["estado"] == "faltante" and punto_partida.es_anterior(parse_bank_date(item["fecha"]), inicio_pp):
+                item["estado"] = "anterior"
+                anteriores += 1
+        resultado["faltantes"] -= anteriores
     # ¿Ese mes de esa cuenta ya estaba conciliado? Se mira ANTES de auto-importar o completar
     # nada (si no, este mismo archivo contaría). Solo avisa: no bloquea ni duplica (hay huella).
     ya_conciliado = _periodo_ya_conciliado(db, usuario.id, cuenta.id, resultado["review"])
@@ -189,6 +200,7 @@ def procesar_extracto(
             item["movimiento_id"] = movimiento.id
             item["categoria_sugerida"] = clasif["categoria"]
             item["razon_categoria"] = clasif.get("razon")
+            item["confianza_categoria"] = clasif.get("confianza")
             auto_importados += 1
         else:
             # No se auto-importó (confianza baja, viene de IA, o no hubo match):
@@ -197,6 +209,7 @@ def procesar_extracto(
             # en vez de que quede oculta y todo termine en "Otros" en silencio.
             item["categoria_sugerida"] = clasif["categoria"] if clasif else "Otros"
             item["razon_categoria"] = clasif.get("razon") if clasif else None
+            item["confianza_categoria"] = clasif.get("confianza") if clasif else None
 
     if auto_importados:
         resultado["faltantes"] -= auto_importados
@@ -270,6 +283,7 @@ def procesar_extracto(
         aproximados=resultado["aproximados"],
         faltantes=resultado["faltantes"],
         descartados=descartados,
+        anteriores=anteriores,
         review=resultado["review"],
         auto_importados=auto_importados,
         completados=completados,
@@ -513,6 +527,8 @@ def importar_faltantes(
     ya_registrados = {fp: n - explicados[fp] for fp, n in en_libro.items() if n > explicados[fp]}
     duplicados_omitidos = 0
     sin_direccion = 0
+    anteriores_omitidas = 0
+    inicio_pp_imp = punto_partida.fecha_inicio(db, usuario.id)
 
     # Regla central: entre calcular la revisión y confirmarla, el atajo, el correo o la app pudieron
     # registrar alguna de estas líneas. Esas se CONCILIAN con lo que ya existe; solo se insertan las
@@ -523,6 +539,9 @@ def importar_faltantes(
     for item in review:
         fp = item.get("fingerprint")
         if fp not in fingerprints or item.get("estado") != "faltante":
+            continue
+        if punto_partida.es_anterior(parse_bank_date(item.get("fecha")), inicio_pp_imp):
+            anteriores_omitidas += 1  # el inicio se movió después de procesar el extracto
             continue
         tipo_dir, notas_mov = _tipo_y_notas(item, f"Importado desde extracto {historial.banco_detectado}")
         if not tipo_dir:
@@ -597,6 +616,7 @@ def importar_faltantes(
         "categorizados_auto": categorizados_auto, "reglas_guardadas": reglas_guardadas,
         "anteriores_actualizados": anteriores_actualizados, "reglas_omitidas": reglas_omitidas,
         "duplicados_omitidos": duplicados_omitidos, "sin_direccion": sin_direccion,
+        "anteriores_omitidas": anteriores_omitidas,
     }
 
 

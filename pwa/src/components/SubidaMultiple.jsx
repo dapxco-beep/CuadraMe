@@ -13,6 +13,9 @@ import PropuestaTarjeta from './PropuestaTarjeta'
 import RecordarRegla, { RECORDAR_INICIAL } from './RecordarRegla'
 import ZonaSubida from './ZonaSubida'
 import { opcionesCategoria } from '../lib/importar'
+import { claveComercio, huellaPeligrosa } from '../lib/comercio'
+import { EMOJI_DEFECTO, estadoCategoria, resumirCategorias } from '../lib/estadoCategoria'
+import { CategoriaEnBloque, ChipCategoria, ResumenCategorias } from './RevisionCategorias'
 import {
   ETIQUETA_ARCHIVO,
   MAX_ARCHIVOS,
@@ -78,7 +81,10 @@ export default function SubidaMultiple({
   archivosIniciales = [], cuentaInicial = '', revisionInicial = null, onCancelar, onImportado, onManual,
 }) {
   const { cuentas, recargar: recargarCuentas } = useCuentas()
-  const { nombres: CATEGORIAS } = useCategorias()
+  const catsCtx = useCategorias()
+  const CATEGORIAS = catsCtx?.nombres || []
+  const iconoDe = catsCtx?.iconoDe || (() => EMOJI_DEFECTO)
+  const [avisoBloque, setAvisoBloque] = useState('')
   const [archivos, setArchivos] = useState(() => {
     const { aceptados } = validarSeleccion(archivosIniciales)
     return aceptados.map((f) => nuevoArchivo(f, cuentas, cuentaInicial))
@@ -219,6 +225,45 @@ export default function SubidaMultiple({
   )
   const totalFaltan = clavesFaltantes(consolidado.archivos).length
 
+  // Líneas que se pueden importar (las ya registradas, repetidas o anteriores al inicio no cuentan).
+  const lineasPendientes = consolidado.archivos.flatMap((a) =>
+    a.estado !== 'listo' ? [] : a.items
+      .filter((it) => it.estado === 'nuevo' || it.estado === 'posible')
+      .map((it) => ({ clave: `${a.id}:${it.k}`, it }))
+  )
+  const estadoDeLinea = (clave, it) => estadoCategoria(it, categorias[clave])
+  const resumenCats = resumirCategorias(lineasPendientes.map(({ clave, it }) => estadoDeLinea(clave, it)))
+  const marcadas = lineasPendientes.filter(({ clave }) => seleccion.has(clave))
+
+  function marcarPorEstado(estado) {
+    setSeleccion(new Set(lineasPendientes.filter(({ clave, it }) => estadoDeLinea(clave, it) === estado).map(({ clave }) => clave)))
+  }
+
+  // Una categoría para todas las marcadas; con «recordar», una regla por comercio (la misma
+  // regla de siempre: nada se guarda hasta confirmar la importación).
+  function aplicarEnBloque(categoria, recordar) {
+    const sinRegla = recordar
+      ? marcadas.filter(({ it }) => categoria !== (it.categoria || 'Otros') && huellaPeligrosa(claveComercio(it.descripcion))).length
+      : 0
+    setCategorias((c) => ({ ...c, ...Object.fromEntries(marcadas.map(({ clave }) => [clave, categoria])) }))
+    setAprender((prev) => {
+      const next = { ...prev }
+      for (const { clave, it } of marcadas) {
+        if (categoria === (it.categoria || 'Otros') || !recordar) delete next[clave]
+        else if (huellaPeligrosa(claveComercio(it.descripcion))) delete next[clave]
+        else next[clave] = { recordar: true, anteriores: false }
+      }
+      return next
+    })
+    setAvisoBloque(
+      !recordar
+        ? 'Listo: la categoría se aplicó solo a esta revisión.'
+        : sinRegla
+          ? `Listo. Guardo la regla al importar; en ${sinRegla} no puedo (nombre muy genérico) y queda solo para este extracto.`
+          : 'Listo. Guardo la regla de cada comercio cuando importes.'
+    )
+  }
+
   async function importar() {
     setImportando(true)
     setError('')
@@ -345,6 +390,8 @@ export default function SubidaMultiple({
           </p>
         )}
 
+        <ResumenCategorias resumen={resumenCats} onMarcar={marcarPorEstado} className="mb-3" />
+
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setSeleccion(new Set(clavesFaltantes(consolidado.archivos)))}
@@ -357,12 +404,22 @@ export default function SubidaMultiple({
           </button>
         </div>
 
+        <CategoriaEnBloque
+          cantidad={marcadas.length}
+          nombres={CATEGORIAS}
+          iconoDe={iconoDe}
+          onAplicar={aplicarEnBloque}
+          aviso={avisoBloque}
+          className="mb-4"
+        />
+
         {grupos.map((g) => (
           <section key={g.cuentaId} className="mb-5" aria-label={`Cuenta ${nombreCuenta(g.cuentaId)}`}>
             <h3 className="text-sm font-semibold mb-2">{nombreCuenta(g.cuentaId)}</h3>
             {g.archivos.map((a) => {
-              const visibles = a.items.filter((it) => it.estado !== 'ya')
-              const ya = a.items.length - visibles.length
+              const visibles = a.items.filter((it) => it.estado !== 'ya' && it.estado !== 'anterior')
+              const anteriores = a.items.filter((it) => it.estado === 'anterior').length
+              const ya = a.items.length - visibles.length - anteriores
               const claves = clavesUnicas(visibles)
               return (
                 <div key={a.id} className="mb-3">
@@ -379,6 +436,13 @@ export default function SubidaMultiple({
                     </p>
                   )}
                   <AvisoCategorizados n={a.autoImportados} className="mb-2" />
+                  {anteriores > 0 && (
+                    <p className="rounded-2xl bg-paper-raised border border-line px-3.5 py-2.5 text-xs mb-2" role="status" data-testid="aviso-anteriores">
+                      {anteriores === 1
+                        ? '1 línea es anterior a tu fecha de inicio y no se importa.'
+                        : `${anteriores} líneas son anteriores a tu fecha de inicio y no se importan.`}
+                    </p>
+                  )}
                   {a.descartados > 0 && (
                     <p className="rounded-2xl bg-accent-soft px-3.5 py-2.5 text-xs mb-2" role="status" data-testid="aviso-descartados">
                       {textoDescartados(a.descartados)}
@@ -423,6 +487,14 @@ export default function SubidaMultiple({
                                   {repetido ? `Ya está en ${it.repetidoDe}` : it.estado === 'posible' ? 'Posible duplicado' : 'Falta registrar'}
                                   {it.estado === 'nuevo' && gemelas > 1 ? ` · idéntico a otros ${gemelas - 1} (se importan juntos)` : ''}
                                 </p>
+                                {!repetido && (
+                                  <ChipCategoria
+                                    className="mt-1"
+                                    categoria={categorias[clave] || it.categoria || 'Otros'}
+                                    emoji={iconoDe(categorias[clave] || it.categoria || 'Otros')}
+                                    estado={estadoDeLinea(clave, it)}
+                                  />
+                                )}
                               </div>
                               <p className="text-sm font-semibold shrink-0">
                                 {it.tipo === 'income' ? '+' : it.tipo === 'transfer' ? '' : '-'}
@@ -438,7 +510,7 @@ export default function SubidaMultiple({
                                   className="w-full rounded-xl border border-line bg-paper-raised px-3 py-2 text-xs"
                                 >
                                   {opcionesCategoria(CATEGORIAS, categorias[clave]).map((c) => (
-                                    <option key={c} value={c}>{c}</option>
+                                    <option key={c} value={c}>{iconoDe(c)} {c}</option>
                                   ))}
                                 </select>
                                 {it.razon && !aprender[clave] && <p className="text-[11px] text-ink-soft mt-1">Auto · {it.razon}</p>}

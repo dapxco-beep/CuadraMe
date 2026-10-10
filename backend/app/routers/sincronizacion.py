@@ -14,6 +14,7 @@ from sqlalchemy import and_, case, func, not_, or_
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
+from app import punto_partida
 from app.autocat import patron_de_comercio
 from app.compartidos import cuentas_ids_accesibles
 from app.database import get_db
@@ -99,13 +100,22 @@ def _cola_categorizar(db: Session, ids_accesibles: list[str], desde_bandeja: dat
     )
 
 
-def _sin_cuenta(db: Session, usuario_id: str, cuentas: list[Cuenta], extractos: list[ExtractoCorreo]) -> list[dict]:
+def _desde_inicio(inicio):
+    """Condición SQL: correos recibidos desde el punto de partida (o sin fecha). Sin inicio no filtra."""
+    if not inicio:
+        return True
+    return or_(CorreoGasto.recibido_en.is_(None), CorreoGasto.recibido_en >= inicio)
+
+
+def _sin_cuenta(db: Session, usuario_id: str, cuentas: list[Cuenta], extractos: list[ExtractoCorreo],
+                inicio=None) -> list[dict]:
     """Bancos detectados en correos/extractos pendientes para los que no hay cuenta."""
     por_banco: dict[str, dict] = {}
 
     filas = (
         db.query(CorreoGasto.remitente, func.count(CorreoGasto.id))
-        .filter(CorreoGasto.usuario_id == usuario_id, CorreoGasto.estado == "pendiente", CorreoGasto.monto > 0)
+        .filter(CorreoGasto.usuario_id == usuario_id, CorreoGasto.estado == "pendiente", CorreoGasto.monto > 0,
+                _desde_inicio(inicio))
         .group_by(CorreoGasto.remitente)
         .all()
     )
@@ -189,6 +199,12 @@ def estado(
         )
         .all()
     )
+    # Punto de partida: los extractos anteriores a la fecha de inicio no son pendientes (se ignoran).
+    inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
+    extractos = [
+        e for e in extractos
+        if not (e.estado in ("nuevo", "falta_clave") and punto_partida.extracto_es_anterior(e.periodo, e.recibido_en, inicio_pp))
+    ]
     historiales = {
         h_id: cuenta_id
         for h_id, cuenta_id in db.query(HistorialExtracto.id, HistorialExtracto.cuenta_id).filter(
@@ -224,7 +240,7 @@ def estado(
             })
         filas_cuentas.append({"id": c.id, "nombre": c.nombre, "icono": c.icono, "meses": celdas})
 
-    sin_cuenta = _sin_cuenta(db, usuario.id, cuentas, extractos)
+    sin_cuenta = _sin_cuenta(db, usuario.id, cuentas, extractos, inicio_pp)
 
     # ── Tareas, en el orden en que conviene resolverlas.
     n_falta_clave = sum(1 for e in extractos if e.estado == "falta_clave")
@@ -240,7 +256,8 @@ def estado(
     )
     n_correos = (
         db.query(func.count(CorreoGasto.id))
-        .filter(CorreoGasto.usuario_id == usuario.id, CorreoGasto.estado == "pendiente", CorreoGasto.monto > 0)
+        .filter(CorreoGasto.usuario_id == usuario.id, CorreoGasto.estado == "pendiente", CorreoGasto.monto > 0,
+                _desde_inicio(inicio_pp))
         .scalar() or 0
     )
     candidatas = [
@@ -269,6 +286,12 @@ def estado(
         "sin_cuenta": sin_cuenta,
         "tareas": tareas,
         "correos_ya_registrados": n_ya_registrados,
+        # Punto de partida: elección actual, cuántos correos/extractos anteriores se ignoran y, en modo
+        # histórico, qué meses faltan por cuenta.
+        "punto_partida": {
+            **punto_partida.resumen(db, usuario.id),
+            "cobertura": punto_partida.cobertura(db, usuario.id) if inicio_pp and punto_partida.obtener(db, usuario.id)["modo"] == "historico" else None,
+        },
         "ultima_sync": sync.ultima_sync.isoformat() if sync and sync.ultima_sync else None,
     }
 
