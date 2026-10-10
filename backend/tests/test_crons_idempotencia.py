@@ -40,7 +40,7 @@ def pushes(monkeypatch):
     """Captura los push enviados por el router: [(usuario_id, titulo, cuerpo)]."""
     enviados = []
 
-    def _enviar(db, usuario_id, titulo, cuerpo, url="/"):
+    def _enviar(db, usuario_id, titulo, cuerpo, url="/", boton=None):
         enviados.append((usuario_id, titulo, cuerpo))
         return 1
 

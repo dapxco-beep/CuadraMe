@@ -23,6 +23,8 @@ class AjusteUsuario(Base):
     # por la misma razón: el cron no tiene la sesión del usuario.
     resumen_correo = Column(Boolean, default=False)
     email_resumen = Column(String, nullable=True)
+    # «Ocultar saldos» de la app copiado al servidor: los push semanales salen sin montos.
+    ocultar_montos = Column(Boolean, default=False)
     # Punto de partida (ver app/punto_partida.py): 'hoy' | 'historico' | NULL (aún sin elegir).
     # `punto_partida_fecha` es el primer día que cuenta: lo anterior se IGNORA al traer movimientos
     # y se oculta (nunca se borra) de informes y consejos. `punto_partida_saldos` es un JSON

@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 # cómo se exporta y se borra (test_derechos_titular.py lo exige).
 TABLAS_HIJAS = {"invitaciones_cuenta", "miembros_grupo_gasto", "partes_gasto"}
 # Tablas internas del sistema (no son datos del titular).
-TABLAS_INTERNAS = {"marcas_cron"}
+TABLAS_INTERNAS = {"marcas_cron", "importaciones_respaldo"}
 # Columnas que NO se entregan: son credenciales del sistema, no datos del titular.
 # Entregarlas no le sirve al usuario y, si alguien interceptara el archivo, le daría acceso.
 COLUMNAS_SECRETAS = {"api_key", "api_key_hash", "gmail_refresh_token_enc", "clave_enc", "p256dh", "auth", "endpoint"}
@@ -121,7 +121,7 @@ def _csv(filas: list[dict]) -> str:
 
 
 def armar_json(datos: dict, email: str) -> bytes:
-    cuerpo = {"exportado_en_hora_colombia": ahora_co().isoformat(), "correo": email, "tablas": datos}
+    cuerpo = {"formato": "cuadrame-respaldo", "version": 1, "exportado_en_hora_colombia": ahora_co().isoformat(), "correo": email, "tablas": datos}
     return json.dumps(cuerpo, ensure_ascii=False, indent=2).encode("utf-8")
 
 

@@ -26,7 +26,7 @@ JOBS = [
     ("CuadraMe - revisar presupuestos", "/push/cron/revisar-presupuestos", [18], [0], [-1]),
     ("CuadraMe - premiar presupuestos (fin de mes)", "/push/cron/premiar-presupuestos-mes", [21], [0], [-1]),
     ("CuadraMe - recordar recurrentes", "/push/cron/recordar-recurrentes", [9], [0], [-1]),
-    ("CuadraMe - resumen semanal", "/push/cron/resumen-semanal", [19], [0], [0]),
+    ("CuadraMe - resumen semanal (push, domingo en la tarde)", "/push/cron/resumen-semanal", [17], [0], [0]),
     ("CuadraMe - backup diario", "/backup/cron/enviar", [2], [0], [-1]),
     ("CuadraMe - uso semanal", "/metricas/cron/revisar-uso-semanal", [8], [0], [1]),
     ("CuadraMe - resumen diario de avisos", "/avisos/cron/resumen-diario", [20], [0], [-1]),

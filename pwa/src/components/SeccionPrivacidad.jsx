@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, Download, ShieldCheck, Trash2 } from 'lucide-react'
+import { ChevronRight, Download, ShieldCheck, Trash2, Upload } from 'lucide-react'
 import { api } from '../lib/api'
 import { useDialogos } from '../lib/DialogosContext'
 import { desactivarPush } from '../lib/push'
 import BorrarMiCuenta from './BorrarMiCuenta'
+import ImportarRespaldo from './ImportarRespaldo'
 import { FINALIDADES, formatearFechaCO, ORDEN_OPCIONALES, VERSION_TEXTOS } from '../lib/consentimientos'
 
 // Perfil -> "Privacidad y datos": ver y revocar cada autorización, descargar mis datos
@@ -15,6 +16,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
   const [historial, setHistorial] = useState(null)
   const [ocupado, setOcupado] = useState('')
   const [borrando, setBorrando] = useState(false)
+  const [importando, setImportando] = useState(false)
 
   function cargar() {
     Promise.resolve().then(() => api.consentimientos()).then(setEstado).catch(() => {})
@@ -127,6 +129,13 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
             <p className="text-xs text-ink-soft mt-0.5">Un archivo ZIP con todo lo que CuadraMe guarda de ti. Se abre en Excel.</p>
           </div>
         </button>
+        <button onClick={() => setImportando(true)} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
+          <Upload size={20} className="text-accent shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Importar mi respaldo</p>
+            <p className="text-xs text-ink-soft mt-0.5">Recupera lo que descargaste antes. Ves una vista previa y puedes deshacerlo.</p>
+          </div>
+        </button>
         <Link to="/legal/autorizacion-datos" className="flex items-center gap-3 px-4 py-3.5">
           <p className="flex-1 text-sm font-medium">Ver textos legales</p>
           <ChevronRight size={16} className="text-ink-soft" />
@@ -140,6 +149,8 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
           <p className="flex-1 text-sm font-medium">{eliminando ? 'Borrando...' : 'Borrar mi cuenta y todos mis datos'}</p>
         </button>
       </div>
+
+      {importando && <ImportarRespaldo onCerrar={() => setImportando(false)} />}
 
       {borrando && (
         <BorrarMiCuenta

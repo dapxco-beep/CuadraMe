@@ -154,7 +154,9 @@ async function request(path, opciones = {}) {
 }
 
 async function pedir(path, { method = 'GET', body, auth = true, headers: extra } = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(extra || {}) }
+  // Un FormData (subida de archivo) lo arma el navegador con su propio Content-Type y límites.
+  const esForm = typeof FormData !== 'undefined' && body instanceof FormData
+  const headers = { ...(esForm ? {} : { 'Content-Type': 'application/json' }), ...(extra || {}) }
   let conSesion = false
   if (auth) {
     const { data } = await supabase.auth.getSession()
@@ -168,7 +170,7 @@ async function pedir(path, { method = 'GET', body, auth = true, headers: extra }
   const res = await fetchSeguro(`${API_URL}${path}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body: body ? (esForm ? body : JSON.stringify(body)) : undefined,
   })
 
   if (!res.ok) {
@@ -329,6 +331,8 @@ export const api = {
   // Resumen semanal por correo (opt-in) y recordatorios de las tarjetas del Inicio
   resumenPreferencias: () => request('/resumen/preferencias'),
   guardarResumenPreferencias: (correo) => request('/resumen/preferencias', { method: 'PUT', body: { correo } }),
+  // «Ocultar saldos»: se copia al servidor para que los avisos push semanales salgan sin montos.
+  guardarOcultarMontos: (ocultar) => request('/resumen/preferencias', { method: 'PUT', body: { ocultar_montos: !!ocultar } }),
   recordatorios: () => request('/recordatorios'),
   // Consejos personalizados («Consejo para ti» en Inicio): reglas del servidor, sin IA externa
   consejos: () => request('/consejos'),
@@ -450,6 +454,20 @@ export const api = {
     request('/perfil/eliminar-cuenta', { method: 'POST', body: { confirmacion } }),
   // Derecho de acceso: ZIP con todo lo que CuadraMe guarda de la persona (JSON + un CSV por tabla).
   descargarMisDatos: () => descargarArchivo('/perfil/mis-datos', 'cuadrame_mis_datos.zip'),
+  // Importar mi respaldo (el ZIP de arriba): vista previa sin escribir, importar y deshacer la última.
+  vistaPreviaRespaldo: (archivo) => {
+    const f = new FormData()
+    f.append('archivo', archivo)
+    return request('/perfil/importar-respaldo/vista-previa', { method: 'POST', body: f })
+  },
+  importarRespaldo: (archivo) => {
+    const f = new FormData()
+    f.append('archivo', archivo)
+    f.append('confirmar', 'true')
+    return request('/perfil/importar-respaldo', { method: 'POST', body: f })
+  },
+  ultimaImportacionRespaldo: () => request('/perfil/importar-respaldo/ultima', { sinCache: true }),
+  deshacerImportacionRespaldo: () => request('/perfil/importar-respaldo/deshacer', { method: 'POST' }),
   apiKey: () => request('/perfil/api-key'),
   regenerarApiKey: () => request('/perfil/api-key/regenerar', { method: 'POST' }),
   confianzaAutoimport: () => request('/perfil/confianza-autoimport'),

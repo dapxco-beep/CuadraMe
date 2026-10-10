@@ -354,9 +354,10 @@ def _premiar_presupuestos_de(db: Session, usuario_id: str, inicio_mes, clave_mes
 def cron_resumen_semanal(
     db: Session = Depends(get_db), x_cron_secret: str = Header(default="")
 ):
-    """Pensado para llamarse una vez a la semana (ej. domingo en la noche):
-    manda un push con ingresos/gastos de los últimos 7 días a cada usuario
-    con push activo, para que no tenga que abrir la app a revisarlo."""
+    """Pensado para llamarse una vez a la semana (domingo en la tarde): manda un push breve con
+    lo gastado en los últimos 7 días, la comparación con la semana anterior y la categoría que más
+    pesó (+ botón a Informes), a cada usuario con push activo y movimientos en la semana.
+    Apagar las notificaciones en Perfil (que quita la suscripción) es el opt-out."""
     if not cron_autorizado(x_cron_secret):
         raise HTTPException(status_code=401, detail="No autorizado")
 
@@ -380,37 +381,27 @@ def cron_resumen_semanal(
 
 def _resumen_semanal_de(db: Session, usuario_id: str, hace_7_dias, semana_iso: str) -> bool:
     """Resumen semanal de UN usuario. True si se envió. Idempotente: la marca
-    'resumen_semanal' guarda la semana ISO ya avisada (dos ejecuciones = un push)."""
+    'resumen_semanal' guarda la semana ISO ya avisada (dos ejecuciones = un push).
+    Solo escribe a quien tuvo movimientos en la semana; compara con la anterior, nombra la
+    categoría que más pesó, respeta el punto de partida y «ocultar saldos» (sin montos)."""
+    from app import resumen_semanal as rs
+    from app.models_fiscal import AjusteUsuario
+
     ids_accesibles = cuentas_ids_accesibles(db, usuario_id)
     if not ids_accesibles:
         return False
-    monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()}
-    semana = (
-        db.query(Movimiento)
-        .filter(Movimiento.cuenta_id.in_(ids_accesibles), Movimiento.fecha >= hace_7_dias)
-        .all()
-    )
-    if not semana:
+    ahora = hace_7_dias + timedelta(days=7)
+    datos = rs.comparativo_push(db, usuario_id, list(ids_accesibles), ahora)
+    if datos is None:
         return False
-
-    def monto_cop(m):
-        return convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
-
-    te = tipos_efectivos(semana, tipos_cuenta_de(db, ids_accesibles))
-    gastos = sum(monto_cop(m) for m in semana if te[m.id] == "expense")
-    ingresos = sum(monto_cop(m) for m in semana if te[m.id] == "income")
+    aj = db.query(AjusteUsuario).filter(AjusteUsuario.usuario_id == usuario_id).first()
+    titulo, cuerpo = rs.mensaje_push(datos, ocultar_montos=bool(aj and aj.ocultar_montos))
 
     # Se reclama la marca ANTES de enviar (dos ejecuciones simultáneas: pasa una sola).
     if not reclamar_marca(db, usuario_id, "resumen_semanal", semana_iso):
         return False
     try:
-        n = enviar_push(
-            db,
-            usuario_id,
-            "Tu semana en números",
-            f"Gastaste {gastos:,.0f} COP e ingresaste {ingresos:,.0f} COP — mira el detalle",
-            "/insights",
-        )
+        n = enviar_push(db, usuario_id, titulo, cuerpo, "/informe", boton="Ver mis informes")
     except Exception:
         liberar_marca(db, usuario_id, "resumen_semanal")  # que el siguiente cron lo reintente
         raise

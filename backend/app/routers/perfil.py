@@ -2,10 +2,11 @@ import logging
 from datetime import date
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app import importar_respaldo as respaldo
 from app import punto_partida
 from app.routers.cuentas import ajustar_saldo as ajustar_saldo_cuenta
 from app.schemas import AjusteSaldoRequest
@@ -155,6 +156,89 @@ def descargar_mis_datos(
         content=armar_zip(datos, usuario.email), media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename=cuadrame_mis_datos_{hoy}.zip"},
     )
+
+
+# ── Importar mi respaldo ─────────────────────────────────────────────────────────────
+# Restaura el ZIP de «Descargar mis datos». La lógica (y todas las garantías) viven en
+# app/importar_respaldo.py; aquí solo está la API: vista previa -> importar -> deshacer.
+
+def _leer_subida(archivo: UploadFile) -> dict:
+    crudo = archivo.file.read(respaldo.MAX_BYTES_ARCHIVO + 1)
+    try:
+        return respaldo.leer_datos(crudo)
+    except respaldo.RespaldoInvalido as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+def _marcar_correo(resumen: dict, usuario: UsuarioActual) -> dict:
+    otro = (resumen.get("correo_respaldo") or "").strip().lower()
+    resumen["correo_distinto"] = bool(otro and usuario.email and otro != usuario.email.lower())
+    resumen.pop("correo_respaldo", None)  # el correo de otra persona no se devuelve
+    return resumen
+
+
+@router.post("/importar-respaldo/vista-previa")
+def vista_previa_respaldo(
+    archivo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Cuenta qué se crearía y qué ya existe (y se omitiría). No escribe nada."""
+    verificar_limite(f"importar-respaldo:{usuario.id}", 20, 3600, "Ya probaste varios respaldos. Intenta de nuevo en {espera}.")
+    datos = _leer_subida(archivo)
+    r = respaldo.procesar(db, usuario.id, datos, aplicar=False)
+    db.rollback()
+    return {"vista_previa": True, **_marcar_correo(r["resumen"], usuario)}
+
+
+@router.post("/importar-respaldo")
+def importar_respaldo(
+    archivo: UploadFile = File(...),
+    confirmar: bool = Form(False),
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Importa el respaldo en UNA transacción (si algo falla no queda nada a medias).
+    Exige confirmar=true: la vista previa va primero. Repetirlo no duplica."""
+    if not confirmar:
+        raise HTTPException(status_code=400, detail="Confirma la importación después de ver la vista previa.")
+    verificar_limite(f"importar-respaldo:{usuario.id}", 20, 3600, "Ya importaste varias veces. Intenta de nuevo en {espera}.")
+    datos = _leer_subida(archivo)
+    try:
+        resumen = respaldo.importar(db, usuario.id, datos)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("importar-respaldo: falló la importación del usuario %s", usuario.id)
+        raise HTTPException(status_code=500, detail="No pudimos importar tu respaldo y no se guardó nada. Intenta de nuevo.")
+    return {"ok": True, **_marcar_correo(resumen, usuario)}
+
+
+@router.get("/importar-respaldo/ultima")
+def ultima_importacion(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """¿Hay una importación que se pueda deshacer? (para mostrar el botón)."""
+    lote = respaldo.ultima_importacion(db, usuario.id)
+    if not lote:
+        return {"hay": False}
+    import json as _json
+    return {"hay": True, "creado_en": lote.creado_en.isoformat() if lote.creado_en else None,
+            "resumen": {k: v for k, v in _json.loads(lote.resumen or "{}").items() if isinstance(v, dict)}}
+
+
+@router.post("/importar-respaldo/deshacer")
+def deshacer_importacion(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """Revierte SOLO lo que creó la última importación (lo que ya tenías, no se toca)."""
+    lote = respaldo.ultima_importacion(db, usuario.id)
+    if not lote:
+        raise HTTPException(status_code=404, detail="No hay ninguna importación para deshacer.")
+    try:
+        out = respaldo.deshacer(db, usuario.id, lote)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("importar-respaldo: falló el deshacer del usuario %s", usuario.id)
+        raise HTTPException(status_code=500, detail="No pudimos deshacer la importación. No se cambió nada.")
+    return {"ok": True, "revertido": out}
 
 
 @router.post("/eliminar-cuenta")

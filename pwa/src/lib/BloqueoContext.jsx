@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from './AuthContext'
+import { api } from './api'
 import { formatMoneda } from './format'
 import {
   borrarSeguridad,
@@ -26,6 +27,7 @@ const porDefecto = {
 }
 
 const BloqueoContext = createContext(porDefecto)
+const ultimaCopia = { clave: '' } // evita repetir la copia al servidor (p. ej. StrictMode)
 
 export function BloqueoProvider({ children }) {
   const { usuario } = useAuth()
@@ -60,12 +62,32 @@ export function BloqueoProvider({ children }) {
     return () => document.removeEventListener('visibilitychange', alCambiarVisibilidad)
   }, [])
 
+  // El servidor también necesita saberlo: los avisos push semanales salen sin montos. Se copia
+  // cuando la persona lo cambia (y una vez por sesión si ya lo tenía activo); sin cambios no hay
+  // ninguna petición extra. Si falla, no pasa nada: la app local sigue funcionando.
+  const cambioManual = useRef(false)
   const alternarOcultar = useCallback(() => {
+    cambioManual.current = true
     setOcultarSaldos((v) => {
       guardarOcultarSaldos(!v)
       return !v
     })
   }, [])
+
+  useEffect(() => {
+    if (!usuario) return
+    const manual = cambioManual.current
+    cambioManual.current = false
+    if (!manual && !ocultarSaldos) return
+    const clave = `${usuario.id}:${ocultarSaldos}`
+    if (ultimaCopia.clave === clave) return
+    ultimaCopia.clave = clave
+    try {
+      Promise.resolve(api.guardarOcultarMontos?.(ocultarSaldos)).catch(() => {})
+    } catch {
+      // sin conexión o pruebas sin API: se ignora
+    }
+  }, [ocultarSaldos, usuario])
 
   const definirPin = useCallback(async (pin) => {
     await guardarPin(pin)

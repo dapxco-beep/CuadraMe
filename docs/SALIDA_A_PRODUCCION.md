@@ -31,7 +31,7 @@ Los 7 base se crean con `backend/cronjobs/crear_crons.py`. Los demás se agregan
 | `/push/cron/premiar-presupuestos-mes` | diario 21:00 |
 | `/push/cron/recordar-recurrentes` | diario 08:30 (incluye tarjetas) |
 | `/push/cron/recordar-registro` | diario 20:00 |
-| `/push/cron/resumen-semanal` | domingo 19:00 (push) |
+| `/push/cron/resumen-semanal` | domingo 17:00 (push: «Esta semana gastaste $X, N % menos que la anterior. Lo que más pesó: ...»; ver 2b) |
 | **`/resumen/cron/semanal`** (nuevo) | **domingo 18:00 (correo; solo a quien lo activó en Perfil)** |
 | `/backup/cron/enviar` | diario 03:00 |
 | `/metricas/cron/revisar-uso-semanal` | lunes 08:00 |
@@ -42,6 +42,19 @@ Los 7 base se crean con `backend/cronjobs/crear_crons.py`. Los demás se agregan
 
 Las respuestas traen `{ok, procesados, fallidos, ...}`. El resumen por correo añade `enviados`, `ya_enviados` y `sin_datos`.
 Aviso: `crear_crons.py` aún no incluye `/resumen/cron/semanal`; créalo a mano o agrégalo a la lista `JOBS` (no se hizo para no tocar horarios sin aprobación).
+
+## 2b. Recordatorio semanal por push y «Importar mi respaldo»
+**Push semanal** (`POST /push/cron/resumen-semanal`, ya estaba en `crear_crons.py`; ahora a las **17:00 del domingo**, hora Bogotá, y con el texto nuevo). El cron **aún NO está (re)creado en cron-job.org**: si ya existe el job de las 19:00, edítalo a mano o bórralo y corre `crear_crons.py --aplicar`.
+- **Qué manda:** «Esta semana gastaste $X, 12 % menos que la anterior. Lo que más pesó: Comida.» con botón «Ver mis informes» (abre Informes). Solo a quien tiene push activo **y** movimientos en los últimos 7 días.
+- **Reglas:** compara con la semana anterior (si la anterior queda antes del punto de partida, no compara); respeta el punto de partida; idempotente por usuario y semana ISO (`marcas_cron`, clave `resumen_semanal`; si el envío falla la marca se libera); un fallo con un usuario no frena a los demás.
+- **Opt-out:** apagar «Notificaciones» en Perfil (quita la suscripción push). Con «Ocultar saldos» activado en la app el texto sale **sin montos** (la preferencia se copia a `ajustes_usuario.ocultar_montos`).
+- **Columna nueva:** `ajustes_usuario.ocultar_montos` (la agrega `main.py` al arrancar; SQL suelto en `backend/supabase/migraciones/respaldo_y_push_semanal.sql`, sin ejecutar).
+
+**Importar mi respaldo** (Perfil → Privacidad y datos): `POST /perfil/importar-respaldo/vista-previa` (no escribe), `POST /perfil/importar-respaldo` (exige `confirmar=true`), `GET /perfil/importar-respaldo/ultima` y `POST /perfil/importar-respaldo/deshacer`.
+- Lee solo `datos.json` del ZIP (máx. 15 MB comprimido / 60 MB descomprimido), ignora campos desconocidos y secretos, valida `formato`/`version`. Importa cuentas, movimientos, presupuestos, metas y reglas con ids nuevos, en una sola transacción, siempre a nombre de quien importa.
+- Idempotente: lo que ya existe se omite (cuentas por nombre+tipo+moneda; movimientos por huella cuenta+día+tipo+monto+descripción, contando repetidos). Respeta el punto de partida.
+- Tabla nueva `importaciones_respaldo` (lote para deshacer; la crea `create_all`; SQL en el mismo archivo de migración, sin ejecutar). No aparece en «Descargar mis datos» pero sí se borra con «Borrar mi cuenta».
+- Deshacer revierte solo lo importado (y los saldos de cuentas que ya tenías). Se conserva una cuenta o meta importada si después le registraste movimientos o aportes.
 
 ## 3b. Monitor de capacidad y crecimiento (te avisa antes de que algo se llene)
 `POST /metricas/cron/avisos-crecimiento` (header `X-Cron-Secret`) corre **a diario a las 08:00 hora Bogotá**. El cron **aún NO está creado en cron-job.org** (no se tocan horarios sin tu aprobación): créalo a mano o agrégalo a `JOBS` de `crear_crons.py`.
