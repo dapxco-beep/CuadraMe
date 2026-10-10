@@ -12,6 +12,7 @@ import BarraProgreso from '../components/BarraProgreso'
 import BarraProyeccion from '../components/BarraProyeccion'
 import ConfigPlanificacion from '../components/ConfigPlanificacion'
 import SugerenciaIngreso from '../components/SugerenciaIngreso'
+import { OfrecerPrimeraMeta } from '../components/FormMeta'
 import { PERIODOS, etiquetaPeriodo, textoRango } from '../lib/planificacion'
 import Hoja from '../components/Hoja'
 import Ayudita from '../components/Ayudita'
@@ -382,6 +383,8 @@ export default function Presupuesto() {
           }}
         />
       )}
+
+      <OfrecerPrimeraMeta className="mx-6 mt-4 flex justify-center" />
 
       {mostrarIngreso && <SugerenciaIngreso onClose={() => setMostrarIngreso(false)} onAplicado={cargar} />}
 

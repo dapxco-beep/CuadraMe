@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeftRight, ChevronRight, Footprints } from 'lucide-react'
 import { IlustracionVacia, Isotipo, Monto } from '../brand/Marca'
 import ConsejoParaTi from './ConsejoParaTi'
+import { OfrecerPrimeraMeta } from './FormMeta'
 import Icono from './Icono'
 import { Boton } from './ui'
 
@@ -89,6 +90,7 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
 
       {/* BLOQUE 3 */}
       <ConsejoParaTi max={1} />
+      <OfrecerPrimeraMeta className="mx-6 mt-2 flex justify-center" />
     </div>
   )
 }

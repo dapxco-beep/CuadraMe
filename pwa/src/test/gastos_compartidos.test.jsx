@@ -177,7 +177,7 @@ describe('Dividir gasto', () => {
   })
 })
 
-describe('Cuentas con amigos', () => {
+describe('Dividir gastos con amigos', () => {
   it('muestra el saldo, el enlace de WhatsApp y registra un pago', async () => {
     montar('/amigos')
     expect(await screen.findByText('Te debe')).toBeInTheDocument()
@@ -198,6 +198,6 @@ describe('Cuentas con amigos', () => {
   it('muestra un estado vacío claro', async () => {
     api.saldosGasto.mockResolvedValue({ monedas: [] })
     montar('/amigos')
-    expect(await screen.findByText('Aún no hay cuentas con amigos')).toBeInTheDocument()
+    expect(await screen.findByText('Aún no dividiste gastos con amigos')).toBeInTheDocument()
   })
 })

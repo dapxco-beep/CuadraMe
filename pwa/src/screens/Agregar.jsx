@@ -527,7 +527,7 @@ export default function Agregar() {
           {guardando ? 'Guardando...' : esTransferencia ? (destinosPosibles.find((c) => c.id === destinoId)?.tipo === 'credito' ? 'Pagar la tarjeta' : 'Pasar la plata') : 'Guardar movimiento'}
         </button>
         <button onClick={() => navigate('/amigos')} className="w-full text-center text-sm text-accent font-medium mt-4 min-h-11">
-          Cuentas con amigos
+          Dividir gastos con amigos
         </button>
       </div>
     </div>

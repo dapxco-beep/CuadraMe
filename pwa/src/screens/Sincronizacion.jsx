@@ -18,6 +18,7 @@ import {
 import { cantidadDe, pasoActual, sinDatos, tareasDeBloque } from '../lib/centro'
 import BarraProgreso from '../components/BarraProgreso'
 import BloqueCentro from '../components/BloqueCentro'
+import { EnlaceBancoNoEsta } from '../components/BancoNoEsta'
 import ConexionGmail from '../components/ConexionGmail'
 import CorreosPorRevisar from '../components/CorreosPorRevisar'
 import CorreosYaRegistrados from '../components/CorreosYaRegistrados'
@@ -555,6 +556,10 @@ export default function Sincronizacion() {
           </ul>
         )}
       </section>
+
+      <div className="mx-6 mt-1">
+        <EnlaceBancoNoEsta />
+      </div>
 
       {/* a) Desde tu correo */}
       <BloqueCentro

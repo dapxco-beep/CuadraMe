@@ -11,13 +11,13 @@ import logging
 import re
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
-from app import avisos
+from app import almacen_muestras, avisos
 from app.auth import UsuarioActual, get_current_user
 from app.crecimiento import SISTEMA, es_admin
 from app.crons import reclamar_marca
@@ -33,6 +33,9 @@ router = APIRouter(prefix="/comentarios", tags=["comentarios"])
 MAX_MENSAJE = 2000
 MAX_NOTA = 2000
 MAX_RESPUESTA = 1000
+MAX_BANCO = 80
+TIPOS_ARCHIVO_BANCO = {"pdf": "PDF", "excel": "Excel", "csv": "CSV", "correo": "Correo"}
+POR_HORA_MUESTRA = 5
 POR_HORA = 10
 UMBRAL_AVISO_NUEVOS = 5
 CLAVE_AVISO = "comentarios:aviso"
@@ -72,11 +75,14 @@ def exigir_admin(usuario: UsuarioActual = Depends(get_current_user)) -> UsuarioA
 
 class NuevoComentario(BaseModel):
     tipo: str = "sugerencia"
-    mensaje: str
+    mensaje: str = ""  # en tipo «banco» es opcional (una nota)
     pantalla: str | None = None
     version_app: str | None = None
     dispositivo: str | None = None
     puede_contactar: bool = True
+    # Solo para tipo «banco» («Mi banco o billetera no aparece»).
+    banco: str | None = None
+    tipo_archivo: str | None = None  # pdf | excel | csv | correo
 
 
 class CambioComentario(BaseModel):
@@ -124,6 +130,19 @@ def enviar(
     tipo = limpiar_texto(datos.tipo).lower()
     if tipo not in TIPOS:
         raise HTTPException(status_code=400, detail="Elige qué tipo de comentario es: idea, problema, duda o algo que te gustó.")
+    banco = None
+    if tipo == "banco":
+        banco = limpiar_texto(datos.banco, MAX_BANCO)
+        if not banco:
+            raise HTTPException(status_code=400, detail="Escribe el nombre de tu banco o billetera.")
+        formato = TIPOS_ARCHIVO_BANCO.get(limpiar_texto(datos.tipo_archivo).lower())
+        nota = limpiar_texto(datos.mensaje)
+        # Texto legible para quien administra (sin pedirle nada más a la persona).
+        datos.mensaje = " · ".join(
+            [f"Mi banco o billetera no aparece: {banco}"]
+            + ([f"Archivo: {formato}"] if formato else [])
+            + ([nota] if nota else [])
+        )
     mensaje = limpiar_texto(datos.mensaje)
     if not mensaje:
         raise HTTPException(status_code=400, detail="Cuéntanos algo, aunque sea una frase corta.")
@@ -143,6 +162,7 @@ def enviar(
         version_app=limpiar_texto(datos.version_app, 40) or None,
         dispositivo=limpiar_texto(datos.dispositivo, 80) or None,
         puede_contactar=bool(datos.puede_contactar),
+        banco=banco,
     )
     try:
         db.add(c)
@@ -165,9 +185,90 @@ def mios(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_cur
         {
             "id": c.id, "tipo": c.tipo, "mensaje": c.mensaje, "creado_en": c.creado_en.isoformat(),
             "estado": ESTADO_PUBLICO.get(c.estado, "Recibido"), "respuesta": c.respuesta_publica or None,
+            "banco": c.banco, "tiene_archivo": bool(c.adjunto_ruta), "archivo": c.adjunto_nombre,
         }
         for c in filas
     ]
+
+
+def _comentario_propio(db: Session, comentario_id: str, usuario_id: str) -> Comentario:
+    c = db.query(Comentario).filter(Comentario.id == comentario_id, Comentario.usuario_id == usuario_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    return c
+
+
+@router.get("/almacen")
+def estado_almacen(_usuario: UsuarioActual = Depends(get_current_user)):
+    """¿Se pueden guardar archivos de muestra? Así la pantalla avisa antes de pedir el archivo."""
+    return {"disponible": almacen_muestras.disponible(), "max_mb": almacen_muestras.MAX_BYTES // (1024 * 1024),
+            "tipos": sorted(almacen_muestras.EXTENSIONES)}
+
+
+@router.post("/{comentario_id}/adjunto")
+async def subir_adjunto(
+    comentario_id: str,
+    archivo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Archivo de muestra de un comentario tipo «banco» (solo el autor). Privado: nunca se publica."""
+    c = _comentario_propio(db, comentario_id, usuario.id)
+    if c.tipo != "banco":
+        raise HTTPException(status_code=400, detail="Este comentario no admite archivos.")
+    nombre = almacen_muestras.nombre_seguro(archivo.filename or "")
+    ext = almacen_muestras.extension_de(nombre)
+    if ext not in almacen_muestras.EXTENSIONES:
+        raise HTTPException(status_code=400, detail="Solo podemos recibir PDF, Excel (xls, xlsx) o CSV.")
+    datos = await archivo.read(almacen_muestras.MAX_BYTES + 1)
+    if len(datos) > almacen_muestras.MAX_BYTES:
+        raise HTTPException(status_code=400, detail="El archivo pesa más de 5 MB. Prueba con uno más pequeño.")
+    if not almacen_muestras.contenido_valido(ext, datos):
+        raise HTTPException(status_code=400, detail="El archivo no parece ser un " + ext.upper() + " válido.")
+    verificar_limite(f"muestra:{usuario.id}", POR_HORA_MUESTRA, 3600,
+                     "Ya subiste varios archivos seguidos. Puedes subir otro en {espera}.")
+    if not almacen_muestras.disponible():
+        raise HTTPException(status_code=503, detail="Por ahora no podemos guardar archivos. Guardamos el nombre de tu banco.")
+    anterior = c.adjunto_ruta
+    ruta = f"{usuario.id}/{c.id}/{nombre}"
+    try:
+        almacen_muestras.guardar(ruta, datos)
+    except almacen_muestras.AlmacenNoDisponible:
+        logger.warning("Comentarios: no se pudo guardar la muestra", exc_info=True)
+        raise HTTPException(status_code=503, detail="No pudimos guardar el archivo ahora. Guardamos el nombre de tu banco.")
+    c.adjunto_ruta, c.adjunto_nombre, c.adjunto_bytes = ruta, nombre, len(datos)
+    db.commit()
+    if anterior and anterior != ruta:
+        almacen_muestras.borrar(anterior)
+    return {"ok": True, "archivo": nombre, "bytes": len(datos)}
+
+
+@router.delete("/{comentario_id}/adjunto")
+def borrar_adjunto(comentario_id: str, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """La persona borra su archivo de muestra cuando quiera."""
+    c = _comentario_propio(db, comentario_id, usuario.id)
+    ruta = c.adjunto_ruta
+    if ruta and not almacen_muestras.borrar(ruta):
+        raise HTTPException(status_code=503, detail="No pudimos borrar el archivo ahora. Intenta de nuevo en unos minutos.")
+    c.adjunto_ruta = c.adjunto_nombre = c.adjunto_bytes = None
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/{comentario_id}/adjunto")
+def ver_adjunto(comentario_id: str, db: Session = Depends(get_db), _admin: UsuarioActual = Depends(exigir_admin)):
+    """Solo la administración. El archivo pasa por el servidor: no hay enlace público."""
+    c = db.query(Comentario).filter(Comentario.id == comentario_id).first()
+    if not c or not c.adjunto_ruta:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    try:
+        datos = almacen_muestras.leer(c.adjunto_ruta)
+    except almacen_muestras.AlmacenNoDisponible:
+        raise HTTPException(status_code=503, detail="No se pudo leer el archivo ahora.")
+    nombre = almacen_muestras.nombre_seguro(c.adjunto_nombre or "muestra")
+    return Response(content=datos, media_type="application/octet-stream", headers={
+        "Content-Disposition": f'attachment; filename="{nombre}"', "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff"})
 
 
 def _filtrar(q, tipo: str | None, estado: str | None, buscar: str | None):
@@ -197,6 +298,8 @@ def _a_dict(c: Comentario) -> dict:
         "id": c.id, "email": c.email, "tipo": c.tipo, "mensaje": c.mensaje, "pantalla": c.pantalla,
         "version_app": c.version_app, "dispositivo": c.dispositivo, "puede_contactar": bool(c.puede_contactar),
         "estado": c.estado, "nota_admin": c.nota_admin, "respuesta_publica": c.respuesta_publica,
+        "banco": c.banco, "tiene_adjunto": bool(c.adjunto_ruta), "adjunto_nombre": c.adjunto_nombre,
+        "adjunto_bytes": c.adjunto_bytes,
         "creado_en": c.creado_en.isoformat(), "actualizado_en": c.actualizado_en.isoformat(),
     }
 
@@ -238,13 +341,14 @@ def exportar_csv(
     buffer = io.StringIO()
     w = csv.writer(buffer)
     w.writerow(["Fecha", "Tipo", "Estado", "Pantalla", "Versión", "Dispositivo", "Puede contactar", "Correo",
-                "Mensaje", "Nota interna", "Respuesta pública"])
+                "Mensaje", "Nota interna", "Respuesta pública", "Banco", "Archivo de muestra"])
     for c in filas:
         w.writerow([
             c.creado_en.strftime("%Y-%m-%d %H:%M"), c.tipo, c.estado, celda_segura(c.pantalla or ""),
             celda_segura(c.version_app or ""), celda_segura(c.dispositivo or ""), "sí" if c.puede_contactar else "no",
             celda_segura(c.email or ""), celda_segura(c.mensaje), celda_segura(c.nota_admin or ""),
-            celda_segura(c.respuesta_publica or ""),
+            celda_segura(c.respuesta_publica or ""), celda_segura(c.banco or ""),
+            celda_segura(c.adjunto_nombre or ""),
         ])
     return StreamingResponse(
         iter([buffer.getvalue()]), media_type="text/csv",

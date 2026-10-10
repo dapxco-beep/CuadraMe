@@ -1,13 +1,20 @@
+from datetime import datetime
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import bloquear_cuenta, cuenta_accesible, puede_editar_cuenta
 from app.database import get_db
 from app.finanzas import calc_progreso_meta
-from app.models import Meta
+from app import metas_plan
+from app.contabilidad import CATEGORIA_APORTE_META, FUENTE_APORTE_META
+from app.models import Meta, Movimiento
 from app.rachas import otorgar_vida_si_nueva
 from app.schemas import MetaCreate, MetaOut, MetaUpdate
+from app.utiles import ahora_co
 
 router = APIRouter(prefix="/metas", tags=["metas"])
 
@@ -39,6 +46,54 @@ def _serializar(meta: Meta) -> dict:
         "activa": meta.activa,
         **calc_progreso_meta(meta),
     }
+
+
+class SimularMeta(BaseModel):
+    monto_objetivo: float = Field(gt=0)
+    monto_actual: float = Field(default=0, ge=0)
+    fecha_objetivo: Optional[datetime] = None
+
+
+@router.get("/sugerencias")
+def sugerencias(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    """Plan en lenguaje llano de cada meta activa: cuánto apartar al mes, cuándo llegas y si vas adelantado.
+    Solo lee (nada se mueve). El sobrante es el promedio de los últimos 3 meses completos."""
+    hoy = ahora_co()
+    base = metas_plan.sobrante_promedio(db, usuario.id, hoy)
+    metas = (
+        db.query(Meta).filter(Meta.usuario_id == usuario.id, Meta.activa.is_(True)).all()
+    )
+    return {
+        "sobrante_mensual": round(base["sobrante"]) if base["sobrante"] is not None else None,
+        "meses_con_datos": base["meses_con_datos"],
+        "metas": {
+            m.id: metas_plan.plan_de_meta(
+                {"monto_objetivo": m.monto_objetivo, "monto_actual": m.monto_actual,
+                 "fecha_inicio": m.fecha_inicio, "fecha_objetivo": m.fecha_objetivo},
+                base["sobrante"], hoy,
+            )
+            for m in metas
+        },
+    }
+
+
+@router.post("/simular")
+def simular(
+    data: SimularMeta,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Lo mismo que /sugerencias pero para una meta que aún no existe (el formulario «Nueva meta»)."""
+    hoy = ahora_co()
+    base = metas_plan.sobrante_promedio(db, usuario.id, hoy)
+    plan = metas_plan.plan_de_meta(
+        {"monto_objetivo": data.monto_objetivo, "monto_actual": data.monto_actual,
+         "fecha_inicio": hoy, "fecha_objetivo": data.fecha_objetivo},
+        base["sobrante"], hoy,
+    )
+    return {"sobrante_mensual": round(base["sobrante"]) if base["sobrante"] is not None else None, **plan}
 
 
 @router.get("", response_model=list[MetaOut])
@@ -120,7 +175,25 @@ def aportar_meta(
         cuenta.saldo -= monto
 
     ya_estaba_completada = (meta.monto_actual or 0) >= meta.monto_objetivo
+    ahora = ahora_co()
+    if cuenta_id:
+        # Mismo registro que deja el aporte automático: el saldo baja y queda en el historial, pero
+        # NO es un gasto (la plata sigue siendo tuya, solo cambió de bolsillo: cuenta -> meta).
+        db.add(
+            Movimiento(
+                usuario_id=usuario.id,
+                cuenta_id=cuenta.id,
+                fecha=ahora,
+                descripcion=f"Aporte a meta «{meta.nombre}»",
+                categoria=CATEGORIA_APORTE_META,
+                tipo="expense",
+                monto=monto,
+                fuente=FUENTE_APORTE_META,
+                notas=f"META:{meta.id}",
+            )
+        )
     meta.monto_actual = (meta.monto_actual or 0) + monto
+    meta.ultimo_aporte = ahora
     db.commit()
     db.refresh(meta)
 

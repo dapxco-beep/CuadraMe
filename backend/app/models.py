@@ -240,6 +240,7 @@ class Meta(Base):
     dia_aporte = Column(Integer, default=1)
     cuenta_origen_id = Column(String, nullable=True)  # de dónde sale la plata del aporte automático
     ultimo_aporte_automatico = Column(DateTime, nullable=True)
+    ultimo_aporte = Column(DateTime, nullable=True)  # último aporte hecho a mano (alimenta «meta sin aporte este mes»)
     activa = Column(Boolean, default=True)
     creado_en = Column(DateTime, default=datetime.utcnow)
 

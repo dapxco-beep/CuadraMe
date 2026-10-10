@@ -45,8 +45,8 @@ const TARJETAS_BASE = [
     id: 'compartir',
     to: '/compartir',
     icon: Users,
-    titulo: 'Comparte una cuenta',
-    texto: 'Lleva las finanzas del hogar o de pareja en un solo lugar',
+    titulo: 'Comparte con tu pareja o familia',
+    texto: 'Elige qué cuentas ven y si solo miran o también anotan',
     mostrarSi: (ctx) => ctx.cuentasCount > 0,
   },
 ]

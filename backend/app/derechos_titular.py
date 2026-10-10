@@ -195,6 +195,16 @@ def borrar_todo(db: Session, usuario_id: str, email: str = "") -> dict:
         t = _tabla(nombre)
         db.execute(t.delete().where(t.c[col].in_(sub)))
 
+    # Archivos de muestra («Mi banco no aparece») en almacenamiento privado: salen antes que las filas que
+    # guardan su ruta. Si falla un borrado, se registra y se sigue (no debe impedir el derecho a borrar).
+    from app import almacen_muestras
+    from app.models_comentarios import Comentario
+
+    for (ruta,) in db.query(Comentario.adjunto_ruta).filter(
+        Comentario.usuario_id == uid, Comentario.adjunto_ruta.isnot(None)
+    ).all():
+        almacen_muestras.borrar(ruta)
+
     for tabla in Base.metadata.sorted_tables:
         if "usuario_id" in tabla.c:
             db.execute(tabla.delete().where(tabla.c.usuario_id == uid))

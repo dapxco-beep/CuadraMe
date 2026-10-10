@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import { ENTIDADES_FINANCIERAS_CO, marcaDeEntidad } from '../lib/entidadesFinancierasCO'
 import Bandera from './Bandera'
+import { EnlaceBancoNoEsta } from './BancoNoEsta'
 
 // Elegir con toques en vez de escribir: país → tipo de cuenta → banco o billetera.
 // Lo único que se escribe a mano es el banco cuando no está en la lista.
@@ -221,6 +222,7 @@ export default function SelectorCuenta({
           >
             {verTodas ? 'Ver menos' : 'Ver todas'}
           </button>
+          <EnlaceBancoNoEsta bancoInicial={verTodas ? busqueda.trim() : ''} className="block" />
         </section>
       )}
 

@@ -26,7 +26,7 @@ export default function CuentasAmigos() {
       setMonedas(s.monedas)
       setGastos(g)
     } catch (e) {
-      setError(e.message || 'No se pudieron cargar las cuentas con amigos. Revisa tu conexión e intenta de nuevo.')
+      setError(e.message || 'No se pudieron cargar los gastos con amigos. Revisa tu conexión e intenta de nuevo.')
     }
     setCargando(false)
   }, [grupoId])
@@ -51,7 +51,7 @@ export default function CuentasAmigos() {
   }
 
   async function borrarGasto(g) {
-    const ok = await confirmar(`¿Quitar "${g.descripcion}" de las cuentas con amigos? Tu movimiento no se borra.`, {
+    const ok = await confirmar(`¿Quitar "${g.descripcion}" de los gastos con amigos? Tu movimiento no se borra.`, {
       confirmarTexto: 'Quitar',
     })
     if (!ok) return
@@ -76,7 +76,7 @@ export default function CuentasAmigos() {
           >
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-2xl font-semibold">Cuentas con amigos</h1>
+          <h1 className="text-2xl font-semibold">Dividir gastos con amigos</h1>
         </div>
         <button
           onClick={() => navigate('/dividir')}
@@ -115,7 +115,7 @@ export default function CuentasAmigos() {
       )}
       {vacio && (
         <div className="px-8 mt-16 text-center">
-          <p className="font-semibold">Aún no hay cuentas con amigos</p>
+          <p className="font-semibold">Aún no dividiste gastos con amigos</p>
           <p className="text-sm text-ink-soft mt-1">
             Al registrar un gasto toca "Dividir" y reparte la cuenta con quien quieras.
           </p>

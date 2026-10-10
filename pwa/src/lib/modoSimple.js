@@ -50,6 +50,20 @@ function guardarFuncionesEnUso(uid, rutas) {
   window.dispatchEvent(new Event(EVENTO))
 }
 
+/** Una función pasa a «Lo que ya usas» en el momento en que se estrena (p. ej. la primera meta creada desde Inicio). */
+export function marcarFuncionEnUso(uid = 'anon', ruta) {
+  const previas = leerFuncionesEnUso(uid)
+  if (!ruta || previas.includes(ruta)) return
+  guardarFuncionesEnUso(uid, [...previas, ruta])
+}
+
+/** () => (ruta) => void — para avisar al menú que la persona estrenó una función. */
+export function useMarcarFuncion() {
+  const { usuario } = useAuth() || {}
+  const uid = usuario?.id || 'anon'
+  return useCallback((ruta) => marcarFuncionEnUso(uid, ruta), [uid])
+}
+
 const hayAlgo = (v, campo) => (Array.isArray(v) ? v.length > 0 : Array.isArray(v?.[campo]) && v[campo].length > 0)
 const seguro = (f) => Promise.resolve().then(f).catch(() => null)
 
