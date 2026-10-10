@@ -31,3 +31,8 @@
 - **Qué sale por push y por correo al administrador:** solo el correo **enmascarado** (`d***@gmail.com`) y el hecho. El correo completo se ve únicamente en el panel del administrador (ADMIN_EMAIL), tras iniciar sesión.
 - **Supresión:** al eliminar su cuenta, sus eventos se borran con el resto de sus datos; solo queda un evento anónimo «Una persona eliminó su cuenta».
 - **Encargados:** el correo del aviso pasa por Resend y el push por el servicio de notificaciones del navegador (ya listados). Revisar con el abogado: añadir esta finalidad a la Política de tratamiento (actualmente no está declarada; publicar la nueva versión obliga a subir `VERSION_TEXTOS`) y definir el plazo de retención de `eventos_actividad` (propuesta: 12 meses).
+
+## Ajustes de polÃ­tica tras cerrar B1/B2 (revisar texto publicado, sin tocar VERSION_TEXTOS)
+- La copia diaria ya va **cifrada** y **sin** correos leÃ­dos, tokens, claves de PDF ni claves del Atajo; la polÃ­tica/autorizaciÃ³n dicen que se envÃ­a Â«una copia de la base de datosÂ» sin cifrado ni exclusiones: precisarlo en la prÃ³xima versiÃ³n.
+- La IA externa solo procesa extractos que la persona sube a mano (con consentimiento `ia`, texto enmascarado); nunca contenido de Gmail. La polÃ­tica puede decirlo explÃ­citamente.
+- Resumen semanal con IA ahora exige consentimiento `ia` (si no, texto sin IA).

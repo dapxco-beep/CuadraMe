@@ -13,7 +13,7 @@ Una página. Para el detalle de cada cosa, mira `HOJA_DE_RUTA.md`. Aquí solo ha
 ## 2. Variables de entorno (solo nombres)
 **Railway (backend):** `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (opcional, muy sensible: solo aquí), `CRON_SECRET`, `FERNET_KEY`,
 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `API_BASE_URL`, `PWA_URL`, `CORS_ORIGINS_EXTRA`, `CORS_ORIGIN_REGEX`,
-`OPENROUTER_API_KEY`, `RESEND_API_KEY`, `RESEND_FROM`, `BACKUP_EMAIL`, `SOPORTE_EMAIL`,
+`OPENROUTER_API_KEY`, `OPENROUTER_MODEL_PRIVADO` (opcional; vacÃ­a = el contenido de Gmail nunca va a IA), `BACKUP_PASSPHRASE` (obligatoria para que el respaldo se envÃ­e; cifrado, ver `docs/RESTAURAR_RESPALDO.md`), `RESEND_API_KEY`, `RESEND_FROM`, `BACKUP_EMAIL`, `SOPORTE_EMAIL`,
 `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY_PEM`, `VAPID_SUBJECT`, `SENTRY_DSN`, `ENVIRONMENT`,
 `ADMIN_EMAIL` (tu correo: recibe los avisos y es el único que ve el panel), y opcionales con el valor del plan gratuito por defecto:
 `RESEND_LIMITE_DIA` (100), `RESEND_LIMITE_MES` (3000), `SUPABASE_DB_LIMITE_MB` (500), `GMAIL_TOPE_USUARIOS` (100), `IA_PREGUNTAS_MES_AVISO` (3000), `ERRORES_5XX_AVISO` (20),
@@ -92,4 +92,4 @@ Eventos que quedan en la tabla `eventos_actividad` y se muestran en **Más > Sal
 - **Un usuario recibe el correo dos veces:** no debería (marca única por usuario y semana en `marcas_cron`). Si pasa, revisa que no haya dos servicios de Railway corriendo el mismo cron.
 - **Gmail «Acceso bloqueado»:** la app de Google sigue en modo Pruebas; agrega al usuario como tester o termina la verificación.
 - **Cuentas con datos raros:** nada de borrar datos de usuarios sin aprobación (Ley 1581).
-- **Pérdida de datos:** restaurar desde el último correo de `/backup/cron/enviar` (JSON comprimido); antes consultar con Daniel.
+- **Pérdida de datos:** restaurar desde el último correo de `/backup/cron/enviar` (archivo `.cmbk` cifrado; descifrar segÃºn `docs/RESTAURAR_RESPALDO.md`); antes consultar con Daniel.
