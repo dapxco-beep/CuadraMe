@@ -328,3 +328,20 @@ def test_vista_previa_avisa_si_el_mes_de_la_cuenta_ya_esta_conciliado_sin_bloque
     assert j["ya_conciliado"] == {"mes": "2026-10", "cruzados": 1}
     # Solo avisa: la vista previa sigue completa y los duplicados se siguen detectando por huella.
     assert j["resumen"]["duplicados"] == 1 and len(j["propuesta"]) == 3
+
+
+def test_posible_duplicado_trae_la_fila_registrada_y_confirmar_la_junta_sin_crear_otra():
+    """«¿Es el mismo gasto?»: la vista previa muestra las dos filas y «Sí, es el mismo» confirma el que ya
+    tenías (canal archivo) en vez de crear otro."""
+    cuenta = _preparar("imp-mismo")
+    j = _previa(cuenta).json()
+    dudosa = next(p for p in j["propuesta"] if p["estado"] == "posible_duplicado")
+    assert dudosa["registrado"]["descripcion"] == "Mercado grande" and dudosa["match_id"]
+    antes = len(client.get("/movimientos").json())
+    r = client.post("/importar/confirmar", json={"cuenta_id": cuenta, "nombre_archivo": "extracto.csv", "filas": [{
+        "fecha": dudosa["fecha"], "descripcion": dudosa["descripcion"], "monto": dudosa["monto"], "tipo": dudosa["tipo"],
+        "conciliar_con": dudosa["match_id"]}]}).json()
+    assert r["importados"] == 0 and r["juntados"] == 1
+    assert len(client.get("/movimientos").json()) == antes
+    mov = client.get(f"/movimientos/{dudosa['match_id']}").json()
+    assert "importacion" in mov["canales"]

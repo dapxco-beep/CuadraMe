@@ -68,6 +68,8 @@ class FilaImportar(BaseModel):
     categoria: Optional[str] = Field(default=None, max_length=60)
     recordar: bool = False  # guardar la categoría elegida como regla del comercio
     aplicar_anteriores: bool = False  # además, recategorizar movimientos pasados de ese comercio
+    # «Sí, es el mismo gasto»: id del movimiento que ya tenías. No se crea otro; se junta con ese.
+    conciliar_con: Optional[str] = Field(default=None, max_length=64)
 
 
 class ConfirmarRequest(BaseModel):
@@ -173,6 +175,9 @@ def vista_previa(
     clf = ClasificadorUsuario(db, usuario.id)
     clasifs = [clf.clasificar(m["descripcion"]) for m in movs]
 
+    ids_prev = [i.get("match_id") for i in auditoria["review"] if i.get("match_id")]
+    movs_previos = {m.id: m for m in db.query(Movimiento).filter(
+        Movimiento.id.in_(ids_prev), Movimiento.usuario_id == usuario.id).all()} if ids_prev else {}
     ESTADO = {"faltante": "nuevo", "exacto": "duplicado", "aproximado": "posible_duplicado"}
     inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
     propuesta = []
@@ -183,7 +188,11 @@ def vista_previa(
         # Punto de partida: lo anterior al inicio no se ofrece (no se pierde: se trae moviendo la fecha).
         if estado == "nuevo" and punto_partida.es_anterior(datetime.fromisoformat(item["fecha"]), inicio_pp):
             estado, anteriores = "anterior", anteriores + 1
+        previo = movs_previos.get(item.get("match_id")) if item.get("match_id") else None
         propuesta.append({
+            "match_id": item.get("match_id") if previo is not None else None,
+            "registrado": ({"descripcion": previo.descripcion, "monto": previo.monto,
+                            "fecha": previo.fecha.strftime("%Y-%m-%d")} if previo is not None else None),
             "razon_categoria": r.get("razon") if r else None,
             "fila": item["fila"],
             "fecha": item["fecha"],
@@ -228,7 +237,7 @@ def confirmar(
     huellas_existentes = {r["fingerprint"] for r in ledger if r.get("fingerprint")}
     categorias_auto = None
 
-    importados = omitidos = auto_categorizados = 0
+    importados = omitidos = auto_categorizados = juntados = 0
     reglas_guardadas = anteriores_actualizados = 0
     reglas_omitidas: list[dict] = []
     neto = 0.0
@@ -239,6 +248,15 @@ def confirmar(
             anteriores_omitidas += 1  # antes del punto de partida: no se importa
             continue
         fp = compute_fingerprint(f.fecha, f.monto, cuenta.id, f.descripcion, f.tipo)
+        if f.conciliar_con:
+            previo = db.query(Movimiento).filter(Movimiento.id == f.conciliar_con, Movimiento.usuario_id == usuario.id,
+                                                 Movimiento.cuenta_id == cuenta.id).first()
+            if previo is not None:
+                # Es el mismo gasto que ya tenías: el archivo lo CONFIRMA, no se crea otro.
+                dup.confirmar_por_canal(db, previo, dup.ORIGEN_IMPORTACION,
+                                        dup.huella_archivo(fp, dup.siguiente_ordinal(db, usuario.id, f"imp:{fp}")))
+                juntados += 1
+                continue
         if fp in huellas_existentes:
             omitidos += 1  # ya está: importar el mismo archivo dos veces no duplica
             continue
@@ -279,14 +297,14 @@ def confirmar(
 
     db.add(HistorialExtracto(
         usuario_id=usuario.id, cuenta_id=cuenta.id, banco_detectado=f"archivo: {data.nombre_archivo[:60]}",
-        total_movimientos=len(data.filas), exactos=omitidos, aproximados=0, faltantes=0,
+        total_movimientos=len(data.filas), exactos=omitidos + juntados, aproximados=0, faltantes=0,
         importados=importados, estado="conciliado", review_json=json.dumps([]),
     ))
     db.commit()
     if importados:
         registrar_actividad_hoy(db, usuario.id)
         dup.absorber_correos(db, usuario.id)
-    return {"ok": True, "importados": importados, "duplicados_omitidos": omitidos,
+    return {"ok": True, "importados": importados, "duplicados_omitidos": omitidos + juntados, "juntados": juntados,
             "categorizados_auto": auto_categorizados, "reglas_guardadas": reglas_guardadas,
             "anteriores_actualizados": anteriores_actualizados, "reglas_omitidas": reglas_omitidas,
             "anteriores_omitidas": anteriores_omitidas,
