@@ -15,7 +15,64 @@ from app.config import settings
 from app.contabilidad import tipo_con_direccion
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+# Modelo gratuito: sus proveedores pueden guardar y entrenar con lo que reciben. Por eso SOLO
+# se usa con texto que el usuario subió él mismo, ya enmascarado y con su consentimiento «ia».
 OPENROUTER_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
+
+# Origen del contenido. «gmail» = viene de Google (Uso Limitado: no se transfiere a terceros
+# ni se usa para IA generalizada); «manual» = el usuario lo subió desde su dispositivo.
+ORIGEN_GMAIL = "gmail"
+ORIGEN_MANUAL = "manual"
+
+
+def modelo_ia_permitido(origen: str, consentimiento_ia: bool) -> str | None:
+    """Modelo de OpenRouter que se puede usar para este contenido, o None = NO llamar a la IA.
+
+    - Sin consentimiento «ia» vigente: nunca.
+    - Gmail: solo con modelo PRIVADO (de pago, sin entrenamiento) definido en
+      OPENROUTER_MODEL_PRIVADO; sin esa variable, nunca (por defecto está vacía).
+    - Manual: el privado si existe; si no, el gratuito (texto enmascarado).
+    Cualquier origen desconocido se trata como Gmail (lo más restrictivo)."""
+    if not consentimiento_ia or not settings.openrouter_api_key:
+        return None
+    privado = (settings.openrouter_model_privado or "").strip()
+    if origen == ORIGEN_MANUAL:
+        return privado or OPENROUTER_MODEL
+    return privado or None
+
+
+# ── Minimización: lo que sale hacia la IA va sin datos de identificación ──────────
+_RE_CORREO = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+_RE_LINEA_CLAVE = re.compile(r"(?i)\b(clave|contrase[ñn]a|password|passw\w*|pin|token|cvv|cvc|otp)\b")
+_RE_DOCUMENTO = re.compile(
+    r"(?i)\b(c\.?\s?c\.?|c[eé]dula(?:\s+de\s+ciudadan[ií]a)?|nit|documento|identificaci[oó]n|ce)\b"
+    r"(\s*(?:n[oº°.]*|numero|número|#|:)?\s*)\d[\d.\-\s]{4,14}\d"
+)
+_RE_TELEFONO = re.compile(r"(?<![\d.,])(?:\+?57[\s-]?)?3\d{2}[\s-]?\d{3}[\s-]?\d{4}(?![\d.,])")
+_RE_TARJETA = re.compile(r"(?<![\d.,])\d{4}(?:[ -]\d{4}){2,4}(?![\d.,])")
+_RE_NUMERO_LARGO = re.compile(r"(?<![\d.,])\d{9,}(?![\d.,])")
+_RE_ENMASCARADA = re.compile(r"[*xX•]{2,}\s?\d{2,4}")
+
+
+def enmascarar_texto(texto: str, nombre_titular: str = "") -> str:
+    """Quita del texto lo que identifica a la persona antes de enviarlo a un proveedor de IA:
+    líneas con claves/PIN, correos, teléfonos, cédula/NIT, números largos (cuentas, tarjetas)
+    y el nombre del titular. Los montos (con separadores) y las fechas se conservan."""
+    if not texto:
+        return ""
+    lineas = [l for l in texto.split("\n") if not _RE_LINEA_CLAVE.search(l)]
+    t = "\n".join(lineas)
+    t = _RE_CORREO.sub("[correo]", t)
+    t = _RE_DOCUMENTO.sub(lambda m: f"{m.group(1)}{m.group(2)}[documento]", t)
+    t = _RE_TELEFONO.sub("[telefono]", t)
+    t = _RE_ENMASCARADA.sub("[cuenta]", t)
+    t = _RE_TARJETA.sub("[cuenta]", t)
+    t = _RE_NUMERO_LARGO.sub("[cuenta]", t)
+    nombre = " ".join((nombre_titular or "").split())
+    if len(nombre) >= 3:
+        for parte in {nombre, *[p for p in nombre.split() if len(p) >= 4]}:
+            t = re.sub(re.escape(parte), "[titular]", t, flags=re.IGNORECASE)
+    return t
 
 
 # Un extracto real tiene pocas páginas. Sin tope, un PDF de miles de páginas dejaría
@@ -80,11 +137,19 @@ def _build_prompt_extraccion(cuenta: str, banco: str) -> str:
     ])
 
 
-def extraer_via_ia(texto_plano: str, cuenta: str, banco: str) -> list[dict]:
-    """Manda el texto del extracto a OpenRouter por trozos y parsea la respuesta JSON."""
+def extraer_via_ia(
+    texto_plano: str, cuenta: str, banco: str, *,
+    origen: str, consentimiento_ia: bool = False, nombre_titular: str = "",
+) -> list[dict]:
+    """Manda el texto del extracto (ENMASCARADO) a OpenRouter por trozos y parsea el JSON.
+    `origen` es obligatorio: con contenido de Gmail no hay llamada de red salvo que existan
+    consentimiento «ia» y un modelo privado (ver `modelo_ia_permitido`)."""
     api_key = settings.openrouter_api_key
-    if not api_key or not texto_plano:
+    modelo = modelo_ia_permitido(origen, consentimiento_ia)
+    if not api_key or not texto_plano or not modelo:
         return []
+    privado = modelo != OPENROUTER_MODEL
+    texto_plano = enmascarar_texto(texto_plano, nombre_titular)
 
     lineas = [l.strip() for l in texto_plano.split("\n") if l.strip()]
     relevantes = [
@@ -107,10 +172,12 @@ def extraer_via_ia(texto_plano: str, cuenta: str, banco: str) -> list[dict]:
             resp = httpx.post(
                 OPENROUTER_URL,
                 json={
-                    "model": OPENROUTER_MODEL,
+                    "model": modelo,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.1,
                     "max_tokens": 4096,
+                    # Con el modelo privado se exige además que el proveedor no guarde ni entrene.
+                    **({"provider": {"data_collection": "deny"}} if privado else {}),
                 },
                 headers={"Authorization": f"Bearer {api_key}"},
                 timeout=60,
