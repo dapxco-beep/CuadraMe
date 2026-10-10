@@ -199,7 +199,10 @@ export default function Perfil() {
           </Link>
           <Link to="/compartir" className="flex items-center gap-3 px-4 py-3.5">
             <Users size={20} className="text-accent shrink-0" />
-            <p className="flex-1 text-sm font-medium">Compartir una cuenta</p>
+            <div className="flex-1">
+              <p className="text-sm font-medium">Compartir con mi pareja o familia</p>
+              <p className="text-xs text-ink-soft mt-0.5">Elige qué cuentas ven y qué pueden hacer</p>
+            </div>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
         </div>

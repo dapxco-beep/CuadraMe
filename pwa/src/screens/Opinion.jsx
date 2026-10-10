@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Trash2 } from 'lucide-react'
 import Cuadri from '../brand/Cuadri'
 import Icono from '../components/Icono'
 import { Boton, Campo, Chip, Tarjeta } from '../components/ui'
@@ -42,6 +42,17 @@ export default function Opinion() {
   useEffect(() => {
     cargarMios()
   }, [cargarMios])
+
+  // La persona puede borrar el archivo de muestra que subió en «Mi banco no aparece».
+  const borrarArchivo = async (c) => {
+    try {
+      await api.borrarMuestraBanco(c.id)
+      avisar('Listo: borramos tu archivo.', 'info')
+      cargarMios()
+    } catch (err) {
+      avisar(err?.message || 'No pudimos borrar el archivo. Intenta de nuevo en un momento.')
+    }
+  }
 
   const actual = tipoPorId(tipo)
   const restante = MAX_MENSAJE - mensaje.length
@@ -182,6 +193,14 @@ export default function Opinion() {
                     </span>
                   </div>
                   <p className="t-cuerpo mt-1.5 whitespace-pre-line break-words">{c.mensaje}</p>
+                  {c.tiene_archivo && (
+                    <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-paper border border-line px-3 py-2">
+                      <span className="t-apoyo truncate">Archivo que enviaste: {c.archivo}</span>
+                      <Boton variante="suave" tam="sm" icono={Trash2} onClick={() => borrarArchivo(c)} aria-label={`Borrar el archivo ${c.archivo}`}>
+                        Borrar
+                      </Boton>
+                    </div>
+                  )}
                   {c.respuesta && (
                     <p className="t-cuerpo mt-2 rounded-xl bg-paper border border-line px-3 py-2 whitespace-pre-line break-words">
                       <b>Respuesta:</b> {c.respuesta}

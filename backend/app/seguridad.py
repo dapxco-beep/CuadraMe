@@ -35,7 +35,13 @@ CABECERAS_SEGURIDAD = [
 ]
 
 
+# Muestra de «Mi banco no aparece»: el archivo admite hasta 5 MB (lo valida el router) + margen del formulario.
+LIMITE_MUESTRA = 6 * 1024 * 1024
+
+
 def limite_de(ruta: str) -> int:
+    if ruta.startswith("/comentarios/") and ruta.endswith("/adjunto"):
+        return LIMITE_MUESTRA
     return LIMITE_GRANDE if ruta.startswith(RUTAS_CON_ARCHIVOS) else LIMITE_NORMAL
 
 

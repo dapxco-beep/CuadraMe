@@ -333,6 +333,10 @@ ATAQUES = [
     # buzón de opinión: las rutas de administración responden 404 a quien no es ADMIN_EMAIL
     ("PATCH", "/comentarios/{comentario}", {"estado": "descartado", "nota_admin": "x", "respuesta_publica": "x"}),
     ("POST", "/comentarios/marcar-vistos", {"ids": ["{comentario}"]}),
+    # archivo de muestra «Mi banco no aparece»: solo el autor sube/borra; ver es solo de la administración
+    ("DELETE", "/comentarios/{comentario}/adjunto", None),
+    ("GET", "/comentarios/{comentario}/adjunto", None),
+    ("POST", "/comentarios/{comentario}/adjunto", {}),
 ]
 # Rutas donde un 200 es correcto aunque sean de B: la operación se limita a datos de B (idempotente).
 # Se valida igual que la foto de A no cambie y que la respuesta no traiga la marca.
@@ -416,6 +420,7 @@ SIN_ID_DE_RECURSO = {
     "/cuentas", "/presupuestos", "/cierre-mes/{mes}", "/cierre-mes/{mes}/generar", "/gastos-compartidos/contactos", "/cuentas/invitaciones/pendientes",
     "/correos/{correo_id}/aprobar", "/movimientos/rapido-voz", "/resumen/preferencias",
     "/comentarios",  # POST: crea un comentario propio (no recibe ids)
+    "/metas/simular",  # solo calcula con los números que envía (más el sobrante propio)
     "/avisos/preferencias", "/avisos/probar",  # solo administración (404 al resto): no reciben ids ajenos
 }
 # Rutas sin sesión de usuario por diseño (crons con secreto, callbacks firmados, API key, webhook firmado, públicas).

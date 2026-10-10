@@ -87,6 +87,14 @@ if engine.dialect.name == "postgresql":
             "ALTER TABLE presupuestos ADD COLUMN IF NOT EXISTS "
             "ultima_alerta_mes VARCHAR"
         ))
+        # Metas con sugerencia: fecha del último aporte a mano (supabase/migraciones/metas_sugerencia_bancos.sql).
+        conn.execute(text("ALTER TABLE metas ADD COLUMN IF NOT EXISTS ultimo_aporte TIMESTAMP NULL"))
+        # Buzón «Mi banco no está»: nombre del banco y archivo de muestra en almacenamiento privado
+        # (mismo archivo .sql). Opcionales.
+        conn.execute(text("ALTER TABLE comentarios ADD COLUMN IF NOT EXISTS banco VARCHAR NULL"))
+        conn.execute(text("ALTER TABLE comentarios ADD COLUMN IF NOT EXISTS adjunto_ruta VARCHAR NULL"))
+        conn.execute(text("ALTER TABLE comentarios ADD COLUMN IF NOT EXISTS adjunto_nombre VARCHAR NULL"))
+        conn.execute(text("ALTER TABLE comentarios ADD COLUMN IF NOT EXISTS adjunto_bytes INTEGER NULL"))
         # Tarjetas de crédito reales: cupo, corte, pago y tasa en la cuenta.
         # (La misma lista, como SQL suelto, está en supabase/migraciones/.)
         conn.execute(text("ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS cupo_total FLOAT"))

@@ -154,7 +154,9 @@ async function request(path, opciones = {}) {
 }
 
 async function pedir(path, { method = 'GET', body, auth = true, headers: extra } = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(extra || {}) }
+  // Un FormData (archivo) lo arma el navegador con su propio Content-Type y límite; el resto va como JSON.
+  const esForm = typeof FormData !== 'undefined' && body instanceof FormData
+  const headers = { ...(esForm ? {} : { 'Content-Type': 'application/json' }), ...(extra || {}) }
   let conSesion = false
   if (auth) {
     const { data } = await supabase.auth.getSession()
@@ -168,7 +170,7 @@ async function pedir(path, { method = 'GET', body, auth = true, headers: extra }
   const res = await fetchSeguro(`${API_URL}${path}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body: body ? (esForm ? body : JSON.stringify(body)) : undefined,
   })
 
   if (!res.ok) {
@@ -253,6 +255,17 @@ export const api = {
   // Buzón de opinión: cualquiera envía y ve lo suyo; lo demás es solo del administrador (404 al resto).
   enviarComentario: (data) => request('/comentarios', { method: 'POST', body: data }),
   misComentarios: () => request('/comentarios/mios', { sinCache: true }),
+  // «Mi banco no aparece»: archivo de muestra en almacenamiento privado (5 MB, pdf/xls/xlsx/csv).
+  almacenMuestras: () => request('/comentarios/almacen', { sinCache: true }),
+  subirMuestraBanco: (comentarioId, archivo) => {
+    const form = new FormData()
+    form.append('archivo', archivo)
+    return request(`/comentarios/${encodeURIComponent(comentarioId)}/adjunto`, { method: 'POST', body: form })
+  },
+  borrarMuestraBanco: (comentarioId) =>
+    request(`/comentarios/${encodeURIComponent(comentarioId)}/adjunto`, { method: 'DELETE' }),
+  descargarMuestraBanco: (comentarioId, nombre) =>
+    descargarArchivo(`/comentarios/${encodeURIComponent(comentarioId)}/adjunto`, nombre || 'muestra'),
   comentariosAdmin: (p = {}) => {
     const q = new URLSearchParams(limpiar(p)).toString()
     return request(`/comentarios${q ? `?${q}` : ''}`, { sinCache: true })
@@ -396,6 +409,9 @@ export const api = {
   aportarMeta: (id, monto, cuentaId) =>
     request(`/metas/${id}/aportar?monto=${monto}${cuentaId ? `&cuenta_id=${cuentaId}` : ''}`, { method: 'POST' }),
   eliminarMeta: (id) => request(`/metas/${id}`, { method: 'DELETE' }),
+  // Plan en palabras de cada meta (cuánto apartar, cuándo llegas, si vas adelantado) y de una meta que aún no existe.
+  metasSugerencias: () => request('/metas/sugerencias', { sinCache: true }),
+  simularMeta: (data) => request('/metas/simular', { method: 'POST', body: data }),
 
   recurrentes: () => request('/recurrentes'),
   sugerenciasRecurrentes: () => request('/recurrentes/sugerencias'),

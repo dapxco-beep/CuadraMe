@@ -14,7 +14,12 @@ export const TIPOS = [
 ]
 const IDS_TIPO = TIPOS.map((t) => t.id)
 
-export const tipoPorId = (id) => TIPOS.find((t) => t.id === id) || TIPOS[0]
+// «Mi banco no aparece» no se elige en «Tu opinión cuenta»: nace del formulario de Traer movimientos.
+// Aparece en el panel de administración (filtro «Bancos») y en la lista de comentarios de quien lo envió.
+export const TIPO_BANCO = { id: 'banco', emoji: '🏦', etiqueta: 'Mi banco no aparece', corta: 'Bancos', pista: '' }
+export const TIPOS_PANEL = [...TIPOS, TIPO_BANCO]
+
+export const tipoPorId = (id) => TIPOS_PANEL.find((t) => t.id === id) || TIPOS[0]
 
 // Del enlace (?tipo=problema) solo se aceptan los tipos conocidos.
 export function tipoInicial(valor) {

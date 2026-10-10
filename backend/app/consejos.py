@@ -38,6 +38,8 @@ HORMIGA_MIN_TOTAL = 40_000
 UTILIZACION_ALERTA = 30  # % del cupo
 MESES_FONDO_MIN, MESES_FONDO_IDEAL = 3, 6
 MIN_SIN_CATEGORIZAR = 5
+DIA_META_SIN_APORTE = 8  # antes de este día del mes no se le reclama el aporte a nadie
+MAX_METAS_SIN_APORTE = 2  # para no llenar la pantalla
 TASA_CARA_EA = 28.0  # % efectivo anual desde el cual una deuda se considera "cara"
 CATEGORIAS_SIN_DEFINIR = {"", "otros", "sin categoria", "sin categoría"}
 
@@ -211,6 +213,35 @@ def _regla_ahorro_sin_meta(d, hoy):
         _pesos(liquido), "Crear una meta", "/metas", "fondo-de-emergencia")]
 
 
+def _regla_meta_sin_aporte(d, hoy):
+    """Meta activa y sin completar a la que aún no le llega ningún aporte este mes (ni a mano ni automático)."""
+    if hoy.day < DIA_META_SIN_APORTE:
+        return []
+    candidatas = []
+    for m in d.get("metas", []):
+        objetivo, actual = m.get("monto_objetivo") or 0, m.get("monto_actual") or 0
+        if not m.get("activa", True) or not m.get("id") or objetivo <= 0 or actual >= objetivo:
+            continue
+        creada = m.get("creada_en")
+        if creada and (hoy - creada).days < 7:
+            continue  # recién creada: démosle tiempo
+        ultimo = m.get("ultimo_aporte")
+        if ultimo and (ultimo.year, ultimo.month) == (hoy.year, hoy.month):
+            continue
+        candidatas.append((objetivo - actual, m))
+    candidatas.sort(key=lambda t: -t[0])
+    out = []
+    for faltante, m in candidatas[:MAX_METAS_SIN_APORTE]:
+        c = _consejo(
+            f"meta-sin-aporte:{m['id']}:{_mes(hoy)}", "meta_sin_aporte", 2, f"«{_corto(m['nombre'])}» no ha recibido aporte este mes",
+            f"A tu meta le faltan {_pesos(faltante)} y este mes aún no has apartado nada. Un aporte pequeño hoy "
+            "mantiene el ritmo; lo importante es la constancia, no el monto.",
+            _pesos(faltante), "Aportar ahora", "/metas", "fondo-de-emergencia")
+        c["meta_id"] = m["id"]
+        out.append(c)
+    return out
+
+
 def _regla_sin_presupuesto(d, hoy):
     if d.get("presupuestos"):
         return []
@@ -346,7 +377,7 @@ def _regla_fechas_tarjeta(d, hoy):
 REGLAS = [
     _regla_fechas_tarjeta, _regla_tarjeta_solo_minimo, _regla_utilizacion, _regla_deudas, _regla_fondo_emergencia,
     _regla_categoria_sube, _regla_ingreso_sin_repartir, _regla_sin_presupuesto, _regla_gastos_hormiga,
-    _regla_suscripciones, _regla_ahorro_sin_meta, _regla_sin_categorizar, _regla_debito_vs_credito,
+    _regla_suscripciones, _regla_meta_sin_aporte, _regla_ahorro_sin_meta, _regla_sin_categorizar, _regla_debito_vs_credito,
 ]
 
 
@@ -431,7 +462,10 @@ def reunir_datos(db, usuario_id: str, hoy: datetime) -> dict:
         "movimientos": movimientos,
         "movimientos_neutros": neutros,
         "presupuestos": [{"categoria": p.categoria, "limite": p.limite} for p in activas(db.query(Presupuesto), Presupuesto)],
-        "metas": [{"nombre": m.nombre, "monto_actual": m.monto_actual or 0, "activa": m.activa is not False}
+        "metas": [{"id": m.id, "nombre": m.nombre, "monto_actual": m.monto_actual or 0,
+                   "monto_objetivo": m.monto_objetivo or 0, "activa": m.activa is not False,
+                   "creada_en": m.creado_en or m.fecha_inicio,
+                   "ultimo_aporte": max((f for f in (m.ultimo_aporte, m.ultimo_aporte_automatico) if f), default=None)}
                   for m in db.query(Meta).filter(Meta.usuario_id == usuario_id).all()],
         "deudas": [{"id": x.id, "nombre": x.nombre, "saldo": x.saldo_actual or 0, "tasa_mensual": x.tasa_mensual or 0}
                    for x in db.query(Deuda).filter(Deuda.usuario_id == usuario_id, Deuda.activa == True).all()],  # noqa: E712

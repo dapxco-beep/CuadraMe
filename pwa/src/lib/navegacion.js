@@ -1,7 +1,7 @@
 import {
   Activity, Bot, BookOpen, CalendarCheck, CreditCard, Database, Gift, GraduationCap, Home, Landmark, Lightbulb, List, PieChart, PiggyBank,
   LifeBuoy, Receipt, RefreshCw, Repeat, Settings, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Sprout, Tag,
-  TrendingUp, User, Wallet,
+  TrendingUp, User, Users, Wallet,
 } from 'lucide-react'
 
 // ═══ Única fuente de verdad de la navegación ═══════════════════════════════
@@ -79,7 +79,8 @@ export const GRUPOS = [
 ]
 
 export const EXTRA_BUSQUEDA = [
-  { to: '/compartir', icon: Gift, label: 'Compartir resumen', palabras: 'imagen' },
+  { to: '/compartir', icon: Users, label: 'Compartir con mi pareja o familia', palabras: 'compartir cuenta pareja familia hogar invitar pareja esposo esposa ver anotar acceso' },
+  { to: '/amigos', icon: Users, label: 'Dividir gastos con amigos', palabras: 'dividir gastos amigos cuenta compartida cena viaje deben me deben' },
 ]
 
 // Destino SOLO para quien administra CuadraMe. No está en GRUPOS ni en el buscador: se agrega aparte

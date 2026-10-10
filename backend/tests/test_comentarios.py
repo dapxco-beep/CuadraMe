@@ -288,3 +288,121 @@ def test_si_el_correo_falla_el_comentario_igual_se_guarda(monkeypatch):
     assert db.query(Comentario).count() == 1
     assert db.query(EventoActividad).filter(EventoActividad.tipo == "comentario_problema").count() == 1  # queda en el panel
     db.close()
+
+
+# ── «Mi banco o billetera no aparece» (tipo «banco» + archivo de muestra privado) ─────────────
+from app import almacen_muestras  # noqa: E402
+
+PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\n%%EOF"
+CSV = "fecha,descripcion,valor\n2026-01-02,Compra,1000\n".encode()
+
+
+@pytest.fixture
+def almacen(monkeypatch):
+    """Almacenamiento privado en memoria: nada sale a la red."""
+    guardado = {}
+    monkeypatch.setattr(almacen_muestras, "disponible", lambda: True)
+    monkeypatch.setattr(almacen_muestras, "guardar", lambda ruta, datos, tipo="": guardado.__setitem__(ruta, datos))
+    monkeypatch.setattr(almacen_muestras, "leer", lambda ruta: guardado[ruta])
+    monkeypatch.setattr(almacen_muestras, "borrar", lambda ruta: guardado.pop(ruta, None) is not None or True)
+    return guardado
+
+
+def _banco(**kw):
+    cuerpo = {"tipo": "banco", "banco": "Banco Agrario", "tipo_archivo": "pdf", "pantalla": "/sincronizacion"}
+    cuerpo.update(kw)
+    return client.post("/comentarios", json=cuerpo)
+
+
+def _subir(cid, nombre="extracto.pdf", datos=PDF):
+    return client.post(f"/comentarios/{cid}/adjunto", files={"archivo": (nombre, datos, "application/octet-stream")})
+
+
+def test_banco_guarda_nombre_y_mensaje_legible():
+    r = _banco(mensaje="Es de Nequi también")
+    assert r.status_code == 200
+    db = SessionLocal()
+    c = db.query(Comentario).filter(Comentario.id == r.json()["id"]).one()
+    assert c.tipo == "banco" and c.banco == "Banco Agrario" and c.adjunto_ruta is None
+    assert c.mensaje == "Mi banco o billetera no aparece: Banco Agrario · Archivo: PDF · Es de Nequi también"
+    db.close()
+
+
+def test_banco_exige_nombre():
+    assert _banco(banco="  ").status_code == 400
+    assert "banco" in _banco(banco="<b></b>").json()["detail"].lower()
+
+
+def test_subir_muestra_es_privada_y_la_ve_solo_el_admin(almacen):
+    cid = _banco().json()["id"]
+    r = _subir(cid)
+    assert r.status_code == 200 and r.json()["archivo"] == "extracto.pdf"
+    ruta = f"{U1.id}/{cid}/extracto.pdf"
+    assert almacen[ruta] == PDF
+    # la persona ve que subió algo, pero no la ruta ni el contenido
+    mio = client.get("/comentarios/mios").json()[0]
+    assert mio["tiene_archivo"] is True and mio["archivo"] == "extracto.pdf" and ruta not in str(mio)
+    # otra persona no puede verlo, subirlo ni borrarlo
+    como(U2)
+    assert client.get(f"/comentarios/{cid}/adjunto").status_code == 404
+    assert _subir(cid).status_code == 404
+    assert client.delete(f"/comentarios/{cid}/adjunto").status_code == 404
+    # la administración sí
+    como(ADMIN)
+    got = client.get(f"/comentarios/{cid}/adjunto")
+    assert got.status_code == 200 and got.content == PDF and "attachment" in got.headers["content-disposition"]
+    panel = client.get("/comentarios?tipo=banco").json()
+    assert panel["total"] == 1 and panel["items"][0]["banco"] == "Banco Agrario" and panel["items"][0]["tiene_adjunto"] is True
+    assert ruta not in str(panel)  # la ruta interna nunca sale
+    assert panel["por_tipo"]["banco"] == 1
+
+
+def test_borrar_muestra_la_quita_del_almacen(almacen):
+    cid = _banco().json()["id"]
+    _subir(cid)
+    assert len(almacen) == 1
+    assert client.delete(f"/comentarios/{cid}/adjunto").json()["ok"] is True
+    assert almacen == {}
+    assert client.get("/comentarios/mios").json()[0]["tiene_archivo"] is False
+
+
+def test_muestra_rechaza_tipos_peso_y_contenido_falso(almacen):
+    cid = _banco().json()["id"]
+    assert _subir(cid, "malo.exe", b"MZ....").status_code == 400
+    assert _subir(cid, "falso.pdf", b"esto no es un pdf").status_code == 400
+    fila = b"1,2\n"
+    assert _subir(cid, "justo.csv", b"a,b\n" + fila * 1_200_000).status_code == 200  # ~4,8 MB: cabe
+    assert _subir(cid, "grande.csv", b"a,b\n" + fila * 1_400_000).status_code == 400  # ~5,6 MB: lo rechaza el router
+    assert _subir(cid, "enorme.csv", b"a,b\n" + fila * 1_700_000).status_code == 413  # >6 MB: tope del servidor
+    assert _subir(cid, "../../etc/pass.csv", CSV).json()["archivo"] == "pass.csv"  # sin rutas
+    assert _subir(cid, "hoja.xlsx", b"PK\x03\x04" + b"0" * 20).status_code == 200
+    assert almacen_muestras.nombre_seguro("Extracto Ñandú (1).PDF") == "Extracto_Nandu_1_.PDF"
+
+
+def test_sin_almacen_solo_queda_el_nombre_y_se_avisa(monkeypatch):
+    monkeypatch.setattr(almacen_muestras, "disponible", lambda: False)
+    assert client.get("/comentarios/almacen").json()["disponible"] is False
+    cid = _banco().json()["id"]
+    r = _subir(cid)
+    assert r.status_code == 503 and "nombre de tu banco" in r.json()["detail"]
+    db = SessionLocal()
+    assert db.query(Comentario).filter(Comentario.id == cid).one().adjunto_ruta is None
+    db.close()
+
+
+def test_muestra_solo_en_comentarios_tipo_banco(almacen):
+    cid = enviar().json()["id"]
+    assert _subir(cid).status_code == 400
+
+
+def test_borrar_la_cuenta_borra_las_muestras(almacen):
+    from app.derechos_titular import borrar_todo
+
+    cid = _banco().json()["id"]
+    _subir(cid)
+    db = SessionLocal()
+    try:
+        borrar_todo(db, U1.id, U1.email)
+    finally:
+        db.close()
+    assert almacen == {}

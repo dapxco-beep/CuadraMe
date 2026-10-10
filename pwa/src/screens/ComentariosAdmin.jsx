@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertTriangle, ArrowLeft, ChevronDown, Download, Lock, Search } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ChevronDown, Download, FileText, Lock, Search } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
 import Icono from '../components/Icono'
 import { Boton, Campo, Chip, Tarjeta } from '../components/ui'
 import { useDialogos } from '../lib/DialogosContext'
 import { api } from '../lib/api'
-import { ESTADOS_ADMIN, TIPOS, etiquetaEstado, fechaCorta, tipoPorId } from '../lib/opinion'
+import { ESTADOS_ADMIN, TIPOS_PANEL, etiquetaEstado, fechaCorta, tipoPorId } from '../lib/opinion'
 import { useVolver } from '../lib/useVolver'
 
 // Panel del administrador del buzón de opinión. El servidor decide (404 a cualquier otra persona);
@@ -19,6 +19,14 @@ function Fila({ c, marcado, onMarcar, abierto, onAbrir, onGuardado }) {
   const [respuesta, setRespuesta] = useState(c.respuesta_publica || '')
   const [guardando, setGuardando] = useState(false)
   const t = tipoPorId(c.tipo)
+
+  const descargarMuestra = async () => {
+    try {
+      await api.descargarMuestraBanco(c.id, c.adjunto_nombre)
+    } catch (e) {
+      avisar(e?.message || 'No se pudo descargar el archivo')
+    }
+  }
 
   const guardar = async () => {
     setGuardando(true)
@@ -79,7 +87,18 @@ function Fila({ c, marcado, onMarcar, abierto, onAbrir, onGuardado }) {
             <dd>{c.pantalla || '—'}</dd>
             <dt>Dispositivo</dt>
             <dd>{[c.dispositivo, c.version_app].filter(Boolean).join(' · ') || '—'}</dd>
+            {c.banco && (
+              <>
+                <dt>Banco</dt>
+                <dd className="break-words">{c.banco}</dd>
+              </>
+            )}
           </dl>
+          {c.tiene_adjunto && (
+            <Boton variante="secundario" tam="sm" icono={FileText} onClick={descargarMuestra}>
+              Descargar muestra ({c.adjunto_nombre})
+            </Boton>
+          )}
 
           <Campo etiqueta="Estado">
             {(props) => (
@@ -245,13 +264,13 @@ export default function ComentariosAdmin() {
             ))}
           </div>
           <p className="t-kicker text-ink-soft mt-4">Por tipo</p>
-          <div className="grid grid-cols-4 gap-2 mt-2 text-center">
-            {TIPOS.map((t) => (
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-2 text-center">
+            {TIPOS_PANEL.map((t) => (
               <div key={t.id}>
                 <p className="text-lg font-bold tabular-nums">
                   <span aria-hidden="true">{t.emoji}</span> {datos.por_tipo?.[t.id] ?? 0}
                 </p>
-                <p className="text-xs text-ink-soft">{t.etiqueta}</p>
+                <p className="text-xs text-ink-soft">{t.corta || t.etiqueta}</p>
               </div>
             ))}
           </div>
@@ -285,9 +304,9 @@ export default function ComentariosAdmin() {
             ))}
           </div>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
-            {TIPOS.map((t) => (
+            {TIPOS_PANEL.map((t) => (
               <Chip key={t.id} activo={tipo === t.id} onClick={() => setTipo(tipo === t.id ? '' : t.id)}>
-                <span aria-hidden="true">{t.emoji}</span> {t.etiqueta}
+                <span aria-hidden="true">{t.emoji}</span> {t.corta || t.etiqueta}
               </Chip>
             ))}
           </div>
