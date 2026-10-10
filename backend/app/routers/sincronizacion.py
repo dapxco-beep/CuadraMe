@@ -18,7 +18,8 @@ from app import punto_partida
 from app.autocat import patron_de_comercio
 from app.compartidos import cuentas_ids_accesibles
 from app.database import get_db
-from app.duplicados import absorber_correos
+from app.duplicados import absorber_correos, grupos_posibles_duplicados
+from app import estado_traer
 from app.extractos_conciliados import (  # noqa: F401
     ESTADO_YA_CONCILIADO, FUENTES_CONCILIACION, depurar_conciliados, mes_del_extracto,
 )
@@ -63,10 +64,16 @@ def _siguiente(a: int, m: int) -> tuple[int, int]:
 
 
 def estado_celda(*, movimientos: int, conciliados: int, extractos_procesados: int,
-                 extractos_nuevos: int, extractos_falta_clave: int) -> str:
-    """Estado de una celda cuenta x mes. Prioridad: un extracto ya procesado manda;
+                 extractos_nuevos: int, extractos_falta_clave: int, extractos_parciales: int = 0,
+                 anterior: bool = False) -> str:
+    """Estado de una celda cuenta x mes. Prioridad: lo anterior a tu fecha de inicio no cuenta;
+    un extracto ya procesado manda (si aún le faltan líneas por registrar es «parcial»);
     si no, lo que espera acción (clave, conciliar); si no, la evidencia de
     movimientos conciliados; si no, hay movimientos sin extracto; si no, vacío."""
+    if anterior:
+        return "anterior"
+    if extractos_parciales:
+        return "parcial"
     if extractos_procesados:
         return "conciliado"
     if extractos_falta_clave:
@@ -134,6 +141,14 @@ def _sin_cuenta(db: Session, usuario_id: str, cuentas: list[Cuenta], extractos: 
     return sorted(por_banco.values(), key=lambda d: -(d["correos"] + d["extractos"]))
 
 
+def _mes_anterior_al_inicio(clave: str, inicio, movimientos: int) -> bool:
+    """El mes termina antes de tu fecha de inicio y no tiene movimientos: no se espera nada ahí."""
+    if not inicio or movimientos:
+        return False
+    a, m = int(clave[:4]), int(clave[5:7])
+    return _inicio_mes(*_siguiente(a, m)) <= inicio
+
+
 def _plural(n: int, uno: str, varios: str) -> str:
     return f"{n} {uno if n == 1 else varios}"
 
@@ -191,6 +206,9 @@ def estado(
     # Si el periodo ya se concilió (p. ej. subiste el archivo a mano), el extracto de
     # Gmail deja de ser pendiente antes de contar nada.
     depurar_conciliados(db, usuario.id)
+    # Carrera entre canales: si mientras tanto la app, el atajo o el correo registraron líneas que
+    # este extracto traía como «faltantes», se juntan aquí (nunca se duplican) y el extracto queda al día.
+    estado_traer.reconciliar_pendientes(db, usuario.id)
     extractos = (
         db.query(ExtractoCorreo)
         .filter(
@@ -212,6 +230,12 @@ def estado(
             HistorialExtracto.id.in_([e.historial_id for e in extractos if e.historial_id] or [""]),
         )
     }
+    lista_ext = estado_traer.lista_extractos(db, usuario.id, inicio_pp)
+    resumen_celdas = estado_traer.resumen_por_celda(lista_ext)
+    parciales_celda: dict[tuple[str, str], int] = {}
+    for x in lista_ext:
+        if x["historial_id"] and x["estado"] == estado_traer.POR_REVISAR and x["cuenta_id"] and x["mes"]:
+            parciales_celda[(x["cuenta_id"], x["mes"])] = parciales_celda.get((x["cuenta_id"], x["mes"]), 0) + 1
     ext_celda: dict[tuple[str, str], dict] = {}
     for e in extractos:
         cuenta_id = historiales.get(e.historial_id) if e.estado == "procesado" else e.cuenta_sugerida_id
@@ -228,23 +252,34 @@ def estado(
         for clave in claves:
             cnt = conteo.get((c.id, clave), {"movimientos": 0, "conciliados": 0, "por_confirmar": 0})
             ex = ext_celda.get((c.id, clave), {"procesado": 0, "nuevo": 0, "falta_clave": 0})
+            res = resumen_celdas.get((c.id, clave))
             celdas.append({
                 "mes": clave,
                 "estado": estado_celda(
                     movimientos=cnt["movimientos"], conciliados=cnt["conciliados"],
                     extractos_procesados=ex["procesado"], extractos_nuevos=ex["nuevo"],
                     extractos_falta_clave=ex["falta_clave"],
+                    extractos_parciales=parciales_celda.get((c.id, clave), 0),
+                    anterior=_mes_anterior_al_inicio(clave, inicio_pp, cnt["movimientos"]),
                 ),
                 **cnt,
                 "extractos": ex["procesado"] + ex["nuevo"] + ex["falta_clave"],
+                # Qué pasó con el extracto de esta celda (para el detalle al tocarla).
+                "leidas": res["leidas"] if res else 0,
+                "ya_estaban": res["ya_estaban"] if res else 0,
+                "nuevas_agregadas": res["nuevas_agregadas"] if res else 0,
+                "por_revisar": res["por_revisar"] if res else 0,
             })
         filas_cuentas.append({"id": c.id, "nombre": c.nombre, "icono": c.icono, "meses": celdas})
 
     sin_cuenta = _sin_cuenta(db, usuario.id, cuentas, extractos, inicio_pp)
 
     # ── Tareas, en el orden en que conviene resolverlas.
-    n_falta_clave = sum(1 for e in extractos if e.estado == "falta_clave")
-    n_por_conciliar = sum(1 for e in extractos if e.estado == "nuevo")
+    # Un extracto real es UNO aunque haya llegado en dos correos o se haya subido a mano también.
+    n_falta_clave = sum(1 for x in lista_ext if x["estado"] == estado_traer.NECESITA_CLAVE)
+    n_por_conciliar = sum(1 for x in lista_ext if x["estado"] == estado_traer.POR_REVISAR)
+    n_no_leyo = sum(1 for x in lista_ext if x["estado"] == estado_traer.NO_SE_PUDO_LEER)
+    n_duplicados = len(grupos_posibles_duplicados(db, usuario.id))
     desde_bandeja = hoy - timedelta(days=DIAS_BANDEJA)
     n_categorizar = _cola_categorizar(db, ids_accesibles, desde_bandeja).count()
     n_confirmar = db.query(func.count(Movimiento.id)).filter(_cond_bandeja(ids_accesibles, desde_bandeja)).scalar() or 0
@@ -273,6 +308,10 @@ def estado(
          "Llegaron solos: confirma que son tuyos.", n_confirmar, "/movimientos?revisar=1"),
         ("correos_por_revisar", "Correos por revisar",
          "Aprueba o descarta lo que leí en tu correo.", n_correos, "/correos"),
+        ("extractos_sin_leer", "Extractos que no pudimos leer",
+         "Sube el archivo de nuevo o agrega esos movimientos a mano.", n_no_leyo, "/sincronizacion#extractos"),
+        ("posibles_duplicados", "Posibles movimientos repetidos",
+         "Parecen el mismo gasto: dime si es el mismo o es otro.", n_duplicados, "/duplicados"),
     ]
     tareas = [
         {"id": i, "titulo": t, "detalle": d, "cantidad": int(n), "ruta": r}
@@ -286,6 +325,9 @@ def estado(
         "sin_cuenta": sin_cuenta,
         "tareas": tareas,
         "correos_ya_registrados": n_ya_registrados,
+        # Un renglón por extracto real, con lo que pasó con cada línea (ver app/estado_traer.py).
+        "extractos": lista_ext,
+        "estados_extracto": list(estado_traer.ESTADOS),
         # Punto de partida: elección actual, cuántos correos/extractos anteriores se ignoran y, en modo
         # histórico, qué meses faltan por cuenta.
         "punto_partida": {
