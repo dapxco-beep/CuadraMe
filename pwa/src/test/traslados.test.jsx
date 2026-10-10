@@ -57,8 +57,8 @@ describe('lib/traslados', () => {
     expect(signoDe(MOVS[1])).toBe('+')
     const pata = { tipo: 'transfer', fuente: 'transferencia_interna', notas: 'TRF:g:in', categoria: 'Transferencia' }
     expect(direccionDe(pata)).toBe('income')
-    expect(etiquetaTipo(pata)).toBe('Traslado ↔ (entra)')
-    expect(etiquetaTipo(MOVS[0])).toBe('Posible traslado ↔ (sale)')
+    expect(etiquetaTipo(pata)).toBe('Paso entre tus cuentas ↔ (entra)')
+    expect(etiquetaTipo(MOVS[0])).toBe('Posible paso entre tus cuentas ↔ (sale)')
     expect(etiquetaTipo(MOVS[2])).toBe('Gasto')
   })
 
@@ -77,9 +77,9 @@ describe('lib/traslados', () => {
 describe('Detalle de un traslado', () => {
   it('un posible traslado se ve como Traslado con signo de su dirección y se puede marcar', async () => {
     detalle('e')
-    expect(await screen.findByText('Posible traslado ↔ (sale)')).toBeInTheDocument()
+    expect(await screen.findByText('Posible paso entre tus cuentas ↔ (sale)')).toBeInTheDocument()
     expect(screen.getByText(/^-/)).toBeInTheDocument()
-    await userEvent.click(screen.getByText('Marcar como traslado entre mis cuentas'))
+    await userEvent.click(screen.getByText('Es plata que pasé entre mis cuentas'))
     await waitFor(() =>
       expect(api.editarMovimiento).toHaveBeenCalledWith('e', expect.objectContaining({ categoria: 'Transferencia' }))
     )

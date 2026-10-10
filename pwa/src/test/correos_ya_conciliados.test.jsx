@@ -79,10 +79,10 @@ describe('Extractos ya conciliados', () => {
   it('no cuentan ni aparecen como nuevos: quedan en una sección plegada con sus movimientos cruzados', async () => {
     montar()
     expect((await screen.findByRole('heading', { name: /Extractos encontrados/ })).textContent).toBe('Extractos encontrados1')
-    expect(screen.getAllByText(/Nuevo · listo para conciliar/)).toHaveLength(1)
+    expect(screen.getAllByText(/Nuevo · listo para revisar/)).toHaveLength(1)
     expect(screen.queryByText('Nu Colombia')).toBeNull()
 
-    const boton = screen.getByRole('button', { name: /Ya conciliados \(2\)/ })
+    const boton = screen.getByRole('button', { name: /Extractos ya revisados \(2\)/ })
     expect(boton.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(boton)
     const fila = screen.getByTestId('conciliado-e2')
@@ -96,7 +96,7 @@ describe('Extractos ya conciliados', () => {
     api.obtenerReviewExtracto.mockResolvedValue({ ok: true, historial_id: 'h1', cuenta_id: 'bc', banco_detectado: 'Nu', total_movimientos: 0, review: [] })
     montar()
     await screen.findByRole('heading', { name: /Extractos encontrados/ })
-    fireEvent.click(screen.getByRole('button', { name: /Ya conciliados \(2\)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Extractos ya revisados \(2\)/ }))
     fireEvent.click(within(screen.getByTestId('conciliado-e2')).getByRole('button', { name: 'Revisar de nuevo' }))
     await waitFor(() => expect(api.conciliarExtractoCorreo).toHaveBeenCalledWith('e2', 'bc'))
     expect(await screen.findByTestId('revision-multiple')).toBeTruthy()

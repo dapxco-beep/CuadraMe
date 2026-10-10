@@ -12,7 +12,7 @@ export default function AvisoYaConciliado({ info, cuenta, className = '' }) {
   return (
     <div role="status" className={`rounded-2xl bg-accent-soft p-3.5 ${className}`} data-testid="aviso-ya-conciliado">
       <p className="text-xs font-semibold text-ink">
-        Este periodo{cuenta ? ` de ${cuenta}` : ''} ya está conciliado: ¿revisarlo de nuevo?
+        Este periodo{cuenta ? ` de ${cuenta}` : ''} ya lo revisamos con tu extracto: ¿quieres revisarlo otra vez?
       </p>
       <p className="text-xs text-ink-soft mt-0.5">
         {mes ? `${mes[0].toUpperCase()}${mes.slice(1)}` : 'Ese mes'}

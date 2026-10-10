@@ -85,7 +85,7 @@ describe('Acceso desde el menú', () => {
 
     auth.usuario = { id: 'c', email: 'cliente@test.com' }
     render(<MemoryRouter><HojaMas onCerrar={() => {}} pathname="/" /></MemoryRouter>)
-    await waitFor(() => expect(screen.getByRole('link', { name: /Cuentas/ })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('link', { name: /Perfil/ })).toBeInTheDocument())
     expect(screen.queryByRole('link', { name: /Salud del negocio/ })).toBeNull()
   })
 })

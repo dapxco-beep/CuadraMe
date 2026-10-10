@@ -5,6 +5,7 @@ import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, ArrowLeftRight, Info, Pencil, Trash2, X } from 'lucide-react'
 import { CATEGORIA_PAGO_TARJETA, esPagoTarjeta } from '../lib/contabilidad'
 import Icono from '../components/Icono'
+import Ayudita from '../components/Ayudita'
 import { formatFechaLarga, formatMoneda, nombreOrigen } from '../lib/format'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
@@ -25,7 +26,7 @@ import {
   direccionDe,
 } from '../lib/traslados'
 
-const ETIQUETA_TIPO = { income: 'Ingreso', expense: 'Gasto', transfer: 'Traslado' }
+const ETIQUETA_TIPO = { income: 'Ingreso', expense: 'Gasto', transfer: 'Entre tus cuentas' }
 
 function fechaParaInput(fechaISO) {
   return fechaISO.slice(0, 10)
@@ -394,7 +395,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
             <div className="px-4 py-3.5">
               {esPosibleTraslado(movimiento) && (
                 <p className="text-sm mb-3">
-                  Parece un movimiento entre tus propias cuentas. Si lo es, no cuenta como ingreso ni gasto.
+                  Parece un movimiento entre tus propias cuentas. Si lo es, no cuenta como ingreso ni gasto. <Ayudita termino="traslado" />
                 </p>
               )}
               <div className="flex flex-col gap-2">
@@ -414,11 +415,11 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                 ) : (
                   <>
                     <button
-                      onClick={() => aplicarTraslado(cambiosMarcarTraslado(movimiento), 'Marcado como traslado entre tus cuentas')}
+                      onClick={() => aplicarTraslado(cambiosMarcarTraslado(movimiento), 'Listo: es plata entre tus cuentas, no cuenta como gasto')}
                       disabled={trasladando}
                       className="rounded-xl bg-accent text-white py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
                     >
-                      Marcar como traslado entre mis cuentas
+                      Es plata que pasé entre mis cuentas
                     </button>
                     {esPosibleTraslado(movimiento) && (
                       <button

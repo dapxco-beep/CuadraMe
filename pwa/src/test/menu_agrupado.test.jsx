@@ -41,7 +41,10 @@ function montarShell(ancho, ruta = '/') {
   )
 }
 
-beforeEach(() => localStorage.clear())
+beforeEach(() => {
+  localStorage.clear()
+  localStorage.setItem('cuadrame:modo-completo:anon', '1') // el menú agrupado de siempre = modo completo
+})
 afterEach(() => {
   window.matchMedia = matchMediaOriginal
 })

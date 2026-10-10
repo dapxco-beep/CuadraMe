@@ -36,8 +36,8 @@ export function esPosibleTraslado(m) {
 
 // Etiqueta corta para filas y detalle, o null si es un ingreso/gasto normal.
 export function etiquetaTraslado(m) {
-  if (esTrasladoConfirmado(m)) return 'Traslado ↔'
-  if (esPosibleTraslado(m)) return 'Posible traslado ↔'
+  if (esTrasladoConfirmado(m)) return 'Paso entre tus cuentas ↔'
+  if (esPosibleTraslado(m)) return 'Posible paso entre tus cuentas ↔'
   return null
 }
 

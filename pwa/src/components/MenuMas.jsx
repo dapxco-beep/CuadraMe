@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Clock, Search, SearchX, X } from 'lucide-react'
+import { ChevronDown, Clock, Search, SearchX, X } from 'lucide-react'
 import Hoja from './Hoja'
 import Icono from './Icono'
 import { useAuth } from '../lib/AuthContext'
-import { buscarDestinos, DESTINO_ADMIN, esAdminVisible, GRUPOS, leerRecientes, rutaCoincide } from '../lib/navegacion'
+import { buscarDestinos, DESTINO_ADMIN, esAdminVisible, gruposSegunModo, leerRecientes, rutaCoincide } from '../lib/navegacion'
+import { useModoMenu } from '../lib/modoSimple'
 
 // Menú «Más»: los destinos agrupados por tema, con buscador arriba y «Recientes».
 // Se usa en la barra inferior (teléfono) y en el riel (iPad vertical).
 
 function Destino({ item, pathname, onIr, compacto = false }) {
-  const { to, icon, label } = item
+  const { to, icon, label, explica } = item
   const activo = rutaCoincide(pathname, to)
   return (
     <Link
@@ -22,7 +23,10 @@ function Destino({ item, pathname, onIr, compacto = false }) {
       } ${activo ? 'bg-accent-soft border-accent text-accent' : 'bg-paper-raised border-line text-ink'}`}
     >
       <Icono icono={icon} tam="md" className={activo ? '' : 'text-accent'} />
-      <span className="text-[13px] font-medium leading-tight">{label}</span>
+      <span className="min-w-0">
+        <span className="block text-[13px] font-medium leading-tight">{label}</span>
+        {explica && <span className="block text-[11px] leading-snug text-ink-soft mt-0.5">{explica}</span>}
+      </span>
     </Link>
   )
 }
@@ -30,6 +34,9 @@ function Destino({ item, pathname, onIr, compacto = false }) {
 export function HojaMas({ onCerrar, pathname }) {
   const navigate = useNavigate()
   const admin = esAdminVisible(useAuth()?.usuario?.email)
+  const { completo, enUso } = useModoMenu()
+  const grupos = useMemo(() => gruposSegunModo({ completo, enUso }), [completo, enUso.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
+  const [masAbierto, setMasAbierto] = useState(false)
   const [consulta, setConsulta] = useState('')
   const recientes = useMemo(() => leerRecientes(), [])
   const resultados = useMemo(() => buscarDestinos(consulta), [consulta])
@@ -132,18 +139,33 @@ export function HojaMas({ onCerrar, pathname }) {
                   </ul>
                 </section>
               )}
-              {GRUPOS.map((g) => (
+              {grupos.map((g) => (
                 <section key={g.id} aria-labelledby={`mas-${g.id}`} className="mb-4 last:mb-0">
                   <h3 id={`mas-${g.id}`} className="t-kicker text-ink-soft mb-2">
-                    {g.titulo}
+                    {g.plegado ? (
+                      <button
+                        type="button"
+                        aria-expanded={masAbierto}
+                        aria-controls={`mas-lista-${g.id}`}
+                        onClick={() => setMasAbierto((v) => !v)}
+                        className="w-full min-h-11 flex items-center gap-1.5 text-left t-kicker"
+                      >
+                        <span className="flex-1">{g.titulo}</span>
+                        <Icono icono={ChevronDown} tam="sm" className={masAbierto ? 'rotate-180' : ''} />
+                      </button>
+                    ) : (
+                      g.titulo
+                    )}
                   </h3>
-                  <ul className="grid grid-cols-2 gap-2">
-                    {g.items.map((item) => (
-                      <li key={item.to}>
-                        <Destino item={item} pathname={pathname} onIr={irA} />
-                      </li>
-                    ))}
-                  </ul>
+                  {(!g.plegado || masAbierto) && (
+                    <ul id={`mas-lista-${g.id}`} className={`grid gap-2 ${g.plegado ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                      {g.items.map((item) => (
+                        <li key={item.to}>
+                          <Destino item={item} pathname={pathname} onIr={irA} />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </section>
               ))}
               {admin && (

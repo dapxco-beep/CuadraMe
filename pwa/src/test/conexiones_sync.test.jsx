@@ -113,7 +113,7 @@ describe('Conexiones y estado', () => {
     expect(screen.getByTestId('tarjeta-atajo')).toBeTruthy()
     expect(screen.getByTestId('tarjeta-conciliacion')).toBeTruthy()
     expect(screen.getByTestId('tarjeta-push')).toBeTruthy()
-    expect(screen.getByText(/última sincronización hace 2 h/)).toBeTruthy()
+    expect(screen.getByText(/última vez hace 2 h/)).toBeTruthy()
     expect(screen.getByText('340')).toBeTruthy()
     expect(screen.getByText(/1 esperan clave/)).toBeTruthy()
     expect(screen.getByText('Todo al día: tus correos se están leyendo bien.')).toBeTruthy()
@@ -122,13 +122,13 @@ describe('Conexiones y estado', () => {
     expect(screen.getByRole('button', { name: 'Importar extracto' })).toBeTruthy()
   })
 
-  it('Sincronizar todo muestra "Leí X de Y" y termina con el resumen', async () => {
+  it('Traer todo ahora muestra "Leí X de Y" y termina con el resumen', async () => {
     let soltar
     api.sincronizarCorreos
       .mockResolvedValueOnce({ ok: true, leidos: 120, total_estimado: 340, completado: false })
       .mockImplementationOnce(() => new Promise((res) => { soltar = res }))
     montar(null, '/conexiones')
-    fireEvent.click(await screen.findByRole('button', { name: /Sincronizar todo/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Traer todo ahora/ }))
     expect(await screen.findByText(/Leí 120 de 340/)).toBeTruthy()
     soltar({ ok: true, leidos: 340, total_estimado: 340, completado: true, nuevos: 5, extractos_encontrados: 0 })
     expect(await screen.findByText('Encontré 5 movimientos nuevos.')).toBeTruthy()
@@ -171,7 +171,7 @@ describe('Centro: pasos, resumen y correos ignorados', () => {
     expect(screen.getByText('Revisa')).toBeTruthy()
     // Conectado y sin datos: va en el paso 2.
     expect(screen.getByText('Trae').closest('li').getAttribute('aria-current')).toBe('step')
-    fireEvent.click(screen.getByRole('button', { name: 'Sincronizar todo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Traer todo ahora' }))
     expect(await screen.findByText(/Encontré 18 movimientos nuevos y 3 extractos\./)).toBeTruthy()
   })
 

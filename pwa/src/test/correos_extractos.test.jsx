@@ -76,10 +76,10 @@ describe('Desde tu correo: extractos encontrados', () => {
     montar()
     // El conciliado (Nequi) no cuenta como pendiente: queda en su sección plegada.
     expect((await extractosEncontrados()).textContent).toBe('Extractos encontrados2')
-    expect(within(screen.getByTestId('extracto-e1')).getByText('Nuevo · listo para conciliar')).toBeTruthy()
+    expect(within(screen.getByTestId('extracto-e1')).getByText('Nuevo · listo para revisar')).toBeTruthy()
     expect(within(screen.getByTestId('extracto-e2')).getByText('Falta la clave del PDF')).toBeTruthy()
     expect(screen.queryByText(/Nequi/)).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /Ya conciliados \(1\)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Extractos ya revisados \(1\)/ }))
     expect(screen.getByText(/Nequi · julio 2026/)).toBeTruthy()
     expect(screen.getByText(/Solo tengo permiso de/)).toBeTruthy()
     expect(screen.getByText(/No guardo tus correos ni los PDF/)).toBeTruthy()
@@ -89,9 +89,9 @@ describe('Desde tu correo: extractos encontrados', () => {
     montar()
     await extractosEncontrados()
     const sinClave = screen.getByTestId('extracto-e2')
-    expect(within(sinClave).queryByRole('button', { name: 'Conciliar' })).toBeNull()
+    expect(within(sinClave).queryByRole('button', { name: 'Revisar extracto' })).toBeNull()
     expect(within(sinClave).getByRole('button', { name: 'Poner clave' })).toBeTruthy()
-    expect(within(screen.getByTestId('extracto-e1')).getByRole('button', { name: 'Conciliar' }).disabled).toBe(false)
+    expect(within(screen.getByTestId('extracto-e1')).getByRole('button', { name: 'Revisar extracto' }).disabled).toBe(false)
   })
 
   it('Conciliar usa la cuenta sugerida y abre la revisión del historial en el mismo centro', async () => {
@@ -99,7 +99,7 @@ describe('Desde tu correo: extractos encontrados', () => {
     api.obtenerReviewExtracto.mockResolvedValue({ ok: true, historial_id: 'h1', cuenta_id: 'c2', banco_detectado: 'Bancolombia', total_movimientos: 0, review: [] })
     montar()
     await extractosEncontrados()
-    fireEvent.click(within(screen.getByTestId('extracto-e1')).getByRole('button', { name: 'Conciliar' }))
+    fireEvent.click(within(screen.getByTestId('extracto-e1')).getByRole('button', { name: 'Revisar extracto' }))
     await waitFor(() => expect(api.conciliarExtractoCorreo).toHaveBeenCalledWith('e1', 'c2'))
     expect(await screen.findByTestId('revision-multiple')).toBeTruthy()
     expect(api.obtenerReviewExtracto).toHaveBeenCalledWith('h1')
@@ -109,7 +109,7 @@ describe('Desde tu correo: extractos encontrados', () => {
     api.conciliarExtractoCorreo.mockResolvedValue({ ok: false, error: 'No se pudo leer este PDF.' })
     montar()
     await extractosEncontrados()
-    fireEvent.click(within(screen.getByTestId('extracto-e1')).getByRole('button', { name: 'Conciliar' }))
+    fireEvent.click(within(screen.getByTestId('extracto-e1')).getByRole('button', { name: 'Revisar extracto' }))
     expect(await screen.findByText('No se pudo leer este PDF.')).toBeTruthy()
   })
 

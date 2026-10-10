@@ -6,9 +6,10 @@ import { useTheme } from '../lib/ThemeContext'
 import { HojaMas } from './MenuMas'
 import Icono from './Icono'
 import {
-  DESTINO_ADMIN, GRUPOS, ITEMS_MAS, PRINCIPALES, buscarDestinos, esAdminVisible, estaEnMas, guardarGruposCerrados,
-  leerGruposCerrados, leerRecientes, rutaCoincide,
+  DESTINO_ADMIN, MAS_FUNCIONES_ID, PRINCIPALES, buscarDestinos, esAdminVisible, estaEnMas, extrasRiel, gruposSegunModo,
+  guardarGruposCerrados, leerGruposCerrados, leerRecientes, rutaCoincide,
 } from '../lib/navegacion'
+import { useModoMenu } from '../lib/modoSimple'
 import { useAuth } from '../lib/AuthContext'
 
 // Navegación de pantallas anchas.
@@ -18,9 +19,7 @@ import { useAuth } from '../lib/AuthContext'
 //    destinos en grupos plegables (se recuerda cuáles estaban cerrados).
 // Todos los destinos salen de lib/navegacion.js.
 
-const porRuta = Object.fromEntries(ITEMS_MAS.map((i) => [i.to, i]))
-const RIEL_EXTRA = [porRuta['/patrimonio'], porRuta['/sincronizacion']]
-const RUTAS_RIEL_EXTRA = RIEL_EXTRA.map((i) => i.to)
+const RUTAS_RIEL_EXTRA = extrasRiel({ completo: true }).map((i) => i.to)
 
 const SIGUIENTE_TEMA = { auto: 'calido', calido: 'dark', dark: 'auto' }
 const TEMA_INFO = {
@@ -30,7 +29,8 @@ const TEMA_INFO = {
 }
 
 function Riel({ abrirMas, masActivo }) {
-  const lista = [...PRINCIPALES, ...RIEL_EXTRA]
+  const { completo } = useModoMenu()
+  const lista = [...PRINCIPALES, ...extrasRiel({ completo })]
   return (
     <nav
       aria-label="Navegación principal"
@@ -85,9 +85,12 @@ const claseEnlace = ({ isActive }) =>
 
 function EnlaceLateral({ item, end }) {
   return (
-    <NavLink to={item.to} end={end} className={claseEnlace}>
+    <NavLink to={item.to} end={end} className={claseEnlace} title={item.explica}>
       <Icono icono={item.icon} tam="md" />
-      <span className="flex-1">{item.label}</span>
+      <span className="flex-1 min-w-0">
+        {item.label}
+        {item.explica && <span className="block text-[11px] font-normal leading-snug text-ink-soft">{item.explica}</span>}
+      </span>
       {item.atajo && (
         <kbd className="atajo-kbd" aria-hidden="true">
           {item.atajo}
@@ -103,16 +106,21 @@ function Lateral() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const info = TEMA_INFO[theme] || TEMA_INFO.auto
+  const { completo, enUso } = useModoMenu()
+  const grupos = useMemo(() => gruposSegunModo({ completo, enUso }), [completo, enUso.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
   const [consulta, setConsulta] = useState('')
   const [cerrados, setCerrados] = useState(leerGruposCerrados)
+  // «Más funciones» (modo simple) nace plegado y se abre con un toque; es independiente de los demás grupos.
+  const [masAbierto, setMasAbierto] = useState(false)
   const recientes = useMemo(() => leerRecientes(), [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
   const resultados = useMemo(() => buscarDestinos(consulta), [consulta])
   const buscando = consulta.trim().length > 0
 
   // Si vas a una pantalla de un grupo plegado, el grupo se abre para que veas dónde estás
   useEffect(() => {
-    const grupo = GRUPOS.find((g) => g.items.some((i) => rutaCoincide(pathname, i.to)))
-    if (grupo) {
+    const grupo = grupos.find((g) => g.items.some((i) => rutaCoincide(pathname, i.to)))
+    if (grupo?.plegado) setMasAbierto(true)
+    else if (grupo) {
       setCerrados((c) => {
         if (!c.includes(grupo.id)) return c
         const nuevo = c.filter((id) => id !== grupo.id)
@@ -120,9 +128,10 @@ function Lateral() {
         return nuevo
       })
     }
-  }, [pathname])
+  }, [pathname, grupos])
 
   function alternar(id) {
+    if (id === MAS_FUNCIONES_ID) return setMasAbierto((v) => !v)
     setCerrados((c) => {
       const nuevo = c.includes(id) ? c.filter((x) => x !== id) : [...c, id]
       guardarGruposCerrados(nuevo)
@@ -210,8 +219,8 @@ function Lateral() {
               </div>
             </section>
           )}
-          {GRUPOS.map((g) => {
-            const abierto = !cerrados.includes(g.id)
+          {grupos.map((g) => {
+            const abierto = g.plegado ? masAbierto : !cerrados.includes(g.id)
             return (
               <section key={g.id} className="mt-2">
                 <button
