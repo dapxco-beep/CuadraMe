@@ -88,6 +88,8 @@ self.addEventListener('push', (event) => {
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
       data: { url: data.url },
+      // Botón opcional (p. ej. «Ver mis informes»): tocarlo abre la misma ruta de la notificación.
+      ...(data.boton ? { actions: [{ action: 'abrir', title: String(data.boton).slice(0, 40) }] } : {}),
     })
   )
 })

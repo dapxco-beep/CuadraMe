@@ -86,7 +86,7 @@ def test_por_defecto_esta_apagado_y_se_puede_activar_y_apagar():
     como("rs-pref")
     assert client.get("/resumen/preferencias").json()["correo"] is False
     assert activar("rs-pref").json()["correo"] is True
-    assert client.get("/resumen/preferencias").json() == {"correo": True, "email": "rs-pref@test.com"}
+    assert client.get("/resumen/preferencias").json() == {"correo": True, "email": "rs-pref@test.com", "ocultar_montos": False}
     assert activar("rs-pref", False).json()["correo"] is False
 
 

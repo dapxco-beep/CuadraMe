@@ -9,9 +9,12 @@ from datetime import datetime, timedelta
 import httpx
 from sqlalchemy.orm import Session
 
+from app import punto_partida
 from app.compartidos import cuentas_ids_accesibles
 from app.config import settings
-from app.contabilidad import gastos_por_categoria
+from app.contabilidad import gastos_por_categoria, tipos_cuenta_de, tipos_efectivos
+from app.fx import convertir_a_cop
+from app.models import Cuenta, Movimiento
 from app.recordatorios import presupuestos_altos, tarjetas_por_vencer
 
 logger = logging.getLogger(__name__)
@@ -138,3 +141,67 @@ def enviar_correo(destino: str, asunto_: str, html_: str, texto: str) -> bool:
     from app.crecimiento import registrar_correo_enviado  # cuenta el envío para el monitor de Resend
     registrar_correo_enviado()
     return True
+
+
+# ── Recordatorio semanal por push ─────────────────────────────────────────────────────
+def comparativo_push(db: Session, usuario_id: str, ids_cuentas: list[str], ahora: datetime) -> dict | None:
+    """Semana (últimos 7 días) contra la anterior, para el push del domingo. None si la persona
+    no tuvo movimientos en la semana (entonces no se le escribe). Respeta el punto de partida:
+    lo anterior a esa fecha no cuenta, y si la semana anterior queda (en parte) antes de él, no
+    se compara (sería una comparación injusta con una semana a medias)."""
+    if not ids_cuentas:
+        return None
+    inicio_sem = ahora - timedelta(days=DIAS_SEMANA)
+    inicio_ant = ahora - timedelta(days=2 * DIAS_SEMANA)
+    inicio_pp = punto_partida.fecha_inicio(db, usuario_id)
+    monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_cuentas)).all()}
+    # 3 días antes: solo para emparejar traslados del borde (igual que gastos_por_categoria).
+    movs = (db.query(Movimiento)
+            .filter(Movimiento.cuenta_id.in_(ids_cuentas), Movimiento.fecha >= inicio_ant - timedelta(days=3),
+                    Movimiento.fecha <= ahora)
+            .all())
+    te = tipos_efectivos(movs, tipos_cuenta_de(db, ids_cuentas))
+
+    semana = [m for m in movs if m.fecha >= inicio_sem and not (inicio_pp and m.fecha < inicio_pp)]
+    if not semana:
+        return None
+    por_cat: dict[str, float] = {}
+    for m in semana:
+        if te[m.id] == "expense":
+            cat = m.categoria or "Otros"
+            por_cat[cat] = por_cat.get(cat, 0.0) + convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
+    gastos = sum(por_cat.values())
+    anterior = None
+    if inicio_pp is None or inicio_pp <= inicio_ant:
+        anterior = sum(
+            convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
+            for m in movs if inicio_ant <= m.fecha < inicio_sem and te[m.id] == "expense")
+    top = max(por_cat.items(), key=lambda kv: kv[1])[0] if por_cat else None
+    return {"gastos": gastos, "anterior": anterior, "top": top, "movimientos": len(semana)}
+
+
+def mensaje_push(c: dict, ocultar_montos: bool = False) -> tuple[str, str]:
+    """(título, cuerpo) del push semanal. Tono Cuadri: cercano, sin culpar ni regañar.
+    Con «ocultar saldos» activado no lleva ningún monto (los porcentajes sí: no revelan cuánto)."""
+    gastos, anterior, top = c["gastos"], c.get("anterior"), c.get("top")
+    titulo = "Tu semana con Cuadri"
+    if gastos <= 0:
+        return titulo, "Esta semana no registraste gastos. ¡Un respiro para tu bolsillo!"
+    primera = "Ya está lista la foto de tu semana" if ocultar_montos else f"Esta semana gastaste {_pesos(gastos)}"
+    comparacion = ""
+    subio = False
+    if anterior and anterior > 0:
+        pct = round((gastos - anterior) / anterior * 100)
+        if abs(pct) < 3:
+            comparacion = ", casi igual que la semana anterior"
+        elif pct < 0:
+            comparacion = f", {abs(pct)} % menos que la anterior"
+        else:
+            comparacion = f", {pct} % más que la anterior"
+            subio = True
+    texto = primera + comparacion + "."
+    if top:
+        texto += f" Lo que más pesó: {top}."
+    if subio:
+        texto += " Pasa a todos: míralo con calma y ajusta lo que quieras."
+    return titulo, texto

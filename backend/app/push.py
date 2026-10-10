@@ -27,7 +27,8 @@ def _url_hash(url: str) -> str:
     return "/#" + (url if url.startswith("/") else "/" + url)
 
 
-def enviar_push(db: Session, usuario_id: str, titulo: str, cuerpo: str, url: str = "/") -> int:
+def enviar_push(db: Session, usuario_id: str, titulo: str, cuerpo: str, url: str = "/",
+                boton: str | None = None) -> int:
     """Envía a todas las suscripciones activas del usuario. Retorna cuántas
     tuvieron éxito. Elimina suscripciones que ya no son válidas (410/404)."""
     if not settings.vapid_private_key_pem:
@@ -43,7 +44,8 @@ def enviar_push(db: Session, usuario_id: str, titulo: str, cuerpo: str, url: str
                     "endpoint": sub.endpoint,
                     "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
                 },
-                data=json.dumps({"title": titulo, "body": cuerpo, "url": _url_hash(url)}),
+                data=json.dumps({"title": titulo, "body": cuerpo, "url": _url_hash(url),
+                                 **({"boton": boton} if boton else {})}),
                 vapid_private_key=_private_key_pem(),
                 vapid_claims={"sub": settings.vapid_subject},
             )

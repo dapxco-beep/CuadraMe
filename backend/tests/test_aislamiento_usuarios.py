@@ -416,6 +416,7 @@ SIN_ID_DE_RECURSO = {
     "/cuentas", "/presupuestos", "/cierre-mes/{mes}", "/cierre-mes/{mes}/generar", "/gastos-compartidos/contactos", "/cuentas/invitaciones/pendientes",
     "/correos/{correo_id}/aprobar", "/movimientos/rapido-voz", "/resumen/preferencias",
     "/comentarios",  # POST: crea un comentario propio (no recibe ids)
+    "/perfil/importar-respaldo", "/perfil/importar-respaldo/vista-previa", "/perfil/importar-respaldo/deshacer",  # crean filas PROPIAS desde un archivo; deshacer solo lote propio
     "/avisos/preferencias", "/avisos/probar",  # solo administración (404 al resto): no reciben ids ajenos
 }
 # Rutas sin sesión de usuario por diseño (crons con secreto, callbacks firmados, API key, webhook firmado, públicas).

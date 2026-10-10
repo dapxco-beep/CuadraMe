@@ -109,6 +109,8 @@ if engine.dialect.name == "postgresql":
         # Resumen semanal por correo (supabase/migraciones/resumen_semanal.sql).
         conn.execute(text("ALTER TABLE ajustes_usuario ADD COLUMN IF NOT EXISTS resumen_correo BOOLEAN DEFAULT FALSE"))
         conn.execute(text("ALTER TABLE ajustes_usuario ADD COLUMN IF NOT EXISTS email_resumen VARCHAR"))
+        # Push semanal sin montos si la persona oculta saldos (supabase/migraciones/respaldo_y_push_semanal.sql).
+        conn.execute(text("ALTER TABLE ajustes_usuario ADD COLUMN IF NOT EXISTS ocultar_montos BOOLEAN DEFAULT FALSE"))
         # Cruce con el extracto (supabase/migraciones/cierre_app_conciliacion.sql).
         conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS conciliado_en TIMESTAMP NULL"))
         conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS extracto_id VARCHAR NULL"))

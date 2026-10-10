@@ -24,13 +24,15 @@ CLAVE_MARCA = "resumen_correo_semanal"
 
 
 class PreferenciasResumen(BaseModel):
-    correo: bool
+    correo: bool | None = None          # resumen semanal por correo
+    ocultar_montos: bool | None = None  # «ocultar saldos»: los push semanales salen sin montos
 
 
 @router.get("/preferencias")
 def obtener_preferencias(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
     aj = db.query(AjusteUsuario).filter(AjusteUsuario.usuario_id == usuario.id).first()
-    return {"correo": bool(aj and aj.resumen_correo), "email": usuario.email}
+    return {"correo": bool(aj and aj.resumen_correo), "email": usuario.email,
+            "ocultar_montos": bool(aj and aj.ocultar_montos)}
 
 
 @router.put("/preferencias")
@@ -44,10 +46,13 @@ def guardar_preferencias(
     if not aj:
         aj = AjusteUsuario(usuario_id=usuario.id)
         db.add(aj)
-    aj.resumen_correo = data.correo
-    aj.email_resumen = usuario.email if data.correo else None
+    if data.correo is not None:
+        aj.resumen_correo = data.correo
+        aj.email_resumen = usuario.email if data.correo else None
+    if data.ocultar_montos is not None:
+        aj.ocultar_montos = data.ocultar_montos
     db.commit()
-    return {"ok": True, "correo": bool(aj.resumen_correo)}
+    return {"ok": True, "correo": bool(aj.resumen_correo), "ocultar_montos": bool(aj.ocultar_montos)}
 
 
 def _enviar_a(db: Session, aj: AjusteUsuario, hoy, semana: str) -> str:
