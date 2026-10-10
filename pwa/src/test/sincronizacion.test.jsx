@@ -124,7 +124,7 @@ describe('helpers de Sincronización', () => {
   })
 
   it('cada estado de celda trae símbolo y texto (el color nunca va solo)', () => {
-    expect(estadoCelda('conciliado')).toMatchObject({ simbolo: '✓', texto: 'Revisado' })
+    expect(estadoCelda('conciliado')).toMatchObject({ simbolo: '✓', texto: 'Al día' })
     expect(estadoCelda('extracto_pendiente')).toMatchObject({ simbolo: '⚠', texto: 'Por revisar' })
     expect(estadoCelda('falta_clave')).toMatchObject({ simbolo: '🔑' })
     expect(estadoCelda('sin_extracto')).toMatchObject({ simbolo: '—' })
@@ -162,7 +162,7 @@ describe('pantalla Sincronización', () => {
   it('la grilla tiene texto accesible por celda y al tocarla abre el detalle del mes', async () => {
     montar()
     await screen.findByText('Tienes 5 cosas por resolver')
-    expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, junio 2026: Revisado' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, junio 2026: Al día' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, julio 2026: Falta la clave' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, agosto 2026: Por revisar' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Bancolombia Ahorros, septiembre 2026: Sin extracto' }))

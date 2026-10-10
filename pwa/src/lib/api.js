@@ -447,6 +447,8 @@ export const api = {
     }),
   historialExtractos: () => request('/conciliacion/historial'),
   obtenerReviewExtracto: (id) => request(`/conciliacion/historial/${id}`),
+  resolverDudosos: (id, mismos, distintos) =>
+    request(`/conciliacion/historial/${id}/resolver-dudosos`, { method: 'POST', body: { mismos, distintos } }),
   // `aprender` (opcional): { recordar: [fingerprint], aplicar_anteriores: [fingerprint] }
   importarFaltantes: (id, fingerprints, categorias, aprender) =>
     request(`/conciliacion/historial/${id}/importar`, {

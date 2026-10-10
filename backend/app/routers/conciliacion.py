@@ -14,6 +14,7 @@ from app.autocat import (
     guardar_regla_aprendida, origen_de,
 )
 from app import duplicados as dup
+from app import estado_traer
 from app import punto_partida
 from app.conciliacion import _CUENTA_UNICA
 from app.wallet import ORIGENES_RAPIDOS
@@ -36,7 +37,7 @@ from app.contabilidad import con_marca_traslado, delta_saldo, tipo_con_direccion
 from app.cuentas_banco import aviso_cuenta_distinta
 from app.database import get_db
 from app.extractos_conciliados import evidencia_conciliado
-from app.models import Cuenta, HistorialExtracto, Movimiento, Perfil
+from app.models import Cuenta, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil
 from app.extracto_tarjeta import leer_datos_tarjeta, proponer_actualizacion
 from app.config import settings
 from app.pdf_extract import ORIGEN_GMAIL, ORIGEN_MANUAL, extraer_via_ia, pdf_a_texto, pdf_pide_clave
@@ -46,6 +47,7 @@ from app.schemas import (
     ImportarFaltantesRequest,
     ProcesarExtractoRequest,
     ProcesarExtractoResponse,
+    ResolverDudososRequest,
 )
 
 # Auto-importar es OPCIONAL y viene APAGADO (perfil.autoimportar_extractos): procesar un
@@ -258,6 +260,8 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
         if item["estado"] == "exacto" and item.get("match_id"):
             # Línea idéntica a algo que ya estaba: también queda cruzada con el banco (si no lo estaba).
             mov = registrados.get(item["match_id"])
+            if mov is not None and dup.origen_de_movimiento(mov) != dup.ORIGEN_EXTRACTO:
+                item["duplicado_evitado"] = True  # otro canal ya lo había registrado: se junta, no se repite
             if mov is not None and mov.conciliado_en is None and dup.origen_de_movimiento(mov) != dup.ORIGEN_EXTRACTO:
                 mov.conciliado_en, mov.extracto_id = ahora_co(), historial.id
                 dup.registrar_canal(db, mov, dup.ORIGEN_EXTRACTO, _huella_linea(db, usuario.id, item))
@@ -274,6 +278,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
             continue
         _completar_con_extracto(db, mov, item, historial.id, modelo, usuario.id, cuenta=cuenta,
                                 huella=_huella_linea(db, usuario.id, item))
+        item["duplicado_evitado"] = True
 
     # Registrados que no aparecen en el extracto: se guardan en la revisión.
     for s in resultado.get("sobrantes", []):
@@ -282,7 +287,9 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
             "referencia": "", "fingerprint": f"sobrante-{s['id']}", "estado": "sobrante", "match_id": s["id"],
         })
 
+    _enriquecer_dudosas(db, usuario.id, resultado["review"])
     historial.review_json = json.dumps(resultado["review"], default=str)
+    estado_traer.sincronizar_contadores(historial, resultado["review"])
     db.commit()
     db.refresh(historial)
     dup.absorber_correos(db, usuario.id)  # correos de lo que acaba de entrar (o conciliarse) ya no salen por revisar
@@ -308,6 +315,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
         completados=completados,
         sobrantes=sobrantes,
         ya_conciliado=ya_conciliado,
+        conteo=estado_traer.contar_review(resultado["review"]),
         **_periodo(resultado["review"]),
     )
 
@@ -420,9 +428,11 @@ def obtener_review(
         raise HTTPException(status_code=404, detail="Historial no encontrado")
 
     review = json.loads(historial.review_json or "[]")
+    _enriquecer_dudosas(db, usuario.id, review)
     completados, sobrantes = _contar_review(review)
     return ProcesarExtractoResponse(
         ok=True,
+        conteo=estado_traer.conteo_de_historial(historial),
         historial_id=historial.id,
         cuenta_id=historial.cuenta_id,
         banco_detectado=historial.banco_detectado,
@@ -574,11 +584,13 @@ def importar_faltantes(
                 _completar_con_extracto(db, existente, item, historial.id, modelo, usuario.id, cuenta=cuenta,
                                         huella=_huella_linea(db, usuario.id, item))
                 item["estado"] = "completado"
+            item["duplicado_evitado"] = True
             duplicados_omitidos += 1
             continue
         if ya_registrados.get(fp, 0) > 0:
             ya_registrados[fp] -= 1
             item["estado"] = "exacto"
+            item["duplicado_evitado"] = True
             duplicados_omitidos += 1
             continue
 
@@ -627,6 +639,7 @@ def importar_faltantes(
     historial.importados = (historial.importados or 0) + importados
     if all(i["estado"] != "faltante" for i in review):
         historial.estado = "conciliado"
+    estado_traer.sincronizar_contadores(historial, review)  # los contadores del historial ya no se quedan viejos
 
     db.commit()
     dup.absorber_correos(db, usuario.id)
@@ -637,6 +650,76 @@ def importar_faltantes(
         "duplicados_omitidos": duplicados_omitidos, "sin_direccion": sin_direccion,
         "anteriores_omitidas": anteriores_omitidas,
     }
+
+
+def _enriquecer_dudosas(db: Session, usuario_id: str, review: list[dict]) -> None:
+    """A cada línea «aproximada» (parece algo que ya tienes, pero no es idéntica) le pega lo que hay
+    registrado, para poder mostrar las dos filas lado a lado: «¿es el mismo gasto?»."""
+    ids = {i["match_id"] for i in review if i.get("estado") == "aproximado" and i.get("match_id")}
+    if not ids:
+        return
+    movs = {m.id: m for m in db.query(Movimiento).filter(Movimiento.id.in_(ids), Movimiento.usuario_id == usuario_id).all()}
+    for i in review:
+        m = movs.get(i.get("match_id")) if i.get("estado") == "aproximado" else None
+        if m is not None:
+            i["descripcion_registrada"] = m.descripcion
+            i["monto_registrado"] = m.monto
+            i["fecha_registrada"] = m.fecha.strftime("%Y-%m-%d") if m.fecha else None
+
+
+@router.post("/historial/{historial_id}/resolver-dudosos")
+def resolver_dudosos(
+    historial_id: str,
+    data: ResolverDudososRequest,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """La persona decide lo que la app no pudo: «Sí, es el mismo» junta la línea con el movimiento que ya
+    tenías (queda revisado con el banco, no se duplica); «No, es otro» la deja como faltante para agregarla.
+    Se puede confirmar en bloque (varias huellas a la vez). Idempotente."""
+    historial = (
+        db.query(HistorialExtracto)
+        .filter(HistorialExtracto.id == historial_id, HistorialExtracto.usuario_id == usuario.id)
+        .first()
+    )
+    if not historial:
+        raise HTTPException(status_code=404, detail="Historial no encontrado")
+    cuenta = cuenta_accesible(db, usuario.id, historial.cuenta_id)
+    if not cuenta or not puede_editar_cuenta(db, usuario.id, cuenta):
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    review = json.loads(historial.review_json or "[]")
+    mismos, distintos = set(data.mismos), set(data.distintos)
+    modelo = ClasificadorUsuario(db, usuario.id)
+    juntados = separados = 0
+    for item in review:
+        if item.get("estado") != "aproximado":
+            continue
+        fp = item.get("fingerprint")
+        if fp in mismos:
+            mov = db.query(Movimiento).filter(Movimiento.id == item.get("match_id"), Movimiento.usuario_id == usuario.id).first()
+            if mov is None:
+                item["estado"] = "faltante"  # ya no existe: pasa a ser una línea por agregar
+                item.pop("match_id", None)
+                separados += 1
+                continue
+            if mov.conciliado_en is None:
+                _completar_con_extracto(db, mov, item, historial.id, modelo, usuario.id, cuenta=cuenta,
+                                        huella=_huella_linea(db, usuario.id, item))
+            item["estado"] = "completado"
+            item["duplicado_evitado"] = True
+            juntados += 1
+        elif fp in distintos:
+            item["estado"] = "faltante"
+            item["categoria_sugerida"] = item.get("categoria_sugerida") or "Otros"
+            item.pop("match_id", None)
+            separados += 1
+    historial.review_json = json.dumps(review, default=str)
+    if separados:
+        historial.estado = "pendiente_revision"
+    estado_traer.sincronizar_contadores(historial, review)
+    db.commit()
+    dup.absorber_correos(db, usuario.id)
+    return {"ok": True, "juntados": juntados, "separados": separados, "conteo": estado_traer.contar_review(review)}
 
 
 @router.delete("/historial/{historial_id}")
@@ -652,6 +735,11 @@ def eliminar_historial(
     )
     if not historial:
         raise HTTPException(status_code=404, detail="Historial no encontrado")
+    # El extracto de Gmail que apuntaba a esta revisión vuelve a «nuevo»: sin esto quedaba «procesado»
+    # para siempre sin revisión que lo respalde.
+    for ec in db.query(ExtractoCorreo).filter(ExtractoCorreo.usuario_id == usuario.id,
+                                              ExtractoCorreo.historial_id == historial.id).all():
+        ec.estado, ec.historial_id = "nuevo", None
     db.delete(historial)
     db.commit()
     return {"ok": True}

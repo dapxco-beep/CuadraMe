@@ -149,7 +149,13 @@ def evidencia_conciliado(db: Session, usuario_id: str, cuenta_id: str | None, me
         Movimiento.cuenta_id == cuenta_id, Movimiento.fecha >= ini, Movimiento.fecha < fin,
         or_(Movimiento.conciliado_en.isnot(None), Movimiento.fuente.in_(FUENTES_CONCILIACION)),
     ).scalar() or 0
-    if n_mov:
+    # Pocos movimientos conciliados NO bastan: las líneas de los últimos días de un mes anterior (periodos
+    # que se solapan) caen en este mes y lo darían por revisado sin haber visto su extracto. Debe estar
+    # conciliada al menos la mitad de lo que hay en el mes.
+    n_total = db.query(func.count(Movimiento.id)).filter(
+        Movimiento.cuenta_id == cuenta_id, Movimiento.fecha >= ini, Movimiento.fecha < fin,
+    ).scalar() or 0
+    if n_mov and n_mov * 2 >= n_total:
         hay = True
         cruzados = max(cruzados, int(n_mov))
 

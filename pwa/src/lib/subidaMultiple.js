@@ -95,7 +95,12 @@ export function normalizarPdf(r) {
       razon: m.razon_categoria || null,
       confianza: typeof m.confianza_categoria === 'number' ? m.confianza_categoria : null,
       // 'anterior': antes de la fecha de inicio (punto de partida): no se ofrece ni se importa.
-      estado: m.estado === 'faltante' ? 'nuevo' : m.estado === 'anterior' ? 'anterior' : 'ya',
+      // 'dudoso': parece algo que ya tienes pero no es idéntico; la persona decide (dos filas lado a lado).
+      estado: m.estado === 'faltante' ? 'nuevo' : m.estado === 'anterior' ? 'anterior'
+        : m.estado === 'aproximado' && m.descripcion_registrada ? 'dudoso' : 'ya',
+      registrado: m.estado === 'aproximado' && m.descripcion_registrada
+        ? { descripcion: m.descripcion_registrada, monto: m.monto_registrado, fecha: m.fecha_registrada } : null,
+      matchId: m.match_id || null,
     }))
   const filaInfo = (m) => ({
     descripcion: m.descripcion,
@@ -157,7 +162,11 @@ export function normalizarTabular(r) {
     categoria: p.categoria || 'Otros',
     razon: p.razon_categoria || null,
     confianza: null,
-    estado: p.estado === 'duplicado' ? 'ya' : p.estado === 'posible_duplicado' ? 'posible' : p.estado === 'anterior' ? 'anterior' : 'nuevo',
+    estado: p.estado === 'duplicado' ? 'ya'
+      : p.estado === 'posible_duplicado' ? (p.registrado ? 'dudoso' : 'posible')
+        : p.estado === 'anterior' ? 'anterior' : 'nuevo',
+    registrado: p.registrado || null,
+    matchId: p.match_id || null,
   }))
   return {
     banco: 'Excel / CSV',
@@ -250,4 +259,28 @@ export const ETIQUETA_ARCHIVO = {
   listo: 'Listo',
   falta_clave: 'Falta la clave del PDF',
   error: 'No se pudo procesar',
+}
+
+/**
+ * «Esto es lo que va a pasar» con un archivo: cuántas líneas coinciden con lo que ya tienes (no se
+ * duplican), cuántas son nuevas y cuántas parecen duplicados dudosos. Pura, para poder probarla.
+ */
+export function resumenPrevio(items) {
+  const lista = items || []
+  const n = (...estados) => lista.filter((i) => estados.includes(i.estado)).length
+  return {
+    coinciden: n('ya', 'repetido'),
+    nuevos: n('nuevo', 'posible'),
+    dudosos: n('dudoso'),
+    anteriores: n('anterior'),
+  }
+}
+
+/** Texto de una línea del resumen previo, sin jerga. */
+export function textoPrevio({ coinciden, nuevos, dudosos }) {
+  const partes = []
+  partes.push(coinciden === 1 ? '1 coincide con lo que ya tienes (no se duplica)' : `${coinciden} coinciden con lo que ya tienes (no se duplican)`)
+  partes.push(nuevos === 1 ? '1 es nuevo' : `${nuevos} son nuevos`)
+  if (dudosos > 0) partes.push(dudosos === 1 ? '1 parece repetido y necesita tu ayuda' : `${dudosos} parecen repetidos y necesitan tu ayuda`)
+  return partes
 }

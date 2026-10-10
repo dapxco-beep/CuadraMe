@@ -65,13 +65,15 @@ def presupuestos_altos(db: Session, usuario_id: str, hoy: datetime, umbral: int 
 
 
 def extractos_pendientes(db: Session, usuario_id: str) -> int:
-    """Extractos que llegaron al Gmail del usuario y esperan que los concilie o les ponga la clave."""
+    """Extractos que piden algo de la persona (revisarlos o poner la clave). Usa el MISMO modelo que la
+    pantalla «Traer movimientos» (app/estado_traer.py): un extracto que llegó en dos correos, o que ya
+    se subió a mano, cuenta una sola vez; y uno ya revisado con todo registrado no cuenta."""
+    from app import estado_traer, punto_partida
+
     depurar_conciliados(db, usuario_id)  # los ya cruzados a mano dejan de ser pendientes
-    return (
-        db.query(ExtractoCorreo)
-        .filter(ExtractoCorreo.usuario_id == usuario_id, ExtractoCorreo.estado.in_(("nuevo", "falta_clave")))
-        .count()
-    )
+    estado_traer.reconciliar_pendientes(db, usuario_id)
+    lista = estado_traer.lista_extractos(db, usuario_id, punto_partida.fecha_inicio(db, usuario_id))
+    return sum(1 for x in lista if x["estado"] in (estado_traer.POR_REVISAR, estado_traer.NECESITA_CLAVE))
 
 
 def _pesos(n: float) -> str:

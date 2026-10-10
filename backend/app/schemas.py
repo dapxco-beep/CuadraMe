@@ -873,6 +873,8 @@ class MovimientoReview(BaseModel):
     auto: bool = False  # importado solo (ajuste "importar lo que reconozco"): se puede deshacer
     movimiento_id: Optional[str] = None  # id del movimiento creado al auto-importar
     pista: Optional[str] = None  # 'posible_traslado_propio': la contraparte parece el titular; mueve saldo igual
+    fecha_registrada: Optional[str] = None  # aproximado: fecha del movimiento que ya tenías (para verlos lado a lado)
+    duplicado_evitado: bool = False  # otro canal (correo, atajo, a mano) ya lo había registrado: se juntó, no se repitió
 
 
 class ProcesarExtractoResponse(BaseModel):
@@ -906,6 +908,14 @@ class ProcesarExtractoResponse(BaseModel):
     propuesta_tarjeta: Optional[dict] = None
     # Aviso (no bloquea): el extracto parece de otro producto del mismo banco (tarjeta vs ahorros).
     aviso_cuenta: Optional[str] = None
+    # Qué pasó con cada línea leída (modelo único de app/estado_traer.py): leidas, ya_estaban,
+    # nuevas_agregadas, por_revisar, descartadas, anteriores, duplicadas_detectadas, dudosas.
+    conteo: Optional[dict] = None
+
+
+class ResolverDudososRequest(BaseModel):
+    mismos: list[str] = []  # huellas de líneas que SON el mismo gasto que ya tenías: se juntan
+    distintos: list[str] = []  # huellas de líneas que son OTRO gasto: quedan para agregar
 
 
 class ImportarFaltantesRequest(BaseModel):

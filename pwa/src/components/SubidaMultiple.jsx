@@ -4,6 +4,7 @@ import { AlertTriangle, Check, FileSpreadsheet, FileText, Loader2, X } from 'luc
 import { productoDeTexto, recordarCuenta, textoOpcionCuenta } from '../lib/cuentasBanco'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
+import PrevioImportacion from './PrevioImportacion'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { AvisoCategorizados } from './CategorizacionAuto'
@@ -219,6 +220,28 @@ export default function SubidaMultiple({
     })
   }
 
+  // «¿Es el mismo gasto?»: sí -> se junta con lo que ya tenías (no se duplica); no -> queda como nuevo.
+  async function decidirDudosos(a, lista, decision) {
+    const ks = new Set(lista.map((i) => i.k))
+    if (a.tipo === 'pdf' && a.historialId) {
+      const fps = lista.map((i) => i.fp)
+      await api.resolverDudosos(a.historialId, decision === 'mismo' ? fps : [], decision === 'otro' ? fps : [])
+    }
+    parchar(a.id, {
+      items: a.items.map((it) => (ks.has(it.k) && it.estado === 'dudoso'
+        ? { ...it, estado: decision === 'mismo' ? 'ya' : 'nuevo', conciliarCon: decision === 'mismo' ? it.matchId : null }
+        : it)),
+    })
+    if (decision === 'otro') {
+      setSeleccion((prev) => {
+        const next = new Set(prev)
+        for (const k of ks) next.add(`${a.id}:${k}`)
+        return next
+      })
+    }
+  }
+
+  const totalJuntar = consolidado.archivos.reduce((n, a) => n + (a.estado === 'listo' && a.tipo !== 'pdf' ? a.items.filter((it) => it.conciliarCon).length : 0), 0)
   const totalMarcados = consolidado.archivos.reduce(
     (n, a) => n + (a.estado === 'listo' ? a.items.filter((it) => seleccion.has(`${a.id}:${it.k}`) && (it.estado === 'nuevo' || it.estado === 'posible')).length : 0),
     0
@@ -271,7 +294,7 @@ export default function SubidaMultiple({
     for (const a of consolidado.archivos) {
       if (a.estado !== 'listo') continue
       const marcados = a.items.filter((it) => seleccion.has(`${a.id}:${it.k}`) && (it.estado === 'nuevo' || it.estado === 'posible'))
-      if (marcados.length === 0) continue
+      if (marcados.length === 0 && !(a.tipo !== 'pdf' && a.items.some((it) => it.conciliarCon))) continue
       const rec = (it) => aprender[`${a.id}:${it.k}`]
       try {
         let r
@@ -284,15 +307,18 @@ export default function SubidaMultiple({
             aplicar_anteriores: ks.filter((k) => aprender[`${a.id}:${k}`]?.recordar && aprender[`${a.id}:${k}`]?.anteriores),
           })
         } else {
+          const mismos = a.items.filter((it) => it.conciliarCon)
           r = await api.importarConfirmar({
             cuenta_id: a.cuentaId,
             nombre_archivo: a.nombre,
             ajustar_saldo: true,
-            filas: marcados.map((it) => ({
+            filas: [...mismos.map((it) => ({
+              fecha: it.fecha, descripcion: it.descripcion, monto: it.monto, tipo: it.tipo, conciliar_con: it.conciliarCon,
+            })), ...marcados.map((it) => ({
               fecha: it.fecha, descripcion: it.descripcion, monto: it.monto, tipo: it.tipo,
               categoria: categorias[`${a.id}:${it.k}`] || 'Otros',
               recordar: !!rec(it)?.recordar, aplicar_anteriores: !!(rec(it)?.recordar && rec(it)?.anteriores),
-            })),
+            }))],
           })
         }
         salida.push({ id: a.id, nombre: a.nombre, cuenta: nombreCuenta(a.cuentaId), ok: true, ...r })
@@ -417,9 +443,10 @@ export default function SubidaMultiple({
           <section key={g.cuentaId} className="mb-5" aria-label={`Cuenta ${nombreCuenta(g.cuentaId)}`}>
             <h3 className="text-sm font-semibold mb-2">{nombreCuenta(g.cuentaId)}</h3>
             {g.archivos.map((a) => {
-              const visibles = a.items.filter((it) => it.estado !== 'ya' && it.estado !== 'anterior')
+              const dudosos = a.items.filter((it) => it.estado === 'dudoso').length
+              const visibles = a.items.filter((it) => it.estado !== 'ya' && it.estado !== 'anterior' && it.estado !== 'dudoso')
               const anteriores = a.items.filter((it) => it.estado === 'anterior').length
-              const ya = a.items.length - visibles.length - anteriores
+              const ya = a.items.length - visibles.length - anteriores - dudosos
               const claves = clavesUnicas(visibles)
               return (
                 <div key={a.id} className="mb-3">
@@ -428,6 +455,7 @@ export default function SubidaMultiple({
                     {ya > 0 ? ` · ${ya} ya registrados` : ''}
                   </p>
                   <AvisoYaConciliado info={a.yaConciliado} cuenta={nombreCuenta(a.cuentaId)} className="mb-2" />
+                  <PrevioImportacion items={a.items} onDecidir={(lista, d) => decidirDudosos(a, lista, d)} className="mb-2" />
                   <PropuestaTarjeta propuesta={a.propuestaTarjeta} cuentaId={a.cuentaId} className="mb-2" />
                   {a.avisoCuenta && (
                     <p className="flex items-start gap-1.5 text-xs font-medium text-accent mb-2" role="status" data-testid="aviso-cuenta">
@@ -566,7 +594,7 @@ export default function SubidaMultiple({
           </button>
           <button
             onClick={importar}
-            disabled={totalMarcados === 0 || importando}
+            disabled={(totalMarcados === 0 && totalJuntar === 0) || importando}
             className="flex-1 bg-ink text-paper rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <Check size={16} aria-hidden="true" /> {importando ? 'Importando...' : `Importar (${totalMarcados})`}
