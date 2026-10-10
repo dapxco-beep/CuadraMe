@@ -41,7 +41,7 @@ function Bienvenida({ onContinuar }) {
             style={{ '--stagger-i': i }}
           >
             <div className="w-10 h-10 rounded-full bg-accent-soft flex items-center justify-center shrink-0">
-              <p.icon size={18} className="text-accent" />
+              <p.icon size={20} className="text-accent" />
             </div>
             <div>
               <p className="text-sm font-semibold">{p.titulo}</p>

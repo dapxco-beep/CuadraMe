@@ -240,7 +240,7 @@ export default function BandejaPorConfirmar() {
                 <button
                   onClick={() => confirmarUno(m)}
                   disabled={ocupado}
-                  className="flex items-center justify-center gap-1.5 rounded-xl bg-accent text-white text-xs font-semibold py-2.5 disabled:opacity-60"
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-accent text-paper-raised text-xs font-semibold py-2.5 disabled:opacity-60"
                 >
                   <Check size={16} /> Es mío
                 </button>

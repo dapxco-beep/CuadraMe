@@ -63,7 +63,7 @@ export default function Metas() {
           </button>
           <button
             onClick={() => setMostrarForm(true)}
-            className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
+            className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"
            aria-label="Nueva meta">
             <Plus size={20} />
           </button>

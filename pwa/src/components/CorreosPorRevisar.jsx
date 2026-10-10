@@ -189,7 +189,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
                 <button
                   onClick={() => aprobar(c)}
                   disabled={procesando.has(c.id) || !cuentaId || !(monto > 0)}
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-accent text-white font-semibold rounded-xl py-2.5 text-sm disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-accent text-paper-raised font-semibold rounded-xl py-2.5 text-sm disabled:opacity-50"
                 >
                   <Check size={16} aria-hidden="true" /> Aprobar
                 </button>

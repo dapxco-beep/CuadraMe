@@ -528,6 +528,10 @@ button, a {
   .dos-col.dos-col-5-6 {
     grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
   }
+  /* Movimientos en tabla: filtros (o detalle) en un riel angosto y la tabla con todo el ancho */
+  .dos-col.dos-col-riel-tabla {
+    grid-template-columns: minmax(16rem, 18rem) minmax(0, 1fr);
+  }
   /* Variante donde cada bloque se coloca con col-start/row-start (para no cambiar el orden móvil) */
   .dos-grid {
     display: grid;

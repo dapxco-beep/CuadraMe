@@ -52,7 +52,7 @@ export function DialogosProvider({ children }) {
         >
           <div
             className={`pop-in max-w-[440px] w-full rounded-2xl px-4 py-3 text-sm font-medium shadow-lg pointer-events-auto ${
-              toast.tipo === 'error' ? 'bg-danger text-white' : 'bg-ink text-paper'
+              toast.tipo === 'error' ? 'bg-danger text-paper-raised' : 'bg-ink text-paper'
             }`}
           >
             <div className="flex items-center justify-between gap-3">
@@ -95,7 +95,7 @@ export function DialogosProvider({ children }) {
             <button
               onClick={() => responder(true)}
               className={`flex-1 rounded-2xl py-3.5 text-sm font-semibold ${
-                confirmacion.peligro ? 'bg-danger text-white' : 'bg-ink text-paper'
+                confirmacion.peligro ? 'bg-danger text-paper-raised' : 'bg-ink text-paper'
               }`}
             >
               {confirmacion.confirmarTexto || 'Continuar'}

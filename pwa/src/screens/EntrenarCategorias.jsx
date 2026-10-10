@@ -186,7 +186,7 @@ export default function EntrenarCategorias() {
           <button
             type="submit"
             disabled={buscando || q.trim().length < 2}
-            className="w-12 rounded-2xl bg-accent text-white flex items-center justify-center disabled:opacity-60"
+            className="w-12 rounded-2xl bg-accent text-paper-raised flex items-center justify-center disabled:opacity-60"
             aria-label="Buscar"
           >
             <Search size={16} />

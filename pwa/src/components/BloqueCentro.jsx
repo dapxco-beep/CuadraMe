@@ -16,10 +16,10 @@ export default function BloqueCentro({ id, titulo, icono: Icono, cuenta = 0, mos
           aria-controls={`${uid}-cuerpo`}
           className="w-full flex items-center gap-3 px-4 min-h-[56px] text-left"
         >
-          {Icono && <Icono size={18} className="text-accent shrink-0" aria-hidden="true" />}
+          {Icono && <Icono size={20} className="text-accent shrink-0" aria-hidden="true" />}
           <span className="flex-1 text-[15px] font-semibold">{titulo}</span>
           {!alDia && (
-            <span className="min-w-[22px] text-center rounded-full bg-accent text-white text-xs font-bold px-2 py-0.5" aria-label={`${cuenta} por resolver`}>
+            <span className="min-w-[22px] text-center rounded-full bg-accent text-paper-raised text-xs font-bold px-2 py-0.5" aria-label={`${cuenta} por resolver`}>
               {cuenta}
             </span>
           )}

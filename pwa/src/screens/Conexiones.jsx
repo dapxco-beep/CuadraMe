@@ -21,7 +21,7 @@ function Tarjeta({ icono: Icono, titulo, semaforo, mensaje, children, testid }) 
   return (
     <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4" data-testid={testid} aria-label={titulo}>
       <div className="flex items-center gap-3">
-        <Icono size={18} className="text-accent shrink-0" />
+        <Icono size={20} className="text-accent shrink-0" />
         <h2 className="text-[15px] font-semibold flex-1">{titulo}</h2>
         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-soft" data-semaforo={semaforo}>
           <span className={`w-2.5 h-2.5 rounded-full ${s.punto}`} aria-hidden="true" />
@@ -237,7 +237,7 @@ function TarjetaAtajo({ a, recargar }) {
         <Boton onClick={regenerar} className="border border-line">
           <KeyRound size={16} /> Clave nueva
         </Boton>
-        <Boton onClick={probar} disabled={probando} className="bg-accent text-white">
+        <Boton onClick={probar} disabled={probando} className="bg-accent text-paper-raised">
           <Send size={16} /> {probando ? 'Probando...' : 'Probar conexión'}
         </Boton>
       </div>

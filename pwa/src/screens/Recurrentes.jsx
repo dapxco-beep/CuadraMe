@@ -87,7 +87,7 @@ export default function Recurrentes() {
         </div>
         <button
           onClick={() => setMostrarForm(true)}
-          className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"
          aria-label="Nuevo recurrente">
           <Plus size={20} />
         </button>
@@ -110,7 +110,7 @@ export default function Recurrentes() {
                 </div>
                 <button
                   onClick={() => aceptarSugerencia(s)}
-                  className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center shrink-0"
+                  className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center shrink-0"
                  aria-label="Aceptar sugerencia">
                   <Check size={16} />
                 </button>

@@ -117,7 +117,7 @@ export default function Perfil() {
       </header>
 
       <section className="px-6 mt-4 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-white text-xl font-semibold">
+        <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-paper-raised text-xl font-semibold">
           {usuario?.nombre?.[0]?.toUpperCase() || '?'}
         </div>
         <div>
@@ -147,7 +147,7 @@ export default function Perfil() {
             className="shrink-0 min-h-11 w-14 flex items-center justify-center"
           >
             <span className={`block w-12 h-7 rounded-full transition-colors relative ${completo ? 'bg-accent' : 'bg-line'}`}>
-              <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${completo ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              <span className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${completo ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </span>
           </button>
         </div>
@@ -317,7 +317,7 @@ export default function Perfil() {
             className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${resumenCorreo.activo ? 'bg-accent' : 'bg-line'}`}
           >
             <span
-              className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+              className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
                 resumenCorreo.activo ? 'translate-x-5' : 'translate-x-0.5'
               }`}
             />
@@ -460,7 +460,7 @@ export default function Perfil() {
           >
             <span className={`block w-12 h-7 rounded-full transition-colors relative ${mostrarCuadri ? 'bg-accent' : 'bg-line'}`}>
               <span
-                className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
                   mostrarCuadri ? 'translate-x-5' : 'translate-x-0.5'
                 }`}
               />

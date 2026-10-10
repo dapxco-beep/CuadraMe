@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import { ENTIDADES_FINANCIERAS_CO, marcaDeEntidad } from '../lib/entidadesFinancierasCO'
+import Bandera from './Bandera'
 
 // Elegir con toques en vez de escribir: país → tipo de cuenta → banco o billetera.
 // Lo único que se escribe a mano es el banco cuando no está en la lista.
@@ -8,10 +9,10 @@ import { ENTIDADES_FINANCIERAS_CO, marcaDeEntidad } from '../lib/entidadesFinanc
 // sigue siendo editable aparte (hay quien tiene una cuenta en USD en un banco local).
 
 export const PAISES = [
-  { id: 'CO', bandera: '🇨🇴', nombre: 'Colombia', moneda: 'COP' },
-  { id: 'US', bandera: '🇺🇸', nombre: 'Estados Unidos', moneda: 'USD' },
-  { id: 'EU', bandera: '🇪🇺', nombre: 'Europa', moneda: 'EUR' },
-  { id: 'OTRO', bandera: '🌎', nombre: 'Otro', moneda: null },
+  { id: 'CO', nombre: 'Colombia', moneda: 'COP' },
+  { id: 'US', nombre: 'Estados Unidos', moneda: 'USD' },
+  { id: 'EU', nombre: 'Europa', moneda: 'EUR' },
+  { id: 'OTRO', nombre: 'Otro', moneda: null },
 ]
 
 export const TIPOS_CUENTA = [
@@ -156,7 +157,7 @@ export default function SelectorCuenta({
         <div className="grid grid-cols-2 gap-2">
           {PAISES.map((p) => (
             <Chip key={p.id} activo={pais === p.id} onClick={() => elegirPais(p)}>
-              <span aria-hidden="true">{p.bandera}</span> {p.nombre}
+              <Bandera pais={p.id} className="inline-block align-[-2px] mr-1" /> {p.nombre}
             </Chip>
           ))}
         </div>

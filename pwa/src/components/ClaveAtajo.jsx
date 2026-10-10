@@ -77,7 +77,7 @@ export default function ClaveAtajo({ clave, cargando, tieneClave, prefijo, recie
             <code className="flex-1 text-xs bg-paper rounded-xl px-3 py-2.5 break-all select-all">{clave}</code>
             <button
               onClick={copiar}
-              className="shrink-0 h-11 px-3 rounded-xl bg-accent text-white text-sm font-semibold flex items-center gap-1.5"
+              className="shrink-0 h-11 px-3 rounded-xl bg-accent text-paper-raised text-sm font-semibold flex items-center gap-1.5"
               aria-label="Copiar clave"
             >
               {copiado ? <Check size={16} /> : <Copy size={16} />} {copiado ? 'Copiada' : 'Copiar'}

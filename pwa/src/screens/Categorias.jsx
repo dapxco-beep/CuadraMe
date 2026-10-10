@@ -62,7 +62,7 @@ export default function Categorias() {
         </div>
         <button
           onClick={() => setMostrarForm(true)}
-          className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"
           aria-label="Nueva categoría"
         >
           <Plus size={20} />
@@ -340,7 +340,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
             <button
               onClick={eliminarMoviendo}
               disabled={eliminando}
-              className="flex-1 rounded-xl bg-danger text-white py-3 text-sm font-semibold disabled:opacity-60"
+              className="flex-1 rounded-xl bg-danger text-paper-raised py-3 text-sm font-semibold disabled:opacity-60"
             >
               {eliminando ? 'Moviendo...' : 'Mover y eliminar'}
             </button>

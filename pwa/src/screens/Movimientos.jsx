@@ -126,7 +126,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
             esSel ? 'bg-accent border-accent' : 'border-line'
           }`}
         >
-          {esSel && <Check size={16} className="text-white" />}
+          {esSel && <Check size={16} className="text-paper-raised" />}
         </button>
         <div className="min-w-0 flex-1">
           <Link to={`/movimientos/${m.id}`} onClick={alClic} className="block pt-2.5 min-w-0">
@@ -158,7 +158,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
               <button
                 onClick={() => onConfirmar(m)}
                 aria-label={`Confirmar categoría de ${m.descripcion}`}
-                className="ml-2 flex items-center gap-1 text-xs font-semibold px-3 min-h-[32px] rounded-full bg-accent text-white"
+                className="ml-2 flex items-center gap-1 text-xs font-semibold px-3 min-h-[32px] rounded-full bg-accent text-paper-raised"
               >
                 <Check size={16} /> Confirmar
               </button>
@@ -716,7 +716,7 @@ export default function Movimientos() {
   const campo = 'rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-xs'
   const botonChip = (activo) =>
     `shrink-0 text-sm px-4 py-1.5 min-h-[44px] rounded-full border font-medium ${
-      activo ? 'bg-accent text-white border-accent' : 'border-accent text-accent'
+      activo ? 'bg-accent text-paper-raised border-accent' : 'border-accent text-accent'
     }`
 
   return (
@@ -766,7 +766,7 @@ export default function Movimientos() {
       </header>
 
       {/* ≥1024 px: filtros (o el detalle del movimiento) a la izquierda, lista a la derecha */}
-      <div className="dos-col dos-col-5-6">
+      <div className={`dos-col ${enTabla ? 'dos-col-riel-tabla' : 'dos-col-5-6'}`}>
         <div className="col col-sticky lg:max-h-[calc(100svh-2rem)] lg:overflow-y-auto">
           {panelId ? (
             <DetalleMovimiento key={panelId} id={panelId} embebido onCerrar={cerrarPanel} onCambio={alCambioDetalle} />
@@ -816,7 +816,7 @@ export default function Movimientos() {
               )}
 
               {filtrosVisibles && (
-                <div className="px-5 mb-3 grid grid-cols-2 gap-2">
+                <div className="px-5 mb-3 grid grid-cols-2 gap-2 [.dos-col-riel-tabla_&]:grid-cols-1">
                   <input
                     type="date"
                     aria-label="Desde"
@@ -1168,7 +1168,7 @@ export default function Movimientos() {
             <button
               disabled={seleccionados.size === 0 || aplicando}
               onClick={eliminarSeleccion}
-              className="rounded-xl bg-danger text-white px-3 min-h-[44px] text-sm font-semibold disabled:opacity-40 flex items-center gap-1"
+              className="rounded-xl bg-danger text-paper-raised px-3 min-h-[44px] text-sm font-semibold disabled:opacity-40 flex items-center gap-1"
             >
               <Trash2 size={16} /> Eliminar
             </button>

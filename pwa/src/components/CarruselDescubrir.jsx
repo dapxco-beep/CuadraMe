@@ -82,7 +82,7 @@ export default function CarruselDescubrir({ gmailConectado, cuentasCount, embebi
             className="shrink-0 w-[calc(100%-24px)] snap-center rounded-2xl bg-accent-soft p-4 flex items-center gap-3"
           >
             <div className="w-11 h-11 rounded-full bg-paper-raised flex items-center justify-center shrink-0 pop-in">
-              <t.icon size={18} className="text-accent" />
+              <t.icon size={20} className="text-accent" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-ink">{t.titulo}</p>

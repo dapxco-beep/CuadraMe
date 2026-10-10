@@ -58,7 +58,7 @@ export default function Patrimonio() {
         <h1 className="text-xl font-semibold">Patrimonio</h1>
         <button
           onClick={() => setFormulario({})}
-          className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"
           aria-label="Agregar activo"
         >
           <Plus size={20} />
@@ -400,7 +400,7 @@ function FormActivo({ activo, onClose, onGuardado }) {
               onClick={() => setClase(c)}
               aria-pressed={clase === c}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                clase === c ? 'bg-accent text-white border-accent' : 'bg-paper-raised border-line text-ink-soft'
+                clase === c ? 'bg-accent text-paper-raised border-accent' : 'bg-paper-raised border-line text-ink-soft'
               }`}
             >
               <Icono icono={CLASES[c].icono} tam="sm" className="inline -mt-0.5 mr-1" />{CLASES[c].label}

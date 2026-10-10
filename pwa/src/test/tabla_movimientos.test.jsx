@@ -60,7 +60,7 @@ describe('Movimientos: vista de tabla', () => {
   it('muestra las columnas pedidas y solo pinta una ventana de las 1.500 filas', async () => {
     montar()
     const tabla = await screen.findByRole('table', { name: 'Movimientos en tabla' })
-    for (const t of ['Fecha', 'Descripción', 'Categoría', 'Cuenta', 'Monto']) {
+    for (const t of ['Fecha', 'Descripción', 'Categoría', 'Monto']) {
       expect(within(tabla).getByRole('columnheader', { name: new RegExp(t) })).toBeInTheDocument()
     }
     const filas = tabla.querySelectorAll('tbody tr[data-fila]')
@@ -86,7 +86,11 @@ describe('Movimientos: vista de tabla', () => {
   it('permite ocultar columnas y selecciona todo con la casilla del encabezado', async () => {
     montar()
     const tabla = await screen.findByRole('table', { name: 'Movimientos en tabla' })
+    // En pantallas medianas (< 1440 px) la cuenta empieza oculta; se puede mostrar y volver a ocultar
+    expect(within(tabla).queryByRole('columnheader', { name: /Cuenta/ })).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: /Columnas/ }))
+    await userEvent.click(screen.getByLabelText('Cuenta'))
+    expect(within(tabla).getByRole('columnheader', { name: /Cuenta/ })).toBeInTheDocument()
     await userEvent.click(screen.getByLabelText('Cuenta'))
     expect(within(tabla).queryByRole('columnheader', { name: /Cuenta/ })).toBeNull()
 

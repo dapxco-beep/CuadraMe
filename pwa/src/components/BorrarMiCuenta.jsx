@@ -63,7 +63,7 @@ export default function BorrarMiCuenta({ onConfirmar, onCancelar, onDescargar, e
         <button
           onClick={() => onConfirmar(texto.trim().toUpperCase())}
           disabled={!listo || eliminando}
-          className="flex-1 min-h-12 rounded-xl bg-danger text-white text-sm font-semibold disabled:opacity-40"
+          className="flex-1 min-h-12 rounded-xl bg-danger text-paper-raised text-sm font-semibold disabled:opacity-40"
         >
           {eliminando ? 'Borrando...' : 'Borrar todo'}
         </button>

@@ -189,7 +189,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
             className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
             aria-label="Volver"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-semibold">Importar Excel o CSV</h1>
         </header>
@@ -239,7 +239,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
                     key={c.id}
                     onClick={() => setCuentaId(c.id)}
                     className={`shrink-0 text-sm px-4 py-1.5 rounded-full border ${
-                      cuentaId === c.id ? 'bg-accent text-white border-accent' : 'border-line text-ink-soft'
+                      cuentaId === c.id ? 'bg-accent text-paper-raised border-accent' : 'border-line text-ink-soft'
                     }`}
                   >
                     {c.icono} {c.nombre}
@@ -363,9 +363,9 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
               <button
                 onClick={aplicarCambios}
                 disabled={cargando}
-                className="mt-3 w-full rounded-2xl bg-accent text-white py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                className="mt-3 w-full rounded-2xl bg-accent text-paper-raised py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                <RefreshCw size={15} /> {cargando ? 'Actualizando...' : 'Actualizar vista previa'}
+                <RefreshCw size={16} /> {cargando ? 'Actualizando...' : 'Actualizar vista previa'}
               </button>
             )}
           </section>

@@ -27,7 +27,7 @@ const fechaCorta = (iso) => new Date(iso).toLocaleDateString('es-CO', { day: 'nu
 const Casilla = ({ marcada, etiqueta, onClick }) => (
   <button type="button" role="checkbox" aria-checked={marcada} aria-label={etiqueta} onClick={onClick} className="w-11 h-11 flex items-center justify-center">
     <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${marcada ? 'bg-accent border-accent' : 'border-line'}`}>
-      {marcada && <Check size={16} className="text-white" aria-hidden="true" />}
+      {marcada && <Check size={16} className="text-paper-raised" aria-hidden="true" />}
     </span>
   </button>
 )
@@ -87,7 +87,12 @@ export default function TablaMovimientos({
   items, iconoDe, monedaDe, nombreCuenta, seleccionados, panelId, onToggle, onToggleTodos, onAbrir, onChip,
 }) {
   const [orden, setOrden] = useState({ col: 'fecha', dir: 'desc' })
-  const [columnas, setColumnas] = useState(() => ({ categoria: true, cuenta: true, ...leerColumnas() }))
+  const [columnas, setColumnas] = useState(() => ({
+    categoria: true,
+    // En pantallas medianas la tabla es angosta: la cuenta queda oculta hasta que se pida
+    cuenta: typeof window === 'undefined' || window.innerWidth >= 1440,
+    ...leerColumnas(),
+  }))
   const [menu, setMenu] = useState(false)
   const [vista, setVista] = useState(0)
   const raiz = useRef(null)

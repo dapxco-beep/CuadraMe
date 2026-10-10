@@ -13,7 +13,7 @@ export default function PasosCentro({ paso }) {
           <li key={t} className="flex items-center gap-1.5 min-w-0" aria-current={actual ? 'step' : undefined}>
             <span
               className={`w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 ${
-                hecho ? 'bg-cuadra text-white' : actual ? 'bg-accent text-white' : 'bg-line text-ink-soft'
+                hecho ? 'bg-cuadra text-paper-raised' : actual ? 'bg-accent text-paper-raised' : 'bg-line text-ink-soft'
               }`}
             >
               {hecho ? <Check size={16} aria-hidden="true" /> : n}

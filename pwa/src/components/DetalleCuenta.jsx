@@ -192,7 +192,7 @@ function FormAjuste({ cuenta, onHecho }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full mt-3 bg-accent text-white font-semibold rounded-2xl py-3 text-sm disabled:opacity-60"
+        className="w-full mt-3 bg-accent text-paper-raised font-semibold rounded-2xl py-3 text-sm disabled:opacity-60"
       >
         {guardando ? 'Ajustando...' : 'Confirmar ajuste'}
       </button>

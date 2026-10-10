@@ -365,7 +365,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={confirmarCategoria}
-                  className="flex-1 rounded-xl bg-accent text-white py-2.5 text-sm font-semibold"
+                  className="flex-1 rounded-xl bg-accent text-paper-raised py-2.5 text-sm font-semibold"
                 >
                   Está bien
                 </button>
@@ -417,7 +417,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                     <button
                       onClick={() => aplicarTraslado(cambiosMarcarTraslado(movimiento), 'Listo: es plata entre tus cuentas, no cuenta como gasto')}
                       disabled={trasladando}
-                      className="rounded-xl bg-accent text-white py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
+                      className="rounded-xl bg-accent text-paper-raised py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
                     >
                       Es plata que pasé entre mis cuentas
                     </button>
