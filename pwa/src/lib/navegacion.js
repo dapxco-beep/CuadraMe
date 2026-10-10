@@ -73,7 +73,7 @@ export const GRUPOS = [
       { to: '/aprende', icon: BookOpen, label: 'Aprende', palabras: 'lecciones glosario educacion finanzas tarjeta credito debito interes cupo presupuesto fraude que es' },
       { to: '/ayuda', icon: LifeBuoy, label: 'Ayuda', palabras: 'preguntas frecuentes dudas soporte como funciona extracto clave pdf gmail primeros pasos' },
       { to: '/legal/privacidad', icon: ShieldCheck, label: 'Privacidad', palabras: 'datos legal terminos politica' },
-      { to: '/conectar-dispositivo', icon: Smartphone, label: 'Conectar dispositivo', palabras: 'atajo iphone android wallet celular' },
+      { to: '/conectar-dispositivo', icon: Smartphone, label: 'Registro automático', palabras: 'conectar dispositivo atajo iphone android wallet celular' },
     ],
   },
 ]

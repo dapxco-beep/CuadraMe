@@ -386,7 +386,7 @@ export default function Perfil() {
       <section className="mx-6 mt-8">
         <div className="flex items-center gap-2 mb-3">
           <Link2 size={16} className="text-ink-soft" />
-          <h2 className="text-[15px] font-semibold">Conectar dispositivos</h2>
+          <h2 className="text-[15px] font-semibold">Registro automático al pagar</h2>
           <span className="text-[11px] font-bold text-ink-soft bg-line px-2 py-0.5 rounded-full uppercase tracking-wide">
             Avanzado
           </span>
