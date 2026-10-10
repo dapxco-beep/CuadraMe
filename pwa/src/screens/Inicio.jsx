@@ -40,8 +40,8 @@ const ACCESOS_RAPIDOS = [
   { to: '/patrimonio', icon: Landmark, label: 'Patrimonio' },
   { to: '/metas', icon: PiggyBank, label: 'Metas' },
   { to: '/deudas', icon: CreditCard, label: 'Deudas' },
-  { to: '/recurrentes', icon: Repeat, label: 'Recurrentes' },
-  { to: '/insights', icon: Sparkles, label: 'Insights' },
+  { to: '/recurrentes', icon: Repeat, label: 'Pagos fijos' },
+  { to: '/insights', icon: Sparkles, label: 'Hallazgos' },
 ]
 
 // Fila de enlace dentro de una sección: ícono + título + apoyo + flecha
@@ -127,7 +127,7 @@ export default function Inicio() {
         setMovimientos(m)
         setReporte(r)
       })
-      .catch((err) => activo && setErrorCarga(err.message || 'No se pudo cargar tu información'))
+      .catch((err) => activo && setErrorCarga(err.message || 'No se pudo cargar tu información. Revisa tu conexión e intenta de nuevo.'))
       .finally(() => activo && setCargando(false))
     // Gastos de la semana (opcional: sin dato, el bloque muestra un guion)
     Promise.resolve().then(() => api.movimientos(200, 0, { desde: fechaHace(6) })).then((l) => activo && Array.isArray(l) && setSemana(gastosDeLaSemana(l))).catch(() => {})
@@ -227,7 +227,8 @@ export default function Inicio() {
 
       {/* Primeros pasos: solo mientras falte algo (y no se haya ocultado); luego vive en Perfil */}
       <AsistentePrimerUso variante="inicio" camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />
-      <RecorridoEntrada variante="inicio" />
+      {/* Un solo mensaje arriba: mientras el camino de 3 pasos esté en pantalla, el recorrido de 1 minuto no compite con él (sigue en Ayuda y Perfil). */}
+      {!enCamino && <RecorridoEntrada variante="inicio" />}
 
       {/* Modo simple: tres bloques y un «Ver más»; con «Mostrar todas las funciones», todo a la vista */}
       {!completo && (

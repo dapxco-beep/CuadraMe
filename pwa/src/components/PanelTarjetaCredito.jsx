@@ -246,7 +246,7 @@ function FormTarjeta({ cuenta, onClose, onGuardada }) {
       })
       onGuardada()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }

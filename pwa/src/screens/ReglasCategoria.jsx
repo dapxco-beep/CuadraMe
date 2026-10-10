@@ -25,7 +25,7 @@ export default function ReglasCategoria() {
     try {
       setReglas(await api.reglasCategoria())
     } catch (err) {
-      setError(err.message || 'No se pudieron cargar tus reglas')
+      setError(err.message || 'No se pudieron cargar tus reglas. Revisa tu conexión e intenta de nuevo.')
     }
     setCargando(false)
   }
@@ -42,7 +42,7 @@ export default function ReglasCategoria() {
           <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-xl font-bold">Reglas de categorización</h1>
+          <h1 className="text-xl font-bold">Reglas automáticas</h1>
         </div>
         <button
           onClick={() => setMostrarForm(true)}
@@ -62,7 +62,7 @@ export default function ReglasCategoria() {
       >
         <GraduationCap size={20} className="text-accent shrink-0" />
         <span className="flex-1 text-sm">
-          <b>Entrenar categorías</b>
+          <b>Enseñar categorías</b>
           <span className="block text-xs text-ink-soft">Enséñame los comercios que más se repiten y los clasifico solos.</span>
         </span>
         <ChevronRight size={16} className="text-accent" />
@@ -125,7 +125,7 @@ function FormRegla({ onClose, onGuardado }) {
       await api.crearReglaCategoria({ patron: patron.trim(), categoria })
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }

@@ -35,7 +35,7 @@ export default function CrearCuentaBanco({ banco, onClose, onCreada }) {
       await recargar?.()
       onCreada?.(cuenta)
     } catch (err) {
-      setError(err.message || 'No se pudo crear la cuenta')
+      setError(err.message || 'No se pudo crear la cuenta. Revisa tu conexión e intenta de nuevo.')
       setGuardando(false)
     }
   }

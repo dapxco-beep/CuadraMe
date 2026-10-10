@@ -134,7 +134,7 @@ describe('Dividir gasto', () => {
   it('desde Agregar exige un monto y lleva a Dividir con los datos', async () => {
     montar()
     await userEvent.click(screen.getByText('Dividir'))
-    expect(await screen.findByText(/monto válido para dividir/)).toBeInTheDocument()
+    expect(await screen.findByText(/escribe cuánto fue, arriba/i)).toBeInTheDocument()
     await userEvent.type(screen.getByPlaceholderText('0'), '100000')
     await userEvent.click(screen.getByText('Dividir'))
     expect(await screen.findByText('Dividir gasto')).toBeInTheDocument()

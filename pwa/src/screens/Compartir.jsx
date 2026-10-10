@@ -48,7 +48,7 @@ export default function Compartir() {
       setEmail('')
       cargar()
     } catch (err) {
-      setError(err.message || 'No se pudo enviar la invitación')
+      setError(err.message || 'No se pudo enviar la invitación. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setEnviando(false)
     }

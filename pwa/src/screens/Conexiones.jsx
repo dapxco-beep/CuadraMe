@@ -193,7 +193,7 @@ function TarjetaAtajo({ a, recargar }) {
       setAviso('Clave nueva lista. Cópiala ahora: no se vuelve a mostrar. La anterior ya no sirve.')
       recargar()
     } catch (err) {
-      setError(err.message || 'No se pudo generar la clave')
+      setError(err.message || 'No se pudo generar la clave. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -213,7 +213,7 @@ function TarjetaAtajo({ a, recargar }) {
       window.dispatchEvent(new CustomEvent('cuadrame:movimientos-cambio'))
       recargar()
     } catch (err) {
-      setError(err.status === 401 ? 'Tu clave no es válida. Genera una nueva.' : err.message || 'No se pudo probar')
+      setError(err.status === 401 ? 'Tu clave no es válida. Genera una nueva.' : err.message || 'No se pudo probar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setProbando(false)
     }
@@ -248,7 +248,7 @@ function TarjetaAtajo({ a, recargar }) {
 function TarjetaConciliacion({ c, ir }) {
   const cuentas = c.cuentas || []
   return (
-    <Tarjeta icono={FileCheck2} titulo="Conciliación con el banco" semaforo={c.semaforo} mensaje={c.mensaje} testid="tarjeta-conciliacion">
+    <Tarjeta icono={FileCheck2} titulo="Cuadre con el banco" semaforo={c.semaforo} mensaje={c.mensaje} testid="tarjeta-conciliacion">
       <div className="flex flex-col gap-2 mt-3">
         {cuentas.length === 0 && <p className="text-xs text-ink-soft">Crea una cuenta para poder cruzar extractos.</p>}
         {cuentas.map((f) => (
@@ -257,7 +257,7 @@ function TarjetaConciliacion({ c, ir }) {
             {f.extracto ? (
               <>
                 <p className="text-xs text-ink-soft mt-1">
-                  <b>{f.cruzados}</b> cruzados con el banco · <b>{f.faltantes}</b> faltantes · <b>{f.sin_extracto}</b> registrados sin extracto
+                  <b>{f.cruzados}</b> ya coinciden con tu extracto · <b>{f.faltantes}</b> faltan por registrar · <b>{f.sin_extracto}</b> sin extracto
                 </p>
                 <p className="text-[11px] text-ink-soft">Último cruce {haceCuanto(f.ultimo_cruce)}</p>
                 <Boton
@@ -307,7 +307,7 @@ function TarjetaPush({ p }) {
       await activarPush()
       await leerEstadoLocal()
     } catch (err) {
-      setError(err.message || 'No se pudieron activar')
+      setError(err.message || 'No se pudieron activar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -364,7 +364,7 @@ export default function Conexiones({ embebido = false, alIr }) {
         setEstado(e)
         setError('')
       })
-      .catch((err) => setError(err.message || 'No se pudo cargar el estado'))
+      .catch((err) => setError(err.message || 'No se pudo cargar el estado. Revisa tu conexión e intenta de nuevo.'))
   }
   useEffect(() => {
     recargar()

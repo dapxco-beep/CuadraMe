@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { prepararImagen } from '../lib/imagen'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
+import { useDialogos } from '../lib/DialogosContext'
 import SugerenciaIngreso from '../components/SugerenciaIngreso'
 import { useCategorias } from '../lib/CategoriasContext'
 import TarjetaCuenta from '../components/TarjetaCuenta'
@@ -42,6 +43,7 @@ export default function Agregar() {
   // así "atrás" nunca reabre el formulario ya guardado.
   const volver = useVolver('/')
   const { cuentas, recargar: recargarCuentas } = useCuentas()
+  const { avisar } = useDialogos() || {}
   const { nombres: categoriasRapidas } = useCategorias()
   const [cuentaElegidaId, setCuentaId] = useState('')
   const [cuentaDestinoId, setCuentaDestinoId] = useState('')
@@ -141,7 +143,7 @@ export default function Agregar() {
 
   function dividirGasto() {
     setError('')
-    if (!monto || Number(monto) <= 0) return setError('Ingresa un monto válido para dividir')
+    if (!monto || Number(monto) <= 0) return setError('Primero escribe cuánto fue, arriba, para poder dividirlo.')
     navigate('/dividir', {
       state: { monto: Number(monto), descripcion: descripcion.trim(), categoria: categoria || undefined, cuentaId, fecha },
     })
@@ -150,10 +152,10 @@ export default function Agregar() {
   async function guardar(confirmarNuevo = false) {
     setError('')
     setPosibleDuplicado(null)
-    if (!cuentaId) return setError('Crea una cuenta primero')
-    if (!monto || Number(monto) <= 0) return setError('Ingresa un monto válido')
-    if (!esTransferencia && !descripcion.trim()) return setError('Ingresa una descripción')
-    if (esTransferencia && !destinoId) return setError('Necesitas al menos dos cuentas para transferir')
+    if (!cuentaId) return setError('Primero crea una cuenta en «Cuentas» para poder guardar movimientos.')
+    if (!monto || Number(monto) <= 0) return setError('Escribe cuánto fue, solo números. Por ejemplo 25000.')
+    if (!esTransferencia && !descripcion.trim()) return setError('Cuéntanos en qué fue, por ejemplo «Éxito» o «Uber».')
+    if (esTransferencia && !destinoId) return setError('Elige a qué cuenta va la plata. Para pasar plata necesitas dos cuentas.')
 
     setGuardando(true)
     try {
@@ -165,10 +167,17 @@ export default function Agregar() {
           fecha: fecha ? `${fecha}T12:00:00` : undefined,
         })
         await recargarCuentas()
+        const destino = destinosPosibles.find((c) => c.id === destinoId)
+        avisar?.(
+          destino?.tipo === 'credito'
+            ? `Listo: pagaste ${formatCOP(Number(monto))} a ${destino.nombre}. No cuenta como gasto nuevo.`
+            : `Listo: pasaste ${formatCOP(Number(monto))} a ${destino?.nombre || 'la otra cuenta'}. No cuenta como gasto.`,
+          'ok',
+        )
         volver()
         return
       }
-      await api.crearMovimiento({
+      const creado = await api.crearMovimiento({
         cuenta_id: cuentaId,
         descripcion: descripcion.trim(),
         monto: Number(monto),
@@ -178,6 +187,20 @@ export default function Agregar() {
         ...(confirmarNuevo ? { confirmar_nuevo: true } : {}),
       })
       await recargarCuentas()
+      avisar?.(`Guardado: ${descripcion.trim()} · ${formatCOP(Number(monto))}`, 'ok', creado?.id ? {
+        accion: {
+          texto: 'Deshacer',
+          onClick: async () => {
+            try {
+              await api.eliminarMovimiento(creado.id)
+              await recargarCuentas()
+              avisar?.('Listo, lo quitamos. No quedó guardado.', 'ok')
+            } catch (e) {
+              avisar?.(e.message || 'No pudimos quitarlo. Búscalo en Movimientos y bórralo desde ahí.')
+            }
+          },
+        },
+      } : {})
       // Un ingreso abre la sugerencia de reparto (fijos, ahorro, gasto libre); el
       // usuario la acepta o la descarta, y de ahí vuelve al inicio.
       if (tipo === 'income') {
@@ -190,7 +213,7 @@ export default function Agregar() {
       if (err.status === 409 && err.detalle?.codigo === 'posible_duplicado') {
         setPosibleDuplicado(err.detalle.mensaje || err.message)
       } else {
-        setError(err.message || 'No se pudo guardar')
+        setError(err.message || 'No pudimos guardarlo. Revisa tu conexión e intenta de nuevo.')
       }
     } finally {
       setGuardando(false)
@@ -248,6 +271,10 @@ export default function Agregar() {
           <Calendar size={16} />
         </button>
       </div>
+
+      {esTransferencia && (
+        <p className="px-5 mt-2 text-xs text-ink-soft">Pasa plata de una cuenta tuya a otra, o paga tu tarjeta de crédito. No cuenta como gasto.</p>
+      )}
 
       {!esTransferencia && (
         <div className="px-5 mt-2 flex gap-2">
@@ -336,6 +363,7 @@ export default function Agregar() {
           onChange={(e) => setDescripcion(e.target.value)}
           onBlur={onDescripcionBlur}
           placeholder="¿En qué fue? (ej. Éxito, Uber, Netflix)"
+          aria-label="¿En qué fue?"
           className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"
         />
         {categoriaAutoDetectada && categoria && (
@@ -440,7 +468,7 @@ export default function Agregar() {
       </div>
       )}
 
-      {error && <p className="px-5 text-sm text-danger mb-3">{error}</p>}
+      {error && <p role="alert" className="px-5 text-sm text-danger mb-3">{error}</p>}
 
       {posibleDuplicado && (
         <div className="mx-5 mb-4 rounded-2xl border border-accent bg-accent-soft p-4" role="alert" data-testid="posible-duplicado">
@@ -470,9 +498,9 @@ export default function Agregar() {
           disabled={guardando}
           className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
         >
-          {guardando ? 'Guardando...' : esTransferencia ? 'Hacer transferencia' : 'Guardar movimiento'}
+          {guardando ? 'Guardando...' : esTransferencia ? (destinosPosibles.find((c) => c.id === destinoId)?.tipo === 'credito' ? 'Pagar la tarjeta' : 'Pasar la plata') : 'Guardar movimiento'}
         </button>
-        <button onClick={() => navigate('/amigos')} className="w-full text-center text-sm text-accent font-medium mt-4">
+        <button onClick={() => navigate('/amigos')} className="w-full text-center text-sm text-accent font-medium mt-4 min-h-11">
           Cuentas con amigos
         </button>
       </div>

@@ -26,7 +26,7 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
     try {
       setDet(await api.detalleCuenta(cuentaId))
     } catch (err) {
-      setError(err.message || 'No se pudo cargar la cuenta')
+      setError(err.message || 'No se pudo cargar la cuenta. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -161,7 +161,7 @@ function FormAjuste({ cuenta, onHecho }) {
       await api.ajustarSaldo(cuenta.id, nuevoSaldo)
       await onHecho()
     } catch (err) {
-      setError(err.message || 'No se pudo ajustar el saldo')
+      setError(err.message || 'No se pudo ajustar el saldo. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }

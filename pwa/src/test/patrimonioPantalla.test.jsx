@@ -92,7 +92,7 @@ describe('Patrimonio', () => {
       patrimonio_neto: 0, total_activos: 0, total_deudas: 0, variacion_mes_anterior: null,
     })
     montar()
-    expect(await screen.findByText(/Aún no hay nada que contar/)).toBeInTheDocument()
+    expect(await screen.findByText(/Un activo es algo tuyo que vale plata/)).toBeInTheDocument()
   })
 
   it('crea un CDT con vista previa del valor al vencimiento', async () => {

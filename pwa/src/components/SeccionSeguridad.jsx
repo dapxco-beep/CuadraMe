@@ -50,7 +50,7 @@ function FormPin({ titulo, boton, pedirConfirmacion, onListo, onCancelar }) {
     try {
       await onListo(pin)
     } catch (err) {
-      setError(err.message || 'No se pudo completar')
+      setError(err.message || 'No se pudo completar. Revisa tu conexión e intenta de nuevo.')
       setTrabajando(false)
     }
   }
@@ -130,7 +130,7 @@ export default function SeccionSeguridad() {
           <div className="flex-1">
             <p className="text-sm font-medium">PIN para abrir la app</p>
             <p className="text-xs text-ink-soft mt-0.5">
-              Se guarda solo en este dispositivo (como hash). Nunca llega a nuestros servidores.
+              Tu PIN se guarda solo en este celular. Nunca llega a nuestros servidores.
             </p>
           </div>
           <Interruptor

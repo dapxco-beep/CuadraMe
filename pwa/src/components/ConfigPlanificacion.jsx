@@ -50,7 +50,7 @@ export default function ConfigPlanificacion({ presupuestos, onClose, onGuardado 
       })
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     }
     setGuardando(false)
   }

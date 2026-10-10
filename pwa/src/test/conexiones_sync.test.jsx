@@ -118,7 +118,7 @@ describe('Conexiones y estado', () => {
     expect(screen.getByText(/1 esperan clave/)).toBeTruthy()
     expect(screen.getByText('Todo al día: tus correos se están leyendo bien.')).toBeTruthy()
     const filas = screen.getAllByTestId('fila-conciliacion')
-    expect(filas[0].textContent).toMatch(/7.*cruzados.*3.*faltantes.*2.*registrados sin extracto/)
+    expect(filas[0].textContent).toMatch(/7.*coinciden.*3.*faltan por registrar.*2.*sin extracto/)
     expect(screen.getByRole('button', { name: 'Importar extracto' })).toBeTruthy()
   })
 

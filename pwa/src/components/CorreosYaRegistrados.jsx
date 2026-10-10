@@ -35,7 +35,7 @@ export default function CorreosYaRegistrados({ cantidad = 0, onCambio }) {
       setLista((l) => (l || []).filter((x) => x.id !== c.id))
       onCambio?.()
     } catch (e) {
-      setError(e.message || 'No se pudo devolver el correo')
+      setError(e.message || 'No se pudo devolver el correo. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setOcupado(null)
     }

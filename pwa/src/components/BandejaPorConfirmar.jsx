@@ -98,7 +98,7 @@ export default function BandejaPorConfirmar() {
       quitar([m.id])
       avisarCambio()
     } catch (err) {
-      avisar(err.message || 'No se pudo confirmar')
+      avisar(err.message || 'No se pudo confirmar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setOcupado(false)
     }
@@ -111,7 +111,7 @@ export default function BandejaPorConfirmar() {
       quitar(pendientes.map((m) => m.id))
       avisarCambio()
     } catch (err) {
-      avisar(err.message || 'No se pudieron confirmar')
+      avisar(err.message || 'No se pudieron confirmar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setOcupado(false)
     }
@@ -130,7 +130,7 @@ export default function BandejaPorConfirmar() {
       quitar([m.id])
       avisarCambio()
     } catch (err) {
-      avisar(err.message || 'No se pudo descartar')
+      avisar(err.message || 'No se pudo descartar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setOcupado(false)
     }
@@ -150,7 +150,7 @@ export default function BandejaPorConfirmar() {
         hechos.push(m.id)
       }
     } catch (err) {
-      avisar(err.message || 'No se pudieron descartar todos')
+      avisar(err.message || 'No se pudieron descartar todos. Revisa tu conexión e intenta de nuevo.')
     } finally {
       if (hechos.length) {
         quitar(hechos)
@@ -178,7 +178,7 @@ export default function BandejaPorConfirmar() {
       quitar([m.id])
       avisarCambio()
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar')
+      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setOcupado(false)
     }

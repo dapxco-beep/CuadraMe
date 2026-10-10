@@ -99,6 +99,8 @@ export default function SelectorCuenta({
   nombre, setNombre, tipo, setTipo, setIcono, moneda, setMoneda, mostrarMoneda = true, bancoInicial = '', onBanco,
 }) {
   const [pais, setPais] = useState('CO')
+  // El país casi siempre es Colombia: va en una línea y solo se despliega si la persona lo quiere cambiar.
+  const [cambiandoPais, setCambiandoPais] = useState(false)
   const [verTodas, setVerTodas] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   // `bancoInicial` deja el banco ya elegido (p. ej. "Crear cuenta Nequi" desde Sincronización).
@@ -126,6 +128,7 @@ export default function SelectorCuenta({
 
   function elegirPais(p) {
     setPais(p.id)
+    setCambiandoPais(false)
     setBanco('')
     if (p.moneda) setMoneda(p.moneda)
   }
@@ -153,14 +156,28 @@ export default function SelectorCuenta({
   return (
     <div className="space-y-5">
       <section aria-label="País">
-        <p className="text-xs text-ink-soft mb-1.5">¿De qué país es tu cuenta?</p>
-        <div className="grid grid-cols-2 gap-2">
-          {PAISES.map((p) => (
-            <Chip key={p.id} activo={pais === p.id} onClick={() => elegirPais(p)}>
-              <Bandera pais={p.id} className="inline-block align-[-2px] mr-1" /> {p.nombre}
-            </Chip>
-          ))}
-        </div>
+        {cambiandoPais ? (
+          <>
+            <p className="text-xs text-ink-soft mb-1.5">¿De qué país es tu cuenta?</p>
+            <div className="grid grid-cols-2 gap-2">
+              {PAISES.map((p) => (
+                <Chip key={p.id} activo={pais === p.id} onClick={() => elegirPais(p)}>
+                  <Bandera pais={p.id} className="inline-block align-[-2px] mr-1" /> {p.nombre}
+                </Chip>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="text-xs text-ink-soft flex items-center gap-2 min-h-[44px]">
+            <span>
+              País: <Bandera pais={pais} className="inline-block align-[-2px]" />{' '}
+              <b className="text-ink">{PAISES.find((p) => p.id === pais)?.nombre}</b>
+            </span>
+            <button type="button" onClick={() => setCambiandoPais(true)} className="text-sm font-semibold text-accent min-h-[44px] px-1">
+              Cambiar país
+            </button>
+          </p>
+        )}
       </section>
 
       <section aria-label="Tipo de cuenta">

@@ -102,7 +102,7 @@ export default function Wrapped() {
     setI(0)
     api.wrapped(mes)
       .then((d) => activo && setDatos(d))
-      .catch((e) => activo && setError(e.message || 'No se pudo cargar tu resumen'))
+      .catch((e) => activo && setError(e.message || 'No se pudo cargar tu resumen. Revisa tu conexión e intenta de nuevo.'))
     return () => {
       activo = false
     }
@@ -128,7 +128,7 @@ export default function Wrapped() {
       const r = await compartirImagen(datos, fmt)
       if (r === 'descargado') avisar('Se descargó la imagen de tu resumen.')
     } catch (err) {
-      avisar(err.message || 'No se pudo compartir')
+      avisar(err.message || 'No se pudo compartir. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setCompartiendo(false)
     }

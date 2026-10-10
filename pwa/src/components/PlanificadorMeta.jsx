@@ -56,7 +56,7 @@ export default function PlanificadorMeta({ onClose, onCreada }) {
         })
       )
     } catch (err) {
-      setError(err.message || 'No se pudo calcular')
+      setError(err.message || 'No se pudo calcular. Revisa tu conexión e intenta de nuevo.')
     }
     setCargando(false)
   }
@@ -73,7 +73,7 @@ export default function PlanificadorMeta({ onClose, onCreada }) {
       })
       onCreada()
     } catch (err) {
-      setError(err.message || 'No se pudo crear la meta')
+      setError(err.message || 'No se pudo crear la meta. Revisa tu conexión e intenta de nuevo.')
     }
   }
 

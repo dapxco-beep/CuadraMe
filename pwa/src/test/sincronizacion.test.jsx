@@ -117,14 +117,14 @@ describe('helpers de Sincronización', () => {
   })
 
   it('dice el estado de cada extracto en palabras', () => {
-    expect(textoEstadoExtracto({ estado: 'procesado', cruzados: 18 })).toBe('Conciliado · 18 movimientos cruzados')
+    expect(textoEstadoExtracto({ estado: 'procesado', cruzados: 18 })).toBe('Revisado · 18 movimientos coinciden con el banco')
     expect(textoEstadoExtracto({ estado: 'nuevo' })).toBe('Nuevo · listo para revisar')
     expect(textoEstadoExtracto({ estado: 'falta_clave' })).toBe('Falta la clave del PDF')
     expect(textoEstadoExtracto({ estado: 'descartado' })).toBe('Ignorado')
   })
 
   it('cada estado de celda trae símbolo y texto (el color nunca va solo)', () => {
-    expect(estadoCelda('conciliado')).toMatchObject({ simbolo: '✓', texto: 'Conciliado' })
+    expect(estadoCelda('conciliado')).toMatchObject({ simbolo: '✓', texto: 'Revisado' })
     expect(estadoCelda('extracto_pendiente')).toMatchObject({ simbolo: '⚠', texto: 'Por revisar' })
     expect(estadoCelda('falta_clave')).toMatchObject({ simbolo: '🔑' })
     expect(estadoCelda('sin_extracto')).toMatchObject({ simbolo: '—' })
@@ -162,12 +162,12 @@ describe('pantalla Sincronización', () => {
   it('la grilla tiene texto accesible por celda y al tocarla abre el detalle del mes', async () => {
     montar()
     await screen.findByText('Tienes 5 cosas por resolver')
-    expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, junio 2026: Conciliado' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, junio 2026: Revisado' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, julio 2026: Falta la clave' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, agosto 2026: Por revisar' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Bancolombia Ahorros, septiembre 2026: Sin extracto' }))
     const det = screen.getByRole('region', { name: 'Detalle del mes' })
-    expect(within(det).getByText(/4 movimientos · 0 conciliados · 1 por confirmar/)).toBeTruthy()
+    expect(within(det).getByText(/4 movimientos · 0 ya coinciden con el banco · 1 por confirmar/)).toBeTruthy()
     expect(within(det).getByRole('button', { name: 'Buscar extracto' })).toBeTruthy()
   })
 
@@ -192,9 +192,9 @@ describe('pantalla Sincronización', () => {
     expect(within(nuevo).getByText('Nuevo · listo para revisar')).toBeTruthy()
     expect(within(nuevo).getByText('Cuenta: Bancolombia Ahorros')).toBeTruthy()
     // Lo ya conciliado no es pendiente: va en una sección plegada 'Extractos ya revisados (N)'.
-    expect(screen.queryByText('Conciliado · 18 movimientos cruzados')).toBeNull()
+    expect(screen.queryByText('Revisado · 18 movimientos coinciden con el banco')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Extractos ya revisados \(1\)/ }))
-    expect(screen.getByText(/18 movimientos cruzados/)).toBeTruthy()
+    expect(screen.getByText(/18 movimientos coinciden con el banco/)).toBeTruthy()
     expect(within(screen.getByTestId('extracto-e4')).getByText('Falta la clave del PDF')).toBeTruthy()
 
     // Sin banco detectado: se dice, y la cuenta es obligatoria.

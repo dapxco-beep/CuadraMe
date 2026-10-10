@@ -67,7 +67,7 @@ export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, 
       await recargar?.()
       elegir(nombre, cerrar)
     } catch (err) {
-      setAviso(err.message || 'No se pudo crear la categoría')
+      setAviso(err.message || 'No se pudo crear la categoría. Revisa tu conexión e intenta de nuevo.')
       setCreando(false)
     }
   }

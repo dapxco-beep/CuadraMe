@@ -72,7 +72,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       setContrapartes(null)
       avisar(mensaje, 'ok')
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar')
+      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setTrasladando(false)
     }
@@ -92,7 +92,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
         candidatosContraparte(movimiento, lista).filter((o) => moneda(o.cuenta_id) === moneda(movimiento.cuenta_id))
       )
     } catch (err) {
-      avisar(err.message || 'No se pudo buscar')
+      avisar(err.message || 'No se pudo buscar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setTrasladando(false)
     }
@@ -111,7 +111,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       setContrapartes(null)
       avisar('Vinculados: ya no cuentan como ingreso ni gasto', 'ok')
     } catch (err) {
-      avisar(err.message || 'No se pudo vincular')
+      avisar(err.message || 'No se pudo vincular. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setTrasladando(false)
     }
@@ -125,7 +125,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       parchearEnCaches(nuevo)
       onCambio?.(nuevo)
     } catch (err) {
-      avisar(err.message || 'No se pudo confirmar')
+      avisar(err.message || 'No se pudo confirmar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -172,7 +172,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       setEditando(false)
       avisar('Movimiento actualizado', 'ok')
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar')
+      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -198,7 +198,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       else volver()
     } catch (err) {
       setEliminando(false)
-      avisar(err.message || 'No se pudo eliminar')
+      avisar(err.message || 'No se pudo eliminar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 

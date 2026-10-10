@@ -40,7 +40,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
       cargar()
       setHistorial(null)
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar el cambio')
+      avisar(err.message || 'No se pudo guardar el cambio. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setOcupado('')
     }
@@ -51,7 +51,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
     try {
       setHistorial(await api.historialConsentimientos())
     } catch (err) {
-      avisar(err.message || 'No se pudo cargar el historial')
+      avisar(err.message || 'No se pudo cargar el historial. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -59,7 +59,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
     try {
       await api.descargarMisDatos()
     } catch (err) {
-      avisar(err.message || 'No se pudo descargar tus datos')
+      avisar(err.message || 'No se pudo descargar tus datos. Revisa tu conexión e intenta de nuevo.')
     }
   }
 

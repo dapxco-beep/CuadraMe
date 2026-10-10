@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useId } from 'react'
 import { AlertCircle } from 'lucide-react'
 import Icono from './Icono'
+import InputMonto from './InputMonto'
 
 // Piezas básicas del sistema de diseño. Solo componen las clases de index.css
 // (.btn, .chip, .tarjeta, .campo-*) para que hover, foco y deshabilitado sean iguales en toda la app.
@@ -78,6 +79,15 @@ export function Campo({ etiqueta, error, ayuda, children, className }) {
         </p>
       )}
     </div>
+  )
+}
+
+// Campo de monto: etiqueta visible + miles en vivo (valor canónico, ver lib/monto.js).
+export function CampoMonto({ etiqueta, error, ayuda, className, entero = false, ...input }) {
+  return (
+    <Campo etiqueta={etiqueta} error={error} ayuda={ayuda} className={className}>
+      {(props) => <InputMonto {...props} entero={entero} {...input} />}
+    </Campo>
   )
 }
 

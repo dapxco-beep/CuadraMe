@@ -160,7 +160,7 @@ describe('Agregar', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Transferir' }))
     expect(screen.queryByPlaceholderText(/¿En qué fue/)).toBeNull()
     await userEvent.type(screen.getByPlaceholderText('0'), '40000')
-    await userEvent.click(screen.getByText('Hacer transferencia'))
+    await userEvent.click(screen.getByText('Pasar la plata'))
     await waitFor(() =>
       expect(api.crearTransferencia).toHaveBeenCalledWith(
         expect.objectContaining({ cuenta_origen_id: 'c1', cuenta_destino_id: 'c2', monto: 40000 })
@@ -171,7 +171,7 @@ describe('Agregar', () => {
   it('valida monto y descripción', async () => {
     montar(<Agregar />)
     await userEvent.click(screen.getByText('Guardar movimiento'))
-    expect(await screen.findByText('Ingresa un monto válido')).toBeInTheDocument()
+    expect(await screen.findByText(/Escribe cuánto fue/)).toBeInTheDocument()
     expect(api.crearMovimiento).not.toHaveBeenCalled()
   })
 })
@@ -240,7 +240,7 @@ describe('Cuentas y CrearCuenta', () => {
     await userEvent.click(screen.getByText(/Empezar/))
     await userEvent.click(screen.getByRole('button', { name: 'USD' }))
     await userEvent.type(screen.getByPlaceholderText(/Nombre de la cuenta/), 'Wise')
-    await userEvent.click(screen.getByText('Continuar'))
+    await userEvent.click(screen.getByText('Crear mi cuenta'))
     await waitFor(() =>
       expect(api.crearCuenta).toHaveBeenCalledWith(expect.objectContaining({ nombre: 'Wise', moneda: 'USD' }))
     )

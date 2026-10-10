@@ -126,6 +126,8 @@ def _sembrar():
     I["invitacion"] = inv["id"]
     partida = client.post("/ahorcado/nueva-partida")
     I["partida"] = partida.json().get("id", "") if partida.status_code == 200 else ""
+    I["comentario"] = _ok(client.post("/comentarios", json={"tipo": "sugerencia", "mensaje": f"{MARCA} idea",
+                                                            "pantalla": "/movimientos"}))["id"]
     client.put("/planificacion/config", json={})
     client.put("/correos/clave-pdf", json={"clave": f"{MARCA}1234"})  # puede requerir Fernet: no es obligatorio
 
@@ -328,6 +330,9 @@ ATAQUES = [
     # cierre de mes: cuentas ajenas no entran al cierre de B
     ("POST", "/cierre-mes/{mes}/generar", None),
     ("DELETE", "/impuestos/marcas/{mov}", None),
+    # buzón de opinión: las rutas de administración responden 404 a quien no es ADMIN_EMAIL
+    ("PATCH", "/comentarios/{comentario}", {"estado": "descartado", "nota_admin": "x", "respuesta_publica": "x"}),
+    ("POST", "/comentarios/marcar-vistos", {"ids": ["{comentario}"]}),
 ]
 # Rutas donde un 200 es correcto aunque sean de B: la operación se limita a datos de B (idempotente).
 # Se valida igual que la foto de A no cambie y que la respuesta no traiga la marca.
@@ -410,6 +415,7 @@ SIN_ID_DE_RECURSO = {
     "/push/desuscribir", "/push/probar", "/reglas-categoria/aprender", "/reglas-categoria", "/categorias",
     "/cuentas", "/presupuestos", "/cierre-mes/{mes}", "/cierre-mes/{mes}/generar", "/gastos-compartidos/contactos", "/cuentas/invitaciones/pendientes",
     "/correos/{correo_id}/aprobar", "/movimientos/rapido-voz", "/resumen/preferencias",
+    "/comentarios",  # POST: crea un comentario propio (no recibe ids)
 }
 # Rutas sin sesión de usuario por diseño (crons con secreto, callbacks firmados, API key, webhook firmado, públicas).
 SIN_SESION = {

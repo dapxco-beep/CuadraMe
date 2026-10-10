@@ -100,7 +100,7 @@ export default function Informe() {
     setDetalles({})
     api.informeGasto(params)
       .then((d) => activo && setInforme(d))
-      .catch((e) => activo && setError(e.message || 'No se pudo cargar el informe'))
+      .catch((e) => activo && setError(e.message || 'No se pudo cargar el informe. Revisa tu conexión e intenta de nuevo.'))
       .finally(() => activo && setCargando(false))
     return () => {
       activo = false

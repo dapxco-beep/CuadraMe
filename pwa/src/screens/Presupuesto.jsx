@@ -15,10 +15,13 @@ import { PERIODOS, etiquetaPeriodo, textoRango } from '../lib/planificacion'
 import Hoja from '../components/Hoja'
 import Ayudita from '../components/Ayudita'
 import InputMonto from '../components/InputMonto'
+import SeccionPlegable from '../components/SeccionPlegable'
+import { useDialogos } from '../lib/DialogosContext'
 
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 export default function Presupuesto() {
+  const { avisar } = useDialogos() || {}
   const [presupuestos, setPresupuestos] = useState([])
   const [gastosPorCategoria, setGastosPorCategoria] = useState({})
   const [tendencias, setTendencias] = useState(null)
@@ -72,8 +75,28 @@ export default function Presupuesto() {
   }
 
   async function eliminar(id) {
-    await api.eliminarPresupuesto(id)
+    const original = presupuestos.find((x) => x.id === id)
+    try {
+      await api.eliminarPresupuesto(id)
+    } catch (err) {
+      avisar?.(err.message || 'No pudimos quitar el presupuesto. Intenta de nuevo.')
+      return
+    }
     cargar()
+    if (!original) return
+    avisar?.(`Quitamos el presupuesto de ${original.categoria}.`, 'ok', {
+      accion: {
+        texto: 'Deshacer',
+        onClick: async () => {
+          try {
+            await api.crearPresupuesto({ categoria: original.categoria, limite: original.limite, periodo: original.periodo || 'monthly' })
+            cargar()
+          } catch (err) {
+            avisar?.(err.message || 'No pudimos devolverlo. Créalo de nuevo con «+».')
+          }
+        },
+      },
+    })
   }
 
   return (
@@ -85,7 +108,7 @@ export default function Presupuesto() {
             <button
               onClick={() => setMostrarMover(true)}
               className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
-              aria-label="Mover plata entre categorías"
+              aria-label="Pasar plata de un presupuesto a otro"
             >
               <ArrowLeftRight size={20} className="text-ink-soft" />
             </button>
@@ -93,7 +116,7 @@ export default function Presupuesto() {
           <button
             onClick={() => setMostrarForm(true)}
             className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"
-           aria-label="Nuevo presupuesto">
+           aria-label="Crear un presupuesto">
             <Plus size={20} />
           </button>
         </div>
@@ -101,101 +124,21 @@ export default function Presupuesto() {
 
       {/* ≥1024 px: resumen/proyección a la izquierda, categorías a la derecha */}
       <div className="dos-col dos-col-6-5">
-      <div className="col">
-      <div className="px-6 pt-2 flex gap-2">
-        <button
-          onClick={() => setMostrarIngreso(true)}
-          className="chip font-semibold"
-        >
-          <HandCoins size={16} className="text-accent" /> Repartir un ingreso
-        </button>
-        <button
-          onClick={() => setMostrarConfig(true)}
-          className="chip font-semibold"
-        >
-          <SlidersHorizontal size={16} className="text-ink-soft" /> Ajustes
-        </button>
-      </div>
-
-      <Link
-        to="/informe"
-        className="mx-6 mt-4 card-marca bg-accent-soft border border-accent/20 p-3.5 flex items-center gap-3"
-      >
-        <span className="w-10 h-10 rounded-xl bg-paper-raised flex items-center justify-center shrink-0">
-          <PieChart size={20} className="text-accent" />
-        </span>
-        <div className="flex-1">
-          <p className="text-sm font-semibold">En qué gasto mi plata</p>
-          <p className="text-xs text-ink-soft mt-0.5">Por categoría, comercios y comparación con el periodo anterior</p>
-        </div>
-        <ChevronRight size={16} className="text-ink-soft shrink-0" />
-      </Link>
-
-      {!cargando && tendencias && (
-        <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp size={16} className="text-ink-soft" />
-            <p className="text-sm font-semibold">Tendencia mensual</p>
-          </div>
-          <GraficoTendencia meses={tendencias.meses ?? []} />
-
-          {tendencias.proyeccion && (
-          <div className="mt-4 pt-4 border-t border-line">
-            <p className="text-xs text-ink-soft">Proyección de gasto este mes <Ayudita termino="proyeccion" /></p>
-            <p className="text-xl font-bold mt-0.5">
-              {formatCOP(tendencias.proyeccion.gasto_proyectado_mes)}
-            </p>
-            <p className="text-xs text-ink-soft mt-0.5">
-              Al ritmo de {formatCOP(tendencias.proyeccion.ritmo_diario)}/día, con{' '}
-              {tendencias.proyeccion.dias_restantes_mes} días restantes
-            </p>
-          </div>
-          )}
-        </section>
-      )}
-
-      {!cargando && flujoCaja && flujoCaja.meses.length > 0 && (
-        <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <CalendarClock size={16} className="text-ink-soft" />
-            <p className="text-sm font-semibold">Proyección de saldo</p>
-          </div>
-          <div className="flex items-stretch gap-2">
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-ink-soft">Hoy</p>
-              <p className="text-sm font-bold truncate">{formatCOP(flujoCaja.saldo_actual)}</p>
-            </div>
-            {flujoCaja.meses.map((m) => (
-              <div key={m.mes} className="flex-1 min-w-0">
-                <p className="text-xs text-ink-soft">{MESES_CORTOS[parseInt(m.mes.split('-')[1], 10) - 1]}</p>
-                <p className={`text-sm font-bold truncate ${m.saldo_proyectado < 0 ? 'text-danger' : ''}`}>
-                  {formatCOP(m.saldo_proyectado)}
-                </p>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-ink-soft mt-3">
-            Estimado según tus recurrentes conocidos y tu ritmo de gasto habitual
-          </p>
-        </section>
-      )}
-
-      </div>
-      <div className="col">
+      <div className="col lg:col-start-2 lg:row-start-1">
       {cargando ? (
         <EsqueletoLista filas={4} className="mx-5 mt-4" etiqueta="Cargando tu presupuesto" />
       ) : presupuestos.length === 0 ? (
         <EstadoVacio
           icono={TrendingUp}
-          titulo="Aún no tienes presupuestos definidos"
-          texto="Ponle un tope a una categoría y mira cómo va cuadrando el mes."
+          titulo="Aún no tienes presupuestos"
+          texto="Un presupuesto es lo máximo que quieres gastar en algo, por ejemplo $400.000 en comida este mes. Te avisamos antes de pasarte."
           className="mx-6 mt-6"
         >
           <button
             onClick={() => setMostrarForm(true)}
-            className="mt-4 text-sm text-accent font-semibold min-h-[44px] px-3"
+            className="btn btn-primario btn-sm mt-4"
           >
-            Crear el primero
+            Crear mi primer presupuesto
           </button>
         </EstadoVacio>
       ) : (
@@ -257,7 +200,7 @@ export default function Presupuesto() {
                           <p className="text-xs text-ink-soft">
                             {formatCOP(p.gastado)} / {formatCOP(p.limite)}
                           </p>
-                          <button onClick={() => eliminar(p.id)} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label="Cerrar">
+                          <button onClick={() => eliminar(p.id)} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label={`Quitar el presupuesto de ${p.categoria}`}>
                             <X size={16} />
                           </button>
                         </div>
@@ -310,6 +253,95 @@ export default function Presupuesto() {
         })()
       )}
       </div>
+      <div className="col lg:col-start-1 lg:row-start-1">
+      <div className="px-6 pt-2 flex gap-2">
+        <button
+          onClick={() => setMostrarIngreso(true)}
+          className="chip font-semibold"
+        >
+          <HandCoins size={16} className="text-accent" /> Repartir mi ingreso
+        </button>
+        <button
+          onClick={() => setMostrarConfig(true)}
+          className="chip font-semibold"
+        >
+          <SlidersHorizontal size={16} className="text-ink-soft" /> Ajustes
+        </button>
+      </div>
+
+      <Link
+        to="/informe"
+        className="mx-6 mt-4 card-marca bg-accent-soft border border-accent/20 p-3.5 flex items-center gap-3"
+      >
+        <span className="w-10 h-10 rounded-xl bg-paper-raised flex items-center justify-center shrink-0">
+          <PieChart size={20} className="text-accent" />
+        </span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold">En qué gasto mi plata</p>
+          <p className="text-xs text-ink-soft mt-0.5">Por tipo de gasto y por lugar, comparado con el mes anterior</p>
+        </div>
+        <ChevronRight size={16} className="text-ink-soft shrink-0" />
+      </Link>
+
+      {!cargando && (tendencias || (flujoCaja && flujoCaja.meses.length > 0)) && (
+      <SeccionPlegable
+        id="presupuesto-proyecciones"
+        titulo="Cómo vas en el tiempo"
+        icono={TrendingUp}
+        className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line overflow-hidden"
+      >
+      {tendencias && (
+        <section className="mt-3 rounded-2xl bg-paper-raised border border-line p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp size={16} className="text-ink-soft" />
+            <p className="text-sm font-semibold">Cuánto gastas cada mes</p>
+          </div>
+          <GraficoTendencia meses={tendencias.meses ?? []} />
+
+          {tendencias.proyeccion && (
+          <div className="mt-4 pt-4 border-t border-line">
+            <p className="text-xs text-ink-soft">Lo que gastarías este mes, a este ritmo <Ayudita termino="proyeccion" /></p>
+            <p className="text-xl font-bold mt-0.5">
+              {formatCOP(tendencias.proyeccion.gasto_proyectado_mes)}
+            </p>
+            <p className="text-xs text-ink-soft mt-0.5">
+              Al ritmo de {formatCOP(tendencias.proyeccion.ritmo_diario)}/día, con{' '}
+              {tendencias.proyeccion.dias_restantes_mes} días restantes
+            </p>
+          </div>
+          )}
+        </section>
+      )}
+
+      {flujoCaja && flujoCaja.meses.length > 0 && (
+        <section className="mt-3 rounded-2xl bg-paper-raised border border-line p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarClock size={16} className="text-ink-soft" />
+            <p className="text-sm font-semibold">Cuánto tendrías en los próximos meses</p>
+          </div>
+          <div className="flex items-stretch gap-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-ink-soft">Hoy</p>
+              <p className="text-sm font-bold truncate">{formatCOP(flujoCaja.saldo_actual)}</p>
+            </div>
+            {flujoCaja.meses.map((m) => (
+              <div key={m.mes} className="flex-1 min-w-0">
+                <p className="text-xs text-ink-soft">{MESES_CORTOS[parseInt(m.mes.split('-')[1], 10) - 1]}</p>
+                <p className={`text-sm font-bold truncate ${m.saldo_proyectado < 0 ? 'text-danger' : ''}`}>
+                  {formatCOP(m.saldo_proyectado)}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-ink-soft mt-3">
+            Es un cálculo con tus pagos fijos y lo que sueles gastar. No es una promesa.
+          </p>
+        </section>
+      )}
+      </SeccionPlegable>
+      )}
+
+      </div>
       </div>
 
       {mostrarConfig && (
@@ -351,6 +383,7 @@ export default function Presupuesto() {
 }
 
 function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
+  const { avisar } = useDialogos() || {}
   const { nombres } = useCategorias()
   const categoriasSugeridas = nombres.filter((c) => c !== 'Ingresos' && c !== 'Transferencias')
   const [categoria, setCategoria] = useState('')
@@ -361,15 +394,16 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
 
   async function guardar() {
     setError('')
-    if (!categoria) return setError('Elige una categoría')
-    if (!limite || Number(limite) <= 0) return setError('Ingresa un límite válido')
+    if (!categoria) return setError('Elige en qué quieres poner el tope, por ejemplo Comida.')
+    if (!limite || Number(limite) <= 0) return setError('Escribe cuánto es lo máximo que quieres gastar, solo números. Por ejemplo 500000.')
 
     setGuardando(true)
     try {
       await api.crearPresupuesto({ categoria, limite: Number(limite), periodo })
+      avisar?.(`Listo: presupuesto de ${categoria} guardado. Te avisamos antes de pasarte.`, 'ok')
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No pudimos guardarlo. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -384,7 +418,7 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
         </button>
       </div>
 
-      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Categoría</p>
+      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">¿En qué quieres poner un tope?</p>
       <div className="grid grid-cols-3 gap-2 mb-4">
         {categoriasSugeridas.map((c) => (
           <button
@@ -399,7 +433,7 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
         ))}
       </div>
 
-      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Periodo</p>
+      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">¿Cada cuánto?</p>
       <div className="grid grid-cols-3 gap-2 mb-4">
         {PERIODOS.map((pe) => (
           <button
@@ -415,7 +449,7 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
       </div>
 
       <p className="text-xs text-ink-soft mb-1">
-        Pon un tope de gasto para esta categoría y te avisamos antes de pasarte. <Ayudita termino="limite-presupuesto" />
+        ¿Cuánto es lo máximo que quieres gastar? Te avisamos antes de pasarte. <Ayudita termino="limite-presupuesto" />
       </p>
       <InputMonto entero
         value={limite}
@@ -424,7 +458,7 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
       />
 
-      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger mb-3">{error}</p>}
 
       <button
         onClick={guardar}
@@ -438,6 +472,7 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
 }
 
 function FormMoverSobre({ presupuestos, onClose, onMovido }) {
+  const { avisar } = useDialogos() || {}
   const [origenId, setOrigenId] = useState(presupuestos[0]?.id || '')
   const [destinoId, setDestinoId] = useState(presupuestos[1]?.id || '')
   const [monto, setMonto] = useState('')
@@ -446,15 +481,16 @@ function FormMoverSobre({ presupuestos, onClose, onMovido }) {
 
   async function guardar() {
     setError('')
-    if (origenId === destinoId) return setError('Elige dos categorías distintas')
-    if (!monto || Number(monto) <= 0) return setError('Ingresa un monto válido')
+    if (origenId === destinoId) return setError('Elige dos presupuestos distintos: uno de donde sale y otro a donde llega.')
+    if (!monto || Number(monto) <= 0) return setError('Escribe cuánto quieres pasar, solo números. Por ejemplo 50000.')
 
     setGuardando(true)
     try {
       await api.moverSobre(origenId, destinoId, Number(monto))
+      avisar?.('Listo: pasamos la plata entre tus presupuestos.', 'ok')
       onMovido()
     } catch (err) {
-      setError(err.message || 'No se pudo mover')
+      setError(err.message || 'No pudimos pasar la plata. Intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -463,15 +499,14 @@ function FormMoverSobre({ presupuestos, onClose, onMovido }) {
   return (
     <Hoja onCerrar={onClose}>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Mover plata entre categorías</h2>
+        <h2 className="text-lg font-semibold">Pasar plata de un presupuesto a otro</h2>
         <button onClick={onClose} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Cerrar">
           <X size={16} />
         </button>
       </div>
 
       <p className="text-xs text-ink-soft mb-4">
-        Lo que te sobró en una categoría lo puedes pasar a otra que se quedó corta,
-        en vez de perderlo cada mes.
+        Si te sobró en un presupuesto, puedes pasarlo a otro que se quedó corto en vez de perderlo.
       </p>
 
       <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Desde</p>
@@ -499,18 +534,19 @@ function FormMoverSobre({ presupuestos, onClose, onMovido }) {
       <InputMonto entero
         value={monto}
         onValor={setMonto}
-        placeholder="Monto a mover"
+        placeholder="¿Cuánto pasas? Ej. 50000"
+        aria-label="Cuánto vas a pasar"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
       />
 
-      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger mb-3">{error}</p>}
 
       <button
         onClick={guardar}
         disabled={guardando}
         className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
       >
-        {guardando ? 'Moviendo...' : 'Mover plata'}
+        {guardando ? 'Pasando...' : 'Pasar plata'}
       </button>
     </Hoja>
   )
