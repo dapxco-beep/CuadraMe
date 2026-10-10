@@ -7,7 +7,7 @@ Versión del borrador: 1.2 · Fecha: [FECHA DE PUBLICACIÓN]
 
 ## 1. Responsable del tratamiento
 [RAZÓN SOCIAL / NOMBRE DE LA PERSONA NATURAL], NIT/C.C. [NÚMERO], domicilio en [CIUDAD], Colombia (en adelante, "CuadraMe", "nosotros"), es responsable del tratamiento de tus datos personales conforme a la Ley 1581 de 2012, el Decreto 1377 de 2013 (compilado en el Decreto 1074 de 2015) y demás normas aplicables.
-Contacto para consultas, reclamos y ejercicio de derechos: [CORREO DE CONTACTO — hoy dapxco@gmail.com]. Sitio: [DOMINIO].
+Contacto para consultas, reclamos y ejercicio de derechos: dapxco@gmail.com. Sitio: https://cuadrame.dapx.shop.
 
 ## 2. Qué datos tratamos
 | Dato | De dónde viene | Obligatorio |
@@ -51,6 +51,8 @@ Tratamos tus datos con tu autorización previa, expresa e informada. La app la p
 | Autoridades | Requerimiento legal válido | Lo que la ley exija |
 
 **Copias de seguridad.** Cada día se exporta la base de datos y se envía por correo, mediante Resend, al administrador del servicio (hoy [CORREO DE BACKUP]). Excluye la clave de los PDF. Incluye datos de cuentas de usuarios. Las copias ya enviadas no se pueden recuperar ni editar individualmente; al eliminar tu cuenta, tus datos salen de la base de datos de inmediato y de las copias a medida que estas se reemplazan. [El abogado debe validar el plazo de retención de copias y su redacción.]
+
+**Uso de la información recibida de las APIs de Google.** El uso que CuadraMe hace de la información recibida de las APIs de Google cumple con la Política de Datos de Usuario de los Servicios de API de Google, incluidos los requisitos de Uso Limitado. Solo pedimos lectura de Gmail (`gmail.readonly`) si conectas tu cuenta, y la usamos únicamente para detectar notificaciones y extractos bancarios y registrarte movimientos en CuadraMe. No vendemos estos datos, no los usamos para publicidad ni para entrenar modelos de IA generalizados, y no permitimos que personas los lean salvo con tu consentimiento expreso, por seguridad o abuso, o por obligación legal.
 
 ## 6. Transferencias y transmisiones internacionales
 Varios proveedores (Supabase, Railway, Vercel, Google, OpenRouter, Resend, Sentry) pueden procesar datos en servidores fuera de Colombia. Actuamos con proveedores que ofrecen medidas de seguridad razonables y los tratamos como encargados bajo nuestras instrucciones. [El abogado debe confirmar si aplican contratos de transmisión de datos (Art. 25 Decreto 1377) y si algún país receptor no ofrece nivel adecuado de protección (Art. 26 Ley 1581), y registrar las ubicaciones reales de cada proveedor.]

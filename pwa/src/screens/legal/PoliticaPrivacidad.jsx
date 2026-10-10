@@ -14,7 +14,7 @@ export default function PoliticaPrivacidad() {
       </header>
 
       <div className="px-6 mt-4 text-sm leading-relaxed text-ink space-y-5">
-        <p className="text-xs text-ink-soft">Versión 1.1 (borrador) · Última actualización: 3 de octubre de 2026</p>
+        <p className="text-xs text-ink-soft">Versión 1.1 (borrador) · Última actualización: 9 de octubre de 2026</p>
 
         <section>
           <h2 className="font-semibold mb-1.5">1. Responsable del tratamiento</h2>
@@ -70,6 +70,29 @@ export default function PoliticaPrivacidad() {
             producto (ej. estadísticas de uso sin identificar personas), lo indicaremos aquí antes de
             hacerlo.
           </p>
+        </section>
+
+        <section id="google">
+          <h2 className="font-semibold mb-1.5">Uso de la información recibida de las APIs de Google</h2>
+          <p>
+            El uso que CuadraMe hace de la información recibida de las APIs de Google cumple con la{' '}
+            <a
+              href="https://developers.google.com/terms/api-services-user-data-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+            >
+              Política de Datos de Usuario de los Servicios de API de Google
+            </a>
+            , incluidos los requisitos de Uso Limitado.
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 mt-1.5">
+            <li><b>Permiso que pedimos:</b> solo lectura de Gmail (<code>gmail.readonly</code>), únicamente si tú conectas tu cuenta. No enviamos, borramos ni modificamos correos.</li>
+            <li><b>Para qué lo usamos:</b> solo para detectar notificaciones y extractos de bancos y registrarte tus movimientos dentro de CuadraMe.</li>
+            <li><b>Lo que no hacemos:</b> no vendemos estos datos, no los usamos para publicidad ni para entrenar modelos de IA generalizados, y no los transferimos a terceros salvo lo necesario para prestarte la función, por seguridad, para cumplir la ley o con tu consentimiento.</li>
+            <li><b>Personas:</b> ninguna persona lee tus correos, salvo que lo autorices expresamente, sea necesario por seguridad o abuso, o lo exija la ley.</li>
+            <li><b>Control tuyo:</b> puedes desconectar Gmail y borrar tus datos en Perfil → Privacidad y datos, o revocar el acceso en tu cuenta de Google.</li>
+          </ul>
         </section>
 
         <section>
