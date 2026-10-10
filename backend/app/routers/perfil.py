@@ -1,15 +1,20 @@
 import logging
+from datetime import date
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+
+from app import punto_partida
+from app.routers.cuentas import ajustar_saldo as ajustar_saldo_cuenta
+from app.schemas import AjusteSaldoRequest
 
 from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
 from app.derechos_titular import armar_json, armar_zip, borrar_todo, recopilar
 from app.limites import verificar_limite
-from app.models import Perfil
+from app.models import Cuenta, Perfil
 from app.claves_api import asignar_clave_nueva, tiene_clave
 from app.utiles import ahora_co
 from app.schemas import ConfianzaAutoimportUpdate, EliminarCuentaRequest
@@ -170,3 +175,120 @@ def eliminar_cuenta(
     if resultado["aviso"]:
         respuesta["aviso"] = resultado["aviso"]
     return respuesta
+
+
+# ── Punto de partida ──────────────────────────────────────────────────────────
+# «Empezar desde hoy» o «recrear mi histórico». La lógica y las reglas viven en
+# app/punto_partida.py; aquí solo está la API. Nada de esto borra datos.
+
+class SaldoPuntoPartida(BaseModel):
+    inicial: float | None = None
+    actual: float | None = None
+
+
+class PuntoPartidaIn(BaseModel):
+    modo: Literal["hoy", "historico"]
+    fecha: date | None = None  # 'hoy': por defecto hoy. 'historico': obligatoria (o `meses`)
+    meses: int | None = Field(default=None, ge=1, le=24)  # atajo: «los últimos N meses»
+    saldos: dict[str, SaldoPuntoPartida] = {}  # cuenta_id -> saldo
+    ajustar_saldos: bool = False  # llevar cada cuenta al saldo `actual` declarado (ajuste neutral)
+
+
+class AjustarSaldosIn(BaseModel):
+    cuenta_ids: list[str] = []  # vacío = todas las que tengan saldo declarado
+
+
+@router.get("/punto-de-partida")
+def obtener_punto_de_partida(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    """Elección actual y cuántos correos/extractos anteriores a esa fecha se están ignorando."""
+    return punto_partida.resumen(db, usuario.id)
+
+
+@router.put("/punto-de-partida")
+def guardar_punto_de_partida(
+    data: PuntoPartidaIn,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Elige el punto de partida. Hacia atrás: permite importar más. Hacia adelante: oculta lo
+    anterior de informes y consejos (no borra nada)."""
+    hoy = punto_partida.hoy_co()
+    if data.modo == "hoy":
+        fecha = data.fecha or hoy
+    else:
+        fecha = data.fecha or (punto_partida.sugerencia_fecha(data.meses) if data.meses else None)
+        if fecha is None:
+            raise HTTPException(status_code=400, detail="Elige desde cuándo quieres recrear tu histórico")
+    if fecha > hoy:
+        raise HTTPException(status_code=400, detail="La fecha de inicio no puede ser futura")
+    if fecha < punto_partida.sugerencia_fecha(punto_partida.MAX_MESES_HISTORICO):
+        raise HTTPException(status_code=400, detail="Elige una fecha de hasta 24 meses atrás")
+
+    cuentas = {c.id: c for c in db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()}
+    saldos: dict = {}
+    for cuenta_id, s in data.saldos.items():
+        if cuenta_id not in cuentas:
+            raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+        for v in (s.inicial, s.actual):
+            if v is not None and abs(v) > 1e12:
+                raise HTTPException(status_code=400, detail="Ese saldo no parece válido")
+        # En «hoy» el saldo que la persona escribe es a la vez el inicial y el actual.
+        inicial = s.inicial if s.inicial is not None else (s.actual if data.modo == "hoy" else None)
+        saldos[cuenta_id] = {"inicial": inicial, "actual": s.actual if s.actual is not None else inicial}
+    efecto = punto_partida.guardar(db, usuario.id, data.modo, fecha, saldos)
+    db.commit()
+
+    ajustados = 0
+    if data.ajustar_saldos:
+        # Fijar el saldo de partida no es un movimiento del histórico: la nota lo distingue del ajuste
+        # posterior (ese sí cuenta al reconstruir el saldo).
+        ajustados = _ajustar_a_declarados(
+            db, usuario, [k for k, v in saldos.items() if v.get("actual") is not None], punto_partida.NOTA_SALDO_INICIAL)
+    return {**punto_partida.resumen(db, usuario.id), "retrocedio": efecto["retrocedio"], "ajustados": ajustados}
+
+
+def _ajustar_a_declarados(db: Session, usuario: UsuarioActual, cuenta_ids: list[str],
+                          nota: str = punto_partida.NOTA_AJUSTE) -> int:
+    """Lleva cada cuenta a su saldo declarado con el «Ajuste de saldo» de siempre (no es gasto ni ingreso)."""
+    declarados = punto_partida.obtener(db, usuario.id)["saldos"]
+    n = 0
+    for cuenta_id in cuenta_ids:
+        objetivo = (declarados.get(cuenta_id) or {}).get("actual")
+        if objetivo is None:
+            continue
+        r = ajustar_saldo_cuenta(cuenta_id, AjusteSaldoRequest(saldo_real=objetivo, nota=nota),
+                                 db=db, usuario=usuario)
+        n += 1 if r.get("ajustado") else 0
+    return n
+
+
+@router.get("/punto-de-partida/cobertura")
+def cobertura_punto_de_partida(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    """Modo histórico: por cuenta, qué meses ya tienen extracto conciliado y cuáles faltan."""
+    return {**punto_partida.cobertura(db, usuario.id), "modo": punto_partida.obtener(db, usuario.id)["modo"]}
+
+
+@router.get("/punto-de-partida/conciliacion")
+def conciliacion_punto_de_partida(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    """Saldo reconstruido (inicial + movimientos desde la fecha) frente al saldo actual declarado."""
+    filas = punto_partida.conciliacion(db, usuario.id)
+    con_dato = [f for f in filas if f["coincide"] is not None]
+    return {"cuentas": filas, "todo_coincide": bool(con_dato) and all(f["coincide"] for f in con_dato)}
+
+
+@router.post("/punto-de-partida/ajustar-saldos")
+def ajustar_saldos_punto_de_partida(
+    data: AjustarSaldosIn,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Ofrece el «ajuste de saldo» neutral cuando lo reconstruido no coincide con lo declarado."""
+    declarados = punto_partida.obtener(db, usuario.id)["saldos"]
+    ids = data.cuenta_ids or list(declarados)
+    return {"ok": True, "ajustados": _ajustar_a_declarados(db, usuario, ids)}

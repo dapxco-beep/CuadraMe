@@ -267,7 +267,7 @@ def test_sincronizar_detecta_sin_etiqueta_no_duplica_y_usa_la_clave(monkeypatch,
     g = client.put("/correos/clave-pdf", json={"clave": CLAVE})
     assert g.json() == {"ok": True, "configurada": True}
     assert CLAVE not in g.text
-    assert client.get("/correos/clave-pdf").json() == {"configurada": True}
+    assert client.get("/correos/clave-pdf").json()["configurada"] is True
     db = SessionLocal()
     try:
         fila = db.query(ClavePdf).filter(ClavePdf.usuario_id == "u-extractos").first()
@@ -339,11 +339,11 @@ def test_extractos_y_clave_son_por_usuario(monkeypatch):
 
     app.dependency_overrides[get_current_user] = lambda: UsuarioActual(id="u-privado-b", email="b@t.com", nombre="B")
     assert client.get("/correos/extractos").json() == []
-    assert client.get("/correos/clave-pdf").json() == {"configurada": False}
+    assert client.get("/correos/clave-pdf").json()["configurada"] is False
 
     app.dependency_overrides[get_current_user] = lambda: UsuarioActual(id="u-privado-a", email="a@t.com", nombre="A")
     assert client.delete("/correos/clave-pdf").json() == {"ok": True, "configurada": False}
-    assert client.get("/correos/clave-pdf").json() == {"configurada": False}
+    assert client.get("/correos/clave-pdf").json()["configurada"] is False
 
 
 def test_correo_sin_monto_no_se_ofrece_ni_con_etiqueta():

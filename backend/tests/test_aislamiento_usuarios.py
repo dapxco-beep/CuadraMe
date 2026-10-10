@@ -307,6 +307,11 @@ ATAQUES = [
     ("POST", "/duplicados/no-es-duplicado", {"movimiento_ids": ["{mov}", "{mov2}"]}),
     ("POST", "/correos/extractos/{extracto}/conciliar", {"cuenta_id": "{cuenta}"}),
     ("POST", "/correos/extractos/{extracto}/descartar", None),
+    # probar la clave del PDF ahora: B no puede probar ni leer el resultado de un extracto de A
+    ("POST", "/correos/clave-pdf/probar", {"extracto_id": "{extracto}"}),
+    # punto de partida: B no puede fijar saldos de cuentas de A ni ajustarlas
+    ("PUT", "/perfil/punto-de-partida", {"modo": "hoy", "saldos": {"{cuenta}": {"actual": 1}}, "ajustar_saldos": True}),
+    ("POST", "/perfil/punto-de-partida/ajustar-saldos", {"cuenta_ids": ["{cuenta}"]}),
     # conciliación (historial de extractos)
     ("GET", "/conciliacion/historial/{historial}", None),
     ("POST", "/conciliacion/historial/{historial}/deshacer-auto", None),
@@ -334,6 +339,7 @@ PERMITIDO_200 = {
     ("POST", "/movimientos/confirmar-categorias"),
     ("GET", "/cuotas-tarjeta?cuenta_id={tarjeta}"),  # lista vacía para B
     ("POST", "/gastos-compartidos/calcular"),  # solo calcula con los números que envía; no lee datos
+    ("POST", "/perfil/punto-de-partida/ajustar-saldos"),  # solo mira los saldos declarados por B: ids ajenos se ignoran
     ("POST", "/conciliacion/procesar"),  # PDF inválido: debe fallar, pero no por 200 con datos de A
 }
 
@@ -396,7 +402,7 @@ SIN_ID_DE_RECURSO = {
     # escrituras que solo afectan al propio usuario (no reciben ids ajenos)
     "/ahorcado/nueva-partida", "/asistente/mensaje", "/categorias/orden", "/cierre-mes/preferencias",
     "/consentimientos", "/correos/gmail/desconectar", "/correos/gmail/etiqueta", "/correos/sincronizar",
-    "/correos/clave-pdf", "/facturas/escanear", "/impuestos/ajustes",
+    "/correos/clave-pdf", "/perfil/punto-de-partida", "/facturas/escanear", "/impuestos/ajustes",
     "/insights/preguntar", "/movimientos/clasificar", "/movimientos/rapido-prueba", "/pagos/checkout",
     "/patrimonio/snapshot", "/patrimonio/activos", "/perfil/api-key/regenerar", "/perfil/recordatorio-diario",
     "/perfil/confianza-autoimport", "/perfil/autoimportar-extractos", "/perfil/eliminar-cuenta",

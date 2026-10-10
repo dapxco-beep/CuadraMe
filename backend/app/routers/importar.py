@@ -27,6 +27,7 @@ from app.autocat import ClasificadorUsuario, aplicar_a_anteriores, clasificar_lo
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, puede_editar_cuenta
 from app import duplicados as dup
+from app import punto_partida
 from app.conciliacion import _CUENTA_UNICA, _cand_ledger, auditar_movimientos, compute_fingerprint
 from app.conciliacion import es_transferencia_propia
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_IMPORTADO_SIN_SALDO, con_marca_traslado, es_pago_tarjeta
@@ -173,9 +174,15 @@ def vista_previa(
     clasifs = [clf.clasificar(m["descripcion"]) for m in movs]
 
     ESTADO = {"faltante": "nuevo", "exacto": "duplicado", "aproximado": "posible_duplicado"}
+    inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
     propuesta = []
+    anteriores = 0
     for item, r in zip(auditoria["review"], clasifs):
         cat = r["categoria"] if r else "Otros"
+        estado = ESTADO[item["estado"]]
+        # Punto de partida: lo anterior al inicio no se ofrece (no se pierde: se trae moviendo la fecha).
+        if estado == "nuevo" and punto_partida.es_anterior(datetime.fromisoformat(item["fecha"]), inicio_pp):
+            estado, anteriores = "anterior", anteriores + 1
         propuesta.append({
             "razon_categoria": r.get("razon") if r else None,
             "fila": item["fila"],
@@ -184,17 +191,18 @@ def vista_previa(
             "monto": item["monto"],
             "tipo": item["tipo"],
             "categoria": cat,
-            "estado": ESTADO[item["estado"]],
+            "estado": estado,
         })
 
     return {
         "cuenta": {"id": cuenta.id, "nombre": cuenta.nombre, "moneda": cuenta.moneda, "saldo": cuenta.saldo},
         **analisis,
         "propuesta": propuesta,
+        "anteriores": anteriores,  # líneas anteriores al punto de partida: no se ofrecen para importar
         # Aviso, no bloqueo: ese mes de esa cuenta ya estaba conciliado (los duplicados se detectan por huella).
         "ya_conciliado": _periodo_ya_conciliado(db, usuario.id, cuenta.id, auditoria["review"]),
         "resumen": {
-            "nuevos": auditoria["faltantes"],
+            "nuevos": auditoria["faltantes"] - anteriores,
             "duplicados": auditoria["exactos"],
             "posibles_duplicados": auditoria["aproximados"],
             "con_error": len(analisis["errores"]),
@@ -224,7 +232,12 @@ def confirmar(
     reglas_guardadas = anteriores_actualizados = 0
     reglas_omitidas: list[dict] = []
     neto = 0.0
+    inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
+    anteriores_omitidas = 0
     for i, f in enumerate(data.filas):
+        if punto_partida.es_anterior(datetime.fromisoformat(f.fecha), inicio_pp):
+            anteriores_omitidas += 1  # antes del punto de partida: no se importa
+            continue
         fp = compute_fingerprint(f.fecha, f.monto, cuenta.id, f.descripcion, f.tipo)
         if fp in huellas_existentes:
             omitidos += 1  # ya está: importar el mismo archivo dos veces no duplica
@@ -276,4 +289,5 @@ def confirmar(
     return {"ok": True, "importados": importados, "duplicados_omitidos": omitidos,
             "categorizados_auto": auto_categorizados, "reglas_guardadas": reglas_guardadas,
             "anteriores_actualizados": anteriores_actualizados, "reglas_omitidas": reglas_omitidas,
+            "anteriores_omitidas": anteriores_omitidas,
             "saldo": cuenta.saldo, "saldo_ajustado": bool(data.ajustar_saldo and importados)}

@@ -118,6 +118,14 @@ if engine.dialect.name == "postgresql":
             "CREATE INDEX IF NOT EXISTS ix_movimientos_huella "
             "ON movimientos (usuario_id, huella_externa)"
         ))
+        # Punto de partida (supabase/migraciones/punto_de_partida.sql). Opcionales.
+        conn.execute(text("ALTER TABLE ajustes_usuario ADD COLUMN IF NOT EXISTS punto_partida_modo VARCHAR NULL"))
+        conn.execute(text("ALTER TABLE ajustes_usuario ADD COLUMN IF NOT EXISTS punto_partida_fecha DATE NULL"))
+        conn.execute(text("ALTER TABLE ajustes_usuario ADD COLUMN IF NOT EXISTS punto_partida_saldos VARCHAR NULL"))
+        conn.execute(text("ALTER TABLE ajustes_usuario ADD COLUMN IF NOT EXISTS punto_partida_en TIMESTAMP NULL"))
+        # Resultado de probar la clave del PDF en cada extracto (mismo archivo .sql).
+        conn.execute(text("ALTER TABLE extractos_correo ADD COLUMN IF NOT EXISTS clave_resultado VARCHAR NULL"))
+        conn.execute(text("ALTER TABLE extractos_correo ADD COLUMN IF NOT EXISTS clave_probada_en TIMESTAMP NULL"))
         # Casi toda consulta filtra por cuenta y ordena/filtra por fecha.
         conn.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_movimientos_cuenta_fecha "

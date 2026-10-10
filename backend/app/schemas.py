@@ -762,6 +762,8 @@ class ExtractoCorreoOut(BaseModel):
     # Banco con varias cuentas sin ganador claro: ids posibles y la pregunta en lenguaje simple.
     cuentas_candidatas: list[str] = []
     pregunta_cuenta: Optional[str] = None
+    # Solo si pide clave (o ya se abrió con ella): 'abrio' | 'no_abrio' | 'por_probar' | 'sin_clave'.
+    clave_estado: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -769,6 +771,10 @@ class ExtractoCorreoOut(BaseModel):
 
 class ClavePdfIn(BaseModel):
     clave: str = Field(min_length=1, max_length=120)
+
+
+class ProbarClaveIn(BaseModel):
+    extracto_id: Optional[str] = None  # sin id: se prueba en todos los extractos que piden clave
 
 
 class ConciliarExtractoRequest(BaseModel):
@@ -861,6 +867,7 @@ class MovimientoReview(BaseModel):
     descripcion_registrada: Optional[str] = None  # completado: lo que había registrado el usuario
     monto_registrado: Optional[float] = None  # completado: monto registrado (puede diferir del banco)
     razon_categoria: Optional[str] = None  # por qué se sugiere esa categoría
+    confianza_categoria: Optional[float] = None  # 0..1: qué tan segura está la sugerencia (None = sin sugerencia)
     auto: bool = False  # importado solo (ajuste "importar lo que reconozco"): se puede deshacer
     movimiento_id: Optional[str] = None  # id del movimiento creado al auto-importar
     pista: Optional[str] = None  # 'posible_traslado_propio': la contraparte parece el titular; mueve saldo igual
@@ -876,6 +883,7 @@ class ProcesarExtractoResponse(BaseModel):
     aproximados: int = 0
     faltantes: int = 0
     descartados: int = 0
+    anteriores: int = 0  # líneas anteriores a la fecha de inicio (punto de partida): no se ofrecen
     review: list[MovimientoReview] = []
     error: Optional[str] = None
     auto_importados: int = 0  # movimientos que entraron solos (solo con el ajuste activo; quedan "por revisar")
