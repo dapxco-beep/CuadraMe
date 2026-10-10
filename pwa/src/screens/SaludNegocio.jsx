@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Activity, AlertTriangle, ArrowLeft, Lock, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Activity, AlertTriangle, ArrowLeft, ChevronRight, Lock, MessageCircle, Users } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/AuthContext'
+import { esAdminVisible } from '../lib/navegacion'
 import { useVolver } from '../lib/useVolver'
 import BarraProgreso from '../components/BarraProgreso'
 import Icono from '../components/Icono'
@@ -54,6 +57,7 @@ function Capacidad({ c }) {
 
 export default function SaludNegocio() {
   const volver = useVolver('/perfil')
+  const admin = esAdminVisible(useAuth()?.usuario?.email)
   const [datos, setDatos] = useState(null)
   const [estado, setEstado] = useState('cargando') // cargando | ok | prohibido | error
 
@@ -145,6 +149,14 @@ export default function SaludNegocio() {
           <Sparkline valores={totales} resumen={`Usuarios acumulados en 30 días: de ${fmt(totales[0])} a ${fmt(totales[totales.length - 1])}`} className="text-accent" />
         </div>
       </Tarjeta>
+
+      {admin && (
+        <Link to="/comentarios-admin" className="mx-5 mt-3 flex items-center gap-3 rounded-2xl bg-paper-raised border border-line px-4 py-3.5">
+          <Icono icono={MessageCircle} tam="md" className="text-accent" />
+          <span className="flex-1 text-sm font-medium">Comentarios y sugerencias</span>
+          <Icono icono={ChevronRight} tam="sm" className="text-ink-soft" />
+        </Link>
+      )}
 
       {alertas.length > 0 && (
         <Tarjeta className="mx-5 mt-3 px-4 py-3 bg-danger-soft" role="alert">

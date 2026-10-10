@@ -53,6 +53,8 @@ const BuscarDuplicados = lazy(() => import('./screens/BuscarDuplicados'))
 const Ayuda = lazy(() => import('./screens/Ayuda'))
 const Aprende = lazy(() => import('./screens/Aprende'))
 const SaludNegocio = lazy(() => import('./screens/SaludNegocio'))
+const Opinion = lazy(() => import('./screens/Opinion'))
+const ComentariosAdmin = lazy(() => import('./screens/ComentariosAdmin'))
 const TerminosCondiciones = lazy(() => import('./screens/legal/TerminosCondiciones'))
 const PoliticaPrivacidad = lazy(() => import('./screens/legal/PoliticaPrivacidad'))
 const AutorizacionDatos = lazy(() => import('./screens/legal/AutorizacionDatos'))
@@ -75,7 +77,15 @@ function AppGate() {
   }
 
   if (error && cuentas.length === 0) {
-    return <ErrorAmable sinConexion={error === MSG_SIN_CONEXION} detalle={error} onAccion={recargar} />
+    // /opinion sigue abierta aunque las cuentas no carguen: quien no puede entrar también puede contarnos qué pasó.
+    return (
+      <Suspense fallback={<Cargando />}>
+        <Routes>
+          <Route path="/opinion" element={<Opinion />} />
+          <Route path="*" element={<ErrorAmable sinConexion={error === MSG_SIN_CONEXION} detalle={error} onAccion={recargar} reportar />} />
+        </Routes>
+      </Suspense>
+    )
   }
 
   if (cuentas.length === 0) {
@@ -121,6 +131,8 @@ function AppGate() {
         <Route path="/ayuda" element={<Ayuda />} />
         <Route path="/aprende" element={<Aprende />} />
         <Route path="/salud-negocio" element={<SaludNegocio />} />
+        <Route path="/opinion" element={<Opinion />} />
+        <Route path="/comentarios-admin" element={<ComentariosAdmin />} />
         <Route path="/legal/terminos" element={<TerminosCondiciones />} />
         <Route path="/legal/privacidad" element={<PoliticaPrivacidad />} />
         <Route path="/legal/autorizacion-datos" element={<AutorizacionDatos />} />

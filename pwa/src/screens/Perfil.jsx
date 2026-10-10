@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Flag, Mail, Receipt, Check, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
+import { Bell, Flag, Mail, Receipt, Check, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, MessageCircle, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -163,6 +163,14 @@ export default function Perfil() {
           <div className="flex-1">
             <p className="text-sm font-medium">Ayuda y preguntas frecuentes</p>
             <p className="text-xs text-ink-soft mt-0.5">Extractos, clave del PDF, Gmail, borrar tus datos…</p>
+          </div>
+          <ChevronRight size={16} className="text-ink-soft" />
+        </Link>
+        <Link to="/opinion?desde=/perfil" className="mt-2 flex items-center gap-3 rounded-2xl bg-paper-raised border border-line px-4 py-3.5">
+          <MessageCircle size={20} className="text-accent shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Tu opinión cuenta</p>
+            <p className="text-xs text-ink-soft mt-0.5">Una idea, una duda o algo que no funcionó.</p>
           </div>
           <ChevronRight size={16} className="text-ink-soft" />
         </Link>
