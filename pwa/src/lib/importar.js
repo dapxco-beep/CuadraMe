@@ -17,7 +17,12 @@ export const ETIQUETA_ESTADO = {
   nuevo: 'Nuevo',
   posible_duplicado: 'Posible duplicado',
   duplicado: 'Ya registrado',
+  anterior: 'Anterior a tu fecha de inicio',
 }
+
+// Ya registrada o anterior al punto de partida: no se puede marcar (importarla duplicaría o iría contra
+// la fecha de inicio que la persona eligió).
+export const noImportable = (p) => p?.estado === 'duplicado' || p?.estado === 'anterior'
 
 export function extensionValida(nombre) {
   const ext = (nombre || '').toLowerCase().split('.').pop()
@@ -38,7 +43,7 @@ export function categoriasIniciales(propuesta) {
 // llevan los indicadores; el servidor guarda la regla del comercio y, si se pide, recategoriza los anteriores.
 export function construirFilas(propuesta, seleccion, categorias, aprender = {}) {
   return propuesta
-    .filter((p) => seleccion.has(p.fila) && p.estado !== 'duplicado')
+    .filter((p) => seleccion.has(p.fila) && !noImportable(p))
     .map((p) => {
       const fila = {
         fecha: p.fecha,

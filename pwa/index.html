@@ -13,7 +13,9 @@
     <meta name="apple-mobile-web-app-title" content="CuadraMe" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="description" content="Cuadra tus cuentas, simple y al día." />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Estable como app nativa: sin zoom por pellizco ni doble toque (el texto sigue la configuración del
+         sistema: no se fija ningún tamaño en px en <html>). Ver src/lib/estabilidadVista.js. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <title>CuadraMe</title>
     <!-- Splash nativo de iOS (generado por scripts/make-icons.mjs; no editar a mano) -->
     <!-- splash:inicio -->

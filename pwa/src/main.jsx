@@ -10,6 +10,7 @@ import '@fontsource/sora/latin-700.css'
 import '@fontsource/sora/latin-800.css'
 import './index.css'
 import App from './App.jsx'
+import { bloquearZoomPellizco } from './lib/estabilidadVista'
 
 // Sentry se descarga solo si hay DSN (producción): así el paquete principal no lo
 // arrastra. DSN vacío = monitoreo desactivado, sin romper nada. Los errores que
@@ -74,6 +75,8 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('/sw.js').catch(() => {})
   })
 }
+
+bloquearZoomPellizco()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

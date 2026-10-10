@@ -444,6 +444,16 @@ export const api = {
   clavePdfEstado: () => request('/correos/clave-pdf'),
   guardarClavePdf: (clave) => request('/correos/clave-pdf', { method: 'PUT', body: { clave } }),
   borrarClavePdf: () => request('/correos/clave-pdf', { method: 'DELETE' }),
+  // Prueba la clave guardada ahora: en un extracto (extractoId) o en todos los que piden clave.
+  probarClavePdf: (extractoId) =>
+    request('/correos/clave-pdf/probar', { method: 'POST', body: extractoId ? { extracto_id: extractoId } : {} }),
+  // Punto de partida («empezar desde hoy» / «recrear mi histórico»).
+  puntoDePartida: () => request('/perfil/punto-de-partida'),
+  guardarPuntoDePartida: (datos) => request('/perfil/punto-de-partida', { method: 'PUT', body: datos }),
+  coberturaPuntoDePartida: () => request('/perfil/punto-de-partida/cobertura'),
+  conciliacionPuntoDePartida: () => request('/perfil/punto-de-partida/conciliacion'),
+  ajustarSaldosPuntoDePartida: (cuentaIds = []) =>
+    request('/perfil/punto-de-partida/ajustar-saldos', { method: 'POST', body: { cuenta_ids: cuentaIds } }),
 
   resumenSemanal: (desde, hasta) =>
     request(`/insights/resumen-semanal${desde && hasta ? `?desde=${desde}&hasta=${hasta}` : ''}`),

@@ -12,6 +12,7 @@ import RecordarRegla, { RECORDAR_INICIAL } from '../components/RecordarRegla'
 import ZonaSubida from '../components/ZonaSubida'
 import {
   CAMPOS_MAPEO,
+  noImportable,
   ETIQUETA_ESTADO,
   MAX_BYTES,
   categoriasIniciales,
@@ -35,6 +36,7 @@ const colorEstado = {
   nuevo: 'text-accent',
   posible_duplicado: 'text-danger',
   duplicado: 'text-ink-soft',
+  anterior: 'text-ink-soft',
 }
 
 // Lectura con columnas elegidas a mano (para un Excel o CSV raro). El flujo normal vive en el
@@ -43,7 +45,9 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
   const navigate = useNavigate()
   const volver = useVolver('/movimientos')
   const { cuentas, recargar: recargarCuentas } = useCuentas()
-  const { nombres: CATEGORIAS } = useCategorias()
+  const catsCtx = useCategorias()
+  const CATEGORIAS = catsCtx?.nombres || []
+  const iconoDe = catsCtx?.iconoDe || (() => '💳')
   const [cuentaId, setCuentaId] = useState(cuentaInicial || cuentas[0]?.id || '')
   const [archivo, setArchivo] = useState(null) // { nombre, base64 }
   const [analisis, setAnalisis] = useState(null) // respuesta de /importar/vista-previa
@@ -404,8 +408,8 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
                     <label className="flex items-center gap-3">
                       <input
                         type="checkbox"
-                        checked={seleccion.has(p.fila) && p.estado !== 'duplicado'}
-                        disabled={p.estado === 'duplicado'}
+                        checked={seleccion.has(p.fila) && !noImportable(p)}
+                        disabled={noImportable(p)}
                         onChange={() => alternar(p.fila)}
                         className="w-5 h-5 accent-accent shrink-0"
                         aria-label={`Importar ${p.descripcion}`}
@@ -421,7 +425,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
                         {formatCOP(p.monto)}
                       </p>
                     </label>
-                    {seleccion.has(p.fila) && p.estado !== 'duplicado' && (
+                    {seleccion.has(p.fila) && !noImportable(p) && (
                       <>
                         <select
                           aria-label={`Categoría de ${p.descripcion}`}
@@ -431,7 +435,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
                           style={{ width: 'calc(100% - 2rem)' }}
                         >
                           {opcionesCategoria(CATEGORIAS, categorias[p.fila]).map((c) => (
-                            <option key={c} value={c}>{c}</option>
+                            <option key={c} value={c}>{iconoDe(c)} {c}</option>
                           ))}
                         </select>
                         <div className="ml-8 mt-1.5">

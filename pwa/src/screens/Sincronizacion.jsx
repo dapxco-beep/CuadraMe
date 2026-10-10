@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { useEstadoLista } from '../lib/useEstadoLista'
 import {
@@ -22,7 +22,9 @@ import ConexionGmail from '../components/ConexionGmail'
 import CorreosPorRevisar from '../components/CorreosPorRevisar'
 import CorreosYaRegistrados from '../components/CorreosYaRegistrados'
 import CrearCuentaBanco from '../components/CrearCuentaBanco'
+import EstadoClavePdf, { textoEstadoClave } from '../components/EstadoClavePdf'
 import ExtractosYaConciliados from '../components/ExtractosYaConciliados'
+import PuntoDePartida from '../components/PuntoDePartida'
 import Hoja from '../components/Hoja'
 import PasosCentro from '../components/PasosCentro'
 import SubirArchivos from '../components/SubirArchivos'
@@ -30,6 +32,7 @@ import Conexiones from './Conexiones'
 import { mensajeAmable } from '../lib/mensajes'
 import SelectorCuentaBanco from '../components/SelectorCuentaBanco'
 import { cuentaRecordada, productoDeTexto } from '../lib/cuentasBanco'
+import { posponerPuntoDePartida, puntoDePartidaPospuesto } from '../lib/puntoPartida'
 
 // "Traer movimientos": UN solo centro para todo lo que trae movimientos a CuadraMe.
 //   Arriba: estado y «Sincronizar todo».  Luego tres bloques plegables con contador:
@@ -105,9 +108,12 @@ export default function Sincronizacion() {
   const [cuentaPorExtracto, setCuentaPorExtracto] = useState({})
   const [ocupados, setOcupados] = useState(new Set())
   const [avisoExt, setAvisoExt] = useState('')
-  const [claveConfigurada, setClaveConfigurada] = useState(false)
-  const [claveInput, setClaveInput] = useState('')
+  const [claveInfo, setClaveInfo] = useState({}) // GET /correos/clave-pdf (nunca trae la clave)
+  const [probandoClave, setProbandoClave] = useState(false)
+  const [pruebaClave, setPruebaClave] = useState({ resultado: null, mensaje: '', error: '' })
   const [mostrarClave, setMostrarClave] = useState(false)
+  const [pospuestoPP, setPospuestoPP] = useState(() => puntoDePartidaPospuesto())
+  const [ppRecien, setPpRecien] = useState(false) // acaba de elegir: se queda a la vista con su resumen
   const [recordar, setRecordar] = useState({}) // id -> false cuando la casilla se desmarca
   const [abiertos, setAbiertos] = useState({
     correo: llegada?.abrir === 'correo', subir: llegada?.abrir === 'subir', revisar: llegada?.abrir === 'revisar',
@@ -165,7 +171,7 @@ export default function Sincronizacion() {
       setGmail(gm)
       setExtractos(Array.isArray(ex) ? ex : [])
       setCorreos(Array.isArray(pend) ? pend : [])
-      setClaveConfigurada(Boolean(clave?.configurada))
+      setClaveInfo(clave && typeof clave === 'object' ? clave : {})
       setCola({ items: porCat?.items || [], total: porCat?.total || 0 })
       setError('')
     } catch (err) {
@@ -331,14 +337,36 @@ export default function Sincronizacion() {
     }
   }
 
-  async function guardarClave() {
-    if (!claveInput.trim()) return
+  // Prueba la clave guardada AHORA (en un extracto o en todos los protegidos) y dice el resultado
+  // con todas las letras: cuántos abrió y cuáles no. Nunca muestra la clave.
+  async function probarClave(extractoId) {
+    if (probandoClave || typeof api.probarClavePdf !== 'function') return
+    setProbandoClave(true)
+    setPruebaClave({ resultado: null, mensaje: '', error: '' })
+    try {
+      const r = await api.probarClavePdf(extractoId)
+      if (!montado.current) return
+      setPruebaClave({ resultado: r, mensaje: r?.mensaje || '', error: '' })
+      await cargar()
+    } catch (err) {
+      if (montado.current) setPruebaClave({ resultado: null, mensaje: '', error: mensajeAmable(err?.message, { porDefecto: 'No pude probar la clave ahora. Intenta de nuevo.' }) })
+    } finally {
+      if (montado.current) setProbandoClave(false)
+    }
+  }
+
+  async function guardarClave(valor) {
+    const v = (valor || '').trim()
+    if (!v) return
     setAvisoExt('')
     try {
-      await api.guardarClavePdf(claveInput.trim())
-      setClaveInput('')
-      setClaveConfigurada(true)
-      setAvisoExt('Clave guardada. Toca «Sincronizar todo» para abrir esos extractos.')
+      await api.guardarClavePdf(v)
+      setClaveInfo((c) => ({ ...c, configurada: true }))
+      setPruebaClave({ resultado: null, mensaje: '', error: '' })
+      // Con extractos protegidos esperando, se prueba de una vez: así no queda la duda de si la cogió.
+      const hayProtegidos = extractos.some((e) => e.estado === 'falta_clave') || (claveInfo.protegidos || 0) > 0
+      if (hayProtegidos && typeof api.probarClavePdf === 'function') await probarClave()
+      else setAvisoExt('Clave guardada. Toca «Sincronizar todo» para abrir esos extractos.')
     } catch (err) {
       setAvisoExt(err.message || 'No se pudo guardar la clave')
     }
@@ -347,7 +375,8 @@ export default function Sincronizacion() {
   async function borrarClave() {
     try {
       await api.borrarClavePdf()
-      setClaveConfigurada(false)
+      setClaveInfo((c) => ({ ...c, configurada: false }))
+      setPruebaClave({ resultado: null, mensaje: '', error: '' })
     } catch (err) {
       setAvisoExt(err.message || 'No se pudo borrar la clave')
     }
@@ -442,6 +471,17 @@ export default function Sincronizacion() {
           <Plug size={14} aria-hidden="true" /> Conexiones
         </button>
       </header>
+
+      {(estado?.punto_partida?.definido === false || ppRecien) && !pospuestoPP && (
+        <section className="mx-6 mt-3" aria-label="Punto de partida">
+          <PuntoDePartida
+            variante="primera"
+            inicial={estado.punto_partida}
+            onGuardado={() => { setPpRecien(true); cargar() }}
+            onPosponer={() => { posponerPuntoDePartida(); setPospuestoPP(true) }}
+          />
+        </section>
+      )}
 
       {sinDatos({ estado, conectado }) && <PasosCentro paso={pasoActual({ conectado, tareas })} />}
 
@@ -542,6 +582,14 @@ export default function Sincronizacion() {
                   onCuentaCreada={cargar}
                 />
               )}
+              {(estado?.punto_partida?.anteriores?.correos || 0) > 0 && (
+                <p className="text-xs text-ink-soft mt-3 rounded-xl bg-paper border border-line px-3 py-2.5" data-testid="correos-anteriores">
+                  {estado.punto_partida.anteriores.correos === 1
+                    ? '1 correo anterior a tu fecha de inicio no se muestra.'
+                    : `${estado.punto_partida.anteriores.correos} correos anteriores a tu fecha de inicio no se muestran.`}{' '}
+                  <Link to="/perfil#punto-de-partida" className="font-semibold text-accent underline">Cambiar la fecha</Link>
+                </p>
+              )}
               <CorreosYaRegistrados cantidad={estado?.correos_ya_registrados || 0} onCambio={cargar} />
               {correosIgnorados === null ? (
                 <button onClick={verCorreosIgnorados} className="text-xs text-ink-soft mt-3 underline min-h-[32px]">Ver correos ignorados</button>
@@ -561,34 +609,21 @@ export default function Sincronizacion() {
             <Sub id="sinc-extractos" titulo="Extractos encontrados" cuenta={pendientes.length}>
               {avisoExt && <p className="text-xs text-danger mb-2" role="alert">{avisoExt}</p>}
 
-              {(mostrarClave || tareas.some((t) => t.id === 'falta_clave')) && (
-                <div id="sinc-clave" className="rounded-2xl bg-paper border border-line p-4 mb-3">
-                  <p className="flex items-center gap-1.5 text-xs font-semibold mb-1"><KeyRound size={13} aria-hidden="true" /> Clave del PDF</p>
-                  <p className="text-xs text-ink-soft mb-2">
-                    {claveConfigurada ? 'Hay una clave guardada.' : 'Normalmente es tu cédula.'} Se guarda cifrada y no se muestra de nuevo.
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="password"
-                      autoComplete="off"
-                      value={claveInput}
-                      onChange={(e) => setClaveInput(e.target.value)}
-                      placeholder={claveConfigurada ? 'Nueva clave' : 'Clave (ej. tu cédula)'}
-                      aria-label="Clave del PDF"
-                      className="flex-1 min-w-0 rounded-xl border border-line bg-paper-raised px-3 py-2 text-sm outline-none focus:border-accent"
-                    />
-                    <button onClick={guardarClave} disabled={!claveInput.trim()} className="px-4 rounded-xl bg-ink text-paper text-sm font-semibold disabled:opacity-50">
-                      Guardar
-                    </button>
-                  </div>
-                  {claveConfigurada && (
-                    <button onClick={borrarClave} className="text-xs text-danger mt-2 min-h-[32px]">Borrar la clave guardada</button>
-                  )}
-                </div>
+              {(mostrarClave || tareas.some((t) => t.id === 'falta_clave') || (claveInfo.protegidos || 0) > 0) && (
+                <EstadoClavePdf
+                  info={claveInfo}
+                  onGuardar={guardarClave}
+                  onBorrar={borrarClave}
+                  onProbar={() => probarClave()}
+                  probando={probandoClave}
+                  resultado={pruebaClave.resultado}
+                  mensaje={pruebaClave.mensaje}
+                  error={pruebaClave.error}
+                />
               )}
-              {!mostrarClave && !tareas.some((t) => t.id === 'falta_clave') && (
-                <button onClick={() => setMostrarClave(true)} className="flex items-center gap-1 text-xs text-ink-soft mb-3 min-h-[32px]">
-                  <KeyRound size={13} aria-hidden="true" /> Clave del PDF
+              {!mostrarClave && !tareas.some((t) => t.id === 'falta_clave') && !((claveInfo.protegidos || 0) > 0) && (
+                <button onClick={() => setMostrarClave(true)} className="flex items-center gap-1 text-xs text-ink-soft mb-3 min-h-[44px]">
+                  <KeyRound size={16} aria-hidden="true" /> Clave del PDF{claveInfo.configurada ? ` · ${textoEstadoClave(claveInfo)}` : ''}
                 </button>
               )}
 
@@ -614,6 +649,9 @@ export default function Sincronizacion() {
                             onConciliar={() => conciliar(ex)}
                             onVer={() => pedirSubir({ historialId: ex.historial_id })}
                             onClave={() => { setMostrarClave(true); irA('sinc-clave') }}
+                            claveConfigurada={Boolean(claveInfo.configurada)}
+                            probando={probandoClave}
+                            onProbarClave={() => probarClave(ex.id)}
                             onIgnorar={() => ignorar(ex)}
                           />
                         ))}
@@ -886,7 +924,10 @@ export default function Sincronizacion() {
   )
 }
 
-function FilaExtracto({ ex, cuentas, cuentaId, nombreCuenta, ocupado, onCuenta, onConciliar, onVer, onClave, onIgnorar }) {
+function FilaExtracto({
+  ex, cuentas, cuentaId, nombreCuenta, ocupado, onCuenta, onConciliar, onVer, onClave, onIgnorar,
+  claveConfigurada = false, probando = false, onProbarClave,
+}) {
   const banco = ex.banco || BANCO_SIN_IDENTIFICAR
   const sinBanco = !ex.banco
   const puedeConciliar = ex.estado === 'nuevo'
@@ -902,6 +943,14 @@ function FilaExtracto({ ex, cuentas, cuentaId, nombreCuenta, ocupado, onCuenta, 
           <p className={`text-xs font-medium mt-0.5 ${ex.estado === 'falta_clave' || ex.estado === 'error' ? 'text-danger' : ex.estado === 'procesado' ? 'text-cuadra' : 'text-accent'}`}>
             {textoEstadoExtracto(ex)}
           </p>
+          {ex.estado === 'falta_clave' && ex.clave_estado === 'no_abrio' && (
+            <p className="text-xs text-danger mt-0.5" data-testid="clave-no-abrio">
+              La clave guardada no abrió este extracto: revísala.
+            </p>
+          )}
+          {ex.estado === 'falta_clave' && claveConfigurada && ex.clave_estado === 'por_probar' && (
+            <p className="text-xs text-ink-soft mt-0.5">Falta probar la clave en este extracto.</p>
+          )}
         </div>
       </div>
 
@@ -934,8 +983,19 @@ function FilaExtracto({ ex, cuentas, cuentaId, nombreCuenta, ocupado, onCuenta, 
             {ocupado ? 'Conciliando...' : 'Conciliar'}
           </button>
         )}
+        {ex.estado === 'falta_clave' && claveConfigurada && onProbarClave && (
+          <button
+            onClick={onProbarClave}
+            disabled={probando}
+            className="flex-1 border border-line font-semibold rounded-xl py-2.5 text-sm disabled:opacity-60"
+          >
+            {probando ? 'Probando…' : 'Probar la clave ahora'}
+          </button>
+        )}
         {ex.estado === 'falta_clave' && (
-          <button onClick={onClave} className="flex-1 bg-accent text-white font-semibold rounded-xl py-2.5 text-sm">Poner clave</button>
+          <button onClick={onClave} className="flex-1 bg-accent text-white font-semibold rounded-xl py-2.5 text-sm">
+            {claveConfigurada ? 'Cambiar la clave' : 'Poner clave'}
+          </button>
         )}
         {ex.estado !== 'procesado' && (
           <button onClick={onIgnorar} className="px-4 rounded-xl border border-line text-sm text-ink-soft" aria-label={`Ignorar extracto ${banco}`}>
