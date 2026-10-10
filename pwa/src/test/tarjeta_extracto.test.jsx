@@ -40,6 +40,15 @@ describe('Panel de tarjeta: pago para no pagar intereses', () => {
     expect(screen.getByTestId('bloque-extracto')).toHaveTextContent(/plazo ya pasó/)
   })
 
+  it('tarjeta nueva con saldo declarado: no habla de plazo vencido ni de extracto', () => {
+    const t = { ...BASE, saldo_declarado: true, vencido: false, dias_para_limite: -5 }
+    render(<PanelTarjetaCredito cuenta={cuenta(t)} />)
+    const b = screen.getByTestId('bloque-extracto-declarado')
+    expect(b).toHaveTextContent(/el saldo que declaraste/)
+    expect(b).toHaveTextContent(/Aún no tenemos un extracto/)
+    expect(screen.queryByText(/plazo ya pasó/)).not.toBeInTheDocument()
+  })
+
   it('sin extracto (sin día de corte) mantiene el mensaje anterior', () => {
     const t = { ...BASE, total_extracto: null, falta_para_evitar_intereses: null }
     render(<PanelTarjetaCredito cuenta={cuenta(t)} />)

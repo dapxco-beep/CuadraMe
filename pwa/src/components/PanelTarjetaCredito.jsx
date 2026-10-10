@@ -44,6 +44,18 @@ export function BloqueExtracto({ t, moneda }) {
   if (t.total_extracto == null || t.total_extracto <= 0) return null
   const pct = Math.min(100, t.pagado_pct || 0)
   const pagado = t.falta_para_evitar_intereses <= 0
+  // Tarjeta nueva: la deuda es el saldo que declaraste, no un extracto. No se habla de plazos vencidos.
+  if (t.saldo_declarado) {
+    return (
+      <div className="mt-3 rounded-xl border border-line bg-paper p-3 text-xs" data-testid="bloque-extracto-declarado">
+        <p className="font-semibold text-sm">Debes {formatMoneda(t.total_extracto, moneda)} (el saldo que declaraste)</p>
+        <p className="text-ink-soft mt-1 leading-relaxed">
+          Aún no tenemos un extracto de tu banco, así que no sabemos cuánto pagar para evitar intereses.
+          Sube tu extracto o tu próximo corte{t.proximo_corte ? ` (${fechaCorta(t.proximo_corte)})` : ''} y lo calculamos con datos reales.
+        </p>
+      </div>
+    )
+  }
   return (
     <div className="mt-3 rounded-xl border border-line bg-paper p-3 text-xs" data-testid="bloque-extracto">
       <p className="font-semibold text-sm">

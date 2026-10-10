@@ -187,3 +187,35 @@ def test_api_de_cuentas_trae_el_extracto():
     assert t["compras_despues_corte"] == 200_000
     d = client.get(f"/cuentas/{cid}/detalle").json()["cuenta"]["tarjeta"]
     assert d["falta_para_evitar_intereses"] == 700_000
+
+
+# ── saldo declarado al crear la tarjeta (no es un extracto vencido) ──
+
+def test_saldo_declarado_no_se_da_por_vencido():
+    # corte el 15, pago el 19: hoy 25 de octubre el plazo del corte del 15 ya pasó,
+    # pero la deuda es solo el saldo que se declaró al crear la tarjeta.
+    e = estado_extracto(-1_000_000, [], 15, 19, date(2026, 10, 25), saldo_declarado=True)
+    assert e["saldo_declarado"] is True and e["vencido"] is False
+    assert e["total_extracto"] == 1_000_000
+    # con historial real, sí vence
+    e2 = estado_extracto(-1_000_000, [], 15, 19, date(2026, 10, 25), saldo_declarado=False)
+    assert e2["vencido"] is True and e2["saldo_declarado"] is False
+
+
+def test_extracto_del_banco_vencido_aunque_la_cuenta_sea_nueva():
+    guardado = {"pago_total": 1_000_000, "pago_minimo": 50_000, "fecha_limite_pago": "2026-10-19", "fecha_corte": "2026-10-15"}
+    e = estado_extracto(-1_000_000, [], 15, 19, date(2026, 10, 18), guardado, saldo_declarado=True)
+    assert e["total_del_banco"] is True and e["saldo_declarado"] is False
+
+
+def test_api_tarjeta_nueva_con_saldo_declarado():
+    hoy = ahora_co()
+    corte = (hoy - timedelta(days=10)).day
+    pago = (hoy - timedelta(days=5)).day  # el plazo del último corte ya pasó
+    r = client.post("/cuentas", json={
+        "nombre": "Visa Nueva", "tipo": "credito", "saldo": -800_000, "cupo_total": 4_000_000,
+        "dia_corte": corte, "dia_pago": pago,
+    })
+    assert r.status_code == 200, r.text
+    t = r.json()["tarjeta"]
+    assert t["saldo_declarado"] is True and t["vencido"] is False
