@@ -297,8 +297,8 @@ def estado(
     )
     candidatas = [
         ("falta_clave", "Falta la clave del PDF", "Guárdala y abro estos extractos por ti.", n_falta_clave, "/sincronizacion#clave"),
-        ("extractos_por_conciliar", "Extractos por conciliar",
-         "Cruza tu extracto con lo que registraste.", n_por_conciliar, "/sincronizacion#extractos"),
+        ("extractos_por_conciliar", "Extractos por revisar",
+         "Mira qué trae tu extracto y qué falta registrar.", n_por_conciliar, "/sincronizacion#extractos"),
         ("sin_cuenta", "Bancos sin cuenta",
          "Crea la cuenta de " + ", ".join(d["banco"] for d in sin_cuenta[:3]) + "." if sin_cuenta else "",
          len(sin_cuenta), "/sincronizacion#cuentas"),
