@@ -5,6 +5,7 @@ import { ArrowLeft, Plus, Users } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatMoneda } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
+import InputMonto from '../components/InputMonto'
 
 const MODOS = [
   { id: 'iguales', label: 'Iguales' },
@@ -103,7 +104,7 @@ export default function DividirGasto() {
       setElegidos((prev) => [...prev, c.id])
       setNuevo(null)
     } catch (e) {
-      setError(e.message || 'No se pudo crear el contacto')
+      setError(e.message || 'No se pudo crear el contacto. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -118,7 +119,7 @@ export default function DividirGasto() {
       setGrupoId(g.id)
       setNombreGrupo(null)
     } catch (e) {
-      setError(e.message || 'No se pudo crear el grupo')
+      setError(e.message || 'No se pudo crear el grupo. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -147,7 +148,7 @@ export default function DividirGasto() {
       await recargarCuentas()
       navigate('/amigos', { replace: true })
     } catch (e) {
-      setError(e.message || 'No se pudo guardar')
+      setError(e.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -178,11 +179,10 @@ export default function DividirGasto() {
           placeholder="¿Qué se pagó? (ej. Cena, Airbnb)"
           className={campo}
         />
-        <input
+        <InputMonto entero
           aria-label="Total"
           value={monto}
-          onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
-          inputMode="numeric"
+          onValor={setMonto}
           placeholder="Total"
           className={`${campo} w-32 text-right tabular-nums`}
         />

@@ -242,6 +242,16 @@ function limpiar(p) {
 export const api = {
   // Solo la administración (el servidor responde 404 a cualquier otra persona).
   panelNegocio: () => request('/metricas/panel'),
+  // Buzón de opinión: cualquiera envía y ve lo suyo; lo demás es solo del administrador (404 al resto).
+  enviarComentario: (data) => request('/comentarios', { method: 'POST', body: data }),
+  misComentarios: () => request('/comentarios/mios', { sinCache: true }),
+  comentariosAdmin: (p = {}) => {
+    const q = new URLSearchParams(limpiar(p)).toString()
+    return request(`/comentarios${q ? `?${q}` : ''}`, { sinCache: true })
+  },
+  cambiarComentario: (id, data) => request(`/comentarios/${encodeURIComponent(id)}`, { method: 'PATCH', body: data }),
+  marcarComentariosVistos: (ids) => request('/comentarios/marcar-vistos', { method: 'POST', body: { ids } }),
+  exportarComentariosCSV: () => descargarArchivo('/comentarios/exportar.csv', 'comentarios_cuadrame.csv'),
   cuentas: () => request('/cuentas'),
   crearCuenta: (data) => request('/cuentas', { method: 'POST', body: data }),
   editarCuenta: (id, data) => request(`/cuentas/${id}`, { method: 'PUT', body: data }),

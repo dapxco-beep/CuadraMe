@@ -132,6 +132,8 @@ class TarjetaInfo(BaseModel):
     dias_para_limite: Optional[int] = None
     pagado_pct: Optional[float] = None
     vencido: bool = False
+    # La deuda es solo el saldo que el cliente declaró al crear la tarjeta (sin historial hasta el corte)
+    saldo_declarado: bool = False
     # Datos del extracto real aplicados por el cliente (ver app/extracto_tarjeta.py)
     total_del_banco: bool = False
     pago_minimo_extracto: Optional[float] = None

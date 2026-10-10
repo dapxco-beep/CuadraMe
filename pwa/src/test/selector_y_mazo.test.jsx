@@ -22,14 +22,16 @@ describe('Primer registro con selección', () => {
   it('elige país, tipo y banco con toques y crea la cuenta sin escribir', async () => {
     render(<MemoryRouter><CrearCuenta onCreada={vi.fn()} /></MemoryRouter>)
     await userEvent.click(screen.getByText(/Empezar/))
+    await userEvent.click(screen.getByRole('button', { name: 'Cambiar país' }))
     await userEvent.click(screen.getByRole('button', { name: /Estados Unidos/ }))
     expect(screen.getByRole('button', { name: 'USD' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(screen.getByRole('button', { name: 'Cambiar país' }))
     await userEvent.click(screen.getByRole('button', { name: /Colombia/ }))
     expect(screen.getByRole('button', { name: 'COP' })).toHaveAttribute('aria-pressed', 'true')
     await userEvent.click(screen.getByRole('button', { name: /Tarjeta de crédito/ }))
     await userEvent.click(screen.getByRole('button', { name: /Nequi/ }))
     expect(screen.getByLabelText('Nombre de la cuenta')).toHaveValue('Nequi Crédito')
-    await userEvent.click(screen.getByText('Continuar'))
+    await userEvent.click(screen.getByText('Crear mi cuenta'))
     await waitFor(() =>
       expect(api.crearCuenta).toHaveBeenCalledWith(
         expect.objectContaining({ nombre: 'Nequi Crédito', tipo: 'credito', moneda: 'COP' })

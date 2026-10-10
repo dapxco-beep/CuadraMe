@@ -48,7 +48,7 @@ export default function Compartir() {
       setEmail('')
       cargar()
     } catch (err) {
-      setError(err.message || 'No se pudo enviar la invitación')
+      setError(err.message || 'No se pudo enviar la invitación. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setEnviando(false)
     }
@@ -85,7 +85,7 @@ export default function Compartir() {
                 </p>
                 <button
                   onClick={() => responderInvitacion(inv.id, true)}
-                  className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center shrink-0"
+                  className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center shrink-0"
                  aria-label="Aceptar invitación">
                   <Check size={16} />
                 </button>
@@ -150,7 +150,7 @@ export default function Compartir() {
               <button
                 type="submit"
                 disabled={enviando}
-                className="bg-accent text-white font-semibold rounded-2xl py-3 text-sm disabled:opacity-60"
+                className="bg-accent text-paper-raised font-semibold rounded-2xl py-3 text-sm disabled:opacity-60"
               >
                 {enviando ? 'Enviando...' : 'Enviar invitación'}
               </button>

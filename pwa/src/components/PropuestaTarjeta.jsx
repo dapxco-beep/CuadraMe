@@ -31,7 +31,7 @@ export default function PropuestaTarjeta({ propuesta, cuentaId, className = '' }
       await recargar?.()
       setEstado('aplicada')
     } catch (err) {
-      setError(err.message || 'No se pudo actualizar la tarjeta')
+      setError(err.message || 'No se pudo actualizar la tarjeta. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setAplicando(false)
     }
@@ -54,7 +54,7 @@ export default function PropuestaTarjeta({ propuesta, cuentaId, className = '' }
             <button
               onClick={aplicar}
               disabled={aplicando}
-              className="flex-1 bg-accent text-white font-semibold rounded-2xl py-3 text-sm disabled:opacity-60 min-h-[44px]"
+              className="flex-1 bg-accent text-paper-raised font-semibold rounded-2xl py-3 text-sm disabled:opacity-60 min-h-[44px]"
             >
               {aplicando ? 'Aplicando...' : 'Aplicar'}
             </button>

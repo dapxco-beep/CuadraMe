@@ -27,6 +27,7 @@ import {
 import { InsigniaAuto } from '../components/CategorizacionAuto'
 import SelectorCategoria from '../components/SelectorCategoria'
 import Hoja from '../components/Hoja'
+import TablaMovimientos from '../components/TablaMovimientos'
 import DetalleMovimiento from './DetalleMovimiento'
 
 const TAMANO_PAGINA = 200
@@ -125,7 +126,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
             esSel ? 'bg-accent border-accent' : 'border-line'
           }`}
         >
-          {esSel && <Check size={16} className="text-white" />}
+          {esSel && <Check size={16} className="text-paper-raised" />}
         </button>
         <div className="min-w-0 flex-1">
           <Link to={`/movimientos/${m.id}`} onClick={alClic} className="block pt-2.5 min-w-0">
@@ -157,7 +158,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
               <button
                 onClick={() => onConfirmar(m)}
                 aria-label={`Confirmar categoría de ${m.descripcion}`}
-                className="ml-2 flex items-center gap-1 text-xs font-semibold px-3 min-h-[32px] rounded-full bg-accent text-white"
+                className="ml-2 flex items-center gap-1 text-xs font-semibold px-3 min-h-[32px] rounded-full bg-accent text-paper-raised"
               >
                 <Check size={16} /> Confirmar
               </button>
@@ -306,7 +307,7 @@ export default function Movimientos() {
       })
       .catch((err) => {
         if (mia !== peticion.current || silencioso) return
-        setErrorCarga(err.message || 'No se pudieron cargar los movimientos')
+        setErrorCarga(err.message || 'No se pudieron cargar los movimientos. Revisa tu conexión e intenta de nuevo.')
       })
       .finally(() => mia === peticion.current && setCargando(false))
     recargarConteo()
@@ -361,6 +362,7 @@ export default function Movimientos() {
     [filtrados, f.comercio, f.orden]
   )
   const recientes = useMemo(() => categoriasRecientes(movimientos, CATEGORIAS), [movimientos, CATEGORIAS])
+  const vistaActiva = f.comercio ? 'comercio' : lateral && f.tabla ? 'tabla' : 'lista'
   const filtrosVisibles = mostrarFiltros || lateral || !!(f.cuenta || f.desde || f.hasta || f.tipo)
 
   // --- Ventana (virtualización por días) ---
@@ -471,7 +473,7 @@ export default function Movimientos() {
       } catch (err) {
         // Falló: se devuelve todo como estaba
         setMovimientos((prev) => prev.map((m) => (idSet.has(m.id) ? { ...m, categoria: previos.find((p) => p.id === m.id).categoria } : m)))
-        avisar(err.message || 'No se pudo cambiar la categoría')
+        avisar(err.message || 'No se pudo cambiar la categoría. Revisa tu conexión e intenta de nuevo.')
         return
       }
       recargarConteo()
@@ -505,7 +507,7 @@ export default function Movimientos() {
           }
           recargarConteo()
         } catch {
-          avisar('No se pudo deshacer')
+          avisar('No se pudo deshacer. Revisa tu conexión e intenta de nuevo.')
         }
       }
       // Con "aplicar a los anteriores" cambiaron movimientos que no están en pantalla: sin Deshacer
@@ -546,7 +548,7 @@ export default function Movimientos() {
         setMovimientos((prev) => prev.map((x) => (x.id === m.id ? { ...x, cat_confirmada: true, cat_origen: null } : x)))
         recargarConteo()
       } catch {
-        avisar('No se pudo confirmar la categoría')
+        avisar('No se pudo confirmar la categoría. Revisa tu conexión e intenta de nuevo.')
       }
     },
     [avisar, recargarConteo]
@@ -565,7 +567,7 @@ export default function Movimientos() {
       setHayMas(hay)
       recargarConteo()
     } catch {
-      avisar('No se pudieron confirmar')
+      avisar('No se pudieron confirmar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -576,7 +578,7 @@ export default function Movimientos() {
       setMovimientos((prev) => [...prev, ...siguientes])
       setHayMas(siguientes.length === TAMANO_PAGINA)
     } catch {
-      avisar('No se pudieron cargar más movimientos')
+      avisar('No se pudieron cargar más movimientos. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setCargandoMas(false)
     }
@@ -587,7 +589,7 @@ export default function Movimientos() {
     try {
       await (formato === 'xlsx' ? api.exportarExcel() : api.exportarCSV())
     } catch {
-      avisar('No se pudo exportar')
+      avisar('No se pudo exportar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setExportando(false)
     }
@@ -636,7 +638,7 @@ export default function Movimientos() {
       )
       salirModoSeleccion()
     } catch (err) {
-      avisar(err.message || 'No se pudieron mover')
+      avisar(err.message || 'No se pudieron mover. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setAplicando(false)
     }
@@ -675,7 +677,7 @@ export default function Movimientos() {
       salirModoSeleccion()
     } catch (err) {
       setMovimientos(previa) // no se pudo: vuelven a aparecer
-      avisar(err.message || 'No se pudieron eliminar')
+      avisar(err.message || 'No se pudieron eliminar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setAplicando(false)
     }
@@ -696,6 +698,19 @@ export default function Movimientos() {
   }
 
   const nombreCuenta = (id) => cuentas.find((c) => c.id === id)?.nombre || 'Cuenta'
+  const nombreCuentaTabla = useCallback((id) => cuentas.find((c) => c.id === id)?.nombre || 'Cuenta', [cuentas])
+  const enTabla = lateral && f.tabla && !f.comercio
+  const alternarTodos = useCallback(
+    (marcar) => {
+      if (marcar) {
+        setModoSeleccion(true)
+        setSeleccionados(new Set(filtrados.map((m) => m.id)))
+      } else {
+        setSeleccionados(new Set())
+      }
+    },
+    [filtrados]
+  )
   const chipsActivos = [
     f.q && { k: 'q', texto: `Texto: ${f.q}` },
     f.cuenta && { k: 'cuenta', texto: nombreCuenta(f.cuenta) },
@@ -708,7 +723,7 @@ export default function Movimientos() {
   const campo = 'rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-xs'
   const botonChip = (activo) =>
     `shrink-0 text-sm px-4 py-1.5 min-h-[44px] rounded-full border font-medium ${
-      activo ? 'bg-accent text-white border-accent' : 'border-accent text-accent'
+      activo ? 'bg-accent text-paper-raised border-accent' : 'border-accent text-accent'
     }`
 
   return (
@@ -758,7 +773,7 @@ export default function Movimientos() {
       </header>
 
       {/* ≥1024 px: filtros (o el detalle del movimiento) a la izquierda, lista a la derecha */}
-      <div className="dos-col dos-col-5-6">
+      <div className={`dos-col ${enTabla ? 'dos-col-riel-tabla' : 'dos-col-5-6'}`}>
         <div className="col col-sticky lg:max-h-[calc(100svh-2rem)] lg:overflow-y-auto">
           {panelId ? (
             <DetalleMovimiento key={panelId} id={panelId} embebido onCerrar={cerrarPanel} onCambio={alCambioDetalle} />
@@ -779,7 +794,9 @@ export default function Movimientos() {
               </div>
 
               <div className="px-5 mb-3 flex gap-2 overflow-x-auto no-scrollbar lg:flex-wrap lg:overflow-visible">
-                {(conteo.total > 0 || f.revisar) && (
+                {/* Sin repetir la misma lista con dos nombres: «Por revisar» no sale si es idéntica a «Sin categorizar»,
+                    y «Por confirmar» solo sale cuando hay además otra clase de pendientes. */}
+                {(((conteo.total > 0) && !(conteo.otros > 0 && conteo.auto === 0)) || f.revisar) && (
                   <button onClick={() => cambiarParams({ revisar: !f.revisar })} aria-pressed={f.revisar} className={botonChip(f.revisar)}>
                     Por revisar{conteo.total > 0 ? ` (${conteo.total})` : ''}
                   </button>
@@ -793,7 +810,7 @@ export default function Movimientos() {
                     Sin categorizar{conteo.otros > 0 ? ` (${conteo.otros})` : ''}
                   </button>
                 )}
-                {(conteo.auto > 0 || f.conf) && (
+                {((conteo.auto > 0 && conteo.otros > 0) || f.conf) && (
                   <button onClick={() => cambiarParams({ conf: !f.conf })} aria-pressed={f.conf} className={botonChip(f.conf)}>
                     Por confirmar{conteo.auto > 0 ? ` (${conteo.auto})` : ''}
                   </button>
@@ -808,7 +825,7 @@ export default function Movimientos() {
               )}
 
               {filtrosVisibles && (
-                <div className="px-5 mb-3 grid grid-cols-2 gap-2">
+                <div className="px-5 mb-3 grid grid-cols-2 gap-2 [.dos-col-riel-tabla_&]:grid-cols-1">
                   <input
                     type="date"
                     aria-label="Desde"
@@ -904,15 +921,16 @@ export default function Movimientos() {
               <div className="px-5 mb-4 flex items-center gap-2">
                 <div role="group" aria-label="Vista" className="inline-flex rounded-full border border-line p-0.5 bg-paper-raised">
                   {[
-                    { id: false, texto: 'Lista' },
-                    { id: true, texto: 'Por comercio' },
+                    { id: 'lista', texto: 'Lista' },
+                    ...(lateral ? [{ id: 'tabla', texto: 'Tabla' }] : []),
+                    { id: 'comercio', texto: 'Por comercio' },
                   ].map((v) => (
                     <button
                       key={v.texto}
-                      aria-pressed={f.comercio === v.id}
-                      onClick={() => cambiarParams({ vista: v.id ? 'comercio' : '' })}
+                      aria-pressed={vistaActiva === v.id}
+                      onClick={() => cambiarParams({ vista: v.id === 'lista' ? '' : v.id })}
                       className={`text-sm px-4 min-h-[44px] rounded-full font-medium ${
-                        f.comercio === v.id ? 'bg-ink text-paper' : 'text-ink-soft'
+                        vistaActiva === v.id ? 'bg-ink text-paper' : 'text-ink-soft'
                       }`}
                     >
                       {v.texto}
@@ -1028,6 +1046,19 @@ export default function Movimientos() {
                 </div>
               ))}
             </div>
+          ) : enTabla ? (
+            <TablaMovimientos
+              items={filtrados}
+              iconoDe={iconoDe}
+              monedaDe={monedaDe}
+              nombreCuenta={nombreCuentaTabla}
+              seleccionados={seleccionados}
+              panelId={panelId}
+              onToggle={alternar}
+              onToggleTodos={alternarTodos}
+              onAbrir={abrirPanel}
+              onChip={abrirChip}
+            />
           ) : (
             <div className="mx-5 relative pl-5">
               <div className="absolute left-[9px] top-1.5 bottom-1.5 w-0.5 bg-line" />
@@ -1146,7 +1177,7 @@ export default function Movimientos() {
             <button
               disabled={seleccionados.size === 0 || aplicando}
               onClick={eliminarSeleccion}
-              className="rounded-xl bg-danger text-white px-3 min-h-[44px] text-sm font-semibold disabled:opacity-40 flex items-center gap-1"
+              className="rounded-xl bg-danger text-paper-raised px-3 min-h-[44px] text-sm font-semibold disabled:opacity-40 flex items-center gap-1"
             >
               <Trash2 size={16} /> Eliminar
             </button>

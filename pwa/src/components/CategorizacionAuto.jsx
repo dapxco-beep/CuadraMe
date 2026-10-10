@@ -70,7 +70,7 @@ export function HojaCambiarCategoria({ movimiento, onClose, onHecho }) {
       })
       onHecho(r, categoria)
     } catch (err) {
-      setError(err.message || 'No se pudo cambiar la categoría')
+      setError(err.message || 'No se pudo cambiar la categoría. Revisa tu conexión e intenta de nuevo.')
       setGuardando(false)
     }
   }

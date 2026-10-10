@@ -36,7 +36,7 @@ describe('aviso de periodo ya conciliado', () => {
   it('dice cuenta, mes y movimientos cruzados, y deja seguir', () => {
     montar(<AvisoYaConciliado info={{ mes: '2026-09', cruzados: 12 }} cuenta="Nu" />)
     expect(screen.getByText('Este periodo de Nu ya lo revisamos con tu extracto: ¿quieres revisarlo otra vez?')).toBeInTheDocument()
-    expect(screen.getByText(/Septiembre 2026 · 12 movimientos cruzados/)).toBeInTheDocument()
+    expect(screen.getByText(/Septiembre 2026 · 12 movimientos coinciden con el banco/)).toBeInTheDocument()
     expect(screen.getByText(/no se duplica/)).toBeInTheDocument()
   })
 

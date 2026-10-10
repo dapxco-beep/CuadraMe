@@ -13,6 +13,7 @@ import {
   marcarBandejaAbierta,
   recordarBandejaCerrada,
 } from '../lib/bandeja'
+import InputMonto from './InputMonto'
 
 function hora(fecha) {
   const d = new Date(String(fecha).replace(' ', 'T'))
@@ -97,7 +98,7 @@ export default function BandejaPorConfirmar() {
       quitar([m.id])
       avisarCambio()
     } catch (err) {
-      avisar(err.message || 'No se pudo confirmar')
+      avisar(err.message || 'No se pudo confirmar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setOcupado(false)
     }
@@ -110,7 +111,7 @@ export default function BandejaPorConfirmar() {
       quitar(pendientes.map((m) => m.id))
       avisarCambio()
     } catch (err) {
-      avisar(err.message || 'No se pudieron confirmar')
+      avisar(err.message || 'No se pudieron confirmar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setOcupado(false)
     }
@@ -129,7 +130,7 @@ export default function BandejaPorConfirmar() {
       quitar([m.id])
       avisarCambio()
     } catch (err) {
-      avisar(err.message || 'No se pudo descartar')
+      avisar(err.message || 'No se pudo descartar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setOcupado(false)
     }
@@ -149,7 +150,7 @@ export default function BandejaPorConfirmar() {
         hechos.push(m.id)
       }
     } catch (err) {
-      avisar(err.message || 'No se pudieron descartar todos')
+      avisar(err.message || 'No se pudieron descartar todos. Revisa tu conexión e intenta de nuevo.')
     } finally {
       if (hechos.length) {
         quitar(hechos)
@@ -177,7 +178,7 @@ export default function BandejaPorConfirmar() {
       quitar([m.id])
       avisarCambio()
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar')
+      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setOcupado(false)
     }
@@ -239,7 +240,7 @@ export default function BandejaPorConfirmar() {
                 <button
                   onClick={() => confirmarUno(m)}
                   disabled={ocupado}
-                  className="flex items-center justify-center gap-1.5 rounded-xl bg-accent text-white text-xs font-semibold py-2.5 disabled:opacity-60"
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-accent text-paper-raised text-xs font-semibold py-2.5 disabled:opacity-60"
                 >
                   <Check size={16} /> Es mío
                 </button>
@@ -309,10 +310,9 @@ function FormEdicion({ m, cuentas, ocupado, onCancelar, onGuardar }) {
       <p className="text-sm font-semibold truncate">{m.descripcion}</p>
       <label className="block">
         <span className="text-[11px] text-ink-soft">Monto</span>
-        <input
+        <InputMonto
           value={monto}
-          onChange={(e) => setMonto(e.target.value.replace(/[^\d.,]/g, ''))}
-          inputMode="decimal"
+          onValor={setMonto}
           aria-label="Monto"
           className={campo}
         />

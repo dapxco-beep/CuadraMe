@@ -289,9 +289,9 @@ describe('Inicio simplificado', () => {
     expect(within(camino).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
     expect(within(camino).getByRole('link', { name: 'Crear mi cuenta' })).toHaveAttribute('href', '/cuentas')
     expect(within(camino).queryByRole('link', { name: 'Traer movimientos' })).toBeNull()
-    // el recorrido largo no se abre solo; es una invitación discreta
+    // el recorrido largo no se abre solo y, mientras el camino de 3 pasos está a la vista, tampoco compite con él
     expect(screen.queryByRole('dialog')).toBeNull()
-    expect(screen.getByRole('button', { name: /Conoce CuadraMe en 1 minuto/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Conoce CuadraMe en 1 minuto/ })).toBeNull()
     // mientras el camino está a la vista, no se repite otro «siguiente paso»
     expect(screen.queryByTestId('siguiente-paso')).toBeNull()
   })

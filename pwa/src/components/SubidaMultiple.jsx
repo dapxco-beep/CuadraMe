@@ -647,7 +647,7 @@ export default function SubidaMultiple({
                     aria-label={`Clave de ${a.nombre}`}
                     className="flex-1 min-w-0 rounded-xl border border-line bg-paper-raised px-3 py-2 text-xs outline-none focus:border-accent"
                   />
-                  <button onClick={() => reintentar(a)} disabled={!a.password || corriendo} className="rounded-xl bg-accent text-white px-3 text-xs font-semibold disabled:opacity-60">
+                  <button onClick={() => reintentar(a)} disabled={!a.password || corriendo} className="rounded-xl bg-accent text-paper-raised px-3 text-xs font-semibold disabled:opacity-60">
                     Reintentar
                   </button>
                 </div>

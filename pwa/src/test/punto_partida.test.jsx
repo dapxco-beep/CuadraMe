@@ -96,7 +96,7 @@ describe('elegir el punto de partida', () => {
     montar({ variante: 'primera', inicial: SIN_ELEGIR, onGuardado })
     fireEvent.click(screen.getByTestId('modo-hoy'))
     const saldo = screen.getByLabelText('Saldo de Bancolombia Ahorros')
-    expect(saldo).toHaveValue('1500000') // arranca con lo que la app ya tiene
+    expect(saldo).toHaveValue('1.500.000') // arranca con lo que la app ya tiene
     fireEvent.change(saldo, { target: { value: '1.620.000' } })
     fireEvent.click(screen.getByRole('button', { name: 'Empezar desde hoy' }))
     await waitFor(() => expect(api.guardarPuntoDePartida).toHaveBeenCalled())

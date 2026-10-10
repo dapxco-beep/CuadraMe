@@ -65,7 +65,7 @@ function Sub({ id, titulo, cuenta = 0, children }) {
 function AlDia({ texto = 'Todo al día' }) {
   return (
     <p className="flex items-center gap-1.5 text-xs text-ink-soft rounded-xl bg-paper border border-line px-3 py-2.5">
-      <CheckCircle2 size={14} className="text-cuadra shrink-0" aria-hidden="true" /> {texto}
+      <CheckCircle2 size={16} className="text-cuadra shrink-0" aria-hidden="true" /> {texto}
     </p>
   )
 }
@@ -175,7 +175,7 @@ export default function Sincronizacion() {
       setCola({ items: porCat?.items || [], total: porCat?.total || 0 })
       setError('')
     } catch (err) {
-      if (montado.current) setError(err.message || 'No se pudo cargar')
+      if (montado.current) setError(err.message || 'No se pudo cargar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       if (montado.current) setCargando(false)
     }
@@ -324,7 +324,7 @@ export default function Sincronizacion() {
       const lista = await api.extractosCorreo('descartado')
       setIgnorados(Array.isArray(lista) ? lista : [])
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudieron cargar los ignorados')
+      setAvisoExt(err.message || 'No se pudieron cargar los ignorados. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -333,7 +333,7 @@ export default function Sincronizacion() {
       const lista = await api.correosLista('ignorados', 0, 30)
       setCorreosIgnorados(Array.isArray(lista) ? lista : [])
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudieron cargar los correos ignorados')
+      setAvisoExt(err.message || 'No se pudieron cargar los correos ignorados. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -368,7 +368,7 @@ export default function Sincronizacion() {
       if (hayProtegidos && typeof api.probarClavePdf === 'function') await probarClave()
       else setAvisoExt('Clave guardada. Toca «Traer todo ahora» para abrir esos extractos.')
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudo guardar la clave')
+      setAvisoExt(err.message || 'No se pudo guardar la clave. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -378,7 +378,7 @@ export default function Sincronizacion() {
       setClaveInfo((c) => ({ ...c, configurada: false }))
       setPruebaClave({ resultado: null, mensaje: '', error: '' })
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudo borrar la clave')
+      setAvisoExt(err.message || 'No se pudo borrar la clave. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -394,7 +394,7 @@ export default function Sincronizacion() {
       })
       await cargar()
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudo cambiar la categoría')
+      setAvisoExt(err.message || 'No se pudo cambiar la categoría. Revisa tu conexión e intenta de nuevo.')
     } finally {
       if (montado.current) {
         setOcupados((s) => {
@@ -468,7 +468,7 @@ export default function Sincronizacion() {
           onClick={() => setVerEstado(true)}
           className="shrink-0 flex items-center gap-1.5 text-xs font-semibold text-accent min-h-[44px] px-1"
         >
-          <Plug size={14} aria-hidden="true" /> Conexiones
+          <Plug size={16} aria-hidden="true" /> Conexiones
         </button>
       </header>
 
@@ -528,7 +528,7 @@ export default function Sincronizacion() {
 
         {tareas.length === 0 ? (
           <p className="flex items-center justify-center gap-1.5 text-xs text-ink-soft mt-3" data-testid="todo-al-dia">
-            <CheckCircle2 size={14} className="text-cuadra" aria-hidden="true" />
+            <CheckCircle2 size={16} className="text-cuadra" aria-hidden="true" />
             {ultima ? `Todo al día · última vez ${ultima}` : 'Todo al día'}
           </p>
         ) : (
@@ -547,7 +547,7 @@ export default function Sincronizacion() {
                     </span>
                     <span className="flex-1 min-w-0 text-sm font-semibold leading-tight">{t.titulo}</span>
                     <span className="text-sm font-bold text-accent" aria-label={`${t.cantidad} pendientes`}>{t.cantidad}</span>
-                    <ChevronRight size={14} className="text-ink-soft shrink-0" aria-hidden="true" />
+                    <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
                   </button>
                 </li>
               )
@@ -569,9 +569,9 @@ export default function Sincronizacion() {
 
         {conectado && (
           <>
-            <Sub id="sinc-correos" titulo="Notificaciones por revisar" cuenta={nCorreos}>
+            <Sub id="sinc-correos" titulo="Avisos de tu banco por revisar" cuenta={nCorreos}>
               {correos.length === 0 ? (
-                <AlDia texto="No hay correos por revisar" />
+                <AlDia texto="No hay avisos por revisar" />
               ) : (
                 <CorreosPorRevisar
                   correos={correos}
@@ -722,7 +722,7 @@ export default function Sincronizacion() {
           ) : (
             <button
               onClick={() => navigate('/movimientos?revisar=1')}
-              className="w-full rounded-xl bg-accent text-white text-sm font-semibold py-2.5"
+              className="w-full rounded-xl bg-accent text-paper-raised text-sm font-semibold py-2.5"
             >
               Confirmar si son tuyos ({nConfirmar})
             </button>
@@ -783,11 +783,11 @@ export default function Sincronizacion() {
               {!ventanaFija && (
                 <div className="flex items-center justify-between mb-2" aria-label="Ventana de meses">
                   <button onClick={() => moverVentana(-1)} className="flex items-center gap-1 text-xs font-semibold text-accent min-h-[40px] pr-3">
-                    <ChevronLeft size={14} aria-hidden="true" /> Meses anteriores
+                    <ChevronLeft size={16} aria-hidden="true" /> Meses anteriores
                   </button>
                   {hasta && (
                     <button onClick={() => moverVentana(1)} className="flex items-center gap-1 text-xs font-semibold text-accent min-h-[40px] pl-3">
-                      Meses siguientes <ChevronRight size={14} aria-hidden="true" />
+                      Meses siguientes <ChevronRight size={16} aria-hidden="true" />
                     </button>
                   )}
                 </div>
@@ -829,7 +829,7 @@ export default function Sincronizacion() {
                           .filter(Boolean).join(' y ')}
                       </p>
                     </div>
-                    <button onClick={() => setCrearBanco(s.banco)} className="shrink-0 rounded-xl bg-accent text-white text-xs font-semibold px-3 py-2 min-h-[44px]">
+                    <button onClick={() => setCrearBanco(s.banco)} className="shrink-0 rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3 py-2 min-h-[44px]">
                       Crear cuenta {s.banco}
                     </button>
                   </div>
@@ -856,20 +856,20 @@ export default function Sincronizacion() {
                     </button>
                   </div>
                   <p className="text-xs text-ink-soft mt-2">
-                    {celdaDetalle.movimientos} {celdaDetalle.movimientos === 1 ? 'movimiento' : 'movimientos'} · {celdaDetalle.conciliados} conciliados · {celdaDetalle.por_confirmar} por confirmar
+                    {celdaDetalle.movimientos} {celdaDetalle.movimientos === 1 ? 'movimiento' : 'movimientos'} · {celdaDetalle.conciliados} ya coinciden con el banco · {celdaDetalle.por_confirmar} por confirmar
                     {celdaDetalle.extractos ? ` · ${celdaDetalle.extractos} ${celdaDetalle.extractos === 1 ? 'extracto' : 'extractos'}` : ''}
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
                     {celdaDetalle.estado === 'extracto_pendiente' && (
-                      <button onClick={() => abrirBloque('correo', 'sinc-extractos')} className="rounded-xl bg-accent text-white text-xs font-semibold px-3.5 py-2.5">Revisar extracto</button>
+                      <button onClick={() => abrirBloque('correo', 'sinc-extractos')} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5">Revisar extracto</button>
                     )}
                     {celdaDetalle.estado === 'falta_clave' && (
-                      <button onClick={() => { setMostrarClave(true); abrirBloque('correo', 'sinc-clave') }} className="rounded-xl bg-accent text-white text-xs font-semibold px-3.5 py-2.5">Poner clave</button>
+                      <button onClick={() => { setMostrarClave(true); abrirBloque('correo', 'sinc-clave') }} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5">Poner clave</button>
                     )}
                     {(celdaDetalle.estado === 'sin_extracto' || celdaDetalle.estado === 'vacio') && (
                       <button
                         onClick={() => pedirSubir({ cuentaId: cuentaDetalle.id, mes: celdaDetalle.mes })}
-                        className="rounded-xl bg-accent text-white text-xs font-semibold px-3.5 py-2.5"
+                        className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5"
                       >
                         Subir el extracto de este mes
                       </button>
@@ -934,7 +934,7 @@ function FilaExtracto({
   return (
     <div className="rounded-2xl bg-paper border border-line p-3.5" data-testid={`extracto-${ex.id}`}>
       <div className="flex items-start gap-3">
-        <FileText size={18} className="text-accent shrink-0 mt-0.5" aria-hidden="true" />
+        <FileText size={20} className="text-accent shrink-0 mt-0.5" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold truncate">{banco}{ex.periodo ? ` · ${ex.periodo}` : ''}</p>
           <p className="text-xs text-ink-soft truncate">
@@ -978,7 +978,7 @@ function FilaExtracto({
           <button
             onClick={onConciliar}
             disabled={ocupado || !cuentaId}
-            className="flex-1 bg-accent text-white font-semibold rounded-xl py-2.5 text-sm disabled:opacity-50"
+            className="flex-1 bg-accent text-paper-raised font-semibold rounded-xl py-2.5 text-sm disabled:opacity-50"
           >
             {ocupado ? 'Revisando...' : 'Revisar extracto'}
           </button>
@@ -993,13 +993,13 @@ function FilaExtracto({
           </button>
         )}
         {ex.estado === 'falta_clave' && (
-          <button onClick={onClave} className="flex-1 bg-accent text-white font-semibold rounded-xl py-2.5 text-sm">
+          <button onClick={onClave} className="flex-1 bg-accent text-paper-raised font-semibold rounded-xl py-2.5 text-sm">
             {claveConfigurada ? 'Cambiar la clave' : 'Poner clave'}
           </button>
         )}
         {ex.estado !== 'procesado' && (
           <button onClick={onIgnorar} className="px-4 rounded-xl border border-line text-sm text-ink-soft" aria-label={`Ignorar extracto ${banco}`}>
-            <X size={14} />
+            <X size={16} />
           </button>
         )}
       </div>

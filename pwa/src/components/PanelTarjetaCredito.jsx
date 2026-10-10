@@ -5,6 +5,7 @@ import { formatMoneda, formatPorcentaje } from '../lib/format'
 import Hoja from './Hoja'
 import ComprasACuotas from './ComprasACuotas'
 import Ayudita from './Ayudita'
+import InputMonto from './InputMonto'
 
 const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
@@ -43,6 +44,18 @@ export function BloqueExtracto({ t, moneda }) {
   if (t.total_extracto == null || t.total_extracto <= 0) return null
   const pct = Math.min(100, t.pagado_pct || 0)
   const pagado = t.falta_para_evitar_intereses <= 0
+  // Tarjeta nueva: la deuda es el saldo que declaraste, no un extracto. No se habla de plazos vencidos.
+  if (t.saldo_declarado) {
+    return (
+      <div className="mt-3 rounded-xl border border-line bg-paper p-3 text-xs" data-testid="bloque-extracto-declarado">
+        <p className="font-semibold text-sm">Debes {formatMoneda(t.total_extracto, moneda)} (el saldo que declaraste)</p>
+        <p className="text-ink-soft mt-1 leading-relaxed">
+          Aún no tenemos un extracto de tu banco, así que no sabemos cuánto pagar para evitar intereses.
+          Sube tu extracto o tu próximo corte{t.proximo_corte ? ` (${fechaCorta(t.proximo_corte)})` : ''} y lo calculamos con datos reales.
+        </p>
+      </div>
+    )
+  }
   return (
     <div className="mt-3 rounded-xl border border-line bg-paper p-3 text-xs" data-testid="bloque-extracto">
       <p className="font-semibold text-sm">
@@ -233,7 +246,7 @@ function FormTarjeta({ cuenta, onClose, onGuardada }) {
       })
       onGuardada()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -252,10 +265,9 @@ function FormTarjeta({ cuenta, onClose, onGuardada }) {
 
       <label className="block mb-3">
         <span className="text-xs text-ink-soft">Cupo total</span>
-        <input
+        <InputMonto
           value={cupo}
-          onChange={(e) => setCupo(e.target.value.replace(/[^\d.]/g, ''))}
-          inputMode="decimal"
+          onValor={setCupo}
           placeholder="Ej. 5000000"
           aria-label="Cupo total"
           className={`${campo} mt-1`}

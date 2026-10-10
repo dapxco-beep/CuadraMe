@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Flag, Mail, Receipt, Check, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
+import { Bell, Flag, Mail, Receipt, Check, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, MessageCircle, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -117,7 +117,7 @@ export default function Perfil() {
       </header>
 
       <section className="px-6 mt-4 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-white text-xl font-semibold">
+        <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-paper-raised text-xl font-semibold">
           {usuario?.nombre?.[0]?.toUpperCase() || '?'}
         </div>
         <div>
@@ -147,7 +147,7 @@ export default function Perfil() {
             className="shrink-0 min-h-11 w-14 flex items-center justify-center"
           >
             <span className={`block w-12 h-7 rounded-full transition-colors relative ${completo ? 'bg-accent' : 'bg-line'}`}>
-              <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${completo ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              <span className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${completo ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </span>
           </button>
         </div>
@@ -163,6 +163,14 @@ export default function Perfil() {
           <div className="flex-1">
             <p className="text-sm font-medium">Ayuda y preguntas frecuentes</p>
             <p className="text-xs text-ink-soft mt-0.5">Extractos, clave del PDF, Gmail, borrar tus datos…</p>
+          </div>
+          <ChevronRight size={16} className="text-ink-soft" />
+        </Link>
+        <Link to="/opinion?desde=/perfil" className="mt-2 flex items-center gap-3 rounded-2xl bg-paper-raised border border-line px-4 py-3.5">
+          <MessageCircle size={20} className="text-accent shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Tu opinión cuenta</p>
+            <p className="text-xs text-ink-soft mt-0.5">Una idea, una duda o algo que no funcionó.</p>
           </div>
           <ChevronRight size={16} className="text-ink-soft" />
         </Link>
@@ -211,10 +219,10 @@ export default function Perfil() {
         </div>
 
         <div className="rounded-2xl bg-paper-raised border border-line p-4 mt-3">
-          <p className="text-sm font-medium">¿Cuándo registrar un movimiento sin preguntarte?</p>
+          <p className="text-sm font-medium" id="etq-confianza">¿Qué tan seguro debe estar CuadraMe para registrar solo?</p>
           <p className="text-xs text-ink-soft mt-0.5 mb-3">
-            Cuando lees un extracto del banco, CuadraMe registra el movimiento sin preguntarte si está
-            muy seguro de la categoría. Más estricto = te pregunta más seguido.
+            Al leer un extracto, si CuadraMe está muy seguro de la categoría, registra el movimiento sin
+            preguntarte. Más estricto: te pregunta más seguido.
           </p>
           <input
             type="range"
@@ -223,6 +231,8 @@ export default function Perfil() {
             step="0.05"
             value={confianza}
             onChange={(e) => cambiarConfianza(Number(e.target.value))}
+            aria-labelledby="etq-confianza"
+            aria-valuetext={`${Math.round(confianza * 100)} por ciento`}
             className="w-full accent-accent"
           />
           <div className="flex items-center justify-between text-xs text-ink-soft mt-1">
@@ -244,7 +254,7 @@ export default function Perfil() {
           </Link>
           <Link to="/recurrentes" className="flex items-center gap-3 px-4 py-3.5">
             <Repeat size={20} className="text-accent shrink-0" />
-            <p className="flex-1 text-sm font-medium">Gastos recurrentes</p>
+            <p className="flex-1 text-sm font-medium">Pagos fijos</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/deudas" className="flex items-center gap-3 px-4 py-3.5">
@@ -254,12 +264,12 @@ export default function Perfil() {
           </Link>
           <Link to="/reglas-categoria" className="flex items-center gap-3 px-4 py-3.5">
             <Wand2 size={20} className="text-accent shrink-0" />
-            <p className="flex-1 text-sm font-medium">Reglas de categorización</p>
+            <p className="flex-1 text-sm font-medium">Reglas automáticas</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/entrenar-categorias" className="flex items-center gap-3 px-4 py-3.5">
             <GraduationCap size={20} className="text-accent shrink-0" />
-            <p className="flex-1 text-sm font-medium">Entrenar categorías</p>
+            <p className="flex-1 text-sm font-medium">Enseñar categorías</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/categorias" className="flex items-center gap-3 px-4 py-3.5">
@@ -273,11 +283,11 @@ export default function Perfil() {
 
       {completo && (
       <section className="mx-6 mt-6">
-        <h2 className="text-[15px] font-semibold mb-3">Extra</h2>
+        <h2 className="text-[15px] font-semibold mb-3">Más herramientas</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
           <Link to="/impuestos" className="flex items-center gap-3 px-4 py-3.5">
             <Receipt size={20} className="text-accent shrink-0" />
-            <p className="flex-1 text-sm font-medium">Impuestos (4x1000 y renta)</p>
+            <p className="flex-1 text-sm font-medium">Impuestos: 4x1000 y renta</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/cierre-mes" className="flex items-center gap-3 px-4 py-3.5">
@@ -317,7 +327,7 @@ export default function Perfil() {
             className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${resumenCorreo.activo ? 'bg-accent' : 'bg-line'}`}
           >
             <span
-              className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+              className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
                 resumenCorreo.activo ? 'translate-x-5' : 'translate-x-0.5'
               }`}
             />
@@ -402,9 +412,8 @@ export default function Perfil() {
         </div>
         <div className="rounded-2xl bg-paper-raised border border-line p-4">
           <p className="text-xs text-ink-soft mb-3">
-            Para quienes quieren automatizar el registro con apps de terceros (Atajos de iOS,
-            Tasker en Android) o por voz con Siri. Requiere algo de configuración manual — si solo
-            quieres registrar rápido desde la app, no necesitas esto.
+            Anota solos tus pagos con el celular: con Atajos del iPhone, Tasker en Android o con Siri.
+            Hay que configurarlo una vez. Si registras desde la app, no lo necesitas.
           </p>
           <ClaveAtajo {...claveAtajo} />
           <Link
@@ -460,7 +469,7 @@ export default function Perfil() {
           >
             <span className={`block w-12 h-7 rounded-full transition-colors relative ${mostrarCuadri ? 'bg-accent' : 'bg-line'}`}>
               <span
-                className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
                   mostrarCuadri ? 'translate-x-5' : 'translate-x-0.5'
                 }`}
               />

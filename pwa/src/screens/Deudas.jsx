@@ -10,6 +10,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import { ENTIDADES_FINANCIERAS_CO } from '../lib/entidadesFinancierasCO'
 import SimuladorDeudas from '../components/SimuladorDeudas'
 import Hoja from '../components/Hoja'
+import InputMonto from '../components/InputMonto'
 
 const urgenciaColor = {
   critico: 'text-danger',
@@ -34,7 +35,7 @@ export default function Deudas() {
     try {
       setDeudas(await api.deudas())
     } catch (err) {
-      setError(err.message || 'No se pudieron cargar tus deudas')
+      setError(err.message || 'No se pudieron cargar tus deudas. Revisa tu conexión e intenta de nuevo.')
     }
     setCargando(false)
   }
@@ -59,7 +60,7 @@ export default function Deudas() {
         </div>
         <button
           onClick={() => setMostrarForm(true)}
-          className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"
          aria-label="Nueva deuda">
           <Plus size={20} />
         </button>
@@ -181,7 +182,7 @@ function FormDeuda({ onClose, onGuardada }) {
       })
       onGuardada()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -214,17 +215,15 @@ function FormDeuda({ onClose, onGuardada }) {
           <option key={e} value={e} />
         ))}
       </datalist>
-      <input
+      <InputMonto entero
         value={saldoInicial}
-        onChange={(e) => setSaldoInicial(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
+        onValor={setSaldoInicial}
         placeholder="Saldo actual de la deuda"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
-      <input
+      <InputMonto entero
         value={cuotaMensual}
-        onChange={(e) => setCuotaMensual(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
+        onValor={setCuotaMensual}
         placeholder="Cuota mensual"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
@@ -285,7 +284,7 @@ function FormPago({ deuda, onClose, onPagado }) {
       await api.pagarDeuda(deuda.id, Number(monto))
       onPagado()
     } catch (err) {
-      setError(err.message || 'No se pudo registrar el pago')
+      setError(err.message || 'No se pudo registrar el pago. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -300,10 +299,9 @@ function FormPago({ deuda, onClose, onPagado }) {
         </button>
       </div>
 
-      <input
+      <InputMonto entero
         value={monto}
-        onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
+        onValor={setMonto}
         placeholder="Monto a pagar"
         autoFocus
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"

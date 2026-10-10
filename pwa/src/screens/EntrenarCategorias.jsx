@@ -29,7 +29,7 @@ function Fila({ item, categorias, onGuardar }) {
     try {
       await onGuardar(item, categoria, anteriores, forzar)
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
       setEstado('')
     }
   }
@@ -98,7 +98,7 @@ export default function EntrenarCategorias() {
     try {
       setDatos(await api.vocabularioCategorias())
     } catch (err) {
-      setError(err.message || 'No se pudo cargar tu vocabulario')
+      setError(err.message || 'No se pudo cargar tu vocabulario. Revisa tu conexión e intenta de nuevo.')
     }
     setCargando(false)
   }, [])
@@ -132,7 +132,7 @@ export default function EntrenarCategorias() {
     try {
       setExplicacion(await api.explicarCategoria(q.trim()))
     } catch (err) {
-      setError(err.message || 'No se pudo buscar')
+      setError(err.message || 'No se pudo buscar. Revisa tu conexión e intenta de nuevo.')
     }
     setBuscando(false)
   }
@@ -146,7 +146,7 @@ export default function EntrenarCategorias() {
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-xl font-bold">Entrenar categorías</h1>
+        <h1 className="text-xl font-bold">Enseñar categorías</h1>
       </header>
 
       <p className="mx-6 mt-2 text-xs text-ink-soft">
@@ -186,7 +186,7 @@ export default function EntrenarCategorias() {
           <button
             type="submit"
             disabled={buscando || q.trim().length < 2}
-            className="w-12 rounded-2xl bg-accent text-white flex items-center justify-center disabled:opacity-60"
+            className="w-12 rounded-2xl bg-accent text-paper-raised flex items-center justify-center disabled:opacity-60"
             aria-label="Buscar"
           >
             <Search size={16} />

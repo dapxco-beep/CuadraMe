@@ -64,7 +64,7 @@ function Variacion({ pct, anteriorLabel }) {
   const Icono = sube ? ArrowUpRight : ArrowDownRight
   return (
     <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${pct === 0 ? 'text-ink-soft' : sube ? 'text-danger' : 'text-cuadra'}`} title={anteriorLabel}>
-      {pct !== 0 && <Icono size={12} aria-hidden="true" />}
+      {pct !== 0 && <Icono size={16} aria-hidden="true" />}
       {pctTexto(pct)}
     </span>
   )
@@ -100,7 +100,7 @@ export default function Informe() {
     setDetalles({})
     api.informeGasto(params)
       .then((d) => activo && setInforme(d))
-      .catch((e) => activo && setError(e.message || 'No se pudo cargar el informe'))
+      .catch((e) => activo && setError(e.message || 'No se pudo cargar el informe. Revisa tu conexión e intenta de nuevo.'))
       .finally(() => activo && setCargando(false))
     return () => {
       activo = false

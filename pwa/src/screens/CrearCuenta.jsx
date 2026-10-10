@@ -41,7 +41,7 @@ function Bienvenida({ onContinuar }) {
             style={{ '--stagger-i': i }}
           >
             <div className="w-10 h-10 rounded-full bg-accent-soft flex items-center justify-center shrink-0">
-              <p.icon size={18} className="text-accent" />
+              <p.icon size={20} className="text-accent" />
             </div>
             <div>
               <p className="text-sm font-semibold">{p.titulo}</p>
@@ -87,7 +87,7 @@ export default function CrearCuenta({ onCreada }) {
 
   async function guardar() {
     setError('')
-    if (!nombre.trim()) return setError('Ponle un nombre a tu cuenta')
+    if (!nombre.trim()) return setError('Elige tu banco arriba o escribe un nombre para tu cuenta, por ejemplo «Nequi».')
 
     if (tipo === 'credito') {
       const problema = validarTarjetaNueva(campos)
@@ -105,7 +105,7 @@ export default function CrearCuenta({ onCreada }) {
         terminar(cuenta)
       }
     } catch (err) {
-      setError(err.message || 'No se pudo crear la cuenta')
+      setError(err.message || 'No pudimos crear la cuenta. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -146,7 +146,7 @@ export default function CrearCuenta({ onCreada }) {
     <div className="flex-1 overflow-y-auto flex flex-col px-6 py-10 screen-enter">
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold">Crea tu primera cuenta</h1>
-        <p className="text-sm text-ink-soft mt-1">Elige la que uses más. Luego agregas las demás.</p>
+        <p className="text-sm text-ink-soft mt-1">Empieza con la que más uses. Luego agregas las demás.</p>
       </div>
 
       <div className="mb-4">
@@ -167,6 +167,7 @@ export default function CrearCuenta({ onCreada }) {
 
       <CamposCuentaNueva tipo={tipo} valores={campos} onCambio={setCampos} />
 
+      <p className="text-xs text-ink-soft mb-1.5">Moneda de la cuenta</p>
       <div className="flex gap-2 mb-5" role="group" aria-label="Moneda de la cuenta">
         {['COP', 'USD', 'EUR'].map((m) => (
           <button
@@ -190,7 +191,7 @@ export default function CrearCuenta({ onCreada }) {
         disabled={guardando}
         className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
       >
-        {guardando ? 'Creando...' : 'Continuar'}
+        {guardando ? 'Creando...' : 'Crear mi cuenta'}
       </button>
     </div>
   )

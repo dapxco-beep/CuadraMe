@@ -10,9 +10,12 @@ import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import Hoja from '../components/Hoja'
+import { CampoTexto, CampoMonto } from '../components/ui'
+import { useDialogos } from '../lib/DialogosContext'
 import BarraProgreso from '../components/BarraProgreso'
 import CelebracionCuadri from '../brand/CelebracionCuadri'
 import { FRASES, yaCelebrado } from '../lib/cuadri'
+import InputMonto from '../components/InputMonto'
 
 export default function Metas() {
   const volver = useVolver('/perfil')
@@ -32,7 +35,7 @@ export default function Metas() {
     try {
       setMetas(await api.metas())
     } catch (err) {
-      setError(err.message || 'No se pudieron cargar tus metas')
+      setError(err.message || 'No pudimos cargar tus metas. Revisa tu conexión y toca «Reintentar».')
     }
     setCargando(false)
   }
@@ -57,13 +60,13 @@ export default function Metas() {
           <button
             onClick={() => setPlaneando(true)}
             className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
-            aria-label="Planear una meta">
+            aria-label="Calcular cuánto ahorrar por mes para una meta">
             <Sparkles size={20} className="text-accent" />
           </button>
           <button
             onClick={() => setMostrarForm(true)}
-            className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
-           aria-label="Nueva meta">
+            className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"
+           aria-label="Crear una meta">
             <Plus size={20} />
           </button>
         </div>
@@ -87,7 +90,9 @@ export default function Metas() {
           </button>
         </div>
       ) : metas.length === 0 ? (
-        <EstadoVacio icono={PiggyBank} titulo="Aún no tienes metas de ahorro" texto="Ponle nombre a algo que quieres lograr y ve cómo cuadra." className="mx-5 mt-6" />
+        <EstadoVacio icono={PiggyBank} titulo="Aún no tienes metas de ahorro" texto="Una meta es algo que quieres comprar o lograr, como un viaje. Dile cuánto necesitas y vas viendo cómo avanzas." className="mx-5 mt-6">
+          <button onClick={() => setMostrarForm(true)} className="btn btn-primario btn-sm mt-4">Crear mi primera meta</button>
+        </EstadoVacio>
       ) : (
         <div className="mx-5 mt-4 space-y-3">
           {metas.map((m, i) => (
@@ -162,6 +167,7 @@ export default function Metas() {
 
 function FormMeta({ onClose, onGuardada }) {
   const { cuentas } = useCuentas()
+  const { avisar } = useDialogos() || {}
   const [nombre, setNombre] = useState('')
   const [montoObjetivo, setMontoObjetivo] = useState('')
   const [montoActual, setMontoActual] = useState('')
@@ -174,10 +180,10 @@ function FormMeta({ onClose, onGuardada }) {
 
   async function guardar() {
     setError('')
-    if (!nombre.trim()) return setError('Ponle un nombre a tu meta')
-    if (!montoObjetivo || Number(montoObjetivo) <= 0) return setError('Ingresa un monto objetivo válido')
+    if (!nombre.trim()) return setError('Ponle un nombre a tu meta, por ejemplo «Viaje a Cartagena».')
+    if (!montoObjetivo || Number(montoObjetivo) <= 0) return setError('Escribe cuánta plata necesitas en total, solo números. Por ejemplo 5000000.')
     if (ahorroAutomatico && (!aporteAutomatico || Number(aporteAutomatico) <= 0)) {
-      return setError('Ingresa cuánto quieres apartar automáticamente')
+      return setError('Escribe cuánto quieres apartar cada mes, solo números. Por ejemplo 200000.')
     }
 
     setGuardando(true)
@@ -192,9 +198,10 @@ function FormMeta({ onClose, onGuardada }) {
           cuenta_origen_id: cuentaOrigenId || null,
         }),
       })
+      avisar?.(`Listo: creaste la meta «${nombre.trim()}». Toca «Aportar» cuando separes plata.`, 'ok')
       onGuardada()
     } catch (err) {
-      setError(err.message || 'No se pudo crear la meta')
+      setError(err.message || 'No pudimos crear la meta. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -209,29 +216,34 @@ function FormMeta({ onClose, onGuardada }) {
         </button>
       </div>
 
-      <input
+      <CampoTexto
+        etiqueta="¿Qué quieres lograr?"
         value={nombre}
         onChange={(e) => setNombre(e.target.value)}
-        placeholder="Nombre (ej. Viaje a Cartagena)"
-        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
+        placeholder="Ej. Viaje a Cartagena"
+        className="mb-3"
       />
-      <input
+      <CampoMonto
+        entero
+        etiqueta="¿Cuánta plata necesitas en total?"
         value={montoObjetivo}
-        onChange={(e) => setMontoObjetivo(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
-        placeholder="Monto objetivo (ej. 5000000)"
-        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
+        onValor={setMontoObjetivo}
+        placeholder="Ej. 5000000"
+        className="mb-3"
       />
-      <input
+      <CampoMonto
+        entero
+        etiqueta="¿Cuánto llevas ahorrado? (opcional)"
         value={montoActual}
-        onChange={(e) => setMontoActual(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
-        placeholder="Ya tienes ahorrado (opcional)"
-        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
+        onValor={setMontoActual}
+        placeholder="Si empiezas de cero, déjalo vacío"
+        className="mb-4"
       />
 
       <button
         type="button"
+        role="switch"
+        aria-checked={ahorroAutomatico}
         onClick={() => setAhorroAutomatico((v) => !v)}
         className="w-full flex items-center gap-3 rounded-2xl border border-line bg-paper-raised px-4 py-3.5 mb-3"
       >
@@ -242,16 +254,16 @@ function FormMeta({ onClose, onGuardada }) {
         >
           {ahorroAutomatico && <span className="w-2 h-2 rounded-sm bg-white" />}
         </span>
-        <span className="text-sm text-left flex-1">Apartar dinero automáticamente cada mes</span>
+        <span className="text-sm text-left flex-1">Separar plata sola cada mes</span>
       </button>
 
       {ahorroAutomatico && (
         <div className="rounded-2xl bg-accent-soft p-3 mb-4 space-y-3">
-          <input
+          <InputMonto entero
             value={aporteAutomatico}
-            onChange={(e) => setAporteAutomatico(e.target.value.replace(/\D/g, ''))}
-            inputMode="numeric"
-            placeholder="Cuánto apartar cada mes"
+            onValor={setAporteAutomatico}
+            placeholder="Cuánto separar cada mes"
+            aria-label="Cuánto separar cada mes"
             className="w-full rounded-xl border border-line bg-paper px-3.5 py-3 text-sm outline-none focus:border-accent"
           />
           <div className="flex gap-2">
@@ -260,12 +272,14 @@ function FormMeta({ onClose, onGuardada }) {
               onChange={(e) => setDiaAporte(e.target.value.replace(/\D/g, '').slice(0, 2))}
               inputMode="numeric"
               placeholder="Día del mes (1-31)"
+              aria-label="Día del mes en que se separa"
               className="flex-1 rounded-xl border border-line bg-paper px-3.5 py-3 text-sm outline-none focus:border-accent"
             />
             {cuentas.length > 0 && (
               <select
                 value={cuentaOrigenId}
                 onChange={(e) => setCuentaOrigenId(e.target.value)}
+                aria-label="Cuenta de la que sale la plata"
                 className="flex-1 rounded-xl border border-line bg-paper px-3.5 py-3 text-sm"
               >
                 {cuentas.map((c) => (
@@ -275,12 +289,12 @@ function FormMeta({ onClose, onGuardada }) {
             )}
           </div>
           <p className="text-xs text-ink-soft">
-            Ese día se descuenta de la cuenta elegida y se suma a tu meta automáticamente.
+            Ese día sale de la cuenta elegida y se suma a tu meta.
           </p>
         </div>
       )}
 
-      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger mb-3">{error}</p>}
 
       <button
         onClick={guardar}
@@ -295,6 +309,7 @@ function FormMeta({ onClose, onGuardada }) {
 
 function FormAporte({ meta, onClose, onAportado }) {
   const { cuentas } = useCuentas()
+  const { avisar } = useDialogos() || {}
   const [monto, setMonto] = useState('')
   const [cuentaId, setCuentaId] = useState('')
   const [guardando, setGuardando] = useState(false)
@@ -302,14 +317,15 @@ function FormAporte({ meta, onClose, onAportado }) {
 
   async function guardar() {
     setError('')
-    if (!monto || Number(monto) <= 0) return setError('Ingresa un monto válido')
+    if (!monto || Number(monto) <= 0) return setError('Escribe cuánto vas a aportar, solo números. Por ejemplo 100000.')
 
     setGuardando(true)
     try {
       await api.aportarMeta(meta.id, Number(monto), cuentaId || undefined)
+      avisar?.(`Listo: sumaste ${formatCOP(Number(monto))} a «${meta.nombre}».`, 'ok')
       onAportado()
     } catch (err) {
-      setError(err.message || 'No se pudo registrar el aporte')
+      setError(err.message || 'No pudimos registrar el aporte. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -324,11 +340,11 @@ function FormAporte({ meta, onClose, onAportado }) {
         </button>
       </div>
 
-      <input
+      <InputMonto entero
         value={monto}
-        onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
-        placeholder="Monto a aportar"
+        onValor={setMonto}
+        placeholder="¿Cuánto aportas? Ej. 100000"
+        aria-label="Cuánto aportas"
         autoFocus
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
@@ -338,20 +354,21 @@ function FormAporte({ meta, onClose, onAportado }) {
           <select
             value={cuentaId}
             onChange={(e) => setCuentaId(e.target.value)}
+            aria-label="De dónde sale la plata"
             className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm mb-1"
           >
-            <option value="">No descontar de ninguna cuenta (dinero externo)</option>
+            <option value="">Ya la tenía aparte: no descontar de mis cuentas</option>
             {cuentas.map((c) => (
               <option key={c.id} value={c.id}>Descontar de {c.nombre}</option>
             ))}
           </select>
           <p className="text-xs text-ink-soft mb-4">
-            Si eliges una cuenta, el monto se descuenta de su saldo real.
+            Si eliges una cuenta, ese valor baja de su saldo.
           </p>
         </>
       )}
 
-      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger mb-3">{error}</p>}
 
       <button
         onClick={guardar}

@@ -17,6 +17,7 @@ export function leerFiltros(params) {
     revisar: params.get('revisar') === '1',
     conf: params.get('conf') === '1', // "Por confirmar": las que la app puso sola
     comercio: params.get('vista') === 'comercio',
+    tabla: params.get('vista') === 'tabla', // solo se aplica en escritorio (≥1024 px)
     orden: params.get('orden') === 'monto' ? 'monto' : 'cantidad',
   }
 }
@@ -99,4 +100,32 @@ export function categoriasRecientes(items, nombresValidos, max = 5) {
     cuenta.set(m.categoria, (cuenta.get(m.categoria) || 0) + 1)
   }
   return [...cuenta.entries()].sort((a, b) => b[1] - a[1]).slice(0, max).map(([n]) => n)
+}
+
+// Vista de tabla (>= 1024 px): orden por columna sobre lo ya cargado.
+// El monto ordena con signo (los gastos cuentan como negativos).
+export const COLUMNAS_TABLA = [
+  { id: 'fecha', titulo: 'Fecha', fija: true },
+  { id: 'descripcion', titulo: 'Descripción', fija: true },
+  { id: 'categoria', titulo: 'Categoría' },
+  { id: 'cuenta', titulo: 'Cuenta' },
+  { id: 'monto', titulo: 'Monto', fija: true },
+]
+
+export function ordenarMovimientos(items, { col = 'fecha', dir = 'desc' } = {}, { nombreCuenta = () => '', firmado = (m) => Number(m.monto) || 0 } = {}) {
+  const k = {
+    fecha: (m) => m.fecha || '',
+    descripcion: (m) => (m.descripcion || '').toLowerCase(),
+    categoria: (m) => (m.categoria || '').toLowerCase(),
+    cuenta: (m) => String(nombreCuenta(m.cuenta_id) || '').toLowerCase(),
+    monto: firmado,
+  }[col] || ((m) => m.fecha || '')
+  const signo = dir === 'asc' ? 1 : -1
+  return [...items].sort((a, b) => {
+    const x = k(a)
+    const y = k(b)
+    if (x < y) return -signo
+    if (x > y) return signo
+    return 0
+  })
 }

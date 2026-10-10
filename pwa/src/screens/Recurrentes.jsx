@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { useVolver } from '../lib/useVolver'
-import { ArrowLeft, Check, Plus, Sparkles, X, Repeat } from 'lucide-react'
+import { ArrowLeft, Plus, Sparkles, X, Repeat } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP, formatVeces } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
 import Hoja from '../components/Hoja'
+import InputMonto from '../components/InputMonto'
+import { CampoTexto, CampoMonto } from '../components/ui'
+import { useDialogos } from '../lib/DialogosContext'
 
 const estadoColor = {
   pagado: 'text-accent',
@@ -24,6 +27,7 @@ const estadoLabel = {
 
 export default function Recurrentes() {
   const volver = useVolver('/perfil')
+  const { avisar } = useDialogos() || {}
   const { recargar: recargarCuentas } = useCuentas()
   const [recs, setRecs] = useState([])
   const [sugerencias, setSugerencias] = useState([])
@@ -37,7 +41,7 @@ export default function Recurrentes() {
     try {
       setRecs(await api.recurrentes())
     } catch (err) {
-      setError(err.message || 'No se pudieron cargar tus recurrentes')
+      setError(err.message || 'No pudimos cargar tus pagos fijos. Revisa tu conexión y toca «Reintentar».')
     }
     try {
       setSugerencias(await api.sugerenciasRecurrentes())
@@ -49,10 +53,15 @@ export default function Recurrentes() {
     cargar()
   }, [])
 
-  async function marcarPagado(id) {
-    await api.marcarRecurrentePagado(id)
-    await recargarCuentas()
-    cargar()
+  async function marcarPagado(r) {
+    try {
+      await api.marcarRecurrentePagado(r.id)
+      await recargarCuentas()
+      avisar?.(`Listo: «${r.nombre}» quedó pagado este mes y ya está en tus movimientos.`, 'ok')
+      cargar()
+    } catch (err) {
+      avisar?.(err.message || 'No pudimos marcarlo como pagado. Intenta de nuevo.')
+    }
   }
 
   async function aceptarSugerencia(s) {
@@ -65,6 +74,7 @@ export default function Recurrentes() {
       dia_del_mes: s.dia_del_mes,
     })
     setSugerencias((prev) => prev.filter((x) => x.descripcion !== s.descripcion))
+    avisar?.(`Agregamos «${s.descripcion}» a tus pagos fijos.`, 'ok')
     cargar()
   }
 
@@ -82,21 +92,23 @@ export default function Recurrentes() {
            aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-xl font-semibold">Recurrentes</h1>
+          <h1 className="text-xl font-semibold">Pagos fijos</h1>
         </div>
         <button
           onClick={() => setMostrarForm(true)}
-          className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
-         aria-label="Nuevo recurrente">
+          className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"
+         aria-label="Agregar un pago fijo">
           <Plus size={20} />
         </button>
       </header>
+
+      <p className="mx-5 mt-1 text-xs text-ink-soft">Lo que pagas o recibes cada mes, como el arriendo, una suscripción o la nómina.</p>
 
       {!cargando && sugerencias.length > 0 && (
         <section className="mx-5 mt-4">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles size={16} className="text-accent" />
-            <h2 className="text-sm font-semibold">Detectamos posibles recurrentes</h2>
+            <h2 className="text-sm font-semibold">Parece que estos se repiten cada mes</h2>
           </div>
           <div className="flex flex-col gap-2">
             {sugerencias.map((s) => (
@@ -109,14 +121,14 @@ export default function Recurrentes() {
                 </div>
                 <button
                   onClick={() => aceptarSugerencia(s)}
-                  className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center shrink-0"
-                 aria-label="Aceptar sugerencia">
-                  <Check size={16} />
+                  className="min-h-11 px-4 rounded-full bg-accent text-paper-raised text-sm font-semibold flex items-center justify-center shrink-0"
+                 aria-label={`Agregar «${s.descripcion}» a mis pagos fijos`}>
+                  Agregar
                 </button>
                 <button
                   onClick={() => descartarSugerencia(s)}
                   className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center shrink-0"
-                 aria-label="Descartar sugerencia">
+                 aria-label={`Descartar «${s.descripcion}»`}>
                   <X size={16} />
                 </button>
               </div>
@@ -126,7 +138,7 @@ export default function Recurrentes() {
       )}
 
       {cargando ? (
-        <EsqueletoLista filas={4} className="mx-5 mt-6" etiqueta="Cargando tus recurrentes" />
+        <EsqueletoLista filas={4} className="mx-5 mt-6" etiqueta="Cargando tus pagos fijos" />
       ) : error ? (
         <div className="mx-5 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
           <p className="text-sm text-danger mb-3">{error}</p>
@@ -135,7 +147,9 @@ export default function Recurrentes() {
           </button>
         </div>
       ) : recs.length === 0 ? (
-        <EstadoVacio icono={Repeat} titulo="Aún no tienes gastos o ingresos recurrentes" texto="Arriendo, suscripciones, nómina: regístralos una vez." className="mx-5 mt-6" />
+        <EstadoVacio icono={Repeat} titulo="Aún no tienes pagos fijos" texto="Arriendo, suscripciones, nómina: anótalos una vez y te avisamos cuando se acerquen." className="mx-5 mt-6">
+          <button onClick={() => setMostrarForm(true)} className="btn btn-primario btn-sm mt-4">Agregar un pago fijo</button>
+        </EstadoVacio>
       ) : (
         <div className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
           {recs.map((r, i) => (
@@ -152,10 +166,10 @@ export default function Recurrentes() {
               </p>
               {r.estado !== 'pagado' && (
                 <button
-                  onClick={() => marcarPagado(r.id)}
-                  className="w-11 h-11 rounded-full bg-accent-soft text-accent flex items-center justify-center shrink-0"
-                 aria-label="Marcar como pagado">
-                  <Check size={16} />
+                  onClick={() => marcarPagado(r)}
+                  className="min-h-11 px-3.5 rounded-full bg-accent-soft text-accent text-xs font-semibold flex items-center justify-center shrink-0"
+                 aria-label={`Marcar «${r.nombre}» como pagado`}>
+                  Ya pagué
                 </button>
               )}
             </div>
@@ -185,11 +199,14 @@ function FormRecurrente({ onClose, onGuardado }) {
   const [cuentaId, setCuentaId] = useState(cuentas[0]?.id || '')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const { avisar } = useDialogos() || {}
 
   async function guardar() {
     setError('')
-    if (!nombre.trim()) return setError('Ponle un nombre')
-    if (!monto || Number(monto) <= 0) return setError('Ingresa un monto válido')
+    if (!nombre.trim()) return setError('Escribe cómo lo reconoces, por ejemplo «Arriendo» o «Netflix».')
+    if (!monto || Number(monto) <= 0) return setError('Escribe de cuánto es, solo números. Por ejemplo 45000.')
+    const dia = Number(diaMes)
+    if (dia < 1 || dia > 31) return setError('El día va entre 1 y 31.')
 
     setGuardando(true)
     try {
@@ -200,9 +217,10 @@ function FormRecurrente({ onClose, onGuardado }) {
         dia_del_mes: Number(diaMes) || 1,
         cuenta_id: cuentaId || null,
       })
+      avisar?.(`Listo: «${nombre.trim()}» quedó en tus pagos fijos.`, 'ok')
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No pudimos guardarlo. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -211,7 +229,7 @@ function FormRecurrente({ onClose, onGuardado }) {
   return (
     <Hoja onCerrar={onClose}>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Nuevo recurrente</h2>
+        <h2 className="text-lg font-semibold">Nuevo pago fijo</h2>
         <button onClick={onClose} aria-label="Cerrar" className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center">
           <X size={16} />
         </button>
@@ -234,25 +252,28 @@ function FormRecurrente({ onClose, onGuardado }) {
         ))}
       </div>
 
-      <input
+      <CampoTexto
+        etiqueta="¿Qué es?"
         value={nombre}
         onChange={(e) => setNombre(e.target.value)}
-        placeholder="Nombre (ej. Netflix, Arriendo)"
-        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
+        placeholder="Ej. Netflix, Arriendo"
+        className="mb-3"
       />
-      <input
+      <CampoMonto
+        entero
+        etiqueta="¿De cuánto es?"
         value={monto}
-        onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
-        inputMode="numeric"
-        placeholder="Monto"
-        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
+        onValor={setMonto}
+        placeholder="Ej. 45000"
+        className="mb-3"
       />
-      <input
+      <CampoTexto
+        etiqueta="¿Qué día del mes?"
+        ayuda="Un número entre 1 y 31."
         value={diaMes}
         onChange={(e) => setDiaMes(e.target.value.replace(/\D/g, '').slice(0, 2))}
         inputMode="numeric"
-        placeholder="Día del mes (1-31)"
-        className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
+        className="mb-3"
       />
 
       {cuentas.length > 1 && (
@@ -270,14 +291,14 @@ function FormRecurrente({ onClose, onGuardado }) {
         </label>
       )}
 
-      {error && <p className="text-sm text-danger mb-3">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger mb-3">{error}</p>}
 
       <button
         onClick={guardar}
         disabled={guardando}
         className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
       >
-        {guardando ? 'Guardando...' : 'Crear recurrente'}
+        {guardando ? 'Guardando...' : 'Guardar pago fijo'}
       </button>
     </Hoja>
   )

@@ -23,7 +23,7 @@ export default function AutorizacionTratamiento({ onListo }) {
       await api.guardarConsentimientos(VERSION_TEXTOS, items, 'registro')
       onListo()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar tu autorización')
+      setError(err.message || 'No se pudo guardar tu autorización. Revisa tu conexión e intenta de nuevo.')
       setGuardando(false)
     }
   }

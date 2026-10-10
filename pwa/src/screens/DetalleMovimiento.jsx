@@ -15,6 +15,7 @@ import { esAuto } from '../lib/comercio'
 import { HojaCambiarCategoria, InsigniaAuto } from '../components/CategorizacionAuto'
 import InsigniaCanales from '../components/InsigniaCanales'
 import { parchearEnCaches, quitarDeCaches } from '../lib/useEstadoLista'
+import InputMonto from '../components/InputMonto'
 import {
   cambiosEsReal,
   cambiosMarcarTraslado,
@@ -71,7 +72,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       setContrapartes(null)
       avisar(mensaje, 'ok')
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar')
+      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setTrasladando(false)
     }
@@ -91,7 +92,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
         candidatosContraparte(movimiento, lista).filter((o) => moneda(o.cuenta_id) === moneda(movimiento.cuenta_id))
       )
     } catch (err) {
-      avisar(err.message || 'No se pudo buscar')
+      avisar(err.message || 'No se pudo buscar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setTrasladando(false)
     }
@@ -110,7 +111,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       setContrapartes(null)
       avisar('Vinculados: ya no cuentan como ingreso ni gasto', 'ok')
     } catch (err) {
-      avisar(err.message || 'No se pudo vincular')
+      avisar(err.message || 'No se pudo vincular. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setTrasladando(false)
     }
@@ -124,7 +125,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       parchearEnCaches(nuevo)
       onCambio?.(nuevo)
     } catch (err) {
-      avisar(err.message || 'No se pudo confirmar')
+      avisar(err.message || 'No se pudo confirmar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -171,7 +172,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       setEditando(false)
       avisar('Movimiento actualizado', 'ok')
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar')
+      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -197,7 +198,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       else volver()
     } catch (err) {
       setEliminando(false)
-      avisar(err.message || 'No se pudo eliminar')
+      avisar(err.message || 'No se pudo eliminar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -270,11 +271,10 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           </label>
           <label className="block">
             <span className="text-xs text-ink-soft">Monto</span>
-            <input
+            <InputMonto
               className={`${campo} mt-1`}
-              inputMode="decimal"
               value={form.monto}
-              onChange={(e) => setForm({ ...form, monto: e.target.value.replace(/[^\d.]/g, '') })}
+              onValor={(v) => setForm({ ...form, monto: v })}
             />
           </label>
           {movimiento.tipo !== 'transfer' && (
@@ -365,7 +365,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={confirmarCategoria}
-                  className="flex-1 rounded-xl bg-accent text-white py-2.5 text-sm font-semibold"
+                  className="flex-1 rounded-xl bg-accent text-paper-raised py-2.5 text-sm font-semibold"
                 >
                   Está bien
                 </button>
@@ -417,7 +417,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                     <button
                       onClick={() => aplicarTraslado(cambiosMarcarTraslado(movimiento), 'Listo: es plata entre tus cuentas, no cuenta como gasto')}
                       disabled={trasladando}
-                      className="rounded-xl bg-accent text-white py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
+                      className="rounded-xl bg-accent text-paper-raised py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
                     >
                       Es plata que pasé entre mis cuentas
                     </button>

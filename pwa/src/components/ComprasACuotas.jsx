@@ -5,6 +5,7 @@ import { formatMoneda } from '../lib/format'
 import { calcularCuota, mesAnio } from '../lib/cuotas'
 import { leerMonto } from '../lib/cuentaNueva'
 import Hoja from './Hoja'
+import InputMonto from './InputMonto'
 
 const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 function fechaCorta(iso) {
@@ -42,7 +43,7 @@ export default function ComprasACuotas({ cuenta }) {
       await api.pagarCuotaTarjeta(id)
       await cargar()
     } catch (err) {
-      setError(err.message || 'No se pudo marcar la cuota')
+      setError(err.message || 'No se pudo marcar la cuota. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -53,7 +54,7 @@ export default function ComprasACuotas({ cuenta }) {
       setQuitando(null)
       await cargar()
     } catch (err) {
-      setError(err.message || 'No se pudo quitar')
+      setError(err.message || 'No se pudo quitar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -148,7 +149,7 @@ function FormCuotas({ cuenta, onClose, onGuardada }) {
       })
       await onGuardada()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
       setGuardando(false)
     }
   }
@@ -167,10 +168,9 @@ function FormCuotas({ cuenta, onClose, onGuardada }) {
       </label>
       <label className="block mb-3">
         <span className="text-xs text-ink-soft">Valor de la compra</span>
-        <input
+        <InputMonto
           value={monto}
-          onChange={(e) => setMonto(e.target.value.replace(/[^\d.,]/g, ''))}
-          inputMode="decimal"
+          onValor={setMonto}
           placeholder="Ej. 1.200.000"
           aria-label="Valor de la compra"
           className={campo}

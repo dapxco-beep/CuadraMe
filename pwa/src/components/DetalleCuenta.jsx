@@ -8,6 +8,7 @@ import { cupoDisponible, deudaTarjeta, esCredito, etiquetaCuenta, textoActualiza
 import Ayudita from './Ayudita'
 import Hoja from './Hoja'
 import { leerMonto } from '../lib/cuentaNueva'
+import InputMonto from './InputMonto'
 
 // Detalle de UNA cuenta: saldo actual sin ambigüedad, cómo va el mes, últimos
 // movimientos y las dos acciones para que el saldo coincida con el banco:
@@ -25,7 +26,7 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
     try {
       setDet(await api.detalleCuenta(cuentaId))
     } catch (err) {
-      setError(err.message || 'No se pudo cargar la cuenta')
+      setError(err.message || 'No se pudo cargar la cuenta. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -160,7 +161,7 @@ function FormAjuste({ cuenta, onHecho }) {
       await api.ajustarSaldo(cuenta.id, nuevoSaldo)
       await onHecho()
     } catch (err) {
-      setError(err.message || 'No se pudo ajustar el saldo')
+      setError(err.message || 'No se pudo ajustar el saldo. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -172,10 +173,9 @@ function FormAjuste({ cuenta, onHecho }) {
         <span className="text-xs text-ink-soft">
           {credito ? '¿Cuánto debes hoy en esta tarjeta?' : '¿Cuál es el saldo real que ves en tu banco?'}
         </span>
-        <input
+        <InputMonto negativo
           value={valor}
-          onChange={(e) => setValor(e.target.value.replace(/[^\d.,-]/g, ''))}
-          inputMode="decimal"
+          onValor={setValor}
           placeholder="Ej. 1500000"
           aria-label={credito ? 'Lo que debes hoy' : 'Saldo real'}
           className="w-full rounded-2xl border border-line bg-paper px-4 py-3.5 text-sm outline-none focus:border-accent mt-1"
@@ -192,7 +192,7 @@ function FormAjuste({ cuenta, onHecho }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full mt-3 bg-accent text-white font-semibold rounded-2xl py-3 text-sm disabled:opacity-60"
+        className="w-full mt-3 bg-accent text-paper-raised font-semibold rounded-2xl py-3 text-sm disabled:opacity-60"
       >
         {guardando ? 'Ajustando...' : 'Confirmar ajuste'}
       </button>

@@ -132,7 +132,7 @@ export default function AtajoAvanzado({ claveAtajo }) {
             </div>
           )}
           <div className="flex gap-2 mt-3">
-            <BotonCopiar texto={scriptAndroid || ''} etiqueta="Copiar script" disabled={!scriptAndroid} className="flex-1 bg-accent text-white py-3 rounded-2xl" />
+            <BotonCopiar texto={scriptAndroid || ''} etiqueta="Copiar script" disabled={!scriptAndroid} className="flex-1 bg-accent text-paper-raised py-3 rounded-2xl" />
             <button
               onClick={descargarScript}
               disabled={!scriptAndroid}

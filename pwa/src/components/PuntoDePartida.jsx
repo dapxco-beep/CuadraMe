@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { AlertTriangle, CalendarClock, CheckCircle2, Flag, Sparkles } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatMoneda } from '../lib/format'
+import InputMonto from './InputMonto'
 import { useCuentas } from '../lib/CuentasContext'
 import { mensajeAmable } from '../lib/mensajes'
 import {
@@ -361,10 +362,10 @@ export default function PuntoDePartida({ variante = 'perfil', inicial = null, on
                 {modo === 'historico' && (
                   <label className="block mt-2">
                     <span className="text-[11px] text-ink-soft">Saldo al inicio ({fechaLarga(fechaNueva) || 'esa fecha'})</span>
-                    <input
-                      inputMode="decimal"
+                    <InputMonto
+                      negativo
                       value={saldos[c.id]?.inicial ?? ''}
-                      onChange={(e) => setSaldos((s) => ({ ...s, [c.id]: { ...s[c.id], inicial: e.target.value } }))}
+                      onValor={(v) => setSaldos((s) => ({ ...s, [c.id]: { ...s[c.id], inicial: v } }))}
                       aria-label={`Saldo al inicio de ${c.nombre}`}
                       placeholder="Si lo sabes"
                       className="w-full mt-0.5 rounded-xl border border-line bg-paper-raised px-3 py-2"
@@ -375,10 +376,10 @@ export default function PuntoDePartida({ variante = 'perfil', inicial = null, on
                   <span className="text-[11px] text-ink-soft">
                     {modo === 'hoy' ? 'Saldo de hoy (según tu banco)' : 'Saldo actual (según tu banco)'}
                   </span>
-                  <input
-                    inputMode="decimal"
+                  <InputMonto
+                    negativo
                     value={saldos[c.id]?.actual ?? ''}
-                    onChange={(e) => setSaldos((s) => ({ ...s, [c.id]: { ...s[c.id], actual: e.target.value } }))}
+                    onValor={(v) => setSaldos((s) => ({ ...s, [c.id]: { ...s[c.id], actual: v } }))}
                     aria-label={`Saldo de ${c.nombre}`}
                     className="w-full mt-0.5 rounded-xl border border-line bg-paper-raised px-3 py-2"
                   />

@@ -23,7 +23,7 @@ export function DialogosProvider({ children }) {
   const avisar = useCallback((mensaje, tipo = 'error', opciones = {}) => {
     clearTimeout(temporizador.current)
     setToast({ mensaje, tipo, accion: opciones.accion || null })
-    temporizador.current = setTimeout(() => setToast(null), opciones.duracion || (opciones.accion ? 5000 : 4000))
+    temporizador.current = setTimeout(() => setToast(null), opciones.duracion || (opciones.accion ? 7000 : 4000))
   }, [])
 
   useEffect(() => () => clearTimeout(temporizador.current), [])
@@ -59,7 +59,7 @@ export function DialogosProvider({ children }) {
         >
           <div
             className={`pop-in max-w-[440px] w-full rounded-2xl px-4 py-3 text-sm font-medium shadow-lg pointer-events-auto ${
-              toast.tipo === 'error' ? 'bg-danger text-white' : 'bg-ink text-paper'
+              toast.tipo === 'error' ? 'bg-danger text-paper-raised' : 'bg-ink text-paper'
             }`}
           >
             <div className="flex items-center justify-between gap-3">
@@ -71,7 +71,7 @@ export function DialogosProvider({ children }) {
                     setToast(null)
                     toast.accion.onClick()
                   }}
-                  className="shrink-0 font-bold underline underline-offset-2 px-2 py-1 -my-1 -mr-1"
+                  className="shrink-0 font-bold underline underline-offset-2 px-3 min-h-11 -my-2 -mr-2"
                 >
                   {toast.accion.texto}
                 </button>
@@ -102,7 +102,7 @@ export function DialogosProvider({ children }) {
             <button
               onClick={() => responder(true)}
               className={`flex-1 rounded-2xl py-3.5 text-sm font-semibold ${
-                confirmacion.peligro ? 'bg-danger text-white' : 'bg-ink text-paper'
+                confirmacion.peligro ? 'bg-danger text-paper-raised' : 'bg-ink text-paper'
               }`}
             >
               {confirmacion.confirmarTexto || 'Continuar'}

@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP, formatPorcentaje } from '../lib/format'
 import Hoja from './Hoja'
+import InputMonto from './InputMonto'
 
 // Hoja inferior: cómo repartir un ingreso (gastos fijos, ahorro/metas, gasto libre
 // y sobres). SOLO es una sugerencia: nada se mueve hasta que el usuario pulsa
@@ -23,7 +24,7 @@ export default function SugerenciaIngreso({ monto: montoInicial, cuentaId, onClo
     try {
       setSug(await api.distribuirIngreso(Number(valor)))
     } catch (err) {
-      setError(err.message || 'No se pudo calcular la sugerencia')
+      setError(err.message || 'No se pudo calcular la sugerencia. Revisa tu conexión e intenta de nuevo.')
     }
     setCargando(false)
   }
@@ -45,7 +46,7 @@ export default function SugerenciaIngreso({ monto: montoInicial, cuentaId, onClo
       onAplicado?.()
       onClose()
     } catch (err) {
-      setError(err.message || 'No se pudo apartar el dinero')
+      setError(err.message || 'No se pudo apartar el dinero. Revisa tu conexión e intenta de nuevo.')
     }
     setAplicando(false)
   }
@@ -62,10 +63,9 @@ export default function SugerenciaIngreso({ monto: montoInicial, cuentaId, onClo
 
       {!montoInicial && (
         <div className="flex gap-2 mb-4">
-          <input
+          <InputMonto entero
             value={monto}
-            onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
-            inputMode="numeric"
+            onValor={setMonto}
             placeholder="Monto del ingreso"
             className="flex-1 rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"
           />

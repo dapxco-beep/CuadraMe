@@ -6,6 +6,7 @@ import { parsearMontoEscrito } from '../lib/centro'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import CrearCuentaBanco from './CrearCuentaBanco'
+import InputMonto from './InputMonto'
 import SelectorCuentaBanco from './SelectorCuentaBanco'
 import { cuentaRecordada } from '../lib/cuentasBanco'
 import RecordarRegla, { RECORDAR_INICIAL } from './RecordarRegla'
@@ -70,7 +71,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
       else await api.aprobarCorreo(c.id, cuentaId)
       onResuelto?.(c)
     } catch (err) {
-      setError(err.message || 'No se pudo aprobar el movimiento')
+      setError(err.message || 'No se pudo aprobar el movimiento. Revisa tu conexión e intenta de nuevo.')
     } finally {
       ocupar(c.id, false)
     }
@@ -84,7 +85,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
       await api.descartarCorreo(c.id)
       onResuelto?.(c)
     } catch (err) {
-      setError(err.message || 'No se pudo descartar')
+      setError(err.message || 'No se pudo descartar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       ocupar(c.id, false)
     }
@@ -116,10 +117,9 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
               {falta && (
                 <label className="block mt-2">
                   <span className="text-xs font-medium text-accent">No pude leer el monto. Escríbelo para aprobar.</span>
-                  <input
-                    inputMode="decimal"
+                  <InputMonto
                     value={montoPorCorreo[c.id] || ''}
-                    onChange={(e) => setMontoPorCorreo((p) => ({ ...p, [c.id]: e.target.value }))}
+                    onValor={(v) => setMontoPorCorreo((p) => ({ ...p, [c.id]: v }))}
                     placeholder="Monto, ej. 25.000"
                     aria-label={`Monto de ${c.comercio}`}
                     className="w-full mt-1 rounded-xl border border-line bg-paper-raised px-3 py-2 text-sm outline-none focus:border-accent"
@@ -189,7 +189,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
                 <button
                   onClick={() => aprobar(c)}
                   disabled={procesando.has(c.id) || !cuentaId || !(monto > 0)}
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-accent text-white font-semibold rounded-xl py-2.5 text-sm disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-accent text-paper-raised font-semibold rounded-xl py-2.5 text-sm disabled:opacity-50"
                 >
                   <Check size={16} aria-hidden="true" /> Aprobar
                 </button>

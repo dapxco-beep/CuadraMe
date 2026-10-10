@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import BarraProgreso from './BarraProgreso'
+import InputMonto from './InputMonto'
 
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
@@ -84,7 +85,7 @@ export default function SimuladorDeudas() {
     try {
       setResultado(await api.estrategiaDeudas(Number(extra) || 0))
     } catch (err) {
-      setError(err.message || 'No se pudo simular')
+      setError(err.message || 'No se pudo simular. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setCargando(false)
     }
@@ -102,12 +103,11 @@ export default function SimuladorDeudas() {
         ¿Cuánto extra puedes pagar al mes?
       </label>
       <div className="flex gap-2">
-        <input
+        <InputMonto entero
           id="extra-mensual"
           value={extra}
-          onChange={(e) => setExtra(e.target.value.replace(/\D/g, ''))}
+          onValor={setExtra}
           onKeyDown={(e) => e.key === 'Enter' && simular()}
-          inputMode="numeric"
           placeholder="Ej. 200000"
           className="flex-1 min-w-0 rounded-2xl border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-accent"
         />

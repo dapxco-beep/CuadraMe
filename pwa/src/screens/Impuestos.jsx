@@ -28,7 +28,7 @@ export default function Impuestos() {
     try {
       setDatos(await api.impuestosResumen(a))
     } catch (err) {
-      setError(err.message || 'No se pudo cargar')
+      setError(err.message || 'No se pudo cargar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -43,7 +43,7 @@ export default function Impuestos() {
       await api.impuestosAjustes(id)
       await cargar()
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar')
+      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -58,7 +58,7 @@ export default function Impuestos() {
       setAbierto(null)
       await cargar()
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar')
+      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -69,7 +69,7 @@ export default function Impuestos() {
       await api.impuestosQuitarMarca(item.movimiento_id)
       await cargar()
     } catch (err) {
-      avisar(err.message || 'No se pudo quitar')
+      avisar(err.message || 'No se pudo quitar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -77,7 +77,7 @@ export default function Impuestos() {
     try {
       await api.impuestosExcel(anio)
     } catch {
-      avisar('No se pudo exportar')
+      avisar('No se pudo exportar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 

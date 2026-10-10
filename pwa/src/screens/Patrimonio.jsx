@@ -11,6 +11,7 @@ import DonaDistribucion from '../components/DonaDistribucion'
 import GraficoDescomposicion from '../components/GraficoDescomposicion'
 import { Isotipo, Monto, IlustracionVacia } from '../brand/Marca'
 import Hoja from '../components/Hoja'
+import InputMonto from '../components/InputMonto'
 
 const MONEDAS = ['COP', 'USD', 'EUR']
 const CLASES_ACTIVO = ['cdt', 'fondo', 'etf', 'accion', 'cripto', 'inmueble', 'vehiculo']
@@ -40,7 +41,7 @@ export default function Patrimonio() {
       // Extra: si falla, el resto de la pantalla no se afecta.
       api.descomposicionPatrimonio().then((r) => setDescomposicion(r?.meses || [])).catch(() => {})
     } catch (err) {
-      setError(err.message || 'No se pudo cargar tu patrimonio')
+      setError(err.message || 'No pudimos cargar tu patrimonio. Revisa tu conexión e intenta de nuevo.')
     }
     setCargando(false)
   }
@@ -57,12 +58,14 @@ export default function Patrimonio() {
         <h1 className="text-xl font-semibold">Patrimonio</h1>
         <button
           onClick={() => setFormulario({})}
-          className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"
           aria-label="Agregar activo"
         >
           <Plus size={20} />
         </button>
       </header>
+
+      <p className="mx-5 text-xs text-ink-soft">Tu patrimonio es todo lo que tienes menos todo lo que debes.</p>
 
       {cargando && !datos ? (
         <div className="mx-5 mt-3 space-y-3">
@@ -116,7 +119,7 @@ export default function Patrimonio() {
                   <IlustracionVacia icono={Landmark} size={92} className="mb-3" />
                   <p className="text-sm text-ink-soft mb-3">
                     {vacio
-                      ? 'Aún no hay nada que contar. Agrega tu primer CDT, fondo, inmueble o vehículo.'
+                      ? 'Un activo es algo tuyo que vale plata: un CDT, un fondo, una casa o un vehículo. Agrega el primero.'
                       : 'Agrega tus CDT, fondos, acciones, inmuebles o vehículos para ver tu patrimonio completo.'}
                   </p>
                   <button onClick={() => setFormulario({})} className="text-sm font-semibold text-accent">
@@ -353,7 +356,7 @@ function FormActivo({ activo, onClose, onGuardado }) {
       else await api.crearActivo(payload)
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -371,7 +374,7 @@ function FormActivo({ activo, onClose, onGuardado }) {
       await api.eliminarActivo(activo.id)
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No se pudo eliminar')
+      setError(err.message || 'No se pudo eliminar. Revisa tu conexión e intenta de nuevo.')
       setGuardando(false)
     }
   }
@@ -399,7 +402,7 @@ function FormActivo({ activo, onClose, onGuardado }) {
               onClick={() => setClase(c)}
               aria-pressed={clase === c}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                clase === c ? 'bg-accent text-white border-accent' : 'bg-paper-raised border-line text-ink-soft'
+                clase === c ? 'bg-accent text-paper-raised border-accent' : 'bg-paper-raised border-line text-ink-soft'
               }`}
             >
               <Icono icono={CLASES[c].icono} tam="sm" className="inline -mt-0.5 mr-1" />{CLASES[c].label}
@@ -428,7 +431,7 @@ function FormActivo({ activo, onClose, onGuardado }) {
       {esCDT && (
         <>
           <Campo etiqueta="Capital invertido">
-            <input value={capital} onChange={(e) => setCapital(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
+            <InputMonto value={capital} onValor={setCapital} className={claseInput} />
           </Campo>
           <Campo etiqueta="Tasa efectiva anual (%)">
             <input value={tasaEA} onChange={(e) => setTasaEA(soloNumero(e.target.value))} inputMode="decimal" placeholder="Ej. 12.5" className={claseInput} />
@@ -472,11 +475,11 @@ function FormActivo({ activo, onClose, onGuardado }) {
       {esBien && (
         <>
           <Campo etiqueta="Valor estimado actual">
-            <input value={precio} onChange={(e) => setPrecio(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
+            <InputMonto value={precio} onValor={setPrecio} className={claseInput} />
           </Campo>
           <div className="grid grid-cols-2 gap-3">
             <Campo etiqueta="Costo de compra (opcional)">
-              <input value={costoAdq} onChange={(e) => setCostoAdq(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
+              <InputMonto value={costoAdq} onValor={setCostoAdq} className={claseInput} />
             </Campo>
             <Campo etiqueta="Fecha de compra (opcional)">
               <input type="date" value={fechaAdq} onChange={(e) => setFechaAdq(e.target.value)} className={claseInput} />

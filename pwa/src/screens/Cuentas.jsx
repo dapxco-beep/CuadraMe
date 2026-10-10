@@ -78,7 +78,7 @@ export default function Cuentas() {
           <BotonOjo />
           <button
             onClick={() => setMostrarForm(true)}
-            className="w-11 h-11 rounded-full bg-accent text-white flex items-center justify-center"
+            className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"
            aria-label="Nueva cuenta">
             <Plus size={20} />
           </button>
@@ -86,9 +86,8 @@ export default function Cuentas() {
       </header>
 
       <p className="mx-6 mt-2 text-xs text-ink-soft">
-        Cada cuenta es un lugar donde tienes o debes plata: tu Bancolombia, tu Nequi, el efectivo
-        en tu bolsillo. El saldo de todas juntas es el «Saldo actual» de Inicio. Toca una cuenta
-        para ver su detalle o ajustar su saldo si no coincide con tu banco.
+        Aquí está cada lugar donde tienes o debes plata. Toca una cuenta para ver sus movimientos o
+        ajustar su saldo si no coincide con tu banco.
       </p>
 
       {resumen && cuentas.length > 0 && (
@@ -209,11 +208,11 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
   const [eliminando, setEliminando] = useState(false)
   const [error, setError] = useState('')
   const refError = useAlertaVisible(error)
-  const { confirmar } = useDialogos()
+  const { confirmar, avisar } = useDialogos()
 
   async function guardar() {
     setError('')
-    if (!nombre.trim()) return setError('Ponle un nombre a tu cuenta')
+    if (!nombre.trim()) return setError('Elige tu banco o escribe un nombre para tu cuenta, por ejemplo «Nequi».')
     if (!esEdicion && tipo === 'credito') {
       const problema = validarTarjetaNueva(campos)
       if (problema) return setError(problema)
@@ -223,8 +222,10 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
     try {
       if (esEdicion) {
         await api.editarCuenta(cuenta.id, { nombre: nombre.trim(), tipo, icono, alias_tarjeta: alias.trim() })
+        avisar?.('Listo: guardamos los cambios de tu cuenta.', 'ok')
       } else {
         await api.crearCuenta(datosCuentaNueva({ nombre, tipo, icono, moneda, alias, ...campos }))
+        avisar?.(`Listo: tu cuenta «${nombre.trim()}» quedó creada.`, 'ok')
         const tiposDelBanco = hechos.banco === banco ? hechos.tipos : []
         if (banco && productoAlterno(tipo) && !tiposDelBanco.includes(productoAlterno(tipo))) {
           // La lista de atrás ya se actualiza; la hoja sigue abierta para ofrecer «la otra» del banco.
@@ -236,14 +237,14 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
       }
       onGuardada()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar')
+      setError(err.message || 'No pudimos guardar la cuenta. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
   }
 
   async function eliminar() {
-    const ok = await confirmar('Esto solo funciona si la cuenta no tiene movimientos.', {
+    const ok = await confirmar('Solo se puede eliminar si no tiene movimientos. Si tiene, primero bórralos o muévelos a otra cuenta.', {
       titulo: `¿Eliminar "${cuenta.nombre}"?`,
       confirmarTexto: 'Eliminar',
       peligro: true,
@@ -255,7 +256,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
       await api.eliminarCuenta(cuenta.id)
       onEliminada()
     } catch (err) {
-      setError(err.message || 'No se pudo eliminar')
+      setError(err.message || 'No pudimos eliminar la cuenta. Si tiene movimientos, primero bórralos o muévelos a otra cuenta.')
       setEliminando(false)
     }
   }
