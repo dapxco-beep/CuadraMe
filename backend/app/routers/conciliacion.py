@@ -38,7 +38,9 @@ from app.database import get_db
 from app.extractos_conciliados import evidencia_conciliado
 from app.models import Cuenta, HistorialExtracto, Movimiento, Perfil
 from app.extracto_tarjeta import leer_datos_tarjeta, proponer_actualizacion
-from app.pdf_extract import extraer_via_ia, pdf_a_texto, pdf_pide_clave
+from app.config import settings
+from app.pdf_extract import ORIGEN_GMAIL, ORIGEN_MANUAL, extraer_via_ia, pdf_a_texto, pdf_pide_clave
+from app.routers.consentimientos import tiene_consentimiento
 from app.schemas import (
     HistorialExtractoOut,
     ImportarFaltantesRequest,
@@ -87,6 +89,17 @@ def procesar_extracto(
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
+    """Extracto que el usuario sube a mano desde su dispositivo."""
+    return _procesar_extracto(data, db, usuario, ORIGEN_MANUAL)
+
+
+def procesar_extracto_de_gmail(data: ProcesarExtractoRequest, db: Session, usuario: UsuarioActual):
+    """Extracto que llegó por Gmail (no es un endpoint): su contenido nunca va a un proveedor
+    de IA salvo la excepción documentada en pdf_extract.modelo_ia_permitido."""
+    return _procesar_extracto(data, db, usuario, ORIGEN_GMAIL)
+
+
+def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: UsuarioActual, origen: str):
     cuenta = cuenta_accesible(db, usuario.id, data.cuenta_id)
     if not cuenta or not puede_editar_cuenta(db, usuario.id, cuenta):
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
@@ -104,8 +117,14 @@ def procesar_extracto(
     # Banco desconocido y casi sin señales de extracto: no se manda a la IA (inventaría filas
     # de una carta o factura) ni se importa nada.
     if not movimientos and not sin_senales:
-        movimientos = extraer_via_ia(texto_plano, cuenta.nombre, banco)
-        via_ia = True
+        # IA externa SOLO con consentimiento «ia» vigente y según el origen (ver pdf_extract).
+        # Sin permiso no se llama a nadie: queda «necesita tu revisión» / «mi banco no está».
+        if (not settings.exigir_consentimientos) or tiene_consentimiento(db, usuario.id, "ia"):
+            movimientos = extraer_via_ia(
+                texto_plano, cuenta.nombre, banco,
+                origen=origen, consentimiento_ia=True, nombre_titular=usuario.nombre or "",
+            )
+            via_ia = bool(movimientos)
 
     if movimientos:
         parece, motivo = evaluar_extracto(texto_plano, banco, movimientos)

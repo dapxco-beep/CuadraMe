@@ -121,6 +121,9 @@ def contexto_ia(datos: dict) -> dict:
     top = gasto_por_categoria(datos["movs"], hoy.year, hoy.month)[:6]
     comercios: dict[str, float] = defaultdict(float)
     for m in datos["movs"]:
+        # Lo originado en un correo de Gmail no sale hacia la IA con nombre (Uso Limitado de Google).
+        if m.get("fuente") == "email":
+            continue
         if m["tipo"] == "expense" and (m["fecha"].year, m["fecha"].month) == (hoy.year, hoy.month):
             comercios[sanitizar_dato(m["descripcion"], 40)] += m["monto"]
     principales = sorted(comercios.items(), key=lambda kv: kv[1], reverse=True)[:5]

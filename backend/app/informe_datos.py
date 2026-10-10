@@ -54,6 +54,7 @@ def cargar_movs_efectivos(
             "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP")),
             "categoria": m.categoria or "Otros",
             "descripcion": m.descripcion or "",
+            "fuente": m.fuente or "manual",
         }
         for m in movs
     ]

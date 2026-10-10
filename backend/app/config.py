@@ -5,6 +5,13 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./cuadrame.db"
     supabase_url: str = "https://pkapcorvslqdmigjmggu.supabase.co"
     openrouter_api_key: str = ""
+    # Modelo de OpenRouter de PAGO y con política de no entrenamiento. Es lo único con lo que
+    # contenido de Gmail podría llegar a una IA externa (y solo con consentimiento «ia»).
+    # Vacío (por defecto) = el contenido de Gmail NUNCA sale hacia un proveedor de IA.
+    openrouter_model_privado: str = ""
+    # Frase secreta con la que se CIFRA el respaldo diario antes de enviarlo por correo.
+    # Vacía = el respaldo por correo NO se envía (y se avisa al administrador).
+    backup_passphrase: str = ""
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_lifetime_cop: int = 2000000  # $20.000 COP × 100 (COP usa centavos en Stripe, no es zero-decimal)

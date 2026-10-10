@@ -33,5 +33,8 @@ def cron_enviar_backup(db: Session = Depends(get_db), x_cron_secret: str = Heade
         raise
     if not resultado["ok"]:
         liberar_marca(db, "sistema", _CLAVE_BACKUP)
+        if resultado.get("sin_frase"):
+            # Fallo de configuración: 503 visible en el cron, con la acción a seguir.
+            raise HTTPException(status_code=503, detail="Falta BACKUP_PASSPHRASE: el respaldo no se envía sin cifrar")
         raise HTTPException(status_code=500, detail=resultado.get("error", "No se pudo enviar el backup"))
     return {**resultado, "enviado": True, "procesados": 1, "fallidos": 0}

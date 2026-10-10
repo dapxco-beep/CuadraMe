@@ -64,7 +64,7 @@ from app.gmail_oauth import (
 )
 from app.models import Categoria, ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil, SyncGmail
 from app.routers.consentimientos import exigir_consentimiento, tiene_consentimiento
-from app.routers.conciliacion import procesar_extracto
+from app.routers.conciliacion import procesar_extracto_de_gmail as procesar_extracto
 from app.utiles import utc_a_co
 from app.duplicados import absorber_correos
 from app import duplicados as dup

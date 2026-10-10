@@ -20,7 +20,9 @@ from app.database import get_db
 from app.edad_dinero import calcular_edad_dinero, mensaje_edad, tendencia_edad
 from app.fx import convertir_a_cop
 from app.salud_financiera import calcular_salud_financiera
-from app.insights import detectar_anomalias, generar_resumen_semanal, responder_pregunta
+from app.insights import _resumen_fallback, detectar_anomalias, generar_resumen_semanal, responder_pregunta
+from app.routers.consentimientos import exigir_consentimiento, tiene_consentimiento
+from app.config import settings
 from app.models import Cuenta, Deuda, Meta, Movimiento, Presupuesto
 from app.schemas import (
     AlertasProactivasResponse,
@@ -79,13 +81,18 @@ def resumen_semanal(
         [{"categoria": m.categoria, "tipo": te[m.id], "monto": monto_cop(m), "fecha": m.fecha} for m in todos]
     )
 
-    texto = generar_resumen_semanal({
+    resumen = {
         "ingresos": ingresos,
         "gastos": gastos,
         "top_categorias": top_categorias,
         "anomalias": anomalias_raw,
         "periodo": etiqueta,
-    })
+    }
+    # Sin consentimiento «ia» vigente, las cifras no salen hacia ningún proveedor: texto determinista.
+    if settings.exigir_consentimientos and not tiene_consentimiento(db, usuario.id, "ia"):
+        texto = _resumen_fallback(resumen)
+    else:
+        texto = generar_resumen_semanal(resumen)
 
     return ResumenSemanal(
         ingresos=ingresos,
@@ -199,6 +206,7 @@ def preguntar(
                       "arma el plan y te deja confirmar antes de guardar nada.")
 
     # 2) Pregunta abierta: IA sobre los últimos 90 días (si no hay IA, se sugieren preguntas útiles).
+    exigir_consentimiento(db, usuario.id, "ia")  # Ley 1581: los movimientos van a un proveedor de IA
     hace_90_dias = ahora_co() - timedelta(days=90)
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
 
@@ -222,7 +230,9 @@ def preguntar(
         "movimientos_ultimos_90_dias": [
             {
                 "fecha": m.fecha.strftime("%Y-%m-%d"),
-                "descripcion": m.descripcion,
+                # Lo que se originó en un correo de Gmail no se describe a la IA (Uso Limitado de
+                # Google): solo viaja categoría, tipo y monto.
+                "descripcion": "" if m.fuente == "email" else m.descripcion,
                 "categoria": m.categoria,
                 "tipo": m.tipo,
                 "monto": m.monto,
