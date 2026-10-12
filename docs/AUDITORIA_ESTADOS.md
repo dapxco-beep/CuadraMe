@@ -21,7 +21,7 @@ Qué se revisó: números que no cuentan la historia completa, estados poco clar
 - «Por revisar» (`/movimientos/por-revisar/conteo`) y «Por categorizar»/«Por confirmar» del centro son conjuntos que no se pisan: la cola de categorizar excluye lo que ya está en la bandeja.
 
 ## Queda pendiente
-- Inicio muestra a la vez el recordatorio de extractos y la insignia «N por resolver»: son dos vistas de lo mismo (no suman dos veces, pero se pueden confundir). Decidir con Daniel si se quita el recordatorio cuando la insignia ya lo cubre.
+- (Resuelto en la auditoría final) Inicio mostraba el recordatorio de extractos y la insignia «N por resolver»: ahora queda solo el número en el botón Traer movimientos. Ver AUDITORIA_FINAL.md.
 - El mismo PDF en dos correos distintos se detecta por cuenta + mes. Un hash del contenido (columna nueva en `extractos_correo`) lo haría exacto también cuando el periodo no se pudo leer; no se agregó para no tocar la base.
 - Saldos y cupos de tarjetas, Presupuesto y Cierre de mes: no se encontraron dobles conteos con las pruebas actuales, pero no se revisaron con datos reales.
 - Correos aprobados: la tarjeta no muestra aún «esto es lo que va a pasar» (los que coinciden con algo ya no aparecen en «Por revisar»; los demás siempre se agregan como nuevos).
