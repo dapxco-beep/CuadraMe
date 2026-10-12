@@ -429,7 +429,7 @@ SIN_ID_DE_RECURSO = {
 SIN_SESION = {
     "/backup/cron/enviar", "/cierre-mes/cron/cerrar-mes", "/correos/oauth/callback", "/correos/cron/sincronizar",
     "/metricas/uso", "/metricas/cron/revisar-uso-semanal", "/metricas/cron/avisos-crecimiento",
-    "/avisos/cron/resumen-diario",
+    "/avisos/cron/resumen-diario", "/costos-bancarios/cron/avisar-cargos",
     "/movimientos/cuentas-rapido", "/movimientos/rapido",
     "/movimientos/rapido-voz", "/pagos/webhook", "/patrimonio/cron/snapshot-mensual",
     "/patrimonio/cron/actualizar-precios", "/push/vapid-public-key", "/push/cron/revisar-presupuestos",
