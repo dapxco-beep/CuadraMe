@@ -74,6 +74,8 @@ def medicion(**cambios) -> dict:
 def fijar(monkeypatch):
     def _fijar(**cambios):
         monkeypatch.setattr(crecimiento, "recopilar", lambda db, ahora=None: medicion(**cambios))
+        # El resumen semanal solo sale los lunes: se fija un miércoles para que la prueba no dependa del día real.
+        monkeypatch.setattr(crecimiento, "ahora_co", lambda: MIERCOLES)
     return _fijar
 
 
