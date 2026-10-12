@@ -10,7 +10,7 @@ import { Boton } from './ui'
 //   1. Cuánto tienes y qué pasó esta semana (saldo, gastos de la semana, 3 últimos movimientos)
 //   2. UN siguiente paso claro (si el camino de 3 pasos está en pantalla, él ya cumple ese papel)
 //   3. Un consejo para ti
-export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true }) {
+export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false }) {
   return (
     <div data-testid="inicio-simple">
       {/* BLOQUE 1 */}
@@ -34,6 +34,8 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
         </div>
       </section>
 
+      {/* Cuenta nueva con el camino de 3 pasos a la vista: el paso 2 ya dice «trae tus movimientos»; no repetirlo en otra tarjeta vacía */}
+      {!(enCamino && recientes.length === 0) && (
       <section className="mx-6 mt-3 tarjeta-lista" aria-label="Últimos movimientos">
         {recientes.length === 0 ? (
           <div className="py-4 text-center">
@@ -66,6 +68,7 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
           </Link>
         )}
       </section>
+      )}
 
       {/* BLOQUE 2 */}
       {siguiente && (
@@ -90,7 +93,7 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
 
       {/* BLOQUE 3 */}
       <ConsejoParaTi max={1} />
-      <OfrecerPrimeraMeta className="mx-6 mt-2 flex justify-center" />
+      {!enCamino && <OfrecerPrimeraMeta className="mx-6 mt-2 flex justify-center" />}
     </div>
   )
 }

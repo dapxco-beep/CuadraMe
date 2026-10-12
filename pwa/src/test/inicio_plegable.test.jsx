@@ -73,7 +73,7 @@ describe('Inicio — bloque protagonista y dos acciones', () => {
     await screen.findByText('Puedes gastar hoy')
     expect(screen.getByRole('link', { name: /Agregar movimiento/ })).toHaveAttribute('href', '/agregar')
     expect(screen.getByRole('link', { name: /Traer movimientos/ })).toHaveAttribute('href', '/sincronizacion')
-    for (const nombre of ['Cuentas', 'Movimientos recientes', 'Por resolver', 'Presupuesto', 'Salud financiera', 'Accesos', 'Recomendaciones']) {
+    for (const nombre of ['Cuentas', 'Movimientos recientes', 'Presupuesto', 'Salud financiera', 'Accesos', 'Recomendaciones']) {
       expect(screen.getByRole('button', { name: new RegExp(nombre) })).toHaveAttribute('aria-expanded', 'false')
     }
     // Lo plegado no se monta: nada de Patrimonio, Metas ni el mazo de cuentas a la vista

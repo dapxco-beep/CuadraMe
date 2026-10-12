@@ -31,7 +31,8 @@ function guardarDescartados(claves) {
  * Tarjetas de recordatorio en Inicio: pago de tarjeta cerca, presupuesto al 80 % o más y
  * extractos de Gmail por revisar. Todo se calcula en el servidor; si falla, no se muestra nada.
  */
-export default function Recordatorios() {
+// omitirExtractos: Inicio ya muestra «N por resolver» en el botón Traer movimientos; decirlo dos veces confunde.
+export default function Recordatorios({ omitirExtractos = false }) {
   const [lista, setLista] = useState([])
   const [descartados, setDescartados] = useState(leerDescartados)
 
@@ -52,7 +53,7 @@ export default function Recordatorios() {
     }
   }, [])
 
-  const visibles = lista.filter((r) => !descartados.includes(r.clave))
+  const visibles = lista.filter((r) => !descartados.includes(r.clave) && !(omitirExtractos && r.tipo === 'extractos'))
   if (!visibles.length) return null
 
   function descartar(clave) {

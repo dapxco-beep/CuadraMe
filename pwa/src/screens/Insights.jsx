@@ -94,7 +94,7 @@ export default function Insights() {
           <PieChart size={20} className="text-accent" />
         </span>
         <div className="flex-1">
-          <p className="text-sm font-semibold">En qué gasto mi plata</p>
+          <p className="text-sm font-semibold">En qué gasto</p>
           <p className="text-xs text-ink-soft mt-0.5">Informe por categoría y comercio, con el periodo que elijas</p>
         </div>
         <ChevronRight size={16} className="text-ink-soft shrink-0" />

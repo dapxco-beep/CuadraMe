@@ -125,7 +125,7 @@ export default function Informe() {
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-xl font-bold">En qué gasto mi plata</h1>
+        <h1 className="text-xl font-bold">En qué gasto</h1>
       </header>
 
       <section className="px-6 mt-2">

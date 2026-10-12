@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowLeftRight, Bot, ChevronDown, ChevronRight, CreditCard, Gift, HeartPulse, Landmark, LayoutGrid, Lightbulb, ListChecks, PieChart,
+  ArrowLeftRight, Bot, ChevronDown, ChevronRight, CreditCard, Gift, HeartPulse, Landmark, LayoutGrid, Lightbulb, PieChart,
   PiggyBank, Plus, RefreshCw, Repeat, Sparkles, Wallet,
 } from 'lucide-react'
 import { IlustracionVacia, Isotipo, Monto, SelloCuadre } from '../brand/Marca'
@@ -195,7 +195,6 @@ export default function Inicio() {
   // Mientras el camino de 3 pasos esté en pantalla, él es el «siguiente paso» (no se repite otro).
   const enCamino = armarCamino({ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }).some((p) => !p.hecho)
   const siguienteInicio = siguientePasoInicio({ cuentas: cuentas.length, movimientos: movimientos.length, sinCategorizar })
-  const hayPorResolver = (tareasSync || 0) > 0 || conexionFalla
 
   const gastosMensuales = (tendencia || []).map((m) => Number(m.gastos)).filter((v) => Number.isFinite(v))
   const hayTendencia = gastosMensuales.length >= 2 && gastosMensuales.some((v) => v > 0)
@@ -252,6 +251,7 @@ export default function Inicio() {
             gastosSemana={semana}
             recientes={movimientos.slice(0, 3)}
             siguiente={enCamino ? null : siguienteInicio}
+            enCamino={enCamino}
             fmt={fmt}
             iconoDe={iconoDe}
             cuadra={cuadra !== false}
@@ -362,7 +362,7 @@ export default function Inicio() {
           <PreguntaMovimiento ultimaFecha={movimientos[0]?.fecha} />
 
           {/* Recordatorios útiles: pago de tarjeta, presupuesto al 80 % y extractos por revisar (descartables) */}
-          <Recordatorios />
+          <Recordatorios omitirExtractos={tareasSync > 0} />
           <ConsejoParaTi />
         </div>
 
@@ -422,25 +422,6 @@ export default function Inicio() {
               <Link to="/movimientos" className="mt-2 flex items-center justify-center gap-1 text-sm text-accent font-semibold py-2">
                 Ver todo <Icono icono={ChevronRight} tam="sm" />
               </Link>
-            </SeccionPlegable>
-
-            <SeccionPlegable
-              id="resolver"
-              titulo="Por resolver"
-              icono={ListChecks}
-              aviso={hayPorResolver}
-              abiertaPorDefecto={false}
-              resumen={tareasSync === null ? '' : tareasSync === 0 && !conexionFalla ? 'Todo al día' : `${tareasSync || 0} por resolver`}
-            >
-              <div className="divide-y divide-line">
-                <FilaEnlace
-                  to="/sincronizacion"
-                  icono={RefreshCw}
-                  titulo="Traer movimientos"
-                  apoyo={tareasSync === null ? 'Correos, extractos y archivos' : tareasSync === 0 ? 'Todo al día' : `${tareasSync} por resolver`}
-                />
-                {conexionFalla && <FilaEnlace to="/sincronizacion" state={{ abrir: 'estado' }} icono={Sparkles} titulo="Una conexión está fallando" apoyo="Ver el estado de tus conexiones" />}
-              </div>
             </SeccionPlegable>
 
             <SeccionPlegable
@@ -544,7 +525,7 @@ export default function Inicio() {
                 ))}
               </div>
               <div className="divide-y divide-line mt-2">
-                <FilaEnlace to="/informe" icono={PieChart} titulo="En qué gasto mi plata" apoyo="Por categoría, comercios y periodo a tu medida" />
+                <FilaEnlace to="/informe" icono={PieChart} titulo="En qué gasto" apoyo="Por categoría, comercios y periodo a tu medida" />
                 <FilaEnlace to="/asistente" icono={Bot} titulo="Pregúntale a CuadraMe AI" apoyo="«¿Puedo comprar un celular?» · «Gasté 18.000 en almuerzo»" />
                 <FilaEnlace to="/resumen" icono={Gift} titulo="Tu resumen del mes" apoyo="Míralo en diapositivas y compártelo" />
               </div>
