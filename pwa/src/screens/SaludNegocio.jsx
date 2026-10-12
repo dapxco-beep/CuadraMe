@@ -10,6 +10,7 @@ import ActividadAvisos from '../components/ActividadAvisos'
 import BarraProgreso from '../components/BarraProgreso'
 import Icono from '../components/Icono'
 import Sparkline from '../components/Sparkline'
+import TasasReferenciaAdmin from '../components/TasasReferenciaAdmin'
 import { Tarjeta } from '../components/ui'
 
 // «Salud del negocio»: solo para quien administra CuadraMe. El servidor decide (responde 404 a cualquier
@@ -184,6 +185,8 @@ export default function SaludNegocio() {
           </ul>
         </Tarjeta>
       </section>
+
+      {admin && <TasasReferenciaAdmin />}
 
       <p className="mx-6 mt-4 text-xs text-ink-soft">
         Movimientos: {fmt(datos.volumen.movimientos)} · correos leídos: {fmt(datos.volumen.correos_procesados)} · extractos:{' '}

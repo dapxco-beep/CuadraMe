@@ -473,6 +473,18 @@ def es_admin(email: str | None) -> bool:
     return bool(admin) and (email or "").strip().lower() == admin
 
 
+def _tasas_vencidas(db: Session) -> dict:
+    """Tasas de referencia de «Tu plata trabajando» con más de 45 días sin actualizar (tolerante a fallos)."""
+    try:
+        from app import rendimientos
+
+        return {"dias_limite": rendimientos.DIAS_TASA_VIEJA,
+                "desactualizadas": rendimientos.tasas_desactualizadas(db, ahora_co().date())}
+    except Exception:
+        logger.exception("No se pudo revisar las tasas de referencia")
+        return {"dias_limite": 45, "desactualizadas": []}
+
+
 def armar_panel(db: Session) -> dict:
     m = recopilar(db)
     return {
@@ -482,4 +494,5 @@ def armar_panel(db: Session) -> dict:
         "senales": senales(m),
         "volumen": {k: m[k] for k in ("movimientos", "correos_procesados", "extractos_procesados", "ia_mes")},
         "tendencia": m["tendencia"],
+        "tasas_referencia": _tasas_vencidas(db),
     }

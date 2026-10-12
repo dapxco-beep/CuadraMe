@@ -128,6 +128,8 @@ def _sembrar():
     I["partida"] = partida.json().get("id", "") if partida.status_code == 200 else ""
     I["comentario"] = _ok(client.post("/comentarios", json={"tipo": "sugerencia", "mensaje": f"{MARCA} idea",
                                                             "pantalla": "/movimientos"}))["id"]
+    I["cajita"] = _ok(client.post("/rendimientos/cajitas", json={"cuenta_id": banco["id"], "nombre": f"{MARCA} Cajita",
+                                                                   "saldo": 100, "tasa_ea": 9}))["id"]
     client.put("/planificacion/config", json={})
     client.put("/correos/clave-pdf", json={"clave": f"{MARCA}1234"})  # puede requerir Fernet: no es obligatorio
 
@@ -338,6 +340,14 @@ ATAQUES = [
     ("DELETE", "/comentarios/{comentario}/adjunto", None),
     ("GET", "/comentarios/{comentario}/adjunto", None),
     ("POST", "/comentarios/{comentario}/adjunto", {}),
+    # cajitas: B no puede crear cajitas en cuentas de A, ni editar, mover ni borrar las de A
+    ("POST", "/rendimientos/cajitas", {"cuenta_id": "{cuenta}", "nombre": "x", "saldo": 1}),
+    ("PUT", "/rendimientos/cajitas/{cajita}", {"nombre": "hackeada"}),
+    ("POST", "/rendimientos/cajitas/{cajita}/mover", {"monto": 1, "sentido": "entrar"}),
+    ("DELETE", "/rendimientos/cajitas/{cajita}", None),
+    # tasas de referencia: edición solo de la administración (404 al resto)
+    ("PUT", "/rendimientos/tasas/{cajita}", {"entidad": "x", "producto": "x", "tasa_ea": 1}),
+    ("POST", "/rendimientos/tasas", {"entidad": "x", "producto": "x", "tasa_ea": 1}),
 ]
 # Rutas donde un 200 es correcto aunque sean de B: la operación se limita a datos de B (idempotente).
 # Se valida igual que la foto de A no cambie y que la respuesta no traiga la marca.

@@ -172,6 +172,22 @@ export const LECCIONES = [
     accion: { texto: 'Subir un extracto', to: '/sincronizacion' },
     palabras: 'extracto revisar cobros cuota manejo intereses 4x1000 gmf reclamo conciliar',
   },
+  {
+    id: 'donde-rinde-mi-plata',
+    titulo: '¿Dónde rinde mi plata?',
+    resumen: 'Tu plata quieta puede ganar intereses; cuánto depende de dónde esté.',
+    cuerpo: [
+      'La plata que está en tu cuenta puede ganar **intereses**: es el pago del banco por tenerla ahí. Cuánto gana depende de **dónde** esté guardada.',
+      '- **Saldo principal** de algunas cuentas digitales o de ahorros: a veces rinde muy poco (menos de 1 % al año).',
+      '- **Cajitas o bolsillos:** apartados dentro de la misma cuenta que pagan más y se pueden sacar cuando quieras. Siguen siendo tu plata, solo la separas.',
+      '- **CDT:** le prestas plata al banco por un plazo fijo (por ejemplo 90 o 120 días) y te paga una tasa conocida. Antes del plazo no es fácil sacarla.',
+      'Para comparar usa siempre la **tasa efectiva anual (E.A.)**: es la que cuenta el efecto de que los intereses también ganan intereses.',
+      'Las tasas **cambian** con frecuencia y cada producto tiene condiciones (topes, montos mínimos, plazos). Antes de mover plata, confírmalas en la app o la página de tu banco. CuadraMe no te recomienda ningún banco: solo te muestra tus números.',
+    ],
+    ejemplo: 'Con $2.000.000 al 0,10 % E.A. ganas unos $2.000 en un año. Con una tasa de referencia de 9 % E.A. serían unos $180.000. Es una estimación: la tasa real la define tu banco y puede cambiar.',
+    accion: { texto: 'Ver mis cuentas', to: '/cuentas' },
+    palabras: 'rendimiento intereses cajita bolsillo cdt tasa ahorro ganar plata quieta ociosa',
+  },
 ]
 
 export const GLOSARIO = [
@@ -210,6 +226,9 @@ export const GLOSARIO = [
   { id: 'bre-b', termino: 'Bre-B', definicion: 'Sistema de pagos inmediatos del Banco de la República: envías plata a una «llave» (celular, correo…) en segundos. Como es inmediato, casi no se puede devolver.', palabras: 'bre-b breb llave transferencia inmediata', leccion: 'seguridad-fraudes' },
   { id: 'mora', termino: 'Mora', definicion: 'Estar atrasado en un pago. Trae intereses extra, afecta tu historial crediticio y puede terminar en cobro jurídico.', palabras: 'mora atraso retraso cobranza', leccion: 'tarjeta-de-credito' },
   { id: 'historial-crediticio', termino: 'Historial crediticio', definicion: 'El registro de cómo pagas tus deudas. Pagar a tiempo y usar poco de tu cupo ayuda a que te aprueben créditos con mejores condiciones.', palabras: 'historial crediticio datacredito score reporte', leccion: 'tarjeta-de-credito' },
+  { id: 'cajita', termino: 'Cajita o bolsillo', definicion: 'Un apartado dentro de tu cuenta para separar plata con un fin (viaje, emergencias…). Sigue siendo tu plata y suma al saldo de la cuenta; algunos bancos la pagan con una tasa mayor que la del saldo principal.', palabras: 'cajita bolsillo apartado ahorro separar nu lulo nequi', leccion: 'donde-rinde-mi-plata' },
+  { id: 'cdt', termino: 'CDT (certificado de depósito a término)', definicion: 'Le prestas plata al banco por un plazo fijo (por ejemplo 90 o 120 días) y te paga una tasa conocida de antemano. Antes de que termine el plazo no es fácil sacarla.', palabras: 'cdt certificado deposito termino plazo fijo inversion banco', leccion: 'donde-rinde-mi-plata' },
+  { id: 'rendimiento', termino: 'Rendimiento', definicion: 'Lo que gana tu plata por estar guardada: los intereses que te paga el banco. En CuadraMe es una estimación con la tasa que anotaste; el valor real lo define tu banco.', palabras: 'rendimiento intereses ganados ganancia abono', leccion: 'donde-rinde-mi-plata' },
 ]
 
 // ── Búsqueda: sin mayúsculas ni acentos, todas las palabras deben aparecer ──

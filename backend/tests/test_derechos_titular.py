@@ -144,7 +144,7 @@ def test_toda_tabla_sin_usuario_id_esta_clasificada():
     """Si alguien agrega una tabla hija (sin usuario_id), esta prueba obliga a decidir cómo
     se exporta y se borra en derechos_titular.py."""
     sin_usuario = {t.name for t in Base.metadata.sorted_tables if "usuario_id" not in t.c}
-    assert sin_usuario == dt.TABLAS_HIJAS
+    assert sin_usuario == dt.TABLAS_HIJAS | dt.TABLAS_PUBLICAS
 
 
 # ── Borrar mi cuenta ───────────────────────────────────────────────────────────────

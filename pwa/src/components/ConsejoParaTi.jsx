@@ -11,6 +11,18 @@ import { Boton } from './ui'
 const LLAVE = 'cuadrame:consejos-descartados'
 const MAX_VISIBLES = 3
 const MAX_GUARDADOS = 200
+const LLAVE_SILENCIO = 'cuadrame:consejos-silenciados' // prefijos de ids que la persona no quiere ver más (p. ej. «plata-ociosa»)
+
+function leerSilenciados() {
+  try {
+    const v = JSON.parse(localStorage.getItem(LLAVE_SILENCIO) || '[]')
+    return Array.isArray(v) ? v : []
+  } catch {
+    return []
+  }
+}
+
+const prefijoDe = (id) => String(id).split(':')[0]
 
 // Descartados: se guardan en este dispositivo (solo ids de texto, sin datos del usuario). Cada consejo
 // trae un `id` estable que incluye el periodo o la situación, así que si hay algo nuevo (otro mes, otra
@@ -61,7 +73,8 @@ export default function ConsejoParaTi({ max = MAX_VISIBLES }) {
     }
   }, [])
 
-  const visibles = lista.filter((c) => !descartados.includes(c.id)).slice(0, max)
+  const [silenciados, setSilenciados] = useState(leerSilenciados)
+  const visibles = lista.filter((c) => !descartados.includes(c.id) && !silenciados.includes(prefijoDe(c.id))).slice(0, max)
   if (!visibles.length) return null
 
   const i = Math.min(indice, visibles.length - 1)
@@ -72,6 +85,17 @@ export default function ConsejoParaTi({ max = MAX_VISIBLES }) {
     setDescartados(nuevos)
     guardarDescartados(nuevos)
     setIndice((x) => Math.max(0, Math.min(x, visibles.length - 2)))
+  }
+
+  function silenciar() {
+    const nuevos = [...silenciados, prefijoDe(c.id)]
+    setSilenciados(nuevos)
+    try {
+      localStorage.setItem(LLAVE_SILENCIO, JSON.stringify(nuevos))
+    } catch {
+      /* sin almacenamiento: vale solo hasta recargar */
+    }
+    setIndice(0)
   }
 
   const ir = (n) => setIndice((n + visibles.length) % visibles.length)
@@ -127,6 +151,11 @@ export default function ConsejoParaTi({ max = MAX_VISIBLES }) {
           <Boton to={c.accion.ruta} tam="sm" variante="suave">
             {c.accion.texto}
           </Boton>
+          {c.silenciable && (
+            <button type="button" onClick={silenciar} className="text-sm text-ink-soft min-h-11 inline-flex items-center" data-testid="silenciar-consejo">
+              No mostrar más avisos como este
+            </button>
+          )}
           {c.aprende && (
             <Link to={`/aprende?l=${c.aprende}`} className="text-sm text-accent font-medium min-h-11 inline-flex items-center">
               Entender por qué
