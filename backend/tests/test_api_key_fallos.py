@@ -17,9 +17,9 @@ client = TestClient(app)
 RUTA = "/movimientos/cuentas-rapido"
 
 
+def _con_ip(ip, clave="mala"):
     # Railway añade la IP real como último valor
     return {"X-Api-Key": clave, "X-Forwarded-For": ip}
-    return {"X-Api-Key": clave, "X-Forwarded-For": ip  # Railway añade la IP real como único/último valor}
 
 
 def test_ip_cliente_usa_ultimo_valor_de_forwarded_y_respaldo_al_socket():
