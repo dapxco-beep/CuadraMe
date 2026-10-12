@@ -376,7 +376,7 @@ export default function Agregar() {
             placeholder="0"
             ref={montoRef}
             aria-label="Monto"
-            className="bg-transparent outline-none text-6xl font-semibold text-center w-full tabular-nums placeholder:text-ink-soft/40"
+            className="monto-grande bg-transparent outline-none text-6xl font-semibold text-center w-full tabular-nums placeholder:text-ink-soft/40"
           />
         </div>
         <p className="text-sm text-ink-soft mt-2">{cuentaActual?.moneda || 'COP'}</p>

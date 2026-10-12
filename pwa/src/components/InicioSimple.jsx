@@ -38,7 +38,7 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
       {!(enCamino && recientes.length === 0) && (
       <section className="mx-6 mt-3 tarjeta-lista" aria-label="Últimos movimientos">
         {recientes.length === 0 ? (
-          <div className="py-4 text-center">
+          <div className="px-4 py-4 text-center">
             <IlustracionVacia icono={ArrowLeftRight} size={80} />
             <p className="t-cuerpo font-semibold mt-3">Aún no tienes movimientos</p>
             <p className="t-apoyo mt-1">Cuando traigas o anotes alguno, lo verás aquí.</p>
@@ -46,7 +46,7 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
         ) : (
           <div className="divide-y divide-line">
             {recientes.map((m) => (
-              <Link key={m.id} to={`/movimientos/${m.id}`} className="flex items-center gap-3 py-3 min-h-[56px]">
+              <Link key={m.id} to={`/movimientos/${m.id}`} className="flex items-center gap-3 px-4 py-3 min-h-[56px]">
                 <span className="w-10 h-10 rounded-full bg-accent-soft flex items-center justify-center text-lg shrink-0 text-accent" aria-hidden="true">
                   {m.tipo === 'transfer' ? <Icono icono={ArrowLeftRight} tam="md" /> : iconoDe(m.categoria)}
                 </span>

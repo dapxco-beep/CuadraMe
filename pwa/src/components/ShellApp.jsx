@@ -27,7 +27,8 @@ export default function ShellApp({ children }) {
       <main className="app-contenido">
         <AvisoSinConexion />
         {children}
-        {modo === 'movil' && <BottomNav />}
+        {/* En «Nuevo movimiento» la barra inferior sobra (el + ya es esta pantalla y tapa el formulario): se sale con la X */}
+        {modo === 'movil' && pathname !== '/agregar' && <BottomNav />}
       </main>
     </div>
   )

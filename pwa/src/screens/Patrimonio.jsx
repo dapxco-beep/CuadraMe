@@ -431,7 +431,7 @@ function FormActivo({ activo, onClose, onGuardado }) {
       {esCDT && (
         <>
           <Campo etiqueta="Capital invertido">
-            <InputMonto value={capital} onValor={setCapital} className={claseInput} />
+            <InputMonto value={capital} onValor={setCapital} placeholder="Ej. 5.000.000" className={claseInput} />
           </Campo>
           <Campo etiqueta="Tasa efectiva anual (%)">
             <input value={tasaEA} onChange={(e) => setTasaEA(soloNumero(e.target.value))} inputMode="decimal" placeholder="Ej. 12.5" className={claseInput} />
@@ -463,11 +463,11 @@ function FormActivo({ activo, onClose, onGuardado }) {
               <input value={unidades} onChange={(e) => setUnidades(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
             </Campo>
             <Campo etiqueta="Costo promedio por unidad">
-              <input value={costoPromedio} onChange={(e) => setCostoPromedio(soloNumero(e.target.value))} inputMode="decimal" className={claseInput} />
+              <InputMonto value={costoPromedio} onValor={setCostoPromedio} placeholder="Ej. 250.000" className={claseInput} />
             </Campo>
           </div>
           <Campo etiqueta="Precio actual por unidad (manual)">
-            <input value={precio} onChange={(e) => setPrecio(soloNumero(e.target.value))} inputMode="decimal" placeholder="Si lo dejas vacío se usa el costo" className={claseInput} />
+            <InputMonto value={precio} onValor={setPrecio} placeholder="Si lo dejas vacío se usa el costo" className={claseInput} />
           </Campo>
         </>
       )}

@@ -14,6 +14,9 @@ export default function TarjetaCuenta({ cuenta, style, className = '', ultimoMov
   const { fmt } = useBloqueo()
   const credito = esCredito(cuenta)
   const disponible = cupoDisponible(cuenta)
+  const saldoTxt = fmt(credito ? deudaTarjeta(cuenta) : cuenta.saldo, cuenta.moneda)
+  // Nunca se corta una cifra con «…»: si es larga, baja un poco la letra (una cifra cortada engaña)
+  const claseSaldo = saldoTxt.length > 12 ? 'text-sm' : saldoTxt.length > 9 ? 'text-base' : 'text-xl'
 
   return (
     <div
@@ -30,7 +33,7 @@ export default function TarjetaCuenta({ cuenta, style, className = '', ultimoMov
         </span>
       </div>
       <p className="text-[11px] font-semibold uppercase tracking-wide opacity-75 mt-3">{credito ? 'Debes' : 'Saldo actual'}</p>
-      <p className="text-xl font-extrabold truncate">{fmt(credito ? deudaTarjeta(cuenta) : cuenta.saldo, cuenta.moneda)}</p>
+      <p className={`${claseSaldo} font-extrabold whitespace-nowrap`}>{saldoTxt}</p>
       {!compacta && (
         <p className="text-[11px] opacity-80 mt-0.5">
           {credito && disponible != null ? `Disponible del cupo: ${fmt(disponible, cuenta.moneda)}` : ''}

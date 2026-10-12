@@ -18,6 +18,12 @@
   --color-brand-ink: var(--c-brand-ink);
   --color-cuadra: var(--c-cuadra);
   --color-cuadra-soft: var(--c-cuadra-soft);
+  --color-serie-1: var(--c-serie-1);
+  --color-serie-2: var(--c-serie-2);
+  --color-serie-3: var(--c-serie-3);
+  --color-serie-4: var(--c-serie-4);
+  --color-serie-5: var(--c-serie-5);
+  --color-serie-6: var(--c-serie-6);
 
   --font-display: var(--f-display);
   --font-sans: var(--f-sans);
@@ -68,6 +74,13 @@
   --c-hero-soft: #ffe3c9;
   --c-cuadra: #2f6b3f;
   --c-cuadra-soft: #e1efdf;
+  /* Serie de gráficas (dona, barras): un color por categoría, distinguibles también en oscuro */
+  --c-serie-1: #d9622b;
+  --c-serie-2: #2f6b3f;
+  --c-serie-3: #d9a441;
+  --c-serie-4: #5b7fa6;
+  --c-serie-5: #8a5a9e;
+  --c-serie-6: #9a8f7a;
 
   --f-display: 'Sora', 'SF Pro Display', system-ui, sans-serif;
   --f-sans: 'Sora', -apple-system, system-ui, sans-serif;
@@ -96,6 +109,12 @@
   --c-hero-soft: #f0c9a4;
   --c-cuadra: #7bc98d;
   --c-cuadra-soft: #1d2d20;
+  --c-serie-1: #e8823f;
+  --c-serie-2: #7bc98d;
+  --c-serie-3: #e8bc63;
+  --c-serie-4: #8fb0d4;
+  --c-serie-5: #c08ad4;
+  --c-serie-6: #b5ab94;
 
   --f-display: 'Sora', 'SF Pro Display', system-ui, sans-serif;
   --f-sans: 'Sora', -apple-system, system-ui, sans-serif;
@@ -143,6 +162,10 @@ button, a, input, select, textarea, label, summary, [role='button'] {
   textarea {
     font-size: 16px;
   }
+}
+/* El monto de «Nuevo movimiento» sigue siendo grande: 44 px (>16 px, así que iOS tampoco hace zoom) */
+@media (max-width: 767px) {
+  input.monto-grande { font-size: 2.75rem !important; }
 }
 
 body {
