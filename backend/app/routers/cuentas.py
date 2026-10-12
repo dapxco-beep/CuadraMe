@@ -110,6 +110,9 @@ def eliminar_cuenta(
             detail="Esta cuenta tiene movimientos registrados y no se puede eliminar. Puedes dejarla en $0 en vez de borrarla.",
         )
 
+    from app.models_rendimientos import Cajita
+
+    db.query(Cajita).filter(Cajita.cuenta_id == cuenta_id).delete()  # sus cajitas no sobreviven a la cuenta
     db.delete(cuenta)
     db.commit()
     return {"ok": True}

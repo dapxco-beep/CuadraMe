@@ -26,7 +26,7 @@ AVISO = "Orientación educativa, no es asesoría financiera."
 # Una prueba de la PWA verifica que todas existan allá.
 LECCIONES = {
     "presupuesto-50-30-20", "fondo-de-emergencia", "tarjeta-de-credito", "debito-vs-credito",
-    "deudas-avalancha-bola-de-nieve", "gastos-hormiga", "revisar-extractos",
+    "deudas-avalancha-bola-de-nieve", "gastos-hormiga", "revisar-extractos", "donde-rinde-mi-plata",
 }
 
 DIAS_HISTORIAL = 120 # cuánto pasado se lee para detectar patrones (suscripciones necesitan >35 días)
@@ -374,10 +374,37 @@ def _regla_fechas_tarjeta(d, hoy):
     return out
 
 
+def _regla_plata_ociosa(d, hoy):
+    """Saldo principal de una cuenta de ahorro que rinde mucho menos que la tasa de referencia de los
+    productos de ahorro a la vista. Informativo: no recomienda ningún banco; la persona puede silenciarlo
+    (los ids empiezan por «plata-ociosa» y la PWA guarda ese silencio en el dispositivo)."""
+    out = []
+    for o in sorted(d.get("plata_ociosa", []), key=lambda x: -x["extra_anual"])[:2]:
+        out.append(_consejo(
+            f"plata-ociosa:{o['cuenta_id']}:{_mes(hoy)}", "plata_ociosa", 3,
+            f"Tu plata en {o['nombre']} casi no rinde",
+            f"Tienes {_pesos(o['saldo'])} en el saldo principal ganando {o['tasa_actual']:.2f} % E.A. Con una tasa de "
+            f"referencia de ~{o['tasa_ref']:.1f} % E.A. (la de una cajita o bolsillo) serían ~{_pesos(o['extra_anual'])} "
+            "más al año. Es una estimación: las condiciones cambian, verifícalas en tu banco.",
+            f"~{_pesos(o['extra_anual'])}/año", "Ver las opciones", "/cuentas", "donde-rinde-mi-plata"))
+        out[-1]["silenciable"] = True
+    return out
+
+
+def _plata_ociosa_de(db, usuario_id: str, hoy: datetime) -> list[dict]:
+    try:
+        from app import rendimientos
+
+        return rendimientos.resumen(db, usuario_id, hoy)["comparacion"]["ociosa"]
+    except Exception:  # un consejo opcional nunca debe tumbar los demás
+        return []
+
+
 REGLAS = [
     _regla_fechas_tarjeta, _regla_tarjeta_solo_minimo, _regla_utilizacion, _regla_deudas, _regla_fondo_emergencia,
     _regla_categoria_sube, _regla_ingreso_sin_repartir, _regla_sin_presupuesto, _regla_gastos_hormiga,
     _regla_suscripciones, _regla_meta_sin_aporte, _regla_ahorro_sin_meta, _regla_sin_categorizar, _regla_debito_vs_credito,
+    _regla_plata_ociosa,
 ]
 
 
@@ -470,6 +497,7 @@ def reunir_datos(db, usuario_id: str, hoy: datetime) -> dict:
         "deudas": [{"id": x.id, "nombre": x.nombre, "saldo": x.saldo_actual or 0, "tasa_mensual": x.tasa_mensual or 0}
                    for x in db.query(Deuda).filter(Deuda.usuario_id == usuario_id, Deuda.activa == True).all()],  # noqa: E712
         "recurrentes": [r.nombre for r in activas(db.query(Recurrente), Recurrente)],
+        "plata_ociosa": _plata_ociosa_de(db, usuario_id, hoy),
     }
 
 
