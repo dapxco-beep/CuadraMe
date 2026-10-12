@@ -27,6 +27,7 @@ AVISO = "Orientación educativa, no es asesoría financiera."
 LECCIONES = {
     "presupuesto-50-30-20", "fondo-de-emergencia", "tarjeta-de-credito", "debito-vs-credito",
     "deudas-avalancha-bola-de-nieve", "gastos-hormiga", "revisar-extractos",
+    "intereses-de-mora", "cuota-de-manejo", "4x1000-gmf", "seguro-de-deudores", "costo-neto",
 }
 
 DIAS_HISTORIAL = 120 # cuánto pasado se lee para detectar patrones (suscripciones necesitan >35 días)
@@ -374,7 +375,19 @@ def _regla_fechas_tarjeta(d, hoy):
     return out
 
 
+def _regla_costos_bancarios(d, hoy):
+    """Alertas de «lo que te cuesta tu plata» (mora, costo que sube, cuota nueva, solo el mínimo) y cargos
+    inusuales/suscripciones. Ya vienen calculadas con ids estables: aquí solo se vuelven consejos."""
+    out = []
+    for a in d.get("costos_alertas", []):
+        c = _consejo(a["id"], a["tipo"], a["prioridad"], a["titulo"], a["texto"], a["cifra"],
+                     a["accion"]["texto"], a["accion"]["ruta"], a.get("aprende"))
+        out.append(c)
+    return out
+
+
 REGLAS = [
+    _regla_costos_bancarios,
     _regla_fechas_tarjeta, _regla_tarjeta_solo_minimo, _regla_utilizacion, _regla_deudas, _regla_fondo_emergencia,
     _regla_categoria_sube, _regla_ingreso_sin_repartir, _regla_sin_presupuesto, _regla_gastos_hormiga,
     _regla_suscripciones, _regla_meta_sin_aporte, _regla_ahorro_sin_meta, _regla_sin_categorizar, _regla_debito_vs_credito,
@@ -456,8 +469,20 @@ def reunir_datos(db, usuario_id: str, hoy: datetime) -> dict:
         if c["id"] in pagos:
             c["ultimo_pago"] = pagos[c["id"]]
 
+    costos_alertas = []
+    try:  # el análisis de costos nunca debe tumbar los consejos
+        from app import cargos_inusuales, costos_bancarios
+
+        ahora_d = hoy.date()
+        costos_alertas = costos_bancarios.analizar_usuario(
+            db, usuario_id, ahora_d.replace(day=1), ahora_d, hoy)["alertas"]
+        costos_alertas += cargos_inusuales.detectar_usuario(db, usuario_id, hoy)["alertas"]
+    except Exception:  # noqa: BLE001
+        costos_alertas = []
+
     activas = lambda q, M: q.filter(M.usuario_id == usuario_id, M.activo == True).all()  # noqa: E731, E712
     return {
+        "costos_alertas": costos_alertas,
         "cuentas": cuentas,
         "movimientos": movimientos,
         "movimientos_neutros": neutros,

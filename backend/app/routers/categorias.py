@@ -8,6 +8,7 @@ from sqlalchemy import func
 from app.autocat import ClasificadorUsuario
 from app.clave_comercio import clave_comercio, es_huella_peligrosa
 from app.classifier import tokenize
+from app.costos_financieros import CATEGORIAS_COSTOS
 from app.models import Categoria, CorreoGasto, Movimiento, Presupuesto, Recurrente, ReglaCategoria
 from app.schemas import CategoriaCreate, CategoriaOut, CategoriasOrden, CategoriaUpdate
 
@@ -30,10 +31,31 @@ CATEGORIAS_BASE = [
 ]
 
 
+def _asegurar_categorias_sistema(db: Session, usuario_id: str, existentes: list[Categoria]) -> list[Categoria]:
+    """Crea (una sola vez, sin duplicar) las categorías de sistema de «lo que cuesta tu plata»:
+    Rendimientos, Intereses de tarjeta, Cuota de manejo, Comisiones y seguros y 4x1000 (GMF).
+    Si el usuario ya tiene una con ese nombre, se respeta tal cual (la marca de sistema no se le impone)."""
+    tienen = {c.nombre.strip().lower() for c in existentes}
+    orden = max([c.orden or 0 for c in existentes], default=-1) + 1
+    nuevas = []
+    for nombre, icono, tipo in CATEGORIAS_COSTOS:
+        if nombre.lower() in tienen:
+            continue
+        nuevas.append(Categoria(usuario_id=usuario_id, nombre=nombre, icono=icono, orden=orden, es_base=False,
+                                tipo=tipo, es_sistema=True, activa=True))
+        orden += 1
+    if nuevas:
+        db.add_all(nuevas)
+        db.commit()
+        for c in nuevas:
+            db.refresh(c)
+    return existentes + nuevas
+
+
 def _asegurar_categorias_base(db: Session, usuario_id: str) -> list[Categoria]:
     existentes = db.query(Categoria).filter(Categoria.usuario_id == usuario_id).all()
     if existentes:
-        return existentes
+        return _asegurar_categorias_sistema(db, usuario_id, existentes)
 
     nuevas = [
         Categoria(usuario_id=usuario_id, nombre=nombre, icono=icono, orden=i, es_base=True)
@@ -43,7 +65,7 @@ def _asegurar_categorias_base(db: Session, usuario_id: str) -> list[Categoria]:
     db.commit()
     for c in nuevas:
         db.refresh(c)
-    return nuevas
+    return _asegurar_categorias_sistema(db, usuario_id, nuevas)
 
 
 def _con_conteo(db: Session, usuario_id: str, categorias: list[Categoria]) -> list[dict]:
@@ -61,7 +83,7 @@ def _con_conteo(db: Session, usuario_id: str, categorias: list[Categoria]) -> li
         salida.append({
             "id": c.id, "nombre": c.nombre, "icono": c.icono, "orden": c.orden,
             "activa": bool(c.activa), "es_base": bool(c.es_base), "color": c.color,
-            "tipo": c.tipo or "ambos", "movimientos": conteo.get(c.nombre, 0),
+            "tipo": c.tipo or "ambos", "es_sistema": bool(c.es_sistema), "movimientos": conteo.get(c.nombre, 0),
         })
     return salida
 

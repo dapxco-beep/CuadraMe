@@ -93,6 +93,7 @@ class CategoriaOut(BaseModel):
     es_base: bool
     color: Optional[str] = None
     tipo: Optional[str] = "ambos"
+    es_sistema: bool = False
     movimientos: int = 0  # cuántos movimientos usan esta categoría
 
     class Config:

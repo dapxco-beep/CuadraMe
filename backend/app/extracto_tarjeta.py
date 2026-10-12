@@ -36,6 +36,17 @@ ETIQUETAS_FECHA = {
                           "pagar hasta", "pagar antes del", "fecha de vencimiento", "vence el"],
     "fecha_corte": ["fecha de corte", "fecha corte", "fecha de cierre", "corte del extracto"],
 }
+# Desglose de lo que cuesta la tarjeta (opcional: solo si el extracto lo trae). Monto >= 0.
+ETIQUETAS_DESGLOSE = {
+    "intereses_corrientes": ["intereses corrientes", "intereses de corriente", "interes corriente", "intereses de compras",
+                             "intereses de financiacion", "intereses facturados"],
+    "intereses_mora": ["intereses de mora", "interes de mora", "intereses mora", "interes mora"],
+    "cuota_manejo": ["cuota de manejo", "cuota manejo"],
+    "comisiones": ["comisiones", "comision"],
+    "seguros": ["seguro de deudores", "seguro deudores", "seguro de vida", "seguro tarjeta", "seguros"],
+}
+ETIQUETAS_TASA_MV = ["tasa m.v", "tasa mv", "tasa mensual vencida", "tasa de interes mensual", "interes mensual vencido",
+                     "tasa nominal mensual"]
 ETIQUETAS_TASA = ["tasa efectiva anual", "tasa e.a", "tasa ea", "interes efectivo anual", "tasa de interes efectiva anual"]
 
 
@@ -161,6 +172,22 @@ def leer_datos_tarjeta(texto: str) -> dict:
             if 0 < tasa <= 100:
                 out["tasa_ea"] = round(tasa, 2)
 
+    # Desglose de costos (campos opcionales). Un 0 cuenta: «intereses corrientes $0» dice que no pagó intereses.
+    for clave, etiquetas in ETIQUETAS_DESGLOSE.items():
+        v = _ventana(t, etiquetas, 40)
+        monto = _monto_en(v) if v else None
+        if monto is not None and monto >= 0 and monto <= 1e10:
+            out[clave] = monto
+        elif v and re.match(r"\s*[:$]*\s*0(?:[.,]0+)?\s*(?:$|[^\d.,%])", v):
+            out[clave] = 0.0  # un cero suelto no pasa el filtro de _monto_en (sin $ ni miles)
+    v = _ventana(t, ETIQUETAS_TASA_MV)
+    if v:
+        m = re.search(r"(\d{1,2}(?:[.,]\d{1,4})?)\s*%", v)
+        if m:
+            tasa = float(m.group(1).replace(",", "."))
+            if 0 < tasa <= 10:
+                out["tasa_mv"] = round(tasa, 4)
+
     # Coherencia: si algo no cuadra, se descarta el dato dudoso (mejor nada que algo mal).
     cupo = out.get("cupo_total")
     if cupo and out.get("cupo_disponible", 0) > cupo * 1.01:
@@ -195,6 +222,9 @@ def proponer_actualizacion(cuenta, datos: dict) -> dict | None:
         partes.append(f"pago total {_pesos(datos['pago_total'])}")
     if "pago_minimo" in datos:
         partes.append(f"pago mínimo {_pesos(datos['pago_minimo'])}")
+    costos = sum(datos.get(k, 0) or 0 for k in ("intereses_corrientes", "intereses_mora", "cuota_manejo", "comisiones", "seguros"))
+    if costos > 0:
+        partes.append(f"cobros del banco {_pesos(costos)}")
     if "dia_pago" in datos:
         partes.append(f"vence el {datos['dia_pago']}")
     if not partes:
