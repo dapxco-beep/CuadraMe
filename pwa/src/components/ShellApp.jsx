@@ -24,11 +24,11 @@ export default function ShellApp({ children }) {
   return (
     <div className="app-shell" data-modo={modo}>
       {modo !== 'movil' && <BarraLateral modo={modo} />}
-      <div className="app-contenido">
+      <main className="app-contenido">
         <AvisoSinConexion />
         {children}
         {modo === 'movil' && <BottomNav />}
-      </div>
+      </main>
     </div>
   )
 }

@@ -318,9 +318,9 @@ describe('Inicio simplificado', () => {
     expect(within(lista).getAllByRole('link', { name: /Compra/ })).toHaveLength(3)
     expect(await screen.findByTestId('consejo-para-ti')).toHaveTextContent('Ahorra algo cada semana')
     // el resto de tarjetas queda tras «Ver más»
-    expect(screen.queryByRole('button', { name: /Presupuesto del mes/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Presupuesto/ })).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: 'Ver más' }))
-    expect(await screen.findByRole('button', { name: /Presupuesto del mes/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Presupuesto/ })).toBeInTheDocument()
   })
 
   it('un solo siguiente paso: categorizar si hay movimientos sin tipo', async () => {
@@ -356,7 +356,7 @@ describe('Inicio simplificado', () => {
     mocksInicio({ cuentas: 1, movs: [MOV('a')] })
     guardarModoCompleto(auth.usuario.id, true)
     montarInicio()
-    expect(await screen.findByRole('button', { name: /Presupuesto del mes/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Presupuesto/ })).toBeInTheDocument()
     expect(screen.queryByTestId('inicio-simple')).toBeNull()
   })
 })

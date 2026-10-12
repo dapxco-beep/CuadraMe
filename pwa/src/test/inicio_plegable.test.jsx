@@ -73,7 +73,7 @@ describe('Inicio — bloque protagonista y dos acciones', () => {
     await screen.findByText('Puedes gastar hoy')
     expect(screen.getByRole('link', { name: /Agregar movimiento/ })).toHaveAttribute('href', '/agregar')
     expect(screen.getByRole('link', { name: /Traer movimientos/ })).toHaveAttribute('href', '/sincronizacion')
-    for (const nombre of ['Cuentas', 'Movimientos recientes', 'Por resolver', 'Presupuesto del mes', 'Salud financiera', 'Accesos', 'Recomendaciones']) {
+    for (const nombre of ['Cuentas', 'Movimientos recientes', 'Por resolver', 'Presupuesto', 'Salud financiera', 'Accesos', 'Recomendaciones']) {
       expect(screen.getByRole('button', { name: new RegExp(nombre) })).toHaveAttribute('aria-expanded', 'false')
     }
     // Lo plegado no se monta: nada de Patrimonio, Metas ni el mazo de cuentas a la vista
@@ -91,7 +91,7 @@ describe('Inicio — bloque protagonista y dos acciones', () => {
 describe('Inicio — secciones plegables que recuerdan su estado', () => {
   it('al abrir una sección muestra su contenido y guarda el estado en localStorage', async () => {
     montar()
-    const boton = await screen.findByRole('button', { name: /Presupuesto del mes/ })
+    const boton = await screen.findByRole('button', { name: /Presupuesto/ })
     await userEvent.click(boton)
     expect(boton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('= Disponible real este mes')).toBeInTheDocument()

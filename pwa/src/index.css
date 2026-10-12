@@ -600,6 +600,10 @@ button, a {
     background: var(--color-accent-soft); border-color: var(--color-accent); color: var(--color-accent); font-weight: 600;
   }
   .chip:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* Dedo (puntero grueso): todo lo tocable mide al menos 44 px; con ratón se queda compacto */
+  @media (pointer: coarse) {
+    .btn-sm, .chip { min-height: 44px; }
+  }
 
   /* Tarjetas: una sola superficie por bloque (sin tarjetas dentro de tarjetas: lo de adentro se separa con líneas) */
   .tarjeta { background: var(--color-paper-raised); border: 1px solid var(--color-line); border-radius: 18px 30px 18px 18px; padding: 1rem; }

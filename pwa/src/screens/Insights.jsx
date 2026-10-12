@@ -249,6 +249,7 @@ export default function Insights() {
           <button
             type="submit"
             disabled={enviando || !pregunta.trim()}
+            aria-label="Enviar pregunta"
             className="w-12 h-12 shrink-0 rounded-2xl bg-ink text-paper flex items-center justify-center disabled:opacity-50"
           >
             <Send size={16} />

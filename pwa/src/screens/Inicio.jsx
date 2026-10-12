@@ -206,7 +206,7 @@ export default function Inicio() {
       <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Isotipo size={30} cuadra={cuadra !== false} />
-          <p className="t-title text-lg">{primerNombre ? `Hola, ${primerNombre}` : 'Hola'}</p>
+          <h1 className="t-title text-lg">{primerNombre ? `Hola, ${primerNombre}` : 'Hola'}</h1>
         </div>
         <BotonOjo />
       </header>
@@ -445,9 +445,9 @@ export default function Inicio() {
 
             <SeccionPlegable
               id="presupuesto"
-              titulo="Presupuesto del mes"
+              titulo="Presupuesto"
               icono={PieChart}
-              resumen={bolsillo ? `Disponible ${fmt(bolsillo.disponible_real)}` : ''}
+              resumen={bolsillo ? `Libre ${fmt(bolsillo.disponible_real)}` : ''}
             >
               {bolsillo && (
                 <div className="space-y-1.5 pt-2">
