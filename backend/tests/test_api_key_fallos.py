@@ -17,13 +17,14 @@ client = TestClient(app)
 RUTA = "/movimientos/cuentas-rapido"
 
 
-def _con_ip(ip, clave="mala"):
-    return {"X-Api-Key": clave, "X-Forwarded-For": f"{ip}, 10.0.0.1"}
+    # Railway añade la IP real como último valor
+    return {"X-Api-Key": clave, "X-Forwarded-For": ip}
+    return {"X-Api-Key": clave, "X-Forwarded-For": ip  # Railway añade la IP real como único/último valor}
 
 
-def test_ip_cliente_usa_primer_valor_de_forwarded_y_respaldo_al_socket():
+def test_ip_cliente_usa_ultimo_valor_de_forwarded_y_respaldo_al_socket():
     req = SimpleNamespace(headers={"x-forwarded-for": "1.2.3.4, 5.6.7.8"}, client=SimpleNamespace(host="9.9.9.9"))
-    assert limites.ip_cliente(req) == "1.2.3.4"
+    assert limites.ip_cliente(req) == "5.6.7.8"  # el último lo añade el proxy; el primero lo escribe el cliente
     req = SimpleNamespace(headers={}, client=SimpleNamespace(host="9.9.9.9"))
     assert limites.ip_cliente(req) == "9.9.9.9"
     assert limites.ip_cliente(SimpleNamespace(headers={}, client=None)) == "desconocida"
@@ -57,3 +58,14 @@ def test_los_aciertos_no_gastan_cupo():
         db.close()
     for _ in range(limites.FALLOS_API_KEY_MAX + 5):
         assert client.get(RUTA, headers=_con_ip("5.5.5.5", "clave-buena-123")).status_code != 429
+
+
+def test_ip_cliente_no_se_deja_falsear_y_respeta_saltos_de_confianza(monkeypatch):
+    falso = SimpleNamespace(headers={"x-forwarded-for": "6.6.6.6, 7.7.7.7"}, client=None)
+    assert limites.ip_cliente(falso) == "7.7.7.7"
+    monkeypatch.setenv("TRUSTED_PROXY_HOPS", "2")
+    assert limites.ip_cliente(falso) == "6.6.6.6"
+    solo_uno = SimpleNamespace(headers={"x-forwarded-for": "8.8.8.8"}, client=None)
+    assert limites.ip_cliente(solo_uno) == "8.8.8.8"
+    monkeypatch.setenv("TRUSTED_PROXY_HOPS", "basura")
+    assert limites.ip_cliente(falso) == "7.7.7.7"
