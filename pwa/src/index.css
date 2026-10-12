@@ -668,3 +668,9 @@ button, a {
   .print-only { display: block !important; }
   body, #root { background: #fff !important; box-shadow: none !important; }
 }
+
+/* Grupos plegables del Perfil: sin marcador nativo, flecha que gira al abrir */
+.grupo-perfil > summary::-webkit-details-marker { display: none; }
+.grupo-perfil[open] .grupo-perfil-flecha { transform: rotate(180deg); }
+@media (prefers-reduced-motion: no-preference) { .grupo-perfil-flecha { transition: transform 0.2s ease; } }
+.grupo-perfil > div > * { margin-inline: 0; }

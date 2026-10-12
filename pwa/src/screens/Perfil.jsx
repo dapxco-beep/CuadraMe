@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Flag, Mail, Receipt, Check, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, MessageCircle, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
+import { Bell, Flag, Mail, Receipt, Check, ChevronDown, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, MessageCircle, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -176,6 +176,7 @@ export default function Perfil() {
         </Link>
       </section>
 
+      <GrupoPerfil id="pantallas" titulo="Atajos a tus pantallas" apoyo="Cuentas, planeación y herramientas" icono={List}>
       <section className="mx-6 mt-6">
         <h2 className="text-[15px] font-semibold mb-3">Tus cuentas</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
@@ -307,6 +308,9 @@ export default function Perfil() {
       </section>
       )}
 
+      </GrupoPerfil>
+
+      <GrupoPerfil id="avisos" titulo="Avisos y correo" apoyo="Resumen semanal y notificaciones" icono={Bell}>
       <section className="mx-6 mt-8">
         <div className="flex items-center gap-2 mb-3">
           <Mail size={16} className="text-ink-soft" aria-hidden="true" />
@@ -394,6 +398,9 @@ export default function Perfil() {
         </section>
       )}
 
+      </GrupoPerfil>
+
+      <GrupoPerfil id="ajustes" titulo="Seguridad y ajustes" apoyo="Bloqueo, punto de partida, registro automático y apariencia" icono={Palette}>
       <SeccionSeguridad />
 
       <section className="mx-6 mt-8" id="punto-de-partida" aria-labelledby="titulo-punto-de-partida">
@@ -481,6 +488,9 @@ export default function Perfil() {
         </div>
       </section>
 
+      </GrupoPerfil>
+
+      <GrupoPerfil id="privacidad" titulo="Privacidad y legal" apoyo="Tus datos, términos y borrar tu cuenta" icono={FileText}>
       <SeccionPrivacidad onEliminarCuenta={eliminarMiCuenta} eliminando={eliminandoCuenta} />
 
       <section className="mx-6 mt-6">
@@ -504,6 +514,8 @@ export default function Perfil() {
         </div>
       </section>
 
+      </GrupoPerfil>
+
       <section className="mx-6 mt-6">
         <button
           onClick={logout}
@@ -518,6 +530,32 @@ export default function Perfil() {
         <p className="text-[11px] text-ink-soft">CuadraMe · Hecho por DAPX</p>
       </footer>
     </div>
+  )
+}
+
+// Grupo plegable del Perfil: el contenido siempre está en la página (los enlaces con # siguen
+// funcionando: si el # apunta adentro, el grupo se abre solo). Cerrado por defecto: el Perfil
+// deja de ser una pared de ajustes.
+function GrupoPerfil({ id, titulo, apoyo, icono: Ic, children }) {
+  const ref = useRef(null)
+  const [abierto, setAbierto] = useState(false)
+  useEffect(() => {
+    const h = window.location.hash || ''
+    const destino = h.includes('#', 1) ? h.slice(h.indexOf('#', 1) + 1) : ''
+    if (destino && ref.current?.querySelector('#' + CSS.escape(destino))) setAbierto(true)
+  }, [])
+  return (
+    <details ref={ref} open={abierto} onToggle={(e) => setAbierto(e.currentTarget.open)} className="grupo-perfil mx-6 mt-6" data-grupo={id}>
+      <summary className="flex items-center gap-3 px-4 min-h-[56px] cursor-pointer list-none rounded-2xl bg-paper-raised border border-line">
+        <Ic size={20} className="text-accent shrink-0" aria-hidden="true" />
+        <span className="flex-1 min-w-0">
+          <span className="block text-[15px] font-semibold">{titulo}</span>
+          <span className="block text-xs text-ink-soft">{apoyo}</span>
+        </span>
+        <ChevronDown size={16} className="text-ink-soft shrink-0 grupo-perfil-flecha" aria-hidden="true" />
+      </summary>
+      <div className="pb-2 -mt-3">{children}</div>
+    </details>
   )
 }
 
