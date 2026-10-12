@@ -13,6 +13,7 @@ límite efectivo se multiplica por N (y se reinicia en cada despliegue). Por eso
 Railway debe quedarse en 1 réplica mientras no exista un almacén compartido
 (p. ej. Redis); al migrar, la interfaz `verificar_limite` no cambia.
 """
+import os
 import threading
 import time
 from collections import defaultdict, deque
@@ -64,11 +65,21 @@ MENSAJE_FALLOS_API_KEY = "Demasiados intentos con una clave inválida. Intenta d
 
 
 def ip_cliente(request) -> str:
-    """IP del cliente: primer valor de X-Forwarded-For (Railway va detrás de un
-    proxy) con respaldo a la IP del socket."""
+    """IP real del cliente detrás del proxy de Railway.
+
+    X-Forwarded-For llega como "lo-que-mandó-el-cliente, ..., IP-que-vio-el-proxy": cada
+    proxy AÑADE al final la IP de quien le habló. El primer valor lo escribe el cliente (se
+    puede falsear para esquivar el límite de intentos), así que se cuenta desde el final:
+    con N proxies de confianza (TRUSTED_PROXY_HOPS, por defecto 1 = solo Railway) la IP real
+    es la N-ésima desde la derecha. Sin la cabecera se usa la IP del socket."""
     reenviada = request.headers.get("x-forwarded-for", "")
-    if reenviada.strip():
-        return reenviada.split(",")[0].strip()
+    partes = [p.strip() for p in reenviada.split(",") if p.strip()]
+    if partes:
+        try:
+            saltos = max(1, int(os.environ.get("TRUSTED_PROXY_HOPS", "1")))
+        except ValueError:
+            saltos = 1
+        return partes[-saltos] if len(partes) >= saltos else partes[0]
     return request.client.host if request.client else "desconocida"
 
 
