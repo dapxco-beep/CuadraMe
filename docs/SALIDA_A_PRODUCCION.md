@@ -106,3 +106,25 @@ Eventos que quedan en la tabla `eventos_actividad` y se muestran en **Más > Sal
 - **Gmail «Acceso bloqueado»:** la app de Google sigue en modo Pruebas; agrega al usuario como tester o termina la verificación.
 - **Cuentas con datos raros:** nada de borrar datos de usuarios sin aprobación (Ley 1581).
 - **Pérdida de datos:** restaurar desde el último correo de `/backup/cron/enviar` (archivo `.cmbk` cifrado; descifrar segÃºn `docs/RESTAURAR_RESPALDO.md`); antes consultar con Daniel.
+
+## 6. CSP en modo observación (`Content-Security-Policy-Report-Only`)
+
+`pwa/vercel.json` envía la cabecera `Content-Security-Policy-Report-Only`. **No bloquea nada**: el
+navegador solo anota en consola lo que bloquearía una CSP real. Política actual: todo `'self'`;
+conexiones a Supabase (`https://*.supabase.co` y `wss://` para realtime), la API (`*.up.railway.app`
+y `cuadrame.dapx.shop`) y Sentry (`*.ingest.sentry.io`); imágenes `data:`/`blob:`; fuentes propias
+(Sora va autoalojada); `object-src 'none'`; `frame-ancestors 'none'`. Scripts y estilos llevan
+`'unsafe-inline'` porque `index.html` tiene bloques `<script>`/`<style>` en línea.
+
+**Cómo mirarla:** abre la app desplegada en Chrome, F12, pestaña Consola, y recorre login, movimientos,
+subir extracto, foto de factura, asistente y notificaciones. Cada violación sale como
+`[Report Only] Refused to ...` con la directiva (`connect-src`, `img-src`...) y la URL.
+
+**Qué ajustar:** si la URL es legítima, agrégala a la directiva en `vercel.json` (ej. otro host de API
+o de Sentry, avatar de Google en `img-src`). Si no la reconoces, investígala antes de permitirla.
+
+**Cuándo pasar a enforcing:** tras una o dos semanas sin violaciones legítimas en uso real (incluido
+iPhone/Safari). Entonces renombra la clave a `Content-Security-Policy` (déjala un tiempo en las dos).
+Para quitar `'unsafe-inline'` de `script-src` hay que mover los scripts de `index.html` a archivos o
+usar hashes; es un paso posterior y opcional. Verifica también que `/privacidad.html` y `/terminos.html`
+(estáticas, sin JS) no generen violaciones.

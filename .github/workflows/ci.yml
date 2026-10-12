@@ -64,3 +64,34 @@ jobs:
       - run: npx vitest run
 
       - run: npm run build
+
+  # Auditoría de dependencias: informativa (no bloquea el PR). El resumen queda en la pestaña
+  # "Summary" de la corrida. Cuando esté limpia de forma estable, quitar continue-on-error.
+  auditoria:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: pip-audit (backend)
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          echo "## pip-audit (backend)" >> "$GITHUB_STEP_SUMMARY"
+          pip-audit -r backend/requirements.txt 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+
+      - name: npm audit (pwa)
+        working-directory: pwa
+        continue-on-error: true
+        run: |
+          echo "## npm audit (pwa)" >> "$GITHUB_STEP_SUMMARY"
+          npm audit --audit-level=high 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
