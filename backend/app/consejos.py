@@ -374,8 +374,25 @@ def _regla_fechas_tarjeta(d, hoy):
     return out
 
 
+def _regla_renta(d, hoy):
+    """Entre la apertura del plazo de renta y su vencimiento, solo si el resultado es «sí» o «cerca».
+    d["renta"] = {anio, clave, dias_restantes, abierto} lo arma reunir_datos solo dentro de esa ventana."""
+    r = d.get("renta")
+    if not r or not r.get("abierto") or r.get("clave") not in ("si", "cerca") or r.get("dias_restantes", -1) < 0:
+        return []
+    n = r["dias_restantes"]
+    cuando = "Hoy vence" if n == 0 else f"Falta {n} día" if n == 1 else f"Faltan {n} días"
+    titulo = "Hoy vence el plazo para declarar renta" if n == 0 else f"{cuando} para declarar renta"
+    probable = "Probablemente te toca declarar" if r["clave"] == "si" else "Estás cerca de los topes para declarar"
+    return [_consejo(
+        f"renta:{r['anio']}", "renta", 1 if n <= 3 else 2, titulo,
+        f"{probable} la renta del {r['anio']}. Revisa tus números y, si tienes dudas, confírmalo con la DIAN o un contador. "
+        "Es una ayuda informativa, no asesoría tributaria.",
+        f"{n} día(s)", "Ver mi resultado", "/impuestos")]
+
+
 REGLAS = [
-    _regla_fechas_tarjeta, _regla_tarjeta_solo_minimo, _regla_utilizacion, _regla_deudas, _regla_fondo_emergencia,
+    _regla_renta, _regla_fechas_tarjeta, _regla_tarjeta_solo_minimo, _regla_utilizacion, _regla_deudas, _regla_fondo_emergencia,
     _regla_categoria_sube, _regla_ingreso_sin_repartir, _regla_sin_presupuesto, _regla_gastos_hormiga,
     _regla_suscripciones, _regla_meta_sin_aporte, _regla_ahorro_sin_meta, _regla_sin_categorizar, _regla_debito_vs_credito,
 ]
@@ -456,6 +473,17 @@ def reunir_datos(db, usuario_id: str, hoy: datetime) -> dict:
         if c["id"] in pagos:
             c["ultimo_pago"] = pagos[c["id"]]
 
+    renta = None
+    try:  # recordatorio de renta: solo dentro de la ventana del plazo (así Inicio no paga el cálculo el resto del año)
+        from app import renta_alerta
+
+        anio_g = renta_alerta.anio_gravable_vigente(hoy.date())
+        if renta_alerta.en_ventana_aviso(anio_g, hoy.date()):
+            r = renta_alerta.renta_de_usuario(db, usuario_id, anio_g, hoy)
+            renta = {"anio": anio_g, "clave": r["resultado"]["clave"], "abierto": True,
+                     "dias_restantes": r["plazo"]["dias_restantes"]}
+    except Exception:
+        renta = None  # un fallo del cálculo nunca debe tumbar los demás consejos
     activas = lambda q, M: q.filter(M.usuario_id == usuario_id, M.activo == True).all()  # noqa: E731, E712
     return {
         "cuentas": cuentas,
@@ -470,6 +498,7 @@ def reunir_datos(db, usuario_id: str, hoy: datetime) -> dict:
         "deudas": [{"id": x.id, "nombre": x.nombre, "saldo": x.saldo_actual or 0, "tasa_mensual": x.tasa_mensual or 0}
                    for x in db.query(Deuda).filter(Deuda.usuario_id == usuario_id, Deuda.activa == True).all()],  # noqa: E712
         "recurrentes": [r.nombre for r in activas(db.query(Recurrente), Recurrente)],
+        "renta": renta,
     }
 
 

@@ -252,7 +252,7 @@ def renta_resumen_csv(
     """Totales del año por criterio (sin movimientos individuales) para llevar al contador o a la DIAN."""
     r = renta_alerta.renta_de_usuario(db, usuario.id, _anio_gravable(anio), ahora_co())
     return Response(
-        content="﻿" + renta_alerta.resumen_csv(r), media_type="text/csv; charset=utf-8",
+        content="\ufeff" + renta_alerta.resumen_csv(r), media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f"attachment; filename=cuadrame_resumen_renta_{r['anio']}.csv"},
     )
 

@@ -39,6 +39,7 @@ Los 7 base se crean con `backend/cronjobs/crear_crons.py`. Los demás se agregan
 | `/correos/cron/sincronizar` | cada 3 horas (`0 */3 * * *`) |
 | `/patrimonio/cron/snapshot-mensual` | diario (opcional) |
 | **`/metricas/cron/avisos-crecimiento`** (nuevo) | **diario 08:00 hora Bogotá** (`0 8 * * *`; monitor de capacidad, ver 3b) |
+| **`/impuestos/cron/avisar-renta`** (nuevo) | **diario 09:30** (push «¿Tienes que declarar renta?» a quien tenga push y esté en «sí/cerca», una vez a los 14 y otra a los 3 días del plazo del 26-oct-2026; solo actúa dentro del plazo. Agregado a `JOBS` de `crear_crons.py`, **NO creado** en cron-job.org). |
 
 Las respuestas traen `{ok, procesados, fallidos, ...}`. El resumen por correo añade `enviados`, `ya_enviados` y `sin_datos`.
 Aviso: `crear_crons.py` aún no incluye `/resumen/cron/semanal`; créalo a mano o agrégalo a la lista `JOBS` (no se hizo para no tocar horarios sin aprobación).
@@ -128,3 +129,8 @@ iPhone/Safari). Entonces renombra la clave a `Content-Security-Policy` (déjala 
 Para quitar `'unsafe-inline'` de `script-src` hay que mover los scripts de `index.html` a archivos o
 usar hashes; es un paso posterior y opcional. Verifica también que `/privacidad.html` y `/terminos.html`
 (estáticas, sin JS) no generen violaciones.
+
+## 3c. «¿Tengo que declarar renta?» y 4x1000 del mes (nuevo)
+- **Sin SQL ni columnas nuevas**: usa `ajustes_usuario.cuenta_exenta_gmf_id` (ya existía) y `marcas_cron` (clave `aviso_renta:<año>`, valor 14 o 3).
+- **Constantes a verificar cada año con el contador** (un solo lugar): `backend/app/impuestos.py` (`UVT`, `TOPE_EXENTO_UVT`) y `backend/app/renta_alerta.py` (`TOPES_UVT`, `TOPES_UVT_POR_ANIO`, `PLAZOS_RENTA`). Año gravable 2025: UVT $49.799; topes 4.500 UVT (patrimonio) y 1.400 UVT (ingresos, tarjeta, compras, consignaciones); plazo 12-ago a 26-oct-2026. En diciembre agregar UVT 2027 y el plazo del año gravable 2026.
+- Endpoints: `GET /impuestos/renta-estimada?anio=`, `GET /impuestos/renta-resumen.csv?anio=`, `GET /impuestos/gmf-estimado?mes=YYYY-MM`, `POST /impuestos/cron/avisar-renta` (X-Cron-Secret).
