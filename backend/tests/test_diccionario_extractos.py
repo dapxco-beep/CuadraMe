@@ -26,9 +26,9 @@ def _cat(desc):
     ("Otros bancos de NU BANK", "Transferencias"),
     ("Para MARIA PEREZ", "Transferencias"),
     ("De JUAN GOMEZ", "Transferencias"),
-    ("Gravamen al Movimiento", "Comisiones y costos financieros"),
-    ("GRAVAMEN AL MOVIMIENTO", "Comisiones y costos financieros"),
-    ("Pago de Intereses", "Ingresos"),
+    ("Gravamen al Movimiento", "4x1000 (GMF)"),
+    ("GRAVAMEN AL MOVIMIENTO", "4x1000 (GMF)"),
+    ("Pago de Intereses", "Rendimientos"),
     ("Reembolso realizado", "Ingresos"),
     ("BARBERIA LOS CRACKS", "Salud"),
 ])

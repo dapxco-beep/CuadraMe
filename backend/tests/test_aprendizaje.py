@@ -154,10 +154,12 @@ def test_categoria_del_diccionario_que_el_usuario_no_tiene_cae_en_respaldo_u_otr
     # 'Suscripciones' no es una categoría base: se respalda en 'Ocio'
     assert _clasificar(usuario, "NETFLIX.COM")["categoria"] == "Ocio"
     # 'Comisiones y costos financieros' no existe para él: no se sugiere nada y se le pregunta
-    assert _clasificar(usuario, "CUOTA DE MANEJO TARJETA") is None
+    assert _clasificar(usuario, "RETIRO CAJERO ATM") is None
     # si la crea, se usa
     client.post("/categorias", json={"nombre": "Comisiones y costos financieros", "icono": "🏦"})
-    assert _clasificar(usuario, "CUOTA DE MANEJO TARJETA")["categoria"] == "Comisiones y costos financieros"
+    assert _clasificar(usuario, "RETIRO CAJERO ATM")["categoria"] == "Comisiones y costos financieros"
+    # las categorías de sistema de costos (cuota de manejo, 4x1000...) no dependen de la lista del usuario
+    assert _clasificar(usuario, "CUOTA DE MANEJO TARJETA")["categoria"] == "Cuota de manejo"
 
 
 def test_importar_confirmar_recuerda_la_categoria_elegida(usuario, cuenta):

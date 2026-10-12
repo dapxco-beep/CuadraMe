@@ -10,6 +10,7 @@ busca. Coincide por palabras completas (así 'ara' no se activa dentro de
 import re
 import unicodedata
 
+from app.costos_financieros import clasificar_costo
 from app.diccionario_categorias import (
     BRE_B_FRASES,
     BRE_B_PALABRAS_ENTRADA,
@@ -125,6 +126,11 @@ def _bre_b(texto_pad: str) -> dict | None:
 
 
 def clasificar_por_diccionario(descripcion: str) -> dict | None:
+    # Cobros y rendimientos bancarios (intereses, cuota de manejo, comisiones, 4x1000): por patrón de línea.
+    costo = clasificar_costo(descripcion)
+    if costo:
+        return costo
+
     texto_pad = f" {normalizar(descripcion)} "
 
     r = _comercio_tras_pasarela(descripcion) or _bre_b(texto_pad)

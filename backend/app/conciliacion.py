@@ -10,6 +10,7 @@ import unicodedata
 from datetime import datetime, timedelta
 
 from app.contabilidad import MARCA_TRASLADO_PROPIO
+from app.costos_financieros import es_costo_o_rendimiento
 from app.duplicados import Cand, ORIGEN_ATAJO, ORIGEN_EXTRACTO, ORIGEN_MANUAL, emparejar
 
 # El libro que se compara es de UNA sola cuenta: para la regla central todas comparten la misma.
@@ -173,6 +174,8 @@ def es_transferencia_propia(desc: str) -> bool:
 def _pista(desc: str) -> dict:
     """{'pista': 'posible_traslado_propio'} cuando la contraparte parece el titular o una cuenta
     propia; {} si no. El movimiento conserva su dirección (income/expense) y mueve saldo."""
+    if es_costo_o_rendimiento(desc):
+        return {}  # un cobro o rendimiento del banco nunca es un traslado entre cuentas propias
     return {"pista": MARCA_TRASLADO_PROPIO} if es_transferencia_propia(desc) else {}
 
 

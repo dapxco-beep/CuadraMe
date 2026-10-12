@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.classifier import aplicar_reglas, build_model, classify
 from app.clave_comercio import clave_comercio, es_huella_peligrosa, huella_en_descripcion
 from app.comercios_conocidos import clasificar_por_diccionario
+from app.costos_financieros import NOMBRES_SISTEMA
 from app.diccionario_categorias import CATEGORIA_RESPALDO
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, es_pago_tarjeta
 from app.models import Categoria, Movimiento, ReglaCategoria
@@ -25,7 +26,7 @@ ORIGEN_POR_FUENTE = {
     "learned": "similar",
 }
 # Nombres que el sistema usa por su cuenta y no dependen de la lista del usuario.
-CATEGORIAS_DE_SISTEMA = {CATEGORIA_PAGO_TARJETA, "Transferencia", "Transferencias"}
+CATEGORIAS_DE_SISTEMA = {CATEGORIA_PAGO_TARJETA, "Transferencia", "Transferencias", *NOMBRES_SISTEMA}
 
 
 def origen_de(fuente: str | None) -> str | None:
