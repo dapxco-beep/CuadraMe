@@ -103,12 +103,12 @@ CASOS = [
     ("ALKOSTO CALLE 13", "Compras"), ("KTRONIX", "Compras"), ("HOMECENTER CALLE 80", "Hogar"),
     ("PAGO SEGUROS BOLIVAR", "Seguros"), ("PAGO DIAN IMPUESTOS", "Impuestos"), ("IMPUESTO PREDIAL 2025", "Impuestos"),
     ("IMPUESTO DE VEHICULOS", "Impuestos"), ("MATRICULA UNIVERSIDAD", "Educación"), ("UDEMY ONLINE COURSE", "Educación"),
-    ("CUOTA DE MANEJO TARJETA", "Comisiones y costos financieros"), ("COMISION TRANSFERENCIA", "Comisiones y costos financieros"),
-    ("INTERESES CORRIENTES", "Comisiones y costos financieros"), ("IVA CUOTA DE MANEJO", "Comisiones y costos financieros"),
-    ("GMF 4X1000", "Comisiones y costos financieros"), ("RETIRO CAJERO ATM", "Comisiones y costos financieros"),
+    ("CUOTA DE MANEJO TARJETA", "Cuota de manejo"), ("COMISION TRANSFERENCIA", "Comisiones y seguros"),
+    ("INTERESES CORRIENTES", "Intereses de tarjeta"), ("IVA CUOTA DE MANEJO", "Cuota de manejo"),
+    ("GMF 4X1000", "4x1000 (GMF)"), ("RETIRO CAJERO ATM", "Comisiones y costos financieros"),
     ("AVANCE EN EFECTIVO", "Comisiones y costos financieros"),
     ("TRANSFERENCIA NEQUI", "Transferencias"), ("BRE-B ENVIO", "Transferencias"), ("PAGO BRE B", "Transferencias"),
-    ("NOMINA SKANDIA", "Ingresos"), ("ABONO INTERESES", "Ingresos"),
+    ("NOMINA SKANDIA", "Ingresos"), ("ABONO INTERESES", "Rendimientos"),
 ]
 
 

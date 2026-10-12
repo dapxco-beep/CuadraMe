@@ -47,6 +47,7 @@ LIMITES_DIARIOS: dict[str, tuple[int, str]] = {
     "sync-gmail": (300, "sincronizaciones de tu correo"),
     "importar": (40, "archivos importados"),
     "comentario": (30, "comentarios enviados"),
+    "aviso-cargo-inusual": (1, "avisos de cobros inusuales"),
 }
 
 

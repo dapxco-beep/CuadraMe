@@ -209,14 +209,12 @@ SECCIONES: dict[str, dict[str, str]] = {
     },
 
     # ── Conceptos BANCARIOS (no son gasto de consumo) ───────────────
+    # (Cuota de manejo, comisiones, seguros, GMF e intereses de tarjeta los clasifica costos_financieros.py
+    # por patrón de línea, antes que este diccionario.)
     COMISIONES: {
-        "cuota de manejo": COMISIONES, "cuota manejo": COMISIONES, "comision": COMISIONES, "comision*": COMISIONES,
-        "cargo por servicio": COMISIONES, "gmf": COMISIONES, "4x1000": COMISIONES, "gravamen movimientos financieros": COMISIONES,
-        "gravamen": COMISIONES, "iva": COMISIONES, "iva comision": COMISIONES, "iva cuota de manejo": COMISIONES,
-        "intereses": COMISIONES, "intereses corrientes": COMISIONES, "interes de mora": COMISIONES, "intereses de mora": COMISIONES,
+        "cargo por servicio": COMISIONES, "iva": COMISIONES, "intereses": COMISIONES,
         "retiro cajero": COMISIONES, "retiro atm": COMISIONES, "retiro en efectivo": COMISIONES, "retiro sin tarjeta": COMISIONES,
         "retiro cajero electronico": COMISIONES, "avance": COMISIONES, "avance en efectivo": COMISIONES, "avance tarjeta": COMISIONES,
-        "seguro tarjeta": COMISIONES, "cobro seguro": COMISIONES, "costo transaccion": COMISIONES, "cobro por transferencia": COMISIONES,
         "servicio pse": COMISIONES, "sobregiro": COMISIONES, "cuota de apertura": COMISIONES,
     },
     "Transferencias": {

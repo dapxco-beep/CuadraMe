@@ -108,6 +108,7 @@ if engine.dialect.name == "postgresql":
         # DEFAULT TRUE deja los movimientos existentes como "confirmados".
         # (Como SQL suelto: supabase/migraciones/categorias_auto.sql.)
         conn.execute(text("ALTER TABLE categorias ADD COLUMN IF NOT EXISTS color VARCHAR"))
+        conn.execute(text("ALTER TABLE categorias ADD COLUMN IF NOT EXISTS es_sistema BOOLEAN DEFAULT FALSE"))
         conn.execute(text("ALTER TABLE categorias ADD COLUMN IF NOT EXISTS tipo VARCHAR DEFAULT 'ambos'"))
         conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS cat_origen VARCHAR"))
         conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS cat_confirmada BOOLEAN DEFAULT TRUE"))
@@ -250,6 +251,9 @@ app.include_router(rendimientos.router)
 from app.routers import sincronizacion  # noqa: E402
 
 app.include_router(sincronizacion.router)
+from app.routers import costos_bancarios as costos_bancarios_router  # noqa: E402
+
+app.include_router(costos_bancarios_router.router)
 
 
 @app.get("/health")

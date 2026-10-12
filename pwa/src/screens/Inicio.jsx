@@ -23,6 +23,7 @@ import PreguntaMovimiento from '../components/PreguntaMovimiento'
 import Recordatorios from '../components/Recordatorios'
 import ConsejoParaTi from '../components/ConsejoParaTi'
 import TarjetaTuPlata from '../components/TuPlataTrabajando'
+import TarjetaCostos from '../components/TarjetaCostos'
 import SeccionPlegable from '../components/SeccionPlegable'
 import Sparkline, { resumenTendencia } from '../components/Sparkline'
 import Icono from '../components/Icono'
@@ -366,6 +367,7 @@ export default function Inicio() {
           <Recordatorios omitirExtractos={tareasSync > 0} />
           <ConsejoParaTi />
           <TarjetaTuPlata />
+          <TarjetaCostos />
         </div>
 
         <div className="col">

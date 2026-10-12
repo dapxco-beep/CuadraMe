@@ -27,7 +27,7 @@ const prefijoDe = (id) => String(id).split(':')[0]
 // Descartados: se guardan en este dispositivo (solo ids de texto, sin datos del usuario). Cada consejo
 // trae un `id` estable que incluye el periodo o la situación, así que si hay algo nuevo (otro mes, otra
 // tarjeta) vuelve a salir; lo ya descartado no se repite.
-function leerDescartados() {
+export function leerDescartados() {
   try {
     const v = JSON.parse(localStorage.getItem(LLAVE) || '[]')
     return Array.isArray(v) ? v : []
@@ -36,7 +36,7 @@ function leerDescartados() {
   }
 }
 
-function guardarDescartados(ids) {
+export function guardarDescartados(ids) {
   try {
     localStorage.setItem(LLAVE, JSON.stringify(ids.slice(-MAX_GUARDADOS)))
   } catch {

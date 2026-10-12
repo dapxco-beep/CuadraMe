@@ -438,4 +438,5 @@ class Categoria(Base):
     es_base = Column(Boolean, default=False)  # una de las 8 originales — no se puede eliminar, solo ocultar o renombrar
     color = Column(String, nullable=True)  # opcional, "#RRGGBB"
     tipo = Column(String, default="ambos")  # gasto | ingreso | ambos
+    es_sistema = Column(Boolean, default=False)  # la crea la app (intereses, 4x1000, rendimientos...): no sale en presupuestos por defecto, sí en informes
     creado_en = Column(DateTime, default=datetime.utcnow)

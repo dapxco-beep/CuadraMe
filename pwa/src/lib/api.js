@@ -356,6 +356,11 @@ export const api = {
   tasasReferencia: () => request('/rendimientos/tasas'),
   tasasReferenciaAdmin: () => request('/rendimientos/tasas/admin'),
   guardarTasaReferencia: (id, data) => request(id ? `/rendimientos/tasas/${id}` : '/rendimientos/tasas', { method: id ? 'PUT' : 'POST', body: data }),
+  // «Lo que te cuesta tu plata»: intereses, cuotas, comisiones y 4x1000 por mes y cuenta, alertas y suscripciones
+  costosBancarios: (params = {}) => {
+    const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString()
+    return request(`/costos-bancarios${q ? `?${q}` : ''}`)
+  },
   recordatorioDiario: () => request('/perfil/recordatorio-diario'),
   actualizarRecordatorioDiario: (activo) =>
     request('/perfil/recordatorio-diario', { method: 'PUT', body: { activo } }),

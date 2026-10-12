@@ -415,8 +415,8 @@ export default function Presupuesto() {
 
 function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
   const { avisar } = useDialogos() || {}
-  const { nombres } = useCategorias()
-  const categoriasSugeridas = nombres.filter((c) => c !== 'Ingresos' && c !== 'Transferencias')
+  const { nombres, nombresPresupuesto } = useCategorias()
+  const categoriasSugeridas = (nombresPresupuesto || nombres).filter((c) => c !== 'Ingresos' && c !== 'Transferencias')
   const [categoria, setCategoria] = useState('')
   const [limite, setLimite] = useState('')
   const [periodo, setPeriodo] = useState(periodoInicial)

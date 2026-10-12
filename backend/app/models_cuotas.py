@@ -46,3 +46,28 @@ class ExtractoTarjeta(Base):
     fecha_limite_pago = Column(String, nullable=True)  # AAAA-MM-DD
     fecha_corte = Column(String, nullable=True)  # AAAA-MM-DD
     actualizado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class DesgloseExtractoTarjeta(Base):
+    """Lo que COBRÓ el banco en un extracto de tarjeta (intereses, cuota de manejo, comisiones, seguros)
+    y la tasa aplicada, UNA fila por tarjeta y periodo (AAAA-MM del corte). Sirve al análisis
+    «Lo que te cuesta tu plata»; todos los campos de monto son opcionales (el extracto puede no traerlos).
+    Solo se escribe cuando el cliente aplica la propuesta del extracto."""
+    __tablename__ = "desgloses_extracto_tarjeta"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    cuenta_id = Column(String, nullable=False, index=True)
+    periodo = Column(String, nullable=False)  # AAAA-MM (mes de la fecha de corte)
+    intereses_corrientes = Column(Float, nullable=True)
+    intereses_mora = Column(Float, nullable=True)
+    cuota_manejo = Column(Float, nullable=True)
+    comisiones = Column(Float, nullable=True)
+    seguros = Column(Float, nullable=True)
+    tasa_ea = Column(Float, nullable=True)
+    tasa_mv = Column(Float, nullable=True)
+    pago_total = Column(Float, nullable=True)
+    pago_minimo = Column(Float, nullable=True)
+    fecha_corte = Column(String, nullable=True)
+    fecha_limite_pago = Column(String, nullable=True)
+    actualizado_en = Column(DateTime, default=datetime.utcnow)

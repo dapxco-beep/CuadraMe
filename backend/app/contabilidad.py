@@ -175,6 +175,9 @@ class TiposCuenta(dict):
 def _fuerza_pista(m) -> int:
     """Cuántas pistas de 'traslado' tiene UN movimiento (descripción tipo traslado / marca del lector)."""
     f = 0
+    from app.costos_financieros import es_costo_o_rendimiento, NOMBRES_SISTEMA
+    if _g(m, "categoria") in NOMBRES_SISTEMA or es_costo_o_rendimiento(_g(m, "descripcion", "") or ""):
+        return 0  # intereses, comisiones, 4x1000 y rendimientos jamás se emparejan como traslado
     if PATRON_TRASLADO.search(_g(m, "descripcion", "") or ""):
         f += 1
     if MARCA_TRASLADO_PROPIO in (_g(m, "notas", "") or ""):

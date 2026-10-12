@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import bloquear_cuenta, cuenta_accesible, puede_editar_cuenta
 from app.database import get_db
-from app.models_cuotas import ExtractoTarjeta
+from app.models_cuotas import DesgloseExtractoTarjeta, ExtractoTarjeta
 
 router = APIRouter(prefix="/tarjetas", tags=["tarjetas"])
 
@@ -29,6 +29,15 @@ class AplicarExtractoRequest(BaseModel):
     pago_minimo: Optional[float] = Field(default=None, ge=0, le=1e12)
     fecha_limite_pago: Optional[str] = Field(default=None, pattern=_FECHA)
     fecha_corte: Optional[str] = Field(default=None, pattern=_FECHA)
+    # Desglose de lo que cobró el banco (opcional: solo si el extracto lo trae)
+    intereses_corrientes: Optional[float] = Field(default=None, ge=0, le=1e11)
+    intereses_mora: Optional[float] = Field(default=None, ge=0, le=1e11)
+    cuota_manejo: Optional[float] = Field(default=None, ge=0, le=1e11)
+    comisiones: Optional[float] = Field(default=None, ge=0, le=1e11)
+    seguros: Optional[float] = Field(default=None, ge=0, le=1e11)
+    tasa_mv: Optional[float] = Field(default=None, gt=0, le=10)
+
+CAMPOS_DESGLOSE = ("intereses_corrientes", "intereses_mora", "cuota_manejo", "comisiones", "seguros", "tasa_mv")
 
 
 @router.post("/{cuenta_id}/aplicar-extracto")
@@ -62,5 +71,17 @@ def aplicar_extracto(
         for campo in ("cupo_disponible", "pago_total", "pago_minimo", "fecha_limite_pago", "fecha_corte"):
             setattr(fila, campo, getattr(data, campo))
         fila.actualizado_en = datetime.utcnow()
+    desglose_dado = any(getattr(data, c) is not None for c in CAMPOS_DESGLOSE)
+    if desglose_dado:
+        periodo = (data.fecha_corte or datetime.utcnow().strftime("%Y-%m-%d"))[:7]
+        fila_d = db.query(DesgloseExtractoTarjeta).filter(
+            DesgloseExtractoTarjeta.cuenta_id == cuenta.id, DesgloseExtractoTarjeta.periodo == periodo).first()
+        if not fila_d:
+            fila_d = DesgloseExtractoTarjeta(usuario_id=cuenta.usuario_id, cuenta_id=cuenta.id, periodo=periodo)
+            db.add(fila_d)
+        for campo in CAMPOS_DESGLOSE + ("pago_total", "pago_minimo", "fecha_corte", "fecha_limite_pago"):
+            setattr(fila_d, campo, getattr(data, campo))
+        fila_d.tasa_ea = data.tasa_ea if data.tasa_ea is not None else cuenta.tasa_ea
+        fila_d.actualizado_en = datetime.utcnow()
     db.commit()
-    return {"ok": True, "cambiadas": cambiadas, "extracto_guardado": extracto_dado}
+    return {"ok": True, "cambiadas": cambiadas, "extracto_guardado": extracto_dado, "desglose_guardado": desglose_dado}
