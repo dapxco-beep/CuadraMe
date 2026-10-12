@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Boton } from '../components/ui'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Download, FileText, Info, Printer } from 'lucide-react'
 import { api } from '../lib/api'
@@ -252,20 +253,17 @@ export default function Impuestos() {
                             </div>
                           ) : (
                             <div className="flex gap-2 mt-2.5 no-print">
-                              <button
-                                onClick={() => { setAbierto(i.movimiento_id); setSoporte(i.soporte || '') }}
-                                className="rounded-full border border-accent text-accent px-3 py-1 text-xs font-medium"
-                              >
+                              <Boton tam="sm" variante="suave" onClick={() => { setAbierto(i.movimiento_id); setSoporte(i.soporte || '') }}>
                                 {i.estado === 'confirmado' ? 'Editar soporte' : 'Confirmar'}
-                              </button>
+                              </Boton>
                               {i.estado === 'confirmado' ? (
-                                <button onClick={() => quitar(i)} className="rounded-full border border-line text-ink-soft px-3 py-1 text-xs">
+                                <Boton tam="sm" variante="secundario" onClick={() => quitar(i)}>
                                   Quitar marca
-                                </button>
+                                </Boton>
                               ) : (
-                                <button onClick={() => marcar(i, 'descartada')} className="rounded-full border border-line text-ink-soft px-3 py-1 text-xs">
+                                <Boton tam="sm" variante="secundario" onClick={() => marcar(i, 'descartada')}>
                                   No aplica
-                                </button>
+                                </Boton>
                               )}
                             </div>
                           )}

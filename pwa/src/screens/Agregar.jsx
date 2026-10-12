@@ -280,7 +280,7 @@ export default function Agregar() {
             key={t.id}
             onClick={() => setTipo(t.id)}
             aria-pressed={tipo === t.id}
-            className={`flex-1 rounded-2xl py-2.5 text-sm font-semibold border ${
+            className={`flex-1 rounded-2xl py-2.5 min-h-[44px] text-sm font-semibold border ${
               tipo === t.id ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
             }`}
           >
@@ -305,7 +305,7 @@ export default function Agregar() {
       {!esTransferencia && (
         <div className="px-5 mt-2 flex gap-2">
           <label
-            className={`flex-1 rounded-2xl border border-line bg-paper-raised py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 ${
+            className={`flex-1 rounded-2xl border border-line bg-paper-raised py-2.5 min-h-[44px] text-xs font-semibold flex items-center justify-center gap-1.5 ${
               escaneando ? 'opacity-60 pointer-events-none' : 'cursor-pointer'
             }`}
           >
@@ -324,7 +324,7 @@ export default function Agregar() {
           {tipo === 'expense' && (
             <button
               onClick={dividirGasto}
-              className="flex-1 rounded-2xl border border-line bg-paper-raised py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5"
+              className="flex-1 rounded-2xl border border-line bg-paper-raised py-2.5 min-h-[44px] text-xs font-semibold flex items-center justify-center gap-1.5"
             >
               <Users size={16} /> Dividir
             </button>
@@ -429,8 +429,9 @@ export default function Agregar() {
               <button
                 key={c.id}
                 onClick={() => seleccionarCuenta(c.id)}
-                className="shrink-0 w-40 snap-center transition-transform"
-                style={{ transform: cuentaId === c.id ? 'scale(1)' : 'scale(0.92)', opacity: cuentaId === c.id ? 1 : 0.6 }}
+                className={`shrink-0 w-40 snap-center transition-transform rounded-[22px] ${cuentaId === c.id ? 'ring-2 ring-accent ring-offset-2 ring-offset-paper' : ''}`}
+                style={{ transform: cuentaId === c.id ? 'scale(1)' : 'scale(0.92)' }}
+                aria-pressed={cuentaId === c.id}
               >
                 <TarjetaCuenta cuenta={c} />
               </button>

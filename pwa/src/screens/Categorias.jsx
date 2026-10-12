@@ -185,11 +185,11 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
         </div>
       </button>
       {onSubir !== undefined && (
-        <div className="flex flex-col shrink-0">
+        <div className="flex shrink-0">
           <button
             onClick={onSubir || undefined}
             disabled={!onSubir}
-            className="w-7 h-5 flex items-center justify-center text-ink-soft disabled:opacity-25"
+            className="w-11 h-11 flex items-center justify-center text-ink-soft disabled:opacity-25"
             aria-label={`Subir ${c.nombre}`}
           >
             <ArrowUp size={16} />
@@ -197,7 +197,7 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
           <button
             onClick={onBajar || undefined}
             disabled={!onBajar}
-            className="w-7 h-5 flex items-center justify-center text-ink-soft disabled:opacity-25"
+            className="w-11 h-11 flex items-center justify-center text-ink-soft disabled:opacity-25"
             aria-label={`Bajar ${c.nombre}`}
           >
             <ArrowDown size={16} />

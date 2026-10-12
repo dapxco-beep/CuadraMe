@@ -60,7 +60,7 @@ export default function ComprasACuotas({ cuenta }) {
 
   return (
     <section className="mt-3 rounded-xl border border-line bg-paper p-3 text-xs" aria-label="Compras a cuotas" data-testid="compras-cuotas">
-      <h3 className="font-semibold text-sm">Compras a cuotas</h3>
+      <h2 className="font-semibold text-sm">Compras a cuotas</h2>
 
       {vigentes.length > 0 && (
         <p className="mt-1" data-testid="comprometido-cuotas">

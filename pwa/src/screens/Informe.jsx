@@ -15,7 +15,7 @@ import BarraProgreso from '../components/BarraProgreso'
 // Colores distintos para la dona (cada segmento también lleva su nombre y % en la
 // lista, así que el color nunca es la única señal).
 // Colores de la serie: tokens del tema (claro y oscuro) en index.css
-const COLORES = [1, 2, 3, 4, 5, 6].map((n) => `var(--color-serie-${n})`)
+const COLORES = [1, 2, 3, 4, 5, 6].map((n) => `var(--c-serie-${n})`)
 const MAX_SEGMENTOS = 5
 
 // Segmentos de la dona: las N categorías más grandes y el resto agrupado en "Otras".

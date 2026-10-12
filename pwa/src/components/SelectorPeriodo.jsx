@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Chip } from './ui'
 import { aISO, rangoPeriodo, rangoValido } from '../lib/informe'
 
 export const PERIODOS_INFORME = [
@@ -45,17 +46,9 @@ export default function SelectorPeriodo({ opciones = PERIODOS_INFORME, valor, on
     <div>
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-6 px-6" role="group" aria-label={etiqueta}>
         {opciones.map((o) => (
-          <button
-            key={o.id}
-            type="button"
-            aria-pressed={valor?.periodo === o.id}
-            onClick={() => elegir(o.id)}
-            className={`shrink-0 px-3.5 py-2 min-h-[38px] rounded-full text-xs font-semibold border ${
-              valor?.periodo === o.id ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised text-ink-soft'
-            }`}
-          >
+          <Chip key={o.id} activo={valor?.periodo === o.id} onClick={() => elegir(o.id)} className="shrink-0 text-xs font-semibold">
             {o.label}
-          </button>
+          </Chip>
         ))}
       </div>
       {esRango && (

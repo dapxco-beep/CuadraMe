@@ -122,7 +122,7 @@ export default function Patrimonio() {
                       ? 'Un activo es algo tuyo que vale plata: un CDT, un fondo, una casa o un vehículo. Agrega el primero.'
                       : 'Agrega tus CDT, fondos, acciones, inmuebles o vehículos para ver tu patrimonio completo.'}
                   </p>
-                  <button onClick={() => setFormulario({})} className="text-sm font-semibold text-accent">
+                  <button onClick={() => setFormulario({})} className="text-sm font-semibold text-accent min-h-11 px-3">
                     Agregar activo
                   </button>
                 </div>

@@ -123,7 +123,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
           aria-checked={esSel}
           aria-label={`Seleccionar ${m.descripcion}`}
           onClick={() => onToggle(m.id)}
-          className={`${modoSel ? 'flex' : 'hidden md:flex'} mt-3 w-5 h-5 rounded-md border-2 shrink-0 items-center justify-center ${
+          className={`${modoSel ? 'flex' : 'hidden md:flex'} relative before:absolute before:-inset-3 before:content-[''] mt-3 w-5 h-5 rounded-md border-2 shrink-0 items-center justify-center ${
             esSel ? 'bg-accent border-accent' : 'border-line'
           }`}
         >
@@ -144,7 +144,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
                 type="button"
                 onClick={() => (modoSel ? onToggle(m.id) : onChip(m))}
                 aria-label={`Cambiar categoría de ${m.descripcion}`}
-                className="inline-flex items-center gap-1 text-xs text-ink-soft rounded-full border border-line px-2.5 min-h-[32px] hover:border-accent hover:text-ink"
+                className="relative before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-[''] inline-flex items-center gap-1 text-xs text-ink-soft rounded-full border border-line px-2.5 min-h-[32px] hover:border-accent hover:text-ink"
               >
                 <span aria-hidden="true">{icono}</span> {m.categoria}
                 <ChevronDown size={16} aria-hidden="true" />

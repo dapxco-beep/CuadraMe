@@ -198,7 +198,7 @@ export default function Ayuda() {
         </Link>
       </section>
       <p className="mx-5 mt-4 t-apoyo text-center">
-        <Link to="/legal/privacidad" className="underline">
+        <Link to="/legal/privacidad" className="underline inline-block py-3">
           Política de privacidad
         </Link>
       </p>

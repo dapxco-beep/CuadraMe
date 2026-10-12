@@ -316,7 +316,7 @@ export default function Asistente() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden screen-enter">
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
-        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+        <button onClick={volver} className="w-11 h-11 shrink-0 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         {conCuadri ? <Cuadri pose={enviando ? 'hablando' : 'feliz'} size={44} /> : <Isotipo size={26} />}
