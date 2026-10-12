@@ -347,6 +347,11 @@ export const api = {
   recordatorios: () => request('/recordatorios'),
   // Consejos personalizados («Consejo para ti» en Inicio): reglas del servidor, sin IA externa
   consejos: () => request('/consejos'),
+  // «Lo que te cuesta tu plata»: intereses, cuotas, comisiones y 4x1000 por mes y cuenta, alertas y suscripciones
+  costosBancarios: (params = {}) => {
+    const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString()
+    return request(`/costos-bancarios${q ? `?${q}` : ''}`)
+  },
   recordatorioDiario: () => request('/perfil/recordatorio-diario'),
   actualizarRecordatorioDiario: (activo) =>
     request('/perfil/recordatorio-diario', { method: 'PUT', body: { activo } }),

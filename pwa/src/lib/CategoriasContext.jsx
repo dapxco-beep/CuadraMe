@@ -34,6 +34,8 @@ export function CategoriasProvider({ children }) {
 
   const activas = categorias.filter((c) => c.activa)
   const nombres = activas.map((c) => c.nombre)
+  // Para presupuestos: sin las categorías de sistema (intereses, 4x1000, rendimientos...), que no se presupuestan
+  const nombresPresupuesto = activas.filter((c) => !c.es_sistema).map((c) => c.nombre)
   // nombre de categoría -> emoji, para mostrar el ícono real en listas y detalles
   const iconos = Object.fromEntries(categorias.map((c) => [c.nombre, c.icono]))
   const iconoDe = (nombre) => iconos[nombre] || '💳'
@@ -42,7 +44,7 @@ export function CategoriasProvider({ children }) {
 
   return (
     <CategoriasContext.Provider
-      value={{ categorias, activas, nombres, iconoDe, colorDe, cargando, recargar }}
+      value={{ categorias, activas, nombres, nombresPresupuesto, iconoDe, colorDe, cargando, recargar }}
     >
       {children}
     </CategoriasContext.Provider>

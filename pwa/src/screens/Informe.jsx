@@ -11,6 +11,7 @@ import { nombreMesLargo, pctTexto, rangoPeriodo } from '../lib/informe'
 import { formatVeces } from '../lib/format'
 import SelectorPeriodo from '../components/SelectorPeriodo'
 import BarraProgreso from '../components/BarraProgreso'
+import EnlaceCostos from '../components/EnlaceCostos'
 
 // Colores distintos para la dona (cada segmento también lleva su nombre y % en la
 // lista, así que el color nunca es la única señal).
@@ -135,6 +136,8 @@ export default function Informe() {
           onChange={(v) => { setMes(null); setValor(v) }}
         />
       </section>
+
+      <EnlaceCostos className="mx-6 mt-3" />
 
       {cargando && <div className="mx-6 mt-6 space-y-4"><EsqueletoGrafica alto={160} etiqueta="Cargando tu informe" /><EsqueletoLista filas={4} /></div>}
       {error && <p role="alert" className="mx-6 mt-6 text-sm text-danger text-center">{error}</p>}

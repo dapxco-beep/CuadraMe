@@ -34,12 +34,16 @@ CATEGORIAS_BASE = [
 def _asegurar_categorias_sistema(db: Session, usuario_id: str, existentes: list[Categoria]) -> list[Categoria]:
     """Crea (una sola vez, sin duplicar) las categorías de sistema de «lo que cuesta tu plata»:
     Rendimientos, Intereses de tarjeta, Cuota de manejo, Comisiones y seguros y 4x1000 (GMF).
-    Si el usuario ya tiene una con ese nombre, se respeta tal cual (la marca de sistema no se le impone)."""
+    Si el usuario ya tiene una con ese nombre, se respeta tal cual (la marca de sistema no se le impone).
+    Solo se crean las que SUS movimientos ya usan (así a quien no tiene intereses ni comisiones no se le
+    llena la lista), y salen en cuanto el primer extracto trae un cobro o un rendimiento."""
     tienen = {c.nombre.strip().lower() for c in existentes}
+    usadas = {n.strip().lower() for (n,) in db.query(Movimiento.categoria).filter(
+        Movimiento.usuario_id == usuario_id, Movimiento.categoria.in_([n for n, _, _ in CATEGORIAS_COSTOS])).distinct().all() if n}
     orden = max([c.orden or 0 for c in existentes], default=-1) + 1
     nuevas = []
     for nombre, icono, tipo in CATEGORIAS_COSTOS:
-        if nombre.lower() in tienen:
+        if nombre.lower() in tienen or nombre.lower() not in usadas:
             continue
         nuevas.append(Categoria(usuario_id=usuario_id, nombre=nombre, icono=icono, orden=orden, es_base=False,
                                 tipo=tipo, es_sistema=True, activa=True))

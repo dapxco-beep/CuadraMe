@@ -13,6 +13,7 @@ import { ArrowLeft, CreditCard, Pencil, Plus, Trash2, Users, X, Wallet } from 'l
 import { etiquetaTipo, mismasDelBanco } from '../lib/cuentasBanco'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
+import EnlaceCostos from '../components/EnlaceCostos'
 import { useDialogos } from '../lib/DialogosContext'
 import { ENTIDADES_FINANCIERAS_CO } from '../lib/entidadesFinancierasCO'
 import TarjetaCuenta from '../components/TarjetaCuenta'
@@ -139,6 +140,8 @@ export default function Cuentas() {
               {c.tipo === 'credito' && <PanelTarjetaCredito cuenta={c} onCambio={recargar} />}
             </div>
           ))}
+
+          <EnlaceCostos className="" />
 
           <Link
             to="/compartir"

@@ -234,7 +234,7 @@ def alertas_de_costos(tabla: dict, mora: dict, cuentas: dict, desgloses: list[di
             f"costos-mora:{cid}:{mes}", "mora", 1, f"Pagaste intereses de mora en {nom(cid)}",
             f"Te cobraron {_pesos(v)} por intereses de mora: es lo que se cobra cuando un pago llega tarde, y es más caro que "
             f"el interés normal. Ponerte al día cuanto antes evita que siga creciendo; paga lo vencido{cuando}.",
-            _pesos(v), "Ver mi tarjeta", "/cuentas", "intereses-de-mora", cuenta_id=cid, mes=mes))
+            _pesos(v), "Ver mi tarjeta", "/cuentas", "tarjeta-de-credito", cuenta_id=cid, mes=mes))
 
     # 2) Costo total que sube frente al promedio
     total_mes = sum(v for (c, m, b), v in tabla.items() if m == mes and b in BUCKETS)
@@ -248,7 +248,7 @@ def alertas_de_costos(tabla: dict, mora: dict, cuentas: dict, desgloses: list[di
                 f"costos-sube:{mes}", "costo_sube", 2, f"Lo que te cuesta tu plata subió {pct} %",
                 f"En {_nombre_mes(mes)} pagaste {_pesos(total_mes)} en intereses, cuotas, comisiones y 4x1000, contra un promedio de "
                 f"{_pesos(prom)} en los meses anteriores. Mirar de dónde viene el aumento es el primer paso.",
-                f"+{_pesos(total_mes - prom)}", "Ver el detalle", "/costos", "costo-neto", mes=mes))
+                f"+{_pesos(total_mes - prom)}", "Ver el detalle", "/costos", "revisar-extractos", mes=mes))
 
     # 3) Cuota de manejo en una cuenta/tarjeta que antes no la cobraba; cobro nuevo en general
     for cid in sorted({c for (c, m, b) in tabla if m == mes}):
@@ -267,13 +267,13 @@ def alertas_de_costos(tabla: dict, mora: dict, cuentas: dict, desgloses: list[di
                     f"costos-cuota-nueva:{cid}:{mes}", "cuota_nueva", 2, f"Te cobraron cuota de manejo en {nom(cid)}",
                     f"Este mes te cobraron {_pesos(v)} de cuota de manejo y en los meses anteriores no aparecía. Muchas tarjetas "
                     "tienen la cuota exenta si las usas lo suficiente, y los bancos suelen aceptar una solicitud de exoneración.",
-                    _pesos(v), "Revisar la tarjeta", "/cuentas", "cuota-de-manejo", cuenta_id=cid, mes=mes))
+                    _pesos(v), "Revisar la tarjeta", "/cuentas", "revisar-extractos", cuenta_id=cid, mes=mes))
             else:
                 out.append(_alerta(
                     f"costos-nuevo:{b}:{cid}:{mes}", "cobro_nuevo", 2, f"Cobro nuevo: {NOMBRES_BUCKET[b].lower()} en {nom(cid)}",
                     f"En {_nombre_mes(mes)} aparece un cobro de {_pesos(v)} por {NOMBRES_BUCKET[b].lower()} en {nom(cid)} que no veíamos "
                     "en los meses anteriores. Si no lo reconoces, vale la pena preguntarle al banco de dónde sale.",
-                    _pesos(v), "Ver el detalle", "/costos", "costo-neto", cuenta_id=cid, mes=mes))
+                    _pesos(v), "Ver el detalle", "/costos", "revisar-extractos", cuenta_id=cid, mes=mes))
 
     # 4) Pago solo del mínimo, repetido (necesita los extractos aplicados)
     for cid, filas in por_cuenta_desgl.items():

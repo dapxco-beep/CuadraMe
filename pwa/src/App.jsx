@@ -54,6 +54,7 @@ const Impuestos = lazy(() => import('./screens/Impuestos'))
 const CierreMes = lazy(() => import('./screens/CierreMes'))
 const Wrapped = lazy(() => import('./screens/Wrapped'))
 const Informe = lazy(() => import('./screens/Informe'))
+const Costos = lazy(() => import('./screens/Costos'))
 const Perfil = lazy(() => import('./screens/Perfil'))
 const BuscarDuplicados = lazy(() => import('./screens/BuscarDuplicados'))
 const Ayuda = lazy(() => import('./screens/Ayuda'))
@@ -133,6 +134,7 @@ function AppGate() {
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/resumen" element={<Wrapped />} />
         <Route path="/informe" element={<Informe />} />
+        <Route path="/costos" element={<Costos />} />
         <Route path="/importar" element={<RedirigirAlCentro ruta="/importar" />} />
         <Route path="/impuestos" element={<Impuestos />} />
         <Route path="/cierre-mes" element={<CierreMes />} />

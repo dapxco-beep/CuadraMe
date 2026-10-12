@@ -27,7 +27,6 @@ AVISO = "Orientación educativa, no es asesoría financiera."
 LECCIONES = {
     "presupuesto-50-30-20", "fondo-de-emergencia", "tarjeta-de-credito", "debito-vs-credito",
     "deudas-avalancha-bola-de-nieve", "gastos-hormiga", "revisar-extractos",
-    "intereses-de-mora", "cuota-de-manejo", "4x1000-gmf", "seguro-de-deudores", "costo-neto",
 }
 
 DIAS_HISTORIAL = 120 # cuánto pasado se lee para detectar patrones (suscripciones necesitan >35 días)

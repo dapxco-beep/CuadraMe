@@ -220,9 +220,9 @@ def test_cargo_recurrente_que_cambia_mas_de_20_por_ciento():
 # ── consejos ────────────────────────────────────────────────────────────────────────
 def test_los_consejos_incluyen_las_alertas_de_costos():
     alerta = {"id": "costos-mora:v:2026-10", "tipo": "mora", "prioridad": 1, "titulo": "t", "texto": "x", "cifra": "$1",
-              "accion": {"texto": "Ver", "ruta": "/cuentas"}, "aprende": "intereses-de-mora"}
+              "accion": {"texto": "Ver", "ruta": "/cuentas"}, "aprende": "tarjeta-de-credito"}
     out = consejos.generar({"costos_alertas": [alerta]}, HOY)
-    assert out[0]["id"] == "costos-mora:v:2026-10" and out[0]["aprende"] == "intereses-de-mora"
+    assert out[0]["id"] == "costos-mora:v:2026-10" and out[0]["aprende"] == "tarjeta-de-credito"
 
 
 # ── endpoint ────────────────────────────────────────────────────────────────────────
@@ -285,3 +285,18 @@ def test_b_no_ve_los_costos_de_a():
 
 def test_cron_exige_secreto():
     assert client.post("/costos-bancarios/cron/avisar-cargos").status_code == 401
+
+
+def test_categorias_de_sistema_aparecen_al_usarse_y_no_estorban_antes():
+    app.dependency_overrides[get_current_user] = lambda: UsuarioActual(id="u-costos-cat", email="k@t.com", nombre="K")
+    base = client.get("/categorias").json()
+    assert len(base) == 8 and not any(c["es_sistema"] for c in base)
+    c = client.post("/cuentas", json={"nombre": "Ahorros Cat", "saldo": 0}).json()
+    client.post("/movimientos", json={"cuenta_id": c["id"], "descripcion": "Rendimientos cajita", "monto": 5_000,
+                                      "tipo": "income", "categoria": "Rendimientos"})
+    cats = {x["nombre"]: x for x in client.get("/categorias").json()}
+    assert cats["Rendimientos"]["es_sistema"] is True and cats["Rendimientos"]["icono"] == "📈"
+    assert "Cuota de manejo" not in cats
+    # no se duplica al volver a pedir la lista
+    assert [x["nombre"] for x in client.get("/categorias").json()].count("Rendimientos") == 1
+    app.dependency_overrides.pop(get_current_user, None)
