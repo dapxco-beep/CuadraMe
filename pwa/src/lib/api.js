@@ -618,6 +618,9 @@ export const api = {
   impuestosMarcar: (movimientoId, data) =>
     request(`/impuestos/marcas/${movimientoId}`, { method: 'PUT', body: data }),
   impuestosQuitarMarca: (movimientoId) => request(`/impuestos/marcas/${movimientoId}`, { method: 'DELETE' }),
+  rentaEstimada: (anio) => request(`/impuestos/renta-estimada${anio ? `?anio=${anio}` : ''}`),
+  gmfEstimado: (mes) => request(`/impuestos/gmf-estimado${mes ? `?mes=${mes}` : ''}`),
+  rentaResumenCsv: (anio) => descargarArchivo(`/impuestos/renta-resumen.csv?anio=${anio}`, `cuadrame_resumen_renta_${anio}.csv`),
   impuestosExcel: (anio) => descargarArchivo(`/impuestos/exportar.xlsx?anio=${anio}`, `cuadrame_renta_${anio}.xlsx`),
 
   // Cierre de mes

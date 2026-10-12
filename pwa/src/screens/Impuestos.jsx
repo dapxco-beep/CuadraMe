@@ -5,6 +5,8 @@ import { ArrowLeft, Download, FileText, Info, Printer } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
+import TarjetaRenta from '../components/TarjetaRenta'
+import TarjetaGmfMes from '../components/TarjetaGmfMes'
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
@@ -119,6 +121,9 @@ export default function Impuestos() {
           </p>
         </div>
       </div>
+
+      <TarjetaRenta />
+      <TarjetaGmfMes />
 
       {error && <p className="px-5 mt-4 text-sm text-danger">{error}</p>}
       {!datos && !error && <p className="px-5 mt-6 text-sm text-ink-soft">Calculando...</p>}
