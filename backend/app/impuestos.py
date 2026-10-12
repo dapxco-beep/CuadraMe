@@ -8,6 +8,7 @@ tributaria ni garantiza que algo sea deducible. Funciones puras (sin BD ni red).
    de vivienda...) podrían servir en la declaración de renta, para que el usuario
    los organice con su soporte y los revise con un contador.
 """
+import math
 import re
 import unicodedata
 from collections import defaultdict
@@ -202,4 +203,60 @@ def organizar_deducibles(gastos: list[dict], marcas: dict[str, dict]) -> dict:
         "por_categoria": sorted(por_cat.values(), key=lambda c: -(c["confirmado"] + c["sugerido"])),
         "total_confirmado": sum(c["confirmado"] for c in por_cat.values()),
         "total_sugerido": sum(c["sugerido"] for c in por_cat.values()),
+    }
+
+
+# ------------------------------------------------------------ 4x1000 del mes
+
+CATEGORIA_GMF = "4x1000 (GMF)"  # la crea el frente de costos bancarios; aquí solo se LEE por nombre
+ALERTA_GMF_PCT = 80.0
+RECORDATORIO_GMF = [
+    "Puedes pedir en tu banco que marquen UNA cuenta de ahorros como exenta del 4x1000: en esa no pagas hasta cierto monto al mes.",
+    "Solo una cuenta por persona puede estar marcada como exenta, aunque tengas varios bancos o billeteras.",
+    "Mover plata entre tus cuentas del mismo banco no cobra 4x1000.",
+]
+
+
+def es_movimiento_gmf(m: dict) -> bool:
+    cat = _sin_acentos(m.get("categoria", "")).lower().replace(" ", "")
+    return cat == _sin_acentos(CATEGORIA_GMF).lower().replace(" ", "") or es_linea_gmf(m.get("descripcion", ""))
+
+
+def gmf_mes(movs: list[dict], tipos_cuenta: dict[str, str], cuenta_exenta_id: str | None, mes: str) -> dict:
+    """4x1000 de un mes ('YYYY-MM'). movs: [{fecha, monto (COP), tipo, fuente, notas, descripcion, categoria, cuenta_id}].
+    - gmf_pagado: lo que ya te cobraron (categoría «4x1000 (GMF)» o líneas que lo dicen).
+    - debitos_total: lo que salió de tus cuentas de ahorro ese mes (sin contar el propio 4x1000).
+    - Frente al tope exento (350 UVT del año): si marcaste cuál es tu cuenta exenta se mide esa cuenta;
+      si no, se mide el total como referencia."""
+    anio = int(mes[:4])
+    uvt = uvt_del_anio(anio)
+    tope = TOPE_EXENTO_UVT * uvt
+    pagado = 0.0
+    deb_total = 0.0
+    deb_exenta = 0.0
+    for m in movs:
+        if m["fecha"].strftime("%Y-%m") != mes:
+            continue
+        if es_movimiento_gmf(m):
+            if m.get("tipo") == "expense":
+                pagado += m["monto"]
+            continue
+        if tipos_cuenta.get(m["cuenta_id"]) != "ahorro" or not _es_debito_gravable(m):
+            continue
+        deb_total += m["monto"]
+        if cuenta_exenta_id and m["cuenta_id"] == cuenta_exenta_id:
+            deb_exenta += m["monto"]
+    medido = deb_exenta if cuenta_exenta_id else deb_total
+    pct = math.floor(medido * 1000 / tope) / 10 if tope else 0.0
+    alerta = pct >= ALERTA_GMF_PCT
+    return {
+        "mes": mes, "uvt": uvt, "tope_exento_mensual": tope, "tope_uvt": TOPE_EXENTO_UVT,
+        "gmf_pagado": round(pagado), "debitos_total": round(deb_total),
+        "debitos_cuenta_exenta": round(deb_exenta) if cuenta_exenta_id else None,
+        "tiene_cuenta_exenta": bool(cuenta_exenta_id), "cuenta_exenta_id": cuenta_exenta_id,
+        "uso_pct": pct, "alerta": alerta,
+        "mensaje": ("Te acercas al tope de tu cuenta exenta" if alerta else
+                    "Vas bien frente al tope de tu cuenta exenta"),
+        "recordatorio": RECORDATORIO_GMF,
+        "nota": "Estimado con los movimientos que cargaste; el valor real lo cobra tu banco.",
     }

@@ -30,6 +30,7 @@ JOBS = [
     ("CuadraMe - backup diario", "/backup/cron/enviar", [2], [0], [-1]),
     ("CuadraMe - uso semanal", "/metricas/cron/revisar-uso-semanal", [8], [0], [1]),
     ("CuadraMe - resumen diario de avisos", "/avisos/cron/resumen-diario", [20], [0], [-1]),
+    ("CuadraMe - avisar renta (push 14 y 3 dias antes)", "/impuestos/cron/avisar-renta", [9], [30], [-1]),
 ]
 
 
