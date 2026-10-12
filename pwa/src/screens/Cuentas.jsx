@@ -8,6 +8,7 @@ import { useBloqueo } from '../lib/BloqueoContext'
 import { etiquetaCuenta, textoActualizado } from '../lib/saldos'
 import Ayudita from '../components/Ayudita'
 import DetalleCuenta from '../components/DetalleCuenta'
+import { RendimientoCuenta } from '../components/TuPlataTrabajando'
 import ResumenSaldo from '../components/ResumenSaldo'
 import { ArrowLeft, CreditCard, Pencil, Plus, Trash2, Users, X, Wallet } from 'lucide-react'
 import { etiquetaTipo, mismasDelBanco } from '../lib/cuentasBanco'
@@ -135,6 +136,8 @@ export default function Cuentas() {
               <p className="mt-1.5 px-1 text-[11px] text-ink-soft" data-testid="significado-saldo">
                 {etiquetaCuenta(c).significado} <Ayudita termino={etiquetaCuenta(c).termino} />
               </p>
+              {/* Cuentas de ahorros: cuánto rinde (estimado) y cajitas */}
+              {c.tipo === 'ahorro' && <RendimientoCuenta cuentaId={c.id} />}
               {/* Las cuentas de crédito son tarjetas reales: cupo, corte y pago */}
               {c.tipo === 'credito' && <PanelTarjetaCredito cuenta={c} onCambio={recargar} />}
             </div>

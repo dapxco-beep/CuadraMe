@@ -4,6 +4,7 @@ import { IlustracionVacia, Isotipo, Monto } from '../brand/Marca'
 import ConsejoParaTi from './ConsejoParaTi'
 import { OfrecerPrimeraMeta } from './FormMeta'
 import Icono from './Icono'
+import { RenglonTuPlata } from './TuPlataTrabajando'
 import { Boton } from './ui'
 
 // Inicio para quien llega sin saber de finanzas: tres bloques y nada más.
@@ -90,6 +91,9 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
           </div>
         </section>
       )}
+
+      {/* Solo si ya tienes cajitas: cuánto ganó tu plata este mes */}
+      <RenglonTuPlata />
 
       {/* BLOQUE 3 */}
       <ConsejoParaTi max={1} />

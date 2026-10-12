@@ -347,6 +347,15 @@ export const api = {
   recordatorios: () => request('/recordatorios'),
   // Consejos personalizados («Consejo para ti» en Inicio): reglas del servidor, sin IA externa
   consejos: () => request('/consejos'),
+  // Tu plata trabajando: cajitas, rendimiento estimado y tasas de referencia
+  rendimientos: () => request('/rendimientos'),
+  crearCajita: (data) => request('/rendimientos/cajitas', { method: 'POST', body: data }),
+  editarCajita: (id, data) => request(`/rendimientos/cajitas/${id}`, { method: 'PUT', body: data }),
+  moverCajita: (id, data) => request(`/rendimientos/cajitas/${id}/mover`, { method: 'POST', body: data }),
+  borrarCajita: (id) => request(`/rendimientos/cajitas/${id}`, { method: 'DELETE' }),
+  tasasReferencia: () => request('/rendimientos/tasas'),
+  tasasReferenciaAdmin: () => request('/rendimientos/tasas/admin'),
+  guardarTasaReferencia: (id, data) => request(id ? `/rendimientos/tasas/${id}` : '/rendimientos/tasas', { method: id ? 'PUT' : 'POST', body: data }),
   recordatorioDiario: () => request('/perfil/recordatorio-diario'),
   actualizarRecordatorioDiario: (activo) =>
     request('/perfil/recordatorio-diario', { method: 'PUT', body: { activo } }),

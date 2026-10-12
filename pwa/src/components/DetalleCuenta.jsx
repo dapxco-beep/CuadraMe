@@ -6,6 +6,7 @@ import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { cupoDisponible, deudaTarjeta, esCredito, etiquetaCuenta, textoActualizado } from '../lib/saldos'
 import Ayudita from './Ayudita'
+import { CajitasDeCuenta } from './TuPlataTrabajando'
 import Hoja from './Hoja'
 import { leerMonto } from '../lib/cuentaNueva'
 import InputMonto from './InputMonto'
@@ -82,6 +83,8 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
           <p className="text-[11px] text-ink-soft mt-1.5">
             No incluyen pagos de tarjeta, la plata que pasaste entre tus cuentas ni ajustes de saldo.
           </p>
+
+          {c.tipo === 'ahorro' && <CajitasDeCuenta cuentaId={c.id} />}
 
           <div className="grid grid-cols-1 gap-2 mt-4">
             <button
