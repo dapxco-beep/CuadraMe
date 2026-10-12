@@ -279,6 +279,16 @@ describe('contadores y estados', () => {
     expect(screen.getAllByTestId(/^tarea-/)).toHaveLength(5)
   })
 
+  it('si la insignia de «Por revisar» cuenta «Bancos sin cuenta», el bloque lo muestra (no queda «1» con todo vacío)', async () => {
+    api.sincronizacionEstado.mockResolvedValue(estadoCon(TAREAS, { sin_cuenta: [{ banco: 'Nequi', correos: 2, extractos: 0 }] }))
+    montarCentro()
+    await screen.findByText('Tienes 5 cosas por resolver')
+    const revisar = screen.getByRole('button', { name: /Por revisar/ })
+    expect(within(revisar).getByLabelText('2 por resolver')).toBeTruthy()
+    expect(document.querySelector('#sinc-sin-cuenta')).not.toBeNull()
+    expect(within(document.querySelector('#sinc-sin-cuenta')).getByRole('button', { name: 'Crear cuenta Nequi' })).toBeTruthy()
+  })
+
   it('al llegar a cero cada bloque queda en «Todo al día» y el contador desaparece', async () => {
     api.sincronizacionEstado.mockResolvedValue(estadoCon([]))
     montarCentro()

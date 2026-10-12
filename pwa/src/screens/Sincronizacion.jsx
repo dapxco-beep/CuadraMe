@@ -901,6 +901,19 @@ export default function Sincronizacion() {
         abierto={abiertos.revisar}
         onToggle={() => alternar('revisar')}
       >
+        {/* La tarea «Bancos sin cuenta» cuenta en este bloque: aquí tiene su fila (antes el bloque decía «1» y mostraba «Nada por…») */}
+        {sinCuenta.length > 0 && (
+          <Sub id="sinc-sin-cuenta" titulo="Bancos sin cuenta" cuenta={sinCuenta.length}>
+            <div className="flex flex-wrap gap-2">
+              {sinCuenta.map((s) => (
+                <button key={s.banco} type="button" onClick={() => setCrearBanco(s.banco)} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3 py-2 min-h-[44px]">
+                  Crear cuenta {s.banco}
+                </button>
+              ))}
+            </div>
+          </Sub>
+        )}
+
         <Sub id="sinc-confirmar" titulo="Por confirmar" cuenta={nConfirmar}>
           {nConfirmar === 0 ? (
             <AlDia texto="Nada por confirmar" />
