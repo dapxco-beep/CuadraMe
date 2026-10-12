@@ -95,7 +95,7 @@ ${cuerpo}
 export function generar() {
   const out = {}
   for (const p of PAGINAS) {
-    const jsx = readFileSync(resolve(raiz, 'src/screens/legal', p.fuente), 'utf8')
+    const jsx = readFileSync(resolve(raiz, 'src/screens/legal', p.fuente), 'utf8').replaceAll('\r\n', '\n')
     out[p.salida] = pagina(p, jsxAHtml(jsx))
   }
   return out

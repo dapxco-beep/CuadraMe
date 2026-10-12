@@ -158,7 +158,8 @@ export default function Login() {
         <p className="text-[11px] text-ink-soft text-center mt-2 leading-relaxed">
           Si es tu primera vez, al continuar aceptas los{' '}
           <Link to="/legal/terminos" className="text-accent">Términos</Link> y la{' '}
-          <Link to="/legal/privacidad" className="text-accent">Política de Privacidad</Link>.
+          <Link to="/legal/privacidad" className="text-accent">Política de Privacidad</Link>{' '}
+          (<a href="/privacidad.html" className="text-accent">versión pública</a>).
         </p>
       )}
 

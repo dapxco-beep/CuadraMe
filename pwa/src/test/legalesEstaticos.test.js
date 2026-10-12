@@ -1,9 +1,9 @@
-// @vitest-environment node
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { generar } from '../../scripts/generar-legales-estaticos.mjs'
 
-const leer = (n) => readFileSync(new URL(`../../public/${n}`, import.meta.url), 'utf8')
+const leer = (n) => readFileSync(resolve(process.cwd(), 'public', n), 'utf8')
 
 describe('páginas legales estáticas', () => {
   it('están al día con las pantallas React (si falla: npm run legales)', () => {
