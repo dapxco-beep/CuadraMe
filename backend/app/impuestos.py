@@ -247,7 +247,7 @@ def gmf_mes(movs: list[dict], tipos_cuenta: dict[str, str], cuenta_exenta_id: st
         if cuenta_exenta_id and m["cuenta_id"] == cuenta_exenta_id:
             deb_exenta += m["monto"]
     medido = deb_exenta if cuenta_exenta_id else deb_total
-    pct = math.floor(medido / tope * 1000) / 10 if tope else 0.0
+    pct = math.floor(medido * 1000 / tope) / 10 if tope else 0.0
     alerta = pct >= ALERTA_GMF_PCT
     return {
         "mes": mes, "uvt": uvt, "tope_exento_mensual": tope, "tope_uvt": TOPE_EXENTO_UVT,

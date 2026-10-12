@@ -103,7 +103,7 @@ def estado_de(pct: float) -> str:
 
 def _pct(valor: float, tope: float) -> float:
     """% del tope, truncado a 1 decimal (así 59,96 % no se ve como 60 % y sigue siendo «lejos»)."""
-    return math.floor(valor / tope * 1000) / 10 if tope else 0.0
+    return math.floor(valor * 1000 / tope) / 10 if tope else 0.0
 
 
 def _fecha(m) -> datetime:
