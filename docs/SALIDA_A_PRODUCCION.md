@@ -134,3 +134,18 @@ usar hashes; es un paso posterior y opcional. Verifica también que `/privacidad
 - **Sin SQL ni columnas nuevas**: usa `ajustes_usuario.cuenta_exenta_gmf_id` (ya existía) y `marcas_cron` (clave `aviso_renta:<año>`, valor 14 o 3).
 - **Constantes a verificar cada año con el contador** (un solo lugar): `backend/app/impuestos.py` (`UVT`, `TOPE_EXENTO_UVT`) y `backend/app/renta_alerta.py` (`TOPES_UVT`, `TOPES_UVT_POR_ANIO`, `PLAZOS_RENTA`). Año gravable 2025: UVT $49.799; topes 4.500 UVT (patrimonio) y 1.400 UVT (ingresos, tarjeta, compras, consignaciones); plazo 12-ago a 26-oct-2026. En diciembre agregar UVT 2027 y el plazo del año gravable 2026.
 - Endpoints: `GET /impuestos/renta-estimada?anio=`, `GET /impuestos/renta-resumen.csv?anio=`, `GET /impuestos/gmf-estimado?mes=YYYY-MM`, `POST /impuestos/cron/avisar-renta` (X-Cron-Secret).
+
+## 3d. Retención de datos de Gmail (minimización; APAGADA por defecto)
+Cierra en código la brecha B3 de `docs/salida/GOOGLE_VERIFICACION.md`. **Activarla es decisión de Daniel**: con las tres variables en `0` (valor por defecto) no se purga nada.
+
+| Variable (Railway) | Qué minimiza | Propuesta |
+|---|---|---|
+| `RETENCION_CORREOS_IGNORADOS_DIAS` | Correos `ignorado`/`descartado` y extractos `ignorado`/`descartado`: se vacían remitente, asunto, snippet y comercio | 30 |
+| `RETENCION_CORREOS_PROCESADOS_DIAS` | Correos `aprobado`/`ya_registrado` y extractos `procesado`/`ya_conciliado` (ya son movimiento): se vacía el contenido | 365 |
+| `RETENCION_EVENTOS_DIAS` | Borra filas de `eventos_actividad` (se conserva `nuevo_registro:*`, que evita registrar dos veces a la misma persona) | 365 |
+
+- **No se borra la fila**, solo su contenido: quedan id del mensaje de Gmail, estado, fecha, monto, `movimiento_id` (y el nombre de archivo del extracto, parte de su llave única). Así el correo no se vuelve a leer ni «resucita» (regla 5 de `app/duplicados.py`) y un periodo `ya_conciliado` sigue conciliado. Pendientes y con error nunca se tocan. El plazo cuenta desde `creado_en` (cuando CuadraMe lo guardó).
+- **Cron:** `POST /correos/cron/purgar-retencion` (X-Cron-Secret), sugerido diario 03:30. Agregado a `JOBS` de `crear_crons.py`, **NO creado** en cron-job.org. Idempotente, por lotes de 500 con tope de 40 s (si queda trabajo, `completo:false` y sigue en la próxima), un fallo en una categoría no frena las demás. Devuelve y registra solo conteos (`correos_ignorados`, `extractos_ignorados`, `correos_procesados`, `extractos_procesados`, `eventos`, `fallidos`).
+- **Simulación (solo admin, 404 al resto):** `GET /avisos/retencion` muestra la configuración vigente y cuántos registros caerían bajo cada plazo activo. Para ver cuántos caerían con 30/365, ponlos en Railway **sin crear el cron**, consulta el endpoint y decide.
+- **Sin SQL:** no hay tablas ni columnas nuevas. Orden sugerido: desplegar con todo en 0, mirar la simulación, activar las variables, crear el cron.
+- La política de privacidad publicada (sección 9) debe mencionar estos plazos antes de activarlos (ver `docs/legal/PENDIENTES_DANIEL.md`).

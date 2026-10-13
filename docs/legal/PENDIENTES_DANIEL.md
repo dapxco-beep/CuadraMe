@@ -36,3 +36,9 @@
 - La copia diaria ya va **cifrada** y **sin** correos leÃ­dos, tokens, claves de PDF ni claves del Atajo; la polÃ­tica/autorizaciÃ³n dicen que se envÃ­a Â«una copia de la base de datosÂ» sin cifrado ni exclusiones: precisarlo en la prÃ³xima versiÃ³n.
 - La IA externa solo procesa extractos que la persona sube a mano (con consentimiento `ia`, texto enmascarado); nunca contenido de Gmail. La polÃ­tica puede decirlo explÃ­citamente.
 - Resumen semanal con IA ahora exige consentimiento `ia` (si no, texto sin IA).
+
+## Retención de datos de Gmail (B3): código listo, activarla es tu decisión
+- Ya existe la purga (`backend/app/retencion.py`, ver `docs/SALIDA_A_PRODUCCION.md` 3d), **apagada** hasta que pongas plazos en Railway.
+- **Plazos propuestos:** correos ignorados/descartados 30 días (`RETENCION_CORREOS_IGNORADOS_DIAS`), correos y extractos ya convertidos en movimiento 365 días (`RETENCION_CORREOS_PROCESADOS_DIAS`; se vacía asunto/remitente/vista previa y queda solo id, fecha, monto y estado para no duplicar), eventos de actividad 365 días (`RETENCION_EVENTOS_DIAS`).
+- **La política publicada debe decirlo** (sección 9: «cuánto tiempo conservamos tu información») antes de activar la purga; cambiar el texto publicado es decisión tuya y del abogado (no se tocó `VERSION_TEXTOS`).
+- Tu texto de consentimiento y los plazos deben coincidir: ver el borrador `docs/legal/PROPUESTA_CONSENTIMIENTO_GMAIL.md` (B4).
