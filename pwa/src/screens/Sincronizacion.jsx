@@ -3,15 +3,15 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { useEstadoLista } from '../lib/useEstadoLista'
 import {
-  ArrowLeft, CheckCheck, CheckCircle2, ChevronLeft, ChevronRight, FileCheck2, FileText, KeyRound, Mail, Plug, RefreshCw, Tag,
-  Upload, Wallet, X, AlertTriangle, CopyCheck, FilePlus2, Pencil,
+  ArrowLeft, BellRing, CheckCheck, CheckCircle2, ChevronLeft, ChevronRight, FileCheck2, FileText, KeyRound, ListChecks, Mail, Plug, RefreshCw, Tag,
+  Wallet, X, AlertTriangle, CopyCheck, Pencil,
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useCuentas } from '../lib/CuentasContext'
 import { haceCuanto, marcarSincronizado, resumenSync, sincronizarCarriles, sincronizarTodo, tocaSincronizar } from '../lib/sincronizarGmail'
-import { NOMBRE_CARRIL, gruposDeTareas, resumenCarriles, resumenLectura } from '../lib/carriles'
+import { NOMBRE_CARRIL, carrilDeTarea, resumenCarriles, resumenLectura } from '../lib/carriles'
 import {
   BANCO_SIN_IDENTIFICAR, agruparPorBanco, conciliarExtracto, estadoCelda, ESTADOS_CELDA, nombreMes,
   moverMes, nombresDesambiguados, resumenTareas, separarExtractos, textoEstadoExtracto,
@@ -20,9 +20,8 @@ import { cantidadDe, pasoActual, sinDatos, tareasDeBloque } from '../lib/centro'
 import BarraProgreso from '../components/BarraProgreso'
 import BloqueCentro from '../components/BloqueCentro'
 import { EnlaceBancoNoEsta } from '../components/BancoNoEsta'
-import CarrilesCorreo from '../components/CarrilesCorreo'
+import { InterruptoresLectura, LecturaCarril } from '../components/CarrilesCorreo'
 import ConexionGmail from '../components/ConexionGmail'
-import CorreosPorRevisar from '../components/CorreosPorRevisar'
 import CorreosYaRegistrados from '../components/CorreosYaRegistrados'
 import CrearCuentaBanco from '../components/CrearCuentaBanco'
 import EstadoClavePdf, { textoEstadoClave } from '../components/EstadoClavePdf'
@@ -39,12 +38,18 @@ import { cuentaRecordada, productoDeTexto } from '../lib/cuentasBanco'
 import { posponerPuntoDePartida, puntoDePartidaPospuesto } from '../lib/puntoPartida'
 
 // "Traer movimientos": UN solo centro para todo lo que trae movimientos a CuadraMe.
-//   Arriba: estado y «Traer todo ahora».  Luego tres bloques plegables con contador:
-//   Desde tu correo (Gmail) · Subir archivos (PDF/Excel/CSV) · Por revisar.
+//   Arriba: estado y «Traer todo ahora».  Luego secciones hermanas, cada una con su «Por hacer» y su contador:
+//   Movimientos (notificaciones de Gmail; se aprueban en la pantalla Movimientos) · Extractos (los del correo
+//   y los que subes como archivo, con la cobertura por mes) · Conexión de Gmail · Por revisar.
 // Todo lo que muestra viene de GET /sincronizacion/estado (una llamada) más lo propio de cada
 // bloque; las rutas viejas (/correos, /conciliacion, /importar, /conexiones) redirigen aquí.
 
 const EXTRACTOS_VISIBLES = 6
+
+// Las rutas viejas piden 'correo' (Gmail) o 'subir' (archivos): hoy son 'movimientos' y 'extractos'.
+// La conexión es la sección propia; 'estado' abre la hoja de conexiones y 'revisar' sigue igual.
+const SECCION_DE_RUTA = { correo: 'movimientos', subir: 'extractos', movimientos: 'movimientos', extractos: 'extractos', conexion: 'conexion', revisar: 'revisar' }
+const seccionDeRuta = (abrir) => SECCION_DE_RUTA[abrir] || null
 
 function irA(id) {
   setTimeout(() => {
@@ -83,6 +88,37 @@ const ICONO_TAREA = {
   correos_por_revisar: Mail,
   extractos_sin_leer: AlertTriangle,
   posibles_duplicados: CopyCheck,
+}
+
+// Lista de tareas «Por hacer» de UNA sección (o de «Otras cosas»): una tarjeta por tarea, con su botón.
+function ListaTareas({ tareas, onAccion }) {
+  return (
+    <ul className="flex flex-col gap-2 mt-2" aria-label="Por resolver">
+      {tareas.map((t) => {
+        const Icono = ICONO_TAREA[t.id] || CheckCheck
+        return (
+          <li key={t.id}>
+            <button
+              onClick={() => onAccion(t)}
+              data-testid={`tarea-${t.id}`}
+              className="w-full rounded-2xl bg-paper-raised border border-line px-3.5 py-3 min-h-[48px] flex items-center gap-3 text-left"
+            >
+              <span className="w-8 h-8 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
+                <Icono size={16} aria-hidden="true" />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-semibold leading-tight">{t.titulo}</span>
+                <span className="block text-xs text-ink-soft mt-0.5">{t.detalle}</span>
+                <span className="inline-block mt-1.5 rounded-lg bg-accent text-paper-raised text-xs font-semibold px-3 py-1.5">{BOTON_TAREA[t.id] || 'Resolver'}</span>
+              </span>
+              <span className="text-sm font-bold text-accent" aria-label={`${t.cantidad} pendientes`}>{t.cantidad}</span>
+              <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
 }
 
 export default function Sincronizacion() {
@@ -128,9 +164,14 @@ export default function Sincronizacion() {
   const [pospuestoPP, setPospuestoPP] = useState(() => puntoDePartidaPospuesto())
   const [ppRecien, setPpRecien] = useState(false) // acaba de elegir: se queda a la vista con su resumen
   const [recordar, setRecordar] = useState({}) // id -> false cuando la casilla se desmarca
-  const [abiertos, setAbiertos] = useState({
-    correo: llegada?.abrir === 'correo', subir: llegada?.abrir === 'subir', revisar: llegada?.abrir === 'revisar',
-  })
+  const [abiertos, setAbiertos] = useState(() => ({
+    movimientos: seccionDeRuta(llegada?.abrir) === 'movimientos',
+    extractos: seccionDeRuta(llegada?.abrir) === 'extractos',
+    // Con el regreso de Google (?gmail=...) se ve la conexión: ahí está lo que pasó.
+    conexion: seccionDeRuta(llegada?.abrir) === 'conexion' || /[?&]gmail=/.test(location.search || ''),
+    revisar: seccionDeRuta(llegada?.abrir) === 'revisar',
+  }))
+  const [erroresInterruptor, setErroresInterruptor] = useState({})
   const [subir, setSubir] = useState({}) // lo que pide abrir el bloque «Subir archivos»
   const [verEstado, setVerEstado] = useState(llegada?.abrir === 'estado')
   const montado = useRef(true)
@@ -174,10 +215,12 @@ export default function Sincronizacion() {
         iniciado.current = true
         const t = est?.tareas || []
         const conectado = Boolean(gm?.conectado)
+        // Modo simple: las dos secciones de contenido a la vista y la conexión plegada (salvo que falte conectar).
         setAbiertos((a) => ({
-          correo: a.correo || !conectado || tareasDeBloque(t, 'correo').length > 0,
-          subir: a.subir || t.length === 0 || sinDatos({ estado: est, conectado }),
-          revisar: true, // incluye la cuadrícula: es el panorama, se ve siempre
+          movimientos: true,
+          extractos: true,
+          conexion: a.conexion || !conectado,
+          revisar: true,
         }))
       }
       setEstado(est)
@@ -211,13 +254,14 @@ export default function Sincronizacion() {
 
   // ── Bloques abiertos y llegadas desde las rutas viejas ─────────────
   const abrirBloque = useCallback((bloque, ancla) => {
-    setAbiertos((a) => ({ ...a, [bloque]: true }))
-    irA(ancla || `sinc-${bloque}`)
+    const seccion = seccionDeRuta(bloque)
+    setAbiertos((a) => ({ ...a, [seccion]: true }))
+    irA(ancla || `sinc-${seccion}`)
   }, [])
 
   function pedirSubir(pedido) {
     setSubir({ ...pedido, n: Date.now() })
-    abrirBloque('subir')
+    abrirBloque('subir', 'sinc-subir')
   }
 
   // Al llegar (o volver a llegar) con state: abre el bloque que pidió la ruta vieja.
@@ -228,10 +272,10 @@ export default function Sincronizacion() {
       setVerEstado(true)
       return
     }
-    if (abrir === 'subir' && (llegada.historialId || llegada.mes || llegada.cuentaId || llegada.manual)) {
+    if (seccionDeRuta(abrir) === 'extractos' && (llegada.historialId || llegada.mes || llegada.cuentaId || llegada.manual)) {
       setSubir({ historialId: llegada.historialId, cuentaId: llegada.cuentaId, mes: llegada.mes, manual: llegada.manual, n: Date.now() })
     }
-    abrirBloque(abrir)
+    abrirBloque(abrir, abrir === 'subir' ? 'sinc-subir' : undefined)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key])
 
@@ -349,13 +393,13 @@ export default function Sincronizacion() {
   async function cambiarLectura(tipo, valor) {
     const campo = tipo === 'movimientos' ? 'leer_movimientos' : 'leer_extractos'
     setGuardandoLectura((g) => ({ ...g, [tipo]: true }))
-    setErroresCarril((e) => ({ ...e, [tipo]: '' }))
+    setErroresInterruptor((e) => ({ ...e, [tipo]: '' }))
     try {
       await api.gmailLectura({ [campo]: valor })
       if (montado.current) setGmail((g) => ({ ...(g || {}), [campo]: valor }))
       await cargar()
     } catch (err) {
-      if (montado.current) setErroresCarril((e) => ({ ...e, [tipo]: err.message || 'No se pudo guardar el cambio. Intenta de nuevo.' }))
+      if (montado.current) setErroresInterruptor((e) => ({ ...e, [tipo]: err.message || 'No se pudo guardar el cambio. Intenta de nuevo.' }))
     } finally {
       if (montado.current) setGuardandoLectura((g) => ({ ...g, [tipo]: false }))
     }
@@ -366,11 +410,11 @@ export default function Sincronizacion() {
     switch (t.id) {
       case 'falta_clave':
         setMostrarClave(true)
-        return abrirBloque('correo', 'sinc-clave')
+        return abrirBloque('extractos', 'sinc-clave')
       case 'extractos_por_conciliar':
-        return abrirBloque('correo', 'sinc-extractos')
+        return abrirBloque('extractos', 'sinc-extractos-correo')
       case 'correos_por_revisar':
-        return abrirBloque('correo', 'sinc-correos')
+        return navigate('/movimientos?filtro=por-revisar') // los movimientos del correo se aprueban en Movimientos
       case 'sin_cuenta':
         // «Bancos sin cuenta» vive SOLO en «Por hacer» (y en el resumen de arriba): con un banco abre
         // directo «Crear cuenta»; con varios, una hoja para elegir cuál.
@@ -548,10 +592,15 @@ export default function Sincronizacion() {
   const nombreFila = nombresDesambiguados(filasCuentas, cuentas)
   const conectado = Boolean(gmail?.conectado)
   const ultima = haceCuanto(estado?.ultima_sync)
-  const tareasCorreo = tareasDeBloque(tareas, 'correo')
+  // Cada sección cuenta lo SUYO: los contadores no se mezclan.
+  const tareasMov = tareasDeBloque(tareas, 'movimientos')
+  const tareasExt = tareasDeBloque(tareas, 'extractos')
   const tareasRevisar = tareasDeBloque(tareas, 'revisar')
+  // Lo que no es del correo (bancos sin cuenta, por categorizar, repetidos...) va en «Otras cosas por hacer».
+  const tareasGenerales = tareas.filter((t) => !carrilDeTarea(t))
   const nCorreos = cantidadDe(tareas, 'correos_por_revisar')
   const nConfirmar = cantidadDe(tareas, 'movimientos_por_confirmar')
+  const punto = estado?.punto_partida
 
   const celdaDetalle = detalle
     ? filasCuentas.find((c) => c.id === detalle.cuentaId)?.meses.find((m) => m.mes === detalle.mes)
@@ -563,6 +612,8 @@ export default function Sincronizacion() {
   const { alDia } = separarEstados(estado?.extractos)
   const visibles = verTodos ? pendientes : pendientes.slice(0, EXTRACTOS_VISIBLES)
   const alternar = (b) => setAbiertos((a) => ({ ...a, [b]: !a[b] }))
+  const activos = lecturaActiva()
+  const verPorRevisar = () => navigate('/movimientos?filtro=por-revisar')
 
   return (
     <div ref={raiz} className="flex-1 overflow-y-auto pb-8 screen-enter pantalla-ancha">
@@ -597,7 +648,7 @@ export default function Sincronizacion() {
 
       {sinDatos({ estado, conectado }) && <PasosCentro paso={pasoActual({ conectado, tareas })} />}
 
-      <div className="dos-col dos-col-4-7">
+      <div className="dos-col dos-col-6-5">
       <div className="col">
       <section className="mx-6 mt-3" aria-label="Sincronizar">
         {conectado ? (
@@ -611,7 +662,7 @@ export default function Sincronizacion() {
           </button>
         ) : (
           <button
-            onClick={() => abrirBloque('correo')}
+            onClick={() => abrirBloque('conexion')}
             className="w-full flex items-center justify-center gap-2 bg-ink text-paper font-semibold rounded-2xl py-3.5 text-[15px]"
           >
             <Mail size={16} aria-hidden="true" /> Conectar Gmail
@@ -643,46 +694,230 @@ export default function Sincronizacion() {
             <CheckCircle2 size={16} className="text-cuadra" aria-hidden="true" />
             {ultima ? `Todo al día · última vez ${ultima}` : 'Todo al día'}
           </p>
-        ) : (
-          <div className="mt-4" data-testid="por-hacer">
-            <h2 className="text-[15px] font-semibold">Por hacer</h2>
-            <p className="text-xs text-ink-soft">Solo lo que necesita que tú decidas.</p>
-            {gruposDeTareas(tareas).map((g) => (
-            <div key={g.clave} data-testid={`por-hacer-${g.clave}`}>
-            {g.nombre && <p className="text-xs font-semibold text-ink-soft mt-3" data-testid={`titulo-por-hacer-${g.clave}`}>{g.nombre}</p>}
-            <ul className="flex flex-col gap-2 mt-2" aria-label={g.nombre ? `Por resolver: ${g.nombre}` : 'Por resolver'}>
-              {g.tareas.map((t) => {
-                const Icono = ICONO_TAREA[t.id] || CheckCheck
-                return (
-                  <li key={t.id}>
-                    <button
-                      onClick={() => accionTarea(t)}
-                      data-testid={`tarea-${t.id}`}
-                      className="w-full rounded-2xl bg-paper-raised border border-line px-3.5 py-3 min-h-[48px] flex items-center gap-3 text-left"
-                    >
-                      <span className="w-8 h-8 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
-                        <Icono size={16} aria-hidden="true" />
-                      </span>
-                      <span className="flex-1 min-w-0">
-                        <span className="block text-sm font-semibold leading-tight">{t.titulo}</span>
-                        <span className="block text-xs text-ink-soft mt-0.5">{t.detalle}</span>
-                        <span className="inline-block mt-1.5 rounded-lg bg-accent text-paper-raised text-xs font-semibold px-3 py-1.5">{BOTON_TAREA[t.id] || 'Resolver'}</span>
-                      </span>
-                      <span className="text-sm font-bold text-accent" aria-label={`${t.cantidad} pendientes`}>{t.cantidad}</span>
-                      <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-            </div>
-            ))}
+        ) : tareasGenerales.length > 0 && (
+          <div className="mt-4" data-testid="por-hacer-general">
+            <h2 className="text-[15px] font-semibold">Otras cosas por hacer</h2>
+            <ListaTareas tareas={tareasGenerales} onAccion={accionTarea} />
           </div>
         )}
       </section>
 
+      {/* a) Movimientos: lo que llega por Gmail como notificaciones */}
+      <BloqueCentro
+        id="sinc-movimientos"
+        titulo="Movimientos"
+        icono={BellRing}
+        cuenta={tareasMov.length}
+        abierto={abiertos.movimientos}
+        onToggle={() => alternar('movimientos')}
+      >
+        <p className="text-xs text-ink-soft">
+          Los avisos de tu banco llegan a tu correo y aquí los traigo. Los apruebas en la pantalla Movimientos, con su fecha y hora.
+        </p>
+        {tareasMov.length > 0 && (
+          <div className="mt-3" data-testid="por-hacer-movimientos">
+            <h3 className="text-[13px] font-semibold">Por hacer</h3>
+            <ListaTareas tareas={tareasMov} onAccion={accionTarea} />
+          </div>
+        )}
+
+        {conectado ? (
+          <div className="mt-3">
+            <LecturaCarril
+              carril="movimientos"
+              activo={activos.movimientos}
+              info={estado?.carriles?.movimientos}
+              leyendo={leyendo}
+              resultado={resultadosCarril.movimientos}
+              error={erroresCarril.movimientos}
+              onTraer={traerCarril}
+              onEncender={() => abrirBloque('conexion')}
+            >
+              {nCorreos > 0 && (
+                <button
+                  type="button"
+                  onClick={verPorRevisar}
+                  data-testid="ver-por-revisar"
+                  className="mt-3 w-full flex items-center justify-center gap-2 bg-accent text-paper-raised font-semibold rounded-xl min-h-[44px] text-sm"
+                >
+                  <ListChecks size={16} aria-hidden="true" /> Ver los {nCorreos} por revisar
+                </button>
+              )}
+            </LecturaCarril>
+            {activos.movimientos && nCorreos === 0 && (
+              <div className="mt-2"><AlDia texto="No hay movimientos del correo por revisar" /></div>
+            )}
+          </div>
+        ) : (
+          <div className="mt-3 rounded-2xl bg-paper border border-line p-4">
+            <p className="text-sm font-semibold">Conecta tu Gmail para traer tus movimientos</p>
+            <button onClick={() => abrirBloque('conexion')} className="mt-1 text-xs font-semibold text-accent min-h-[44px]">Ir a «Conexión de Gmail»</button>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => navigate('/agregar')}
+          className="mt-3 w-full flex items-center justify-center gap-2 border border-line bg-paper-raised font-semibold rounded-xl min-h-[44px] text-sm"
+        >
+          <Pencil size={16} aria-hidden="true" /> Agregar uno a mano
+        </button>
+
+        {conectado && (
+          <>
+            {(punto?.anteriores?.correos || 0) > 0 && (
+              <p className="text-xs text-ink-soft mt-3 rounded-xl bg-paper border border-line px-3 py-2.5" data-testid="correos-anteriores">
+                {punto.anteriores.correos === 1
+                  ? '1 correo anterior a tu fecha de inicio no se muestra.'
+                  : `${punto.anteriores.correos} correos anteriores a tu fecha de inicio no se muestran.`}{' '}
+                <Link to="/perfil#punto-de-partida" className="font-semibold text-accent underline">Cambiar la fecha</Link>
+              </p>
+            )}
+            <CorreosYaRegistrados cantidad={estado?.correos_ya_registrados || 0} onCambio={cargar} />
+            {correosIgnorados === null ? (
+              <button onClick={verCorreosIgnorados} className="text-xs text-ink-soft mt-3 underline min-h-[32px]">Ver correos ignorados</button>
+            ) : (
+              <div className="mt-3 rounded-2xl border border-line divide-y divide-line">
+                {correosIgnorados.length === 0 && <p className="text-xs text-ink-soft p-3">No hay correos ignorados.</p>}
+                {correosIgnorados.map((c) => (
+                  <div key={c.id} className="p-3">
+                    <p className="text-sm font-medium truncate">{c.asunto || c.comercio}</p>
+                    <p className="text-xs text-ink-soft truncate">{c.remitente}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </BloqueCentro>
+
+      {/* b) Extractos: los del correo y los que subes como archivo */}
+      <BloqueCentro
+        id="sinc-extractos"
+        titulo="Extractos"
+        icono={FileCheck2}
+        cuenta={tareasExt.length}
+        abierto={abiertos.extractos}
+        onToggle={() => alternar('extractos')}
+      >
+        <p className="text-xs text-ink-soft">
+          El extracto mensual del banco sirve para confirmar y cuadrar el mes. Llega a tu correo o lo subes tú como archivo (PDF, Excel o CSV).
+        </p>
+        {tareasExt.length > 0 && (
+          <div className="mt-3" data-testid="por-hacer-extractos">
+            <h3 className="text-[13px] font-semibold">Por hacer</h3>
+            <ListaTareas tareas={tareasExt} onAccion={accionTarea} />
+          </div>
+        )}
+
+        {conectado && (
+          <div className="mt-3">
+            <LecturaCarril
+              carril="extractos"
+              activo={activos.extractos}
+              info={estado?.carriles?.extractos}
+              leyendo={leyendo}
+              resultado={resultadosCarril.extractos}
+              error={erroresCarril.extractos}
+              onTraer={traerCarril}
+              onEncender={() => abrirBloque('conexion')}
+            />
+          </div>
+        )}
+
+        {conectado && (
+          <>
+          <Sub id="sinc-extractos-correo" titulo="Extractos para conciliar" cuenta={pendientes.length}>
+            {avisoExt && <p className="text-xs text-danger mb-2" role="alert">{avisoExt}</p>}
+
+            {(mostrarClave || tareas.some((t) => t.id === 'falta_clave') || (claveInfo.protegidos || 0) > 0) && (
+              <EstadoClavePdf
+                info={claveInfo}
+                onGuardar={guardarClave}
+                onBorrar={borrarClave}
+                onProbar={() => probarClave()}
+                probando={probandoClave}
+                resultado={pruebaClave.resultado}
+                mensaje={pruebaClave.mensaje}
+                error={pruebaClave.error}
+              />
+            )}
+            {!mostrarClave && !tareas.some((t) => t.id === 'falta_clave') && !((claveInfo.protegidos || 0) > 0) && (
+              <button onClick={() => setMostrarClave(true)} className="flex items-center gap-1 text-xs text-ink-soft mb-3 min-h-[44px]">
+                <KeyRound size={16} aria-hidden="true" /> Clave del PDF{claveInfo.configurada ? ` · ${textoEstadoClave(claveInfo)}` : ''}
+              </button>
+            )}
+
+            {pendientes.length === 0 ? (
+              <AlDia texto={gmail?.leer_extractos === false ? 'Lectura apagada: no busco extractos en tu correo' : conciliados.length ? 'No tienes extractos pendientes' : 'Aún no encontramos extractos en tu correo. Cuando tu banco te envíe uno, aparecerá aquí'} />
+            ) : (
+              <div className="flex flex-col gap-4">
+                {agruparPorBanco(visibles).map((g) => (
+                  <div key={g.banco}>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft mb-1.5">
+                      {g.banco} · {g.items.length}
+                    </p>
+                    <div className="flex flex-col gap-2.5">
+                      {g.items.map((ex) => (
+                        <FilaExtracto
+                          key={ex.id}
+                          ex={ex}
+                          cuentas={cuentas}
+                          cuentaId={cuentaElegida(ex)}
+                          nombreCuenta={nombreCuenta(ex.cuenta_sugerida_id)}
+                          ocupado={ocupados.has(ex.id)}
+                          onCuenta={(id) => setCuentaPorExtracto((p) => ({ ...p, [ex.id]: id }))}
+                          onConciliar={() => conciliar(ex)}
+                          onVer={() => pedirSubir({ historialId: ex.historial_id })}
+                          onClave={() => { setMostrarClave(true); irA('sinc-clave') }}
+                          claveConfigurada={Boolean(claveInfo.configurada)}
+                          probando={probandoClave}
+                          onProbarClave={() => probarClave(ex.id)}
+                          onIgnorar={() => ignorar(ex)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {pendientes.length > EXTRACTOS_VISIBLES && (
+                  <button onClick={() => setVerTodos((v) => !v)} className="border border-line rounded-xl py-2.5 text-sm font-semibold">
+                    {verTodos ? 'Ver menos' : `Ver los ${pendientes.length} extractos`}
+                  </button>
+                )}
+              </div>
+            )}
+
+            <ExtractosYaConciliados
+              items={conciliados}
+              nombreCuenta={nombreCuenta}
+              ocupados={ocupados}
+              onVer={(ex) => pedirSubir({ historialId: ex.historial_id })}
+              onRevisar={conciliar}
+            />
+
+            {ignorados === null ? (
+              <button onClick={verIgnorados} className="text-xs text-ink-soft mt-3 underline min-h-[32px]">Ver extractos ignorados</button>
+            ) : (
+              <div className="mt-3 rounded-2xl border border-line divide-y divide-line">
+                {ignorados.length === 0 && <p className="text-xs text-ink-soft p-3">No hay extractos ignorados.</p>}
+                {ignorados.map((ex) => (
+                  <div key={ex.id} className="p-3">
+                    <p className="text-sm font-medium">{ex.banco || BANCO_SIN_IDENTIFICAR} · {ex.periodo || ex.asunto}</p>
+                    <p className="text-xs text-ink-soft">{textoEstadoExtracto(ex)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Sub>
+          </>
+        )}
+
+        <Sub id="sinc-subir" titulo="Subir un archivo">
+          <SubirArchivos inicial={subir} onImportado={cargar} />
+        </Sub>
+
       {/* Al día: una línea humana por extracto, aunque no se haya agregado nada */}
-      <section className="mx-6 mt-5" aria-label="Al día" data-testid="al-dia-extractos">
+      <section className="mt-5" aria-label="Al día" data-testid="al-dia-extractos">
         <h2 className="text-[15px] font-semibold">Al día</h2>
         {alDia.length === 0 ? (
           <p className="text-xs text-ink-soft mt-1">Cuando revises un extracto, aquí queda lo que pasó con cada uno.</p>
@@ -712,7 +947,7 @@ export default function Sincronizacion() {
       </section>
 
       {/* Cobertura por mes y cuenta */}
-      <section className="mx-6 mt-5" aria-label="Cobertura por mes">
+      <section className="mt-5" aria-label="Cobertura por mes">
         <h2 className="text-[15px] font-semibold">Cobertura por mes</h2>
         <Sub id="sinc-cuentas" titulo="Cuentas por mes">
           {filasCuentas.length === 0 ? (
@@ -788,10 +1023,10 @@ export default function Sincronizacion() {
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
                     {celdaDetalle.estado === 'extracto_pendiente' && (
-                      <button onClick={() => abrirBloque('correo', 'sinc-extractos')} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5">Revisar extracto</button>
+                      <button onClick={() => abrirBloque('extractos', 'sinc-extractos-correo')} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5">Revisar extracto</button>
                     )}
                     {celdaDetalle.estado === 'falta_clave' && (
-                      <button onClick={() => { setMostrarClave(true); abrirBloque('correo', 'sinc-clave') }} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5">Poner clave</button>
+                      <button onClick={() => { setMostrarClave(true); abrirBloque('extractos', 'sinc-clave') }} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5">Poner clave</button>
                     )}
                     {(celdaDetalle.estado === 'sin_extracto' || celdaDetalle.estado === 'vacio') && (
                       <button
@@ -802,7 +1037,7 @@ export default function Sincronizacion() {
                       </button>
                     )}
                     {celdaDetalle.estado === 'sin_extracto' && (
-                      <button onClick={() => (conectado ? sincronizar() : abrirBloque('correo'))} className="rounded-xl border border-line text-xs font-semibold px-3.5 py-2.5">
+                      <button onClick={() => (conectado ? sincronizar() : abrirBloque('conexion'))} className="rounded-xl border border-line text-xs font-semibold px-3.5 py-2.5">
                         {conectado ? 'Buscar extracto' : 'Conectar Gmail'}
                       </button>
                     )}
@@ -817,190 +1052,46 @@ export default function Sincronizacion() {
         </Sub>
       </section>
 
-      {/* Traer más: las tres vías de entrada, aparte del estado */}
-      <section className="mx-6 mt-5" aria-label="Traer más">
-        <h2 className="text-[15px] font-semibold">Traer más</h2>
-        <div className="grid grid-cols-3 gap-2 mt-2">
-          <button onClick={() => abrirBloque('correo')} className="rounded-2xl bg-paper-raised border border-line min-h-[64px] px-2 flex flex-col items-center justify-center gap-1 text-xs font-semibold">
-            <Mail size={20} aria-hidden="true" /> Desde mi correo
-          </button>
-          <button onClick={() => pedirSubir({})} className="rounded-2xl bg-paper-raised border border-line min-h-[64px] px-2 flex flex-col items-center justify-center gap-1 text-xs font-semibold">
-            <FilePlus2 size={20} aria-hidden="true" /> Subir un archivo
-          </button>
-          <button onClick={() => navigate('/agregar')} className="rounded-2xl bg-paper-raised border border-line min-h-[64px] px-2 flex flex-col items-center justify-center gap-1 text-xs font-semibold">
-            <Pencil size={20} aria-hidden="true" /> Agregar a mano
-          </button>
-        </div>
-      </section>
-      <div className="mx-6 mt-1">
+      <div className="mt-1">
         <EnlaceBancoNoEsta />
       </div>
+      </BloqueCentro>
 
-      {/* a) Desde tu correo */}
+      </div>
+
+      <div className="col">
+      {/* c) Conexión de Gmail */}
       <BloqueCentro
-        id="sinc-correo"
-        titulo="Desde tu correo"
-        icono={Mail}
-        cuenta={tareasCorreo.length}
-        abierto={abiertos.correo}
-        onToggle={() => alternar('correo')}
+        id="sinc-conexion"
+        titulo="Conexión de Gmail"
+        icono={Plug}
+        cuenta={0}
+        mostrarAlDia={false}
+        abierto={abiertos.conexion}
+        onToggle={() => alternar('conexion')}
       >
         <ConexionGmail estado={gmail} onCambio={cargar} />
-
         {conectado && (
           <>
-            <CarrilesCorreo
-              activos={lecturaActiva()}
-              carriles={estado?.carriles}
-              leyendo={leyendo}
-              resultados={resultadosCarril}
-              errores={erroresCarril}
-              guardando={guardandoLectura}
-              onTraer={traerCarril}
-              onCambiar={cambiarLectura}
-            />
-
-            <Sub id="sinc-correos" titulo="Movimientos nuevos del correo" cuenta={nCorreos}>
-              <p className="text-xs text-ink-soft mb-2">
-                Al aprobarlos pasan a Movimientos como provisionales, hasta que un extracto los confirme.
-              </p>
-              {correos.length === 0 ? (
-                <AlDia texto={gmail?.leer_movimientos === false ? 'Lectura apagada: no hay movimientos nuevos por aprobar' : 'No hay movimientos nuevos por aprobar'} />
-              ) : (
-                <CorreosPorRevisar
-                  correos={correos}
-                  onResuelto={(c) => {
-                    setCorreos((prev) => prev.filter((x) => x.id !== c.id))
-                    cargar()
-                  }}
-                  onCuentaCreada={cargar}
-                />
-              )}
-              {(estado?.punto_partida?.anteriores?.correos || 0) > 0 && (
-                <p className="text-xs text-ink-soft mt-3 rounded-xl bg-paper border border-line px-3 py-2.5" data-testid="correos-anteriores">
-                  {estado.punto_partida.anteriores.correos === 1
-                    ? '1 correo anterior a tu fecha de inicio no se muestra.'
-                    : `${estado.punto_partida.anteriores.correos} correos anteriores a tu fecha de inicio no se muestran.`}{' '}
+            <InterruptoresLectura activos={activos} errores={erroresInterruptor} guardando={guardandoLectura} onCambiar={cambiarLectura} />
+            <ul className="mt-3 text-xs text-ink-soft flex flex-col gap-1" aria-label="Estado de la lectura">
+              <li data-testid="conexion-ultima">
+                {ultima ? `Última vez que leí tu correo: ${ultima}` : 'Aún no he leído tu correo'}
+              </li>
+              {Object.keys(erroresCarril).filter((k) => erroresCarril[k]).map((k) => (
+                <li key={k} className="text-danger">{NOMBRE_CARRIL[k]}: {erroresCarril[k]}</li>
+              ))}
+              {punto?.definido && punto?.fecha && (
+                <li data-testid="conexion-punto">
+                  Leo desde el {String(punto.fecha).slice(0, 10).split('-').reverse().join('/')}.{' '}
                   <Link to="/perfil#punto-de-partida" className="font-semibold text-accent underline">Cambiar la fecha</Link>
-                </p>
+                </li>
               )}
-              <CorreosYaRegistrados cantidad={estado?.correos_ya_registrados || 0} onCambio={cargar} />
-              {correosIgnorados === null ? (
-                <button onClick={verCorreosIgnorados} className="text-xs text-ink-soft mt-3 underline min-h-[32px]">Ver correos ignorados</button>
-              ) : (
-                <div className="mt-3 rounded-2xl border border-line divide-y divide-line">
-                  {correosIgnorados.length === 0 && <p className="text-xs text-ink-soft p-3">No hay correos ignorados.</p>}
-                  {correosIgnorados.map((c) => (
-                    <div key={c.id} className="p-3">
-                      <p className="text-sm font-medium truncate">{c.asunto || c.comercio}</p>
-                      <p className="text-xs text-ink-soft truncate">{c.remitente}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Sub>
-
-            <Sub id="sinc-extractos" titulo="Extractos para conciliar" cuenta={pendientes.length}>
-              {avisoExt && <p className="text-xs text-danger mb-2" role="alert">{avisoExt}</p>}
-
-              {(mostrarClave || tareas.some((t) => t.id === 'falta_clave') || (claveInfo.protegidos || 0) > 0) && (
-                <EstadoClavePdf
-                  info={claveInfo}
-                  onGuardar={guardarClave}
-                  onBorrar={borrarClave}
-                  onProbar={() => probarClave()}
-                  probando={probandoClave}
-                  resultado={pruebaClave.resultado}
-                  mensaje={pruebaClave.mensaje}
-                  error={pruebaClave.error}
-                />
-              )}
-              {!mostrarClave && !tareas.some((t) => t.id === 'falta_clave') && !((claveInfo.protegidos || 0) > 0) && (
-                <button onClick={() => setMostrarClave(true)} className="flex items-center gap-1 text-xs text-ink-soft mb-3 min-h-[44px]">
-                  <KeyRound size={16} aria-hidden="true" /> Clave del PDF{claveInfo.configurada ? ` · ${textoEstadoClave(claveInfo)}` : ''}
-                </button>
-              )}
-
-              {pendientes.length === 0 ? (
-                <AlDia texto={gmail?.leer_extractos === false ? 'Lectura apagada: no busco extractos en tu correo' : conciliados.length ? 'No tienes extractos pendientes' : 'Aún no encontramos extractos en tu correo. Cuando tu banco te envíe uno, aparecerá aquí'} />
-              ) : (
-                <div className="flex flex-col gap-4">
-                  {agruparPorBanco(visibles).map((g) => (
-                    <div key={g.banco}>
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft mb-1.5">
-                        {g.banco} · {g.items.length}
-                      </p>
-                      <div className="flex flex-col gap-2.5">
-                        {g.items.map((ex) => (
-                          <FilaExtracto
-                            key={ex.id}
-                            ex={ex}
-                            cuentas={cuentas}
-                            cuentaId={cuentaElegida(ex)}
-                            nombreCuenta={nombreCuenta(ex.cuenta_sugerida_id)}
-                            ocupado={ocupados.has(ex.id)}
-                            onCuenta={(id) => setCuentaPorExtracto((p) => ({ ...p, [ex.id]: id }))}
-                            onConciliar={() => conciliar(ex)}
-                            onVer={() => pedirSubir({ historialId: ex.historial_id })}
-                            onClave={() => { setMostrarClave(true); irA('sinc-clave') }}
-                            claveConfigurada={Boolean(claveInfo.configurada)}
-                            probando={probandoClave}
-                            onProbarClave={() => probarClave(ex.id)}
-                            onIgnorar={() => ignorar(ex)}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  {pendientes.length > EXTRACTOS_VISIBLES && (
-                    <button onClick={() => setVerTodos((v) => !v)} className="border border-line rounded-xl py-2.5 text-sm font-semibold">
-                      {verTodos ? 'Ver menos' : `Ver los ${pendientes.length} extractos`}
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <ExtractosYaConciliados
-                items={conciliados}
-                nombreCuenta={nombreCuenta}
-                ocupados={ocupados}
-                onVer={(ex) => pedirSubir({ historialId: ex.historial_id })}
-                onRevisar={conciliar}
-              />
-
-              {ignorados === null ? (
-                <button onClick={verIgnorados} className="text-xs text-ink-soft mt-3 underline min-h-[32px]">Ver extractos ignorados</button>
-              ) : (
-                <div className="mt-3 rounded-2xl border border-line divide-y divide-line">
-                  {ignorados.length === 0 && <p className="text-xs text-ink-soft p-3">No hay extractos ignorados.</p>}
-                  {ignorados.map((ex) => (
-                    <div key={ex.id} className="p-3">
-                      <p className="text-sm font-medium">{ex.banco || BANCO_SIN_IDENTIFICAR} · {ex.periodo || ex.asunto}</p>
-                      <p className="text-xs text-ink-soft">{textoEstadoExtracto(ex)}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Sub>
+            </ul>
           </>
         )}
       </BloqueCentro>
 
-      {/* b) Subir archivos */}
-      <BloqueCentro
-        id="sinc-subir"
-        titulo="Subir archivos"
-        icono={Upload}
-        cuenta={0}
-        mostrarAlDia={false}
-        abierto={abiertos.subir}
-        onToggle={() => alternar('subir')}
-      >
-        <SubirArchivos inicial={subir} onImportado={cargar} />
-      </BloqueCentro>
-      </div>
-
-      <div className="col">
       {/* c) Por revisar */}
       <BloqueCentro
         id="sinc-revisar"

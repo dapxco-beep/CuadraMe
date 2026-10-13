@@ -451,11 +451,11 @@ def _ultima_del_tipo(sync: SyncGmail, tipo: str) -> datetime | None:
 
 
 def _exigir_extractos_activos(perfil: Perfil) -> None:
-    """Con «Extractos para conciliar» apagado no se descargan adjuntos del correo, ni a pedido."""
+    """Con «Extractos» apagado no se descargan adjuntos del correo, ni a pedido."""
     if perfil.gmail_leer_extractos is False:
         raise HTTPException(
             status_code=400,
-            detail="Tienes apagado «Extractos para conciliar». Enciéndelo para leer extractos de tu correo.",
+            detail="Tienes apagada la lectura de «Extractos». Enciéndela para leer extractos de tu correo.",
         )
 
 
