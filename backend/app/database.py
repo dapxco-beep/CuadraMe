@@ -1,4 +1,5 @@
 import asyncio
+import os
 import weakref
 from concurrent.futures import ThreadPoolExecutor
 
@@ -11,14 +12,20 @@ from app.config import settings
 connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
 _es_sqlite = settings.database_url.startswith("sqlite")
 # Conexiones máximas que el pool puede abrir (SQLite local usa el pool por defecto 5 + 10).
-CONEXIONES_MAX = 15 if _es_sqlite else 20
+# En Postgres el pooler de Supabase en modo sesión (puerto 5432) admite 15 clientes EN TOTAL. Durante un
+# despliegue conviven dos instancias, así que cada una abre como máximo 7 (5 + 2): 2 x 7 = 14 < 15.
+# Si algún día se cambia al pooler en modo transacción (puerto 6543) o se sube el plan, se pueden subir
+# con las variables DB_POOL_SIZE y DB_MAX_OVERFLOW.
+_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
+_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "2"))
+CONEXIONES_MAX = 15 if _es_sqlite else _POOL_SIZE + _MAX_OVERFLOW
 engine = create_engine(
     settings.database_url,
     connect_args=connect_args,
     # pre_ping descarta conexiones muertas antes de usarlas (Supabase cierra las
     # inactivas); recycle las renueva cada 30 min. Sin esto, tras un rato sin
     # tráfico la primera petición falla con "connection closed".
-    **({} if _es_sqlite else {"pool_pre_ping": True, "pool_recycle": 1800, "pool_size": 10, "max_overflow": 10}),
+    **({} if _es_sqlite else {"pool_pre_ping": True, "pool_recycle": 1800, "pool_size": _POOL_SIZE, "max_overflow": _MAX_OVERFLOW}),
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

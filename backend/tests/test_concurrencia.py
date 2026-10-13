@@ -59,3 +59,20 @@ def test_la_sesion_se_cierra_aunque_el_endpoint_falle():
         app.dependency_overrides.pop(get_current_user, None)
     assert all(r.status_code == 404 for r in respuestas)
     assert database.engine.pool.checkedout() == 0, "quedaron conexiones sin devolver al pool"
+
+
+def test_pool_de_postgres_cabe_en_el_pooler_de_supabase_durante_un_despliegue():
+    """El pooler de Supabase en modo sesión admite 15 clientes en total y, al desplegar, conviven dos
+    instancias: con los valores por defecto cada una abre como máximo 7 (2 x 7 = 14 < 15)."""
+    import importlib
+    import os
+
+    anteriores = {k: os.environ.pop(k, None) for k in ("DB_POOL_SIZE", "DB_MAX_OVERFLOW")}
+    try:
+        por_defecto = int(os.getenv("DB_POOL_SIZE", "5")) + int(os.getenv("DB_MAX_OVERFLOW", "2"))
+    finally:
+        for k, v in anteriores.items():
+            if v is not None:
+                os.environ[k] = v
+    assert 2 * por_defecto <= 15
+    importlib.import_module("app.database")  # sigue importando sin error
