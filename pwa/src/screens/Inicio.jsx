@@ -15,6 +15,7 @@ import { useCategorias } from '../lib/CategoriasContext'
 import MazoCuentas from '../components/MazoCuentas'
 import ArbolFinanciero from '../components/ArbolFinanciero'
 import CarruselDescubrir from '../components/CarruselDescubrir'
+import { useNombreParaSaludar } from '../lib/nombre'
 import AsistentePrimerUso from '../components/AsistentePrimerUso'
 import RecorridoEntrada from '../components/RecorridoEntrada'
 import { etapaPorScore } from '../lib/saludFinanciera'
@@ -103,7 +104,7 @@ export default function Inicio() {
   const { completo } = useModoMenu()
   const { iconoDe } = useCategorias()
   const { fmt } = useBloqueo()
-  const primerNombre = (usuario?.nombre || '').trim().split(/\s+/)[0]
+  const primerNombre = useNombreParaSaludar()
   // Lo último que se vio (si fue hace poco) pinta el Inicio AL INSTANTE; mientras tanto se pide lo
   // nuevo y la pantalla se actualiza sola al llegar (ver api.leerVisto). Sin copia: esqueleto, como antes.
   const [previo] = useState(() => ({

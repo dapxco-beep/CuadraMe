@@ -361,6 +361,9 @@ export const api = {
     const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString()
     return request(`/costos-bancarios${q ? `?${q}` : ''}`)
   },
+  // Cómo le decimos a la persona: GET {nombre, sugerido, confirmado, email}; PUT {nombre} o {omitir: true}.
+  nombrePerfil: () => request('/perfil/nombre', { sinCache: true }),
+  guardarNombrePerfil: (data) => request('/perfil/nombre', { method: 'PUT', body: data }),
   recordatorioDiario: () => request('/perfil/recordatorio-diario'),
   actualizarRecordatorioDiario: (activo) =>
     request('/perfil/recordatorio-diario', { method: 'PUT', body: { activo } }),

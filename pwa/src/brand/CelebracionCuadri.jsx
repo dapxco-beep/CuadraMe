@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import Cuadri from './Cuadri'
 import Icono from '../components/Icono'
-import { leerMostrarCuadri, marcarCelebrado, yaCelebrado } from '../lib/cuadri'
+import { conNombre, leerMostrarCuadri, marcarCelebrado, yaCelebrado } from '../lib/cuadri'
+import { useNombreParaSaludar } from '../lib/nombre'
 
 /**
  * Celebración breve de Cuadri: aparece abajo, no bloquea nada (el contenedor deja pasar los toques),
@@ -14,6 +15,7 @@ import { leerMostrarCuadri, marcarCelebrado, yaCelebrado } from '../lib/cuadri'
 export default function CelebracionCuadri({ id, cuando = true, titulo, texto, ms = 7000 }) {
   const [abierta, setAbierta] = useState(false)
   const marcado = useRef(false)
+  const nombre = useNombreParaSaludar()
 
   // Al cumplirse la condición por primera vez: se muestra y se anota de una vez (aunque recargue, no repite).
   useEffect(() => {
@@ -40,7 +42,7 @@ export default function CelebracionCuadri({ id, cuando = true, titulo, texto, ms
         <Cuadri pose="celebrando" size={56} />
         <div className="flex-1 min-w-0 py-1">
           <p className="text-sm font-semibold">{titulo}</p>
-          {texto && <p className="t-apoyo mt-0.5">{texto}</p>}
+          {texto && <p className="t-apoyo mt-0.5">{conNombre(texto, nombre)}</p>}
         </div>
         <button type="button" onClick={() => setAbierta(false)} aria-label="Cerrar aviso" className="shrink-0 w-11 h-11 flex items-center justify-center text-ink-soft">
           <Icono icono={X} tam="sm" />

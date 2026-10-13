@@ -11,7 +11,8 @@ import BarraProgreso from './BarraProgreso'
 import Icono from './Icono'
 import IlustracionRecorrido from './IlustracionesRecorrido'
 import Cuadri from '../brand/Cuadri'
-import { FRASES, POSE_RECORRIDO, useMostrarCuadri } from '../lib/cuadri'
+import { conNombre, FRASES, POSE_RECORRIDO, useMostrarCuadri } from '../lib/cuadri'
+import { useNombreParaSaludar } from '../lib/nombre'
 import { Boton } from './ui'
 
 const FOCUSABLES = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
@@ -30,6 +31,7 @@ export default function Recorrido({ desde = 0, onCerrar }) {
   const { usuario } = useAuth() || {}
   const uid = usuario?.id || 'anon'
   const navegar = useNavigate()
+  const nombre = useNombreParaSaludar()
   const reducir = useReducedMotion()
   const [conCuadri] = useMostrarCuadri()
   const idTitulo = useId()
@@ -152,7 +154,7 @@ export default function Recorrido({ desde = 0, onCerrar }) {
             // Cuadri guía: saluda al inicio, señala la zona de cada paso y celebra al final.
             <div className="flex items-end gap-2 mt-3" data-testid="recorrido-cuadri">
               <Cuadri pose={POSE_RECORRIDO[paso.id] || 'feliz'} size={72} />
-              <p className="globo-cuadri px-3 py-2 text-[13px] text-ink mb-2">{FRASES.recorrido[paso.id]}</p>
+              <p className="globo-cuadri px-3 py-2 text-[13px] text-ink mb-2">{conNombre(FRASES.recorrido[paso.id], nombre)}</p>
             </div>
           )}
           <h2 id={idTitulo} ref={titulo} tabIndex={-1} className="t-h1 mt-3 outline-none">
