@@ -113,6 +113,15 @@ function Lateral() {
   // «Más funciones» (modo simple) nace plegado y se abre con un toque; es independiente de los demás grupos.
   const [masAbierto, setMasAbierto] = useState(false)
   const recientes = useMemo(() => leerRecientes(), [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+  // «Recientes» solo sirve para llegar a lo que NO está a la vista: si la pantalla ya aparece en un grupo
+  // abierto, repetirla arriba duplicaba botones y los movía de lugar cada vez que se navegaba.
+  const recientesOcultos = useMemo(
+    () =>
+      recientes.filter(
+        (r) => !grupos.some((g) => (g.plegado ? masAbierto : !cerrados.includes(g.id)) && g.items.some((i) => i.to === r.to)),
+      ),
+    [recientes, grupos, masAbierto, cerrados],
+  )
   const resultados = useMemo(() => buscarDestinos(consulta), [consulta])
   const buscando = consulta.trim().length > 0
 
@@ -207,13 +216,13 @@ function Lateral() {
         </div>
       ) : (
         <>
-          {recientes.length > 0 && (
+          {recientesOcultos.length > 0 && (
             <section aria-labelledby="lat-recientes" className="mt-2">
               <p id="lat-recientes" className="t-kicker text-ink-soft px-3 mt-1 mb-1 flex items-center gap-1.5">
                 <Icono icono={Clock} tam="sm" /> Recientes
               </p>
               <div className="flex flex-col gap-0.5">
-                {recientes.map((item) => (
+                {recientesOcultos.map((item) => (
                   <EnlaceLateral key={item.to} item={{ ...item, atajo: undefined }} />
                 ))}
               </div>

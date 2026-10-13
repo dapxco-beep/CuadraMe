@@ -148,6 +148,15 @@ describe('Barra lateral de escritorio', () => {
     expect(JSON.parse(localStorage.getItem('cuadrame:nav-grupos-cerrados'))).toEqual(['datos'])
   })
 
+  it('«Recientes» no repite pantallas que ya están en un grupo abierto', () => {
+    localStorage.setItem('cuadrame:nav-recientes', JSON.stringify(['/sincronizacion']))
+    montarShell(1440)
+    const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
+    // «Traer movimientos» ya está en su grupo: aparece UNA sola vez y no se mueve arriba
+    expect(within(nav).getAllByRole('link', { name: 'Traer movimientos' })).toHaveLength(1)
+    expect(within(nav).queryByText('Recientes')).toBeNull()
+  })
+
   it('un grupo plegado se abre solo al ir a una de sus pantallas', () => {
     localStorage.setItem('cuadrame:nav-grupos-cerrados', JSON.stringify(['datos']))
     montarShell(1440, '/categorias')

@@ -51,7 +51,7 @@ export default function BottomNav() {
         <div className="flex items-center justify-between px-3 pt-2 pb-2">
           {pestana(INICIO)}
           {pestana(MOVIMIENTOS)}
-          <NavLink to="/agregar" aria-label="Agregar movimiento" className="flex flex-col items-center justify-center -mt-6">
+          <NavLink to="/agregar?foco=monto" aria-label="Agregar movimiento" className="flex flex-col items-center justify-center -mt-6">
             {/* El "+" es la ficha de la marca: la pieza que agregas para que todo cuadre */}
             <span className="w-14 h-14 nav-ficha bg-accent text-paper-raised flex items-center justify-center shadow-lg shadow-accent/30 active:scale-95 transition-transform">
               <Plus size={24} strokeWidth={2.5} aria-hidden="true" />

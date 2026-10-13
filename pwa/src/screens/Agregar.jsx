@@ -190,6 +190,7 @@ export default function Agregar() {
         ...(confirmarNuevo ? { confirmar_nuevo: true } : {}),
       })
       await recargarCuentas()
+      navigator.vibrate?.(12) // confirmación táctil corta (donde el celular la soporta)
       avisar?.(`Guardado: ${descripcion.trim()} · ${formatCOP(Number(monto))}`, 'ok', creado?.id ? {
         accion: {
           texto: 'Deshacer',

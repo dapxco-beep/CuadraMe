@@ -17,6 +17,7 @@ import BandejaPorConfirmar from './components/BandejaPorConfirmar'
 import RedirigirAlCentro from './components/RedirigirAlCentro'
 import SplashMarca, { splashPendiente } from './brand/SplashMarca'
 import { CargandoMarca } from './brand/Marca'
+import { EsqueletoPantalla } from './components/Esqueletos'
 import ErrorAmable from './brand/ErrorAmable'
 import { MSG_SIN_CONEXION } from './lib/mensajesBase'
 import Login from './screens/Login'
@@ -79,8 +80,40 @@ function Cargando() {
   return <CargandoMarca />
 }
 
+// Pantallas del uso diario: se bajan en segundo plano cuando el navegador queda libre, así al tocarlas
+// ya están y no se ve la pantalla anterior congelada mientras llega el código. Con «ahorro de datos»
+// o conexión 2G no se precarga nada (no gastamos el plan de quien no lo quiere).
+const PRECARGAR = [
+  () => import('./screens/Movimientos'),
+  () => import('./screens/Agregar'),
+  () => import('./screens/Presupuesto'),
+  () => import('./screens/Informe'),
+  () => import('./screens/Asistente'),
+  () => import('./screens/Wrapped'),
+  () => import('./screens/Sincronizacion'),
+  () => import('./screens/Perfil'),
+]
+
+function precargarPantallas() {
+  const red = typeof navigator !== 'undefined' ? navigator.connection : null
+  if (red?.saveData || /(^|-)2g$/.test(red?.effectiveType || '')) return () => {}
+  const cancelar = []
+  PRECARGAR.forEach((cargar, i) => {
+    const lanzar = () => cargar().catch(() => {})
+    if (typeof requestIdleCallback === 'function') {
+      const id = requestIdleCallback(lanzar, { timeout: 4000 + i * 500 })
+      cancelar.push(() => cancelIdleCallback(id))
+    } else {
+      const id = setTimeout(lanzar, 2000 + i * 500)
+      cancelar.push(() => clearTimeout(id))
+    }
+  })
+  return () => cancelar.forEach((c) => c())
+}
+
 function AppGate() {
   const { cuentas, cargando, error, recargar } = useCuentas()
+  useEffect(() => precargarPantallas(), [])
 
   // Solo la primera carga bloquea la pantalla. Las recargas posteriores (por ejemplo
   // al guardar un movimiento) se hacen en segundo plano; antes parpadeaba toda la app.
@@ -111,7 +144,8 @@ function AppGate() {
   return (
     <>
       <ShellApp>
-      <Suspense fallback={<Cargando />}>
+      {/* Mientras llega el código de una pantalla se ve su esqueleto DENTRO de la app (con el menú), no una pantalla de marca aparte */}
+      <Suspense fallback={<EsqueletoPantalla />}>
       <Routes>
         <Route path="/" element={<Inicio />} />
         <Route path="/cuentas" element={<Cuentas />} />

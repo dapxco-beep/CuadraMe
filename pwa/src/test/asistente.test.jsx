@@ -49,6 +49,20 @@ describe('CuadraMe AI', () => {
     expect(screen.getByText(/Basado en: Tus movimientos de octubre de 2026/)).toBeInTheDocument()
   })
 
+  it('al abrir, las preguntas sugeridas van antes que los avisos y los avisos son máximo dos', async () => {
+    api.asistenteSugerencias.mockResolvedValue({
+      preguntas: [{ id: 'gasto_mes', texto: '¿En qué gasté más este mes?' }],
+      oportunidades: [1, 2, 3, 4].map((n) => ({ tipo: 'alerta', titulo: `Aviso ${n}`, detalle: 'd' })),
+    })
+    montar()
+    const pregunta = await screen.findByRole('button', { name: '¿En qué gasté más este mes?' })
+    const primerAviso = await screen.findByText('Aviso 1')
+    // la pregunta aparece antes en el documento que el primer aviso
+    expect(pregunta.compareDocumentPosition(primerAviso) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByText('Aviso 2')).toBeInTheDocument()
+    expect(screen.queryByText('Aviso 3')).toBeNull()
+  })
+
   it('un movimiento propuesto NO se guarda hasta confirmar', async () => {
     api.asistenteMensaje.mockResolvedValue({
       tipo: 'propuesta_movimiento',

@@ -206,6 +206,8 @@ export default function Inicio() {
   const gastarSaldo = resumen?.disponible_cop ?? saldoTotal
   // Mientras el camino de 3 pasos esté en pantalla, él es el «siguiente paso» (no se repite otro).
   const enCamino = armarCamino({ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }).some((p) => !p.hecho)
+  // Modo simple con datos ya cargados: el saldo va primero y los pasos del camino bajan (ver el render).
+  const esperarSaldo = !completo && cuentas.length > 0 && movimientos.length > 0
   const siguienteInicio = siguientePasoInicio({ cuentas: cuentas.length, movimientos: movimientos.length, sinCategorizar })
 
   const gastosMensuales = (tendencia || []).map((m) => Number(m.gastos)).filter((v) => Number.isFinite(v))
@@ -252,7 +254,9 @@ export default function Inicio() {
 
       {/* Primeros pasos: solo mientras falte algo (y no se haya ocultado); luego vive en Perfil */}
       <SugerenciaPais />
-      <AsistentePrimerUso variante="inicio" camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />
+      {/* Quien aún no tiene cuentas ni movimientos ve los pasos primero; quien ya tiene sus datos ve primero su saldo
+          y los pasos que faltan (p. ej. «Mira tu resumen») quedan debajo, sin tapar lo que vino a ver. */}
+      {!esperarSaldo && <AsistentePrimerUso variante="inicio" camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />}
       {/* Un solo mensaje arriba: mientras el camino de 3 pasos esté en pantalla, el recorrido de 1 minuto no compite con él (sigue en Ayuda y Perfil). */}
       {!enCamino && <RecorridoEntrada variante="inicio" />}
 
@@ -286,6 +290,7 @@ export default function Inicio() {
               </Link>
             )}
           </div>
+          {esperarSaldo && <AsistentePrimerUso variante="inicio" camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />}
         </>
       )}
 

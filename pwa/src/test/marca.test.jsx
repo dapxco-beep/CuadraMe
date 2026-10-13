@@ -77,7 +77,7 @@ describe('Barra de navegación', () => {
     expect(within(nav).getByRole('link', { name: 'Inicio' })).toHaveAttribute('href', '/')
     expect(within(nav).getByRole('link', { name: 'Movimientos' })).toHaveAttribute('href', '/movimientos')
     expect(within(nav).getByRole('link', { name: 'Presupuesto' })).toHaveAttribute('href', '/presupuesto')
-    expect(within(nav).getByRole('link', { name: 'Agregar movimiento' })).toHaveAttribute('href', '/agregar')
+    expect(within(nav).getByRole('link', { name: 'Agregar movimiento' })).toHaveAttribute('href', '/agregar?foco=monto')
     expect(screen.queryByRole('dialog')).toBeNull()
 
     await userEvent.click(within(nav).getByRole('button', { name: 'Más' }))

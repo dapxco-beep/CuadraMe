@@ -334,10 +334,23 @@ export default function Asistente() {
               Pregúntame por tu plata, registra un gasto escribiéndolo (<em>«gasté 18.000 en almuerzo con Nequi»</em>) o
               simula una decisión (<em>«¿puedo comprar un celular de 4 millones?»</em>).
             </p>
+            {/* Primero lo que se puede hacer con un toque; los avisos van después y son pocos (una pared de alertas espanta) */}
+            <div className="mt-4 flex flex-wrap gap-2" aria-label="Preguntas sugeridas">
+              {sugerencias.preguntas.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => enviar(p.texto)}
+                  className="min-h-11 px-3.5 rounded-full border border-line bg-paper-raised text-xs font-medium text-ink text-left"
+                >
+                  {p.texto}
+                </button>
+              ))}
+            </div>
             {sugerencias.oportunidades.length > 0 && (
-              <section className="mt-4 space-y-2" aria-label="Lo que noté">
+              <section className="mt-5 space-y-2" aria-label="Lo que noté">
                 <p className="t-kicker text-ink-soft">Lo que noté</p>
-                {sugerencias.oportunidades.map((o, i) => (
+                {sugerencias.oportunidades.slice(0, 2).map((o, i) => (
                   <div key={i} className="card-marca-sm bg-paper-raised border border-line p-3 flex gap-2.5">
                     {o.tipo === 'recurrentes' ? (
                       <Sparkles size={16} className="text-accent shrink-0 mt-0.5" />
@@ -352,18 +365,6 @@ export default function Asistente() {
                 ))}
               </section>
             )}
-            <div className="mt-4 flex flex-wrap gap-2" aria-label="Preguntas sugeridas">
-              {sugerencias.preguntas.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => enviar(p.texto)}
-                  className="min-h-11 px-3.5 rounded-full border border-line bg-paper-raised text-xs font-medium text-ink text-left"
-                >
-                  {p.texto}
-                </button>
-              ))}
-            </div>
           </div>
         )}
 
