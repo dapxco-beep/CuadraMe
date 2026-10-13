@@ -61,8 +61,12 @@ def resumen(db: Session, usuario_id: str, lista_ext: list[dict] | None = None) -
 
     por_revisar = cuenta_correos("pendiente")
     ya_registrados = cuenta_correos("ya_registrado")
-    de_correo = [x for x in lista_ext if x.get("origen") == "correo"]
+    de_correo = [x for x in lista_ext if "correo" in (x.get("origenes") or [])]
     por_estado = {e: sum(1 for x in de_correo if x["estado"] == e) for e in estado_traer.ESTADOS}
+    # Datos de antes de los carriles (sin marcas por carril): la marca general vale para ambos.
+    legado = bool(sync) and not sync.ultima_sync_mov and not sync.ultima_sync_ext
+    marca_mov = (sync.ultima_sync or None) if legado else (sync.ultima_sync_mov if sync else None)
+    marca_ext = (sync.ultima_sync or None) if legado else (sync.ultima_sync_ext if sync else None)
     en_curso = bool(sync and sync.en_curso)
     ultimo = lambda col: (getattr(sync, col, None) or 0) if sync else 0  # noqa: E731
 
@@ -70,7 +74,7 @@ def resumen(db: Session, usuario_id: str, lista_ext: list[dict] | None = None) -
         "movimientos": {
             "nombre": NOMBRE_CARRIL["movimientos"],
             "activo": not perfil or perfil.gmail_leer_movimientos is not False,
-            "ultima_vez": _iso(sync.ultima_sync_mov or sync.ultima_sync) if sync and (sync.ultima_sync_mov or sync.ultima_sync) else None,
+            "ultima_vez": _iso(marca_mov),
             "leidos": ultimo("ultimo_leidos_mov"),
             "nuevos": ultimo("ultimo_nuevos"),
             "por_revisar": por_revisar,
@@ -81,7 +85,7 @@ def resumen(db: Session, usuario_id: str, lista_ext: list[dict] | None = None) -
         "extractos": {
             "nombre": NOMBRE_CARRIL["extractos"],
             "activo": not perfil or perfil.gmail_leer_extractos is not False,
-            "ultima_vez": _iso(sync.ultima_sync_ext or sync.ultima_sync) if sync and (sync.ultima_sync_ext or sync.ultima_sync) else None,
+            "ultima_vez": _iso(marca_ext),
             "encontrados": len(de_correo),
             "leidos": len(de_correo) - por_estado[estado_traer.NECESITA_CLAVE] - por_estado[estado_traer.NO_SE_PUDO_LEER],
             "por_conciliar": por_estado[estado_traer.POR_REVISAR],

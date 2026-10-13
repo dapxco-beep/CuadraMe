@@ -113,6 +113,7 @@ def test_incremental_usa_la_ultima_sync_con_solape_de_un_dia(monkeypatch):
         s = db.query(SyncGmail).filter(SyncGmail.usuario_id == "u-incr").first()
         assert s.ultima_sync and not s.en_curso
         s.ultima_sync = datetime.utcnow() - timedelta(days=5)
+        s.ultima_sync_mov = s.ultima_sync_ext = s.ultima_sync  # la «última vez» vive ahora por carril
         db.commit()
         esperado = (s.ultima_sync - timedelta(days=1)).strftime("%Y/%m/%d")
     finally:
