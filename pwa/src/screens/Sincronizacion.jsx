@@ -10,7 +10,8 @@ import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useCuentas } from '../lib/CuentasContext'
-import { haceCuanto, marcarSincronizado, resumenSync, sincronizarTodo, tocaSincronizar } from '../lib/sincronizarGmail'
+import { haceCuanto, marcarSincronizado, resumenSync, sincronizarCarriles, sincronizarTodo, tocaSincronizar } from '../lib/sincronizarGmail'
+import { NOMBRE_CARRIL, gruposDeTareas, resumenCarriles, resumenLectura } from '../lib/carriles'
 import {
   BANCO_SIN_IDENTIFICAR, agruparPorBanco, conciliarExtracto, estadoCelda, ESTADOS_CELDA, nombreMes,
   moverMes, nombresDesambiguados, resumenTareas, separarExtractos, textoEstadoExtracto,
@@ -19,6 +20,7 @@ import { cantidadDe, pasoActual, sinDatos, tareasDeBloque } from '../lib/centro'
 import BarraProgreso from '../components/BarraProgreso'
 import BloqueCentro from '../components/BloqueCentro'
 import { EnlaceBancoNoEsta } from '../components/BancoNoEsta'
+import CarrilesCorreo from '../components/CarrilesCorreo'
 import ConexionGmail from '../components/ConexionGmail'
 import CorreosPorRevisar from '../components/CorreosPorRevisar'
 import CorreosYaRegistrados from '../components/CorreosYaRegistrados'
@@ -108,6 +110,11 @@ export default function Sincronizacion() {
   const [progreso, setProgreso] = useState(null)
   const [resumen, setResumen] = useState('')
   const [errorSync, setErrorSync] = useState('')
+  // Cada uso del correo tiene su propia lectura, resultado y error (si falla uno, el otro sigue).
+  const [leyendo, setLeyendo] = useState({})
+  const [resultadosCarril, setResultadosCarril] = useState({})
+  const [erroresCarril, setErroresCarril] = useState({})
+  const [guardandoLectura, setGuardandoLectura] = useState({})
   const [detalle, setDetalle] = useState(null) // { cuentaId, mes }
   const [crearBanco, setCrearBanco] = useState(null)
   const [elegirBanco, setElegirBanco] = useState(false)
@@ -243,23 +250,102 @@ export default function Sincronizacion() {
     if (progreso) return
     setErrorSync('')
     setResumen('')
+    setErroresCarril({})
+    setResultadosCarril({})
     setProgreso({ leidos: 0, total_estimado: 0 })
+    const activos = lecturaActiva()
     try {
-      const r = await sincronizarTodo({
-        onProgreso: (p) => montado.current && setProgreso({ leidos: p.leidos, total_estimado: p.total_estimado }),
+      // «Traer todo» es un atajo: corre cada uso por separado y dice cuál falló, sin frenar al otro.
+      const res = await sincronizarCarriles({
+        activos,
+        onProgreso: (tipo, p) => {
+          if (!montado.current) return
+          setProgreso({ leidos: p.leidos, total_estimado: p.total_estimado })
+          setLeyendo((l) => ({ ...l, [tipo]: { leidos: p.leidos, total_estimado: p.total_estimado } }))
+        },
       })
-      if (!r?.ok) {
-        if (silencioso !== true) setErrorSync(mensajeAmable(r?.error, { porDefecto: 'No pudimos traer tus correos. Intenta de nuevo.' }))
-      } else {
-        const leidos = r.leidos ? `Leí ${r.leidos} correos. ` : ''
-        if (silencioso !== true) setResumen(`${leidos}${resumenSync(r)}`)
-        marcarSincronizado()
-        await cargar()
+      const errores = {}
+      const textos = {}
+      let leidos = 0
+      const ultimos = []
+      for (const tipo of Object.keys(res)) {
+        if (res[tipo].error) errores[tipo] = mensajeAmable(res[tipo].error, { porDefecto: 'No pudimos leerlo. Intenta de nuevo.' })
+        else {
+          leidos += res[tipo].r.leidos || 0
+          textos[tipo] = resumenLectura(tipo, res[tipo].r)
+          ultimos.push(res[tipo].r)
+        }
       }
+      if (montado.current) {
+        setErroresCarril(errores)
+        setResultadosCarril(textos)
+      }
+      const fallaron = Object.keys(errores)
+      if (silencioso !== true) {
+        if (!Object.keys(res).length) setResumen('Tienes apagadas las dos lecturas del correo: no leí nada.')
+        else if (fallaron.length === Object.keys(res).length) setErrorSync(errores[fallaron[0]])
+        else {
+          const nuevos = ultimos.reduce((s, r) => s + (r.nuevos || 0), 0)
+          const ext = ultimos.reduce((s, r) => s + (r.extractos_encontrados ?? r.extractos_nuevos ?? 0), 0)
+          setResumen(`${leidos ? `Leí ${leidos} correos. ` : ''}${resumenSync({ nuevos, extractos_encontrados: ext })}${fallaron.length ? ` No pude leer: ${fallaron.map((t) => NOMBRE_CARRIL[t]).join(' ni ')}.` : ''}`)
+        }
+      }
+      if (fallaron.length < Object.keys(res).length) marcarSincronizado()
+      await cargar()
     } catch (err) {
       if (silencioso !== true) setErrorSync(err.message || 'No pudimos traer tus movimientos. Intenta de nuevo.')
     } finally {
-      if (montado.current) setProgreso(null)
+      if (montado.current) {
+        setProgreso(null)
+        setLeyendo({})
+      }
+    }
+  }
+
+  // Lo que el usuario dejó encendido (por defecto los dos, como siempre).
+  function lecturaActiva() {
+    return { movimientos: gmail?.leer_movimientos !== false, extractos: gmail?.leer_extractos !== false }
+  }
+
+  // Un solo uso del correo: su propio botón, progreso, resultado y error.
+  async function traerCarril(tipo) {
+    if (progreso || leyendo[tipo]) return
+    setErrorSync('')
+    setResumen('')
+    setErroresCarril((e) => ({ ...e, [tipo]: '' }))
+    setResultadosCarril((r) => ({ ...r, [tipo]: '' }))
+    setLeyendo((l) => ({ ...l, [tipo]: { leidos: 0, total_estimado: 0 } }))
+    try {
+      const r = await sincronizarTodo({
+        tipo,
+        onProgreso: (p) => montado.current && setLeyendo((l) => ({ ...l, [tipo]: { leidos: p.leidos, total_estimado: p.total_estimado } })),
+      })
+      if (!montado.current) return
+      if (!r?.ok) setErroresCarril((e) => ({ ...e, [tipo]: mensajeAmable(r?.error, { porDefecto: 'No pudimos leerlo. Intenta de nuevo.' }) }))
+      else {
+        setResultadosCarril((x) => ({ ...x, [tipo]: resumenLectura(tipo, r) }))
+        await cargar()
+      }
+    } catch (err) {
+      if (montado.current) setErroresCarril((e) => ({ ...e, [tipo]: err.message || 'No pudimos leerlo. Intenta de nuevo.' }))
+    } finally {
+      if (montado.current) setLeyendo((l) => ({ ...l, [tipo]: undefined }))
+    }
+  }
+
+  // Interruptor «Leer esto de mi correo» de cada uso.
+  async function cambiarLectura(tipo, valor) {
+    const campo = tipo === 'movimientos' ? 'leer_movimientos' : 'leer_extractos'
+    setGuardandoLectura((g) => ({ ...g, [tipo]: true }))
+    setErroresCarril((e) => ({ ...e, [tipo]: '' }))
+    try {
+      await api.gmailLectura({ [campo]: valor })
+      if (montado.current) setGmail((g) => ({ ...(g || {}), [campo]: valor }))
+      await cargar()
+    } catch (err) {
+      if (montado.current) setErroresCarril((e) => ({ ...e, [tipo]: err.message || 'No se pudo guardar el cambio. Intenta de nuevo.' }))
+    } finally {
+      if (montado.current) setGuardandoLectura((g) => ({ ...g, [tipo]: false }))
     }
   }
 
@@ -476,6 +562,7 @@ export default function Sincronizacion() {
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold">Traer movimientos</h1>
           <p className="text-sm text-ink-soft" data-testid="resumen-tareas">{resumenTareas(tareas)}</p>
+          {resumenCarriles(tareas) && <p className="text-xs text-ink-soft mt-0.5" data-testid="resumen-carriles">{resumenCarriles(tareas)}</p>}
         </div>
         <button
           onClick={() => setVerEstado(true)}
@@ -548,8 +635,11 @@ export default function Sincronizacion() {
           <div className="mt-4" data-testid="por-hacer">
             <h2 className="text-[15px] font-semibold">Por hacer</h2>
             <p className="text-xs text-ink-soft">Solo lo que necesita que tú decidas.</p>
-            <ul className="flex flex-col gap-2 mt-2" aria-label="Por resolver">
-              {tareas.map((t) => {
+            {gruposDeTareas(tareas).map((g) => (
+            <div key={g.clave} data-testid={`por-hacer-${g.clave}`}>
+            {g.nombre && <h3 className="text-xs font-semibold text-ink-soft mt-3">{g.nombre}</h3>}
+            <ul className="flex flex-col gap-2 mt-2" aria-label={g.nombre ? `Por resolver: ${g.nombre}` : 'Por resolver'}>
+              {g.tareas.map((t) => {
                 const Icono = ICONO_TAREA[t.id] || CheckCheck
                 return (
                   <li key={t.id}>
@@ -573,6 +663,8 @@ export default function Sincronizacion() {
                 )
               })}
             </ul>
+            </div>
+            ))}
           </div>
         )}
       </section>
@@ -745,9 +837,23 @@ export default function Sincronizacion() {
 
         {conectado && (
           <>
-            <Sub id="sinc-correos" titulo="Avisos de tu banco por revisar" cuenta={nCorreos}>
+            <CarrilesCorreo
+              activos={lecturaActiva()}
+              carriles={estado?.carriles}
+              leyendo={leyendo}
+              resultados={resultadosCarril}
+              errores={erroresCarril}
+              guardando={guardandoLectura}
+              onTraer={traerCarril}
+              onCambiar={cambiarLectura}
+            />
+
+            <Sub id="sinc-correos" titulo="Movimientos nuevos del correo" cuenta={nCorreos}>
+              <p className="text-xs text-ink-soft mb-2">
+                Al aprobarlos pasan a Movimientos como provisionales, hasta que un extracto los confirme.
+              </p>
               {correos.length === 0 ? (
-                <AlDia texto="No hay avisos por revisar" />
+                <AlDia texto={gmail?.leer_movimientos === false ? 'Lectura apagada: no hay movimientos nuevos por aprobar' : 'No hay movimientos nuevos por aprobar'} />
               ) : (
                 <CorreosPorRevisar
                   correos={correos}
@@ -782,7 +888,7 @@ export default function Sincronizacion() {
               )}
             </Sub>
 
-            <Sub id="sinc-extractos" titulo="Extractos encontrados" cuenta={pendientes.length}>
+            <Sub id="sinc-extractos" titulo="Extractos para conciliar" cuenta={pendientes.length}>
               {avisoExt && <p className="text-xs text-danger mb-2" role="alert">{avisoExt}</p>}
 
               {(mostrarClave || tareas.some((t) => t.id === 'falta_clave') || (claveInfo.protegidos || 0) > 0) && (
@@ -804,7 +910,7 @@ export default function Sincronizacion() {
               )}
 
               {pendientes.length === 0 ? (
-                <AlDia texto={conciliados.length ? 'No tienes extractos pendientes' : 'Aún no encontramos extractos en tu correo. Cuando tu banco te envíe uno, aparecerá aquí'} />
+                <AlDia texto={gmail?.leer_extractos === false ? 'Lectura apagada: no busco extractos en tu correo' : conciliados.length ? 'No tienes extractos pendientes' : 'Aún no encontramos extractos en tu correo. Cuando tu banco te envíe uno, aparecerá aquí'} />
               ) : (
                 <div className="flex flex-col gap-4">
                   {agruparPorBanco(visibles).map((g) => (

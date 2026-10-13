@@ -53,3 +53,8 @@ export function textoConfirmado(origen, canales) {
     .sort((a, b) => ORDEN.indexOf(a) - ORDEN.indexOf(b))
   return otros.length >= 1 && (canales || []).length > 1 ? `confirmado por ${otros.map((c) => ETIQUETA_ORIGEN[c]).join(' + ')}` : ''
 }
+
+// Un movimiento que nació de una notificación del correo y aún no respalda un extracto es PROVISIONAL:
+// «falta confirmar con el extracto». Solo se dice si el servidor mandó los canales (si no, no se afirma nada).
+export const faltaConfirmarExtracto = (origen, canales) =>
+  origen === 'correo' && Array.isArray(canales) && !canales.includes('extracto')

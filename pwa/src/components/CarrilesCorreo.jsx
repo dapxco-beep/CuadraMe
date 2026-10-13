@@ -90,7 +90,7 @@ export default function CarrilesCorreo({ activos, carriles, leyendo = {}, result
                     className="mt-3 w-full flex items-center justify-center gap-2 border border-line bg-paper-raised font-semibold rounded-xl min-h-[44px] text-sm disabled:opacity-60"
                   >
                     {lee ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={16} aria-hidden="true" />}
-                    {lee ? (lee.total_estimado ? `Leí ${lee.leidos} de ${lee.total_estimado}` : 'Buscando...') : BOTON_CARRIL[carril]}
+                    {lee ? (lee.total_estimado ? `Leyendo ${lee.leidos} de ${lee.total_estimado}` : 'Buscando...') : BOTON_CARRIL[carril]}
                   </button>
                   {resultados[carril] && !errores[carril] && !lee && (
                     <p className="text-xs font-semibold text-cuadra mt-2" role="status" data-testid={`resultado-${carril}`}>{resultados[carril]}</p>

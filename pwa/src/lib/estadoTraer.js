@@ -3,9 +3,9 @@
 
 // Botón principal de cada tarjeta de «Por hacer» (una acción por tarjeta, verbo primero).
 export const BOTON_TAREA = {
-  correos_por_revisar: 'Revisar los correos',
+  correos_por_revisar: 'Aprobar los movimientos',
   falta_clave: 'Poner la clave',
-  extractos_por_conciliar: 'Revisar los extractos',
+  extractos_por_conciliar: 'Conciliar',
   extractos_sin_leer: 'Subir de nuevo',
   posibles_duplicados: 'Ver los repetidos',
   sin_cuenta: 'Crear la cuenta',

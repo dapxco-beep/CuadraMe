@@ -35,6 +35,7 @@ import { useModoMenu } from '../lib/modoSimple'
 import { armarCamino, leerEstado } from '../lib/primerUso'
 import { estadoCuadre } from '../lib/cuadre'
 import { fechaHace,gastosDeLaSemana, siguientePasoInicio } from '../lib/inicioSimple'
+import { resumenCarriles } from '../lib/carriles'
 
 const DIAS_CUENTA_NUEVA = 14
 
@@ -126,6 +127,7 @@ export default function Inicio() {
   const [gmailConectado, setGmailConectado] = useState(true)
   const [conexionFalla, setConexionFalla] = useState(false)
   const [tareasSync, setTareasSync] = useState(null)
+  const [lineaCorreo, setLineaCorreo] = useState('') // «3 movimientos por aprobar · 1 extracto por conciliar»
   const [cargando, setCargando] = useState(!hayPrevio)
   const [errorCarga, setErrorCarga] = useState('')
   const [intento, setIntento] = useState(0)
@@ -155,7 +157,7 @@ export default function Inicio() {
     // Aviso solo si algo se rompió (semáforo rojo); si el tablero falla, no se muestra nada.
     Promise.resolve().then(() => api.conexionesEstado?.()).then((c) => activo && setConexionFalla(!!c?.hay_falla)).catch(() => {})
     // Cuántas cosas esperan en «Traer movimientos» (si falla, el acceso se muestra sin número).
-    Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && (setTareasSync(s?.tareas?.length ?? null), setSinCategorizar((s?.tareas || []).find((t) => t.id === 'movimientos_por_categorizar')?.cantidad || 0))).catch(() => {})
+    Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && (setTareasSync(s?.tareas?.length ?? null), setLineaCorreo(resumenCarriles(s?.tareas)), setSinCategorizar((s?.tareas || []).find((t) => t.id === 'movimientos_por_categorizar')?.cantidad || 0))).catch(() => {})
     // Tendencia del gasto de los últimos meses para la mini gráfica (opcional: sin datos no se dibuja).
     Promise.resolve().then(() => api.tendencias?.(6)).then((t) => activo && setTendencia(t?.meses ?? null)).catch(() => {})
     return () => {
@@ -359,6 +361,10 @@ export default function Inicio() {
               )}
             </Boton>
           </div>
+
+          {lineaCorreo && (
+            <p className="mx-6 mt-2 text-xs text-ink-soft" data-testid="linea-correo">{lineaCorreo}</p>
+          )}
 
           {/* Pregunta rápida si hoy no hay movimientos (sale tras la bandeja de «por confirmar») */}
           <PreguntaMovimiento ultimaFecha={movimientos[0]?.fecha} />

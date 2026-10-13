@@ -76,3 +76,25 @@ export function resumenLectura(carril, r) {
   const e = r.extractos_encontrados ?? r.extractos_nuevos ?? 0
   return e ? `Encontré ${plural(e, 'extracto', 'extractos')}.` : 'Todo al día: no hay extractos nuevos.'
 }
+
+/**
+ * «Por hacer» separado por carril y con el nombre de cada uno. Los grupos salen en el orden en que
+ * aparece su primera tarea; lo que no es del correo va en «Otras cosas» (sin título si es lo único).
+ */
+export function gruposDeTareas(tareas) {
+  const grupos = []
+  for (const t of tareas || []) {
+    const clave = carrilDeTarea(t) || 'general'
+    let g = grupos.find((x) => x.clave === clave)
+    if (!g) {
+      g = { clave, nombre: clave === 'general' ? '' : NOMBRE_CARRIL[clave], tareas: [] }
+      grupos.push(g)
+    }
+    g.tareas.push(t)
+  }
+  if (grupos.length > 1) {
+    const general = grupos.find((g) => g.clave === 'general')
+    if (general) general.nombre = 'Otras cosas'
+  }
+  return grupos
+}
