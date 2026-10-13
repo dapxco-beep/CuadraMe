@@ -57,7 +57,7 @@ function montar() {
   )
 }
 
-const extractosEncontrados = () => screen.findByRole('heading', { name: /Extractos encontrados/ })
+const extractosEncontrados = () => screen.findByRole('heading', { level: 3, name: /Extractos para conciliar/ })
 
 beforeEach(() => {
   localStorage.clear()
@@ -75,7 +75,7 @@ describe('Desde tu correo: extractos encontrados', () => {
   it('lista los extractos con su estado y el mensaje de privacidad', async () => {
     montar()
     // El conciliado (Nequi) no cuenta como pendiente: queda en su sección plegada.
-    expect((await extractosEncontrados()).textContent).toBe('Extractos encontrados2')
+    expect((await extractosEncontrados()).textContent).toBe('Extractos para conciliar2')
     expect(within(screen.getByTestId('extracto-e1')).getByText('Nuevo · listo para revisar')).toBeTruthy()
     expect(within(screen.getByTestId('extracto-e2')).getByText('Falta la clave del PDF')).toBeTruthy()
     expect(screen.queryByText(/Nequi/)).toBeNull()

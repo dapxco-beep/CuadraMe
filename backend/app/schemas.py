@@ -672,6 +672,9 @@ class GmailEstado(BaseModel):
     soporte_email: str = ""
     # ¿Ya dio la autorización específica de lectura de correo?
     consentimiento: bool = True
+    # Los dos usos del correo, cada uno con su interruptor (activos por defecto).
+    leer_movimientos: bool = True
+    leer_extractos: bool = True
 
 
 class CorreoGastoOut(BaseModel):
@@ -734,6 +737,11 @@ class AprobarCorreoRequest(BaseModel):
     aplicar_anteriores: bool = False
 
 
+class LecturaCorreoRequest(BaseModel):
+    leer_movimientos: Optional[bool] = None
+    leer_extractos: Optional[bool] = None
+
+
 class SincronizarCorreosResponse(BaseModel):
     ok: bool
     nuevos: int
@@ -747,6 +755,12 @@ class SincronizarCorreosResponse(BaseModel):
     pendientes: int = 0
     completado: bool = True
     extractos_encontrados: int = 0
+    # Carriles independientes (se AÑADEN; los campos de arriba siguen igual).
+    tipo: str = "todo"
+    aviso: Optional[str] = None
+    movimientos_leidos: int = 0
+    movimientos_ya_registrados: int = 0
+    extractos_leidos: int = 0
 
 
 class ExtractoCorreoOut(BaseModel):

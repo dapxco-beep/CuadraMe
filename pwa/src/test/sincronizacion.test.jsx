@@ -251,13 +251,15 @@ describe('pantalla Sincronización', () => {
     api.sincronizarCorreos
       .mockResolvedValueOnce({ ok: true, completado: false, leidos: 120, total_estimado: 340 })
       .mockReturnValueOnce(segundo)
+      .mockResolvedValueOnce({ ok: true, completado: true, leidos: 0, extractos_encontrados: 2 }) // el uso «extractos»
     montar()
     await screen.findByText('Tienes 5 cosas por resolver')
     fireEvent.click(screen.getByRole('button', { name: 'Traer todo ahora' }))
     expect(await screen.findByText('Leí 120 de 340')).toBeTruthy()
-    terminar({ ok: true, completado: true, leidos: 340, total_estimado: 340, nuevos: 12, extractos_nuevos: 2, extractos_encontrados: 2 })
+    terminar({ ok: true, completado: true, leidos: 340, total_estimado: 340, nuevos: 12 })
     expect(await screen.findByText(/Leí 340 correos\. Encontré 12 movimientos nuevos y 2 extractos\./)).toBeTruthy()
-    expect(api.sincronizarCorreos).toHaveBeenCalledTimes(2)
+    expect(api.sincronizarCorreos).toHaveBeenCalledTimes(3) // 2 lotes de movimientos + 1 de extractos
+    expect(api.sincronizarCorreos.mock.calls[2][0]).toEqual({ tipo: 'extractos' })
     // Al terminar vuelve a pedir el estado para refrescar tareas y grilla.
     await waitFor(() => expect(api.sincronizacionEstado.mock.calls.length).toBeGreaterThanOrEqual(2))
   })
@@ -289,7 +291,7 @@ describe('Correos por revisar: la cuenta sale de quién envió el correo', () =>
     expect(selector.value).toBe('') // antes caía en "Nu Colombia" (cuentas[0])
     expect(within(selector).getByText('No tienes cuenta Nequi')).toBeTruthy()
     expect(screen.getAllByRole('button', { name: 'Crear cuenta Nequi' }).length).toBeGreaterThan(0)
-    const aprobar = screen.getAllByRole('button', { name: /Aprobar/ })
+    const aprobar = screen.getAllByRole('button', { name: /^Aprobar$/ })
     expect(aprobar[0].disabled).toBe(true)
   })
 
@@ -298,7 +300,7 @@ describe('Correos por revisar: la cuenta sale de quién envió el correo', () =>
     montar()
     await screen.findByText('Exito')
     expect(screen.getByLabelText('Cuenta de Exito').value).toBe('bc')
-    const aprobar = screen.getAllByRole('button', { name: /Aprobar/ })
+    const aprobar = screen.getAllByRole('button', { name: /^Aprobar$/ })
     expect(aprobar[1].disabled).toBe(false)
     fireEvent.click(aprobar[1])
     await waitFor(() => expect(api.aprobarCorreo).toHaveBeenCalledWith('k2', 'bc'))
@@ -309,7 +311,7 @@ describe('Correos por revisar: la cuenta sale de quién envió el correo', () =>
     montar()
     await screen.findByText('Tienda')
     const selector = screen.getByLabelText('Cuenta de Tienda')
-    const aprobar = screen.getAllByRole('button', { name: /Aprobar/ })[2]
+    const aprobar = screen.getAllByRole('button', { name: /^Aprobar$/ })[2]
     expect(selector.value).toBe('')
     expect(aprobar.disabled).toBe(true)
     fireEvent.change(selector, { target: { value: 'nu' } })

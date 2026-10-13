@@ -421,7 +421,7 @@ def test_b_no_acumula_filas_con_ids_de_a():
 SIN_ID_DE_RECURSO = {
     # escrituras que solo afectan al propio usuario (no reciben ids ajenos)
     "/ahorcado/nueva-partida", "/asistente/mensaje", "/categorias/orden", "/cierre-mes/preferencias",
-    "/consentimientos", "/correos/gmail/desconectar", "/correos/gmail/etiqueta", "/correos/sincronizar",
+    "/consentimientos", "/correos/gmail/desconectar", "/correos/gmail/etiqueta", "/correos/gmail/lectura", "/correos/sincronizar",
     "/correos/clave-pdf", "/perfil/punto-de-partida", "/facturas/escanear", "/impuestos/ajustes",
     "/insights/preguntar", "/movimientos/clasificar", "/movimientos/rapido-prueba", "/pagos/checkout",
     "/patrimonio/snapshot", "/patrimonio/activos", "/perfil/api-key/regenerar", "/perfil/recordatorio-diario",
@@ -526,3 +526,17 @@ def test_consejos_solo_muestran_datos_del_propio_usuario():
             borrar_todo(db, D.id, D.email)
         finally:
             db.close()
+
+
+def test_preferencias_de_lectura_del_correo_son_por_usuario():
+    """Apagar un uso del correo (movimientos/extractos) solo afecta a quien lo apaga."""
+    _sembrar()
+    como(B)
+    assert client.put("/correos/gmail/lectura", json={"leer_extractos": False}).status_code == 200
+    assert client.get("/correos/gmail/estado").json()["leer_extractos"] is False
+    como(A)
+    assert client.get("/correos/gmail/estado").json()["leer_extractos"] is True
+    carriles = client.get("/correos/carriles").json()
+    assert carriles["extractos"]["activo"] is True
+    como(B)
+    assert client.get("/correos/carriles").json()["extractos"]["activo"] is False

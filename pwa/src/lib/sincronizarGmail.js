@@ -4,15 +4,33 @@ import { api } from './api'
 // devuelve el progreso. Aquí se repite hasta que `completado` sea true. Si se
 // corta (cierras la app, se cae la red), la siguiente llamada sigue donde quedó.
 // Una respuesta sin `completado` (servidor viejo) cuenta como terminada.
-export async function sincronizarTodo({ completa = false, onProgreso, maxLlamadas = 80 } = {}) {
+export async function sincronizarTodo({ completa = false, tipo = 'todo', onProgreso, maxLlamadas = 80 } = {}) {
   let r = null
   for (let i = 0; i < maxLlamadas; i++) {
-    r = await api.sincronizarCorreos(completa && i === 0 ? { completa: true } : undefined)
+    const params = { ...(completa && i === 0 ? { completa: true } : {}), ...(tipo !== 'todo' ? { tipo } : {}) }
+    r = await api.sincronizarCorreos(Object.keys(params).length ? params : undefined)
     if (!r?.ok) return r
     onProgreso?.(r)
     if (r.completado !== false) return r
   }
   return r
+}
+
+// «Traer todo»: cada uso del correo corre POR SEPARADO (primero movimientos, luego extractos) y cada uno
+// devuelve su propio resultado o error: si uno falla, el otro igual se lee. `activos` = lo que el usuario
+// dejó encendido. Devuelve { movimientos?: {r}|{error}, extractos?: ... }; un carril apagado no aparece.
+export async function sincronizarCarriles({ activos = {}, completa = false, onProgreso } = {}) {
+  const salida = {}
+  for (const tipo of ['movimientos', 'extractos']) {
+    if (activos[tipo] === false) continue
+    try {
+      const r = await sincronizarTodo({ completa, tipo, onProgreso: (p) => onProgreso?.(tipo, p) })
+      salida[tipo] = r?.ok ? { r } : { error: r?.error || 'No se pudo leer. Intenta de nuevo.' }
+    } catch (err) {
+      salida[tipo] = { error: err?.message || 'No se pudo leer. Intenta de nuevo.' }
+    }
+  }
+  return salida
 }
 
 // Sincronización automática al abrir el centro: como máximo cada 6 horas, con el mismo

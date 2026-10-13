@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { Check, CheckCheck, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { parsearMontoEscrito } from '../lib/centro'
@@ -77,6 +77,29 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
     }
   }
 
+  // «Parecen correctos»: ya traen cuenta, monto y categoría clara (nada que el usuario tenga que elegir).
+  const correctos = correos.filter(
+    (c) => cuentaElegida(c) && c.monto > 0 && !c.preguntar_categoria && !c.falta_cuenta && !categoriaPorCorreo[c.id] && !procesando.has(c.id),
+  )
+  const [aprobandoTodos, setAprobandoTodos] = useState(false)
+
+  async function aprobarCorrectos() {
+    if (aprobandoTodos || correctos.length === 0) return
+    setAprobandoTodos(true)
+    setError('')
+    let fallaron = 0
+    for (const c of correctos) {
+      try {
+        await api.aprobarCorreo(c.id, cuentaElegida(c))
+        onResuelto?.(c)
+      } catch {
+        fallaron += 1
+      }
+    }
+    if (fallaron) setError(`No pude aprobar ${fallaron === 1 ? '1 movimiento' : `${fallaron} movimientos`}. Revisa tu conexión e intenta de nuevo.`)
+    setAprobandoTodos(false)
+  }
+
   async function descartar(c) {
     if (procesando.has(c.id)) return
     ocupar(c.id, true)
@@ -94,6 +117,18 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
   return (
     <div>
       {error && <p className="text-xs text-danger mb-2" role="alert">{error}</p>}
+      {correctos.length >= 2 && (
+        <button
+          type="button"
+          onClick={aprobarCorrectos}
+          disabled={aprobandoTodos}
+          className="w-full flex items-center justify-center gap-2 bg-accent text-paper-raised font-semibold rounded-xl min-h-[44px] text-sm mb-3 disabled:opacity-60"
+          data-testid="aprobar-correctos"
+        >
+          <CheckCheck size={16} aria-hidden="true" />
+          {aprobandoTodos ? 'Aprobando...' : `Aprobar los ${correctos.length} que parecen correctos`}
+        </button>
+      )}
       <ul className="flex flex-col gap-3">
         {correos.map((c) => {
           const falta = sinMonto(c)
@@ -130,7 +165,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
               <p className="text-xs text-ink-soft mt-1">
                 {c.preguntar_categoria && !categoriaPorCorreo[c.id]
                   ? 'Sin categoría clara'
-                  : `${c.categoria_sugerida}${c.razon_categoria && !categoriaPorCorreo[c.id] ? ` · ${c.razon_categoria}` : ''}`}
+                  : `${iconoDe(c.categoria_sugerida) ? `${iconoDe(c.categoria_sugerida)} ` : ''}${c.categoria_sugerida}${c.razon_categoria && !categoriaPorCorreo[c.id] ? ` · ${c.razon_categoria}` : ''}`}
                 {c.banco_detectado ? ` · ${c.banco_detectado}` : ''}
               </p>
 

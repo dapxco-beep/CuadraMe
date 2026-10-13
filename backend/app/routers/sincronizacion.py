@@ -14,6 +14,7 @@ from sqlalchemy import and_, case, func, not_, or_
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
+from app import carriles_correo
 from app import punto_partida
 from app.autocat import patron_de_comercio
 from app.compartidos import cuentas_ids_accesibles
@@ -297,7 +298,7 @@ def estado(
     )
     candidatas = [
         ("falta_clave", "Falta la clave del PDF", "Guárdala y abro estos extractos por ti.", n_falta_clave, "/sincronizacion#clave"),
-        ("extractos_por_conciliar", "Extractos por revisar",
+        ("extractos_por_conciliar", "Extractos por conciliar",
          "Mira qué trae tu extracto y qué falta registrar.", n_por_conciliar, "/sincronizacion#extractos"),
         ("sin_cuenta", "Bancos sin cuenta",
          "Crea la cuenta de " + ", ".join(d["banco"] for d in sin_cuenta[:3]) + "." if sin_cuenta else "",
@@ -306,15 +307,22 @@ def estado(
          "Dime la categoría y la recuerdo para la próxima.", n_categorizar, "/sincronizacion#categorizar"),
         ("movimientos_por_confirmar", "Movimientos por confirmar",
          "Llegaron solos: confirma que son tuyos.", n_confirmar, "/movimientos?revisar=1"),
-        ("correos_por_revisar", "Correos por revisar",
+        ("correos_por_revisar", "Movimientos nuevos del correo",
          "Aprueba o descarta lo que leí en tu correo.", n_correos, "/correos"),
         ("extractos_sin_leer", "Extractos que no pudimos leer",
          "Sube el archivo de nuevo o agrega esos movimientos a mano.", n_no_leyo, "/sincronizacion#extractos"),
         ("posibles_duplicados", "Posibles movimientos repetidos",
          "Parecen el mismo gasto: dime si es el mismo o es otro.", n_duplicados, "/buscar-duplicados"),
     ]
+    # Cada tarea dice a qué «carril» del correo pertenece (o ninguno): así la pantalla no mezcla
+    # los movimientos del día a día con los extractos para conciliar.
+    carril_de = {
+        "falta_clave": "extractos", "extractos_por_conciliar": "extractos", "extractos_sin_leer": "extractos",
+        "correos_por_revisar": "movimientos",
+    }
     tareas = [
-        {"id": i, "titulo": t, "detalle": d, "cantidad": int(n), "ruta": r}
+        {"id": i, "titulo": t, "detalle": d, "cantidad": int(n), "ruta": r,
+         "carril": carril_de.get(i), "carril_nombre": carriles_correo.NOMBRE_CARRIL.get(carril_de.get(i), "")}
         for i, t, d, n, r in candidatas if n > 0
     ]
 
@@ -335,6 +343,8 @@ def estado(
             "cobertura": punto_partida.cobertura(db, usuario.id) if inicio_pp and punto_partida.obtener(db, usuario.id)["modo"] == "historico" else None,
         },
         "ultima_sync": sync.ultima_sync.isoformat() if sync and sync.ultima_sync else None,
+        # Los dos usos del correo, contados por separado (interruptor, última vez, contadores).
+        "carriles": carriles_correo.resumen(db, usuario.id, lista_ext),
     }
 
 

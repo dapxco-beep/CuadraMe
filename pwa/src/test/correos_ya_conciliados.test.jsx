@@ -78,7 +78,7 @@ beforeEach(() => {
 describe('Extractos ya conciliados', () => {
   it('no cuentan ni aparecen como nuevos: quedan en una sección plegada con sus movimientos cruzados', async () => {
     montar()
-    expect((await screen.findByRole('heading', { name: /Extractos encontrados/ })).textContent).toBe('Extractos encontrados1')
+    expect((await screen.findByRole('heading', { level: 3, name: /Extractos para conciliar/ })).textContent).toBe('Extractos para conciliar1')
     expect(screen.getAllByText(/Nuevo · listo para revisar/)).toHaveLength(1)
     expect(screen.queryByText('Nu Colombia')).toBeNull()
 
@@ -95,7 +95,7 @@ describe('Extractos ya conciliados', () => {
     api.conciliarExtractoCorreo.mockResolvedValue({ ok: true, historial_id: 'h1' })
     api.obtenerReviewExtracto.mockResolvedValue({ ok: true, historial_id: 'h1', cuenta_id: 'bc', banco_detectado: 'Nu', total_movimientos: 0, review: [] })
     montar()
-    await screen.findByRole('heading', { name: /Extractos encontrados/ })
+    await screen.findByRole('heading', { level: 3, name: /Extractos para conciliar/ })
     fireEvent.click(screen.getByRole('button', { name: /Extractos ya revisados \(2\)/ }))
     fireEvent.click(within(screen.getByTestId('conciliado-e2')).getByRole('button', { name: 'Revisar de nuevo' }))
     await waitFor(() => expect(api.conciliarExtractoCorreo).toHaveBeenCalledWith('e2', 'bc'))
@@ -120,7 +120,7 @@ describe('Correos por revisar: aprender la regla al aprobar', () => {
     const casilla = within(screen.getByTestId('recordar-regla')).getByLabelText(/Recordar para/)
     expect(casilla.checked).toBe(true) // marcado por defecto
     fireEvent.click(screen.getByLabelText('Aplicar también a los anteriores'))
-    fireEvent.click(screen.getByRole('button', { name: /Aprobar/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Aprobar$/ }))
     await waitFor(() =>
       expect(api.aprobarCorreo).toHaveBeenCalledWith('k1', 'bc', { categoria: 'Hogar', recordar: true, aplicar_anteriores: true })
     )
@@ -131,7 +131,7 @@ describe('Correos por revisar: aprender la regla al aprobar', () => {
     await screen.findByText(NOMBRE)
     fireEvent.change(screen.getByLabelText(`Categoría de ${NOMBRE}`), { target: { value: 'Hogar' } })
     fireEvent.click(within(screen.getByTestId('recordar-regla')).getByLabelText(/Recordar para/))
-    fireEvent.click(screen.getByRole('button', { name: /Aprobar/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Aprobar$/ }))
     await waitFor(() =>
       expect(api.aprobarCorreo).toHaveBeenCalledWith('k1', 'bc', { categoria: 'Hogar', recordar: false, aplicar_anteriores: false })
     )
