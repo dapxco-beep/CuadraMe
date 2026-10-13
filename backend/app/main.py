@@ -90,6 +90,17 @@ if engine.dialect.name == "postgresql":
             "ultima_alerta_mes VARCHAR"
         ))
         # Metas con sugerencia: fecha del último aporte a mano (supabase/migraciones/metas_sugerencia_bancos.sql).
+        # Correo en dos usos independientes (movimientos / extractos); por defecto activos.
+        conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS gmail_leer_movimientos BOOLEAN DEFAULT TRUE"))
+        conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS gmail_leer_extractos BOOLEAN DEFAULT TRUE"))
+        for _col, _tipo in (
+            ("tipo", "VARCHAR DEFAULT 'todo'"), ("leidos_mov", "INTEGER DEFAULT 0"),
+            ("leidos_ext", "INTEGER DEFAULT 0"), ("omitidos_mov", "INTEGER DEFAULT 0"),
+            ("ultima_sync_mov", "TIMESTAMP"), ("ultima_sync_ext", "TIMESTAMP"),
+            ("ultimo_leidos_mov", "INTEGER DEFAULT 0"), ("ultimo_leidos_ext", "INTEGER DEFAULT 0"),
+            ("ultimo_ya_registrados", "INTEGER DEFAULT 0"),
+        ):
+            conn.execute(text(f"ALTER TABLE sync_gmail ADD COLUMN IF NOT EXISTS {_col} {_tipo}"))
         conn.execute(text("ALTER TABLE metas ADD COLUMN IF NOT EXISTS ultimo_aporte TIMESTAMP NULL"))
         # Buzón «Mi banco no está»: nombre del banco y archivo de muestra en almacenamiento privado
         # (mismo archivo .sql). Opcionales.

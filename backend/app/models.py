@@ -34,6 +34,10 @@ class Perfil(Base):
     gmail_refresh_token_enc = Column(String, nullable=True)  # cifrado con Fernet
     gmail_email = Column(String, nullable=True)
     gmail_etiqueta = Column(String, default="gastos")
+    # Dos usos independientes del correo (ambos activos por defecto = comportamiento de siempre):
+    # movimientos = notificaciones del banco (día a día); extractos = PDF del estado de cuenta (conciliar).
+    gmail_leer_movimientos = Column(Boolean, default=True)
+    gmail_leer_extractos = Column(Boolean, default=True)
     confianza_autoimport = Column(Float, default=0.75)  # 0.5-0.95: qué tan segura debe estar la categorización antes de auto-importar un movimiento sin preguntar
     # Importar solos, al subir un extracto, los movimientos que la app categoriza con certeza
     # (umbral = confianza_autoimport). Apagado por defecto: nada se importa sin que el usuario confirme.
@@ -364,6 +368,16 @@ class SyncGmail(Base):
     ultimo_extractos = Column(Integer, default=0)
     ultimo_error = Column(String, nullable=True)
     ultimo_error_en = Column(DateTime, nullable=True)
+    # Carriles: qué lee la corrida (todo | movimientos | extractos) y su estado por separado.
+    tipo = Column(String, default="todo")
+    leidos_mov = Column(Integer, default=0)
+    leidos_ext = Column(Integer, default=0)
+    omitidos_mov = Column(Integer, default=0)
+    ultima_sync_mov = Column(DateTime, nullable=True)
+    ultima_sync_ext = Column(DateTime, nullable=True)
+    ultimo_leidos_mov = Column(Integer, default=0)
+    ultimo_leidos_ext = Column(Integer, default=0)
+    ultimo_ya_registrados = Column(Integer, default=0)
 
 
 class ClavePdf(Base):
