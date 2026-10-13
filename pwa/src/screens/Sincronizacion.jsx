@@ -255,6 +255,18 @@ export default function Sincronizacion() {
     setProgreso({ leidos: 0, total_estimado: 0 })
     const activos = lecturaActiva()
     try {
+      if (silencioso === true) {
+        // Al abrir la pantalla: una sola lectura (sin ruido ni errores por carril) con lo que esté encendido.
+        const tipo = activos.movimientos && activos.extractos ? 'todo' : activos.movimientos ? 'movimientos' : activos.extractos ? 'extractos' : null
+        if (tipo) {
+          const r = await sincronizarTodo({ tipo, onProgreso: (p) => montado.current && setProgreso({ leidos: p.leidos, total_estimado: p.total_estimado }) })
+          if (r?.ok) {
+            marcarSincronizado()
+            await cargar()
+          }
+        }
+        return
+      }
       // «Traer todo» es un atajo: corre cada uso por separado y dice cuál falló, sin frenar al otro.
       const res = await sincronizarCarriles({
         activos,
@@ -637,7 +649,7 @@ export default function Sincronizacion() {
             <p className="text-xs text-ink-soft">Solo lo que necesita que tú decidas.</p>
             {gruposDeTareas(tareas).map((g) => (
             <div key={g.clave} data-testid={`por-hacer-${g.clave}`}>
-            {g.nombre && <h3 className="text-xs font-semibold text-ink-soft mt-3">{g.nombre}</h3>}
+            {g.nombre && <p className="text-xs font-semibold text-ink-soft mt-3" data-testid={`titulo-por-hacer-${g.clave}`}>{g.nombre}</p>}
             <ul className="flex flex-col gap-2 mt-2" aria-label={g.nombre ? `Por resolver: ${g.nombre}` : 'Por resolver'}>
               {g.tareas.map((t) => {
                 const Icono = ICONO_TAREA[t.id] || CheckCheck

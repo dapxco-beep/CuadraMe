@@ -164,7 +164,10 @@ describe('Centro: pasos, resumen y correos ignorados', () => {
   })
 
   it('muestra los pasos Conecta, Trae, Revisa y el resumen claro tras sincronizar', async () => {
-    api.sincronizarCorreos.mockResolvedValue({ ok: true, completado: true, nuevos: 18, extractos_encontrados: 3 })
+    // «Traer todo» lee cada uso por separado: movimientos por un lado, extractos por el otro.
+    api.sincronizarCorreos.mockImplementation(async (p) => (p?.tipo === 'extractos'
+      ? { ok: true, completado: true, extractos_encontrados: 3, tipo: 'extractos' }
+      : { ok: true, completado: true, nuevos: 18, tipo: 'movimientos' }))
     montar(null, '/sincronizacion')
     expect(await screen.findByTestId('pasos')).toBeTruthy()
     expect(screen.getByText('Conecta')).toBeTruthy()
