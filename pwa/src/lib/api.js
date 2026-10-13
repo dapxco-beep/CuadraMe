@@ -509,8 +509,15 @@ export const api = {
   gmailDesconectar: () => request('/correos/gmail/desconectar', { method: 'POST' }),
   gmailEtiqueta: (etiqueta) => request(`/correos/gmail/etiqueta?etiqueta=${encodeURIComponent(etiqueta)}`, { method: 'POST' }),
   // params: { completa: true } fuerza la ventana larga (90 días); cada llamada procesa un lote.
-  sincronizarCorreos: (params) =>
-    request(`/correos/sincronizar${params?.completa ? '?completa=true' : ''}`, { method: 'POST' }),
+  // params.tipo: 'movimientos' | 'extractos' | 'todo' (por defecto): cada uno es un uso independiente del correo.
+  sincronizarCorreos: (params) => {
+    const q = []
+    if (params?.completa) q.push('completa=true')
+    if (params?.tipo && params.tipo !== 'todo') q.push(`tipo=${params.tipo}`)
+    return request(`/correos/sincronizar${q.length ? `?${q.join('&')}` : ''}`, { method: 'POST' })
+  },
+  // Enciende/apaga cada uso del correo: { leer_movimientos?: bool, leer_extractos?: bool }.
+  gmailLectura: (data) => request('/correos/gmail/lectura', { method: 'PUT', body: data }),
   correosLista: (filtro = 'nuevos', offset = 0, limite = 30) =>
     request(`/correos/lista?filtro=${filtro}&limite=${limite}&offset=${offset}`),
   conexionesEstado: () => request('/conexiones/estado'),
