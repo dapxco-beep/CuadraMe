@@ -433,11 +433,11 @@ SIN_ID_DE_RECURSO = {
     "/comentarios",  # POST: crea un comentario propio (no recibe ids)
     "/perfil/importar-respaldo", "/perfil/importar-respaldo/vista-previa", "/perfil/importar-respaldo/deshacer",  # crean filas PROPIAS desde un archivo; deshacer solo lote propio
     "/metas/simular",  # solo calcula con los números que envía (más el sobrante propio)
-    "/avisos/preferencias", "/avisos/probar",  # solo administración (404 al resto): no reciben ids ajenos
+    "/avisos/preferencias", "/avisos/probar", "/avisos/retencion",  # solo administración (404 al resto): no reciben ids ajenos
 }
 # Rutas sin sesión de usuario por diseño (crons con secreto, callbacks firmados, API key, webhook firmado, públicas).
 SIN_SESION = {
-    "/backup/cron/enviar", "/cierre-mes/cron/cerrar-mes", "/correos/oauth/callback", "/correos/cron/sincronizar",
+    "/backup/cron/enviar", "/cierre-mes/cron/cerrar-mes", "/correos/oauth/callback", "/correos/cron/sincronizar", "/correos/cron/purgar-retencion",
     "/metricas/uso", "/metricas/cron/revisar-uso-semanal", "/metricas/cron/avisos-crecimiento",
     "/avisos/cron/resumen-diario", "/impuestos/cron/avisar-renta", "/costos-bancarios/cron/avisar-cargos",
     "/movimientos/cuentas-rapido", "/movimientos/rapido",

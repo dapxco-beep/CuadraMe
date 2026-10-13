@@ -29,6 +29,8 @@ JOBS = [
     ("CuadraMe - resumen semanal (push, domingo en la tarde)", "/push/cron/resumen-semanal", [17], [0], [0]),
     ("CuadraMe - backup diario", "/backup/cron/enviar", [2], [0], [-1]),
     ("CuadraMe - uso semanal", "/metricas/cron/revisar-uso-semanal", [8], [0], [1]),
+    # Minimización de datos de Gmail: sin efecto mientras RETENCION_* valgan 0 en Railway (decide Daniel).
+    ("CuadraMe - purgar retencion de datos", "/correos/cron/purgar-retencion", [3], [30], [-1]),
     ("CuadraMe - resumen diario de avisos", "/avisos/cron/resumen-diario", [20], [0], [-1]),
     ("CuadraMe - avisar renta (push 14 y 3 dias antes)", "/impuestos/cron/avisar-renta", [9], [30], [-1]),
 ]

@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     # Exigir el consentimiento específico (Gmail / IA) antes de usar esas funciones. Solo se apaga en pruebas.
     exigir_consentimientos: bool = True
 
+    # ── Retención de datos de Gmail (minimización). 0 = NO purgar (apagado por defecto: decide el dueño) ──
+    retencion_correos_ignorados_dias: int = 0   # propuesta 30: correos ignorados/descartados y extractos descartados
+    retencion_correos_procesados_dias: int = 0  # propuesta 365: correos/extractos ya convertidos en movimiento
+    retencion_eventos_dias: int = 0             # propuesta 365: eventos_actividad (avisos del administrador)
+
     # ── Monitor de capacidad y crecimiento (metricas/cron/avisos-crecimiento) ──
     # Correo de Daniel (dueño): recibe los avisos y es el único que ve «Salud del negocio».
     admin_email: str = ""

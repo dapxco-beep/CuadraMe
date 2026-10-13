@@ -756,6 +756,19 @@ def cron_sincronizar(db: Session = Depends(get_db), x_cron_secret: str = Header(
     }
 
 
+@router.post("/cron/purgar-retencion")
+def cron_purgar_retencion(db: Session = Depends(get_db), x_cron_secret: str = Header(default="")):
+    """Minimización de datos de Gmail (cron externo, X-Cron-Secret; sugerido 1 vez al día, de madrugada).
+    Aplica los plazos RETENCION_* (todos en 0 = apagado: no toca nada). Idempotente, por lotes con
+    tope de tiempo, tolerante a fallos. Devuelve solo conteos, nunca contenido. Ver app/retencion.py."""
+    if not cron_autorizado(x_cron_secret):
+        raise HTTPException(status_code=401, detail="No autorizado")
+    from app import retencion
+
+    r = retencion.purgar(db)
+    return {"ok": r["fallidos"] == 0, "procesados": sum(r[k] for k in retencion._CLAVES), **r}
+
+
 # ── Lista completa de correos (con filtros y paginación) ───────────
 
 @router.get("/lista", response_model=list[CorreoGastoOut])

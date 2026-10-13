@@ -161,6 +161,15 @@ def probar(db: Session = Depends(get_db), admin: UsuarioActual = Depends(exigir_
     return {"ok": True, "push": r["push"], "correo": r["correo"], "correo_error": fila.correo_error}
 
 
+@router.get("/retencion")
+def retencion_vigente(db: Session = Depends(get_db), admin: UsuarioActual = Depends(exigir_admin)):
+    """Solo administración (404 al resto): plazos de retención de datos de Gmail vigentes y, como
+    simulación, cuántos registros caerían bajo cada plazo si estuviera activo. No devuelve contenido."""
+    from app import retencion
+
+    return retencion.simular(db)
+
+
 @router.post("/cron/resumen-diario")
 def cron_resumen_diario(x_cron_secret: str = Header(default=""), db: Session = Depends(get_db)):
     """Una vez al día (p. ej. 20:00 Bogotá). Junta en un solo aviso los eventos que quedaron en espera
