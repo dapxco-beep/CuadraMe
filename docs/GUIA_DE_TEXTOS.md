@@ -44,6 +44,21 @@ Regla de oro: si tu mamá no lo diría en voz alta, no va en la pantalla.
 | Periodo | «Cada cuánto» (mensual, quincenal, semanal) | |
 | Límite | «Lo máximo que quieres gastar» | |
 
+### El correo tiene DOS usos (nombres fijos)
+
+| Nombre | Qué es | Texto de apoyo |
+|---|---|---|
+| **Movimientos del día a día** | Las notificaciones del banco por correo (compra, transferencia, retiro, pago). Se aprueban y pasan a Movimientos como provisionales. | «Las notificaciones de tu banco: así ves en el momento lo que gastas.» |
+| **Extractos para conciliar** | El PDF mensual del banco. Sirve para confirmar y cuadrar el mes. | «El extracto mensual del banco: sirve para confirmar y cuadrar el mes.» |
+
+- Aquí «conciliar» SÍ se usa, porque es el nombre del uso (botón «Conciliar»); en el resto de la app sigue valiendo «Revisar el extracto».
+- Interruptor de cada tarjeta: «Leer esto de mi correo». Apagado: «no leo ni guardo notificaciones/extractos de tu correo».
+- Listas: «Movimientos nuevos del correo» (con «Aprobar los N que parecen correctos») y «Extractos para conciliar».
+- Etiqueta de un movimiento que aún no respalda un extracto: «Falta confirmar con el extracto»; cuando llega: «confirmado por extracto».
+- Contadores sin mezclar: «3 movimientos por aprobar · 1 extracto por conciliar».
+- Ayuda «¿Cuál es la diferencia?»: un ejemplo de una línea por uso. Nunca decir «carril» al usuario (es un término interno).
+- Si falla uno, se nombra cuál: «Extractos para conciliar: No pudimos…», y el otro sigue funcionando.
+
 Palabras que sí puedes usar tal cual: cuenta, saldo, gasto, ingreso, tarjeta, cupo, corte, extracto, presupuesto, meta, deuda, categoría.
 Si es la primera vez que aparece una (cupo, corte), usa la **Ayudita** (`<Ayudita termino="...">`) o una frase de apoyo.
 

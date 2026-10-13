@@ -23,6 +23,7 @@
 | Nunca envía, borra ni modifica correos (solo `messages.list`, `messages.get`, `attachments.get`, `labels.list`, `users.getProfile`). | `correos.py`, `extractos_gmail.py` |
 | Desconectar: revoca el token **en Google** (`oauth2.googleapis.com/revoke`) y borra token y correo de la fila. Borrar la cuenta también revoca. | `desconectar_gmail`, `revocar_token` |
 | Topes: 80 sincronizaciones/hora, 300/día, 40 correos y 5 PDF por lote, 60 conciliaciones/día, PDF ≤ 15 MB, 100 usuarios con Gmail mientras `GMAIL_MODO_PRUEBAS`. | `correos.py`, `limites_diarios.py`, `config.py` |
+| **Dos usos del correo, cada uno con su interruptor** («Movimientos del día a día» = notificaciones del banco; «Extractos para conciliar» = PDF del estado de cuenta). El usuario puede activar cada uno por separado (ambos activos por defecto). Con un uso apagado la app no lo lee, no guarda sus datos y, para extractos, no descarga adjuntos: apoya la minimización de datos. El cron y el botón respetan la preferencia. | `routers/correos.py::tipo_efectivo`, `PUT /correos/gmail/lectura`, `perfiles.gmail_leer_movimientos / gmail_leer_extractos` |
 | Sincronización automática cada 3 h por cron (`/correos/cron/sincronizar`, exige `X-Cron-Secret`). | `correos.py` |
 
 ---
