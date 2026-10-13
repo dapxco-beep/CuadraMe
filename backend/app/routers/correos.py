@@ -62,6 +62,7 @@ from app.gmail_oauth import (
     revocar_token,
     url_autorizacion,
 )
+from app import carriles_correo as carriles
 from app.models import Categoria, ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil, SyncGmail
 from app.routers.consentimientos import exigir_consentimiento, tiene_consentimiento
 from app.routers.conciliacion import procesar_extracto_de_gmail as procesar_extracto
@@ -70,6 +71,7 @@ from app.duplicados import absorber_correos
 from app import duplicados as dup
 from app.schemas import (
     AprobarCorreoRequest,
+    LecturaCorreoRequest,
     ClavePdfIn,
     ProbarClaveIn,
     ConciliarExtractoRequest,
@@ -152,7 +154,42 @@ def estado_gmail(
         modo_pruebas=settings.gmail_modo_pruebas,
         soporte_email=settings.soporte_email,
         consentimiento=tiene_consentimiento(db, usuario.id, "lectura_correo") or not settings.exigir_consentimientos,
+        leer_movimientos=perfil.gmail_leer_movimientos is not False,
+        leer_extractos=perfil.gmail_leer_extractos is not False,
     )
+
+
+@router.put("/gmail/lectura")
+def guardar_lectura(
+    data: LecturaCorreoRequest,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Enciende o apaga cada uso del correo por separado: `leer_movimientos` (notificaciones del
+    banco) y `leer_extractos` (PDF para conciliar). Lo que no se mande no cambia. Apagar un uso no
+    borra lo ya guardado; solo deja de leer y de guardar cosas nuevas de ese carril."""
+    perfil = _get_or_create_perfil(db, usuario.id)
+    if data.leer_movimientos is not None:
+        perfil.gmail_leer_movimientos = data.leer_movimientos
+    if data.leer_extractos is not None:
+        perfil.gmail_leer_extractos = data.leer_extractos
+    db.commit()
+    return {
+        "ok": True,
+        "leer_movimientos": perfil.gmail_leer_movimientos is not False,
+        "leer_extractos": perfil.gmail_leer_extractos is not False,
+    }
+
+
+@router.get("/carriles")
+def carriles_correo(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """Estado de los dos usos del correo por separado: interruptor, última vez y contadores
+    (movimientos: leídos/nuevos/por revisar/ya registrados; extractos: encontrados/leídos/
+    con clave pendiente/al día). Solo lee la base; no toca Gmail."""
+    absorber_correos(db, usuario.id)  # lo que ya tiene su movimiento no cuenta como «por revisar»
+    _get_or_create_perfil(db, usuario.id)
+    db.commit()
+    return carriles.resumen(db, usuario.id)
 
 
 @router.get("/gmail/conectar")
@@ -348,6 +385,52 @@ SOLAPE_DIAS = 1
 MAX_CORRIDA_HORAS = 6
 FASES = ("etiqueta", "notificaciones", "extractos")
 
+# Dos «carriles» independientes del correo. MOVIMIENTOS: notificaciones del banco (el dato real del
+# día a día: fases etiqueta + notificaciones). EXTRACTOS: PDF del estado de cuenta (para conciliar).
+TIPOS = ("todo", "movimientos", "extractos")
+FASES_DEL_TIPO = {
+    "movimientos": ("etiqueta", "notificaciones"),
+    "extractos": ("extractos",),
+    "todo": FASES,
+}
+
+
+def tipo_efectivo(perfil: Perfil, pedido: str = "todo") -> str | None:
+    """Carril(es) que SÍ se leen: lo pedido ∩ lo que el usuario dejó activo. None = nada (ambos
+    apagados o el pedido está apagado): en ese caso no se toca Gmail ni se guarda nada."""
+    mov = pedido in ("todo", "movimientos") and perfil.gmail_leer_movimientos is not False
+    ext = pedido in ("todo", "extractos") and perfil.gmail_leer_extractos is not False
+    if mov and ext:
+        return "todo"
+    return "movimientos" if mov else ("extractos" if ext else None)
+
+
+def _fases_de(tipo: str | None) -> tuple:
+    return FASES_DEL_TIPO.get(tipo or "todo", FASES)
+
+
+def _ultima_del_tipo(sync: SyncGmail, tipo: str) -> datetime | None:
+    """Desde cuándo leer: la sincronización más ANTIGUA de los carriles que se van a leer
+    (un carril nunca leído obliga a la ventana larga). Sin marcas por carril (datos de antes)
+    vale la última sincronización general."""
+    marcas = []
+    if tipo in ("todo", "movimientos"):
+        marcas.append(sync.ultima_sync_mov or sync.ultima_sync)
+    if tipo in ("todo", "extractos"):
+        marcas.append(sync.ultima_sync_ext or sync.ultima_sync)
+    if any(m is None for m in marcas):
+        return None
+    return min(marcas)
+
+
+def _exigir_extractos_activos(perfil: Perfil) -> None:
+    """Con «Extractos para conciliar» apagado no se descargan adjuntos del correo, ni a pedido."""
+    if perfil.gmail_leer_extractos is False:
+        raise HTTPException(
+            status_code=400,
+            detail="Tienes apagado «Extractos para conciliar». Enciéndelo para leer extractos de tu correo.",
+        )
+
 
 def _get_or_create_sync(db: Session, usuario_id: str) -> SyncGmail:
     sync = db.query(SyncGmail).filter(SyncGmail.usuario_id == usuario_id).first()
@@ -376,32 +459,34 @@ def _listar(gmail, fase: str, desde: datetime, label_id: str | None, token: str 
 
 
 def _iniciar_corrida(gmail, sync: SyncGmail, label_id: str | None, completa: bool, dias: int,
-                     inicio: datetime | None = None, modo: str | None = None) -> None:
+                     inicio: datetime | None = None, modo: str | None = None, tipo: str = "todo") -> None:
     """`inicio`/`modo`: punto de partida del usuario. Nunca se lee antes del inicio; en modo
     «histórico» la primera lectura llega hasta esa fecha (no solo los últimos `dias`)."""
     ahora = datetime.utcnow()
-    if completa or not sync.ultima_sync:
+    ultima = _ultima_del_tipo(sync, tipo)
+    if completa or not ultima:
         desde = ahora - timedelta(days=dias)
         if inicio and modo == "historico":
             desde = inicio
     else:
-        desde = sync.ultima_sync - timedelta(days=SOLAPE_DIAS)
+        desde = ultima - timedelta(days=SOLAPE_DIAS)
     if inicio and desde < inicio:
         desde = inicio
     sync.en_curso = True
     sync.desde = desde
     sync.iniciada_en = ahora
-    sync.fase = FASES[0] if label_id else FASES[1]
+    fases = [f for f in _fases_de(tipo) if f != "etiqueta" or label_id]
+    sync.tipo = tipo
+    sync.fase = fases[0]
     sync.fase_iniciada = False
     sync.cursor_token = None
     sync.cursor_ids = "[]"
     sync.reintento_clave_hecho = False
     sync.leidos = sync.nuevos = sync.omitidos = sync.extractos_nuevos = 0
+    sync.leidos_mov = sync.leidos_ext = sync.omitidos_mov = 0
     # Estimación del total (una llamada barata por fase) para la barra de progreso.
     total = 0
-    for fase in FASES:
-        if fase == "etiqueta" and not label_id:
-            continue
+    for fase in fases:
         r = _listar(gmail, fase, desde, label_id, None, 1)
         total += int(r.get("resultSizeEstimate", len(r.get("messages", []))) or 0)
     sync.total_estimado = total
@@ -505,6 +590,31 @@ def _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos: se
     return descargados, nuevos
 
 
+def _cerrar_corrida(sync: SyncGmail) -> None:
+    """Fin de la corrida: solo se actualiza el «última vez» y los contadores de los carriles que
+    se leyeron (leer solo movimientos no debe borrar lo último que se supo de los extractos)."""
+    ahora = datetime.utcnow()
+    tipo = sync.tipo or "todo"
+    # Datos de antes de los carriles: la marca general vale para ambos hasta la primera corrida parcial.
+    if sync.ultima_sync:
+        sync.ultima_sync_mov = sync.ultima_sync_mov or sync.ultima_sync
+        sync.ultima_sync_ext = sync.ultima_sync_ext or sync.ultima_sync
+    sync.en_curso = False
+    if tipo in ("todo", "movimientos"):
+        sync.ultima_sync_mov = ahora
+        sync.ultimo_nuevos = sync.nuevos
+        sync.ultimo_leidos_mov = sync.leidos_mov or 0
+        sync.ultimo_ya_registrados = sync.omitidos_mov or 0
+    if tipo in ("todo", "extractos"):
+        sync.ultima_sync_ext = ahora
+        sync.ultimo_extractos = sync.extractos_nuevos
+        sync.ultimo_leidos_ext = sync.leidos_ext or 0
+    sync.ultima_sync = max(m for m in (sync.ultima_sync_mov, sync.ultima_sync_ext) if m)  # lo más reciente
+    sync.ultimo_leidos = sync.leidos
+    sync.ultimo_error = None
+    sync.total_estimado = max(sync.total_estimado, sync.leidos)
+
+
 def _correr_lote(gmail, db: Session, usuario_id: str, sync: SyncGmail, label_id: str | None, modelo, cuentas, clave) -> None:
     """Avanza la corrida hasta agotar el presupuesto del lote o terminar."""
     gets, pdfs = LOTE_CORREOS, LOTE_PDFS
@@ -516,16 +626,12 @@ def _correr_lote(gmail, db: Session, usuario_id: str, sync: SyncGmail, label_id:
         if not ids:
             if sync.fase_iniciada and not sync.cursor_token:
                 # La fase terminó: siguiente, o fin de la corrida.
-                i = FASES.index(sync.fase) + 1
-                if i >= len(FASES):
-                    sync.en_curso = False
-                    sync.ultima_sync = datetime.utcnow()
-                    sync.ultimo_leidos, sync.ultimo_nuevos = sync.leidos, sync.nuevos
-                    sync.ultimo_extractos = sync.extractos_nuevos
-                    sync.ultimo_error = None
-                    sync.total_estimado = max(sync.total_estimado, sync.leidos)
+                activas = [f for f in _fases_de(sync.tipo) if f != "etiqueta" or label_id]
+                siguientes = [f for f in activas if FASES.index(f) > FASES.index(sync.fase)]
+                if not siguientes:
+                    _cerrar_corrida(sync)
                     return
-                sync.fase, sync.fase_iniciada, sync.cursor_token = FASES[i], False, None
+                sync.fase, sync.fase_iniciada, sync.cursor_token = siguientes[0], False, None
                 continue
             if sync.fase == "extractos" and not sync.reintento_clave_hecho:
                 _reintentar_claves(gmail, db, usuario_id, cuentas, clave)
@@ -554,7 +660,13 @@ def _correr_lote(gmail, db: Session, usuario_id: str, sync: SyncGmail, label_id:
                 sync.nuevos += 1
         else:
             sync.omitidos += 1
+            if sync.fase != "extractos":
+                sync.omitidos_mov = (sync.omitidos_mov or 0) + 1
         sync.leidos += 1
+        if sync.fase == "extractos":
+            sync.leidos_ext = (sync.leidos_ext or 0) + 1
+        else:
+            sync.leidos_mov = (sync.leidos_mov or 0) + 1
         sync.cursor_ids = json.dumps(ids[1:])
 
 
@@ -570,15 +682,20 @@ def _respuesta_sync(sync: SyncGmail) -> SincronizarCorreosResponse:
         pendientes=0 if completado else max(sync.total_estimado - sync.leidos, 1),
         completado=completado,
         extractos_encontrados=sync.extractos_nuevos if sync.en_curso else sync.ultimo_extractos,
+        tipo=sync.tipo or "todo",
+        movimientos_leidos=(sync.leidos_mov if sync.en_curso else sync.ultimo_leidos_mov) or 0,
+        movimientos_ya_registrados=(sync.omitidos_mov if sync.en_curso else sync.ultimo_ya_registrados) or 0,
+        extractos_leidos=(sync.leidos_ext if sync.en_curso else sync.ultimo_leidos_ext) or 0,
     )
 
 
 def _lote_de_sincronizacion(db: Session, usuario_id: str, perfil: Perfil, completa: bool = False,
-                            dias: int = DIAS_PRIMERA_SYNC) -> tuple[SyncGmail, int, int]:
+                            dias: int = DIAS_PRIMERA_SYNC, tipo: str = "todo") -> tuple[SyncGmail, int, int]:
     """UN lote de la sincronización de Gmail (sin sesión HTTP): lo usan el botón del usuario
     y el cron. Inicia o retoma la corrida, lee un lote y hace commit. Devuelve (sync, novedades
     de ESTE lote: correos por revisar, extractos nuevos). Puede lanzar RefreshError y errores
-    de Gmail: quien llama decide qué hacer."""
+    de Gmail: quien llama decide qué hacer. `tipo` ya debe ser el efectivo (movimientos | extractos |
+    todo): un carril apagado nunca llega hasta aquí."""
     etiqueta = perfil.gmail_etiqueta or "gastos"
     gmail = cliente_gmail(perfil.gmail_refresh_token_enc)
     labels = gmail.users().labels().list(userId="me").execute().get("labels", [])
@@ -586,9 +703,11 @@ def _lote_de_sincronizacion(db: Session, usuario_id: str, perfil: Perfil, comple
 
     sync = _get_or_create_sync(db, usuario_id)
     vencida = bool(sync.iniciada_en) and datetime.utcnow() - sync.iniciada_en > timedelta(hours=MAX_CORRIDA_HORAS)
-    if completa or not sync.en_curso or vencida:
+    # Una corrida a medias de otro carril no se mezcla: se arranca la de este (lo ya visto se salta).
+    cambio_tipo = bool(sync.en_curso) and (sync.tipo or "todo") != tipo
+    if completa or not sync.en_curso or vencida or cambio_tipo:
         inicio_pp, modo_pp = punto_partida.desde_para_sync(db, usuario_id)
-        _iniciar_corrida(gmail, sync, label_id, completa, dias, inicio_pp, modo_pp)
+        _iniciar_corrida(gmail, sync, label_id, completa, dias, inicio_pp, modo_pp, tipo)
     # Si la etiqueta desapareció a mitad de corrida, se salta esa fase.
     if sync.fase == "etiqueta" and not label_id:
         sync.fase, sync.fase_iniciada, sync.cursor_token, sync.cursor_ids = "notificaciones", False, None, "[]"
@@ -602,13 +721,18 @@ def _lote_de_sincronizacion(db: Session, usuario_id: str, perfil: Perfil, comple
     _correr_lote(gmail, db, usuario_id, sync, label_id, modelo, cuentas, _clave_pdf(db, usuario_id))
     # Los correos de gastos que YA tienen su movimiento (atajo, a mano, extracto...) no son novedad:
     # se enlazan a él y no salen en «Por revisar». Lo que el usuario borró tampoco resucita.
-    absorbidos = absorber_correos(db, usuario_id, cuentas=cuentas)
-    quitar = absorbidos["ya_registrados"] + absorbidos["descartados"]
+    # (Solo aplica al carril de movimientos: leer solo extractos no toca los correos de gastos.)
+    quitar = 0
+    if tipo in ("todo", "movimientos"):
+        absorbidos = absorber_correos(db, usuario_id, cuentas=cuentas)
+        quitar = absorbidos["ya_registrados"] + absorbidos["descartados"]
     if quitar:
         if sync.en_curso:
             sync.nuevos = max(0, (sync.nuevos or 0) - quitar)
+            sync.omitidos_mov = (sync.omitidos_mov or 0) + absorbidos["ya_registrados"]
         else:
             sync.ultimo_nuevos = max(0, (sync.ultimo_nuevos or 0) - quitar)
+            sync.ultimo_ya_registrados = (sync.ultimo_ya_registrados or 0) + absorbidos["ya_registrados"]
     if sync.en_curso:
         despues_n, despues_e = (sync.nuevos or 0), (sync.extractos_nuevos or 0)
     else:
@@ -621,6 +745,7 @@ def _lote_de_sincronizacion(db: Session, usuario_id: str, perfil: Perfil, comple
 def sincronizar(
     completa: bool = False,
     dias: int = Query(DIAS_PRIMERA_SYNC, ge=7, le=365),
+    tipo: str = Query("todo", pattern="^(movimientos|extractos|todo)$"),
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
@@ -630,15 +755,26 @@ def sincronizar(
     Primera vez: últimos `dias` (90). Luego: incremental desde la última
     sincronización completa, con 1 día de solape. `completa=true` fuerza la
     ventana larga. Cada llamada hace un lote y devuelve el progreso; repetirla
-    hasta `completado` (reanuda donde quedó, sin duplicar)."""
+    hasta `completado` (reanuda donde quedó, sin duplicar).
+
+    `tipo` elige el carril: `movimientos` (notificaciones del banco), `extractos` (PDF para
+    conciliar) o `todo` (por defecto, igual que siempre). Un carril que el usuario apagó en sus
+    ajustes NO se lee ni se guarda nada de él; si no queda ninguno, responde sin tocar Gmail."""
     verificar_limite(f"sync-gmail:{usuario.id}", 80, 3600, "Sincronizaste muchas veces seguidas. Intenta en unos minutos.")
     consumir_cupo_diario(db, usuario.id, "sync-gmail")
     perfil = _get_or_create_perfil(db, usuario.id)
     if not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
         raise HTTPException(status_code=400, detail="Gmail no está conectado")
 
+    efectivo = tipo_efectivo(perfil, tipo)
+    if efectivo is None:
+        nombre = {"movimientos": "Los movimientos del día a día", "extractos": "Los extractos para conciliar"}.get(tipo, "La lectura del correo")
+        return SincronizarCorreosResponse(
+            ok=True, nuevos=0, omitidos=0, tipo=tipo,
+            aviso=f"{nombre} están apagados: no leí nada de tu correo. Puedes activarlos cuando quieras.",
+        )
     try:
-        sync, _movs, _exts = _lote_de_sincronizacion(db, usuario.id, perfil, completa, dias)
+        sync, _movs, _exts = _lote_de_sincronizacion(db, usuario.id, perfil, completa, dias, efectivo)
         return _respuesta_sync(sync)
 
     except HTTPException:
@@ -649,7 +785,7 @@ def sincronizar(
         perfil.gmail_refresh_token_enc = None
         db.commit()
         return SincronizarCorreosResponse(
-            ok=False, nuevos=0, omitidos=0,
+            ok=False, nuevos=0, omitidos=0, tipo=tipo,
             error="Se perdió el acceso a Gmail (revocado o expirado). Conéctalo de nuevo.",
         )
     except Exception:
@@ -664,7 +800,7 @@ def sincronizar(
         except Exception:
             db.rollback()
         return SincronizarCorreosResponse(
-            ok=False, nuevos=0, omitidos=0,
+            ok=False, nuevos=0, omitidos=0, tipo=tipo,
             error="No se pudo sincronizar tus correos. Intenta de nuevo en un momento.",
         )
 
@@ -716,7 +852,7 @@ def cron_sincronizar(db: Session = Depends(get_db), x_cron_secret: str = Header(
     perfiles.sort(key=lambda p: (intentos.get(p.usuario_id, ""), ultimas.get(p.usuario_id) or datetime.min, p.usuario_id))
 
     corrida = Corrida(db)
-    nuevos = sin_consentimiento = desconectados = avisados = 0
+    nuevos = sin_consentimiento = desconectados = avisados = apagados = 0
     pendientes_por_tiempo = 0
     for i, perfil in enumerate(perfiles):
         # Dos topes: tiempo total y usuarios por llamada. Lo que falte sigue en la próxima
@@ -732,8 +868,12 @@ def cron_sincronizar(db: Session = Depends(get_db), x_cron_secret: str = Header(
             if not tiene_consentimiento(db, uid, "lectura_correo"):
                 sin_consentimiento += 1
                 continue
+            efectivo = tipo_efectivo(perfil, "todo")
+            if efectivo is None:  # el usuario apagó los dos usos: no se lee nada
+                apagados += 1
+                continue
             try:
-                _sync, movs, exts = _lote_de_sincronizacion(db, uid, perfil)
+                _sync, movs, exts = _lote_de_sincronizacion(db, uid, perfil, tipo=efectivo)
             except RefreshError:
                 db.rollback()
                 perfil.gmail_conectado = False
@@ -751,7 +891,7 @@ def cron_sincronizar(db: Session = Depends(get_db), x_cron_secret: str = Header(
                     logger.exception("Cron correos: no se pudo avisar al usuario %s", uid)
     return {
         "ok": True, **corrida.resumen(), "nuevos": nuevos, "avisados": avisados,
-        "sin_consentimiento": sin_consentimiento, "desconectados": desconectados,
+        "sin_consentimiento": sin_consentimiento, "desconectados": desconectados, "apagados": apagados,
         "pendientes_por_tiempo": pendientes_por_tiempo,
     }
 
@@ -865,6 +1005,7 @@ def conciliar_extracto(
     perfil = _get_or_create_perfil(db, usuario.id)
     if not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
         raise HTTPException(status_code=400, detail="Gmail no está conectado")
+    _exigir_extractos_activos(perfil)
 
     try:
         gmail = cliente_gmail(perfil.gmail_refresh_token_enc)
@@ -1033,6 +1174,7 @@ def probar_clave_pdf(
     perfil = _get_or_create_perfil(db, usuario.id)
     if not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
         raise HTTPException(status_code=400, detail="Gmail no está conectado")
+    _exigir_extractos_activos(perfil)
     clave = _clave_pdf(db, usuario.id)
     if not clave:
         return {"ok": False, "abrieron": 0, "no_abrieron": 0, "restantes": 0, "resultados": [],
