@@ -18,6 +18,7 @@ from app.derechos_titular import armar_json, armar_zip, borrar_todo, recopilar
 from app.limites import verificar_limite
 from app.models import Cuenta, Perfil
 from app.claves_api import asignar_clave_nueva, tiene_clave
+from app.nombre import NombreInvalido, nombre_de_pila, nombre_para_mostrar, validar_nombre
 from app.utiles import ahora_co
 from app.schemas import ConfianzaAutoimportUpdate, EliminarCuentaRequest
 
@@ -33,6 +34,50 @@ def _get_or_create_perfil(db: Session, usuario_id: str) -> Perfil:
         db.commit()
         db.refresh(perfil)
     return perfil
+
+
+class NombreUpdate(BaseModel):
+    nombre: str | None = Field(default=None, max_length=200)
+    omitir: bool = False  # «Ahora no»: se queda con el nombre de pila automático y no se vuelve a preguntar
+
+
+def _respuesta_nombre(perfil: Perfil, usuario: UsuarioActual) -> dict:
+    sugerido = nombre_de_pila(usuario.nombre, getattr(usuario, "nombre_pila", ""))
+    guardado = nombre_para_mostrar(perfil.nombre_preferido)
+    return {
+        "nombre": guardado or None,
+        "sugerido": sugerido or None,
+        "confirmado": bool(perfil.nombre_confirmado),
+        "email": usuario.email,
+    }
+
+
+@router.get("/nombre")
+def obtener_nombre(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """Cómo le decimos a ESTA persona (cada cuenta tiene el suyo). `sugerido` sale del nombre de Google."""
+    return _respuesta_nombre(_get_or_create_perfil(db, usuario.id), usuario)
+
+
+@router.put("/nombre")
+def guardar_nombre(
+    data: NombreUpdate,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Guarda el nombre que la persona escribió, o con `omitir` el nombre de pila automático."""
+    perfil = _get_or_create_perfil(db, usuario.id)
+    if data.omitir:
+        auto = nombre_de_pila(usuario.nombre, getattr(usuario, "nombre_pila", ""))
+        if auto and not perfil.nombre_preferido:
+            perfil.nombre_preferido = auto
+    else:
+        try:
+            perfil.nombre_preferido = validar_nombre(data.nombre)
+        except NombreInvalido as e:
+            raise HTTPException(status_code=422, detail=str(e))
+    perfil.nombre_confirmado = True
+    db.commit()
+    return _respuesta_nombre(perfil, usuario)
 
 
 @router.get("/api-key")

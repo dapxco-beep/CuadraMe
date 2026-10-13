@@ -395,7 +395,12 @@ def _resumen_semanal_de(db: Session, usuario_id: str, hace_7_dias, semana_iso: s
     if datos is None:
         return False
     aj = db.query(AjusteUsuario).filter(AjusteUsuario.usuario_id == usuario_id).first()
-    titulo, cuerpo = rs.mensaje_push(datos, ocultar_montos=bool(aj and aj.ocultar_montos))
+    from app.models import Perfil
+    from app.nombre import nombre_para_mostrar
+
+    perfil = db.query(Perfil).filter(Perfil.usuario_id == usuario_id).first()
+    titulo, cuerpo = rs.mensaje_push(datos, ocultar_montos=bool(aj and aj.ocultar_montos),
+                                     nombre=nombre_para_mostrar(perfil.nombre_preferido if perfil else ""))
 
     # Se reclama la marca ANTES de enviar (dos ejecuciones simultáneas: pasa una sola).
     if not reclamar_marca(db, usuario_id, "resumen_semanal", semana_iso):

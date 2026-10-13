@@ -50,8 +50,10 @@ def _cuando(dias: int) -> str:
     return "hoy" if dias == 0 else "mañana" if dias == 1 else f"en {dias} días"
 
 
-def asunto(datos: dict) -> str:
-    return f"Tu semana en CuadraMe: gastaste {_pesos(datos['total_gastos'])}" if datos["total_gastos"] else "Tu semana en CuadraMe"
+def asunto(datos: dict, nombre: str = "") -> str:
+    base = f"tu semana en CuadraMe: gastaste {_pesos(datos['total_gastos'])}" if datos["total_gastos"] else "tu semana en CuadraMe"
+    nombre = (nombre or "").strip()
+    return f"{nombre}, {base}" if nombre else base[0].upper() + base[1:]
 
 
 def texto_plano(datos: dict, nombre: str = "") -> str:
@@ -180,14 +182,17 @@ def comparativo_push(db: Session, usuario_id: str, ids_cuentas: list[str], ahora
     return {"gastos": gastos, "anterior": anterior, "top": top, "movimientos": len(semana)}
 
 
-def mensaje_push(c: dict, ocultar_montos: bool = False) -> tuple[str, str]:
+def mensaje_push(c: dict, ocultar_montos: bool = False, nombre: str = "") -> tuple[str, str]:
     """(título, cuerpo) del push semanal. Tono Cuadri: cercano, sin culpar ni regañar.
     Con «ocultar saldos» activado no lleva ningún monto (los porcentajes sí: no revelan cuánto)."""
     gastos, anterior, top = c["gastos"], c.get("anterior"), c.get("top")
     titulo = "Tu semana con Cuadri"
+    # Con nombre: «Daniel, esta semana…». Sin nombre, la frase de siempre (nunca «, esta semana»).
+    nombre = (nombre or "").strip()
+    cabeza = f"{nombre}, esta" if nombre else "Esta"
     if gastos <= 0:
-        return titulo, "Esta semana no registraste gastos. ¡Un respiro para tu bolsillo!"
-    primera = "Ya está lista la foto de tu semana" if ocultar_montos else f"Esta semana gastaste {_pesos(gastos)}"
+        return titulo, f"{cabeza} semana no registraste gastos. ¡Un respiro para tu bolsillo!"
+    primera = (f"{nombre}, ya está lista la foto de tu semana" if nombre else "Ya está lista la foto de tu semana")         if ocultar_montos else f"{cabeza} semana gastaste {_pesos(gastos)}"
     comparacion = ""
     subio = False
     if anterior and anterior > 0:

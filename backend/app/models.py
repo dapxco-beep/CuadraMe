@@ -47,6 +47,9 @@ class Perfil(Base):
     ultimo_recordatorio = Column(String, nullable=True)  # YYYY-MM-DD del último aviso, para no repetir
     # Última vez que alguien usó la API key (Atajo de iPhone, Tasker...): alimenta el semáforo de "Conexiones".
     api_key_ultimo_uso = Column(DateTime, nullable=True)
+    # Cómo le decimos a la persona (saludos, resumen semanal, push). Opcionales: sin nombre todo se lee igual.
+    nombre_preferido = Column(String, nullable=True)
+    nombre_confirmado = Column(Boolean, default=False)  # ya respondió (o dijo «Ahora no»): no se vuelve a preguntar
     actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     # Cuándo se creó el perfil (= primer uso): alimenta la tendencia de usuarios de «Salud del negocio».
     # Los perfiles anteriores quedan en NULL y se estiman con su primer movimiento.

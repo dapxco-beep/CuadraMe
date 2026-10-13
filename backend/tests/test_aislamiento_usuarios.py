@@ -425,7 +425,7 @@ SIN_ID_DE_RECURSO = {
     "/correos/clave-pdf", "/perfil/punto-de-partida", "/facturas/escanear", "/impuestos/ajustes",
     "/insights/preguntar", "/movimientos/clasificar", "/movimientos/rapido-prueba", "/pagos/checkout",
     "/patrimonio/snapshot", "/patrimonio/activos", "/perfil/api-key/regenerar", "/perfil/recordatorio-diario",
-    "/perfil/confianza-autoimport", "/perfil/autoimportar-extractos", "/perfil/eliminar-cuenta",
+    "/perfil/nombre", "/perfil/confianza-autoimport", "/perfil/autoimportar-extractos", "/perfil/eliminar-cuenta",
     "/planificacion/config", "/planificacion/distribuir-ingreso", "/planificacion/plan-meta", "/push/suscribir",
     "/push/desuscribir", "/push/probar", "/reglas-categoria/aprender", "/reglas-categoria", "/categorias",
     "/cuentas", "/presupuestos", "/cierre-mes/{mes}", "/cierre-mes/{mes}/generar", "/gastos-compartidos/contactos", "/cuentas/invitaciones/pendientes",
