@@ -127,3 +127,48 @@ def test_corre_una_sola_vez_y_solo_para_su_usuario(db):
     assert reevaluar_ignorados.preparar(db, UID) == 0
     assert db.query(CorreoGasto).filter(CorreoGasto.usuario_id == UID).count() == 1
     assert db.query(CorreoGasto).filter(CorreoGasto.usuario_id == "otro-usuario").count() == 1  # intacto
+
+
+# ── Avisos que NO son transacciones (regresión: llegaron a «Por revisar» con montos absurdos) ──────────
+@pytest.mark.parametrize("asunto", [
+    "El extracto de tu Cuenta Nu ya está aquí",
+    "Llegó el extracto de tu tarjeta de crédito Nu",
+    "Agregaste tu tarjeta Nu a Apple Pay",
+    "Faltan fondos para pagar en Didi",
+    "Estamos creando tu tarjeta de crédito",
+    "JULIANA, novedades Nu en septiembre",
+])
+def test_los_avisos_no_son_transacciones(asunto):
+    from app.extractos_gmail import es_aviso_no_transaccion, es_notificacion_transaccion
+    assert es_aviso_no_transaccion(asunto, "") is True
+    assert es_notificacion_transaccion(asunto, "pago movimientos compra") is False
+
+
+@pytest.mark.parametrize("asunto", [
+    "¡Recibiste plata por Bre-B!", "¡Enviaste plata por Bre-B!", "¡Ya entró tu pago!",
+    "Pagaste en TECNIPAGOS S A con Cuenta Nu", "Compra aprobada",
+])
+def test_las_transacciones_siguen_siendo_transacciones(asunto):
+    from app.extractos_gmail import es_aviso_no_transaccion
+    assert es_aviso_no_transaccion(asunto, "") is False
+
+
+def test_el_cuerpo_se_lee_en_modo_estricto_y_no_toma_numeros_de_cuenta():
+    cuerpo = "Hola. Tu extracto ya está disponible. NIT 901658107-1 cuenta 12345678901 línea 3001234567 año 2026."
+    assert extraer_monto(cuerpo, estricto=True) == 0
+    assert extraer_monto("Recibimos tu pago. Valor: $ 90.000 el 10 de octubre", estricto=True) == 90000
+    assert extraer_monto("Recibiste 30.000 de ANA", estricto=True) == 30000
+
+
+def test_vuelve_a_ignorado_lo_que_entro_como_aviso(db):
+    db.add_all([
+        _correo(UID, "Nu <nu@nu.com.co>", "El extracto de tu Cuenta Nu ya está aquí", "Revisa", estado="pendiente", monto=901658107),
+        _correo(UID, "Nu <nu@nu.com.co>", "Faltan fondos para pagar en Didi", "No se pudo", estado="pendiente", monto=8900),
+        _correo(UID, "Nequi <notificaciones@nequi.com.co>", "¡Recibiste plata por Bre-B!", "Recibiste 30.000 de LUIS", estado="pendiente", monto=30000),
+    ])
+    db.commit()
+    reevaluar_ignorados.preparar(db, UID)
+    estados = {c.asunto: c.estado for c in db.query(CorreoGasto).filter(CorreoGasto.usuario_id == UID).all()}
+    assert estados["El extracto de tu Cuenta Nu ya está aquí"] == "ignorado"
+    assert estados["Faltan fondos para pagar en Didi"] == "ignorado"
+    assert estados["¡Recibiste plata por Bre-B!"] == "pendiente"  # una transacción real no se toca

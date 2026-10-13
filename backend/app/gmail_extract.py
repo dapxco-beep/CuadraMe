@@ -137,13 +137,23 @@ def _parece_anio(crudo: str, n: float) -> bool:
     return crudo.isdigit() and len(crudo) == 4 and 1990 <= n <= 2100
 
 
-def extraer_monto(texto: str) -> float:
-    for patron in _AMOUNT_PATTERNS:
+# Cuántos patrones del final son «cifras sueltas» (sin ninguna palabra de contexto): el modo estricto
+# no los usa. En el CUERPO de un correo hay números de cuenta, NIT, teléfonos y códigos que no son dinero
+# (un aviso de extracto llegó a leerse como $901.658.107).
+_CIFRAS_SUELTAS = 2
+MONTO_MAXIMO_ESTRICTO = 500_000_000
+
+
+def extraer_monto(texto: str, estricto: bool = False) -> float:
+    patrones = _AMOUNT_PATTERNS[:-_CIFRAS_SUELTAS] if estricto else _AMOUNT_PATTERNS
+    for patron in patrones:
         for m in patron.finditer(texto):
             crudo = m.group(1)
             n = _parse_num(crudo)
             if patron is _AMOUNT_PATTERNS[-1] and _parece_anio(crudo, n):
                 continue  # un año («de 2026») no es un monto; sigue buscando otra cifra
+            if estricto and n > MONTO_MAXIMO_ESTRICTO:
+                continue
             if 0 < n < 1e11:
                 return n
     return 0.0

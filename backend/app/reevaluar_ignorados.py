@@ -13,13 +13,13 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.crons import reclamar_marca
-from app.extractos_gmail import banco_por_remitente, es_notificacion_transaccion
+from app.extractos_gmail import banco_por_remitente, es_aviso_no_transaccion, es_notificacion_transaccion
 from app.models import CorreoGasto, SyncGmail
 
 logger = logging.getLogger(__name__)
 
 CLAVE = "reevaluar_ignorados"
-VERSION = "v1-monto-sin-signo"  # súbela cuando el lector de montos mejore y valga la pena releer
+VERSION = "v2-sin-avisos-ni-cifras-sueltas"  # súbela cuando el lector de montos mejore y valga la pena releer
 
 
 def candidatos(db: Session, usuario_id: str) -> list[CorreoGasto]:
@@ -37,12 +37,21 @@ def candidatos(db: Session, usuario_id: str) -> list[CorreoGasto]:
     ]
 
 
+def avisos_pendientes(db: Session, usuario_id: str) -> list[CorreoGasto]:
+    """Correos que quedaron «pendiente» pero en realidad son avisos (extracto listo, tarjeta agregada, pago
+    fallido...): entraron cuando el lector aún no distinguía esos avisos o leía números de cuenta como monto."""
+    filas = db.query(CorreoGasto).filter(CorreoGasto.usuario_id == usuario_id, CorreoGasto.estado == "pendiente").all()
+    return [f for f in filas if es_aviso_no_transaccion(f.asunto or "", f.snippet or "")]
+
+
 def preparar(db: Session, usuario_id: str) -> int:
     """Devuelve cuántos correos se soltaron para releerlos. Nunca lanza: una falla aquí no debe
     impedir la sincronización."""
     try:
         if not reclamar_marca(db, usuario_id, CLAVE, VERSION):
             return 0
+        for f in avisos_pendientes(db, usuario_id):
+            f.estado = "ignorado"  # no se borra: así no se vuelve a leer ni resucita
         filas = candidatos(db, usuario_id)
         for f in filas:
             db.delete(f)
