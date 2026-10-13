@@ -110,6 +110,7 @@ export default function Sincronizacion() {
   const [errorSync, setErrorSync] = useState('')
   const [detalle, setDetalle] = useState(null) // { cuentaId, mes }
   const [crearBanco, setCrearBanco] = useState(null)
+  const [elegirBanco, setElegirBanco] = useState(false)
   const [cuentaPorExtracto, setCuentaPorExtracto] = useState({})
   const [ocupados, setOcupados] = useState(new Set())
   const [avisoExt, setAvisoExt] = useState('')
@@ -273,8 +274,10 @@ export default function Sincronizacion() {
       case 'correos_por_revisar':
         return abrirBloque('correo', 'sinc-correos')
       case 'sin_cuenta':
+        // «Bancos sin cuenta» vive SOLO en «Por hacer» (y en el resumen de arriba): con un banco abre
+        // directo «Crear cuenta»; con varios, una hoja para elegir cuál.
         if (estado?.sin_cuenta?.length === 1) return setCrearBanco(estado.sin_cuenta[0].banco)
-        return abrirBloque('revisar', 'sinc-cuentas')
+        return setElegirBanco(true)
       case 'movimientos_por_categorizar':
         return abrirBloque('revisar', 'sinc-categorizar')
       case 'extractos_sin_leer':
@@ -607,7 +610,7 @@ export default function Sincronizacion() {
       {/* Cobertura por mes y cuenta */}
       <section className="mx-6 mt-5" aria-label="Cobertura por mes">
         <h2 className="text-[15px] font-semibold">Cobertura por mes</h2>
-        <Sub id="sinc-cuentas" titulo="Cuentas por mes" cuenta={sinCuenta.length}>
+        <Sub id="sinc-cuentas" titulo="Cuentas por mes">
           {filasCuentas.length === 0 ? (
             <p className="text-sm text-ink-soft">Aún no tienes cuentas.</p>
           ) : (
@@ -624,16 +627,18 @@ export default function Sincronizacion() {
                   )}
                 </div>
               )}
-              <div role="table" aria-label="Estado de cada cuenta en los últimos meses">
-                <div role="row" className="grid grid-cols-[minmax(76px,1.4fr)_repeat(6,minmax(0,1fr))] gap-1 items-end mb-1.5">
-                  <span role="columnheader" className="text-[11px] text-ink-soft">Cuenta</span>
+              {/* Casillas de mes de 44 px de toque como mínimo: con menos de 364 px de ancho (celulares de 360) el nombre de la
+            cuenta pasa ARRIBA de sus 6 casillas (6 x 44 + 5 huecos de 4 px = 284 px) en vez de a la izquierda. */}
+              <div role="table" className="@container" aria-label="Estado de cada cuenta en los últimos meses">
+                <div role="row" className="grid grid-cols-6 gap-1 @min-[364px]:grid-cols-[minmax(76px,1.4fr)_repeat(6,minmax(0,1fr))] items-end mb-1.5">
+                  <span role="columnheader" className="hidden @min-[364px]:block text-[11px] text-ink-soft">Cuenta</span>
                   {meses.map((m) => (
                     <span key={m.clave} role="columnheader" className="text-[11px] text-ink-soft text-center capitalize">{m.etiqueta}</span>
                   ))}
                 </div>
                 {filasCuentas.map((c) => (
-                  <div key={c.id} role="row" className="grid grid-cols-[minmax(76px,1.4fr)_repeat(6,minmax(0,1fr))] gap-1 items-center mb-1">
-                    <span role="rowheader" title={nombreFila[c.id]} className="text-xs font-medium leading-tight break-words line-clamp-3 pr-1">{nombreFila[c.id]}</span>
+                  <div key={c.id} role="row" className="grid grid-cols-6 gap-1 @min-[364px]:grid-cols-[minmax(76px,1.4fr)_repeat(6,minmax(0,1fr))] items-center mb-1">
+                    <span role="rowheader" title={nombreFila[c.id]} className="col-span-6 @min-[364px]:col-span-1 text-xs font-medium leading-tight break-words line-clamp-3 pr-1">{nombreFila[c.id]}</span>
                     {c.meses.map((m) => {
                       const e = estadoCelda(m.estado)
                       const activa = detalle?.cuentaId === c.id && detalle?.mes === m.mes
@@ -643,27 +648,13 @@ export default function Sincronizacion() {
                             onClick={() => setDetalle(activa ? null : { cuentaId: c.id, mes: m.mes })}
                             aria-pressed={activa}
                             aria-label={`${nombreFila[c.id]}, ${nombreMes(m.mes)}: ${e.texto}`}
-                            className={`h-10 rounded-lg border text-sm font-semibold flex items-center justify-center ${e.clase} ${activa ? 'ring-2 ring-ink' : ''}`}
+                            className={`h-11 min-h-[44px] rounded-lg border text-sm font-semibold flex items-center justify-center ${e.clase} ${activa ? 'ring-2 ring-ink' : ''}`}
                           >
                             <span aria-hidden="true">{e.simbolo}</span>
                           </button>
                         </div>
                       )
                     })}
-                  </div>
-                ))}
-                {sinCuenta.map((s) => (
-                  <div key={s.banco} className="mt-2 rounded-xl border border-dashed border-accent/50 bg-accent-soft/50 px-3 py-2.5 flex items-center gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold">Sin cuenta · {s.banco}</p>
-                      <p className="text-[11px] text-ink-soft">
-                        {[s.correos ? `${s.correos} ${s.correos === 1 ? 'correo' : 'correos'}` : '', s.extractos ? `${s.extractos} ${s.extractos === 1 ? 'extracto' : 'extractos'}` : '']
-                          .filter(Boolean).join(' y ')}
-                      </p>
-                    </div>
-                    <button onClick={() => setCrearBanco(s.banco)} className="shrink-0 rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3 py-2 min-h-[44px]">
-                      Crear cuenta {s.banco}
-                    </button>
                   </div>
                 ))}
               </div>
@@ -901,19 +892,6 @@ export default function Sincronizacion() {
         abierto={abiertos.revisar}
         onToggle={() => alternar('revisar')}
       >
-        {/* La tarea «Bancos sin cuenta» cuenta en este bloque: aquí tiene su fila (antes el bloque decía «1» y mostraba «Nada por…») */}
-        {sinCuenta.length > 0 && (
-          <Sub id="sinc-sin-cuenta" titulo="Bancos sin cuenta" cuenta={sinCuenta.length}>
-            <div className="flex flex-wrap gap-2">
-              {sinCuenta.map((s) => (
-                <button key={s.banco} type="button" onClick={() => setCrearBanco(s.banco)} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3 py-2 min-h-[44px]">
-                  Crear cuenta {s.banco}
-                </button>
-              ))}
-            </div>
-          </Sub>
-        )}
-
         <Sub id="sinc-confirmar" titulo="Por confirmar" cuenta={nConfirmar}>
           {nConfirmar === 0 ? (
             <AlDia texto="Nada por confirmar" />
@@ -976,6 +954,28 @@ export default function Sincronizacion() {
       </BloqueCentro>
       </div>
       </div>
+
+      {elegirBanco && (
+        <Hoja onCerrar={() => setElegirBanco(false)} titulo="Bancos sin cuenta">
+          {({ cerrar }) => (
+            <>
+              <h2 className="text-lg font-bold">¿De qué banco creas la cuenta?</h2>
+              <div className="flex flex-col gap-2 mt-3">
+                {sinCuenta.map((s) => (
+                  <button
+                    key={s.banco}
+                    type="button"
+                    onClick={() => { cerrar(); setCrearBanco(s.banco) }}
+                    className="rounded-xl bg-accent text-paper-raised text-sm font-semibold px-3 py-2 min-h-[44px]"
+                  >
+                    Crear cuenta {s.banco}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </Hoja>
+      )}
 
       {crearBanco && (
         <CrearCuentaBanco

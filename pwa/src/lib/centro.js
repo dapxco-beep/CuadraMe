@@ -13,7 +13,8 @@ const BLOQUE_DE_TAREA = {
   falta_clave: 'correo',
   movimientos_por_confirmar: 'revisar',
   movimientos_por_categorizar: 'revisar',
-  sin_cuenta: 'revisar',
+  // Vive solo en «Por hacer» (arriba): no repite una fila dentro de «Por revisar».
+  sin_cuenta: 'por_hacer',
 }
 
 export const bloqueDeTarea = (id) => BLOQUE_DE_TAREA[id] || 'revisar'

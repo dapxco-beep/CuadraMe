@@ -262,9 +262,13 @@ describe('correos por revisar: comercio real y monto', () => {
 })
 
 describe('contadores y estados', () => {
-  it('cada tarea vive en un solo bloque y los contadores de bloque suman el total que ve Inicio', () => {
+  it('cada tarea vive en un solo sitio y los contadores suman el total que ve Inicio', () => {
     expect(totalPorResolver(TAREAS)).toBe(5)
-    expect(tareasDeBloque(TAREAS, 'correo').length + tareasDeBloque(TAREAS, 'revisar').length).toBe(5)
+    // «Bancos sin cuenta» vive solo en «Por hacer» (no repite fila dentro de «Por revisar»)
+    expect(tareasDeBloque(TAREAS, 'por_hacer').map((t) => t.id)).toEqual(['sin_cuenta'])
+    expect(
+      tareasDeBloque(TAREAS, 'correo').length + tareasDeBloque(TAREAS, 'revisar').length + tareasDeBloque(TAREAS, 'por_hacer').length,
+    ).toBe(5)
     expect(cantidadDe(TAREAS, 'extractos_por_conciliar')).toBe(4)
     expect(cantidadDe(TAREAS, 'no_existe')).toBe(0)
   })
@@ -275,18 +279,34 @@ describe('contadores y estados', () => {
     const correo = screen.getByRole('button', { name: /Desde tu correo/ })
     const revisar = screen.getByRole('button', { name: /Por revisar/ })
     expect(within(correo).getByLabelText('3 por resolver')).toBeTruthy()
-    expect(within(revisar).getByLabelText('2 por resolver')).toBeTruthy()
+    expect(within(revisar).getByLabelText('1 por resolver')).toBeTruthy() // «Bancos sin cuenta» (la 5.ª) vive solo en «Por hacer»: 3 + 1 + 1 = 5
     expect(screen.getAllByTestId(/^tarea-/)).toHaveLength(5)
   })
 
-  it('si la insignia de «Por revisar» cuenta «Bancos sin cuenta», el bloque lo muestra (no queda «1» con todo vacío)', async () => {
+  it('«Bancos sin cuenta» aparece una sola vez (tarea en «Por hacer»): ni en «Por revisar» ni en la cobertura, y el acceso a «Crear cuenta» sigue', async () => {
     api.sincronizacionEstado.mockResolvedValue(estadoCon(TAREAS, { sin_cuenta: [{ banco: 'Nequi', correos: 2, extractos: 0 }] }))
     montarCentro()
     await screen.findByText('Tienes 5 cosas por resolver')
     const revisar = screen.getByRole('button', { name: /Por revisar/ })
-    expect(within(revisar).getByLabelText('2 por resolver')).toBeTruthy()
-    expect(document.querySelector('#sinc-sin-cuenta')).not.toBeNull()
-    expect(within(document.querySelector('#sinc-sin-cuenta')).getByRole('button', { name: 'Crear cuenta Nequi' })).toBeTruthy()
+    expect(within(revisar).getByLabelText('1 por resolver')).toBeTruthy() // solo «por categorizar»: sin_cuenta no se repite aquí
+    expect(document.querySelector('#sinc-sin-cuenta')).toBeNull()
+    expect(screen.queryByText(/Sin cuenta ·/)).toBeNull()
+    expect(screen.getAllByText('Bancos sin cuenta')).toHaveLength(1)
+    expect(within(screen.getByTestId('por-hacer')).getByText('Bancos sin cuenta')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('tarea-sin_cuenta')) // con un banco abre directo «Crear cuenta»
+    expect(await screen.findByRole('dialog', { name: 'Crear cuenta Nequi' })).toBeTruthy()
+  })
+
+  it('con varios bancos sin cuenta, la tarea abre una hoja para elegir cuál crear', async () => {
+    api.sincronizacionEstado.mockResolvedValue(estadoCon(TAREAS, { sin_cuenta: [
+      { banco: 'Nequi', correos: 2, extractos: 0 }, { banco: 'Daviplata', correos: 1, extractos: 0 },
+    ] }))
+    montarCentro()
+    await screen.findByText('Tienes 5 cosas por resolver')
+    fireEvent.click(screen.getByTestId('tarea-sin_cuenta'))
+    expect(await screen.findByRole('button', { name: 'Crear cuenta Daviplata' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Crear cuenta Nequi' }))
+    expect(await screen.findByRole('dialog', { name: 'Crear cuenta Nequi' })).toBeTruthy()
   })
 
   it('al llegar a cero cada bloque queda en «Todo al día» y el contador desaparece', async () => {

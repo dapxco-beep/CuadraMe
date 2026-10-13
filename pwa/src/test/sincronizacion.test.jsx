@@ -159,6 +159,19 @@ describe('pantalla Sincronización', () => {
     expect(screen.getByTestId('al-dia-sinc-revisar')).toBeTruthy()
   })
 
+  it('las casillas de mes miden 44 px de toque como mínimo y en 360 px el nombre pasa arriba de las casillas', async () => {
+    montar()
+    await screen.findByText('Tienes 5 cosas por resolver')
+    const celdas = screen.getAllByRole('button', { name: /Bancolombia Ahorros, .* 2026: / })
+    expect(celdas.length).toBeGreaterThan(0)
+    celdas.forEach((c) => { expect(c.className).toContain("h-11"); expect(c.className).toContain("min-h-[44px]") })
+    // Con menos de 364 px de ancho: 6 columnas iguales (6 x 44 + 5 huecos de 4 px = 284 px) y el nombre en su propia línea.
+    const fila = screen.getAllByRole('row')[1]
+    expect(fila.className).toContain('grid-cols-6')
+    expect(fila.className).toContain('@min-[364px]:grid-cols-[minmax(76px,1.4fr)_repeat(6,minmax(0,1fr))]')
+    expect(within(fila).getByRole('rowheader').className).toContain('col-span-6')
+  })
+
   it('la grilla tiene texto accesible por celda y al tocarla abre el detalle del mes', async () => {
     montar()
     await screen.findByText('Tienes 5 cosas por resolver')
@@ -175,7 +188,7 @@ describe('pantalla Sincronización', () => {
     api.crearCuenta.mockResolvedValue({ id: 'nq', nombre: 'Nequi' })
     montar()
     await screen.findByText('Tienes 5 cosas por resolver')
-    fireEvent.click(screen.getAllByRole('button', { name: 'Crear cuenta Nequi' })[0])
+    fireEvent.click(screen.getByTestId('tarea-sin_cuenta')) // la tarea de «Por hacer» abre directo el selector (un solo banco)
     const hoja = screen.getByRole('dialog', { name: 'Crear cuenta Nequi' })
     expect(within(hoja).getByRole('button', { name: /Nequi/, pressed: true })).toBeTruthy()
     fireEvent.click(within(hoja).getByRole('button', { name: 'Crear cuenta' }))
