@@ -217,6 +217,12 @@ def test_cargo_recurrente_que_cambia_mas_de_20_por_ciento():
     assert not [x for x in r["alertas"] if x["tipo"] == "cargo_cambio"]
 
 
+def test_cargo_recurrente_que_baja_no_genera_alerta():
+    base = [gasto(d, 100_000, "UBER") for d in (95, 65, 35)]
+    r = ci.detectar(historial_normal() + base + [gasto(2, 60_000, "UBER")], HOY)
+    assert not [x for x in r["alertas"] if x["tipo"] == "cargo_cambio"]
+
+
 # ── consejos ────────────────────────────────────────────────────────────────────────
 def test_los_consejos_incluyen_las_alertas_de_costos():
     alerta = {"id": "costos-mora:v:2026-10", "tipo": "mora", "prioridad": 1, "titulo": "t", "texto": "x", "cifra": "$1",

@@ -143,16 +143,17 @@ def detectar(movs: list[dict], hoy: datetime) -> dict:
         if len(previos) < MIN_MESES_RECURRENTE:
             continue
         mediana = median(previos.values())
-        if mediana > 0 and abs(ult["monto"] - mediana) / mediana * 100 > CAMBIO_RECURRENTE_PCT:
-            cambio = "más alto" if ult["monto"] > mediana else "más bajo"
+        # Solo avisamos cuando el cobro SUBE: pagar menos de lo habitual no es un riesgo para la persona
+        # y mostrarlo como alerta confunde (y espanta en la primera impresión de la app).
+        if mediana > 0 and (ult["monto"] - mediana) / mediana * 100 > CAMBIO_RECURRENTE_PCT:
             alertas.append({
                 "id": f"cargo-cambio:{h}:{mes_ult}", "tipo": "cargo_cambio", "prioridad": 2,
-                "titulo": "Este cobro es nuevo o más alto de lo normal" if ult["monto"] > mediana else "Un cobro habitual cambió",
+                "titulo": "Este cobro es nuevo o más alto de lo normal",
                 "texto": f"«{h.title()}» te lo cobran todos los meses (normalmente {_pesos(mediana)}) y esta vez fue {_pesos(ult['monto'])}, "
-                         f"{cambio} de lo habitual. Si no esperabas el cambio, revísalo con el comercio.",
+                         "más alto de lo habitual. Si no esperabas el cambio, revísalo con el comercio.",
                 "cifra": _pesos(ult["monto"]), "accion": {"texto": "Ver el movimiento", "ruta": "/movimientos"},
                 "aprende": "revisar-extractos", "monto": ult["monto"], "huella": h, "movimiento_id": ult.get("id"),
-                "sube": ult["monto"] > mediana,
+                "sube": True,
             })
 
     # Comercio NUEVO con un monto muy por encima de lo habitual
