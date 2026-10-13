@@ -269,3 +269,108 @@ def texto_cuerpo(msg: dict, limite: int = 6000) -> str:
     trozos.sort(key=lambda t: t[0])
     return trozos[0][1][:limite]
 
+
+
+# ── Fecha del movimiento ──────────────────────────────────────────────────────────────────
+# El banco escribe la fecha del movimiento DENTRO del texto («el 3 de julio de 2026 a las 11:05 am»);
+# el correo puede llegar horas o días después. Todo en hora de Colombia (UTC-5, sin horario de verano).
+from datetime import datetime, timedelta  # noqa: E402
+
+_DESFASE_CO = timedelta(hours=5)
+_MESES = {"ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6, "jul": 7, "ago": 8,
+          "sep": 9, "set": 9, "oct": 10, "nov": 11, "dic": 12}
+_MES_RE = r"(ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:sto)?|sep(?:t(?:iembre)?)?|set(?:iembre)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)"
+_FECHA_PATRONES = [
+    # «8 de octubre de 2026», «8 oct 2026», «8-oct-2026», «8/oct/2026»; el año puede faltar solo con «de mes»
+    re.compile(r"(?<!\d)(\d{1,2})\s*(?:de\s+|[-/.\s]\s*)" + _MES_RE + r"\.?(?:\s*(?:de\s+|[-/.,\s]\s*)(\d{4}))?(?!\w)", re.IGNORECASE),
+    # «08/10/2026», «8-10-2026», «08.10.2026» (día/mes/año, como se escribe en Colombia)
+    re.compile(r"(?<![\d/.-])(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})(?![\d/.-])"),
+    # «2026-10-08»
+    re.compile(r"(?<![\d/.-])(\d{4})-(\d{2})-(\d{2})(?![\d/.-])"),
+]
+_HORA_RE = re.compile(r"(?:a\s+las\s+|hora:?\s*|a\s+la\s+)?(\d{1,2})[:.](\d{2})(?::\d{2})?\s*([ap])\.?\s?m\.?(?!\w)|"
+                      r"(?:a\s+las\s+|hora:?\s*)?(?<![\d:.])([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?(?![\d:])", re.IGNORECASE)
+
+
+def _sin_tildes(texto: str) -> str:
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", texto) if not unicodedata.combining(c))
+
+
+def _hora_cerca(texto: str, fin: int, ini: int) -> tuple[int, int] | None:
+    """Hora escrita pegada a la fecha (después, o antes con «hora:»). None si no hay."""
+    for trozo in (texto[fin:fin + 45], texto[max(0, ini - 22):ini]):
+        m = _HORA_RE.search(trozo)
+        if not m:
+            continue
+        if m.group(1):
+            h, mi, ap = int(m.group(1)), int(m.group(2)), m.group(3).lower()
+            if not 1 <= h <= 12 or mi > 59:
+                continue
+            return (h % 12) + (12 if ap == "p" else 0), mi
+        return int(m.group(4)), int(m.group(5))
+    return None
+
+
+def buscar_fecha_en_texto(texto: str, recibido_en: datetime | None = None, ahora: datetime | None = None) -> datetime | None:
+    """Fecha (y hora si la trae) que el banco escribió en el texto, en hora de Colombia ('naive').
+    None si no hay ninguna, si hay dos distintas (ambigüedad) o si no es creíble: futura, de hace
+    más de 5 años o posterior al día en que llegó el correo. Sin hora, queda a las 00:00."""
+    texto = _sin_tildes(texto or "")
+    recibido_co = recibido_en - _DESFASE_CO if recibido_en else None
+    ahora_co_ = ahora or (datetime.utcnow() - _DESFASE_CO)
+    encontradas: dict[datetime, bool] = {}  # fecha -> trae hora
+    for i, patron in enumerate(_FECHA_PATRONES):
+        for m in patron.finditer(texto):
+            try:
+                if i == 0:
+                    dia, mes = int(m.group(1)), _MESES[m.group(2).lower()[:3]]
+                    anio = int(m.group(3)) if m.group(3) else None
+                    if anio is None:  # «el 3 de julio»: el año más reciente que no quede en el futuro
+                        base = recibido_co or ahora_co_
+                        anio = base.year
+                        if datetime(anio, mes, dia) > base + timedelta(days=1):
+                            anio -= 1
+                elif i == 1:
+                    dia, mes, anio = int(m.group(1)), int(m.group(2)), int(m.group(3))
+                else:
+                    anio, mes, dia = int(m.group(1)), int(m.group(2)), int(m.group(3))
+                fecha = datetime(anio, mes, dia)
+            except (ValueError, KeyError):
+                continue
+            hora = _hora_cerca(texto, m.end(), m.start())
+            if hora:
+                fecha = fecha.replace(hour=hora[0], minute=hora[1])
+            if fecha > ahora_co_ + timedelta(days=1) or fecha < ahora_co_ - timedelta(days=5 * 365):
+                continue
+            if recibido_co and fecha.date() > (recibido_co + timedelta(days=1)).date():
+                continue
+            encontradas[fecha] = hora is not None
+    if not encontradas:
+        return None
+    if len({f.date() for f in encontradas}) > 1:
+        return None  # dos fechas distintas en el texto: no se adivina, vale la del correo
+    # Misma fecha repetida: gana la que trae hora.
+    return max(encontradas, key=lambda f: (encontradas[f], f))
+
+
+def extraer_fecha_movimiento(texto: str, recibido_en: datetime | None = None) -> datetime | None:
+    """Fecha del movimiento en UTC ('naive', igual que `recibido_en`): la del texto del correo si
+    existe y es creíble; si no, la fecha de recepción (que puede ser None)."""
+    co = buscar_fecha_en_texto(texto, recibido_en)
+    return co + _DESFASE_CO if co else recibido_en
+
+
+def fecha_movimiento_info(correo) -> dict:
+    """De un CorreoGasto: {fecha (hora Colombia, naive), con_hora, del_texto}. Usa la columna
+    `fecha_movimiento` si está; si no (correos viejos), la busca al vuelo en asunto+fragmento; y si
+    tampoco, la de recepción (o la de creación)."""
+    guardada = getattr(correo, "fecha_movimiento", None)
+    if guardada:
+        co = guardada - _DESFASE_CO
+        return {"fecha": co, "con_hora": (co.hour, co.minute) != (0, 0), "del_texto": True}
+    co = buscar_fecha_en_texto(f"{correo.asunto or ''} {correo.snippet or ''}", correo.recibido_en)
+    if co:
+        return {"fecha": co, "con_hora": (co.hour, co.minute) != (0, 0), "del_texto": True}
+    base = correo.recibido_en or correo.creado_en
+    return {"fecha": base - _DESFASE_CO if base else None, "con_hora": bool(correo.recibido_en), "del_texto": False}

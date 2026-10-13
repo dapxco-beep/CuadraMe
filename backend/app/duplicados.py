@@ -525,7 +525,7 @@ def reasignar_canales(db: Session, origen_mov, destino_mov) -> None:
 # ── Correos: que no aparezcan en «Por revisar» si ya existe el movimiento ─────────────────
 def _candidato_de_correo(c, cuentas: list) -> Cand | None:
     from app.extractos_gmail import candidatas_banco, detectar_ultimos4, inferir_cuenta_por_remitente
-    from app.gmail_extract import detectar_tipo
+    from app.gmail_extract import detectar_tipo, fecha_movimiento_info
     from app.utiles import utc_a_co
 
     if (c.monto or 0) <= 0:
@@ -539,10 +539,11 @@ def _candidato_de_correo(c, cuentas: list) -> Cand | None:
     if not ids:
         return None
     tipo = c.tipo_sugerido if c.tipo_sugerido in ("income", "expense") else detectar_tipo(texto)
-    fecha = utc_a_co(c.recibido_en or c.creado_en)
+    info = fecha_movimiento_info(c)  # la fecha que dice el correo (no la de lectura) para emparejar
+    fecha = info["fecha"] or utc_a_co(c.recibido_en or c.creado_en)
     return Cand(
         id=c.id, origen=ORIGEN_CORREO, tipo=tipo, monto=float(c.monto), fecha=fecha, cuentas=ids,
-        texto=c.comercio or "", moneda=(c.moneda or "COP"), con_hora=bool(c.recibido_en), ref=c,
+        texto=c.comercio or "", moneda=(c.moneda or "COP"), con_hora=info["con_hora"], ref=c,
     )
 
 

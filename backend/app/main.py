@@ -93,6 +93,8 @@ if engine.dialect.name == "postgresql":
         # Correo en dos usos independientes (movimientos / extractos); por defecto activos.
         conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS gmail_leer_movimientos BOOLEAN DEFAULT TRUE"))
         conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS gmail_leer_extractos BOOLEAN DEFAULT TRUE"))
+        # Fecha del movimiento leida del texto del correo (supabase/migraciones/correos_fecha_movimiento.sql).
+        conn.execute(text("ALTER TABLE correos_gastos ADD COLUMN IF NOT EXISTS fecha_movimiento TIMESTAMP"))
         for _col, _tipo in (
             ("tipo", "VARCHAR DEFAULT 'todo'"), ("leidos_mov", "INTEGER DEFAULT 0"),
             ("leidos_ext", "INTEGER DEFAULT 0"), ("omitidos_mov", "INTEGER DEFAULT 0"),

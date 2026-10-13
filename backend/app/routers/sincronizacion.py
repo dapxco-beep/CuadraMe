@@ -112,7 +112,7 @@ def _desde_inicio(inicio):
     """Condición SQL: correos recibidos desde el punto de partida (o sin fecha). Sin inicio no filtra."""
     if not inicio:
         return True
-    return or_(CorreoGasto.recibido_en.is_(None), CorreoGasto.recibido_en >= inicio)
+    return punto_partida.correo_desde_inicio(inicio)
 
 
 def _sin_cuenta(db: Session, usuario_id: str, cuentas: list[Cuenta], extractos: list[ExtractoCorreo],
