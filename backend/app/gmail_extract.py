@@ -6,6 +6,14 @@ en Código.js (Apps Script), probados contra bancos y comercios colombianos.
 import re
 
 _AMOUNT_PATTERNS = [
+    # Nequi/Bre-B y similares escriben el monto SIN «$»: «Recibiste 30.000 de ...», «Enviaste de manera
+    # exitosa 45.500 a la llave ...». Con contexto, para no confundir con años, horas o teléfonos.
+    re.compile(
+        r"(?:recibiste|te\s+enviaron|te\s+transfirieron|enviaste(?:\s+de\s+manera\s+exitosa)?|"
+        r"transferiste(?:\s+de\s+manera\s+exitosa)?|pagaste)\s+(?:\$\s*)?"
+        r"(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?|\d{3,})(?![\d.,]*\d)",
+        re.IGNORECASE,
+    ),
     re.compile(r"cantidad\s*de\s*[:\s]*\$?\s*([\d.,]+)", re.IGNORECASE),
     re.compile(
         r"(?:valor|monto|total|cobro|pago|precio|transacci[oó]n|compra|d[eé]bito|"
@@ -18,6 +26,9 @@ _AMOUNT_PATTERNS = [
     re.compile(r"USD\s*([\d.,]+)", re.IGNORECASE),
     re.compile(r"EUR\s*([\d.,]+)", re.IGNORECASE),
     re.compile(r"([\d.,]+)\s*COP", re.IGNORECASE),
+    # Respaldo: número con miles agrupados («30.000», «1.250.000»). Va ANTES del de 3-4 dígitos sueltos,
+    # que leía «1.250.000» como 250.000 y «45.500» como 500.
+    re.compile(r"(?<![\d.,])(\d{1,3}(?:[.,]\d{3})+(?:,\d{2})?)(?![\d])"),
     re.compile(r"\b(\d{3,4}(?:[.,]\d{3})*(?:[.,]\d{2})?)\b"),
 ]
 
@@ -88,8 +99,8 @@ _FIN = r"(?=[,;.\n]|\s+(?:por|con|desde|de\s+tu|a\s+las|el\s+(?:\d|d[ií]a)|valo
 _NOMBRE = r"([A-Za-zÀ-ú0-9*][^,;.\n$]{1,38}?)"
 _CONCEPTOS = [
     (re.compile(r"compra\s+(?:(?:exitosa|aprobada|realizada)\s+)?(?:en|con\s+tu\s+tarjeta\s+en)\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Compra en "),
-    (re.compile(r"(?:enviaste|env[ií]o|transferiste|transferencia)\s+(?:de\s+)?(?:\$\s*[\d.,]+\s+)?a\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Envío a "),
-    (re.compile(r"(?:recibiste|te\s+enviaron|te\s+transfirieron)\s+(?:\$\s*[\d.,]+\s+)?de\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Recibido de "),
+    (re.compile(r"(?:enviaste|env[ií]o|transferiste|transferencia)\s+(?:de\s+manera\s+exitosa\s+)?(?:de\s+)?(?:\$?\s*[\d.,]+\s+)?a\s+(?:la\s+llave\s+\S+\s+de\s+)?" + _NOMBRE + _FIN, re.IGNORECASE), "Envío a "),
+    (re.compile(r"(?:recibiste|te\s+enviaron|te\s+transfirieron)\s+(?:\$?\s*[\d.,]+\s+)?de\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Recibido de "),
     (re.compile(r"pago\s+de\s+(servicios?\s+p[uú]blicos|servicios?|factura|impuestos?|pensi[oó]n|matr[ií]cula|arriendo|cuota)", re.IGNORECASE), "Pago de "),
     (re.compile(r"(?:recibo|factura)\s+de\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Pago de "),
     (re.compile(r"pago\s+(?:en|a)\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Pago a "),
@@ -121,11 +132,18 @@ def _parse_num(raw: str) -> float:
         return 0.0
 
 
+def _parece_anio(crudo: str, n: float) -> bool:
+    """Una cifra suelta de 4 dígitos entre 1990 y 2100 sin separadores es un año, no un monto."""
+    return crudo.isdigit() and len(crudo) == 4 and 1990 <= n <= 2100
+
+
 def extraer_monto(texto: str) -> float:
     for patron in _AMOUNT_PATTERNS:
-        m = patron.search(texto)
-        if m:
-            n = _parse_num(m.group(1))
+        for m in patron.finditer(texto):
+            crudo = m.group(1)
+            n = _parse_num(crudo)
+            if patron is _AMOUNT_PATTERNS[-1] and _parece_anio(crudo, n):
+                continue  # un año («de 2026») no es un monto; sigue buscando otra cifra
             if 0 < n < 1e11:
                 return n
     return 0.0
@@ -214,3 +232,40 @@ def detectar_tipo(texto: str) -> str:
 def es_posible_traslado_propio(texto: str) -> bool:
     """El correo habla de pasar plata entre cuentas del mismo dueño (pista, no certeza)."""
     return bool(_TRANSFER_RE.search(texto or ""))
+
+
+def texto_cuerpo(msg: dict, limite: int = 6000) -> str:
+    """Texto plano del cuerpo de un mensaje de Gmail (format=full), sin etiquetas HTML y recortado.
+    Sirve solo para encontrar el monto o el comercio cuando no caben en el fragmento (`snippet`); el
+    resultado no se guarda en la base de datos (minimización de datos)."""
+    import base64
+    import html as _html
+
+    trozos: list[tuple[int, str]] = []  # (prioridad, texto): 0 = texto plano, 1 = HTML
+
+    def recorrer(parte: dict):
+        if len(trozos) > 8:
+            return
+        tipo = (parte.get("mimeType") or "").lower()
+        data = (parte.get("body") or {}).get("data")
+        if data and tipo in ("text/plain", "text/html"):
+            try:
+                crudo = base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)).decode("utf-8", "replace")
+            except Exception:  # noqa: BLE001
+                crudo = ""
+            if tipo == "text/html":
+                crudo = re.sub(r"(?is)<(script|style).*?</\1>", " ", crudo)
+                crudo = re.sub(r"(?s)<[^>]+>", " ", crudo)
+                crudo = _html.unescape(crudo)
+            crudo = re.sub(r"\s+", " ", crudo).strip()
+            if crudo:
+                trozos.append((0 if tipo == "text/plain" else 1, crudo))
+        for hija in parte.get("parts") or []:
+            recorrer(hija)
+
+    recorrer(msg.get("payload") or {})
+    if not trozos:
+        return ""
+    trozos.sort(key=lambda t: t[0])
+    return trozos[0][1][:limite]
+

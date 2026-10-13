@@ -50,7 +50,15 @@ from app.extractos_gmail import (
     listar_adjuntos_pdf,
     sugerir_cuenta,
 )
-from app.gmail_extract import detectar_tipo, es_posible_traslado_propio, extraer_comercio, extraer_moneda, extraer_monto
+from app import reevaluar_ignorados
+from app.gmail_extract import (
+    detectar_tipo,
+    es_posible_traslado_propio,
+    extraer_comercio,
+    extraer_moneda,
+    extraer_monto,
+    texto_cuerpo,
+)
 from app.gmail_oauth import (
     cifrar,
     cliente_gmail,
@@ -270,7 +278,13 @@ def _crear_correo(msg: dict, usuario_id: str, modelo: ClasificadorUsuario) -> Co
     asunto = h.get("Subject", "")
     snippet = msg.get("snippet", "")
     texto = f"{asunto} {snippet}"
-    comercio = extraer_comercio(remitente, asunto, snippet)
+    # El fragmento de Gmail son ~200 caracteres: a veces el monto queda fuera (p. ej. «Ya entró tu pago»).
+    # Solo para notificaciones de TRANSACCIÓN de un banco conocido se lee el cuerpo; no se guarda.
+    if not extraer_monto(texto) and banco_por_remitente(remitente) and es_notificacion_transaccion(asunto, snippet):
+        cuerpo = texto_cuerpo(msg)
+        if cuerpo:
+            texto = f"{asunto} {snippet} {cuerpo}"
+    comercio = extraer_comercio(remitente, asunto, snippet if texto == f"{asunto} {snippet}" else texto)
     resultado = modelo.clasificar(comercio, texto)
     return CorreoGasto(
         usuario_id=usuario_id,
@@ -584,6 +598,7 @@ def _lote_de_sincronizacion(db: Session, usuario_id: str, perfil: Perfil, comple
     labels = gmail.users().labels().list(userId="me").execute().get("labels", [])
     label_id = next((l["id"] for l in labels if l["name"].lower() == etiqueta.lower()), None)
 
+    reevaluar_ignorados.preparar(db, usuario_id)  # una sola vez por usuario: relee correos de bancos sin monto
     sync = _get_or_create_sync(db, usuario_id)
     vencida = bool(sync.iniciada_en) and datetime.utcnow() - sync.iniciada_en > timedelta(hours=MAX_CORRIDA_HORAS)
     if completa or not sync.en_curso or vencida:
