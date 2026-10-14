@@ -64,6 +64,51 @@ Ahora todas las transferencias entre personas se proponen como «Transferencias�
 esas la persona las dejó con otra categoría porque el nombre no revela el gasto. En comercios, que es donde
 el modelo puede saber, la exactitud sube. Lo que no mejora: ese 57 % solo lo resuelve una regla del usuario.
 
+## Segunda ronda: memoria por usuario, señales y abstención
+
+Módulo `app/memoria_usuario.py` (Python puro). Todo se arma al vuelo con lo que ESE usuario confirmó; nada se
+comparte entre usuarios.
+
+- **Memoria del beneficiario/comercio (también personas).** Clave = nombre limpio. 1 confirmación: confianza
+  0.75 («aprendida de tu historial (1 vez)»); >= 2 concordantes: 0.80-0.95; si la categoría líder no tiene al
+  menos el doble que la segunda: «ambiguo», no se propone y `ClasificadorUsuario.opciones_ambiguas` entrega sus 2
+  opciones habituales. Va después de reglas y costos del banco y antes del parecido por palabras.
+- **Señales** (naive Bayes pequeño con temperatura): ingreso/gasto, rango y valor exacto del monto, redondez, día del
+  mes, tipo de cuenta, palabras de pasarela, persona, recurrencia (>= 3 meses). Se abstiene bajo 0.85.
+- **Punto de operación:** propuesta «firme» desde 0.80; por debajo es `tentativa` y, si viene de historial o
+  señales, queda con origen `sugerida` (cuenta como «por categorizar»). Personas nuevas: «Transferencias»
+  tentativas (0.5) y la hoja de categorizar ofrece chips «¿Qué fue?» (arriendo / préstamo; el resto en la lista).
+
+Medición «dejar uno fuera» (307 confirmados; solo agregados):
+
+| Medida | Antes (modelo 1) | Después |
+|---|---|---|
+| Exactitud global, comercios repetidos (por movimiento) | 51.8 % | 68.7 % |
+| Exactitud global, comercios nuevos (por comercio) | 49.2 % | 49.2 % (sin cambio) |
+| Quedan en «Otros» (repetidos / nuevos) | 8.8 % / 11.1 % | 8.8 % / 11.1 % |
+| Cuando propone, repetidos | 51.4 % | 70.0 % |
+| Comercios (n=94), repetidos / nuevos | 72.3 % / 63.8 % | 72.3 % / 63.8 % |
+
+Curva cobertura vs precisión (movimientos con propuesta de confianza >= umbral):
+
+| Umbral | Repetidos: cobertura / precisión | Nuevos: cobertura / precisión |
+|---|---|---|
+| 0.60 | 58 % / 91.6 % | 17 % / 84.9 % |
+| 0.70 | 58 % / 92.1 % | 17 % / 86.3 % |
+| 0.80 | 42 % / 96.9 % | 8.5 % / 100 % |
+| 0.90 | 28 % / 97.6 % | 2 % / 100 % |
+
+Calibración (repetidos): confianza 0.75 acierta 80 %; 0.83 acierta 95 %; 0.94 acierta 98 %. El 0.5 de
+«Transferencias» a personas acierta 32-41 %: está sobreestimado, por eso es tentativo.
+
+Lo que NO mejoró, honestamente:
+- Comercios nuevos y personas nuevas: sin historial no hay de dónde aprender; exactitud igual.
+- Las señales (monto, día, pasarela...) por sí solas acertaron ~25-40 % en este historial: no alcanzan el 85 %,
+  así que casi siempre se abstienen. Se dejaron con umbral 0.85 por si un usuario tiene regularidades claras.
+- Los datos de la evaluación son de una sola persona y todas sus cuentas son de ahorro: el tipo de cuenta no se pudo
+  evaluar. Los ambiguos medidos fueron 0 (con la regla de «doble»); con conflicto estricto serían 4.
+- «Dejar uno fuera» usa también movimientos futuros; no es una simulación cronológica.
+
 ## Ideas que requieren consentimiento
 
 Un diccionario compartido derivado de correcciones de varios usuarios no se hizo: exige consentimiento

@@ -44,6 +44,12 @@ export function AvisoCategorizados({ n, className = '' }) {
 export function HojaCambiarCategoria({ movimiento, onClose, onHecho }) {
   const { nombres, iconoDe } = useCategorias()
   const opciones = [...new Set([...nombres])].filter((n) => n !== 'Transferencias')
+  // A una persona no se le adivina el motivo: opciones rápidas «¿Qué fue?» (arriendo / préstamo; el resto, en la lista).
+  const esPersona = esTransferenciaAPersona(movimiento.descripcion)
+  const RAPIDAS_PERSONA = [
+    ...(nombres.includes('Hogar') ? [{ etiqueta: 'Arriendo', categoria: 'Hogar' }] : []),
+    { etiqueta: 'Préstamo o giro', categoria: 'Transferencias' },
+  ]
   const [categoria, setCategoria] = useState(
     opciones.includes(movimiento.categoria) && movimiento.categoria !== 'Otros' ? movimiento.categoria : ''
   )

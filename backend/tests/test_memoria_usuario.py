@@ -3,7 +3,8 @@ import os
 import sys
 from pathlib import Path
 
-os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+import tempfile
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{os.path.join(tempfile.mkdtemp(), 'memoria.db')}")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import classifier, memoria_usuario as mu  # noqa: E402
