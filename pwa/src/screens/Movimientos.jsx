@@ -818,6 +818,13 @@ export default function Movimientos() {
                   </button>
                 )}
               </div>
+              {conteo.total > 0 && !f.revisar && (
+                <div className="px-5 mb-3">
+                  <Link to="/categorizar" className="text-xs text-ink-soft font-medium underline">
+                    Si quieres, ordena lo que más pesa
+                  </Link>
+                </div>
+              )}
               {f.revisar && conteo.auto > 0 && (
                 <div className="px-5 mb-3">
                   <button onClick={confirmarTodas} className="text-xs text-ink-soft font-medium underline">

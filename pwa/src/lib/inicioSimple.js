@@ -28,11 +28,10 @@ export function siguientePasoInicio({ cuentas = 0, movimientos = 0, sinCategoriz
   if (sinCategorizar > 0) {
     return {
       id: 'categorizar',
-      titulo: sinCategorizar === 1 ? 'Ponle tipo a 1 gasto' : `Ponle tipo a ${sinCategorizar} gastos`,
-      apoyo: 'Comida, transporte, salud… Así ves en qué se va tu plata.',
-      ruta: '/sincronizacion',
-      state: { abrir: 'revisar' },
-      accion: 'Ponerles tipo',
+      titulo: 'Ordena lo que más pesa (opcional)',
+      apoyo: 'No hace falta todo: con los comercios que más pesan o se repiten ya ves en qué se va tu plata.',
+      ruta: '/categorizar',
+      accion: 'Ver lo que más pesa',
     }
   }
   return {

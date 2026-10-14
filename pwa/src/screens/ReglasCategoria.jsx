@@ -3,7 +3,7 @@ import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { useVolver } from '../lib/useVolver'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, ChevronRight, GraduationCap, Plus, Trash2, X, Tag } from 'lucide-react'
+import { ArrowLeft, ChevronRight, GraduationCap, Pause, Play, Plus, Trash2, X, Tag } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCategorias } from '../lib/CategoriasContext'
 import Hoja from '../components/Hoja'
@@ -14,6 +14,8 @@ export default function ReglasCategoria() {
   const [cargando, setCargando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [error, setError] = useState('')
+  const [marcadas, setMarcadas] = useState(new Set())
+  const [aviso, setAviso] = useState('')
 
   useEffect(() => {
     cargar()
@@ -33,6 +35,30 @@ export default function ReglasCategoria() {
   async function eliminar(id) {
     await api.eliminarReglaCategoria(id)
     cargar()
+  }
+
+  const alternar = (id) =>
+    setMarcadas((s) => {
+      const n = new Set(s)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
+
+  // Pausar, reanudar o borrar varias reglas a la vez. Pausar no pierde la regla; borrar no cambia lo ya categorizado.
+  async function lote(accion) {
+    const ids = [...marcadas]
+    if (!ids.length) return
+    try {
+      await api.reglasEnLote(ids, accion)
+      setAviso(
+        accion === 'pausar' ? 'Regla(s) en pausa: no se aplican a lo nuevo.' : accion === 'reanudar' ? 'Regla(s) activas de nuevo.' : 'Regla(s) borrada(s). Lo ya categorizado no cambió.'
+      )
+      setMarcadas(new Set())
+      await cargar()
+    } catch (err) {
+      setAviso(err.message || 'No se pudo. Revisa tu conexión e intenta de nuevo.')
+    }
   }
 
   return (
@@ -80,11 +106,29 @@ export default function ReglasCategoria() {
       ) : reglas.length === 0 ? (
         <EstadoVacio icono={Tag} titulo="Aún no tienes reglas creadas" texto="Una regla clasifica sola los movimientos que se repiten." className="mx-6 mt-6" />
       ) : (
+        <>
+        {aviso && <p className="mx-6 mt-4 rounded-2xl bg-accent-soft px-4 py-3 text-sm" role="status">{aviso}</p>}
+        {marcadas.size > 0 && (
+          <div className="mx-6 mt-4 flex flex-wrap items-center gap-2" role="region" aria-label="Acciones sobre las reglas seleccionadas">
+            <span className="text-xs text-ink-soft">{marcadas.size} {marcadas.size === 1 ? 'seleccionada' : 'seleccionadas'}</span>
+            <button onClick={() => lote('pausar')} className="rounded-xl border border-line px-3 py-2 text-sm font-semibold min-h-[44px] flex items-center gap-1.5"><Pause size={16} /> Pausar</button>
+            <button onClick={() => lote('reanudar')} className="rounded-xl border border-line px-3 py-2 text-sm font-semibold min-h-[44px] flex items-center gap-1.5"><Play size={16} /> Reanudar</button>
+            <button onClick={() => lote('borrar')} className="rounded-xl border border-line text-danger px-3 py-2 text-sm font-semibold min-h-[44px] flex items-center gap-1.5"><Trash2 size={16} /> Borrar</button>
+            <button onClick={() => setMarcadas(new Set())} className="text-xs underline min-h-[44px] px-2">Ninguna</button>
+          </div>
+        )}
         <div className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
           {reglas.map((r) => (
             <div key={r.id} className="flex items-center gap-3 px-4 py-3.5">
+              <input
+                type="checkbox"
+                checked={marcadas.has(r.id)}
+                onChange={() => alternar(r.id)}
+                aria-label={`Seleccionar la regla ${r.patron}`}
+                className="w-5 h-5 accent-[var(--c-accent)] shrink-0"
+              />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">"{r.patron}"</p>
+                <p className="text-sm font-medium truncate">"{r.patron}"{r.activa === false && <span className="ml-2 text-[11px] font-semibold text-ink-soft">En pausa</span>}</p>
                 <p className="text-xs text-ink-soft">→ {r.categoria}{r.tipo ? ` · ${r.tipo}` : ''}</p>
               </div>
               <button onClick={() => eliminar(r.id)} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-danger shrink-0" aria-label="Eliminar">
@@ -93,6 +137,7 @@ export default function ReglasCategoria() {
             </div>
           ))}
         </div>
+        </>
       )}
 
       {mostrarForm && (
