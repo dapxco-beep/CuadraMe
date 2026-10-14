@@ -123,3 +123,18 @@ Enséñale la pantalla a alguien 5 segundos. ¿Sabe **para qué sirve** y **cuá
 - Se usa poco y solo donde ayuda: saludo de Inicio, algunas frases de Cuadri, resumen semanal y push semanal.
 - En `lib/cuadri.js` el marcador es `{nombre}` y va siempre precedido de coma («¡Hola, {nombre}!»): sin nombre se quita con su coma. Nunca escribas un texto que dependa del nombre para entenderse.
 - Nunca en lugares públicos ni en el panel de administración.
+
+## Ingresos, gastos y traslados (nombres únicos)
+
+| Concepto | Nombre en la app | Cómo se ve |
+|---|---|---|
+| Plata que entra de verdad | **Ingresos** | Acento positivo (`text-accent`), con «+» en listas |
+| Plata que sale de verdad | **Gastos** | Tinta normal (`text-ink`), con «-» en listas |
+| Ingresos − gastos | **Balance** | Con signo: positivo en acento, negativo en `text-danger` |
+| Balance / ingresos | **Tasa de ahorro** | Solo si hay ingresos; si no, «—» |
+| Plata entre tus cuentas | **Traslado** («Traslado entre tus cuentas») | Neutral: no suma ni resta. Decisión: «Es un traslado entre mis cuentas» / «No es un traslado» |
+| Sin la otra pata todavía | **Posible traslado** | «¿Fue entre tus cuentas?» |
+| Pagar la tarjeta | **Pago de tarjeta** | Neutral; el gasto ya se contó en la compra |
+| Corrección de saldo | **Ajuste de saldo** | Neutral |
+
+Dinero siempre con `formatCOP` / `fmt` (lib/format, respeta «ocultar saldos»). La regla vive en `backend/app/contabilidad.py` y su espejo `pwa/src/lib/contabilidad.js` (casos compartidos en `backend/tests/fixtures/contabilidad_casos.json`). La pantalla «¿En qué gasto mi plata?» lleva la nota «No incluye traslados entre tus cuentas ni pagos de tarjeta» y «Ver lo que no se cuenta».

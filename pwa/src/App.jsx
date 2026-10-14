@@ -51,6 +51,7 @@ const Insights = lazy(() => import('./screens/Insights'))
 const Asistente = lazy(() => import('./screens/Asistente'))
 const ReglasCategoria = lazy(() => import('./screens/ReglasCategoria'))
 const PorCategorizar = lazy(() => import('./screens/PorCategorizar'))
+const RevisarTraslados = lazy(() => import('./screens/RevisarTraslados'))
 const EntrenarCategorias = lazy(() => import('./screens/EntrenarCategorias'))
 const Categorias = lazy(() => import('./screens/Categorias'))
 const Impuestos = lazy(() => import('./screens/Impuestos'))
@@ -134,6 +135,7 @@ function AppGate() {
         <Route path="/ahorcado" element={<Ahorcado />} />
         <Route path="/reglas-categoria" element={<ReglasCategoria />} />
         <Route path="/categorizar" element={<PorCategorizar />} />
+        <Route path="/traslados" element={<RevisarTraslados />} />
         <Route path="/entrenar-categorias" element={<EntrenarCategorias />} />
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/resumen" element={<Wrapped />} />
