@@ -27,3 +27,21 @@ class ComercioSilenciado(Base):
     huella = Column(String, nullable=False)
     tipo = Column(String, nullable=False, default="no_preguntar")
     creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class ReglaTraslado(Base):
+    """Lo que la persona decidió sobre un tipo de movimiento y pidió recordar:
+    'traslado' = «es un traslado entre mis cuentas» (neutral), 'real' = «no es un traslado»
+    (cuenta como gasto/ingreso). La regla se aplica en TODOS los cálculos (app/contabilidad.py).
+    Solo guarda la huella de la descripción (sin montos ni fechas)."""
+    __tablename__ = "reglas_traslado"
+    __table_args__ = (
+        UniqueConstraint("usuario_id", "huella", name="uq_regla_traslado"),
+        Index("ix_reglas_traslado_usuario", "usuario_id"),
+    )
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False)
+    huella = Column(String, nullable=False)
+    decision = Column(String, nullable=False)  # traslado | real
+    creado_en = Column(DateTime, default=datetime.utcnow)

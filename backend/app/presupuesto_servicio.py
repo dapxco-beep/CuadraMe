@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app import planificacion as plan
 from app.compartidos import cuentas_ids_accesibles
-from app.contabilidad import TiposCuenta, tipos_efectivos
+from app.contabilidad import tipos_de_cuentas, tipos_efectivos
 from app.fx import convertir_a_cop
 from app.models import Cuenta, Movimiento, Presupuesto
 from app.models_planificacion import ConfigPlanificacion
@@ -76,18 +76,9 @@ class GastosPorRango:
             cuentas = db.query(Cuenta).filter(Cuenta.id.in_(self.ids)).all()
             self.monedas = {c.id: c.moneda for c in cuentas}
             # Mismo contenido que tipos_cuenta_de(), sin repetir la consulta de cuentas.
-            self._tipos = self._tipos_desde(cuentas)
+            self._tipos = tipos_de_cuentas(cuentas, db)
         self._ventana = None  # (desde, hasta, [movimientos])
         self._por_rango = {}  # (desde, hasta) -> {categoría: gasto}
-
-    @staticmethod
-    def _tipos_desde(cuentas):
-        out = TiposCuenta()
-        out.monedas = {}
-        for c in cuentas:
-            out[c.id] = c.tipo
-            out.monedas[c.id] = c.moneda
-        return out
 
     def _movimientos(self, desde: datetime, hasta: datetime) -> list:
         """Movimientos con fecha en [desde, hasta), tomados de la ventana en memoria

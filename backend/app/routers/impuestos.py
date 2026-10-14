@@ -49,7 +49,7 @@ def _datos_anio(db: Session, usuario: UsuarioActual, anio: int) -> dict:
     ids = cuentas_ids_accesibles(db, usuario.id)
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()
     monedas = {c.id: c.moneda for c in cuentas}
-    tipos = tipos_de_cuentas(cuentas)
+    tipos = tipos_de_cuentas(cuentas, db)
     movs = (
         db.query(Movimiento)
         .filter(Movimiento.cuenta_id.in_(ids), Movimiento.fecha >= datetime(anio, 1, 1) - _TRES_DIAS,
@@ -280,7 +280,7 @@ def gmf_estimado(
               "categoria": x.categoria or "", "cuenta_id": x.cuenta_id} for x in movs]
     ajuste = db.query(AjusteUsuario).filter(AjusteUsuario.usuario_id == usuario.id).first()
     exenta = ajuste.cuenta_exenta_gmf_id if ajuste else None
-    out = gmf_mes(filas, tipos_de_cuentas(cuentas), exenta, mes)
+    out = gmf_mes(filas, tipos_de_cuentas(cuentas, db), exenta, mes)
     out["cuentas_ahorro"] = [{"id": c.id, "nombre": c.nombre} for c in cuentas if c.tipo == "ahorro" and c.usuario_id == usuario.id]
     return out
 
