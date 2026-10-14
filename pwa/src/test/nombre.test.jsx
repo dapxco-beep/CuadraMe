@@ -94,6 +94,7 @@ describe('PedirNombre', () => {
 
   it('«Listo» guarda el nombre editado y Enter también envía', async () => {
     const { campo, onListo } = await montar()
+    await waitFor(() => expect(campo).toHaveValue('Daniel')) // el prellenado llega del servidor
     await userEvent.clear(campo)
     await userEvent.type(campo, 'dani{Enter}')
     await waitFor(() => expect(onListo).toHaveBeenCalled())
@@ -102,6 +103,7 @@ describe('PedirNombre', () => {
 
   it('con un nombre inválido avisa con amabilidad y no guarda', async () => {
     const { campo, onListo } = await montar()
+    await waitFor(() => expect(campo).toHaveValue('Daniel')) // el prellenado llega del servidor
     await userEvent.clear(campo)
     await userEvent.type(campo, 'Dani 😀')
     await userEvent.click(screen.getByRole('button', { name: 'Listo' }))
