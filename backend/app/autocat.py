@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.classifier import aplicar_reglas, build_model, classify
 from app.clave_comercio import clave_comercio, es_huella_peligrosa, huella_en_descripcion
 from app.comercios_conocidos import clasificar_por_diccionario
-from app.costos_financieros import NOMBRES_SISTEMA
+from app.costos_financieros import NOMBRES_SISTEMA, clasificar_costo
 from app.diccionario_categorias import CATEGORIA_RESPALDO
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, es_pago_tarjeta
 from app.models import Categoria, Movimiento, ReglaCategoria
@@ -84,6 +84,10 @@ def movimientos_confirmados(db: Session, usuario_id: str) -> list[dict]:
     return [{"descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo} for m in movs]
 
 
+# Un parecido aprendido por debajo de esta confianza cede ante una marca conocida del diccionario.
+UMBRAL_APRENDIDO_FUERTE = 0.8
+
+
 def decidir_categoria(
     descripcion: str, reglas: list, modelo: dict, activas: set[str], texto_extra: str = "",
 ) -> dict | None:
@@ -95,7 +99,20 @@ def decidir_categoria(
         # El pago de una tarjeta no es un gasto (las compras ya se contaron).
         return {"categoria": CATEGORIA_PAGO_TARJETA, "tipo": "expense", "confianza": 1.0,
                 "fuente": "regla_tarjeta", "origen": "regla", "razon": "es el pago de una tarjeta"}
-    r = aplicar_reglas(descripcion, reglas) or classify(descripcion, modelo)
+    r = aplicar_reglas(descripcion, reglas)
+    if not r:
+        # Los cobros/rendimientos del banco (4x1000, cuota de manejo, intereses...) son categorías de
+        # SISTEMA: ni el historial ni una palabra suelta los pisan (solo una regla explícita del usuario).
+        r = clasificar_costo(descripcion)
+    if not r:
+        aprendido = classify(descripcion, modelo)
+        r = aprendido
+        if aprendido and aprendido.get("confianza", 1.0) < UMBRAL_APRENDIDO_FUERTE:
+            # Parecido débil con otros movimientos (palabras sueltas en común): si el diccionario
+            # reconoce una MARCA concreta, esa señal pública pesa más que el parecido.
+            d = clasificar_por_diccionario(f"{descripcion} {texto_extra}".strip())
+            if d and d.get("palabra") and d["categoria"] not in ("Transferencias",) and d["categoria"] != aprendido["categoria"]:
+                r = None
     if not r:
         r = clasificar_por_diccionario(f"{descripcion} {texto_extra}".strip())
         if r:

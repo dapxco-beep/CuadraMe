@@ -90,6 +90,8 @@ SECCIONES: dict[str, dict[str, str]] = {
         "cantina": "Comida", "tamales": "Comida", "yogurt": "Comida", "goyurt": "Comida", "burger": "Comida",
         "butchery": "Comida", "rossopomodoro": "Comida", "empanadas": "Comida", "arepas": "Comida",
         "sandwich": "Comida", "parrilla*": "Comida", "brasa": "Comida", "tostadas": "Comida", "rustica": "Comida",
+        "mercaldas": "Comida", "dunkin": "Comida", "krispy kreme": "Comida", "donuts": "Comida", "corabastos": "Comida",
+        "popsicola": "Comida", "pozzetto": "Comida", "buffalo wings": "Comida",
     },
 
     # ── Transporte ──────────────────────────────────────────────────
@@ -114,6 +116,8 @@ SECCIONES: dict[str, dict[str, str]] = {
         # estaciones de servicio ("EDS" = estación de servicio) y bicicletas compartidas
         "eds": "Transporte", "servicentro": "Transporte", "autocombustibles": "Transporte",
         "combustibles": "Transporte", "gasolinera": "Transporte", "tembici": "Transporte", "bicicletas": "Transporte",
+        # "oxxo eds": la tienda de una estación de servicio; casi siempre es gasolina (EDS = estación de servicio)
+        "oxxo eds": "Transporte", "yango": "Transporte", "redbus": "Transporte", "copetran": "Transporte", "jetsmart": "Transporte",
     },
 
     # ── Salud y bienestar ───────────────────────────────────────────
@@ -131,6 +135,7 @@ SECCIONES: dict[str, dict[str, str]] = {
         "psicologo": "Salud", "psicologia": "Salud", "terapia": "Salud", "fisioterapia": "Salud",
         "veterinaria": "Salud", "gimnasio": "Salud", "gimnasio*": "Salud", "gym": "Salud", "bodytech": "Salud",
         "smart fit": "Salud", "spinning center": "Salud", "crossfit": "Salud", "yoga": "Salud", "pilates": "Salud",
+        "medplus": "Salud", "audifarma": "Salud", "keralty": "Salud", "coomeva": "Salud",
     },
 
     # ── Ocio, suscripciones y digital ───────────────────────────────
@@ -143,6 +148,7 @@ SECCIONES: dict[str, dict[str, str]] = {
         "despegar": "Ocio", "viaje": "Ocio", "steam": "Ocio", "playstation": "Ocio", "nintendo": "Ocio",
         "xbox": "Ocio", "epic games": "Ocio", "riot games": "Ocio", "tinder": "Ocio", "bumble": "Ocio",
         "duolingo": "Ocio", "libreria": "Ocio", "panamericana": "Ocio",
+        "ticketmaster": "Ocio", "roblox": "Ocio", "salitre magico": "Ocio", "cerveceria": "Ocio", "estanquillo": "Ocio",
     },
     "Suscripciones": {
         "netflix": "Suscripciones", "spotify": "Suscripciones", "disney": "Suscripciones",
@@ -169,6 +175,7 @@ SECCIONES: dict[str, dict[str, str]] = {
         "cursos": "Educación", "diplomado": "Educación", "udemy": "Educación", "coursera": "Educación",
         "platzi": "Educación", "edx": "Educación", "instituto": "Educación", "academia": "Educación",
         "ingles": "Educación", "utiles escolares": "Educación", "papeleria": "Educación",
+        "domestika": "Educación", "skillshare": "Educación", "masterclass": "Educación", "khan academy": "Educación",
     },
 
     # ── Compras y ropa ──────────────────────────────────────────────
@@ -183,6 +190,7 @@ SECCIONES: dict[str, dict[str, str]] = {
         "novaventa": "Compras", "dollarcity": "Compras", "dollar city": "Compras", "miniso": "Compras",
         "mallplaza": "Compras", "mall plaza": "Compras", "hym": "Compras", "koaj": "Compras",
         "centro comercial": "Compras",
+        "puma": "Compras", "tennis": "Compras", "cuerosvelez": "Compras", "americanino": "Compras", "offcorss": "Compras", "gef": "Compras",
     },
 
     # ── Seguros, impuestos, ahorro ──────────────────────────────────
@@ -200,6 +208,7 @@ SECCIONES: dict[str, dict[str, str]] = {
         "impuesto vehicular": "Impuestos", "impuesto de vehiculos": "Impuestos", "predial": "Impuestos",
         "impuesto predial": "Impuestos", "industria y comercio": "Impuestos", "retefuente": "Impuestos",
         "secretaria de hacienda": "Impuestos", "impuesto": "Impuestos", "impuestos": "Impuestos",
+        "camara de comercio": "Impuestos",
     },
     "Ahorro e inversión": {
         "colpensiones": "Ahorro e inversión", "proteccion pension": "Ahorro e inversión", "proteccion": "Ahorro e inversión",
@@ -276,7 +285,7 @@ BRE_B_PALABRAS_ENTRADA = {"recibida", "recibido", "recibiste", "recibi", "recibi
 # Pasarelas/datáfonos que anteponen su nombre al comercio real: 'BOLD*Cafe Luna',
 # 'PAYU*SPOTIFY', 'MP*Rappi'. Se clasifica lo que va DESPUÉS del asterisco.
 PASARELAS = [
-    "bold", "payu", "epayco", "wompi", "mercadopago", "mercado pago", "mp", "rappipay", "rappi pay",
+    "bold", "dlo", "dlocal", "mercpago", "payu", "epayco", "wompi", "mercadopago", "mercado pago", "mp", "rappipay", "rappi pay",
     "sumup", "addi", "placetopay", "pse", "openpay", "kushki", "zona virtual", "izipay", "redeban", "credibanco",
 ]
 

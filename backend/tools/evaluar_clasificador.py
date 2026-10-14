@@ -34,12 +34,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import classifier  # noqa: E402
 from app.autocat import _BASE, decidir_categoria  # noqa: E402
-from app.clave_comercio import clave_comercio  # noqa: E402
+from app.clave_comercio import clave_comercio, es_transferencia_entre_personas  # noqa: E402
 from app.comercios_conocidos import clasificar_por_diccionario  # noqa: E402
 
 # Categorías del diccionario cuya «palabra» NO es una marca (frases de transferencia entre personas, etc.)
 _NO_MARCA = {"Transferencias", "Ingresos"}
 OTROS = "Otros"
+
+
+def _reparar(texto: str) -> str:
+    """Algunos exports traen UTF-8 leído como Latin-1 ('dÃ©bito'): se deshace si aplica."""
+    if "Ã" in texto or "Â" in texto:
+        try:
+            return texto.encode("latin-1").decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            return texto
+    return texto
 
 
 def cargar_confirmados(ruta: str) -> list[dict]:
@@ -51,8 +61,8 @@ def cargar_confirmados(ruta: str) -> list[dict]:
     for m in datos:
         if m.get("cat_confirmada") is False:
             continue
-        desc = (m.get("descripcion") or "").strip()
-        cat = (m.get("categoria") or "").strip()
+        desc = _reparar(m.get("descripcion") or "").strip()
+        cat = _reparar(m.get("categoria") or "").strip()
         if desc and cat:
             salida.append({"descripcion": desc, "categoria": cat, "tipo": m.get("tipo") or ""})
     return salida
@@ -71,7 +81,9 @@ def enmascarar(huella: str, desc_ejemplo: str) -> str:
     return f"{huella[:1]}***-{h}"
 
 
-def evaluar(movs: list[dict], min_confianza: float | None = None) -> dict:
+def evaluar(movs: list[dict], min_confianza: float | None = None, modo: str = "comercio") -> dict:
+    """modo='comercio': deja fuera todos los movimientos del mismo comercio (¿qué tal con comercios NUEVOS?).
+    modo='movimiento': deja fuera solo el movimiento evaluado (¿qué tal con los comercios que ya repetiste?)."""
     if min_confianza is not None:
         classifier.MIN_CONFIANZA = min_confianza
     activas = {m["categoria"].lower() for m in movs} | set(_BASE)
@@ -80,11 +92,16 @@ def evaluar(movs: list[dict], min_confianza: float | None = None) -> dict:
         grupos[_grupo(m["descripcion"])].append(i)
 
     resultados: list[dict | None] = [None] * len(movs)
-    for huella, idx in grupos.items():
-        resto = [m for m in movs if _grupo(m["descripcion"]) != huella]
-        modelo = classifier.build_model(resto)
-        for i in idx:
-            resultados[i] = decidir_categoria(movs[i]["descripcion"], [], modelo, activas)
+    if modo == "movimiento":
+        for i, m in enumerate(movs):
+            modelo = classifier.build_model(movs[:i] + movs[i + 1:])
+            resultados[i] = decidir_categoria(m["descripcion"], [], modelo, activas)
+    else:
+        for huella, idx in grupos.items():
+            resto = [m for m in movs if _grupo(m["descripcion"]) != huella]
+            modelo = classifier.build_model(resto)
+            for i in idx:
+                resultados[i] = decidir_categoria(movs[i]["descripcion"], [], modelo, activas)
 
     n = len(movs)
     filas = []
@@ -93,6 +110,7 @@ def evaluar(movs: list[dict], min_confianza: float | None = None) -> dict:
             "real": m["categoria"], "pred": r["categoria"] if r else OTROS,
             "fuente": (r or {}).get("fuente", "ninguna"), "conf": (r or {}).get("confianza"),
             "grupo": _grupo(m["descripcion"]), "desc": m["descripcion"],
+            "persona": es_transferencia_entre_personas(m["descripcion"]),
         })
 
     def ok(f):
@@ -100,6 +118,28 @@ def evaluar(movs: list[dict], min_confianza: float | None = None) -> dict:
 
     propuestas = [f for f in filas if f["pred"] != OTROS]
     reales_no_otros = [f for f in filas if f["real"] != OTROS]
+    # Segmentos: una transferencia entre personas ('Para <nombre>') NO dice en qué se gastó la plata;
+    # lo correcto es proponer «Transferencias» (con confianza baja) y preguntar. Se mide aparte para
+    # que la exactitud de los COMERCIOS (donde el modelo sí puede saber) no se diluya.
+    personas = [f for f in filas if f["persona"]]
+    comercios = [f for f in filas if not f["persona"]]
+    comercios_reales = [f for f in comercios if f["real"] != OTROS]
+    segmentos = {
+        "n_personas": len(personas),
+        "personas_propuestas_como_transferencias": round(
+            sum(f["pred"] == "Transferencias" for f in personas) / len(personas), 3) if personas else 0,
+        "personas_que_la_persona_dejo_como_transferencias": round(
+            sum(f["real"] == "Transferencias" for f in personas) / len(personas), 3) if personas else 0,
+        "n_comercios": len(comercios),
+        "exactitud_comercios": round(sum(map(ok, comercios)) / len(comercios), 3) if comercios else 0,
+        "exactitud_comercios_sin_otros_reales": round(
+            sum(map(ok, comercios_reales)) / len(comercios_reales), 3) if comercios_reales else 0,
+        "exactitud_comercios_propuestos": round(
+            sum(map(ok, [f for f in comercios if f["pred"] != OTROS])) /
+            max(1, len([f for f in comercios if f["pred"] != OTROS])), 3),
+        "cobertura_otros_comercios": round(
+            sum(f["pred"] == OTROS for f in comercios) / len(comercios), 3) if comercios else 0,
+    }
     por_cat = {}
     for cat in sorted({f["real"] for f in filas}):
         fs = [f for f in filas if f["real"] == cat]
@@ -128,6 +168,7 @@ def evaluar(movs: list[dict], min_confianza: float | None = None) -> dict:
         "exactitud_sobre_propuestas": round(sum(map(ok, propuestas)) / len(propuestas), 3) if propuestas else 0,
         "exactitud_sin_otros_reales": round(sum(map(ok, reales_no_otros)) / len(reales_no_otros), 3) if reales_no_otros else 0,
         "confianza_media": round(sum(confs) / len(confs), 3) if confs else 0,
+        "segmentos": segmentos,
         "por_categoria": por_cat,
         "por_fuente": por_fuente,
         "confusion": [(a, b, c) for (a, b), c in confusion.most_common(10)],
@@ -140,11 +181,19 @@ def evaluar(movs: list[dict], min_confianza: float | None = None) -> dict:
 def imprimir(res: dict, top: int, mostrar_errores: bool) -> dict:
     agregados = {k: v for k, v in res.items() if not k.startswith("_")}
     print(f"Movimientos confirmados evaluados: {res['n']}")
-    print(f"Exactitud global (dejar un comercio fuera): {res['exactitud_global']:.1%}")
+    print(f"Exactitud global: {res['exactitud_global']:.1%}")
     print(f"Cobertura: {res['cobertura_otros']:.1%} queda en «Otros» (la app preguntaría)")
     print(f"Exactitud cuando propone categoría: {res['exactitud_sobre_propuestas']:.1%}")
     print(f"Exactitud sin contar los que la persona dejó en «Otros»: {res['exactitud_sin_otros_reales']:.1%}")
     print(f"Confianza media de las propuestas: {res['confianza_media']}")
+    sg = res["segmentos"]
+    print(f"\nComercios (n={sg['n_comercios']}): exactitud {sg['exactitud_comercios']:.1%}, "
+          f"sin contar los dejados en «Otros» {sg['exactitud_comercios_sin_otros_reales']:.1%}, "
+          f"cuando propone {sg['exactitud_comercios_propuestos']:.1%}, "
+          f"queda en «Otros» {sg['cobertura_otros_comercios']:.1%}")
+    print(f"Transferencias entre personas (n={sg['n_personas']}): propuestas como «Transferencias» "
+          f"{sg['personas_propuestas_como_transferencias']:.0%}; la persona las dejó como «Transferencias» "
+          f"{sg['personas_que_la_persona_dejo_como_transferencias']:.0%} (el resto son gastos que el nombre no revela)")
     print("\nPor categoría real (n, exactitud, % que cae en Otros):")
     for cat, d in sorted(res["por_categoria"].items(), key=lambda kv: -kv[1]["n"]):
         print(f"  {cat:<28} n={d['n']:<4} exactitud={d['exactitud']:.0%}  otros={d['en_otros']:.0%}")
@@ -170,6 +219,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("ruta")
     ap.add_argument("--top", type=int, default=10)
     ap.add_argument("--min-confianza", type=float, default=None, help="umbral del modelo aprendido (por defecto el de producción)")
+    ap.add_argument("--modo", choices=["comercio", "movimiento"], default="comercio",
+                    help="comercio: deja fuera todo el comercio (comercios nuevos); movimiento: solo el evaluado (comercios repetidos)")
     ap.add_argument("--salida-json", help="guarda SOLO los agregados")
     ap.add_argument("--mostrar-errores", action="store_true", help="LOCAL: imprime descripciones crudas")
     a = ap.parse_args(argv)
@@ -177,7 +228,7 @@ def main(argv: list[str] | None = None) -> int:
     if not movs:
         print("No hay movimientos confirmados para evaluar.")
         return 1
-    res = evaluar(movs, a.min_confianza)
+    res = evaluar(movs, a.min_confianza, a.modo)
     agregados = imprimir(res, a.top, a.mostrar_errores)
     if a.salida_json:
         Path(a.salida_json).write_text(json.dumps(agregados, ensure_ascii=False, indent=1), encoding="utf-8")

@@ -88,7 +88,7 @@ def _transferencia_al_inicio(texto_pad: str) -> dict | None:
 
 _RE_PASARELA = re.compile(
     r"(?<![a-z0-9])(" + "|".join(re.escape(p).replace(r"\ ", r"\s*") for p in sorted(PASARELAS, key=len, reverse=True))
-    + r")\s*\*\s*([^*]+)$",
+    + r")(?:\s+s\.?\s*a\.?(?:\s*s\.?)?)?\s*\*\s*([^*]+)$",
     re.IGNORECASE,
 )
 
@@ -113,6 +113,26 @@ def _comercio_tras_pasarela(descripcion: str) -> dict | None:
     return None
 
 
+_RE_QR_BREB = re.compile(r"^ (?:pago|pagaste) (?:en |con )?qr bre b (.+) $")
+
+
+def _qr_bre_b(texto_pad: str) -> dict | None:
+    """'PAGO EN QR BRE-B: Bokado' es una COMPRA en un negocio (el QR de la caja): si el diccionario
+    reconoce al negocio ('Pizzeria X', 'Smart Fit') se usa su categoría; si no, sigue la regla general
+    de Bre-B (Transferencias, con confianza baja, y se pregunta)."""
+    m = _RE_QR_BREB.match(texto_pad)
+    if not m:
+        return None
+    resto = f" {m.group(1)} "
+    for _n, _l, pat, prefijo, categoria, tipo, original in _INDICE:
+        if _coincide(resto, pat, prefijo):
+            return {
+                "categoria": categoria, "tipo": tipo, "confianza": 0.75, "fuente": "diccionario",
+                "palabra": original, "razon": f"por el comercio «{original}» (pagado con QR Bre-B)",
+            }
+    return None
+
+
 def _bre_b(texto_pad: str) -> dict | None:
     """Bre-B / transferencia inmediata -> Transferencias; el tipo depende de si se recibió."""
     for frase in BRE_B_FRASES:
@@ -133,7 +153,7 @@ def clasificar_por_diccionario(descripcion: str) -> dict | None:
 
     texto_pad = f" {normalizar(descripcion)} "
 
-    r = _comercio_tras_pasarela(descripcion) or _bre_b(texto_pad)
+    r = _comercio_tras_pasarela(descripcion) or _qr_bre_b(texto_pad) or _bre_b(texto_pad)
     if r:
         return r
 

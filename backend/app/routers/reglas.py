@@ -91,6 +91,7 @@ from app.models import Movimiento  # noqa: E402
 
 MIN_REPETICIONES_REGLA = 3  # «recordar» viene activado por defecto solo desde 3 veces
 MIN_REPETICIONES_SUGERENCIA = 3
+MIN_MESES_RECURRENTE = 3
 MAX_SUGERENCIAS = 30
 
 
@@ -137,19 +138,24 @@ def sugerencias(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(
         if not h or h in con_regla or h in descartadas or es_huella_peligrosa(h):
             continue
         g = grupos.setdefault(h, {"huella": h, "conteo": 0, "monto_total": 0.0, "ejemplo": m.descripcion,
-                                  "categorias": defaultdict(int)})
+                                  "categorias": defaultdict(int), "_meses": set()})
+        if m.fecha:
+            g["_meses"].add((m.fecha.year, m.fecha.month))
         g["conteo"] += 1
         g["monto_total"] += abs(m.monto or 0)
         g["categorias"][m.categoria] += 1
     salida = []
     for g in grupos.values():
         cats = g.pop("categorias")
+        meses = len(g.pop("_meses"))
         mejor = max(cats, key=cats.get)
         # Solo si casi siempre lo categorizaste igual (si no, una regla mezclaría lo que haces a veces).
         if g["conteo"] < MIN_REPETICIONES_SUGERENCIA or cats[mejor] / g["conteo"] < 0.8:
             continue
-        salida.append({**g, "categoria": mejor, "monto_total": round(g["monto_total"], 2)})
-    salida.sort(key=lambda g: (-g["monto_total"], -g["conteo"], g["huella"]))
+        # 'recurrente': misma huella en 3 o más meses distintos (un hábito, no una racha de un día).
+        salida.append({**g, "categoria": mejor, "monto_total": round(g["monto_total"], 2),
+                       "meses": meses, "recurrente": meses >= MIN_MESES_RECURRENTE})
+    salida.sort(key=lambda g: (not g["recurrente"], -g["monto_total"], -g["conteo"], g["huella"]))
     return {"sugerencias": salida[:MAX_SUGERENCIAS], "total": len(salida)}
 
 

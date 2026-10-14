@@ -21,9 +21,11 @@ _PREFIJOS = {
     "bancolombia", "davivienda", "bre", "b", "movimiento", "mov",
     # pasarela de pagos ('BOLD*Cafe Luna') y 'EDS' (estación de servicio): el comercio es lo que sigue
     "bold", "eds", "qr", "recibi", "envio",
+    # «Pagaste en X con Cuenta Nu», 'DLO*Spotify', 'Mercpago*Pando', 'PayU*Netflix'
+    "pagaste", "dlo", "dlocal", "mercpago", "payu", "epayco", "wompi", "sumup",
 }
 # Se cortan en cuanto aparecen: lo que sigue es detalle de la operación.
-_CORTES = {"con", "terminacion", "term", "ref", "referencia", "nro", "numero", "cuenta", "cta", "tarjeta", "autorizacion", "aut", "cod", "codigo"}
+_CORTES = {"con", "terminacion", "term", "ref", "referencia", "nro", "numero", "cuenta", "cta", "tarjeta", "autorizacion", "aut", "cod", "codigo", "nit"}
 # Se quitan en cualquier parte: forma jurídica, país y ciudades comunes.
 _RUIDO = {
     "sas", "sa", "ltda", "ltd", "inc", "llc", "cia", "cía", "scs", "bog", "bta", "med", "cal", "co", "col",
@@ -54,11 +56,10 @@ def _sin_tildes(texto: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn")
 
 
-@lru_cache(maxsize=16384)
-def clave_comercio(descripcion: str | None) -> str:
-    """Huella normalizada del comercio. Devuelve '' si no queda nada útil."""
+def _limpiar(descripcion: str | None) -> list[str]:
+    """Palabras del comercio ya limpias (sin tope)."""
     if not descripcion:
-        return ""
+        return []
     t = _sin_tildes(str(descripcion).lower())
     t = _RE_JURIDICA.sub(" ", t)
     t = _RE_FECHA.sub(" ", t)
@@ -72,11 +73,11 @@ def clave_comercio(descripcion: str | None) -> str:
     for tok in tokens:
         if inicio and tok in _PREFIJOS:
             continue
-        inicio = False
-        if tok in _CORTES and limpios:
-            break
         if tok in _CORTES:
-            continue
+            if limpios:
+                break
+            continue  # 'ENVIO CON BRE-B A: LAURA': 'con' no es nombre; el prefijo sigue
+        inicio = False
         limpios.append(tok)
 
     resultado = []
@@ -96,7 +97,39 @@ def clave_comercio(descripcion: str | None) -> str:
         resultado.pop()
     while resultado and resultado[0] in _COLA:
         resultado.pop(0)
-    return " ".join(resultado[:MAX_PALABRAS])
+    return resultado
+
+
+@lru_cache(maxsize=16384)
+def clave_comercio(descripcion: str | None) -> str:
+    """Huella normalizada del comercio. Devuelve '' si no queda nada útil."""
+    return " ".join(_limpiar(descripcion)[:MAX_PALABRAS])
+
+
+def palabras_comercio(descripcion: str | None) -> list[str]:
+    """Todas las palabras útiles del comercio (sin prefijos de pasarela, ciudades, NIT ni
+    códigos), SIN el tope de 3 de la huella. Es lo que el modelo aprendido usa como señal."""
+    return _limpiar(descripcion)
+
+
+# --- transferencias entre personas ----------------------------------------------
+# Tras estas frases va el nombre de una PERSONA ('Para JUAN PEREZ', 'Enviaste a MARIA LOPEZ',
+# 'ENVIO CON BRE-B A: LAURA'). Su nombre no dice en qué se gastó, así que no se aprende de él.
+_RE_PERSONA = re.compile(
+    r"^\s*(para|de|enviaste a|recibiste de|envio con bre[ -]?b a|recibi por bre[ -]?b de|"
+    r"envio por llave a|recibiste por llave de|transferencia a|transferencia de|trf a|trf de|giro a|giro de)\b[\s:]*(.*)$",
+    re.IGNORECASE,
+)
+
+
+def es_transferencia_entre_personas(descripcion: str | None) -> bool:
+    """'Para <nombre>' / 'Enviaste a <nombre>' / 'ENVIO CON BRE-B A: <nombre>' ... (no el pago QR
+    de un comercio: 'PAGO EN QR BRE-B: Bokado' sí nombra un negocio)."""
+    m = _RE_PERSONA.match(_sin_tildes((descripcion or "").lower()))
+    if not m:
+        return False
+    # 'para' / 'de' sueltos no nombran a nadie; las frases largas ('enviaste a') ya son inequívocas.
+    return bool(m.group(2).strip()) or m.group(1) not in ("para", "de")
 
 
 def es_huella_peligrosa(huella: str) -> str | None:

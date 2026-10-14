@@ -8,10 +8,14 @@ import re
 import unicodedata
 from collections import defaultdict
 
-from app.clave_comercio import clave_comercio, huella_en_descripcion
+from app.costos_financieros import NOMBRES_SISTEMA
+from app.clave_comercio import (
+    clave_comercio, es_transferencia_entre_personas, huella_en_descripcion, palabras_comercio,
+)
 
 MIN_TOKEN_LEN = 3
 MIN_CONFIANZA = 0.55
+EVIDENCIA_MEDIA = 1.0  # con este número de observaciones la evidencia vale la mitad
 
 STOPWORDS = {
     "de", "la", "el", "en", "a", "por", "con", "para", "del", "los",
@@ -21,17 +25,23 @@ STOPWORDS = {
 }
 
 
+# Palabras que describen el LUGAR o la operación, no el comercio: no sirven de señal.
+GENERICAS = {
+    "centro", "comercial", "zona", "tienda", "plaza", "local", "punto", "almacen", "cajero",
+    "pagaste", "enviaste", "recibiste", "envio", "recibi", "bre", "llave", "inmediata", "nuestro",
+}
+
+
 def tokenize(texto: str) -> list[str]:
-    texto = texto.lower()
-    texto = "".join(
-        c for c in unicodedata.normalize("NFD", texto)
-        if unicodedata.category(c) != "Mn"
-    )
-    texto = re.sub(r"[^a-z0-9\s]", " ", texto)
-    tokens = texto.split()
+    """Palabras que identifican al COMERCIO: sin prefijos de pasarela ('PAGO PSE', 'BOLD*',
+    'Pagaste en'), ciudades, NIT ni códigos (las quita clave_comercio.palabras_comercio).
+    De una transferencia entre personas ('Para <nombre>') no se aprende nada: un nombre
+    propio no dice en qué se gastó la plata."""
+    if es_transferencia_entre_personas(texto):
+        return []
     return [
-        t for t in tokens
-        if len(t) >= MIN_TOKEN_LEN and t not in STOPWORDS and not t.isdigit()
+        t for t in palabras_comercio(texto)
+        if len(t) >= MIN_TOKEN_LEN and t not in STOPWORDS and t not in GENERICAS and not t.isdigit()
     ]
 
 
@@ -44,8 +54,8 @@ def build_model(movimientos: list[dict]) -> dict:
 
     for m in movimientos:
         cat = (m.get("categoria") or "").strip()
-        if not cat or cat.lower() == "otros":
-            continue
+        if not cat or cat.lower() == "otros" or cat in NOMBRES_SISTEMA:
+            continue  # las categorías de sistema (4x1000, intereses...) las decide el banco, no el historial
         desc = (m.get("descripcion") or "").strip()
         tipo = m.get("tipo") or ""
         if not desc:
@@ -76,6 +86,7 @@ def classify(descripcion: str, model: dict) -> dict | None:
 
     votes = defaultdict(float)
     matched = 0
+    observaciones = 0  # cuántas veces vio el usuario las palabras que coinciden (la evidencia)
 
     for tok in tokens:
         dist = model["tokens"].get(tok)
@@ -83,6 +94,7 @@ def classify(descripcion: str, model: dict) -> dict | None:
             continue
         matched += 1
         total_tok = sum(dist.values())
+        observaciones += total_tok
         for cat, count in dist.items():
             peso = (count / total_tok) * (1 + math.log(1 + count))
             votes[cat] += peso
@@ -96,7 +108,9 @@ def classify(descripcion: str, model: dict) -> dict | None:
 
     dominancia = best_score / sum_score if sum_score > 0 else 0
     cobertura = min(1, matched / max(1, len(tokens)))
-    confianza = min(0.97, 0.4 + dominancia * 0.45 + cobertura * 0.15)
+    # Poca evidencia = poca confianza: una palabra vista UNA vez no es lo mismo que vista diez.
+    evidencia = observaciones / (observaciones + EVIDENCIA_MEDIA)
+    confianza = min(0.97, 0.4 + dominancia * 0.45 * evidencia + cobertura * 0.15)
 
     if confianza < MIN_CONFIANZA:
         return None
