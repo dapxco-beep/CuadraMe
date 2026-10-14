@@ -309,7 +309,7 @@ describe('pantalla Traer movimientos con «Todos los extractos»', () => {
     expect(within(det).getByText(/Nu Colombia · Cuenta · Agosto 2026/)).toBeTruthy()
     expect(within(det).getAllByText(/Sin procesar/).length).toBeGreaterThan(0)
     fireEvent.click(within(det).getByRole('button', { name: /Ver el extracto de este mes/ }))
-    await waitFor(() => expect(screen.getAllByTestId(/^ext-/)).toHaveLength(2))
+    await waitFor(() => expect(screen.getAllByTestId(/^ext-/)).toHaveLength(1)) // ese mes Y esa cuenta (la tarjeta no)
     expect(screen.getByRole('heading', { name: 'Nu Colombia · Cuenta · Agosto 2026' })).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Nu Colombia · Cuenta · Julio 2026' })).toBeNull()
   })

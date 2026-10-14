@@ -12,8 +12,25 @@ const EXTRACTOS = [
   { id: 'e3', banco: 'Nequi', periodo: 'agosto 2026', asunto: 'Extracto', archivo: 'c.pdf', estado: 'procesado', cuenta_sugerida_id: null, historial_id: 'h9', cruzados: 1 },
 ]
 
+
+// Una fila de «Todos los extractos» (lo que manda el servidor), con lo mínimo para estas pruebas.
+const filaVista = (extra) => ({
+  historial_id: null, cuenta_id: null, cuenta: '', copias: 1, copias_texto: '', mes_deducido: false, mes_por_confirmar: false,
+  puede_fijar_mes: true, motivo_error: null, tipo: 'cuenta', acciones: [], ...extra,
+})
+const TODOS = {
+  items: [
+    filaVista({ id: 'c:e1', extracto_id: 'e1', banco: 'Bancolombia', cuenta_id: 'bc', cuenta: 'Bancolombia Ahorros', mes: '2026-09', mes_etiqueta: 'Septiembre 2026', titulo: 'Bancolombia · Cuenta · Septiembre 2026', estado_vista: 'sin_procesar', estado_etiqueta: 'Sin procesar', resultado: 'Llegó a tu correo y aún no lo hemos leído.', acciones: ['revisar'] }),
+    filaVista({ id: 'c:e2', extracto_id: 'e2', banco: 'Nu Colombia', cuenta_id: 'bc', cuenta: 'Bancolombia Ahorros', mes: '2026-08', mes_etiqueta: 'Agosto 2026', titulo: 'Nu Colombia · Cuenta · Agosto 2026', estado_vista: 'revisado', estado_etiqueta: 'Revisado', resultado: 'Leímos 12 movimientos: 12 ya estaban registrados, 0 nuevos.', acciones: ['ver', 'revisar_de_nuevo'] }),
+    filaVista({ id: 'c:e3', extracto_id: 'e3', historial_id: 'h9', banco: 'Nequi', mes: '2026-07', mes_etiqueta: 'Julio 2026', titulo: 'Nequi · Cuenta · Julio 2026', estado_vista: 'revisado', estado_etiqueta: 'Revisado', resultado: 'Leímos 1 movimiento: 1 ya estaba registrado, 0 nuevos.', acciones: ['ver'] }),
+  ],
+  contadores: { revisado: 2, sin_procesar: 1 },
+  resumen: '2 revisados · 1 sin procesar',
+  sin_adjunto: [],
+}
+
 const ESTADO = {
-  meses: [], cuentas: [], sin_cuenta: [], ultima_sync: null,
+  meses: [], cuentas: [], sin_cuenta: [], ultima_sync: null, todos_extractos: TODOS,
   tareas: [{ id: 'extractos_por_conciliar', titulo: 'Extractos por conciliar', detalle: '', cantidad: 1, ruta: '/sincronizacion#extractos' }],
 }
 const ESTADO_CORREO = {
@@ -81,15 +98,16 @@ describe('Extractos ya conciliados', () => {
     montar()
     expect((await screen.findByRole('heading', { level: 3, name: /Extractos para conciliar/ })).textContent).toBe('Extractos para conciliar1')
     expect(screen.getAllByText(/Nuevo · listo para revisar/)).toHaveLength(1)
-    expect(screen.queryByText('Nu Colombia')).toBeNull()
-
-    const boton = screen.getByRole('button', { name: /Extractos ya revisados \(2\)/ })
-    expect(boton.getAttribute('aria-expanded')).toBe('false')
-    fireEvent.click(boton)
-    const fila = screen.getByTestId('conciliado-e2')
-    expect(within(fila).getByText(/Nu Colombia · septiembre 2026/)).toBeTruthy()
-    expect(within(fila).getByText(/Bancolombia Ahorros · 12 movimientos coinciden con el banco/)).toBeTruthy()
-    expect(within(screen.getByTestId('conciliado-e3')).getByText('1 movimiento coincide con el banco')).toBeTruthy()
+    // Los ya revisados no salen como nuevos en «Extractos para conciliar»...
+    expect(screen.queryByTestId('extracto-e2')).toBeNull()
+    // ...pero SÍ están en «Todos los extractos», con su mes, estado y lo que pasó (no la fila repetida de antes).
+    expect(screen.getByTestId('resumen-extractos').textContent).toBe('2 revisados · 1 sin procesar')
+    const fila = screen.getByTestId('ext-c:e2')
+    expect(within(fila).getByRole('heading', { name: 'Nu Colombia · Cuenta · Agosto 2026' })).toBeTruthy()
+    expect(within(fila).getByText('Revisado')).toBeTruthy()
+    expect(within(fila).getByText('Leímos 12 movimientos: 12 ya estaban registrados, 0 nuevos.')).toBeTruthy()
+    expect(within(screen.getByTestId('ext-c:e3')).getByText('Leímos 1 movimiento: 1 ya estaba registrado, 0 nuevos.')).toBeTruthy()
+    expect(screen.queryByText(/coinciden con el banco/)).toBeNull()
   })
 
   it('«Revisar de nuevo» no bloquea: vuelve a abrir la revisión', async () => {
@@ -97,8 +115,7 @@ describe('Extractos ya conciliados', () => {
     api.obtenerReviewExtracto.mockResolvedValue({ ok: true, historial_id: 'h1', cuenta_id: 'bc', banco_detectado: 'Nu', total_movimientos: 0, review: [] })
     montar()
     await screen.findByRole('heading', { level: 3, name: /Extractos para conciliar/ })
-    fireEvent.click(screen.getByRole('button', { name: /Extractos ya revisados \(2\)/ }))
-    fireEvent.click(within(screen.getByTestId('conciliado-e2')).getByRole('button', { name: 'Revisar de nuevo' }))
+    fireEvent.click(within(await screen.findByTestId('ext-c:e2')).getByRole('button', { name: /Revisar de nuevo/ }))
     await waitFor(() => expect(api.conciliarExtractoCorreo).toHaveBeenCalledWith('e2', 'bc'))
     expect(await screen.findByTestId('revision-multiple')).toBeTruthy()
   })

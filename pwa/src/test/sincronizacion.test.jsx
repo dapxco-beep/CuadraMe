@@ -67,6 +67,15 @@ const ESTADO = {
     { id: 'correos_por_revisar', titulo: 'Correos por revisar', detalle: 'Aprueba o descarta.', cantidad: 3, ruta: '/correos' },
   ],
   ultima_sync: null,
+  todos_extractos: {
+    items: [{
+      id: 'c:e3', extracto_id: 'e3', historial_id: 'h9', cuenta_id: null, cuenta: '', banco: 'Nequi', tipo: 'cuenta', mes: '2026-07', mes_etiqueta: 'Julio 2026',
+      titulo: 'Nequi · Cuenta · Julio 2026', estado_vista: 'revisado', estado_etiqueta: 'Revisado', copias: 1, copias_texto: '', mes_deducido: false,
+      mes_por_confirmar: false, puede_fijar_mes: true, motivo_error: null, acciones: ['ver'],
+      resultado: 'Leímos 18 movimientos: 18 ya estaban registrados, 0 nuevos.',
+    }],
+    contadores: { revisado: 1 }, resumen: '1 revisado', sin_adjunto: [],
+  },
 }
 
 const EXTRACTOS = [
@@ -125,9 +134,12 @@ describe('helpers de Sincronización', () => {
   })
 
   it('cada estado de celda trae símbolo y texto (el color nunca va solo)', () => {
-    expect(estadoCelda('conciliado')).toMatchObject({ simbolo: '✓', texto: 'Al día' })
-    expect(estadoCelda('extracto_pendiente')).toMatchObject({ simbolo: '⚠', texto: 'Por revisar' })
-    expect(estadoCelda('falta_clave')).toMatchObject({ simbolo: '🔑' })
+    // Los textos son los mismos que los estados de «Todos los extractos».
+    expect(estadoCelda('conciliado')).toMatchObject({ simbolo: '✓', texto: 'Revisado' })
+    expect(estadoCelda('parcial')).toMatchObject({ simbolo: '⚠', texto: 'Por revisar' })
+    expect(estadoCelda('extracto_pendiente')).toMatchObject({ simbolo: '⚠', texto: 'Sin procesar' })
+    expect(estadoCelda('falta_clave')).toMatchObject({ simbolo: '🔑', texto: 'Necesita clave' })
+    expect(estadoCelda('no_se_pudo_leer')).toMatchObject({ simbolo: '✕', texto: 'No se pudo leer' })
     expect(estadoCelda('sin_extracto')).toMatchObject({ simbolo: '—' })
     expect(estadoCelda('raro').texto).toBe('Sin datos')
   })
@@ -178,12 +190,12 @@ describe('pantalla Sincronización', () => {
   it('la grilla tiene texto accesible por celda y al tocarla abre el detalle del mes', async () => {
     montar()
     await screen.findByText('Tienes 5 cosas por resolver')
-    expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, junio 2026: Al día' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, julio 2026: Falta la clave' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, agosto 2026: Por revisar' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, junio 2026: Revisado' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, julio 2026: Necesita clave' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, agosto 2026: Sin procesar' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Bancolombia Ahorros, septiembre 2026: Sin extracto' }))
     const det = screen.getByRole('region', { name: 'Detalle del mes' })
-    expect(within(det).getByText(/4 movimientos · 0 ya coinciden con el banco · 1 por confirmar/)).toBeTruthy()
+    expect(within(det).getByText(/4 movimientos este mes · ninguno confirmado con un extracto todavía · 1 por confirmar/)).toBeTruthy()
     expect(within(det).getByRole('button', { name: 'Buscar extracto' })).toBeTruthy()
   })
 
@@ -207,10 +219,11 @@ describe('pantalla Sincronización', () => {
     const nuevo = screen.getByTestId('extracto-e1')
     expect(within(nuevo).getByText('Nuevo · listo para revisar')).toBeTruthy()
     expect(within(nuevo).getByText('Cuenta: Bancolombia Ahorros')).toBeTruthy()
-    // Lo ya conciliado no es pendiente: va en una sección plegada 'Extractos ya revisados (N)'.
-    expect(screen.queryByText('Revisado · 18 movimientos coinciden con el banco')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /Extractos ya revisados \(1\)/ }))
-    expect(screen.getByText(/18 movimientos coinciden con el banco/)).toBeTruthy()
+    // Lo ya revisado no es pendiente: no sale entre los pendientes, pero está en «Todos los extractos» con su mes.
+    expect(screen.queryByTestId('extracto-e3')).toBeNull()
+    expect(screen.getByText('Nequi · Cuenta · Julio 2026')).toBeTruthy()
+    expect(screen.getByText('Leímos 18 movimientos: 18 ya estaban registrados, 0 nuevos.')).toBeTruthy()
+    expect(screen.queryByText(/coinciden con el banco/)).toBeNull()
     expect(within(screen.getByTestId('extracto-e4')).getByText('Falta la clave del PDF')).toBeTruthy()
 
     // Sin banco detectado: se dice, y la cuenta es obligatoria.

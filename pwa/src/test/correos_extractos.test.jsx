@@ -14,8 +14,18 @@ const EXTRACTOS = [
   { id: 'e3', banco: 'Nequi', periodo: 'julio 2026', asunto: 'Extracto', archivo: 'c.pdf', estado: 'procesado', cuenta_sugerida_id: null, historial_id: 'h9' },
 ]
 
+
+// Una fila de «Todos los extractos» (lo que manda el servidor), con lo mínimo para estas pruebas.
+const filaVista = (extra) => ({
+  historial_id: null, cuenta_id: null, cuenta: '', copias: 1, copias_texto: '', mes_deducido: false, mes_por_confirmar: false,
+  puede_fijar_mes: true, motivo_error: null, tipo: 'cuenta', acciones: [], ...extra,
+})
 const ESTADO = {
   meses: [], cuentas: [], sin_cuenta: [], ultima_sync: null,
+  todos_extractos: {
+    items: [filaVista({ id: 'c:e3', extracto_id: 'e3', historial_id: 'h9', banco: 'Nequi', mes: '2026-07', mes_etiqueta: 'Julio 2026', titulo: 'Nequi · Cuenta · Julio 2026', estado_vista: 'revisado', estado_etiqueta: 'Revisado', resultado: 'No encontramos movimientos en este extracto.', acciones: ['ver'] })],
+    contadores: { revisado: 1 }, resumen: '1 revisado', sin_adjunto: [],
+  },
   tareas: [
     { id: 'falta_clave', titulo: 'Falta la clave del PDF', detalle: '', cantidad: 1, ruta: '/sincronizacion#clave' },
     { id: 'extractos_por_conciliar', titulo: 'Extractos por conciliar', detalle: '', cantidad: 1, ruta: '/sincronizacion#extractos' },
@@ -78,9 +88,10 @@ describe('Desde tu correo: extractos encontrados', () => {
     expect((await extractosEncontrados()).textContent).toBe('Extractos para conciliar2')
     expect(within(screen.getByTestId('extracto-e1')).getByText('Nuevo · listo para revisar')).toBeTruthy()
     expect(within(screen.getByTestId('extracto-e2')).getByText('Falta la clave del PDF')).toBeTruthy()
-    expect(screen.queryByText(/Nequi/)).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /Extractos ya revisados \(1\)/ }))
-    expect(screen.getByText(/Nequi · julio 2026/)).toBeTruthy()
+    // El revisado (Nequi) no está entre los pendientes; vive en «Todos los extractos», con su mes y qué pasó.
+    expect(screen.queryByTestId('extracto-e3')).toBeNull()
+    expect(within(screen.getByTestId('ext-c:e3')).getByRole('heading', { name: 'Nequi · Cuenta · Julio 2026' })).toBeTruthy()
+    expect(screen.getByText('No encontramos movimientos en este extracto.')).toBeTruthy()
     // El mensaje de privacidad vive en «Conexión de Gmail» (plegada por defecto): se abre para leerlo.
     fireEvent.click(screen.getByTestId('bloque-sinc-conexion').querySelector('h2 button'))
     expect(screen.getByText(/Solo tengo permiso de/)).toBeTruthy()
