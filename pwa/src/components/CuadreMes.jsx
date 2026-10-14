@@ -13,7 +13,7 @@ export default function CuadreMes({ cuentaId, datos = null, className = '' }) {
   useEffect(() => {
     if (datos) return setD(datos)
     let vigente = true
-    api.cuadreCuenta(cuentaId).then((r) => vigente && setD(r)).catch(() => {})
+    Promise.resolve().then(() => api.cuadreCuenta(cuentaId)).then((r) => vigente && setD(r)).catch(() => {})
     return () => {
       vigente = false
     }
@@ -93,7 +93,7 @@ export function TarjetaCuadreBanco({ cuentaId, moneda = 'COP', onCambio }) {
   const [revisando, setRevisando] = useState(false)
   useEffect(() => {
     let vigente = true
-    api.cuadreCuenta(cuentaId).then((r) => vigente && setD(r)).catch(() => {})
+    Promise.resolve().then(() => api.cuadreCuenta(cuentaId)).then((r) => vigente && setD(r)).catch(() => {})
     return () => {
       vigente = false
     }
@@ -135,11 +135,11 @@ export function TarjetaCuadreBanco({ cuentaId, moneda = 'COP', onCambio }) {
       {revisando && (
         <div className="mt-2" data-testid="revisar-cuadre">
           {actual?.historial_id ? (
-            <CuadreExtracto cuentaId={cuentaId} historialId={actual.historial_id} despues onCambio={() => { onCambio?.(); api.cuadreCuenta(cuentaId).then(setD).catch(() => {}) }} />
+            <CuadreExtracto cuentaId={cuentaId} historialId={actual.historial_id} despues onCambio={() => { onCambio?.(); Promise.resolve().then(() => api.cuadreCuenta(cuentaId)).then(setD).catch(() => {}) }} />
           ) : (
             <p className="text-xs text-ink-soft">Para revisar el cuadre, sube el extracto de tu banco desde «Comparar con mi banco».</p>
           )}
-          {diag?.descuadre && <SaldoInicialSinExplicar cuentaId={cuentaId} diag={diag} moneda={moneda} onHecho={() => { onCambio?.(); api.cuadreCuenta(cuentaId).then(setD).catch(() => {}) }} />}
+          {diag?.descuadre && <SaldoInicialSinExplicar cuentaId={cuentaId} diag={diag} moneda={moneda} onHecho={() => { onCambio?.(); Promise.resolve().then(() => api.cuadreCuenta(cuentaId)).then(setD).catch(() => {}) }} />}
         </div>
       )}
       <p className="mt-2 text-[11px] text-ink-soft">{ORIENTACION}</p>
