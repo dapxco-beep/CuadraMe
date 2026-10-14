@@ -300,3 +300,26 @@ def ingresos_gastos(
     out = inf.ingresos_gastos(movs, rango, anterior, meses)
     out["periodo"] = periodo
     return out
+
+
+@router.get("/evolucion")
+def evolucion(
+    agrupar: str = Query("mes", pattern="^(mes|semana)$"),
+    meses: int = Query(6, ge=0, le=36),
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Línea de tiempo de ingresos, gastos y ahorro (ingresos - gastos) por mes o por semana.
+    `meses=0` = todo lo que hay (tope 36). Usa SOLO la regla única (sin traslados ni pagos de tarjeta)
+    y no dibuja antes del punto de partida de la persona."""
+    from app import punto_partida
+
+    hoy = ahora_co()
+    if meses:
+        a, m = inf.sumar_meses(hoy.year, hoy.month, -(meses - 1))
+        ini = inf.inicio_mes(a, m)
+    else:
+        ini = None
+    manana = hoy.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    movs = cargar_movs_efectivos(db, usuario.id, ini - timedelta(days=7) if ini else None, manana)
+    return inf.evolucion(movs, hoy, agrupar, meses, punto_partida.fecha_inicio(db, usuario.id))
