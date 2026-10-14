@@ -10,6 +10,7 @@ import unicodedata
 
 from sqlalchemy.orm import Session
 
+from app.calidad_categorias import origen_tras_edicion  # noqa: F401  (se reexporta para los routers)
 from app.classifier import aplicar_reglas, build_model, classify
 from app.clave_comercio import clave_comercio, es_huella_peligrosa, huella_en_descripcion
 from app.comercios_conocidos import clasificar_por_diccionario
@@ -192,9 +193,9 @@ def aplicar_a_anteriores(
             editables[m.cuenta_id] = bool(c and puede_editar_cuenta(db, usuario_id, c))
         if not editables[m.cuenta_id]:
             continue
+        m.cat_origen = origen_tras_edicion(m.cat_origen, m.categoria, categoria)
         m.categoria = categoria
         m.cat_confirmada = True
-        m.cat_origen = None
         n += 1
     return n
 

@@ -27,6 +27,38 @@ const TEXTO_NIVEL = { ok: 'Holgado', atencion: 'Planea', alto: 'Actúa pronto', 
 
 const fmt = (n) => (n === null || n === undefined ? '—' : Number(n).toLocaleString('es-CO', { maximumFractionDigits: 1 }))
 
+// Calidad de las categorías automáticas de toda la plataforma: solo conteos, nada del contenido de los movimientos.
+function CalidadCategorias({ q }) {
+  if (!q) return null
+  const pct = (x) => (x === null || x === undefined ? 'sin dato' : `${Math.round(x * 100)} %`)
+  return (
+    <section className="mx-5 mt-4" aria-labelledby="cal-titulo" data-testid="calidad-categorias">
+      <h2 id="cal-titulo" className="t-kicker text-ink-soft flex items-center gap-1.5 mb-1">
+        <Icono icono={Activity} tam="sm" /> Calidad de las categorías automáticas
+      </h2>
+      <Tarjeta className="px-4 py-3">
+        <p className="text-sm">
+          Acertadas <b className="tabular-nums">{fmt(q.acertadas)}</b> · corregidas por la persona{' '}
+          <b className="tabular-nums">{fmt(q.corregidas)}</b> · sin revisar <b className="tabular-nums">{fmt(q.pendientes)}</b>
+        </p>
+        <p className="text-xs text-ink-soft mt-1">
+          Exactitud: <b className="text-ink" data-testid="calidad-exactitud">{pct(q.exactitud)}</b>
+        </p>
+        <ul className="divide-y divide-line mt-2">
+          {(q.por_categoria || []).slice(0, 8).map((c) => (
+            <li key={c.categoria} className="py-1.5 flex items-baseline justify-between gap-3 text-xs">
+              <span className="font-medium">{c.categoria}</span>
+              <span className="text-ink-soft tabular-nums">
+                {fmt(c.acertadas)} acertadas · {fmt(c.corregidas)} corregidas · {pct(c.exactitud)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Tarjeta>
+    </section>
+  )
+}
+
 function Capacidad({ c }) {
   const pct = c.pct ?? 0
   const alerta = c.nivel === 'alto' || c.nivel === 'critico'
@@ -185,6 +217,8 @@ export default function SaludNegocio() {
           </ul>
         </Tarjeta>
       </section>
+
+      <CalidadCategorias q={datos.calidad_categorias} />
 
       {admin && <TasasReferenciaAdmin />}
 

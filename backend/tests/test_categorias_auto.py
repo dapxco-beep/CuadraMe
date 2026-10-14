@@ -200,7 +200,7 @@ def test_confirmar_con_un_toque(usuario, cuenta):
 def test_cambiar_categoria_manual_confirma(usuario, cuenta):
     m = _mov(cuenta, "Rappi pedido")
     r = client.put(f"/movimientos/{m['id']}", json={"categoria": "Ocio"}).json()
-    assert r["categoria"] == "Ocio" and r["cat_confirmada"] is True and r["cat_origen"] is None
+    assert r["categoria"] == "Ocio" and r["cat_confirmada"] is True and r["cat_origen"] == "corregida:Comida"  # la app sugirió Comida y la persona la cambió
 
 
 def test_aplicar_a_todos_los_de_este_comercio_crea_regla(usuario, cuenta):

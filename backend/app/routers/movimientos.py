@@ -21,6 +21,7 @@ from app.autocat import (
     datos_auto,
     movimientos_confirmados,
     origen_de,
+    origen_tras_edicion,
     patron_de_comercio,
 )
 from app.classifier import aplicar_reglas, build_model, classify
@@ -239,9 +240,9 @@ def recategorizar_comercio(
     ).first():
         raise HTTPException(status_code=400, detail="Esa categoría no existe en tu lista")
 
+    mov.cat_origen = origen_tras_edicion(mov.cat_origen, mov.categoria, categoria)
     mov.categoria = categoria
     mov.cat_confirmada = True
-    mov.cat_origen = None
     actualizados = 1
     patron = None
     regla_omitida = None
@@ -449,6 +450,7 @@ def editar_movimiento(
         cuenta_nueva = bloquear_cuenta(db, destino.id)
 
     cuenta_actual.saldo -= _delta_de(mov)
+    categoria_previa, origen_previo = mov.categoria, mov.cat_origen
     for campo in ("descripcion", "monto", "tipo", "categoria", "fecha", "notas"):
         if campo in cambios:
             setattr(mov, campo, cambios[campo])
@@ -457,7 +459,7 @@ def editar_movimiento(
     if "categoria" in cambios:
         # El usuario eligió la categoría: deja de ser una suposición de la app.
         mov.cat_confirmada = True
-        mov.cat_origen = None
+        mov.cat_origen = origen_tras_edicion(origen_previo, categoria_previa, mov.categoria)
 
     db.commit()
     db.refresh(mov)
@@ -491,9 +493,9 @@ def recategorizar_masivo(
     for mov in movs:
         if mov.cuenta_id not in cuentas_editables:
             continue
+        mov.cat_origen = origen_tras_edicion(mov.cat_origen, mov.categoria, data.categoria)
         mov.categoria = data.categoria
         mov.cat_confirmada = True
-        mov.cat_origen = None
         actualizados += 1
 
     db.commit()

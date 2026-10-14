@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app import pendientes
 from app.auth import UsuarioActual, get_current_user
-from app.autocat import aplicar_a_anteriores, guardar_regla_aprendida
+from app.autocat import aplicar_a_anteriores, guardar_regla_aprendida, origen_tras_edicion
 from app.clave_comercio import clave_comercio
 from app.compartidos import cuentas_ids_accesibles, puede_editar_cuenta
 from app.database import get_db
@@ -150,7 +150,8 @@ def accion(
     previos = {m.id: _estado(m) for m in movs}
     for m in movs:
         if data.accion == "categoria":
-            m.categoria, m.cat_confirmada, m.cat_origen = categoria, True, None
+            m.cat_origen = origen_tras_edicion(m.cat_origen, m.categoria, categoria)
+            m.categoria, m.cat_confirmada = categoria, True
         elif data.accion == "dejar":
             # Se queda como está: confirmada, y si era «Otros» deja de contar como pendiente.
             m.cat_confirmada = True

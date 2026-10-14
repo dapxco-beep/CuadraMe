@@ -485,6 +485,9 @@ def _tasas_vencidas(db: Session) -> dict:
         return {"dias_limite": 45, "desactualizadas": []}
 
 
+from app.calidad_categorias import panel_calidad  # noqa: E402
+
+
 def armar_panel(db: Session) -> dict:
     m = recopilar(db)
     return {
@@ -495,4 +498,5 @@ def armar_panel(db: Session) -> dict:
         "volumen": {k: m[k] for k in ("movimientos", "correos_procesados", "extractos_procesados", "ia_mes")},
         "tendencia": m["tendencia"],
         "tasas_referencia": _tasas_vencidas(db),
+        "calidad_categorias": panel_calidad(db),
     }

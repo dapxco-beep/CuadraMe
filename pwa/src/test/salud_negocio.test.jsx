@@ -37,6 +37,20 @@ beforeEach(() => {
 const montar = () => render(<MemoryRouter><SaludNegocio /></MemoryRouter>)
 
 describe('Pantalla «Salud del negocio»', () => {
+  it('muestra la calidad de las categorías automáticas solo con conteos', async () => {
+    api.panelNegocio.mockResolvedValue({
+      ...PANEL,
+      calidad_categorias: {
+        acertadas: 80, corregidas: 20, pendientes: 5, exactitud: 0.8,
+        por_categoria: [{ categoria: 'Comida', acertadas: 50, corregidas: 5, pendientes: 1, exactitud: 0.909 }],
+        por_origen: [],
+      },
+    })
+    montar()
+    expect(await screen.findByTestId('calidad-exactitud')).toHaveTextContent('80 %')
+    expect(within(screen.getByTestId('calidad-categorias')).getByText('Comida')).toBeInTheDocument()
+  })
+
   it('muestra usuarios, barras de capacidad con su porcentaje y qué hacer cuando se acerca el límite', async () => {
     api.panelNegocio.mockResolvedValue(PANEL)
     montar()
