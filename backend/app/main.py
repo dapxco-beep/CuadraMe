@@ -179,6 +179,19 @@ if engine.dialect.name == "postgresql":
             ("cuadre_estado", "VARCHAR"), ("cuadre_diferencia", "FLOAT"), ("cuadre_en", "TIMESTAMP"),
         ):
             conn.execute(text(f"ALTER TABLE historial_extractos ADD COLUMN IF NOT EXISTS {_col} {_tipo} NULL"))
+        # Inversiones y bienes en Patrimonio (opcionales; el modelo las declara sin `deferred`, así que
+        # DEBEN existir antes de que alguien abra Patrimonio).
+        for _col, _tipo in (
+            ("arriendo_mensual", "FLOAT"), ("anio", "FLOAT"), ("depreciacion_pct", "FLOAT"),
+            ("deuda_id", "VARCHAR"), ("broker", "VARCHAR"),
+        ):
+            conn.execute(text(f"ALTER TABLE activos_patrimonio ADD COLUMN IF NOT EXISTS {_col} {_tipo} NULL"))
+        # País del perfil (LATAM). Están `deferred` en el modelo, pero se crean igual.
+        for _col, _tipo in (
+            ("pais", "VARCHAR"), ("moneda_base", "VARCHAR"), ("zona_horaria", "VARCHAR"),
+            ("idioma", "VARCHAR"), ("pais_confirmado", "BOOLEAN"),
+        ):
+            conn.execute(text(f"ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS {_col} {_tipo} NULL"))
         # Casi toda consulta filtra por cuenta y ordena/filtra por fecha.
         conn.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_movimientos_cuenta_fecha "
