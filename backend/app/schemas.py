@@ -926,6 +926,7 @@ class ProcesarExtractoResponse(BaseModel):
     periodo_hasta: Optional[str] = None
     parece_extracto: bool = True  # False: el archivo no parece un extracto (carta, factura...); no se importa nada
     motivo_rechazo: Optional[str] = None
+    motivo_error: Optional[str] = None  # código (extractos_vista.MOTIVOS) si el archivo no se pudo leer
     requiere_clave: bool = False  # el PDF está protegido y falta (o es incorrecta) la clave
     # Aviso (no bloquea): ese mes de esa cuenta ya estaba conciliado antes de subir este archivo.
     ya_conciliado: Optional[dict] = None  # {"mes": "2026-09", "cruzados": n}

@@ -93,6 +93,8 @@ if engine.dialect.name == "postgresql":
         ))
         # Metas con sugerencia: fecha del último aporte a mano (supabase/migraciones/metas_sugerencia_bancos.sql).
         # Correo en dos usos independientes (movimientos / extractos); por defecto activos.
+        conn.execute(text("ALTER TABLE historial_extractos ADD COLUMN IF NOT EXISTS motivo_error VARCHAR NULL"))
+        conn.execute(text("ALTER TABLE extractos_correo ADD COLUMN IF NOT EXISTS motivo_error VARCHAR NULL"))
         conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS gmail_leer_movimientos BOOLEAN DEFAULT TRUE"))
         conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS gmail_leer_extractos BOOLEAN DEFAULT TRUE"))
         # Fecha del movimiento leida del texto del correo (supabase/migraciones/correos_fecha_movimiento.sql).

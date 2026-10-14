@@ -346,6 +346,8 @@ class ExtractoCorreo(Base):
     # probado). Nunca guarda la clave. `clave_probada_en` permite saber si la clave se cambió después.
     clave_resultado = Column(String, nullable=True)
     clave_probada_en = Column(DateTime, nullable=True)
+    # Por qué no se pudo leer (ver app/extractos_vista.MOTIVOS): opcional; NULL = sin error o error antiguo.
+    motivo_error = Column(String, nullable=True)
 
 
 class SyncGmail(Base):
@@ -437,6 +439,8 @@ class HistorialExtracto(Base):
     cuadre_estado = Column(String, nullable=True)  # cuadra | diferencia (última vez que se midió)
     cuadre_diferencia = Column(Float, nullable=True)
     cuadre_en = Column(DateTime, nullable=True)
+    # Solo si estado = 'error': por qué no se pudo leer (ver app/extractos_vista.MOTIVOS). Opcional.
+    motivo_error = Column(String, nullable=True)
 
 
 class Consentimiento(Base):
