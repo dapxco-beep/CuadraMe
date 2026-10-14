@@ -455,6 +455,22 @@ export const api = {
   registrarFlujoActivo: (id, monto, fecha, nota = '') =>
     request(`/patrimonio/activos/${id}/flujos`, { method: 'POST', body: { monto, fecha, nota } }),
 
+  inversiones: () => request('/inversiones'),
+  opcionesInversiones: () => request('/inversiones/opciones'),
+  guardarOpcionesInversiones: (data) => request('/inversiones/opciones', { method: 'PUT', body: data }),
+  tickersInversion: (q) => request(`/inversiones/tickers?q=${encodeURIComponent(q)}`),
+  crearBrokerInversion: (data) => request('/inversiones/brokers', { method: 'POST', body: data }),
+  crearPosicionInversion: (data) => request('/inversiones/posiciones', { method: 'POST', body: data }),
+  posicionInversion: (id) => request(`/inversiones/posiciones/${id}`),
+  eliminarPosicionInversion: (id) => request(`/inversiones/posiciones/${id}`, { method: 'DELETE' }),
+  precioManualInversion: (id, precio) =>
+    request(`/inversiones/posiciones/${id}/precio-manual`, { method: 'POST', body: { precio } }),
+  registrarTransaccionInversion: (id, data) =>
+    request(`/inversiones/posiciones/${id}/transacciones`, { method: 'POST', body: data }),
+  eliminarTransaccionInversion: (txId) => request(`/inversiones/transacciones/${txId}`, { method: 'DELETE' }),
+  actualizarPreciosInversiones: () => request('/inversiones/precios/actualizar', { method: 'POST' }),
+  importarInversiones: (data) => request('/inversiones/importar', { method: 'POST', body: data }),
+
   aplicarExtractoTarjeta: (cuentaId, datos) =>
     request(`/tarjetas/${cuentaId}/aplicar-extracto`, { method: 'POST', body: datos }),
   procesarExtracto: (pdfBase64, cuentaId, password = '') =>

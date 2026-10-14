@@ -6,7 +6,7 @@ const RADIO = 40
 
 // Dona de distribución por clase de activo. Los arcos "crecen" al montarse
 // (transición del trazo) salvo que el usuario prefiera menos movimiento.
-export default function DonaDistribucion({ distribucion }) {
+export default function DonaDistribucion({ distribucion, etiquetas = null }) {
   const [listo, setListo] = useState(false)
   useEffect(() => {
     const t = requestAnimationFrame(() => setListo(true))
@@ -41,7 +41,7 @@ export default function DonaDistribucion({ distribucion }) {
         {distribucion.map((d, i) => (
           <li key={d.clase} className="flex items-center gap-2 text-xs">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: arcos[i].color }} />
-            <span className="flex-1 truncate">{CLASES[d.clase]?.label || d.clase}</span>
+            <span className="flex-1 truncate">{etiquetas?.[d.clase] || CLASES[d.clase]?.label || d.clase}</span>
             <span className="text-ink-soft tabular-nums">{formatPct(d.pct, 0).replace('+', '')}</span>
           </li>
         ))}

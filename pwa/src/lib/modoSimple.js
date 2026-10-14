@@ -69,17 +69,19 @@ const seguro = (f) => Promise.resolve().then(f).catch(() => null)
 
 /** Rutas de las funciones que la persona YA usa (tiene datos en ellas): aparecen solas en el menú. */
 export async function detectarFuncionesEnUso(cliente = api) {
-  const [metas, deudas, recurrentes, patrimonio] = await Promise.all([
+  const [metas, deudas, recurrentes, patrimonio, inversiones] = await Promise.all([
     seguro(() => cliente.metas?.()),
     seguro(() => cliente.deudas?.()),
     seguro(() => cliente.recurrentes?.()),
     seguro(() => cliente.patrimonio?.()),
+    seguro(() => cliente.inversiones?.()),
   ])
   const rutas = []
   if (hayAlgo(metas, 'metas')) rutas.push('/metas')
   if (hayAlgo(deudas, 'deudas')) rutas.push('/deudas')
   if (hayAlgo(recurrentes, 'recurrentes')) rutas.push('/recurrentes')
   if (hayAlgo(patrimonio, 'activos')) rutas.push('/patrimonio')
+  if (inversiones?.tiene) rutas.push('/inversiones')
   return rutas
 }
 

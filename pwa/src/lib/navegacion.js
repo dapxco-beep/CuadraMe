@@ -38,6 +38,7 @@ export const GRUPOS = [
     items: [
       { to: '/metas', icon: PiggyBank, label: 'Metas', palabras: 'ahorro objetivo meta' },
       { to: '/patrimonio', icon: Landmark, label: 'Patrimonio', corta: 'Patrim.', palabras: 'inversion activos neto cdt acciones' },
+      { to: '/inversiones', icon: TrendingUp, label: 'Inversiones', corta: 'Invers.', palabras: 'acciones etf fondos broker portafolio ticker trii bolsa cripto rentabilidad' },
       { to: '/cierre-mes', icon: CalendarCheck, label: 'Cierre de mes', palabras: 'balance mes informe' },
       { to: '/resumen', icon: Gift, label: 'Resumen del mes', palabras: 'wrapped diapositivas compartir' },
     ],
@@ -110,6 +111,7 @@ export const EXPLICACION = {
   '/impuestos': 'Cuánto te cobran por el 4x1000 y qué te sirve para la renta.',
   '/metas': 'Guarda plata poco a poco para algo que quieres.',
   '/patrimonio': 'Tu patrimonio: todo lo que tienes menos todo lo que debes.',
+  '/inversiones': 'Tus acciones, fondos o cripto con el precio al día y cuánto vas ganando (opcional).',
   '/cierre-mes': 'Un balance de cómo te fue en el mes.',
   '/resumen': 'Tu mes contado en diapositivas para compartir.',
   '/informe': 'Cuánto entra y cuánto sale, y en qué gastas más.',

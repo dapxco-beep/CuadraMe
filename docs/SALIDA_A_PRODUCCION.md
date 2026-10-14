@@ -149,3 +149,20 @@ Cierra en código la brecha B3 de `docs/salida/GOOGLE_VERIFICACION.md`. **Activa
 - **Simulación (solo admin, 404 al resto):** `GET /avisos/retencion` muestra la configuración vigente y cuántos registros caerían bajo cada plazo activo. Para ver cuántos caerían con 30/365, ponlos en Railway **sin crear el cron**, consulta el endpoint y decide.
 - **Sin SQL:** no hay tablas ni columnas nuevas. Orden sugerido: desplegar con todo en 0, mirar la simulación, activar las variables, crear el cron.
 - La política de privacidad publicada (sección 9) debe mencionar estos plazos antes de activarlos (ver `docs/legal/PENDIENTES_DANIEL.md`).
+
+## 3e. Inversiones (opcional, todo apagado por defecto)
+Módulo construido sobre Patrimonio. Sin claves la app funciona con precios manuales; nada sale a la red.
+
+| Variable (Railway) | Para qué | Por defecto |
+|---|---|---|
+| `TWELVEDATA_API_KEY` | Proveedor principal de precios por ticker (acciones/ETF) | sin clave = no se usa |
+| `ALPHAVANTAGE_API_KEY` | Respaldo de precios | sin clave = no se usa |
+| `COINGECKO_API_KEY` | Cripto (clave demo opcional; funciona sin ella con límites bajos) | opcional |
+| `INVERSIONES_YAHOO_ACTIVO` | `1` activa el endpoint NO oficial de Yahoo (riesgo de términos de uso) | apagado |
+| `INVERSIONES_TTL_MIN` | Minutos de caché de un precio | 15 |
+| `INVERSIONES_TOPE_GLOBAL_DIA` | Máximo de peticiones a proveedores por día (todos los usuarios) | 700 |
+| `INVERSIONES_TOPE_USUARIO_DIA` | Máximo por usuario y día (botón «Actualizar ahora») | 20 |
+
+- **SQL (NO ejecutado):** `backend/supabase/migraciones/inversiones.sql` (idempotente). Tablas nuevas: `brokers_inversion`, `posiciones_inversion`, `transacciones_inversion`, `cotizaciones_inversion`, `consultas_precio`, `pref_inversiones` (create_all las crea solas). Columnas nuevas en `activos_patrimonio`: `arriendo_mensual`, `anio`, `depreciacion_pct`, `deuda_id`, `broker` (estas SÍ necesitan el ALTER).
+- **Crons (agregados a `crear_crons.py`, NO creados):** `POST /inversiones/cron/actualizar-precios` (L-V, cada 30 min 8-17 h) y `POST /inversiones/cron/resumen-semanal` (domingo 18:00, solo quien lo activó). Ambos con `X-Cron-Secret`, idempotentes (caché TTL y marca por semana).
+- Orden sugerido: ejecutar el SQL, desplegar, poner `TWELVEDATA_API_KEY`, probar «Actualizar ahora», recién entonces crear los crons.
