@@ -39,6 +39,7 @@ from app.routers import (
     gastos_compartidos,
     importar,
     informes,
+    traslados,
     impuestos,
     insights,
     metas,
@@ -269,6 +270,7 @@ app.include_router(impuestos.router)
 app.include_router(cierre.router)
 app.include_router(consentimientos.router)
 app.include_router(informes.router)
+app.include_router(traslados.router)
 app.include_router(conexiones.router)
 app.include_router(cuotas_tarjeta.router)
 app.include_router(extracto_tarjeta.router)

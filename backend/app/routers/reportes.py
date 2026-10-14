@@ -1,9 +1,11 @@
 import calendar
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app import informe as inf
+from app.informe_datos import cargar_movs_efectivos
 from app.utiles import ahora_co
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import cuentas_ids_accesibles
@@ -268,3 +270,33 @@ def resumen_wrapped(
         ]
 
     return calcular_wrapped(mes, filas(mes), filas(anterior))
+
+
+@router.get("/ingresos-gastos")
+def ingresos_gastos(
+    periodo: str = Query("este_mes"),
+    desde: str | None = None,
+    hasta: str | None = None,
+    mes: str | None = None,
+    meses: int = Query(6, ge=1, le=24),
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Ingresos vs gastos del periodo (con balance, tasa de ahorro y comparación con el periodo anterior)
+    y la serie de los últimos `meses` meses. Usa SOLO la regla única de app/contabilidad.py: los traslados
+    entre tus cuentas, los pagos de tarjeta y los ajustes de saldo no suman ni restan.
+    Con `desde` y `hasta` (AAAA-MM-DD) el periodo es ese rango."""
+    if desde and hasta:
+        periodo = "rango"
+    try:
+        rango = inf.rango_periodo(periodo, ahora_co(), desde, hasta, mes)
+    except inf.PeriodoInvalido as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    anterior = inf.periodo_anterior(rango)
+    ultimo = rango["hasta"] - timedelta(days=1)
+    a, m = inf.sumar_meses(ultimo.year, ultimo.month, -(meses - 1))
+    ini = min(rango["desde"], anterior["desde"], inf.inicio_mes(a, m))
+    movs = cargar_movs_efectivos(db, usuario.id, ini, rango["hasta"])
+    out = inf.ingresos_gastos(movs, rango, anterior, meses)
+    out["periodo"] = periodo
+    return out

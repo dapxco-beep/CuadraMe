@@ -419,6 +419,64 @@ def clasificar(movs, tipos_cuenta: dict[str, str] | None = None) -> dict[str, di
     return res
 
 
+def notas_con_decision(notas: str | None, decision: str) -> str:
+    """`notas` con la decisión de la persona: 'traslado' deja la marca de «es un traslado entre mis
+    cuentas»; 'real' deja «no es un traslado» (y quita la pista del lector). La otra marca se retira."""
+    partes = [x for x in (notas or "").split(" · ")
+              if x and x not in (MARCA_ES_TRASLADO, MARCA_NO_TRASLADO)]
+    if decision == "real":
+        partes = [x for x in partes if x != MARCA_TRASLADO_PROPIO]
+    partes.append(MARCA_ES_TRASLADO if decision == "traslado" else MARCA_NO_TRASLADO)
+    return " · ".join(partes)
+
+
+def sugerir_traslados(movs, tipos_cuenta: dict[str, str] | None = None) -> list[dict]:
+    """Sugerencias para la herramienta «Revisar posibles traslados» (nada se aplica solo):
+      - 'par': un egreso y un ingreso de igual monto (o con una comisión pequeña) en cuentas distintas,
+        a <= 2 días, que NO traen ninguna pista de traslado y por eso hoy cuentan como gasto e ingreso.
+      - 'posible': un movimiento con pista fuerte (tu nombre, «entre tus cuentas») cuya otra pata aún
+        no se ha importado; hoy es neutral y se pregunta «¿Fue entre tus cuentas?».
+    Lo que la persona ya decidió («No es un traslado») no se vuelve a sugerir.
+    Devuelve [{'tipo', 'ids': [...], 'diferencia': pesos}] (par: [id_egreso, id_ingreso])."""
+    movs = list(movs)
+    tc = tipos_cuenta if tipos_cuenta is not None else {}
+    reglas = getattr(tc, "reglas", None) or {}
+    monedas = getattr(tc, "monedas", None) or {}
+    tol = float(getattr(tc, "tolerancia_comision", TOLERANCIA_COMISION) or 0)
+    cl = clasificar(movs, tc)
+    out = [{"tipo": "posible", "ids": [_g(m, "id")], "diferencia": 0.0}
+           for m in movs if cl[_g(m, "id")]["razon"] == "posible"]
+
+    def libre(m):
+        return cl[_g(m, "id")]["razon"] == "normal" and _decision(m, reglas) != "real" and _sin_costo(m) and _g(m, "fecha")
+
+    gastos = sorted((m for m in movs if _g(m, "tipo") == "expense" and libre(m)), key=lambda m: (_g(m, "fecha"), str(_g(m, "id"))))
+    ingresos = sorted((m for m in movs if _g(m, "tipo") == "income" and libre(m)), key=lambda m: _g(m, "fecha"))
+    tiempos = [_g(m, "fecha").timestamp() for m in ingresos]
+    usados: set = set()
+    for g in gastos:
+        t = _g(g, "fecha").timestamp()
+        mejor = None
+        for i in ingresos[bisect_left(tiempos, t - VENTANA_EMPAREJAR_SEG):bisect_right(tiempos, t + VENTANA_EMPAREJAR_SEG)]:
+            iid = _g(i, "id")
+            if iid in usados or _g(i, "cuenta_id") == _g(g, "cuenta_id"):
+                continue
+            dt = abs(_g(i, "fecha").timestamp() - t)
+            dif = (_g(g, "monto", 0) or 0) - (_g(i, "monto", 0) or 0)
+            if dt > VENTANA_EMPAREJAR_SEG or not (-1 < dif < 1 or 0 < dif <= tol):
+                continue
+            mg, mi = monedas.get(_g(g, "cuenta_id")) or _g(g, "moneda"), monedas.get(_g(i, "cuenta_id")) or _g(i, "moneda")
+            if mg and mi and mg != mi:
+                continue
+            clave = (abs(dif) >= 1, dt, str(iid))
+            if mejor is None or clave < mejor[0]:
+                mejor = (clave, i, dif)
+        if mejor:
+            usados.add(_g(mejor[1], "id"))
+            out.append({"tipo": "par", "ids": [_g(g, "id"), _g(mejor[1], "id")], "diferencia": max(round(mejor[2]), 0)})
+    return out
+
+
 def tipos_efectivos(movs, tipos_cuenta: dict[str, str] | None = None) -> dict[str, str]:
     """{id_movimiento: 'income'|'expense'|'transfer'}: el tipo que cuenta para informes. Ver `clasificar`."""
     return {k: v["tipo"] for k, v in clasificar(movs, tipos_cuenta).items()}

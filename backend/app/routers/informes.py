@@ -131,3 +131,19 @@ def diario(
         "total": sum(d["gasto"] for d in dias),
         "dias": dias,
     }
+
+
+@router.get("/no-se-cuenta")
+def no_se_cuenta(
+    periodo: str = Query("este_mes"),
+    desde: str | None = None,
+    hasta: str | None = None,
+    mes: str | None = None,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Lo que NO se cuenta como ingreso ni gasto en el periodo (traslados entre tus cuentas, pagos de
+    tarjeta, ajustes de saldo, aportes a metas y posibles traslados) para que la persona lo verifique."""
+    rango = _rango(periodo, desde, hasta, mes)
+    movs = _cargar(db, usuario, rango)
+    return inf.no_se_cuenta(movs, rango)
