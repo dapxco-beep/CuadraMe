@@ -144,3 +144,35 @@ def test_si_todo_coincide_igual_informa_pero_sin_cambios():
 def test_sin_datos_no_propone():
     assert proponer_actualizacion(_cuenta(), {}) is None
     assert proponer_actualizacion(_cuenta(), {"tasa_ea": 20.0}) is None  # nada que mostrar en el texto
+
+
+# ── desglose de costos (campos opcionales) ──────────────────────────────────────────
+EXTRACTO_CON_COSTOS = """
+EXTRACTO TARJETA DE CREDITO
+Cupo total $ 5.000.000
+Pago total $ 1.234.500
+Pago minimo $ 98.000
+Fecha limite de pago 25/11/2026
+Fecha de corte 10/11/2026
+Intereses corrientes $ 87.400
+Intereses de mora $ 0
+Cuota de manejo $ 28.900
+Comisiones $ 4.500
+Seguro deudores $ 12.300
+Tasa efectiva anual 27,50% Tasa M.V. 2,04%
+"""
+
+
+def test_lee_el_desglose_de_costos():
+    from app.extracto_tarjeta import leer_datos_tarjeta
+    d = leer_datos_tarjeta(EXTRACTO_CON_COSTOS)
+    assert d["intereses_corrientes"] == 87400 and d["intereses_mora"] == 0
+    assert d["cuota_manejo"] == 28900 and d["comisiones"] == 4500 and d["seguros"] == 12300
+    assert d["tasa_ea"] == 27.5 and d["tasa_mv"] == 2.04
+    assert d["pago_total"] == 1234500  # lo que ya leía sigue igual
+
+
+def test_sin_desglose_no_inventa_nada():
+    from app.extracto_tarjeta import leer_datos_tarjeta
+    d = leer_datos_tarjeta("Cupo total $ 5.000.000\nPago total $ 100.000\nPago minimo $ 10.000")
+    assert not any(k in d for k in ("intereses_corrientes", "intereses_mora", "cuota_manejo", "comisiones", "seguros", "tasa_mv"))
