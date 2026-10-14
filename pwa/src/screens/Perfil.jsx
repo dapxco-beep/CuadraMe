@@ -12,6 +12,7 @@ import AsistentePrimerUso from '../components/AsistentePrimerUso'
 import RecorridoEntrada from '../components/RecorridoEntrada'
 import ClaveAtajo from '../components/ClaveAtajo'
 import PuntoDePartida from '../components/PuntoDePartida'
+import SelectorPais from '../components/SelectorPais'
 import { useClaveAtajo } from '../lib/useClaveAtajo'
 import Cuadri from '../brand/Cuadri'
 import { useMostrarCuadri } from '../lib/cuadri'
@@ -451,6 +452,10 @@ export default function Perfil() {
 
       <GrupoPerfil id="ajustes" titulo="Seguridad y ajustes" apoyo="Bloqueo, punto de partida, registro automático y apariencia" icono={Palette}>
       <SeccionSeguridad />
+
+      <div className="mx-6 mt-8" id="pais">
+        <SelectorPais />
+      </div>
 
       <section className="mx-6 mt-8" id="punto-de-partida" aria-labelledby="titulo-punto-de-partida">
         <div className="flex items-center gap-2 mb-3">
