@@ -364,6 +364,9 @@ export const api = {
   // Cómo le decimos a la persona: GET {nombre, sugerido, confirmado, email}; PUT {nombre} o {omitir: true}.
   nombrePerfil: () => request('/perfil/nombre', { sinCache: true }),
   guardarNombrePerfil: (data) => request('/perfil/nombre', { method: 'PUT', body: data }),
+  // País, moneda e idioma: GET {pais, confirmado, moneda_base, config}; PUT {pais}.
+  paisPerfil: () => request('/perfil/pais', { sinCache: true }),
+  guardarPaisPerfil: (data) => request('/perfil/pais', { method: 'PUT', body: data }),
   recordatorioDiario: () => request('/perfil/recordatorio-diario'),
   actualizarRecordatorioDiario: (activo) =>
     request('/perfil/recordatorio-diario', { method: 'PUT', body: { activo } }),

@@ -317,8 +317,12 @@ def cron_avisar_renta(db: Session = Depends(get_db), x_cron_secret: str = Header
     hito = hito_aviso(plazo["dias_restantes"])
     uids = [u for (u,) in db.query(PushSubscription.usuario_id).distinct().all()]
     corrida = Corrida(db)
+    from app import paises
+
     for uid in uids:
         with corrida.aislar(uid):
+            if not paises.tiene_funcion(paises.pais_de_usuario(db, uid), "renta_dian"):
+                continue  # la renta DIAN solo aplica a Colombia
             if not reclamar_marca(db, uid, f"{CLAVE_AVISO_RENTA}:{anio}", str(hito)):
                 continue
             try:

@@ -1,31 +1,52 @@
+import { formatoActual } from './pais'
+
 const COP = new Intl.NumberFormat('es-CO', {
   style: 'currency',
   currency: 'COP',
   maximumFractionDigits: 0,
 })
 
+// «Pesos colombianos». Los totales del backend todavía se suman en COP (ver docs/LATAM_EXPANSION.md):
+// fuera de Colombia se muestra con el código («COP 1.234») para no hacerlos pasar por pesos locales.
+const COP_CODIGO = new Map()
 export function formatCOP(value) {
-  return COP.format(value)
+  const { locale } = formatoActual()
+  if (locale === 'es-CO') return COP.format(value)
+  if (!COP_CODIGO.has(locale)) {
+    COP_CODIGO.set(locale, new Intl.NumberFormat(locale, { style: 'currency', currency: 'COP', currencyDisplay: 'code', maximumFractionDigits: 0 }))
+  }
+  return COP_CODIGO.get(locale).format(value)
 }
 
 const formateadores = new Map()
 
 // Formatea según la moneda de la cuenta (COP, USD, EUR...). Las cuentas en
 // dólares mostraban el saldo con formato de pesos; esto respeta la moneda real.
+// Los separadores y el símbolo siguen al país de la persona (es-MX, es-CL...) sin cambiar
+// los montos de quien está en Colombia. Decimales: los de la moneda (COP/CLP sin, el resto 2).
+const SIN_DECIMALES = new Set(['COP', 'CLP', 'CRC', 'PYG', 'JPY'])
+
 export function formatMoneda(value, moneda = 'COP') {
-  if (!moneda || moneda === 'COP') return COP.format(value)
-  if (!formateadores.has(moneda)) {
+  const { locale } = formatoActual()
+  if ((!moneda || moneda === 'COP') && locale === 'es-CO') return COP.format(value)
+  const mon = moneda || 'COP'
+  const clave = `${locale}|${mon}`
+  if (!formateadores.has(clave)) {
     try {
       formateadores.set(
-        moneda,
-        new Intl.NumberFormat('es-CO', { style: 'currency', currency: moneda, maximumFractionDigits: 2 })
+        clave,
+        new Intl.NumberFormat(locale, {
+          style: 'currency',
+          currency: mon,
+          maximumFractionDigits: SIN_DECIMALES.has(mon) ? 0 : 2,
+        })
       )
     } catch {
       // código de moneda inválido: se cae a pesos en vez de romper la pantalla
-      formateadores.set(moneda, COP)
+      formateadores.set(clave, COP)
     }
   }
-  return formateadores.get(moneda).format(value)
+  return formateadores.get(clave).format(value)
 }
 
 // Un solo formato para porcentajes en toda la app: coma decimal y espacio antes del %.

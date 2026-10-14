@@ -117,8 +117,18 @@ def _sin_acentos(texto: str) -> str:
 
 # ── Consultas de búsqueda ───────────────────────────────────────────
 
-def _grupo_remitentes() -> str:
-    return " OR ".join(sorted(DOMINIOS_BANCOS))
+def dominios_de_pais(pais: str | None = "CO") -> dict[str, str]:
+    """Remitentes de un país. CO (por defecto, comportamiento de siempre) usa DOMINIOS_BANCOS;
+    los demás salen del registro app/paises.py."""
+    from app import paises
+
+    if (pais or "CO").upper() == "CO":
+        return DOMINIOS_BANCOS
+    return paises.dominios_del_pais(pais)
+
+
+def _grupo_remitentes(pais: str | None = "CO") -> str:
+    return " OR ".join(sorted(dominios_de_pais(pais)))
 
 
 def _ventana(dias: int, desde: datetime | None) -> str:
@@ -127,16 +137,16 @@ def _ventana(dias: int, desde: datetime | None) -> str:
     return f"after:{desde:%Y/%m/%d}" if desde else f"newer_than:{dias}d"
 
 
-def construir_query_extractos(dias: int = 180, desde: datetime | None = None) -> str:
+def construir_query_extractos(dias: int = 180, desde: datetime | None = None, pais: str | None = "CO") -> str:
     palabras = " OR ".join(f'"{p}"' if " " in p else p for p in PALABRAS_EXTRACTO)
     return (
         f"has:attachment filename:pdf {_ventana(dias, desde)} "
-        f"(({palabras}) OR from:({_grupo_remitentes()}))"
+        f"(({palabras}) OR from:({_grupo_remitentes(pais)}))"
     )
 
 
-def construir_query_notificaciones(dias: int = 14, desde: datetime | None = None) -> str:
-    return f"from:({_grupo_remitentes()}) {_ventana(dias, desde)} -has:attachment"
+def construir_query_notificaciones(dias: int = 14, desde: datetime | None = None, pais: str | None = "CO") -> str:
+    return f"from:({_grupo_remitentes(pais)}) {_ventana(dias, desde)} -has:attachment"
 
 
 # ── Remitente / clasificación de correos ────────────────────────────
@@ -151,6 +161,13 @@ def banco_por_remitente(remitente: str) -> str | None:
     if not dominio:
         return None
     for base, nombre in DOMINIOS_BANCOS.items():
+        if dominio == base or dominio.endswith("." + base):
+            return nombre
+    # Otros países (remitentes sin probar con correos reales): solo se reconoce el banco;
+    # la consulta a Gmail pide los de CO salvo que se pase `pais`.
+    from app import paises
+
+    for base, nombre in paises.todos_los_dominios().items():
         if dominio == base or dominio.endswith("." + base):
             return nombre
     return None

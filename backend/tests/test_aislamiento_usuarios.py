@@ -447,6 +447,7 @@ SIN_ID_DE_RECURSO = {
     "/correos/clave-pdf", "/perfil/punto-de-partida", "/facturas/escanear", "/impuestos/ajustes",
     "/insights/preguntar", "/movimientos/clasificar", "/movimientos/rapido-prueba", "/pagos/checkout",
     "/patrimonio/snapshot", "/patrimonio/activos", "/perfil/api-key/regenerar", "/perfil/recordatorio-diario",
+    "/perfil/pais",  # PUT: solo el país del propio usuario (el catálogo y el GET quedan en LISTAS)
     "/perfil/nombre", "/perfil/confianza-autoimport", "/perfil/autoimportar-extractos", "/perfil/eliminar-cuenta",
     "/planificacion/config", "/planificacion/distribuir-ingreso", "/planificacion/plan-meta", "/push/suscribir",
     "/push/desuscribir", "/push/probar", "/reglas-categoria/aprender", "/reglas-categoria", "/categorias",

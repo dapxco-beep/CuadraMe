@@ -54,6 +54,13 @@ class Perfil(Base):
     # Cuándo se creó el perfil (= primer uso): alimenta la tendencia de usuarios de «Salud del negocio».
     # Los perfiles anteriores quedan en NULL y se estiman con su primer movimiento.
     creado_en = Column(DateTime, default=datetime.utcnow, nullable=True)
+    # País del usuario (ISO: CO, MX, CL, PE...). `deferred`: la app arranca aunque las columnas aún
+    # no existan en la base (supabase/migraciones/perfil_pais.sql). NULL = perfil anterior -> CO.
+    pais = deferred(Column(String, nullable=True))
+    moneda_base = deferred(Column(String, nullable=True))  # moneda en que se muestran informes y patrimonio
+    zona_horaria = deferred(Column(String, nullable=True))
+    idioma = deferred(Column(String, nullable=True))  # es-CO, es-MX, es-AR...
+    pais_confirmado = deferred(Column(Boolean, nullable=True))  # la persona lo eligió/confirmó (no solo sugerido)
 
 
 class Cuenta(Base):
