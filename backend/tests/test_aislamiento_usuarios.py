@@ -219,7 +219,8 @@ def test_lecturas_de_a_si_ven_sus_datos():
     _sembrar()
     como(A)
     for ruta in ("/cuentas", "/movimientos", "/metas", "/gastos-compartidos/contactos", "/patrimonio/activos",
-                 "/correos/lista", "/correos/extractos", "/conciliacion/historial", "/reglas-categoria"):
+                 "/correos/lista", "/correos/extractos", "/conciliacion/historial", "/reglas-categoria",
+                 "/sincronizacion/extractos"):  # «Todos los extractos»: la lista completa de A
         assert MARCA.lower() in client.get(ruta).text.lower(), ruta
 
 
@@ -322,6 +323,9 @@ ATAQUES = [
     ("POST", "/duplicados/no-es-duplicado", {"movimiento_ids": ["{mov}", "{mov2}"]}),
     ("POST", "/correos/extractos/{extracto}/conciliar", {"cuenta_id": "{cuenta}"}),
     ("POST", "/correos/extractos/{extracto}/descartar", None),
+    # «Todos los extractos»: B no reintenta ni fija el mes de un extracto de A
+    ("POST", "/correos/extractos/{extracto}/reintentar", None),
+    ("PUT", "/sincronizacion/extractos/{extracto}/mes", {"mes": "2026-07"}),
     # probar la clave del PDF ahora: B no puede probar ni leer el resultado de un extracto de A
     ("POST", "/correos/clave-pdf/probar", {"extracto_id": "{extracto}"}),
     # punto de partida: B no puede fijar saldos de cuentas de A ni ajustarlas
