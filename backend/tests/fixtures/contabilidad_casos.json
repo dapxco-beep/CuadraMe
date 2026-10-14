@@ -1,0 +1,1623 @@
+{
+ "casos": [
+  {
+   "nombre": "Par Nequi -> Nu mismo dia con pistas es neutral",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 500000,
+     "descripcion": "Enviaste a Ana Lopez",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 500000,
+     "descripcion": "Recibiste de Ana Lopez",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer",
+    "i": "transfer"
+   }
+  },
+  {
+   "nombre": "Transferencia a un tercero sin pareja es gasto",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 15000,
+     "descripcion": "Para PEPITO PEREZ",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "expense"
+   }
+  },
+  {
+   "nombre": "Mismo monto sin ninguna pista no se empareja",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 15000,
+     "descripcion": "COMPRA TIENDA",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 15000,
+     "descripcion": "Venta de libro",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "expense",
+    "i": "income"
+   }
+  },
+  {
+   "nombre": "Dos pares identicos se emparejan 1 a 1 y el tercero sobra",
+   "movs": [
+    {
+     "id": "e1",
+     "tipo": "expense",
+     "monto": 20000,
+     "descripcion": "Enviaste a Ana",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "e2",
+     "tipo": "expense",
+     "monto": 20000,
+     "descripcion": "Enviaste a Ana",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "e3",
+     "tipo": "expense",
+     "monto": 20000,
+     "descripcion": "Enviaste a Ana",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i1",
+     "tipo": "income",
+     "monto": 20000,
+     "descripcion": "Recibiste de Ana",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i2",
+     "tipo": "income",
+     "monto": 20000,
+     "descripcion": "Recibiste de Ana",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e1": "transfer",
+    "e2": "transfer",
+    "e3": "expense",
+    "i1": "transfer",
+    "i2": "transfer"
+   }
+  },
+  {
+   "nombre": "Monedas distintas no se emparejan",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 100,
+     "descripcion": "Transferencia entre cuentas",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 100,
+     "descripcion": "Transferencia entre cuentas",
+     "cuenta_id": "D",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "expense",
+    "i": "income"
+   }
+  },
+  {
+   "nombre": "Traslado con comision pequena y pistas fuertes",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 501500,
+     "descripcion": "Transferencia a mi cuenta Nequi",
+     "cuenta_id": "B",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 500000,
+     "descripcion": "Recibiste de tu cuenta Bancolombia",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer",
+    "i": "transfer"
+   }
+  },
+  {
+   "nombre": "Diferencia sin pistas fuertes no se toma por comision",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 501500,
+     "descripcion": "Envio a Ana",
+     "cuenta_id": "B",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 500000,
+     "descripcion": "Recibiste de Ana",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "expense",
+    "i": "income"
+   }
+  },
+  {
+   "nombre": "Diferencia mayor a la tolerancia no es par (cada pata queda como posible traslado)",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 505000,
+     "descripcion": "Transferencia a mi cuenta Nequi",
+     "cuenta_id": "B",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 500000,
+     "descripcion": "Recibiste de tu cuenta Bancolombia",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer",
+    "i": "transfer"
+   }
+  },
+  {
+   "nombre": "Cruza la medianoche (23:50 y 00:10)",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 80000,
+     "descripcion": "Enviaste a Daniel Parrado",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T23:50:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 80000,
+     "descripcion": "Recibiste de Daniel Parrado",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T00:10:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [
+    "Daniel Alfonso Parrado Cardenas"
+   ],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer",
+    "i": "transfer"
+   }
+  },
+  {
+   "nombre": "Cruza el fin de mes",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 300000,
+     "descripcion": "Traslado Nu -> Nequi",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-09-30T22:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 300000,
+     "descripcion": "Traslado Nu -> Nequi",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-01T09:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer",
+    "i": "transfer"
+   }
+  },
+  {
+   "nombre": "Entre dos cuentas del mismo banco",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 120000,
+     "descripcion": "Traslado a mi cuenta de ahorros",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 120000,
+     "descripcion": "Traslado de tu cuenta",
+     "cuenta_id": "B",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer",
+    "i": "transfer"
+   }
+  },
+  {
+   "nombre": "Fuera de la ventana de 2 dias no se empareja",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 120000,
+     "descripcion": "Enviaste a Ana",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-01T10:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 120000,
+     "descripcion": "Recibiste de Ana",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T10:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "expense",
+    "i": "income"
+   }
+  },
+  {
+   "nombre": "Pata faltante con tu nombre es posible traslado (neutral)",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Enviaste a Daniel Parrado",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [
+    "Daniel Alfonso Parrado Cardenas"
+   ],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer"
+   }
+  },
+  {
+   "nombre": "Solo el primer nombre no basta para decir posible traslado",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Enviaste a Daniel Gomez",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [
+    "Daniel Alfonso Parrado Cardenas"
+   ],
+   "reglas": {},
+   "esperado": {
+    "e": "expense"
+   }
+  },
+  {
+   "nombre": "Pata faltante con Cajita es posible traslado",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 90000,
+     "descripcion": "Movimiento a Cajita",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer"
+   }
+  },
+  {
+   "nombre": "Recarga de Nequi desde el banco es posible traslado; recarga de celular no",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 50000,
+     "descripcion": "Recarga Nequi",
+     "cuenta_id": "B",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "b",
+     "tipo": "expense",
+     "monto": 10000,
+     "descripcion": "Recarga Claro celular",
+     "cuenta_id": "B",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer",
+    "b": "expense"
+   }
+  },
+  {
+   "nombre": "Decision de la persona: es un traslado",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 70000,
+     "descripcion": "Pago a Maria Fernanda Rojas",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": "es_traslado_propio"
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer"
+   }
+  },
+  {
+   "nombre": "Decision de la persona: no es un traslado rompe el par",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 500000,
+     "descripcion": "Enviaste a Ana Lopez",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": "no_es_traslado"
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 500000,
+     "descripcion": "Recibiste de Ana Lopez",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "expense",
+    "i": "income"
+   }
+  },
+  {
+   "nombre": "La otra pata de un traslado confirmado se empareja sola",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 66000,
+     "descripcion": "Pago a Maria Fernanda Rojas",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": "es_traslado_propio"
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 66000,
+     "descripcion": "Abono de la cuenta",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer",
+    "i": "transfer"
+   }
+  },
+  {
+   "nombre": "Regla recordada: traslado",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 40000,
+     "descripcion": "Pago a Maria Fernanda Rojas 123",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {
+    "maria fernanda rojas": "traslado"
+   },
+   "esperado": {
+    "e": "transfer"
+   }
+  },
+  {
+   "nombre": "Regla recordada: no es traslado",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 500000,
+     "descripcion": "Enviaste a Ana Lopez",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 500000,
+     "descripcion": "Recibiste de Ana Lopez",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {
+    "ana lopez": "real"
+   },
+   "esperado": {
+    "e": "expense",
+    "i": "income"
+   }
+  },
+  {
+   "nombre": "Pago de tarjeta desde la cuenta es neutral",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 900000,
+     "descripcion": "Pago tarjeta de credito",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer"
+   }
+  },
+  {
+   "nombre": "Pago Nu Tarjeta desde el debito y su abono en la tarjeta",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 400000,
+     "descripcion": "Pago Nu Tarjeta",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 400000,
+     "descripcion": "Abono recibido",
+     "cuenta_id": "T",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer",
+    "i": "transfer"
+   }
+  },
+  {
+   "nombre": "Compra con tarjeta NO es pago de tarjeta",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 40000,
+     "descripcion": "Pago con tarjeta en Exito",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "expense"
+   }
+  },
+  {
+   "nombre": "Ajuste de saldo y aporte a meta son neutrales",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "income",
+     "monto": 1000,
+     "descripcion": "Ajuste",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "ajuste_saldo",
+     "notas": ""
+    },
+    {
+     "id": "b",
+     "tipo": "expense",
+     "monto": 5000,
+     "descripcion": "Aporte",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "aporte_meta",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer",
+    "b": "transfer"
+   }
+  },
+  {
+   "nombre": "Traslado creado en la app es neutral",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "transfer",
+     "monto": 5000,
+     "descripcion": "Traslado",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "transferencia_interna",
+     "notas": "x:out"
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Categoria Transferencias (plural, un tercero) no es neutral; Transferencia (singular) si",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 33000,
+     "descripcion": "Pago a Pedro",
+     "cuenta_id": "N",
+     "categoria": "Transferencias",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "b",
+     "tipo": "expense",
+     "monto": 34000,
+     "descripcion": "Pago a Luis",
+     "cuenta_id": "N",
+     "categoria": "Transferencia",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "expense",
+    "b": "transfer"
+   }
+  },
+  {
+   "nombre": "Transferencia categorizada pero con no_es_traslado cuenta como gasto",
+   "movs": [
+    {
+     "id": "b",
+     "tipo": "expense",
+     "monto": 34000,
+     "descripcion": "Pago a Luis",
+     "cuenta_id": "N",
+     "categoria": "Transferencia",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": "no_es_traslado"
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "b": "expense"
+   }
+  },
+  {
+   "nombre": "Intereses y comisiones jamas se emparejan como traslado",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 12000,
+     "descripcion": "Comision transferencia",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 12000,
+     "descripcion": "Intereses ganados cajita",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "expense",
+    "i": "income"
+   }
+  },
+  {
+   "nombre": "Un tipo guardado transfer sin direccion es neutral",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "transfer",
+     "monto": 5000,
+     "descripcion": "Heredado",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Mismo monto en la misma cuenta no es traslado",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 20000,
+     "descripcion": "Enviaste a Ana",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 20000,
+     "descripcion": "Recibiste de Ana",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "expense",
+    "i": "income"
+   }
+  }
+ ]
+}

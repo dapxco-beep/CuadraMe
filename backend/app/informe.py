@@ -365,7 +365,7 @@ def no_se_cuenta(movs: list[dict], rango: dict, limite: int = 300) -> dict:
         "truncado": len(filas) > limite,
         "movimientos": [
             {"id": m["id"], "fecha": m["fecha"].isoformat(), "descripcion": m["descripcion"], "monto": round(m["monto"]),
-             "cuenta_id": m["cuenta_id"], "motivo": ETIQUETAS_RAZON.get(m.get("razon"), "Otro"), "razon": m.get("razon"),
+             "cuenta_id": m.get("cuenta_id"), "motivo": ETIQUETAS_RAZON.get(m.get("razon"), "Otro"), "razon": m.get("razon"),
              "par": m.get("par")}
             for m in filas[:limite]
         ],

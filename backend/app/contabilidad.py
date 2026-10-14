@@ -386,7 +386,7 @@ def clasificar(movs, tipos_cuenta: dict[str, str] | None = None) -> dict[str, di
                 emparejar(g, mejor[1], "par")
 
         # Pasada 2: con una comisión pequeña de diferencia (sale un poco más de lo que entra);
-        # exige pistas fuertes porque el monto ya no es idéntico.
+        # exige pistas fuertes (suma >= 3) porque el monto ya no es idéntico.
         if tol > 0:
             libres_i = sorted((i for i in pi if _g(i, "id") not in usados), key=lambda x: _g(x, "fecha"))
             tiempos = [_g(x, "fecha").timestamp() for x in libres_i]
@@ -403,7 +403,7 @@ def clasificar(movs, tipos_cuenta: dict[str, str] | None = None) -> dict[str, di
                     mg, mi = moneda(g), moneda(i)
                     if mg and mi and mg != mi:
                         continue
-                    if fuerza[_g(g, "id")] + fuerza[iid] < 2:
+                    if fuerza[_g(g, "id")] + fuerza[iid] < 3:
                         continue
                     clave = (dif, abs(_g(i, "fecha").timestamp() - t), str(iid))
                     if mejor is None or clave < mejor[0]:
