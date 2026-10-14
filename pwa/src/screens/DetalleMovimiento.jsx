@@ -17,8 +17,6 @@ import InsigniaCanales from '../components/InsigniaCanales'
 import { parchearEnCaches, quitarDeCaches } from '../lib/useEstadoLista'
 import InputMonto from '../components/InputMonto'
 import {
-  cambiosEsReal,
-  cambiosMarcarTraslado,
   candidatosContraparte,
   esPosibleTraslado,
   esTrasladoConfirmado,
@@ -62,10 +60,13 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
   const [trasladando, setTrasladando] = useState(false)
 
   // Guarda un cambio de traslado (categoría neutral / marca de "real") y refresca lista y detalle.
-  async function aplicarTraslado(cambios, mensaje) {
+  // `decision`: 'traslado' («Es un traslado entre mis cuentas») o 'real» («No es un traslado»). Se recuerda por
+  // regla (huella de la descripción) y vale en TODOS los cálculos del servidor.
+  async function aplicarTraslado(decision, mensaje) {
     setTrasladando(true)
     try {
-      const actualizado = await api.editarMovimiento(id, cambios)
+      await api.decidirTraslado({ ids: [id], decision, recordar: true })
+      const actualizado = await api.movimiento(id)
       setMovimiento(actualizado)
       parchearEnCaches(actualizado)
       onCambio?.(actualizado)
@@ -102,8 +103,8 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
   async function vincular(otro) {
     setTrasladando(true)
     try {
-      const propio = await api.editarMovimiento(id, cambiosMarcarTraslado(movimiento))
-      const ajeno = await api.editarMovimiento(otro.id, cambiosMarcarTraslado(otro))
+      await api.decidirTraslado({ ids: [id, otro.id], decision: 'traslado', recordar: false })
+      const [propio, ajeno] = await Promise.all([api.movimiento(id), api.movimiento(otro.id)])
       setMovimiento(propio)
       parchearEnCaches(propio)
       parchearEnCaches(ajeno)
@@ -403,36 +404,36 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                   <button
                     onClick={() =>
                       aplicarTraslado(
-                        cambiosEsReal(movimiento),
-                        direccion === 'income' ? 'Listo: cuenta como ingreso real' : 'Listo: cuenta como gasto real'
+                        'real',
+                        direccion === 'income' ? 'Listo: cuenta como ingreso' : 'Listo: cuenta como gasto'
                       )
                     }
                     disabled={trasladando}
                     className="rounded-xl border border-line py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
                   >
-                    {direccion === 'income' ? 'Es un ingreso real' : 'Es un gasto real'}
+                    No es un traslado
                   </button>
                 ) : (
                   <>
                     <button
-                      onClick={() => aplicarTraslado(cambiosMarcarTraslado(movimiento), 'Listo: es plata entre tus cuentas, no cuenta como gasto')}
+                      onClick={() => aplicarTraslado('traslado', 'Listo: es un traslado entre tus cuentas, no cuenta como ingreso ni gasto')}
                       disabled={trasladando}
                       className="rounded-xl bg-accent text-paper-raised py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
                     >
-                      Es plata que pasé entre mis cuentas
+                      Es un traslado entre mis cuentas
                     </button>
                     {esPosibleTraslado(movimiento) && (
                       <button
                         onClick={() =>
                           aplicarTraslado(
-                            cambiosEsReal(movimiento),
-                            direccion === 'income' ? 'Listo: cuenta como ingreso real' : 'Listo: cuenta como gasto real'
+                            'real',
+                            direccion === 'income' ? 'Listo: cuenta como ingreso' : 'Listo: cuenta como gasto'
                           )
                         }
                         disabled={trasladando}
                         className="rounded-xl border border-line py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
                       >
-                        {direccion === 'income' ? 'Es un ingreso real' : 'Es un gasto real'}
+                        No es un traslado
                       </button>
                     )}
                   </>
