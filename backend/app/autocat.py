@@ -85,7 +85,11 @@ def movimientos_confirmados(db: Session, usuario_id: str) -> list[dict]:
         )
         .all()
     )
-    return [{"descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo} for m in movs]
+    return [
+        {"descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo,
+         "monto": m.monto, "fecha": m.fecha.isoformat() if m.fecha else ""}
+        for m in movs
+    ]
 
 
 # Un parecido aprendido por debajo de esta confianza cede ante una marca conocida del diccionario.
@@ -154,7 +158,11 @@ def decidir_categoria(
                      "confianza": s["confianza"], "fuente": "senales", "razon": s["razon"]}
     if not r:
         return None
-    return {**r, "origen": origen_de(r.get("fuente")), "tentativa": r.get("confianza", 1) < mu.UMBRAL_PROPUESTA}
+    tentativa = r.get("confianza", 1) < mu.UMBRAL_PROPUESTA
+    origen = origen_de(r.get("fuente"))
+    if tentativa and r.get("fuente") in ("historial", "senales"):
+        origen = "sugerida"  # poca certeza: queda en «por categorizar» (pendientes.py) y no cuenta como segura
+    return {**r, "origen": origen, "tentativa": tentativa}
 
 
 class ClasificadorUsuario:
@@ -173,12 +181,24 @@ class ClasificadorUsuario:
             db.query(ReglaCategoria).filter(ReglaCategoria.usuario_id == usuario_id)
             .order_by(ReglaCategoria.prioridad.desc()).all()
         )
-        self.modelo = build_model(movimientos_confirmados(db, usuario_id))
+        confirmados = movimientos_confirmados(db, usuario_id)
+        self.modelo = build_model(confirmados)
+        # Memoria y señales del PROPIO usuario (nunca de otros): beneficiarios/comercios que ya confirmó.
+        memoria = mu.construir_memoria(confirmados)
+        self.historial = {"memoria": memoria, "senales": mu.construir_senales(confirmados, memoria)}
         self.activas = _activas_de(db, usuario_id)
 
-    def clasificar(self, descripcion: str, texto_extra: str = "") -> dict | None:
-        """dict con categoria, tipo, confianza, fuente, origen, razon; None si no se reconoce."""
-        return decidir_categoria(descripcion, self.reglas, self.modelo, self.activas, texto_extra)
+    def clasificar(self, descripcion: str, texto_extra: str = "", contexto: dict | None = None) -> dict | None:
+        """dict con categoria, tipo, confianza, fuente, origen, razon; None si no se reconoce.
+        `contexto` (opcional): {monto, fecha, tipo, cuenta_tipo} para las señales de monto/día."""
+        return decidir_categoria(descripcion, self.reglas, self.modelo, self.activas, texto_extra,
+                                 historial=self.historial, contexto=contexto)
+
+    def opciones_ambiguas(self, descripcion: str) -> list[str]:
+        """Si el usuario ha usado dos categorías en pugna para este beneficiario/comercio, esas dos
+        (para ofrecerlas como opciones rápidas); si no, []."""
+        h = mu.consultar_memoria(descripcion, self.historial["memoria"])
+        return [c for c, _ in h["opciones"]] if h and h["estado"] == "ambiguo" else []
 
     def detalle(self, descripcion: str) -> tuple[str, str | None]:
         r = self.clasificar(descripcion)

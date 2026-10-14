@@ -26,7 +26,7 @@ from collections import Counter, defaultdict
 from app.clave_comercio import _limpiar, _sin_tildes, es_transferencia_entre_personas
 
 # Confianzas de la memoria (calibradas con la evaluación «dejar uno fuera», ver docs/MODELO_CATEGORIAS.md).
-CONF_UNA_VEZ = 0.62
+CONF_UNA_VEZ = 0.75
 CONF_CONCORDANTE_BASE = 0.80
 CONF_CONCORDANTE_MAX = 0.95
 # La categoría líder debe tener al menos el doble de confirmaciones que la segunda; si no, es ambiguo.
@@ -35,9 +35,9 @@ RAZON_DOMINANCIA = 2.0
 # Umbral de operación: por debajo, la categoría es «tentativa» y no se presenta como propuesta firme.
 UMBRAL_PROPUESTA = 0.80
 # Umbral para que el modelo de señales proponga algo por sí solo.
-UMBRAL_SENALES = 0.70
+UMBRAL_SENALES = 0.85
 # Temperatura del naive Bayes (las señales están correlacionadas: se enfría para no sobreconfiar).
-TEMPERATURA = 3.0
+TEMPERATURA = 2.0
 MIN_HISTORIAL_SENALES = 20
 
 PASARELAS = ("pse", "dlo", "dlocal", "bold", "nequi", "daviplata", "bre", "qr", "payu", "mercpago",
@@ -142,6 +142,7 @@ def rasgos(descripcion: str, contexto: dict | None, recurrente: bool = False) ->
     if ctx.get("monto") is not None:
         f.append("monto:" + _bucket_monto(ctx["monto"]))
         f.append("red:" + _redondez(ctx["monto"]))
+        f.append(f"exacto:{int(round(abs(ctx['monto'])))}")  # el mismo valor exacto (cuota, suscripción, arriendo)
     d = _dia(ctx.get("fecha"))
     if d:
         f.append("dia:" + d)

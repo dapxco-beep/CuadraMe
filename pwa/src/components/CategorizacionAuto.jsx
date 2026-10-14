@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Check, ChevronRight, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCategorias } from '../lib/CategoriasContext'
-import { claveComercio, huellaPeligrosa, patronDeComercio, RAZON_AUTO } from '../lib/comercio'
+import { claveComercio, esTransferenciaAPersona, huellaPeligrosa, patronDeComercio, RAZON_AUTO } from '../lib/comercio'
 import Hoja from './Hoja'
 
 /** Insignia discreta que dice que la app puso la categoría sola, y por qué. */
@@ -84,6 +84,27 @@ export function HojaCambiarCategoria({ movimiento, onClose, onHecho }) {
         </button>
       </div>
       <p className="text-xs text-ink-soft mb-4 truncate">{movimiento.descripcion}</p>
+
+      {esPersona && (
+        <div className="mb-4" role="group" aria-label="¿Qué fue?">
+          <p className="text-sm font-medium mb-2">¿Qué fue? <span className="text-ink-soft font-normal">El nombre no lo dice.</span></p>
+          <div className="flex flex-wrap gap-2">
+            {RAPIDAS_PERSONA.map(({ etiqueta, categoria: c }) => (
+              <button
+                key={etiqueta}
+                type="button"
+                aria-pressed={categoria === c}
+                onClick={() => setCategoria(c)}
+                className={`text-sm px-3 py-2 rounded-full border ${
+                  categoria === c ? 'bg-ink text-paper border-ink' : 'border-accent text-accent'
+                }`}
+              >
+                {etiqueta}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Categorías">
         {opciones.map((n) => (

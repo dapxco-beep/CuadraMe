@@ -83,7 +83,7 @@ export const RAZON_AUTO = {
   regla: 'por tu regla',
   comercio: 'por comercio conocido',
   similar: 'similar a movimientos tuyos',
-  sugerida: 'sugerida por tu correo',
+  sugerida: 'sugerida, sin certeza',
   wallet: 'por tu pago con el celular',
   atajo: 'por tu atajo',
   marcada: 'la marcaste para revisar',
@@ -105,4 +105,14 @@ export function porRevisar(m) {
   if (m.cat_origen === 'dejada') return false
   if (!m.categoria || m.categoria === 'Otros') return true
   return esAuto(m) && !ORIGENES_SEGUROS.includes(m.cat_origen)
+}
+
+// «Para X», «Enviaste a X», «ENVIO CON BRE-B A: X»: una transferencia a una PERSONA (su nombre no dice en qué se gastó).
+// Misma idea que clave_comercio.es_transferencia_entre_personas del servidor.
+const RE_PERSONA = /^\s*(para|de|enviaste a|recibiste de|envio con bre[ -]?b a|recibi por bre[ -]?b de|envio por llave a|recibiste por llave de|transferencia a|transferencia de|trf a|trf de|giro a|giro de)[\s:]*(.*)$/i
+export function esTransferenciaAPersona(descripcion) {
+  const t = String(descripcion || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const m = RE_PERSONA.exec(t)
+  if (!m) return false
+  return m[2].trim() !== '' || !['para', 'de'].includes(m[1].toLowerCase())
 }

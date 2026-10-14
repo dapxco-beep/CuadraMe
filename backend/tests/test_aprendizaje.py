@@ -64,7 +64,7 @@ def test_orden_de_prioridad_con_razon(usuario, cuenta):
     for _ in range(3):
         _mov(cuenta, "Mecanicos del Norte revision", "Hogar")
     r = _clasificar(usuario, "Mecanicos del Norte cambio")
-    assert r["categoria"] == "Hogar" and r["fuente"] == "learned" and r["razon"] == "similar a movimientos tuyos"
+    assert r["categoria"] == "Hogar" and r["fuente"] == "historial" and r["razon"].startswith("aprendida de tu historial")
     # 1) regla del usuario le gana al modelo aprendido y al diccionario
     client.post("/reglas-categoria/aprender", json={"descripcion": "Mecanicos del Norte", "categoria": "Ocio"})
     r = _clasificar(usuario, "Mecanicos del Norte cambio")
