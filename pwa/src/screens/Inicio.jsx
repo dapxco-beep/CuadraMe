@@ -536,7 +536,7 @@ export default function Inicio() {
                 ))}
               </div>
               <div className="divide-y divide-line mt-2">
-                <FilaEnlace to="/informe" icono={PieChart} titulo="En qué gasto" apoyo="Por categoría, comercios y periodo a tu medida" />
+                <FilaEnlace to="/informe" icono={PieChart} titulo="En qué gasto mi plata" apoyo="Ingresos contra gastos, por categoría y comercio" />
                 <FilaEnlace to="/asistente" icono={Bot} titulo="Pregúntale a CuadraMe AI" apoyo="«¿Puedo comprar un celular?» · «Gasté 18.000 en almuerzo»" />
                 <FilaEnlace to="/resumen" icono={Gift} titulo="Tu resumen del mes" apoyo="Míralo en diapositivas y compártelo" />
               </div>
