@@ -5,6 +5,7 @@ import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
 import { useDialogos } from '../lib/DialogosContext'
+import LineaVersion from '../components/LineaVersion'
 import SeccionSeguridad from '../components/SeccionSeguridad'
 import SeccionPrivacidad from '../components/SeccionPrivacidad'
 import AsistentePrimerUso from '../components/AsistentePrimerUso'
@@ -576,6 +577,7 @@ export default function Perfil() {
       <footer className="flex flex-col items-center gap-1.5 mt-8 mb-2">
         <img src="/icons/icon-192.png" alt="CuadraMe" className="w-8 h-8 rounded-xl" />
         <p className="text-[11px] text-ink-soft">CuadraMe · Hecho por DAPX</p>
+        <LineaVersion />
       </footer>
     </div>
   )

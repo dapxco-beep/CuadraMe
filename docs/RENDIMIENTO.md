@@ -127,3 +127,10 @@ lógica): `cuentas` 17 ms, `movimientos?limit=50` 23 ms, `presupuestos/disponibl
 4. Brotli en Vercel ya viene activado por defecto para los estáticos; no requiere acción.
 5. Si el historial de un usuario crece (> 10 mil movimientos), pre-agregar por mes (tabla
    resumen) para `reportes/mensual` y `reportes/tendencias`.
+
+## Versión de la app (1.0.0)
+
+- La PWA pasó de `0.0.0` a `1.0.0` en `pwa/package.json`; ese número es el que se muestra. Súbelo en cada entrega visible.
+- El build inyecta `__APP_VERSION__`, `__APP_BUILD__` y `__APP_COMMIT__` (Vite `define`) y publica `/version.json` (sin caché: cabecera en `vercel.json`, el service worker no lo toca).
+- La app lo consulta al volver a primer plano y cada 30 min; si hay compilación más nueva muestra «Hay una versión nueva · Actualizar» (nunca recarga sola).
+- Servidor: `GET /version` devuelve `{servicio, version, commit, arranque_en}`; `/health` no cambia.

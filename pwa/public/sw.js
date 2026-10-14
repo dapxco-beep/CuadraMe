@@ -29,6 +29,8 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return // API, Supabase, fuentes: directo a la red
+  // /version.json (la app lo consulta para saber si hay compilación nueva) nunca pasa por caché.
+  if (url.pathname === '/version.json') return
 
   // Navegación (abrir la app): red primero para recibir siempre la versión nueva; si no hay
   // conexión —o la red tarda más de 4 s (datos móviles malos)— el último index.html guardado,

@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import BottomNav from './BottomNav'
 import BarraLateral from './BarraLateral'
 import AvisoSinConexion from './AvisoSinConexion'
+import FranjaVersionNueva from './FranjaVersionNueva'
 import { useModoPantalla } from '../lib/useAncho'
 import { useAtajosTeclado } from '../lib/atajos'
 import { registrarReciente } from '../lib/navegacion'
@@ -26,6 +27,7 @@ export default function ShellApp({ children }) {
       {modo !== 'movil' && <BarraLateral modo={modo} />}
       <main className="app-contenido">
         <AvisoSinConexion />
+        <FranjaVersionNueva />
         {children}
         {/* En «Nuevo movimiento» la barra inferior sobra (el + ya es esta pantalla y tapa el formulario): se sale con la X */}
         {modo === 'movil' && pathname !== '/agregar' && <BottomNav />}

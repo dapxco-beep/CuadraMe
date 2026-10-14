@@ -5,6 +5,7 @@ import { EstadoVacio } from '../brand/Marca'
 import Cuadri from '../brand/Cuadri'
 import GuiaInstalar from '../components/GuiaInstalar'
 import RecorridoEntrada from '../components/RecorridoEntrada'
+import LineaVersion from '../components/LineaVersion'
 import Icono from '../components/Icono'
 import { Boton, CampoTexto } from '../components/ui'
 import { agruparPorTema, buscarPreguntas, PREGUNTAS } from '../lib/ayuda'
@@ -202,6 +203,8 @@ export default function Ayuda() {
           Política de privacidad
         </Link>
       </p>
+
+      <LineaVersion className="mt-2 mb-4" />
 
       {guia === 'instalar' && <GuiaInstalar onCerrar={() => setGuia(null)} />}
     </div>

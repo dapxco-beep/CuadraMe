@@ -1,3 +1,6 @@
+import os
+from datetime import datetime, timezone
+
 import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -294,3 +297,25 @@ app.include_router(cuadre_router.router)
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+VERSION_SERVIDOR = "1.0.0"
+_ARRANQUE_EN = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+@app.get("/version")
+def version():
+    """Pública y sin datos sensibles: sirve para saber qué compilación del servidor responde.
+    (/health no cambia: los monitores esperan {"ok": true}.)"""
+    commit = (
+        os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+        or os.environ.get("GIT_COMMIT_SHA")
+        or os.environ.get("SOURCE_COMMIT")
+        or ""
+    )
+    return {
+        "servicio": "cuadrame-backend",
+        "version": VERSION_SERVIDOR,
+        "commit": commit[:7] or "dev",
+        "arranque_en": _ARRANQUE_EN,
+    }

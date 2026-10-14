@@ -10,6 +10,7 @@ import '@fontsource/sora/latin-700.css'
 import '@fontsource/sora/latin-800.css'
 import './index.css'
 import App from './App.jsx'
+import LineaVersion from './components/LineaVersion'
 import { bloquearZoomPellizco } from './lib/estabilidadVista'
 
 // Sentry se descarga solo si hay DSN (producción): así el paquete principal no lo
@@ -50,6 +51,7 @@ function PantallaError() {
       >
         Recargar
       </button>
+      <LineaVersion className="mt-4" />
     </div>
   )
 }

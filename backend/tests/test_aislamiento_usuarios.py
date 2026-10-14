@@ -516,6 +516,17 @@ def test_crons_exigen_secreto(metodo, ruta):
     assert client.request(metodo, ruta, headers={"X-Cron-Secret": ""}).status_code == 401
 
 
+def test_version_es_publica_y_no_expone_datos():
+    """/version vive en main.py (no en un router, como /health): pública, sin sesión; /health no cambia."""
+    app.dependency_overrides.pop(get_current_user, None)
+    r = client.get("/version")
+    assert r.status_code == 200
+    d = r.json()
+    assert set(d) == {"servicio", "version", "commit", "arranque_en"}
+    assert d["servicio"] == "cuadrame-backend" and len(d["commit"]) <= 7
+    assert client.get("/health").json() == {"ok": True}
+
+
 def test_rutas_con_api_key_rechazan_clave_falsa():
     for metodo, ruta in (("GET", "/movimientos/cuentas-rapido"), ("POST", "/movimientos/rapido"),
                          ("POST", "/movimientos/rapido-voz")):
