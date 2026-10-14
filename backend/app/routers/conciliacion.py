@@ -16,6 +16,7 @@ from app.autocat import (
 from app import duplicados as dup
 from app import cuadre_extracto
 from app import estado_traer
+from app.extractos_vista import clasificar_motivo
 from app import punto_partida
 from app.conciliacion import _CUENTA_UNICA
 from app.wallet import ORIGENES_RAPIDOS
@@ -135,17 +136,25 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
             return _no_parece_extracto(banco, motivo)
 
     if not movimientos:
+        pide_clave = (not texto_plano) and pdf_pide_clave(data.pdf_base64, data.password)
+        # Por qué no se pudo leer: queda guardado para decírselo a la persona en la lista de extractos.
+        motivo_codigo = clasificar_motivo(
+            texto=texto_plano, pide_clave=pide_clave, clave_dada=bool(data.password),
+            pdf_vacio=not (data.pdf_base64 or "").strip())
+        if sin_senales and texto_plano:
+            motivo_codigo = "formato_no_reconocido"
         historial = HistorialExtracto(
             usuario_id=usuario.id,
             cuenta_id=cuenta.id,
             banco_detectado=banco,
             estado="error",
+            motivo_error=motivo_codigo,
         )
         db.add(historial)
         db.commit()
-        if not texto_plano and pdf_pide_clave(data.pdf_base64, data.password):
+        if pide_clave:
             return ProcesarExtractoResponse(
-                ok=False, requiere_clave=True, banco_detectado=banco,
+                ok=False, requiere_clave=True, banco_detectado=banco, motivo_error=motivo_codigo,
                 error="El PDF tiene clave: escríbela e inténtalo de nuevo." if not data.password
                 else "La clave del PDF no es correcta.",
             )
@@ -155,11 +164,14 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
             else "No se extrajo texto del PDF (posiblemente protegido con otra clave o escaneado como imagen)."
         )
         if sin_senales and texto_plano:
-            return _no_parece_extracto(banco, MOTIVO_NO_EXTRACTO)
+            r = _no_parece_extracto(banco, MOTIVO_NO_EXTRACTO)
+            r.motivo_error = motivo_codigo
+            return r
         return ProcesarExtractoResponse(
             ok=False,
             error=f"No se pudieron extraer movimientos del PDF. {detalle}",
             banco_detectado=banco,
+            motivo_error=motivo_codigo,
         )
 
     ledger = _cargar_ledger(db, usuario.id, cuenta.id)

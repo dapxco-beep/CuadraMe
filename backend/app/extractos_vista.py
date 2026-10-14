@@ -286,3 +286,6 @@ def frase_resultado(vista: str, conteo: dict, *, clave_estado: str | None = None
     if nuevas == 0:
         return cab + (f"{ya} ya estaban registrados, 0 nuevos." if ya != 1 else "1 ya estaba registrado, 0 nuevos.")
     return cab + (f"{_n(nuevas, 'nuevo agregado', 'nuevos agregados')}, {ya} ya estaban.")
+
+
+RAZON_SIN_ADJUNTO = "El correo habla de un extracto pero no trae el PDF adjunto (o el archivo no parece un extracto)."

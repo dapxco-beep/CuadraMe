@@ -2,7 +2,9 @@ import base64
 import json
 import logging
 import time
+from typing import Optional
 
+from pydantic import BaseModel
 from google.auth.exceptions import RefreshError
 from datetime import datetime, timedelta
 
@@ -20,6 +22,7 @@ from app.limites import verificar_limite
 from app.limites_diarios import consumir_cupo_diario
 from app.database import get_db
 from app import punto_partida
+from app.extractos_vista import clasificar_motivo, frase_error
 from app.conciliacion import detectar_banco
 from app.contabilidad import con_marca_traslado
 from app.extractos_conciliados import (
@@ -371,11 +374,13 @@ def _marcar_si_conciliado(db: Session, fila: ExtractoCorreo) -> bool:
 def _analizar_adjunto(gmail, db: Session, fila: ExtractoCorreo, adjunto: dict, cuentas: list, clave: str | None) -> None:
     """Descarga el PDF, intenta abrirlo y rellena banco/periodo/cuenta/estado.
     El PDF no se guarda en ningún lado."""
+    fila.motivo_error = None
     try:
         pdf = descargar_adjunto(gmail, fila.gmail_msg_id, adjunto["attachment_id"])
     except Exception:
         logger.warning("No se pudo descargar un adjunto del mensaje %s", fila.gmail_msg_id)
         fila.estado = "error"
+        fila.motivo_error = "error_temporal"
         return
     estado, texto, clave_usada = abrir_pdf(pdf, claves_candidatas(clave))
     # Resultado de la clave en ESTE extracto (nunca la clave): solo cuenta si había una guardada
@@ -391,12 +396,18 @@ def _analizar_adjunto(gmail, db: Session, fila: ExtractoCorreo, adjunto: dict, c
         fila.periodo = detectar_periodo(texto, f"{fila.archivo} {fila.asunto}")
         fila.cuenta_sugerida_id = sugerir_cuenta(fila.banco, detectar_ultimos4(texto), cuentas, texto[:6000])
         fila.estado = "nuevo"
+        if not (texto or "").strip():
+            fila.motivo_error = "pdf_escaneado"  # abre, pero es una imagen: no hay texto que leer
         _marcar_si_conciliado(db, fila)
     else:
         # Sin texto no hay periodo ni cuenta; el banco sale del remitente.
         fila.periodo = detectar_periodo("", f"{fila.archivo} {fila.asunto}")
         fila.cuenta_sugerida_id = sugerir_cuenta(fila.banco, "", cuentas) if fila.banco else None
         fila.estado = estado  # falta_clave | error
+        if estado == "error":
+            fila.motivo_error = clasificar_motivo(pdf_vacio=not pdf)
+        elif estado == "falta_clave":
+            fila.motivo_error = clasificar_motivo(pide_clave=True, clave_dada=bool(clave))
 
 
 # ── Sincronización por lotes ───────────────────────────────────────
@@ -589,7 +600,7 @@ def _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos: se
         # Marca para no volver a leer este correo en cada sincronización.
         db.add(ExtractoCorreo(
             usuario_id=usuario_id, gmail_msg_id=ref_id, archivo="",
-            remitente=remitente, asunto=asunto, estado="ignorado",
+            remitente=remitente, asunto=asunto, estado="ignorado", recibido_en=fecha_mensaje(msg),
         ))
         return 0, 0
     recibido = fecha_mensaje(msg)
@@ -1050,19 +1061,25 @@ def conciliar_extracto(
         return ProcesarExtractoResponse(ok=False, error="Se perdió el acceso a Gmail. Conéctalo de nuevo.")
     except Exception:
         logger.exception("Error descargando extracto de %s", usuario.id)
-        return ProcesarExtractoResponse(ok=False, error="No se pudo descargar el extracto. Intenta de nuevo.")
+        fila.motivo_error = "error_temporal"
+        db.commit()
+        return ProcesarExtractoResponse(ok=False, error="No se pudo descargar el extracto. Intenta de nuevo.",
+                                        motivo_error="error_temporal")
 
     estado, _texto, clave_usada = abrir_pdf(pdf, claves_candidatas(_clave_pdf(db, usuario.id)))
     if estado == "falta_clave":
         fila.estado = "falta_clave"
+        fila.motivo_error = clasificar_motivo(pide_clave=True, clave_dada=bool(_clave_pdf(db, usuario.id)))
         db.commit()
         return ProcesarExtractoResponse(
-            ok=False, error="Este extracto está cifrado: guarda la clave del PDF (normalmente tu cédula) en los ajustes."
+            ok=False, error="Este extracto está cifrado: guarda la clave del PDF (normalmente tu cédula) en los ajustes.",
+            motivo_error=fila.motivo_error,
         )
     if estado != "ok":
         fila.estado = "error"
+        fila.motivo_error = clasificar_motivo(pdf_vacio=not pdf)
         db.commit()
-        return ProcesarExtractoResponse(ok=False, error="No se pudo leer este PDF.")
+        return ProcesarExtractoResponse(ok=False, error="No se pudo leer este PDF.", motivo_error=fila.motivo_error)
 
     resp = procesar_extracto(
         ProcesarExtractoRequest(
@@ -1074,8 +1091,66 @@ def conciliar_extracto(
     if resp.ok:
         fila.estado = "procesado"
         fila.historial_id = resp.historial_id
+        fila.motivo_error = None
+        db.commit()
+    elif resp.motivo_error:
+        # No salieron movimientos: se guarda el motivo para decírselo en la lista (el extracto sigue ahí).
+        fila.motivo_error = resp.motivo_error
         db.commit()
     return resp
+
+
+class ReintentoOut(BaseModel):
+    ok: bool
+    estado: str
+    motivo_error: Optional[str] = None
+    mensaje: str = ""
+
+
+@router.post("/extractos/{extracto_id}/reintentar", response_model=ReintentoOut)
+def reintentar_extracto(
+    extracto_id: str,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«Intentar de nuevo»: vuelve a descargar el PDF y a abrirlo con la clave guardada, y rellena banco, periodo,
+    cuenta y estado como la primera vez. No importa movimientos (eso es «Revisar»)."""
+    verificar_limite(f"reintentar-extracto:{usuario.id}", 30, 3600, "Reintentaste muchos extractos seguidos. Podrás seguir en {espera}.")
+    fila = (
+        db.query(ExtractoCorreo)
+        .filter(ExtractoCorreo.id == extracto_id, ExtractoCorreo.usuario_id == usuario.id)
+        .first()
+    )
+    if not fila:
+        raise HTTPException(status_code=404, detail="Extracto no encontrado")
+    if not fila.archivo:
+        raise HTTPException(status_code=400, detail="Este correo no trae un archivo para reintentar.")
+    perfil = _get_or_create_perfil(db, usuario.id)
+    if not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
+        raise HTTPException(status_code=400, detail="Gmail no está conectado")
+    _exigir_extractos_activos(perfil)
+    try:
+        gmail = cliente_gmail(perfil.gmail_refresh_token_enc)
+        msg = gmail.users().messages().get(userId="me", id=fila.gmail_msg_id, format="full").execute()
+    except RefreshError:
+        return ReintentoOut(ok=False, estado=fila.estado, mensaje="Se perdió el acceso a Gmail. Conéctalo de nuevo.")
+    except Exception:
+        logger.exception("Error reintentando extracto de %s", usuario.id)
+        return ReintentoOut(ok=False, estado=fila.estado, motivo_error="error_temporal",
+                            mensaje="No pudimos conectarnos con Gmail ahora. Intenta de nuevo en un rato.")
+    adj = next((a for a in listar_adjuntos_pdf(msg) if a["archivo"] == fila.archivo), None)
+    if not adj:
+        return ReintentoOut(ok=False, estado=fila.estado, mensaje="El archivo ya no está en tu correo.")
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
+    _analizar_adjunto(gmail, db, fila, adj, cuentas, _clave_pdf(db, usuario.id))
+    db.commit()
+    if fila.estado == "error" or (fila.estado == "nuevo" and fila.motivo_error):
+        return ReintentoOut(ok=False, estado=fila.estado, motivo_error=fila.motivo_error,
+                            mensaje=frase_error(fila.motivo_error))
+    if fila.estado == "falta_clave":
+        return ReintentoOut(ok=False, estado=fila.estado, motivo_error=fila.motivo_error,
+                            mensaje="Sigue pidiendo clave. Revisa la clave del PDF.")
+    return ReintentoOut(ok=True, estado=fila.estado, mensaje="Listo: ya lo podemos revisar.")
 
 
 @router.post("/extractos/{extracto_id}/descartar")

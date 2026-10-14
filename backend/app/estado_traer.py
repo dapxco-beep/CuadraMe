@@ -26,6 +26,8 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app import extractos_vista as ev
+
 AL_DIA = "al_dia"
 POR_REVISAR = "por_revisar"
 NECESITA_CLAVE = "necesita_clave"
@@ -231,8 +233,8 @@ def reconciliar_pendientes(db: Session, usuario_id: str, limite: int = 12) -> in
 
 
 def _item(*, clave, extracto_id, historial_id, cuenta_id, cuenta, banco, periodo, mes, estado, conteo, origenes,
-          copias=1, motivo="", clave_estado=None, reciente=None) -> dict:
-    return {
+          copias=1, motivo="", clave_estado=None, reciente=None, extra=None) -> dict:
+    d = {
         "id": clave,
         "extracto_id": extracto_id,
         "historial_id": historial_id,
@@ -251,19 +253,66 @@ def _item(*, clave, extracto_id, historial_id, cuenta_id, cuenta, banco, periodo
         "frase": frase(estado, conteo, mes=mes, cuenta=cuenta, banco=banco),
         "_reciente": reciente,
     }
+    d.update(extra or {})
+    return d
 
 
 _VACIO = {"leidas": 0, "ya_estaban": 0, "nuevas_agregadas": 0, "por_revisar": 0, "descartadas": 0,
           "anteriores": 0, "duplicadas_detectadas": 0, "dudosas": 0}
 
 
+def _banco_de(e) -> str:
+    from app.extractos_gmail import banco_por_remitente
+
+    return e.banco or banco_por_remitente(e.remitente) or ""
+
+
+def mes_de_correo(e, h=None) -> dict:
+    """Mes deducido de un extracto de Gmail (ver app/extractos_vista.py: periodo, asunto, archivo, líneas,
+    recepción). `h` = su historial, si ya se leyó. Lo usan la lista y la cobertura: así dicen el mismo mes."""
+    return ev.deducir_periodo(
+        periodo=e.periodo or "", asunto=e.asunto or "", archivo=e.archivo or "", recibido_en=e.recibido_en,
+        mes_lineas=_mes_de_historial(h) if h is not None else None, banco=_banco_de(e), remitente=e.remitente or "")
+
+
+def persistir_periodos(db: Session, usuario_id: str) -> int:
+    """Guarda en ExtractoCorreo.periodo el mes deducido con fuentes seguras (asunto, nombre del archivo, líneas
+    leídas) cuando el extracto no traía periodo. Así todo el sistema (cobertura, conciliados, punto de partida)
+    ve el mismo mes. La fecha de recepción NO se guarda (es solo una suposición). Idempotente."""
+    from app.models import ExtractoCorreo, HistorialExtracto
+
+    filas = db.query(ExtractoCorreo).filter(
+        ExtractoCorreo.usuario_id == usuario_id,
+        ExtractoCorreo.estado.in_(("nuevo", "falta_clave", "procesado", "error", "ya_conciliado")),
+        (ExtractoCorreo.periodo.is_(None)) | (ExtractoCorreo.periodo == "")).all()
+    if not filas:
+        return 0
+    hist = {h.id: h for h in db.query(HistorialExtracto).filter(
+        HistorialExtracto.usuario_id == usuario_id,
+        HistorialExtracto.id.in_([f.historial_id for f in filas if f.historial_id] or [""])).all()}
+    n = 0
+    for e in filas:
+        ded = mes_de_correo(e, hist.get(e.historial_id))
+        if ded["mes"] and ded["fuente"] in ev.FUENTES_SEGURAS:
+            e.periodo = ev.periodo_texto(ded["mes"])
+            n += 1
+    if n:
+        db.commit()
+    return n
+
+
+def _norm(t: str) -> str:
+    return " ".join((t or "").lower().split())
+
+
 def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
     """Un renglón por EXTRACTO REAL (cuenta + mes), venga de un correo, de un archivo subido a mano o
     de los dos: el mismo PDF en dos correos, o subido a mano y también por Gmail, es UN extracto.
-    Ordenado: primero lo que pide acción, luego lo más reciente."""
+    Ordenado: primero lo que pide acción, luego lo más reciente. Cada renglón trae además lo que la lista
+    «Todos los extractos» necesita: tipo, título, mes (con su fuente), estado de la lista, frase de resultado,
+    motivo si no se pudo leer y acciones."""
     from app import punto_partida
-    from app.extractos_conciliados import ESTADO_YA_CONCILIADO, mes_del_extracto
-    from app.extractos_gmail import banco_por_remitente
+    from app.extractos_conciliados import ESTADO_YA_CONCILIADO
     from app.models import Cuenta, ExtractoCorreo, HistorialExtracto
 
     cuentas = {c.id: c for c in db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).all()}
@@ -278,12 +327,15 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
         h = historiales.get(e.historial_id) if e.historial_id else None
         if h is not None:
             usados.add(h.id)
-        mes = mes_del_extracto(e.periodo, e.recibido_en)
+        ded = mes_de_correo(e, h)
+        mes = ded["mes"]
         cuenta_id = (h.cuenta_id if h is not None else e.cuenta_sugerida_id) or None
         cuenta = cuentas.get(cuenta_id)
-        banco = e.banco or banco_por_remitente(e.remitente) or ""
+        banco = _banco_de(e)
+        periodo_ef = e.periodo or (ev.periodo_texto(mes) if mes and ded["fuente"] in ev.FUENTES_SEGURAS else "")
         anterior = e.estado in ("nuevo", "falta_clave", "error") and punto_partida.extracto_es_anterior(
-            e.periodo, e.recibido_en, inicio_pp)
+            periodo_ef, e.recibido_en, inicio_pp)
+        motivo_err = e.motivo_error or (h.motivo_error if h is not None else None)
         if e.estado == "falta_clave":
             estado, conteo = NECESITA_CLAVE, dict(_VACIO)
         elif e.estado == "error":
@@ -293,17 +345,24 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
         elif h is not None:
             conteo = conteo_de_historial(h)
             estado = estado_de_conteo(conteo, h.estado)
+        elif e.estado == "nuevo" and e.motivo_error:
+            # Se intentó leer y no se pudo (el estado «nuevo» sigue para poder reintentar).
+            estado, conteo = NO_SE_PUDO_LEER, dict(_VACIO)
         elif e.estado in (ESTADO_YA_CONCILIADO, "procesado"):
             # Ya resuelto sin revisión guardada que contar (periodo conciliado por otro lado).
             conteo, estado = dict(_VACIO), AL_DIA
         else:  # nuevo, o «procesado» cuya revisión se borró: hay que volver a revisarlo
             conteo, estado = dict(_VACIO), POR_REVISAR
+        corte = (h.fecha_corte if h is not None and h.fecha_corte else "") or ev.corte_del_periodo(e.periodo or "")
         crudos.append(dict(
             clave=f"c:{e.id}", extracto_id=e.id, historial_id=h.id if h is not None else None, cuenta_id=cuenta_id,
             cuenta=cuenta.nombre if cuenta else "", banco=banco, periodo=e.periodo or "", mes=mes, estado=estado,
             conteo=conteo, origen="correo", clave_estado=getattr(e, "clave_resultado", None),
             reciente=e.recibido_en or e.creado_en, sin_revisar=(e.estado == "nuevo"),
-            sin_cuenta=cuenta_id is None, historial=h,
+            sin_cuenta=cuenta_id is None, historial=h, mes_fuente=ded["fuente"], mes_deducido=ded["deducido"],
+            tipo=ev.tipo_de_extracto(cuenta.tipo if cuenta else None, e.asunto or "", e.archivo or ""),
+            corte=corte, motivo_error=motivo_err, asunto=e.asunto or "", archivo=e.archivo or "",
+            recibido_en=e.recibido_en or e.creado_en,
         ))
     # Subidas a mano (sin extracto de correo detrás).
     for h in historiales.values():
@@ -314,19 +373,32 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             continue
         conteo = conteo_de_historial(h)
         estado = estado_de_conteo(conteo, h.estado)
+        mes_h = _mes_de_historial(h)
         crudos.append(dict(
             clave=f"h:{h.id}", extracto_id=None, historial_id=h.id, cuenta_id=h.cuenta_id, cuenta=cuenta.nombre,
-            banco=(h.banco_detectado or "").replace("archivo: ", ""), periodo="", mes=_mes_de_historial(h),
+            banco=(h.banco_detectado or "").replace("archivo: ", ""), periodo="", mes=mes_h,
             estado=estado, conteo=conteo, origen="archivo", clave_estado=None, reciente=h.creado_en,
-            sin_revisar=False, sin_cuenta=False, historial=h,
+            sin_revisar=False, sin_cuenta=False, historial=h, mes_fuente=ev.FUENTE_LINEAS if mes_h else None,
+            mes_deducido=not mes_h, tipo=ev.tipo_de_extracto(cuenta.tipo), corte=h.fecha_corte or "",
+            motivo_error=h.motivo_error, asunto="", archivo="", recibido_en=h.creado_en,
         ))
 
     # Un renglón por (cuenta, mes). Los de error solo cuentan si no hay un intento bueno después.
+    def clave_grupo(c):
+        if c["mes"] and c["cuenta_id"]:
+            return ("c", c["cuenta_id"], c["mes"])
+        if c["mes"] and c["banco"]:
+            return ("b", _norm(c["banco"]), c["tipo"], c["mes"])
+        if c["estado"] == NO_SE_PUDO_LEER and c["origen"] == "archivo" and c["cuenta_id"]:
+            return ("e", c["cuenta_id"])  # varios intentos fallidos sin mes: es el mismo archivo reintentado
+        return None
+
     grupos: dict[tuple, list[dict]] = {}
     sueltos: list[dict] = []
     for c in crudos:
-        if c["cuenta_id"] and c["mes"]:
-            grupos.setdefault((c["cuenta_id"], c["mes"]), []).append(c)
+        k = clave_grupo(c)
+        if k:
+            grupos.setdefault(k, []).append(c)
         else:
             sueltos.append(c)
 
@@ -346,16 +418,52 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             estados = [c["estado"] for c in lista]
             # Una copia ya resuelta del mismo extracto manda sobre las que nadie ha abierto.
             estado = AL_DIA if AL_DIA in estados else max(estados, key=lambda s: (s in PIDEN_ACCION, s))
+        motivo = "elige_cuenta" if mejor["sin_cuenta"] and estado == POR_REVISAR else ""
+        vista = ev.estado_de_vista(estado, mejor["historial_id"] is not None)
+        motivo_err = None
+        if estado == NO_SE_PUDO_LEER:
+            motivo_err = mejor["motivo_error"] or next((c["motivo_error"] for c in lista if c["motivo_error"]), None)
+        if copias > 1:
+            copias_texto = f"x{copias} intentos" if origenes == {"archivo"} else (
+                f"x{copias} correos" if origenes == {"correo"} else f"x{copias} copias")
+        else:
+            copias_texto = ""
+        extra = {
+            "tipo": mejor["tipo"], "mes_fuente": mejor["mes_fuente"], "mes_deducido": bool(mejor["mes_deducido"]),
+            "mes_por_confirmar": not mejor["mes"], "mes_etiqueta": ev.etiqueta_mes(mejor["mes"]),
+            "titulo": ev.titulo_extracto(banco=mejor["banco"] or mejor["cuenta"], tipo=mejor["tipo"], mes=mejor["mes"],
+                                         corte=mejor["corte"]),
+            "estado_vista": vista, "estado_etiqueta": ev.ETIQUETA_ESTADO[vista],
+            "resultado": ev.frase_resultado(vista, mejor["conteo"], clave_estado=mejor["clave_estado"],
+                                            motivo=motivo_err, copias=copias),
+            "motivo_error": motivo_err,
+            "copias_texto": copias_texto, "asunto": mejor["asunto"], "archivo": mejor["archivo"],
+            "recibido_en": mejor["recibido_en"].isoformat() if mejor["recibido_en"] else None,
+            "puede_fijar_mes": mejor["extracto_id"] is not None,
+            "acciones": _acciones(vista, mejor),
+        }
         salida.append(_item(
             clave=mejor["clave"], extracto_id=mejor["extracto_id"], historial_id=mejor["historial_id"],
             cuenta_id=mejor["cuenta_id"], cuenta=mejor["cuenta"], banco=mejor["banco"], periodo=mejor["periodo"],
             mes=mejor["mes"], estado=estado, conteo=mejor["conteo"], origenes=origenes, copias=copias,
-            motivo="elige_cuenta" if mejor["sin_cuenta"] and estado == POR_REVISAR else "",
-            clave_estado=mejor["clave_estado"], reciente=mejor["reciente"]))
+            motivo=motivo, clave_estado=mejor["clave_estado"], reciente=mejor["reciente"], extra=extra))
     salida.sort(key=lambda i: (not i["pide_accion"], -(i["_reciente"].timestamp() if i["_reciente"] else 0)))
     for i in salida:
         i.pop("_reciente", None)
     return salida
+
+
+def _acciones(vista: str, c: dict) -> list[str]:
+    """Qué botones lleva la fila (la pantalla los pinta; aquí se decide y se prueba)."""
+    if vista in (ev.SIN_PROCESAR, ev.POR_REVISAR):
+        return ["revisar"]
+    if vista == ev.NECESITA_CLAVE:
+        return ["poner_clave", "probar_clave"]
+    if vista == ev.NO_SE_PUDO_LEER:
+        return (["intentar_de_nuevo"] if c["extracto_id"] else ["subir_de_nuevo"]) + ["mi_banco_no_esta"]
+    if vista == ev.REVISADO:
+        return ["ver"] + (["revisar_de_nuevo"] if c["extracto_id"] and c["cuenta_id"] else [])
+    return []
 
 
 def resumen_por_celda(extractos: list[dict]) -> dict[tuple[str, str], dict]:
@@ -365,8 +473,45 @@ def resumen_por_celda(extractos: list[dict]) -> dict[tuple[str, str], dict]:
         if not x["cuenta_id"] or not x["mes"]:
             continue
         c = celdas.setdefault((x["cuenta_id"], x["mes"]), {
-            "leidas": 0, "ya_estaban": 0, "nuevas_agregadas": 0, "por_revisar": 0, "estados": []})
+            "leidas": 0, "ya_estaban": 0, "nuevas_agregadas": 0, "por_revisar": 0, "estados": [], "lista": []})
         for k in ("leidas", "ya_estaban", "nuevas_agregadas", "por_revisar"):
             c[k] += x[k]
         c["estados"].append(x["estado"])
+        # Lo mismo que dice la lista (título, estado): la cobertura y «Todos los extractos» no se contradicen.
+        c["lista"].append({"id": x["id"], "titulo": x["titulo"], "estado_vista": x["estado_vista"],
+                           "estado_etiqueta": x["estado_etiqueta"]})
     return celdas
+
+
+def _orden_mes(mes: str | None) -> int:
+    """Más reciente primero; sin mes al final."""
+    if not mes:
+        return 10 ** 9
+    return -(int(mes[:4]) * 12 + int(mes[5:7]))
+
+
+def vista_completa(db: Session, usuario_id: str, inicio_pp=None, lista: list[dict] | None = None) -> dict:
+    """Todo lo que necesita «Todos los extractos»: filas (del más reciente al más antiguo), contadores por
+    estado y los correos de extracto que no traían PDF. Aislado por usuario (todo sale de `usuario_id`)."""
+    from app.models import ExtractoCorreo
+
+    items = lista if lista is not None else lista_extractos(db, usuario_id, inicio_pp)
+    items = sorted(items, key=lambda i: (_orden_mes(i["mes"]), ev.ESTADOS_VISTA.index(i["estado_vista"]), i["titulo"]))
+    cont = {k: 0 for k in ev.ESTADOS_VISTA}
+    for i in items:
+        cont[i["estado_vista"]] += 1
+    ign = (db.query(ExtractoCorreo).filter(ExtractoCorreo.usuario_id == usuario_id, ExtractoCorreo.estado == "ignorado")
+           .order_by(ExtractoCorreo.creado_en.desc()).limit(100).all())
+    sin_adjunto = [{
+        "id": e.id, "asunto": e.asunto or "", "banco": _banco_de(e),
+        "recibido_en": (e.recibido_en or e.creado_en).isoformat() if (e.recibido_en or e.creado_en) else None,
+        "razon": ev.RAZON_SIN_ADJUNTO,
+    } for e in ign]
+    return {
+        "items": items,
+        "contadores": cont,
+        "total": len(items),
+        "resumen": ev.frase_contadores(cont),
+        "sin_adjunto": sin_adjunto,
+        "razon_sin_adjunto": ev.RAZON_SIN_ADJUNTO,
+    }

@@ -797,6 +797,10 @@ class ExtractoCorreoOut(BaseModel):
         from_attributes = True
 
 
+class FijarMesIn(BaseModel):
+    mes: str = Field(pattern=r"^20\d{2}-(0[1-9]|1[0-2])$")  # AAAA-MM
+
+
 class ClavePdfIn(BaseModel):
     clave: str = Field(min_length=1, max_length=120)
 

@@ -21,13 +21,14 @@ from app.compartidos import cuentas_ids_accesibles
 from app.database import get_db
 from app.duplicados import absorber_correos, grupos_posibles_duplicados
 from app import estado_traer
+from app import extractos_vista
 from app.extractos_conciliados import (  # noqa: F401
     ESTADO_YA_CONCILIADO, FUENTES_CONCILIACION, depurar_conciliados, mes_del_extracto,
 )
 from app.extractos_gmail import banco_por_remitente, cuentas_del_banco
 from app.models import CorreoGasto, Cuenta, ExtractoCorreo, HistorialExtracto, Movimiento, SyncGmail
 from app import pendientes
-from app.schemas import MovimientoOut
+from app.schemas import FijarMesIn, MovimientoOut
 from app.utiles import ahora_co
 from app.wallet import FUENTES_POR_CONFIRMAR
 
@@ -66,7 +67,7 @@ def _siguiente(a: int, m: int) -> tuple[int, int]:
 
 def estado_celda(*, movimientos: int, conciliados: int, extractos_procesados: int,
                  extractos_nuevos: int, extractos_falta_clave: int, extractos_parciales: int = 0,
-                 anterior: bool = False) -> str:
+                 anterior: bool = False, extractos_error: int = 0) -> str:
     """Estado de una celda cuenta x mes. Prioridad: lo anterior a tu fecha de inicio no cuenta;
     un extracto ya procesado manda (si aún le faltan líneas por registrar es «parcial»);
     si no, lo que espera acción (clave, conciliar); si no, la evidencia de
@@ -79,6 +80,8 @@ def estado_celda(*, movimientos: int, conciliados: int, extractos_procesados: in
         return "conciliado"
     if extractos_falta_clave:
         return "falta_clave"
+    if extractos_error:
+        return "no_se_pudo_leer"
     if extractos_nuevos:
         return "extracto_pendiente"
     if conciliados:
@@ -206,6 +209,7 @@ def estado(
     # ── Extractos de Gmail (solo metadatos, pocos): a qué cuenta y mes pertenecen.
     # Si el periodo ya se concilió (p. ej. subiste el archivo a mano), el extracto de
     # Gmail deja de ser pendiente antes de contar nada.
+    estado_traer.persistir_periodos(db, usuario.id)  # el mes deducido (asunto, archivo, líneas) queda guardado
     depurar_conciliados(db, usuario.id)
     # Carrera entre canales: si mientras tanto la app, el atajo o el correo registraron líneas que
     # este extracto traía como «faltantes», se juntan aquí (nunca se duplican) y el extracto queda al día.
@@ -238,15 +242,23 @@ def estado(
         if x["historial_id"] and x["estado"] == estado_traer.POR_REVISAR and x["cuenta_id"] and x["mes"]:
             parciales_celda[(x["cuenta_id"], x["mes"])] = parciales_celda.get((x["cuenta_id"], x["mes"]), 0) + 1
     ext_celda: dict[tuple[str, str], dict] = {}
+    hist_obj = {h.id: h for h in db.query(HistorialExtracto).filter(
+        HistorialExtracto.usuario_id == usuario.id,
+        HistorialExtracto.id.in_([e.historial_id for e in extractos if e.historial_id] or [""]))}
     for e in extractos:
         cuenta_id = historiales.get(e.historial_id) if e.estado == "procesado" else e.cuenta_sugerida_id
-        clave = mes_del_extracto(e.periodo, e.recibido_en)
+        clave = estado_traer.mes_de_correo(e, hist_obj.get(e.historial_id))["mes"]  # el mismo mes que dice la lista
         if not cuenta_id or not clave:
             continue
         d = ext_celda.setdefault((cuenta_id, clave), {"procesado": 0, "nuevo": 0, "falta_clave": 0})
         # Un extracto 'ya conciliado' cuenta como procesado en la grilla, nunca como pendiente.
         d["procesado" if e.estado == ESTADO_YA_CONCILIADO else e.estado] += 1
 
+    # Extractos que no se pudieron leer, por celda (la lista los muestra; la cobertura también).
+    errores_celda: dict[tuple[str, str], int] = {}
+    for x in lista_ext:
+        if x["estado"] == estado_traer.NO_SE_PUDO_LEER and x["cuenta_id"] and x["mes"]:
+            errores_celda[(x["cuenta_id"], x["mes"])] = errores_celda.get((x["cuenta_id"], x["mes"]), 0) + 1
     filas_cuentas = []
     for c in cuentas:
         celdas = []
@@ -261,6 +273,7 @@ def estado(
                     extractos_procesados=ex["procesado"], extractos_nuevos=ex["nuevo"],
                     extractos_falta_clave=ex["falta_clave"],
                     extractos_parciales=parciales_celda.get((c.id, clave), 0),
+                    extractos_error=errores_celda.get((c.id, clave), 0),
                     anterior=_mes_anterior_al_inicio(clave, inicio_pp, cnt["movimientos"]),
                 ),
                 **cnt,
@@ -270,6 +283,8 @@ def estado(
                 "ya_estaban": res["ya_estaban"] if res else 0,
                 "nuevas_agregadas": res["nuevas_agregadas"] if res else 0,
                 "por_revisar": res["por_revisar"] if res else 0,
+                # Los extractos de esta celda, con el mismo título y estado que en «Todos los extractos».
+                "lista": res["lista"] if res else [],
             })
         filas_cuentas.append({"id": c.id, "nombre": c.nombre, "icono": c.icono, "meses": celdas})
 
@@ -337,6 +352,8 @@ def estado(
         "correos_ya_registrados": n_ya_registrados,
         # Un renglón por extracto real, con lo que pasó con cada línea (ver app/estado_traer.py).
         "extractos": lista_ext,
+        # «Todos los extractos»: la misma lista, completa y ordenada por mes, con contadores y correos sin PDF.
+        "todos_extractos": estado_traer.vista_completa(db, usuario.id, inicio_pp, lista=lista_ext),
         "estados_extracto": list(estado_traer.ESTADOS),
         # Punto de partida: elección actual, cuántos correos/extractos anteriores se ignoran y, en modo
         # histórico, qué meses faltan por cuenta.
@@ -371,3 +388,37 @@ def por_categorizar(
         o["patron"] = patron_de_comercio(m.descripcion)
         items.append(o)
     return {"items": items, "total": total, "limite": limite, "offset": offset}
+
+
+@router.get("/extractos")
+def todos_los_extractos(
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«Todos los extractos» del usuario: revisados, por revisar, sin procesar, con clave pendiente, con error
+    (con su motivo) y anteriores al punto de partida, del más reciente al más antiguo, más los correos de
+    extracto sin PDF adjunto. Solo ve lo suyo."""
+    estado_traer.persistir_periodos(db, usuario.id)
+    depurar_conciliados(db, usuario.id)
+    estado_traer.reconciliar_pendientes(db, usuario.id)
+    return estado_traer.vista_completa(db, usuario.id, punto_partida.fecha_inicio(db, usuario.id))
+
+
+@router.put("/extractos/{extracto_id}/mes")
+def fijar_mes_extracto(
+    extracto_id: str,
+    data: FijarMesIn,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """La persona fija de qué mes es un extracto cuando no se pudo deducir (o se deducó mal). Se guarda en
+    ExtractoCorreo.periodo («julio 2026»)."""
+    fila = db.query(ExtractoCorreo).filter(ExtractoCorreo.id == extracto_id, ExtractoCorreo.usuario_id == usuario.id).first()
+    if not fila:
+        raise HTTPException(status_code=404, detail="Extracto no encontrado")
+    try:
+        fila.periodo = extractos_vista.periodo_texto(data.mes)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Elige un mes válido, por ejemplo 2026-07.")
+    db.commit()
+    return {"ok": True, "periodo": fila.periodo, "mes": data.mes}
