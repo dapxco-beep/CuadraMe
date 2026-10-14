@@ -161,7 +161,30 @@ def contiene_palabra_extracto(*textos: str) -> bool:
     return any(_sin_acentos(p) in junto for p in PALABRAS_EXTRACTO)
 
 
+# Avisos de un banco que mencionan «pago», «tarjeta» o «movimientos» pero NO son una transacción:
+# el extracto está listo (va por el carril de extractos), se agregó una tarjeta al celular, un pago
+# que NO se hizo por falta de fondos, seguridad, publicidad. No se ofrecen para aprobar como movimiento.
+PALABRAS_AVISO_NO_TRANSACCION = (
+    "extracto", "estado de cuenta", "agregaste tu tarjeta", "tarjeta virtual", "estamos creando tu tarjeta",
+    "faltan fondos", "fondos insuficientes", "no pudimos", "no se pudo", "rechazad", "declinad",
+    "novedades", "preaprobad", "oferta", "promoci", "inicio de sesion", "acceso a tu", "codigo de verificacion",
+    "clave dinamica", "actualiza tu", "pedido fue entregado", "retirar tu compra",
+)
+
+
+def es_aviso_no_transaccion(asunto: str, snippet: str = "") -> bool:
+    """True si el correo es un aviso (extracto listo, tarjeta agregada, pago fallido, publicidad...) y no
+    una transacción. Se mira sobre todo el ASUNTO; el fragmento solo para «faltan fondos» y similares."""
+    a = _sin_acentos(asunto)
+    if any(p in a for p in PALABRAS_AVISO_NO_TRANSACCION):
+        return True
+    s = _sin_acentos(snippet)
+    return any(p in s for p in ("faltan fondos", "fondos insuficientes", "no se pudo completar", "fue rechazad"))
+
+
 def es_notificacion_transaccion(asunto: str, snippet: str) -> bool:
+    if es_aviso_no_transaccion(asunto, snippet):
+        return False
     junto = _sin_acentos(f"{asunto} {snippet}")
     return any(_sin_acentos(p) in junto for p in PALABRAS_TRANSACCION)
 

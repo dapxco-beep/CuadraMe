@@ -319,7 +319,7 @@ def _crear_correo(msg: dict, usuario_id: str, modelo: ClasificadorUsuario) -> Co
     # Solo para notificaciones de TRANSACCIÓN de un banco conocido se lee el cuerpo; no se guarda.
     if not extraer_monto(texto) and banco_por_remitente(remitente) and es_notificacion_transaccion(asunto, snippet):
         cuerpo = texto_cuerpo(msg)
-        if cuerpo:
+        if cuerpo and extraer_monto(f"{asunto} {cuerpo}", estricto=True):
             texto = f"{asunto} {snippet} {cuerpo}"
     comercio = extraer_comercio(remitente, asunto, snippet if texto == f"{asunto} {snippet}" else texto)
     resultado = modelo.clasificar(comercio, texto)
@@ -330,7 +330,7 @@ def _crear_correo(msg: dict, usuario_id: str, modelo: ClasificadorUsuario) -> Co
         asunto=asunto,
         snippet=snippet[:400],
         recibido_en=fecha_mensaje(msg),
-        monto=extraer_monto(texto),
+        monto=extraer_monto(texto, estricto=(texto != f"{asunto} {snippet}")),
         moneda=extraer_moneda(texto),
         comercio=comercio,
         categoria_sugerida=resultado["categoria"] if resultado else "Otros",
