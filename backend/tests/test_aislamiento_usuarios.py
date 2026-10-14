@@ -123,6 +123,12 @@ def _sembrar():
     _ok(client.post(f"/patrimonio/activos/{I['activo']}/valor", json={"valor": 13}))
     _ok(client.post(f"/patrimonio/activos/{I['activo']}/flujos", json={"monto": -20, "nota": MARCA}))
     I["flujo"] = client.get(f"/patrimonio/activos/{I['activo']}/flujos").json()[0]["id"]
+    I["broker"] = _ok(client.post("/inversiones/brokers", json={"nombre": f"{MARCA} Broker"}))["id"]
+    pos = _ok(client.post("/inversiones/posiciones", json={"nombre": f"{MARCA} Posición", "ticker": "AISLA",
+                                                           "cantidad": 2, "costo_promedio": 10,
+                                                           "broker_id": I["broker"]}))
+    I["posicion"] = pos["id"]
+    I["tx_inv"] = client.get(f"/inversiones/posiciones/{I['posicion']}").json()["transacciones"][0]["id"]
     I["plan_cuotas"] = _ok(client.post("/cuotas-tarjeta", json={
         "cuenta_id": tarjeta["id"], "descripcion": f"{MARCA} nevera", "total": 1200, "num_cuotas": 12}))["id"]
     inv = _ok(client.post(f"/cuentas/{banco['id']}/invitar", json={"email": C.email, "rol": "viewer"}))
@@ -221,8 +227,8 @@ def test_lecturas_de_a_si_ven_sus_datos():
     """Control: la marca realmente aparece para su dueña (si no, la prueba anterior no probaría nada)."""
     _sembrar()
     como(A)
-    for ruta in ("/cuentas", "/movimientos", "/metas", "/gastos-compartidos/contactos", "/patrimonio/activos",
-                 "/correos/lista", "/correos/extractos", "/conciliacion/historial", "/reglas-categoria",
+    for ruta in ("/cuentas", "/movimientos", "/metas", "/gastos-compartidos/contactos", "/patrimonio/activos", "/inversiones",
+                 "/inversiones/brokers", "/correos/lista", "/correos/extractos", "/conciliacion/historial", "/reglas-categoria",
                  "/sincronizacion/extractos"):  # «Todos los extractos»: la lista completa de A
         assert MARCA.lower() in client.get(ruta).text.lower(), ruta
 
@@ -311,6 +317,15 @@ ATAQUES = [
     ("POST", "/patrimonio/activos/{activo}/flujos", {"monto": -1}),
     ("GET", "/patrimonio/activos/{activo}/flujos", None),
     ("DELETE", "/patrimonio/flujos/{flujo}", None),
+    # inversiones
+    ("PUT", "/inversiones/brokers/{broker}", {"nombre": "hackeado"}),
+    ("DELETE", "/inversiones/brokers/{broker}", None),
+    ("GET", "/inversiones/posiciones/{posicion}", None),
+    ("PUT", "/inversiones/posiciones/{posicion}", {"nombre": "hackeada"}),
+    ("DELETE", "/inversiones/posiciones/{posicion}", None),
+    ("POST", "/inversiones/posiciones/{posicion}/precio-manual", {"precio": 1}),
+    ("POST", "/inversiones/posiciones/{posicion}/transacciones", {"tipo": "compra", "cantidad": 1, "precio": 1}),
+    ("DELETE", "/inversiones/transacciones/{tx_inv}", None),
     # tarjetas / cuotas
     ("POST", "/tarjetas/{tarjeta}/aplicar-extracto", {"cupo_total": 1}),
     ("PUT", "/cuotas-tarjeta/{plan_cuotas}", {"descripcion": "hackeada"}),
@@ -446,7 +461,9 @@ SIN_ID_DE_RECURSO = {
     "/consentimientos", "/correos/gmail/desconectar", "/correos/gmail/etiqueta", "/correos/gmail/lectura", "/correos/sincronizar",
     "/correos/clave-pdf", "/perfil/punto-de-partida", "/facturas/escanear", "/impuestos/ajustes",
     "/insights/preguntar", "/movimientos/clasificar", "/movimientos/rapido-prueba", "/pagos/checkout",
-    "/patrimonio/snapshot", "/patrimonio/activos", "/perfil/api-key/regenerar", "/perfil/recordatorio-diario",
+    "/patrimonio/snapshot", "/patrimonio/activos",
+    "/inversiones/brokers", "/inversiones/posiciones", "/inversiones/precios/actualizar", "/inversiones/importar",
+    "/inversiones/opciones",  # crean/leen solo filas PROPIAS; no reciben ids ajenos "/perfil/api-key/regenerar", "/perfil/recordatorio-diario",
     "/perfil/nombre", "/perfil/confianza-autoimport", "/perfil/autoimportar-extractos", "/perfil/eliminar-cuenta",
     "/planificacion/config", "/planificacion/distribuir-ingreso", "/planificacion/plan-meta", "/push/suscribir",
     "/push/desuscribir", "/push/probar", "/reglas-categoria/aprender", "/reglas-categoria", "/categorias",
@@ -466,7 +483,8 @@ SIN_SESION = {
     "/avisos/cron/resumen-diario", "/impuestos/cron/avisar-renta", "/costos-bancarios/cron/avisar-cargos",
     "/movimientos/cuentas-rapido", "/movimientos/rapido",
     "/movimientos/rapido-voz", "/pagos/webhook", "/patrimonio/cron/snapshot-mensual",
-    "/patrimonio/cron/actualizar-precios", "/push/vapid-public-key", "/push/cron/revisar-presupuestos",
+    "/patrimonio/cron/actualizar-precios", "/inversiones/cron/actualizar-precios",
+    "/inversiones/cron/resumen-semanal", "/push/vapid-public-key", "/push/cron/revisar-presupuestos",
     "/push/cron/aportes-automaticos", "/push/cron/premiar-presupuestos-mes", "/push/cron/resumen-semanal",
     "/push/cron/recordar-registro", "/push/cron/recordar-recurrentes", "/resumen/cron/semanal",
 }
