@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowLeftRight, Bot, ChevronDown, ChevronRight, CreditCard, Gift, HeartPulse, Landmark, LayoutGrid, Lightbulb, PieChart,
+  ArrowLeftRight, Bot, ChevronDown, ChevronRight, CreditCard, Gift, HeartPulse, Landmark, LayoutGrid, Lightbulb, LineChart, PieChart,
   PiggyBank, Plus, RefreshCw, Repeat, Sparkles, Wallet,
 } from 'lucide-react'
 import { IlustracionVacia, Isotipo, Monto, SelloCuadre } from '../brand/Marca'
@@ -277,6 +277,12 @@ export default function Inicio() {
               {verMas ? 'Ver menos' : 'Ver más'}
               <Icono icono={ChevronDown} tam="sm" className={verMas ? 'rotate-180' : ''} />
             </button>
+            {movimientos.length > 0 && (
+              <Link to="/informe#evolucion" data-testid="ver-evolucion" className="min-h-11 flex items-center justify-center gap-1.5 text-sm font-semibold text-accent">
+                <Icono icono={LineChart} tam="sm" />
+                Ver mi evolución
+              </Link>
+            )}
           </div>
         </>
       )}
@@ -543,6 +549,7 @@ export default function Inicio() {
               </div>
               <div className="divide-y divide-line mt-2">
                 <FilaEnlace to="/informe" icono={PieChart} titulo="En qué gasto mi plata" apoyo="Ingresos contra gastos, por categoría y comercio" />
+                <FilaEnlace to="/informe#evolucion" icono={LineChart} titulo="Mi evolución" apoyo="Cómo cambian tus ingresos, gastos y ahorro mes a mes" testId="ver-evolucion-completo" />
                 <FilaEnlace to="/asistente" icono={Bot} titulo="Pregúntale a CuadraMe AI" apoyo="«¿Puedo comprar un celular?» · «Gasté 18.000 en almuerzo»" />
                 <FilaEnlace to="/resumen" icono={Gift} titulo="Tu resumen del mes" apoyo="Míralo en diapositivas y compártelo" />
               </div>

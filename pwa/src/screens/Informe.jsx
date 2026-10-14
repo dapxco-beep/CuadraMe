@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { EsqueletoGrafica, EsqueletoLista } from '../components/Esqueletos'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { ArrowDownRight, ArrowLeft, ArrowUpRight, ChevronDown, PieChart, Store } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
@@ -13,6 +13,7 @@ import SelectorPeriodo from '../components/SelectorPeriodo'
 import BarraProgreso from '../components/BarraProgreso'
 import EnlaceCostos from '../components/EnlaceCostos'
 import IngresosGastos from '../components/IngresosGastos'
+import GraficoEvolucion from '../components/GraficoEvolucion'
 
 // Colores distintos para la dona (cada segmento también lleva su nombre y % en la
 // lista, así que el color nunca es la única señal).
@@ -79,6 +80,7 @@ export default function Informe() {
   const { iconoDe } = useCategorias()
   const [valor, setValor] = useState({ periodo: 'este_mes', ...rangoPeriodo('este_mes') })
   const [consulta] = useSearchParams()
+  const { hash } = useLocation()
   const mesPedido = consulta.get('mes')
   // Salto a un mes concreto: desde el estado vacío o desde el enlace del resumen (?mes=2026-09).
   const [mes, setMes] = useState(/^\d{4}-(0[1-9]|1[0-2])$/.test(mesPedido || '') ? mesPedido : null)
@@ -94,6 +96,13 @@ export default function Informe() {
       : { periodo: valor.periodo, ...(valor.periodo === 'rango' ? { desde: valor.desde, hasta: valor.hasta } : {}) }),
     [valor, mes]
   )
+
+  // Enlace «Ver mi evolución» (/informe#evolucion): baja hasta la gráfica evolutiva.
+  useEffect(() => {
+    if (hash !== '#evolucion') return undefined
+    const t = setTimeout(() => document.getElementById('evolucion')?.scrollIntoView?.({ block: 'start' }), 60)
+    return () => clearTimeout(t)
+  }, [hash])
 
   useEffect(() => {
     let activo = true
@@ -141,6 +150,7 @@ export default function Informe() {
       <EnlaceCostos className="mx-6 mt-3" />
 
       <IngresosGastos params={params} fmt={fmt} className="mx-6 mt-4" />
+      <GraficoEvolucion fmt={fmt} className="mx-6 mt-4" />
 
       {cargando && <div className="mx-6 mt-6 space-y-4"><EsqueletoGrafica alto={160} etiqueta="Cargando tu informe" /><EsqueletoLista filas={4} /></div>}
       {error && <p role="alert" className="mx-6 mt-6 text-sm text-danger text-center">{error}</p>}
