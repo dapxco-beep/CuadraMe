@@ -479,16 +479,32 @@ def _get_or_create_sync(db: Session, usuario_id: str) -> SyncGmail:
     return sync
 
 
-def _consulta_fase(fase: str, desde: datetime) -> dict:
+def _pais_de(sync) -> str:
+    """País del dueño de la corrida (para elegir los remitentes de su banco). Nunca rompe la sincronización."""
+    try:
+        from app import paises
+        from app.database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            return paises.pais_de_usuario(db, sync.usuario_id)
+        finally:
+            db.close()
+    except Exception:
+        return "CO"
+
+
+def _consulta_fase(fase: str, desde: datetime, pais: str = "CO") -> dict:
     if fase == "notificaciones":
-        return {"q": construir_query_notificaciones(desde=desde)}
+        return {"q": construir_query_notificaciones(desde=desde, pais=pais)}
     if fase == "extractos":
-        return {"q": construir_query_extractos(desde=desde)}
+        return {"q": construir_query_extractos(desde=desde, pais=pais)}
     return {"q": f"after:{desde:%Y/%m/%d}"}
 
 
-def _listar(gmail, fase: str, desde: datetime, label_id: str | None, token: str | None, max_results: int) -> dict:
-    kw = _consulta_fase(fase, desde)
+def _listar(gmail, fase: str, desde: datetime, label_id: str | None, token: str | None, max_results: int,
+            pais: str = "CO") -> dict:
+    kw = _consulta_fase(fase, desde, pais)
     if fase == "etiqueta":
         kw["labelIds"] = [label_id]
     if token:
@@ -525,7 +541,7 @@ def _iniciar_corrida(gmail, sync: SyncGmail, label_id: str | None, completa: boo
     # Estimación del total (una llamada barata por fase) para la barra de progreso.
     total = 0
     for fase in fases:
-        r = _listar(gmail, fase, desde, label_id, None, 1)
+        r = _listar(gmail, fase, desde, label_id, None, 1, _pais_de(sync))
         total += int(r.get("resultSizeEstimate", len(r.get("messages", []))) or 0)
     sync.total_estimado = total
 
@@ -674,7 +690,10 @@ def _correr_lote(gmail, db: Session, usuario_id: str, sync: SyncGmail, label_id:
             if sync.fase == "extractos" and not sync.reintento_clave_hecho:
                 _reintentar_claves(gmail, db, usuario_id, cuentas, clave)
                 sync.reintento_clave_hecho = True
-            r = _listar(gmail, sync.fase, sync.desde, label_id, sync.cursor_token, PAGINA_GMAIL)
+            from app import paises as _paises
+            pais_corrida = _paises.pais_de_usuario(db, usuario_id)
+            r = _listar(gmail, sync.fase, sync.desde, label_id, sync.cursor_token, PAGINA_GMAIL,
+                        pais_corrida)
             sync.cursor_token = r.get("nextPageToken")
             sync.fase_iniciada = True
             ids = [m["id"] for m in r.get("messages", [])]

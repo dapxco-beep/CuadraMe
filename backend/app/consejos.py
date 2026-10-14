@@ -519,8 +519,10 @@ def reunir_datos(db, usuario_id: str, hoy: datetime) -> dict:
 
     renta = None
     try:  # recordatorio de renta: solo dentro de la ventana del plazo (así Inicio no paga el cálculo el resto del año)
-        from app import renta_alerta
+        from app import paises, renta_alerta
 
+        if not paises.tiene_funcion(paises.pais_de_usuario(db, usuario_id), "renta_dian"):
+            raise LookupError("la renta DIAN solo aplica a Colombia")
         anio_g = renta_alerta.anio_gravable_vigente(hoy.date())
         if renta_alerta.en_ventana_aviso(anio_g, hoy.date()):
             r = renta_alerta.renta_de_usuario(db, usuario_id, anio_g, hoy)

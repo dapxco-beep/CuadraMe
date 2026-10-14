@@ -423,3 +423,79 @@ def ajustar_saldos_punto_de_partida(
     declarados = punto_partida.obtener(db, usuario.id)["saldos"]
     ids = data.cuenta_ids or list(declarados)
     return {"ok": True, "ajustados": _ajustar_a_declarados(db, usuario, ids)}
+
+
+# ── País, moneda e idioma ───────────────────────────────────────────────────
+class PaisUpdate(BaseModel):
+    pais: str = Field(max_length=2)
+    moneda_base: str | None = Field(default=None, max_length=3)
+    idioma: str | None = Field(default=None, max_length=10)
+    zona_horaria: str | None = Field(default=None, max_length=64)
+
+
+def _respuesta_pais(db: Session, usuario_id: str) -> dict:
+    from app import paises
+
+    perfil = _get_or_create_perfil(db, usuario_id)
+    try:
+        guardado, base, idioma, zona, conf = (perfil.pais, perfil.moneda_base, perfil.idioma,
+                                              perfil.zona_horaria, perfil.pais_confirmado)
+    except Exception:  # columnas aún sin crear en la base: se comporta como Colombia
+        db.rollback()
+        guardado = base = idioma = zona = conf = None
+    cod = guardado if paises.pais_valido(guardado) else paises.PAIS_POR_DEFECTO_LEGADO
+    c = paises.PAISES[cod]
+    return {
+        "pais": cod,
+        "confirmado": bool(conf),
+        "moneda_base": base or c["moneda"],
+        "idioma": idioma or c["idioma"],
+        "zona_horaria": zona or c["zona_horaria"],
+        "config": {k: c[k] for k in ("nombre", "estado", "moneda", "simbolo", "decimales", "locale",
+                                     "tratamiento", "funciones_fiscales", "unidad_tributaria",
+                                     "pago_inmediato", "banco_central", "ley_datos")},
+    }
+
+
+@router.get("/pais")
+def obtener_pais(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """País, moneda e idioma de ESTA persona. Sin país guardado (perfiles anteriores) = Colombia."""
+    return _respuesta_pais(db, usuario.id)
+
+
+@router.put("/pais")
+def guardar_pais(
+    data: PaisUpdate,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """La persona elige (o confirma la sugerencia de) su país. La moneda base por defecto es la del país."""
+    from app import paises
+
+    cod = data.pais.upper()
+    if not paises.pais_valido(cod):
+        raise HTTPException(status_code=422, detail="Ese país todavía no está disponible.")
+    c = paises.PAISES[cod]
+    moneda = (data.moneda_base or c["moneda"]).upper()
+    if not moneda.isalpha() or len(moneda) != 3:
+        raise HTTPException(status_code=422, detail="Moneda no válida.")
+    perfil = _get_or_create_perfil(db, usuario.id)
+    try:
+        perfil.pais = cod
+        perfil.moneda_base = moneda
+        perfil.idioma = data.idioma or c["idioma"]
+        perfil.zona_horaria = data.zona_horaria or c["zona_horaria"]
+        perfil.pais_confirmado = True
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=503, detail="No pudimos guardar tu país ahora. Inténtalo de nuevo en un momento.")
+    return _respuesta_pais(db, usuario.id)
+
+
+@router.get("/paises")
+def listar_paises(usuario: UsuarioActual = Depends(get_current_user)):
+    """Catálogo para el selector de país (solo los disponibles). No contiene datos de personas."""
+    from app import paises
+
+    return {"paises": paises.catalogo_publico()}
