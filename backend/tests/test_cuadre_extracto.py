@@ -131,7 +131,10 @@ def test_diferencia_por_movimiento_faltante_con_causas_y_acciones():
     assert ev["estado"] == "diferencia" and ev["diferencia"] == -50_000
     assert "Diferencia de $50.000" in ev["texto"] and "$1.800.000" in ev["texto"] and "$1.850.000" in ev["texto"]
     codigos = {c["codigo"] for c in ev["causas"]}
-    assert "falta_movimiento" in codigos and "duplicado" in codigos  # hay un movimiento de 50.000: ¿repetido?
+    assert "falta_movimiento" in codigos and "duplicado" not in codigos
+    # al revés: el banco dice 1.900.000 (50.000 más): el «Mercado» de 50.000 puede estar repetido
+    rep = _evaluar(cuenta, saldo_final=1_900_000, fecha_corte="2026-09-30")
+    assert any(c["codigo"] == "duplicado" for c in rep["causas"])
     assert ev["acciones"]["ajuste"]["permitido"] and ev["acciones"]["ajuste"]["monto"] == -50_000
     assert ev["acciones"]["ver_que_falta"] and ev["acciones"]["dejar_asi"]
     assert _saldo(cuenta) == 1_850_000  # evaluar NO cambia nada
@@ -310,7 +313,7 @@ def test_tarjeta_de_credito_cuadra_con_la_deuda_y_el_ajuste_conserva_el_signo():
     ev = _evaluar(tarjeta, saldo_final=-850_000, fecha_corte="2026-09-15")  # el banco cobró 50.000 de cuota de manejo
     assert ev["estado"] == "diferencia" and ev["diferencia"] == -50_000
     assert "debes" in ev["texto"] and "$850.000" in ev["texto"]
-    r = client.post("/conciliacion/cuadre/ajuste", json={"cuenta_id": tarjeta, "saldo_final": -850_000, "fecha_corte": "2026-09-15", "confirmar": True}).json()
+    r = client.post("/conciliacion/cuadre/ajuste", json={"cuenta_id": tarjeta, "saldo_final": -850_000, "fecha_corte": "2026-09-15", "confirmar": True, "confirmar_reforzado": True}).json()
     assert r["ajustado"] and _saldo(tarjeta) == -850_000
 
 
