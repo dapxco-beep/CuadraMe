@@ -340,6 +340,89 @@ def ingresos_gastos(movs: list[dict], rango: dict, anterior: dict | None = None,
     }
 
 
+MAX_MESES_EVOLUCION = 36
+MAX_SEMANAS_EVOLUCION = 52
+MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+
+
+def _cubetas_evolucion(inicio: datetime, hoy: datetime, agrupar: str) -> list[tuple[datetime, datetime]]:
+    """[(desde, hasta_exclusivo)] de cada mes (o semana lunes-domingo) desde `inicio` hasta el que contiene `hoy`."""
+    out = []
+    if agrupar == "semana":
+        cur = _dia(inicio) - timedelta(days=_dia(inicio).weekday())
+        while cur <= hoy:
+            out.append((cur, cur + timedelta(days=7)))
+            cur += timedelta(days=7)
+    else:
+        a, m = inicio.year, inicio.month
+        while (a, m) <= (hoy.year, hoy.month):
+            out.append((inicio_mes(a, m), inicio_mes(*sumar_meses(a, m, 1))))
+            a, m = sumar_meses(a, m, 1)
+    return out
+
+
+def evolucion(movs: list[dict], hoy: datetime, agrupar: str = "mes", meses: int = 6,
+              inicio_pp: datetime | None = None) -> dict:
+    """Serie de tiempo de ingresos, gastos y ahorro (ingresos - gastos) por mes o por semana.
+
+    Solo cuenta lo que ya clasificó la regla única (movs con tipo 'income' / 'expense'; los traslados, pagos de
+    tarjeta y ajustes vienen como 'transfer' y no suman). `meses` = cuántos meses mirar atrás (0 = todo lo
+    que hay, con tope). Nunca se dibuja antes del punto de partida (`inicio_pp`). Un periodo sin ningún
+    movimiento va con `con_datos: false` y valores null (hueco, no un cero engañoso). `acumulado` es el ahorro
+    sumado desde el primer periodo mostrado."""
+    agrupar = "semana" if agrupar == "semana" else "mes"
+    reales = [m for m in movs if m["tipo"] in ("income", "expense")]
+    if meses and meses > 0:
+        meses = min(meses, MAX_MESES_EVOLUCION)
+        a, mm = sumar_meses(hoy.year, hoy.month, -(meses - 1))
+        inicio = inicio_mes(a, mm)
+    else:
+        primero = min((m["fecha"] for m in reales), default=hoy)
+        a, mm = sumar_meses(hoy.year, hoy.month, -(MAX_MESES_EVOLUCION - 1))
+        inicio = max(_dia(primero).replace(day=1), inicio_mes(a, mm))
+    if inicio_pp and inicio < inicio_pp:
+        inicio = inicio_pp.replace(day=1) if agrupar == "mes" else inicio_pp
+    cubetas = _cubetas_evolucion(inicio, hoy, agrupar)
+    if agrupar == "semana" and len(cubetas) > MAX_SEMANAS_EVOLUCION:
+        cubetas = cubetas[-MAX_SEMANAS_EVOLUCION:]
+    puntos, acum = [], 0
+    for d, h in cubetas:
+        ing = gas = 0.0
+        n = 0
+        for m in reales:
+            if d <= m["fecha"] < h:
+                n += 1
+                if m["tipo"] == "income":
+                    ing += m["monto"]
+                else:
+                    gas += m["monto"]
+        con = n > 0
+        if con:
+            acum += round(ing) - round(gas)
+        ultimo = h - timedelta(days=1)
+        if agrupar == "mes":
+            etiqueta, larga = MESES_CORTOS[d.month - 1], f"{MESES[d.month - 1]} de {d.year}"
+        else:
+            etiqueta = f"{d.day} {MESES_CORTOS[d.month - 1]}"
+            larga = f"semana del {d.day} de {MESES[d.month - 1]} al {ultimo.day} de {MESES[ultimo.month - 1]}"
+        puntos.append({
+            "clave": d.date().isoformat() if agrupar == "semana" else clave_mes(d),
+            "etiqueta": etiqueta, "etiqueta_larga": larga,
+            "desde": d.date().isoformat(), "hasta": ultimo.date().isoformat(),
+            "ingresos": round(ing) if con else None, "gastos": round(gas) if con else None,
+            "ahorro": round(ing) - round(gas) if con else None,
+            "acumulado": acum, "con_datos": con,
+            "en_curso": d <= hoy < h,
+        })
+    return {
+        "agrupar": agrupar, "meses": meses, "puntos": puntos,
+        "inicio": inicio_pp.date().isoformat() if inicio_pp else None,
+        "meses_con_datos": len({m["fecha"].strftime("%Y-%m") for m in reales
+                                if cubetas and cubetas[0][0] <= m["fecha"] < cubetas[-1][1]}),
+        "hay_datos": any(p["con_datos"] for p in puntos),
+    }
+
+
 ETIQUETAS_RAZON = {
     "par": "Traslado entre tus cuentas", "par_comision": "Traslado entre tus cuentas",
     "decision": "Traslado entre tus cuentas", "regla": "Traslado entre tus cuentas",
