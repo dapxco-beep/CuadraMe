@@ -35,6 +35,7 @@ vi.mock('../lib/CategoriasContext', () => ({
 
 import { DialogosProvider } from '../lib/DialogosContext'
 import Sincronizacion from '../screens/Sincronizacion'
+import CorreosPorRevisar from '../components/CorreosPorRevisar'
 import {
   agruparPorBanco, estadoCelda, nombreMes, resumenTareas, textoEstadoExtracto,
 } from '../lib/sincronizacion'
@@ -143,7 +144,8 @@ describe('pantalla Sincronización', () => {
     montar()
     expect(await screen.findByText('Tienes 5 cosas por resolver')).toBeTruthy()
     const tarjetas = screen.getAllByTestId(/^tarea-/).map((t) => t.getAttribute('data-testid'))
-    expect(tarjetas).toEqual(['tarea-falta_clave', 'tarea-extractos_por_conciliar', 'tarea-sin_cuenta', 'tarea-movimientos_por_categorizar', 'tarea-correos_por_revisar'])
+    // Cada sección con su «Por hacer»: primero lo general, luego Movimientos y luego Extractos.
+    expect(tarjetas).toEqual(['tarea-sin_cuenta', 'tarea-movimientos_por_categorizar', 'tarea-correos_por_revisar', 'tarea-falta_clave', 'tarea-extractos_por_conciliar'])
     expect(screen.queryByTestId('tarea-movimientos_por_confirmar')).toBeNull()
     expect(screen.getByRole('button', { name: 'Traer todo ahora' })).toBeTruthy()
   })
@@ -155,7 +157,8 @@ describe('pantalla Sincronización', () => {
     expect(vacio.textContent).toMatch(/Todo al día · última vez hace 2 h/)
     expect(screen.getByTestId('resumen-tareas').textContent).toBe('Todo al día')
     // Cada bloque con cero pendientes queda en «Todo al día».
-    expect(screen.getByTestId('al-dia-sinc-correo')).toBeTruthy()
+    expect(screen.getByTestId('al-dia-sinc-movimientos')).toBeTruthy()
+    expect(screen.getByTestId('al-dia-sinc-extractos')).toBeTruthy()
     expect(screen.getByTestId('al-dia-sinc-revisar')).toBeTruthy()
   })
 
@@ -278,14 +281,12 @@ describe('Correos por revisar: la cuenta sale de quién envió el correo', () =>
   const BANCO = { id: 'k2', comercio: 'Exito', asunto: 'Compra', categoria_sugerida: 'Mercado', tipo_sugerido: 'expense', monto: 45000, banco_detectado: 'Bancolombia', cuenta_sugerida_id: 'bc', falta_cuenta: false }
   const RARO = { id: 'k3', comercio: 'Tienda', asunto: 'Pago', categoria_sugerida: 'Otros', tipo_sugerido: 'expense', monto: 9000, banco_detectado: null, cuenta_sugerida_id: null, falta_cuenta: false }
 
-  beforeEach(() => {
-    api.extractosCorreo.mockResolvedValue([])
-    api.correosPendientes.mockResolvedValue([NEQUI, BANCO, RARO])
-    localStorage.setItem('cuadrame_gmail_sync', String(Date.now()))
-  })
+  // Los movimientos del correo se aprueban en la pantalla Movimientos: aquí se prueban sus tarjetas.
+  const montarTarjetas = () =>
+    render(<DialogosProvider><CorreosPorRevisar correos={[NEQUI, BANCO, RARO]} onResuelto={vi.fn()} /></DialogosProvider>)
 
   it('nunca preselecciona la primera cuenta: un correo de Nequi sin cuenta Nequi no se puede aprobar', async () => {
-    montar()
+    montarTarjetas()
     await screen.findByText('Bre-B')
     const selector = screen.getByLabelText('Cuenta de Bre-B')
     expect(selector.value).toBe('') // antes caía en "Nu Colombia" (cuentas[0])
@@ -297,7 +298,7 @@ describe('Correos por revisar: la cuenta sale de quién envió el correo', () =>
 
   it('usa la cuenta sugerida por el servidor y aprueba con ella', async () => {
     api.aprobarCorreo.mockResolvedValue({})
-    montar()
+    montarTarjetas()
     await screen.findByText('Exito')
     expect(screen.getByLabelText('Cuenta de Exito').value).toBe('bc')
     const aprobar = screen.getAllByRole('button', { name: /^Aprobar$/ })
@@ -308,7 +309,7 @@ describe('Correos por revisar: la cuenta sale de quién envió el correo', () =>
 
   it('sin banco detectado exige elegir la cuenta a mano', async () => {
     api.aprobarCorreo.mockResolvedValue({})
-    montar()
+    montarTarjetas()
     await screen.findByText('Tienda')
     const selector = screen.getByLabelText('Cuenta de Tienda')
     const aprobar = screen.getAllByRole('button', { name: /^Aprobar$/ })[2]
