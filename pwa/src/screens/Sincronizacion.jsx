@@ -133,7 +133,6 @@ export default function Sincronizacion() {
   const [estado, setEstado] = useState(null)
   const [gmail, setGmail] = useState(null)
   const [extractos, setExtractos] = useState([])
-  const [correos, setCorreos] = useState([])
   const [ignorados, setIgnorados] = useState(null) // extractos ignorados; null = no cargados
   const [correosIgnorados, setCorreosIgnorados] = useState(null)
   const [verTodos, setVerTodos] = useState(false)
@@ -193,13 +192,12 @@ export default function Sincronizacion() {
 
   const cargar = useCallback(async () => {
     try {
-      const [est, gm, ex, clave, porCat, pend] = await Promise.all([
+      const [est, gm, ex, clave, porCat] = await Promise.all([
         api.sincronizacionEstado(hastaRef.current),
         api.gmailEstado().catch(() => null),
         api.extractosCorreo().catch(() => []),
         api.clavePdfEstado().catch(() => ({})),
         api.sincronizacionPorCategorizar(0).catch(() => ({ items: [], total: 0 })),
-        api.correosPendientes().catch(() => []),
       ])
       if (!montado.current) return
       const ultimoMes = est?.meses?.[est.meses.length - 1]?.clave
@@ -213,7 +211,6 @@ export default function Sincronizacion() {
       // Va en el mismo lote que los datos, así no hay un instante con todo cerrado.
       if (!iniciado.current) {
         iniciado.current = true
-        const t = est?.tareas || []
         const conectado = Boolean(gm?.conectado)
         // Modo simple: las dos secciones de contenido a la vista y la conexión plegada (salvo que falte conectar).
         setAbiertos((a) => ({
@@ -226,7 +223,6 @@ export default function Sincronizacion() {
       setEstado(est)
       setGmail(gm)
       setExtractos(Array.isArray(ex) ? ex : [])
-      setCorreos(Array.isArray(pend) ? pend : [])
       setClaveInfo(clave && typeof clave === 'object' ? clave : {})
       setCola({ items: porCat?.items || [], total: porCat?.total || 0 })
       setError('')
