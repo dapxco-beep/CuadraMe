@@ -1,5 +1,5 @@
-// El correo en DOS usos: «Movimientos del día a día» y «Extractos para conciliar», cada uno con su
-// interruptor, botón, última vez, contadores y error. «Por hacer» separado por carril, ayuda y aprobar en bloque.
+// El correo en DOS usos: «Movimientos» y «Extractos», cada uno en su sección con su botón, última vez, contadores
+// y error; los interruptores y la ayuda viven en «Conexión de Gmail». «Por hacer» propio por sección y aprobar en bloque.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -27,6 +27,7 @@ vi.mock('../lib/CategoriasContext', () => ({
 }))
 
 import { DialogosProvider } from '../lib/DialogosContext'
+import CorreosPorRevisar from '../components/CorreosPorRevisar'
 import Sincronizacion from '../screens/Sincronizacion'
 import EtiquetaOrigen from '../components/EtiquetaOrigen'
 import { gruposDeTareas, resumenCarriles, resumenLectura } from '../lib/carriles'
@@ -48,6 +49,11 @@ const correo = (id, extra = {}) => ({
   id, comercio: `Comercio ${id}`, asunto: 'Compra', monto: 10000, tipo_sugerido: 'expense', categoria_sugerida: 'Comida',
   cuenta_sugerida_id: 'bc', banco_detectado: 'Bancolombia', ...extra,
 })
+
+// «Conexión de Gmail» está plegada por defecto (modo simple): se abre para llegar a los interruptores.
+const abrirConexion = () => fireEvent.click(screen.getByTestId('bloque-sinc-conexion').querySelector('h2 button'))
+const montarTarjetas = (correos) =>
+  render(<DialogosProvider><CorreosPorRevisar correos={correos} onResuelto={vi.fn()} /></DialogosProvider>)
 
 const montar = () =>
   render(
@@ -73,15 +79,15 @@ beforeEach(() => {
 
 describe('lib/carriles', () => {
   it('el resumen no mezcla los dos conteos', () => {
-    expect(resumenCarriles(TAREAS)).toBe('3 movimientos por aprobar · 3 extractos por conciliar')
-    expect(resumenCarriles([{ id: 'correos_por_revisar', cantidad: 1 }])).toBe('1 movimiento por aprobar')
+    expect(resumenCarriles(TAREAS)).toBe('3 movimientos por revisar · 3 extractos por conciliar')
+    expect(resumenCarriles([{ id: 'correos_por_revisar', cantidad: 1 }])).toBe('1 movimiento por revisar')
     expect(resumenCarriles([{ id: 'sin_cuenta', cantidad: 2 }])).toBe('')
   })
 
   it('agrupa las tareas por carril y deja lo demás en «Otras cosas»', () => {
     const g = gruposDeTareas(TAREAS)
     expect(g.map((x) => x.clave)).toEqual(['extractos', 'general', 'movimientos'])
-    expect(g[0].nombre).toBe('Extractos para conciliar')
+    expect(g[0].nombre).toBe('Extractos')
     expect(g[1].nombre).toBe('Otras cosas')
     expect(gruposDeTareas([TAREAS[2]])[0].nombre).toBe('') // solo lo general: sin título
   })
@@ -122,17 +128,21 @@ describe('EtiquetaOrigen', () => {
 })
 
 describe('Traer movimientos: las dos tarjetas del correo', () => {
-  it('muestra «Movimientos del día a día» y «Extractos para conciliar», cada una con su interruptor, botón, última vez y contadores', async () => {
+  it('muestra «Movimientos» y «Extractos» como secciones propias, cada una con su botón, última vez y contadores; los interruptores van en la conexión', async () => {
     montar()
     const mov = await screen.findByTestId('carril-movimientos')
     const ext = screen.getByTestId('carril-extractos')
-    expect(within(mov).getByText('Movimientos del día a día')).toBeTruthy()
+    expect(within(screen.getByTestId('bloque-sinc-movimientos')).getByRole('heading', { level: 2, name: /^Movimientos/ })).toBeTruthy()
+    expect(within(screen.getByTestId('bloque-sinc-extractos')).getByRole('heading', { level: 2, name: /^Extractos/ })).toBeTruthy()
     expect(within(mov).getByText(/Las notificaciones de tu banco: así ves en el momento lo que gastas/)).toBeTruthy()
-    expect(within(ext).getByText('Extractos para conciliar')).toBeTruthy()
     expect(within(ext).getByText(/El extracto mensual del banco: sirve para confirmar y cuadrar el mes/)).toBeTruthy()
-    expect(within(mov).getByRole('switch', { name: /Leer movimientos del día a día/i })).toBeChecked()
-    expect(within(ext).getByRole('switch')).toBeChecked()
-    expect(within(mov).getByText('3 por aprobar')).toBeTruthy()
+    abrirConexion()
+    expect(within(screen.getByTestId('interruptor-movimientos')).getByRole('switch', { name: /Leer notificaciones/i })).toBeChecked()
+    expect(within(screen.getByTestId('interruptor-extractos')).getByRole('switch', { name: /Leer extractos/i })).toBeChecked()
+    expect(within(mov).getByText('3 por revisar')).toBeTruthy()
+    // los contadores de una sección no aparecen en la otra
+    expect(within(mov).queryByText('1 necesita clave')).toBeNull()
+    expect(within(ext).queryByText('3 por revisar')).toBeNull()
     expect(within(mov).getByText('2 faltan confirmar con el extracto')).toBeTruthy()
     expect(within(ext).getByText('1 necesita clave')).toBeTruthy()
     expect(within(mov).getByTestId('ultima-movimientos').textContent).toMatch(/Última vez hace 2 h/)
@@ -155,14 +165,16 @@ describe('Traer movimientos: las dos tarjetas del correo', () => {
       : { ok: true, completado: true, nuevos: 1, tipo: 'movimientos' }))
     montar()
     fireEvent.click(await screen.findByRole('button', { name: 'Traer todo ahora' }))
-    expect(await screen.findByTestId('error-extractos')).toHaveTextContent('Extractos para conciliar')
+    expect(await screen.findByTestId('error-extractos')).toHaveTextContent('Extractos')
     expect(screen.getByTestId('resultado-movimientos')).toHaveTextContent('Encontré 1 movimiento nuevo.')
     expect(screen.queryByTestId('error-movimientos')).toBeNull()
   })
 
   it('el interruptor guarda solo ese carril y deja el otro como estaba', async () => {
     montar()
-    const sw = within(await screen.findByTestId('carril-extractos')).getByRole('switch')
+    await screen.findByTestId('carril-extractos')
+    abrirConexion()
+    const sw = within(screen.getByTestId('interruptor-extractos')).getByRole('switch')
     // Al guardar, la pantalla vuelve a pedir el estado: el servidor ya responde con el cambio.
     api.gmailEstado.mockResolvedValue({ conectado: true, email: 'yo@gmail.com', leer_movimientos: true, leer_extractos: false })
     fireEvent.click(sw)
@@ -184,32 +196,41 @@ describe('Traer movimientos: las dos tarjetas del correo', () => {
   it('«¿Cuál es la diferencia?» explica los dos usos con un ejemplo cada uno', async () => {
     montar()
     expect(screen.queryByTestId('ayuda-carriles')).toBeNull()
+    await screen.findByTestId('carril-movimientos')
+    abrirConexion()
     fireEvent.click(await screen.findByRole('button', { name: /¿Cuál es la diferencia\?/ }))
     const ayuda = screen.getByTestId('ayuda-carriles')
     expect(ayuda.textContent).toMatch(/Compra por \$45\.000 en Éxito/)
     expect(ayuda.textContent).toMatch(/PDF de septiembre/)
   })
 
-  it('«Por hacer» sale separado por carril, con el nombre de cada uno', async () => {
+  it('cada sección tiene su «Por hacer» propio y lo demás va en «Otras cosas por hacer»', async () => {
     montar()
-    await screen.findByTestId('por-hacer')
-    expect(screen.getByTestId('titulo-por-hacer-extractos')).toHaveTextContent('Extractos para conciliar')
-    expect(screen.getByTestId('titulo-por-hacer-movimientos')).toHaveTextContent('Movimientos del día a día')
-    const grupoExt = screen.getByTestId('por-hacer-extractos')
+    const grupoExt = await screen.findByTestId('por-hacer-extractos')
+    const grupoMov = screen.getByTestId('por-hacer-movimientos')
     expect(within(grupoExt).getByTestId('tarea-falta_clave')).toBeTruthy()
     expect(within(grupoExt).queryByTestId('tarea-correos_por_revisar')).toBeNull()
-    expect(screen.getByTestId('resumen-carriles')).toHaveTextContent('3 movimientos por aprobar · 3 extractos por conciliar')
+    expect(within(grupoMov).getByTestId('tarea-correos_por_revisar')).toBeTruthy()
+    expect(within(screen.getByTestId('por-hacer-general')).getByTestId('tarea-sin_cuenta')).toBeTruthy()
+    expect(screen.getByTestId('resumen-carriles')).toHaveTextContent('3 movimientos por revisar · 3 extractos por conciliar')
+  })
+
+  it('la tarjeta de Movimientos no repite la lista: ofrece «Ver los N por revisar»', async () => {
+    montar()
+    const boton = await screen.findByTestId('ver-por-revisar')
+    expect(boton).toHaveTextContent('Ver los 3 por revisar')
+    expect(screen.queryByTestId('correo-a')).toBeNull()
   })
 })
 
-describe('Movimientos nuevos del correo', () => {
+describe('Movimientos del correo por revisar (tarjetas)', () => {
   it('muestra comercio, monto, categoría con emoji y aprueba en bloque los que parecen correctos', async () => {
-    api.correosPendientes.mockResolvedValue([
+    const lista = [
       correo('a'), correo('b'),
       correo('c', { preguntar_categoria: true, categoria_sugerida: 'Otros' }), // este no parece correcto: pide categoría
-    ])
+    ]
     api.aprobarCorreo.mockResolvedValue({})
-    montar()
+    montarTarjetas(lista)
     expect((await screen.findAllByText(/🍔 Comida/, { selector: 'p' })).length).toBe(2)
     const bloque = await screen.findByTestId('aprobar-correctos')
     expect(bloque).toHaveTextContent('Aprobar los 2 que parecen correctos')
@@ -221,8 +242,7 @@ describe('Movimientos nuevos del correo', () => {
   })
 
   it('con menos de dos correctos no ofrece aprobar en bloque', async () => {
-    api.correosPendientes.mockResolvedValue([correo('a')])
-    montar()
+    montarTarjetas([correo('a')])
     await screen.findByTestId('correo-a')
     expect(screen.queryByTestId('aprobar-correctos')).toBeNull()
   })
