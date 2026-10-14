@@ -47,6 +47,8 @@ beforeEach(() => {
   Object.assign(api, {
     movimiento: vi.fn((id) => Promise.resolve(MOVS.find((m) => m.id === id))),
     movimientos: vi.fn().mockResolvedValue(MOVS),
+    decidirTraslado: vi.fn().mockResolvedValue({ ok: true }),
+    decidirTraslado: vi.fn().mockResolvedValue({ ok: true }),
     editarMovimiento: vi.fn((id, d) => Promise.resolve({ ...MOVS.find((m) => m.id === id), ...d })),
   })
 })
@@ -57,8 +59,8 @@ describe('lib/traslados', () => {
     expect(signoDe(MOVS[1])).toBe('+')
     const pata = { tipo: 'transfer', fuente: 'transferencia_interna', notas: 'TRF:g:in', categoria: 'Transferencia' }
     expect(direccionDe(pata)).toBe('income')
-    expect(etiquetaTipo(pata)).toBe('Paso entre tus cuentas ↔ (entra)')
-    expect(etiquetaTipo(MOVS[0])).toBe('Posible paso entre tus cuentas ↔ (sale)')
+    expect(etiquetaTipo(pata)).toBe('Traslado entre tus cuentas ↔ (entra)')
+    expect(etiquetaTipo(MOVS[0])).toBe('Posible traslado ↔ (sale)')
     expect(etiquetaTipo(MOVS[2])).toBe('Gasto')
   })
 
@@ -77,19 +79,19 @@ describe('lib/traslados', () => {
 describe('Detalle de un traslado', () => {
   it('un posible traslado se ve como Traslado con signo de su dirección y se puede marcar', async () => {
     detalle('e')
-    expect(await screen.findByText('Posible paso entre tus cuentas ↔ (sale)')).toBeInTheDocument()
+    expect(await screen.findByText('Posible traslado ↔ (sale)')).toBeInTheDocument()
     expect(screen.getByText(/^-/)).toBeInTheDocument()
-    await userEvent.click(screen.getByText('Es plata que pasé entre mis cuentas'))
+    await userEvent.click(screen.getByText('Es un traslado entre mis cuentas'))
     await waitFor(() =>
-      expect(api.editarMovimiento).toHaveBeenCalledWith('e', expect.objectContaining({ categoria: 'Transferencia' }))
+      expect(api.decidirTraslado).toHaveBeenCalledWith({ ids: ['e'], decision: 'traslado', recordar: true })
     )
   })
 
   it('"Es un gasto real" deja la marca no_es_traslado', async () => {
     detalle('e')
-    await userEvent.click(await screen.findByText('Es un gasto real'))
+    await userEvent.click(await screen.findByText('No es un traslado'))
     await waitFor(() =>
-      expect(api.editarMovimiento).toHaveBeenCalledWith('e', { notas: expect.stringContaining('no_es_traslado') })
+      expect(api.decidirTraslado).toHaveBeenCalledWith({ ids: ['e'], decision: 'real', recordar: true })
     )
   })
 
@@ -97,8 +99,7 @@ describe('Detalle de un traslado', () => {
     detalle('e')
     await userEvent.click(await screen.findByText('Vincular con su contraparte'))
     await userEvent.click(await screen.findByText('Vincular'))
-    await waitFor(() => expect(api.editarMovimiento).toHaveBeenCalledTimes(2))
-    expect(api.editarMovimiento).toHaveBeenCalledWith('i', expect.objectContaining({ categoria: 'Transferencia' }))
+    await waitFor(() => expect(api.decidirTraslado).toHaveBeenCalledWith({ ids: ['e', 'i'], decision: 'traslado', recordar: false }))
   })
 
   it('una transferencia a un tercero sin pista se ve como Gasto', async () => {

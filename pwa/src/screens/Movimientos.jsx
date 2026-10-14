@@ -10,7 +10,7 @@ import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
-import { tipoEfectivo } from '../lib/contabilidad'
+import { contextoDeCuentas, totalesIngresosGastos } from '../lib/contabilidad'
 import { direccionDe, etiquetaTraslado, signoDe } from '../lib/traslados'
 import { esAuto, claveComercio } from '../lib/comercio'
 import { useModoPantalla } from '../lib/useAncho'
@@ -356,19 +356,17 @@ export default function Movimientos() {
 
   // --- Derivados ---
   const monedaDe = useMemo(() => Object.fromEntries(cuentas.map((c) => [c.id, c.moneda])), [cuentas])
-  const tiposCuenta = useMemo(() => Object.fromEntries(cuentas.map((c) => [c.id, c.tipo])), [cuentas])
   const filtrados = useMemo(() => movimientos.filter((m) => coincideFiltros(m, f)), [movimientos, f])
   const filtradosRef = useRef(filtrados)
   filtradosRef.current = filtrados
   const activos = hayFiltros(f)
-  const totalIngresos = useMemo(
-    () => filtrados.filter((m) => tipoEfectivo(m, tiposCuenta) === 'income').reduce((s, m) => s + m.monto, 0),
-    [filtrados, tiposCuenta]
-  )
-  const totalGastos = useMemo(
-    () => filtrados.filter((m) => tipoEfectivo(m, tiposCuenta) === 'expense').reduce((s, m) => s + m.monto, 0),
-    [filtrados, tiposCuenta]
-  )
+  // Regla única: se empareja sobre TODA la lista cargada (la otra pata puede estar filtrada) y se suma lo filtrado.
+  const totales = useMemo(() => {
+    const ids = new Set(filtrados.map((m) => m.id))
+    return totalesIngresosGastos(movimientos, contextoDeCuentas(cuentas), (m) => ids.has(m.id))
+  }, [movimientos, filtrados, cuentas])
+  const totalIngresos = totales.ingresos
+  const totalGastos = totales.gastos
   const gruposDia = useMemo(() => {
     const mapa = new Map()
     for (const m of filtrados) {

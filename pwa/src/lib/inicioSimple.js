@@ -1,3 +1,4 @@
+import { tiposEfectivos } from './contabilidad'
 // Reglas puras del Inicio simplificado: qué es «el siguiente paso» y cuánto se gastó esta semana.
 // Sin React, fáciles de probar.
 
@@ -52,9 +53,11 @@ export function fechaHace(dias, ahora = new Date()) {
 }
 
 /** Suma de los gastos de los últimos 7 días (los traslados entre cuentas propias no cuentan). */
-export function gastosDeLaSemana(movimientos, ahora = new Date()) {
+export function gastosDeLaSemana(movimientos, ahora = new Date(), ctx = {}) {
   const desde = fechaHace(6, ahora)
-  return (movimientos || [])
-    .filter((m) => m.tipo === 'expense' && String(m.fecha || '').slice(0, 10) >= desde)
+  const lista = movimientos || []
+  const te = tiposEfectivos(lista, ctx) // regla única (lib/contabilidad): sin traslados ni pagos de tarjeta
+  return lista
+    .filter((m) => te[m.id] === 'expense' && String(m.fecha || '').slice(0, 10) >= desde)
     .reduce((s, m) => s + Math.abs(Number(m.monto) || 0), 0)
 }
