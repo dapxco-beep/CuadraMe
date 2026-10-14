@@ -329,7 +329,8 @@ describe('Inicio simplificado', () => {
     montarInicio()
     const paso = await screen.findByTestId('siguiente-paso')
     await waitFor(() => expect(paso).toHaveAttribute('data-paso', 'categorizar'))
-    expect(paso).toHaveTextContent('Ponle tipo a 3 gastos')
+    expect(paso).toHaveTextContent('Ordena lo que más pesa (opcional)')
+    expect(within(paso).getByRole('link')).toHaveAttribute('href', '/categorizar')
     expect(within(paso).getAllByRole('link')).toHaveLength(1)
   })
 
