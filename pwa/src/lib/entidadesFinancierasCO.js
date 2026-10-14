@@ -1,3 +1,5 @@
+import { PAISES } from './paises'
+
 // Entidades financieras vigiladas por la Superfinanciera + billeteras digitales
 // más comunes en Colombia. Usado como sugerencia de autocompletado, no es una
 // lista cerrada — el campo sigue siendo texto libre.
@@ -85,5 +87,11 @@ export function marcaDeEntidad(nombreCuenta) {
   const match = Object.keys(MARCAS_FINANCIERAS_CO).find((entidad) =>
     nombreLower.includes(entidad.toLowerCase())
   )
-  return match ? MARCAS_FINANCIERAS_CO[match] : MARCA_DEFAULT
+  if (match) return MARCAS_FINANCIERAS_CO[match]
+  // Bancos de otros países (registro lib/paises.js): mismo criterio, por nombre.
+  for (const c of Object.values(PAISES)) {
+    const b = c.bancos.find((x) => x.bg && nombreLower.includes(x.nombre.toLowerCase()))
+    if (b) return { mono: b.mono, bg: b.bg, fg: b.fg }
+  }
+  return MARCA_DEFAULT
 }

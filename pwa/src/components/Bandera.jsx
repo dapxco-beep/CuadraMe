@@ -19,6 +19,47 @@ const PAIS = {
       <rect width="10.5" height="8.6" fill="#3C3B6E" />
     </>
   ),
+  MX: (
+    <>
+      <rect width="8" height="16" fill="#006847" />
+      <rect x="8" width="8" height="16" fill="#fff" />
+      <rect x="16" width="8" height="16" fill="#CE1126" />
+    </>
+  ),
+  PE: (
+    <>
+      <rect width="8" height="16" fill="#D91023" />
+      <rect x="8" width="8" height="16" fill="#fff" />
+      <rect x="16" width="8" height="16" fill="#D91023" />
+    </>
+  ),
+  CL: (
+    <>
+      <rect width="24" height="8" fill="#fff" />
+      <rect y="8" width="24" height="8" fill="#D52B1E" />
+      <rect width="8" height="8" fill="#0039A6" />
+    </>
+  ),
+  AR: (
+    <>
+      <rect width="24" height="16" fill="#74ACDF" />
+      <rect y="5.3" width="24" height="5.4" fill="#fff" />
+    </>
+  ),
+  EC: (
+    <>
+      <rect width="24" height="8" fill="#FFDD00" />
+      <rect y="8" width="24" height="4" fill="#034EA2" />
+      <rect y="12" width="24" height="4" fill="#ED1C24" />
+    </>
+  ),
+  CR: (
+    <>
+      <rect width="24" height="16" fill="#002B7F" />
+      <rect y="2.7" width="24" height="10.6" fill="#fff" />
+      <rect y="5.3" width="24" height="5.4" fill="#CE1126" />
+    </>
+  ),
   EU: (
     <>
       <rect width="24" height="16" fill="#003399" />

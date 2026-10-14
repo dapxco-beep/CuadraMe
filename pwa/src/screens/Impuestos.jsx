@@ -7,6 +7,8 @@ import { formatCOP } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
 import TarjetaRenta from '../components/TarjetaRenta'
 import TarjetaGmfMes from '../components/TarjetaGmfMes'
+import ImpuestosInformativo from '../components/ImpuestosInformativo'
+import { usePais } from '../lib/pais'
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
@@ -17,6 +19,9 @@ function etiquetaMes(clave) {
 
 export default function Impuestos() {
   const volver = useVolver('/perfil')
+  const { tiene, cargado } = usePais()
+  // La renta DIAN, el 4x1000 y los deducibles son solo de Colombia; en otro país se muestra el recordatorio.
+  const soloInformativo = !tiene('renta_dian')
   const { avisar } = useDialogos()
   const anioActual = new Date().getFullYear()
   const [anio, setAnio] = useState(anioActual)
@@ -27,6 +32,7 @@ export default function Impuestos() {
   const [guardando, setGuardando] = useState(false)
 
   async function cargar(a = anio) {
+    if (soloInformativo || !cargado) return
     setError('')
     try {
       setDatos(await api.impuestosResumen(a))
@@ -39,7 +45,7 @@ export default function Impuestos() {
     setDatos(null)
     cargar(anio)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anio])
+  }, [anio, soloInformativo, cargado])
 
   async function cambiarCuentaExenta(id) {
     try {
@@ -111,6 +117,11 @@ export default function Impuestos() {
         </select>
       </header>
       <h1 className="hidden print-only text-xl font-semibold px-5">CuadraMe — apoyo para la declaración de renta {anio}</h1>
+
+      {!cargado ? null : soloInformativo ? (
+        <ImpuestosInformativo />
+      ) : (
+        <>
 
       <div className="px-5 mt-3">
         <div className="rounded-2xl bg-accent-soft p-3.5 flex gap-2.5" role="note">
@@ -301,6 +312,8 @@ export default function Impuestos() {
               Para el PDF, elige "Guardar como PDF" en la ventana de impresión de tu dispositivo.
             </p>
           </section>
+        </>
+      )}
         </>
       )}
     </div>

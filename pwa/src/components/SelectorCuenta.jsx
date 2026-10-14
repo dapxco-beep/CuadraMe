@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
-import { ENTIDADES_FINANCIERAS_CO, marcaDeEntidad } from '../lib/entidadesFinancierasCO'
+import { marcaDeEntidad } from '../lib/entidadesFinancierasCO'
+import { bancosDePais, configPais, paisesDisponibles } from '../lib/paises'
+import { usePais } from '../lib/pais'
 import Bandera from './Bandera'
 import { EnlaceBancoNoEsta } from './BancoNoEsta'
 
@@ -9,8 +11,9 @@ import { EnlaceBancoNoEsta } from './BancoNoEsta'
 // El país solo fija la moneda inicial y qué lista de bancos se ofrece; la moneda
 // sigue siendo editable aparte (hay quien tiene una cuenta en USD en un banco local).
 
+// Países de LATAM salen del registro (lib/paises.js); US/Europa/Otro no tienen lista de bancos.
 export const PAISES = [
-  { id: 'CO', nombre: 'Colombia', moneda: 'COP' },
+  ...paisesDisponibles().map((c) => ({ id: c.codigo, nombre: c.nombre, moneda: c.moneda })),
   { id: 'US', nombre: 'Estados Unidos', moneda: 'USD' },
   { id: 'EU', nombre: 'Europa', moneda: 'EUR' },
   { id: 'OTRO', nombre: 'Otro', moneda: null },
@@ -23,10 +26,8 @@ export const TIPOS_CUENTA = [
   { id: 'inversion', label: 'Inversión', icono: '📈', sufijo: ' Inversión' },
 ]
 
-// Las que usa la mayoría; el resto queda detrás de "Ver todas".
-const POPULARES = [
-  'Bancolombia', 'Nequi', 'Daviplata', 'Davivienda', 'Nu Colombia', 'BBVA Colombia', 'Banco de Bogotá', 'Lulo Bank',
-]
+// Las que usa la mayoría en ese país (marcadas `popular` en el registro); el resto queda detrás de "Ver todas".
+const popularesDe = (codigo) => bancosDePais(codigo).filter((b) => b.popular).slice(0, 8).map((b) => b.nombre)
 
 function Chip({ activo, onClick, children, className = '' }) {
   return (
@@ -99,7 +100,9 @@ function PreguntaProducto({ tipo, onElegir }) {
 export default function SelectorCuenta({
   nombre, setNombre, tipo, setTipo, setIcono, moneda, setMoneda, mostrarMoneda = true, bancoInicial = '', onBanco,
 }) {
-  const [pais, setPais] = useState('CO')
+  const { pais: paisUsuario } = usePais()
+  const [paisElegido, setPais] = useState(null)
+  const pais = paisElegido || paisUsuario
   // El país casi siempre es Colombia: va en una línea y solo se despliega si la persona lo quiere cambiar.
   const [cambiandoPais, setCambiandoPais] = useState(false)
   const [verTodas, setVerTodas] = useState(false)
@@ -122,10 +125,11 @@ export default function SelectorCuenta({
   }, [])
 
   const lista = useMemo(() => {
-    if (!verTodas) return bancoInicial && !POPULARES.includes(bancoInicial) ? [bancoInicial, ...POPULARES] : POPULARES
+    const populares = popularesDe(pais)
+    if (!verTodas) return bancoInicial && !populares.includes(bancoInicial) ? [bancoInicial, ...populares] : populares
     const q = busqueda.trim().toLowerCase()
-    return ENTIDADES_FINANCIERAS_CO.filter((e) => e.toLowerCase().includes(q))
-  }, [verTodas, busqueda])
+    return bancosDePais(pais).map((b) => b.nombre).filter((e) => e.toLowerCase().includes(q))
+  }, [verTodas, busqueda, pais, bancoInicial])
 
   function elegirPais(p) {
     setPais(p.id)
@@ -153,6 +157,10 @@ export default function SelectorCuenta({
   }
 
   const esEfectivo = tipo === 'efectivo'
+  const hayLista = bancosDePais(pais).length > 0
+  const ejemploBanco = popularesDe(pais)[0] || 'Mi banco'
+  const monedaPais = configPais(pais)?.moneda
+  const monedas = [...new Set([monedaPais, 'COP', 'USD', 'EUR'].filter(Boolean))]
 
   return (
     <div className="space-y-5">
@@ -192,7 +200,7 @@ export default function SelectorCuenta({
         </div>
       </section>
 
-      {!esEfectivo && pais === 'CO' && (
+      {!esEfectivo && hayLista && (
         <section aria-label="Banco o billetera">
           <p className="text-xs text-ink-soft mb-1.5">¿Cuál es tu banco o billetera?</p>
           {verTodas && (
@@ -233,12 +241,12 @@ export default function SelectorCuenta({
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           placeholder={
-            esEfectivo ? 'Nombre de la cuenta (ej. Efectivo)' : 'Nombre de la cuenta (ej. Bancolombia Ahorros)'
+            esEfectivo ? 'Nombre de la cuenta (ej. Efectivo)' : `Nombre de la cuenta (ej. ${ejemploBanco} Ahorros)`
           }
           aria-label="Nombre de la cuenta"
           className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"
         />
-        {!esEfectivo && pais !== 'CO' && (
+        {!esEfectivo && !hayLista && (
           <p className="text-xs text-ink-soft mt-1.5">Escribe el nombre de tu banco o billetera.</p>
         )}
       </section>
@@ -247,7 +255,7 @@ export default function SelectorCuenta({
         <section aria-label="Moneda">
           <p className="text-xs text-ink-soft mb-1.5">Moneda</p>
           <div className="flex gap-2" role="group" aria-label="Moneda de la cuenta">
-            {['COP', 'USD', 'EUR'].map((m) => (
+            {monedas.map((m) => (
               <Chip key={m} activo={moneda === m} onClick={() => setMoneda(m)} className="flex-1">
                 {m}
               </Chip>

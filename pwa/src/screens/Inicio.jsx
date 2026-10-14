@@ -17,6 +17,7 @@ import ArbolFinanciero from '../components/ArbolFinanciero'
 import CarruselDescubrir from '../components/CarruselDescubrir'
 import { useNombreParaSaludar } from '../lib/nombre'
 import AsistentePrimerUso from '../components/AsistentePrimerUso'
+import SugerenciaPais from '../components/SugerenciaPais'
 import RecorridoEntrada from '../components/RecorridoEntrada'
 import { etapaPorScore } from '../lib/saludFinanciera'
 import ResumenSaldo from '../components/ResumenSaldo'
@@ -250,6 +251,7 @@ export default function Inicio() {
       )}
 
       {/* Primeros pasos: solo mientras falte algo (y no se haya ocultado); luego vive en Perfil */}
+      <SugerenciaPais />
       <AsistentePrimerUso variante="inicio" camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />
       {/* Un solo mensaje arriba: mientras el camino de 3 pasos esté en pantalla, el recorrido de 1 minuto no compite con él (sigue en Ayuda y Perfil). */}
       {!enCamino && <RecorridoEntrada variante="inicio" />}
