@@ -31,6 +31,10 @@ JOBS = [
     ("CuadraMe - uso semanal", "/metricas/cron/revisar-uso-semanal", [8], [0], [1]),
     # Minimización de datos de Gmail: sin efecto mientras RETENCION_* valgan 0 en Railway (decide Daniel).
     ("CuadraMe - purgar retencion de datos", "/correos/cron/purgar-retencion", [3], [30], [-1]),
+    # Inversiones (opcional): precios por ticker cada 30 min en horario de mercado (L-V, 8 a 17 h)
+    # y push semanal del portafolio solo para quien lo activó. Se crean SOLO si Daniel lo decide.
+    ("CuadraMe - precios de inversiones", "/inversiones/cron/actualizar-precios", [8, 10, 12, 14, 16], [0, 30], [1, 2, 3, 4, 5]),
+    ("CuadraMe - resumen semanal de inversiones", "/inversiones/cron/resumen-semanal", [18], [0], [0]),
     ("CuadraMe - resumen diario de avisos", "/avisos/cron/resumen-diario", [20], [0], [-1]),
     ("CuadraMe - avisar renta (push 14 y 3 dias antes)", "/impuestos/cron/avisar-renta", [9], [30], [-1]),
 ]

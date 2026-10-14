@@ -433,7 +433,49 @@ def _regla_costos_bancarios(d, hoy):
     return out
 
 
+CONCENTRACION_MAX_PCT = 40.0
+
+
+def _regla_inversiones(d, hoy):
+    """Solo si el usuario tiene inversiones (todo es opcional). Ids estables por mes/situación;
+    descartables en el dispositivo. Orientación educativa, no recomienda ningún producto."""
+    inv = d.get("inversiones")
+    if not inv or not inv.get("valor_total"):
+        return []
+    out = []
+    top = inv.get("concentracion")
+    if top and top["pct"] > CONCENTRACION_MAX_PCT and inv.get("n_posiciones", 0) > 1:
+        out.append(_consejo(
+            f"inv-concentracion:{_corto(top['nombre'] or 'x', 20)}:{_mes(hoy)}", "inversiones", 2,
+            f"{_corto(top['nombre'] or 'Una posición', 30)} pesa mucho en tu portafolio",
+            f"Una sola inversión es el {top['pct']:.0f} % de tu portafolio. Si le va mal, te afecta mucho. "
+            "Diversificar es una idea general para repartir ese riesgo; la decisión es tuya.",
+            f"{top['pct']:.0f} %", "Ver mi portafolio", "/inversiones"))
+    gasto = _gasto_mensual(d, hoy)
+    liquido = _liquido(d)
+    if gasto > 0 and liquido >= 0:
+        meses = liquido / gasto
+        if meses < MESES_FONDO_MIN:
+            out.append(_consejo(
+                f"inv-fondo-primero:{_mes(hoy)}", "inversiones", 2,
+                "Antes de invertir más, mira tu fondo de emergencia",
+                f"Tu plata disponible alcanza para ~{meses:.1f} meses de gastos. Muchas guías sugieren tener "
+                f"{MESES_FONDO_MIN} a {MESES_FONDO_IDEAL} meses a la mano antes de seguir invirtiendo, porque "
+                "una inversión puede bajar justo cuando la necesitas.",
+                f"{meses:.1f} meses", "Ver fondo de emergencia", "/aprende", "fondo-de-emergencia"))
+        elif meses > MESES_FONDO_IDEAL * 2:
+            out.append(_consejo(
+                f"inv-plata-ociosa:{_mes(hoy)}", "inversiones", 3,
+                "Tienes mucha plata quieta frente a lo que invertiste",
+                f"Tienes {_pesos(liquido)} disponibles (~{meses:.0f} meses de gastos) y "
+                f"{_pesos(inv['valor_total'])} invertidos. Revisar si esa plata quieta trabaja es solo "
+                "una idea; no es una recomendación de compra.",
+                _pesos(liquido), "Ver mi patrimonio", "/patrimonio", "donde-rinde-mi-plata"))
+    return out
+
+
 REGLAS = [
+    _regla_inversiones,
     _regla_costos_bancarios, _regla_renta, _regla_fechas_tarjeta, _regla_tarjeta_solo_minimo, _regla_utilizacion, _regla_deudas, _regla_fondo_emergencia,
     _regla_categoria_sube, _regla_ingreso_sin_repartir, _regla_sin_presupuesto, _regla_gastos_hormiga,
     _regla_suscripciones, _regla_meta_sin_aporte, _regla_ahorro_sin_meta, _regla_sin_categorizar, _regla_debito_vs_credito,
@@ -456,6 +498,19 @@ def generar(datos: dict, hoy: datetime) -> list[dict]:
 
 
 # ── lectura de la base (solo lectura) ────────────────────────────────────────────────
+def _inversiones_de(db, usuario_id: str, hoy: datetime) -> dict:
+    try:
+        from app.routers.inversiones import calcular_portafolio
+
+        r = calcular_portafolio(db, usuario_id, hoy)
+        if not r["posiciones"]:
+            return {}
+        return {"valor_total": r["valor_total"], "concentracion": r["concentracion"],
+                "n_posiciones": len(r["posiciones"])}
+    except Exception:  # un consejo opcional nunca debe tumbar los demás
+        return {}
+
+
 def reunir_datos(db, usuario_id: str, hoy: datetime) -> dict:
     from app import contabilidad as cont
     from app.compartidos import cuentas_ids_accesibles
@@ -556,6 +611,7 @@ def reunir_datos(db, usuario_id: str, hoy: datetime) -> dict:
         "recurrentes": [r.nombre for r in activas(db.query(Recurrente), Recurrente)],
         "renta": renta,
         "plata_ociosa": _plata_ociosa_de(db, usuario_id, hoy),
+        "inversiones": _inversiones_de(db, usuario_id, hoy),
         "silenciadas": sorted(__import__("app.pendientes", fromlist=["x"]).silencios(db, usuario_id)),
     }
 

@@ -9,7 +9,7 @@ from typing import Optional
 
 DIAS_ANIO = 365.0
 CLASES_MERCADO = ("fondo", "etf", "accion", "cripto")
-CLASES_BIEN = ("inmueble", "vehiculo")
+CLASES_BIEN = ("inmueble", "vehiculo", "otro")
 CLASES = ("cdt",) + CLASES_MERCADO + CLASES_BIEN
 
 
