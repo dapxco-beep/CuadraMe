@@ -167,9 +167,10 @@ def test_movimiento_categorizado_por_la_app_queda_auto_y_por_revisar(usuario, cu
     assert m["categoria"] == "Comida"
     assert m["cat_confirmada"] is False and m["cat_origen"] == "comercio"
 
+    # Sigue «Auto» (se puede corregir), pero un comercio conocido es confianza alta: NO es pendiente.
     conteo = client.get("/movimientos/por-revisar/conteo").json()
-    assert conteo == {"auto": 1, "otros": 0, "total": 1}
-    assert [x["id"] for x in client.get("/movimientos?por_revisar=true").json()] == [m["id"]]
+    assert (conteo["auto"], conteo["otros"], conteo["total"]) == (0, 0, 0)
+    assert client.get("/movimientos?por_revisar=true").json() == []
 
 
 def test_por_tu_regla_y_los_de_otros_tambien_se_revisan(usuario, cuenta):
@@ -178,7 +179,8 @@ def test_por_tu_regla_y_los_de_otros_tambien_se_revisan(usuario, cuenta):
     assert a["cat_origen"] == "regla" and a["cat_confirmada"] is False
     b = _mov(cuenta, "xyzzy qwerty")
     assert b["categoria"] == "Otros"
-    assert client.get("/movimientos/por-revisar/conteo").json() == {"auto": 1, "otros": 1, "total": 2}
+    conteo = client.get("/movimientos/por-revisar/conteo").json()  # lo de la regla ya está categorizado: solo cuenta «Otros»
+    assert (conteo["auto"], conteo["otros"], conteo["total"]) == (0, 1, 1)
 
 
 def test_lo_que_el_usuario_elige_nace_confirmado(usuario, cuenta):

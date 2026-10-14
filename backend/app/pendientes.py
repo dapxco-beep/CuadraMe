@@ -7,12 +7,12 @@ deciden el contador de Inicio, el de Movimientos, la lista de pendientes y los c
 
   a) «otros»    -> categoría «Otros» o vacía (y el usuario no dijo «dejar como está»),
   b) «baja»     -> la puso la app sola con poca confianza (origen distinto de regla,
-                   comercio conocido o aprendizaje: p. ej. «sugerida» desde un correo),
+                   comercio conocido o aprendizaje: «sugerida» desde un correo, Wallet/atajo
+                   sin confirmar; estos últimos además están en la bandeja «¿son tuyos?»),
   c) «marcada»  -> el usuario la marcó él mismo para revisar (cat_origen = 'marcada').
 
 NO cuentan: lo categorizado con confianza alta (origen regla | comercio | similar, aunque siga
-«Auto»: se puede corregir cuando quiera), lo que llegó por atajo/Wallet con categoría (eso es la
-bandeja «¿son tuyos?»), los comercios silenciados por el usuario, traslados, pagos de tarjeta,
+«Auto»: se puede corregir cuando quiera), los comercios silenciados por el usuario, traslados, pagos de tarjeta,
 ajustes de saldo, aportes a metas y los rendimientos/costos que pone el sistema.
 
 Estados guardados (sin columnas nuevas): cat_origen = 'dejada' (usuario: «dejar como está»,
@@ -36,8 +36,6 @@ ORIGEN_DEJADA = "dejada"
 ORIGEN_MARCADA = "marcada"
 # Quién categorizó con seguridad: regla del usuario, diccionario de comercios, aprendizaje de sus movimientos.
 ORIGENES_CONFIANZA_ALTA = {"regla", "comercio", "similar"}
-# Llegaron por un canal rápido: su revisión es la bandeja «¿son tuyos?», no la categoría.
-ORIGENES_ENTRADA_RAPIDA = {"wallet", "atajo", "cierre_app", "voz"}
 CATEGORIAS_SIN_DEFINIR = {"", "otros", "sin categoria", "sin categoría"}
 _SISTEMA_MIN = {n.lower() for n in NOMBRES_SISTEMA}
 SILENCIOS_QUE_OCULTAN = ("no_preguntar", "ocultar")
@@ -82,7 +80,7 @@ def motivo(m, huellas_silenciadas: frozenset | set = frozenset()) -> str | None:
     if categoria in CATEGORIAS_SIN_DEFINIR:
         return "otros"
     if _g(m, "cat_confirmada", True) is False:
-        if origen in ORIGENES_CONFIANZA_ALTA or origen in ORIGENES_ENTRADA_RAPIDA:
+        if origen in ORIGENES_CONFIANZA_ALTA:
             return None
         return "baja"
     return None
