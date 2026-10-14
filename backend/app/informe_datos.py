@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.compartidos import cuentas_ids_accesibles
-from app.contabilidad import tipos_cuenta_de, tipos_efectivos
+from app.contabilidad import clasificar, tipos_cuenta_de
 from app.fx import convertir_a_cop
 from app import punto_partida
 from app.models import Cuenta, Movimiento
@@ -26,7 +26,7 @@ def cargar_movs_efectivos(
     limite: int | None = None,
 ) -> list[dict]:
     """[{id, fecha, tipo('income'|'expense'|'transfer'), monto(COP), categoria,
-    descripcion, cuenta_id}] de las cuentas accesibles, más recientes primero."""
+    descripcion, cuenta_id, razon, par}] de las cuentas accesibles, más recientes primero."""
     ids = list(cuentas_ids_accesibles(db, usuario_id))
     if not ids:
         return []
@@ -44,13 +44,15 @@ def cargar_movs_efectivos(
     if limite:
         q = q.limit(limite)
     movs = q.all()
-    te = tipos_efectivos(movs, tipos_cuenta_de(db, ids))
+    te = clasificar(movs, tipos_cuenta_de(db, ids))
     return [
         {
             "id": m.id,
             "cuenta_id": m.cuenta_id,
             "fecha": m.fecha,
-            "tipo": te[m.id],
+            "tipo": te[m.id]["tipo"],
+            "razon": te[m.id]["razon"],
+            "par": te[m.id]["par"],
             "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP")),
             "categoria": m.categoria or "Otros",
             "descripcion": m.descripcion or "",

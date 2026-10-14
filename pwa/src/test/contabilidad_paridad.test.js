@@ -1,0 +1,64 @@
+// Paridad Python <-> JS: los MISMOS casos (backend/tests/fixtures/contabilidad_casos.json) que prueba
+// backend/tests/test_traslados_robustos.py. Si cambia la regla en un lado, esta prueba obliga a cambiar el otro.
+import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import {
+  clasificar,
+  contextoDeCuentas,
+  huellaTraslado,
+  mencionesPropias,
+  tipoEfectivo,
+  tiposEfectivos,
+  totalesIngresosGastos,
+} from '../lib/contabilidad'
+
+const { casos } = JSON.parse(readFileSync(resolve(__dirname, '../../../backend/tests/fixtures/contabilidad_casos.json'), 'utf-8'))
+
+function ctxDe(caso) {
+  const cuentas = Object.entries(caso.cuentas).map(([id, v]) => ({ id, tipo: v.tipo, moneda: v.moneda }))
+  return contextoDeCuentas(cuentas, { reglas: caso.reglas, nombres: caso.nombres })
+}
+
+describe('paridad con backend/app/contabilidad.py', () => {
+  for (const caso of casos) {
+    it(caso.nombre, () => {
+      expect(tiposEfectivos(caso.movs, ctxDe(caso))).toEqual(caso.esperado)
+    })
+  }
+
+  it('razón y pareja del par', () => {
+    const cl = clasificar(casos[0].movs, ctxDe(casos[0]))
+    expect(cl.e).toEqual({ tipo: 'transfer', razon: 'par', par: 'i' })
+  })
+
+  it('huella y nombre parcial igual que el servidor', () => {
+    expect(huellaTraslado('Enviaste a Ana Lopez 123456')).toBe('ana lopez')
+    expect(huellaTraslado('Recibiste de ANA  LÓPEZ')).toBe('ana lopez')
+    expect(huellaTraslado('Para 1234')).toBe('')
+    expect(mencionesPropias('ENVIASTE A DANIEL PARRADO', ['Daniel Alfonso Parrado Cárdenas'])).toBe(2)
+    expect(mencionesPropias('Enviaste a Daniel Gomez', ['Daniel Alfonso Parrado Cárdenas'])).toBe(1)
+  })
+
+  it('tipoEfectivo individual no empareja', () => {
+    expect(tipoEfectivo({ tipo: 'expense', descripcion: 'Pago tarjeta de credito', categoria: 'Otros' })).toBe('transfer')
+    expect(tipoEfectivo({ tipo: 'expense', descripcion: 'Enviaste a Ana', categoria: 'Transferencias' })).toBe('expense')
+  })
+
+  it('totales con traslados presentes no cambian ingresos ni gastos', () => {
+    const base = [
+      { id: 'i', tipo: 'income', monto: 1000, descripcion: 'Nomina', cuenta_id: 'N', categoria: 'Otros', fecha: '2026-10-05T12:00:00' },
+      { id: 'g', tipo: 'expense', monto: 300, descripcion: 'Mercado', cuenta_id: 'N', categoria: 'Otros', fecha: '2026-10-05T12:00:00' },
+    ]
+    const tras = [
+      { id: 'e', tipo: 'expense', monto: 500, descripcion: 'Enviaste a Ana', cuenta_id: 'N', categoria: 'Otros', fecha: '2026-10-05T12:00:00' },
+      { id: 'r', tipo: 'income', monto: 500, descripcion: 'Recibiste de Ana', cuenta_id: 'U', categoria: 'Otros', fecha: '2026-10-05T12:00:00' },
+    ]
+    const ctx = { tipos: { N: 'ahorro', U: 'ahorro' } }
+    const sin = totalesIngresosGastos(base, ctx)
+    const con = totalesIngresosGastos([...base, ...tras], ctx)
+    expect(con).toEqual(sin)
+    expect(con.balance).toBe(700)
+    expect(con.tasaAhorro).toBe(70)
+  })
+})

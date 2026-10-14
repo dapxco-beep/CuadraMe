@@ -278,3 +278,95 @@ def resumen_rango(movs: list[dict], rango: dict) -> dict:
 
 def dias_del_mes(anio: int, mes: int) -> int:
     return calendar.monthrange(anio, mes)[1]
+
+
+# ── Ingresos vs gastos ──────────────────────────────────────────────────────────────────────
+def _totales(movs: list[dict], rango: dict) -> dict:
+    """Ingresos, gastos, balance y tasa de ahorro de un rango. Solo movimientos con tipo efectivo
+    'income' / 'expense' (los traslados, pagos de tarjeta y ajustes ya vienen como 'transfer')."""
+    ing = gas = 0.0
+    for m in movs:
+        if en_rango(m, rango):
+            if m["tipo"] == "income":
+                ing += m["monto"]
+            elif m["tipo"] == "expense":
+                gas += m["monto"]
+    bal = ing - gas
+    return {"ingresos": round(ing), "gastos": round(gas), "balance": round(bal),
+            "tasa_ahorro": round(bal / ing * 100, 1) if ing > 0 else None}
+
+
+def _variacion_signo(actual: float, previo: float):
+    """% de cambio contra el valor absoluto del previo (sirve para balances negativos); None sin base."""
+    return round((actual - previo) / abs(previo) * 100, 1) if previo else None
+
+
+def serie_mensual(movs: list[dict], hasta_mes: tuple[int, int], meses: int = 6) -> list[dict]:
+    """Ingresos, gastos y balance de cada uno de los últimos `meses` meses (el último es `hasta_mes`)."""
+    out = []
+    for n in range(-(meses - 1), 1):
+        a, m = sumar_meses(hasta_mes[0], hasta_mes[1], n)
+        r = _rango(inicio_mes(a, m), inicio_mes(*sumar_meses(a, m, 1)), "", "mes")
+        t = _totales(movs, r)
+        out.append({"mes": f"{a}-{m:02d}", "etiqueta": f"{MESES[m - 1][:3]}", "etiqueta_larga": f"{MESES[m - 1]} de {a}",
+                    "ingresos": t["ingresos"], "gastos": t["gastos"], "balance": t["balance"]})
+    return out
+
+
+def ingresos_gastos(movs: list[dict], rango: dict, anterior: dict | None = None, meses: int = 6) -> dict:
+    """Comparación ingresos vs gastos de un rango, contra el periodo anterior y por mes."""
+    anterior = anterior or periodo_anterior(rango)
+    actual, previo = _totales(movs, rango), _totales(movs, anterior)
+    ultimo = rango["hasta"] - timedelta(days=1)
+    serie = serie_mensual(movs, (ultimo.year, ultimo.month), max(1, min(meses, 24)))
+    return {
+        "desde": rango["desde"].date().isoformat(),
+        "hasta": (rango["hasta"] - timedelta(days=1)).date().isoformat(),
+        "etiqueta": rango["etiqueta"],
+        "anterior": {"desde": anterior["desde"].date().isoformat(),
+                     "hasta": (anterior["hasta"] - timedelta(days=1)).date().isoformat(),
+                     "etiqueta": anterior["etiqueta"], **previo},
+        **actual,
+        "variacion": {
+            "ingresos_pct": _variacion(actual["ingresos"], previo["ingresos"]),
+            "gastos_pct": _variacion(actual["gastos"], previo["gastos"]),
+            "balance_pct": _variacion_signo(actual["balance"], previo["balance"]),
+            "tasa_ahorro_puntos": (round(actual["tasa_ahorro"] - previo["tasa_ahorro"], 1)
+                                   if actual["tasa_ahorro"] is not None and previo["tasa_ahorro"] is not None else None),
+        },
+        "meses": serie,
+        "hay_datos": bool(actual["ingresos"] or actual["gastos"] or previo["ingresos"] or previo["gastos"]
+                          or any(s["ingresos"] or s["gastos"] for s in serie)),
+    }
+
+
+ETIQUETAS_RAZON = {
+    "par": "Traslado entre tus cuentas", "par_comision": "Traslado entre tus cuentas",
+    "decision": "Traslado entre tus cuentas", "regla": "Traslado entre tus cuentas",
+    "traslado_app": "Traslado entre tus cuentas", "categoria": "Traslado entre tus cuentas",
+    "posible": "Posible traslado", "pago_tarjeta": "Pago de tarjeta", "abono_tarjeta": "Pago de tarjeta",
+    "ajuste": "Ajuste de saldo", "aporte_meta": "Aporte a meta",
+}
+
+
+def no_se_cuenta(movs: list[dict], rango: dict, limite: int = 300) -> dict:
+    """Lo que NO entra en ingresos ni gastos del rango, para que la persona lo verifique."""
+    filas = [m for m in movs if m["tipo"] == "transfer" and en_rango(m, rango)]
+    filas.sort(key=lambda m: m["fecha"], reverse=True)
+    grupos: dict[str, dict] = {}
+    for m in filas:
+        g = grupos.setdefault(ETIQUETAS_RAZON.get(m.get("razon"), "Otro"), {"cantidad": 0, "monto": 0.0})
+        g["cantidad"] += 1
+        g["monto"] += m["monto"]
+    return {
+        "etiqueta": rango["etiqueta"],
+        "cantidad": len(filas),
+        "grupos": [{"nombre": k, "cantidad": v["cantidad"], "monto": round(v["monto"])} for k, v in grupos.items()],
+        "truncado": len(filas) > limite,
+        "movimientos": [
+            {"id": m["id"], "fecha": m["fecha"].isoformat(), "descripcion": m["descripcion"], "monto": round(m["monto"]),
+             "cuenta_id": m.get("cuenta_id"), "motivo": ETIQUETAS_RAZON.get(m.get("razon"), "Otro"), "razon": m.get("razon"),
+             "par": m.get("par")}
+            for m in filas[:limite]
+        ],
+    }

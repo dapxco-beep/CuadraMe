@@ -91,6 +91,9 @@ def _sembrar():
     mov2 = _ok(client.post("/movimientos", json={"cuenta_id": banco["id"], "descripcion": f"{MARCA} otra",
                                                  "monto": 20, "tipo": "expense"}))
     I.update(mov=mov["id"], mov2=mov2["id"])
+    # decisión de traslado recordada (regla por huella) para atacarla desde B
+    _ok(client.post("/traslados/decidir", json={"ids": [mov2["id"]], "decision": "real", "recordar": True}))
+    I["regla_traslado"] = client.get("/traslados/reglas").json()[0]["id"]
     _ok(client.post("/movimientos/transferencia", json={"cuenta_origen_id": banco["id"],
                                                         "cuenta_destino_id": otra["id"], "monto": 5}))
     cat = _ok(client.post("/categorias", json={"nombre": f"{MARCA}Cat", "icono": "🐶"}))
@@ -227,6 +230,9 @@ def test_lecturas_de_a_si_ven_sus_datos():
 # ── 2. Ataques por id: 4xx y nada cambia ─────────────────────────────────────────
 # (metodo, ruta con {llaves} de I, cuerpo json, query params)
 ATAQUES = [
+    # traslados: B no decide sobre movimientos de A ni borra sus reglas
+    ("POST", "/traslados/decidir", {"ids": ["{mov}"], "decision": "traslado", "recordar": True}),
+    ("DELETE", "/traslados/reglas/{regla_traslado}", None),
     # cuentas
     ("PUT", "/cuentas/{cuenta}", {"nombre": "hackeada"}),
     ("DELETE", "/cuentas/{cuenta}", None),

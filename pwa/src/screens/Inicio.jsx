@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowLeftRight, Bot, ChevronDown, ChevronRight, CreditCard, Gift, HeartPulse, Landmark, LayoutGrid, Lightbulb, PieChart,
@@ -35,6 +35,7 @@ import InicioSimple from '../components/InicioSimple'
 import { useModoMenu } from '../lib/modoSimple'
 import { armarCamino, leerEstado } from '../lib/primerUso'
 import { estadoCuadre } from '../lib/cuadre'
+import { contextoDeCuentas } from '../lib/contabilidad'
 import { fechaHace,gastosDeLaSemana, siguientePasoInicio } from '../lib/inicioSimple'
 import { resumenCarriles } from '../lib/carriles'
 
@@ -133,7 +134,12 @@ export default function Inicio() {
   const [errorCarga, setErrorCarga] = useState('')
   const [intento, setIntento] = useState(0)
   const [verMas, setVerMas] = useState(false)
-  const [semana, setSemana] = useState(() => (Array.isArray(previo.semana) ? gastosDeLaSemana(previo.semana) : null))
+  const [movsSemana, setMovsSemana] = useState(() => (Array.isArray(previo.semana) ? previo.semana : null))
+  // Regla única: la lista se empareja con las cuentas para que los traslados no cuenten como gasto.
+  const semana = useMemo(
+    () => (movsSemana ? gastosDeLaSemana(movsSemana, new Date(), contextoDeCuentas(cuentas)) : null),
+    [movsSemana, cuentas]
+  )
   const [sinCategorizar, setSinCategorizar] = useState(0)
 
   useEffect(() => {
@@ -149,7 +155,7 @@ export default function Inicio() {
       .catch((err) => activo && setErrorCarga(err.message || 'No se pudo cargar tu información. Revisa tu conexión e intenta de nuevo.'))
       .finally(() => activo && setCargando(false))
     // Gastos de la semana (opcional: sin dato, el bloque muestra un guion)
-    Promise.resolve().then(() => api.movimientos(200, 0, { desde: fechaHace(6) })).then((l) => activo && Array.isArray(l) && setSemana(gastosDeLaSemana(l))).catch(() => {})
+    Promise.resolve().then(() => api.movimientos(200, 0, { desde: fechaHace(6) })).then((l) => activo && Array.isArray(l) && setMovsSemana(l)).catch(() => {})
     api.disponibleHoy().then((d) => activo && setDisponible(d)).catch(() => {})
     api.enMiBolsillo().then((b) => activo && setBolsillo(b)).catch(() => {})
     // Desglose del saldo (disponible / tarjetas / por moneda y tipo). Si falla, el héroe sigue funcionando.
@@ -536,7 +542,7 @@ export default function Inicio() {
                 ))}
               </div>
               <div className="divide-y divide-line mt-2">
-                <FilaEnlace to="/informe" icono={PieChart} titulo="En qué gasto" apoyo="Por categoría, comercios y periodo a tu medida" />
+                <FilaEnlace to="/informe" icono={PieChart} titulo="En qué gasto mi plata" apoyo="Ingresos contra gastos, por categoría y comercio" />
                 <FilaEnlace to="/asistente" icono={Bot} titulo="Pregúntale a CuadraMe AI" apoyo="«¿Puedo comprar un celular?» · «Gasté 18.000 en almuerzo»" />
                 <FilaEnlace to="/resumen" icono={Gift} titulo="Tu resumen del mes" apoyo="Míralo en diapositivas y compártelo" />
               </div>

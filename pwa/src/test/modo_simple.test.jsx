@@ -374,11 +374,11 @@ describe('inicioSimple: reglas puras', () => {
     const ahora = new Date('2026-10-09T12:00:00')
     expect(fechaHace(6, ahora)).toBe('2026-10-03')
     const movs = [
-      { tipo: 'expense', monto: 100, fecha: '2026-10-09T08:00:00' },
-      { tipo: 'expense', monto: 50, fecha: '2026-10-03T08:00:00' },
-      { tipo: 'expense', monto: 999, fecha: '2026-10-02T08:00:00' },
-      { tipo: 'income', monto: 5000, fecha: '2026-10-08T08:00:00' },
-      { tipo: 'transfer', monto: 700, fecha: '2026-10-08T08:00:00' },
+      { id: 'a', tipo: 'expense', monto: 100, fecha: '2026-10-09T08:00:00' },
+      { id: 'b', tipo: 'expense', monto: 50, fecha: '2026-10-03T08:00:00' },
+      { id: 'c', tipo: 'expense', monto: 999, fecha: '2026-10-02T08:00:00' },
+      { id: 'd', tipo: 'income', monto: 5000, fecha: '2026-10-08T08:00:00' },
+      { id: 'e', tipo: 'transfer', monto: 700, fecha: '2026-10-08T08:00:00' },
     ]
     expect(gastosDeLaSemana(movs, ahora)).toBe(150)
   })

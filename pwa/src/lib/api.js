@@ -580,6 +580,10 @@ export const api = {
   resumenSemanal: (desde, hasta) =>
     request(`/insights/resumen-semanal${desde && hasta ? `?desde=${desde}&hasta=${hasta}` : ''}`),
   // Informe "en qué gasto": p = { periodo, desde, hasta, mes }
+  ingresosGastos: (p = {}) => request(`/reportes/ingresos-gastos?${new URLSearchParams(limpiar(p)).toString()}`),
+  informeNoSeCuenta: (p = {}) => request(`/informes/no-se-cuenta?${new URLSearchParams(limpiar(p)).toString()}`),
+  sugerenciasTraslado: () => request('/traslados/sugerencias'),
+  decidirTraslado: (cuerpo) => request('/traslados/decidir', { method: 'POST', body: cuerpo }),
   informeGasto: (p = {}) => request(`/informes/gasto?${new URLSearchParams(limpiar(p)).toString()}`),
   informeMovimientos: (p = {}) => request(`/informes/gasto/movimientos?${new URLSearchParams(limpiar(p)).toString()}`),
   informeMeses: () => request('/informes/meses'),

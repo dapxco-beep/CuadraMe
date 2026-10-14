@@ -4,7 +4,8 @@
 // a/de un tercero es un gasto/ingreso real.
 
 export const MARCA_POSIBLE_TRASLADO = 'posible_traslado_propio' // la deja el lector del extracto
-export const MARCA_NO_TRASLADO = 'no_es_traslado' // la deja el usuario: "es un gasto/ingreso real"
+export const MARCA_NO_TRASLADO = 'no_es_traslado' // la deja el usuario: "No es un traslado" (cuenta como gasto/ingreso)
+export const MARCA_ES_TRASLADO = 'es_traslado_propio' // la deja el usuario: "Es un traslado entre mis cuentas"
 export const CATEGORIA_TRASLADO = 'Transferencia' // categoría neutral (no confundir con 'Transferencias' = tercero)
 
 function sinAcentos(t) {
@@ -26,7 +27,13 @@ export function signoDe(m) {
 }
 
 export function esTrasladoConfirmado(m) {
-  return m.fuente === 'transferencia_interna' || sinAcentos(m.categoria).trim().toLowerCase() === 'transferencia'
+  const n = m.notas || ''
+  if (n.includes(MARCA_NO_TRASLADO)) return false
+  return (
+    m.fuente === 'transferencia_interna' ||
+    n.includes(MARCA_ES_TRASLADO) ||
+    sinAcentos(m.categoria).trim().toLowerCase() === 'transferencia'
+  )
 }
 
 export function esPosibleTraslado(m) {
@@ -36,8 +43,8 @@ export function esPosibleTraslado(m) {
 
 // Etiqueta corta para filas y detalle, o null si es un ingreso/gasto normal.
 export function etiquetaTraslado(m) {
-  if (esTrasladoConfirmado(m)) return 'Paso entre tus cuentas ↔'
-  if (esPosibleTraslado(m)) return 'Posible paso entre tus cuentas ↔'
+  if (esTrasladoConfirmado(m)) return 'Traslado entre tus cuentas ↔'
+  if (esPosibleTraslado(m)) return 'Posible traslado ↔'
   return null
 }
 

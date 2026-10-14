@@ -1,5 +1,5 @@
 import {
-  Activity, Bot, BookOpen, CalendarCheck, CreditCard, Database, Gift, GraduationCap, Home, Landmark, Lightbulb, List, PieChart, PiggyBank,
+  Activity, ArrowLeftRight, Bot, BookOpen, CalendarCheck, CreditCard, Database, Gift, GraduationCap, Home, Landmark, Lightbulb, List, PieChart, PiggyBank,
   LifeBuoy, Receipt, RefreshCw, Repeat, Settings, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Sprout, Tag,
   TrendingUp, User, Users, Wallet,
 } from 'lucide-react'
@@ -47,7 +47,8 @@ export const GRUPOS = [
     titulo: 'Entender',
     icon: Lightbulb,
     items: [
-      { to: '/informe', icon: PieChart, label: 'En qué gasto', palabras: 'informe en que gasto mi plata categoria comercios reporte' },
+      { to: '/informe', icon: PieChart, label: 'En qué gasto mi plata', palabras: 'informe en que gasto mi plata categoria comercios reporte' },
+      { to: '/traslados', icon: ArrowLeftRight, label: 'Revisar posibles traslados', palabras: 'traslado entre mis cuentas nequi nu bancolombia no cuenta' },
       { to: '/insights', icon: Sparkles, label: 'Hallazgos', palabras: 'insights consejos descubrimientos' },
       { to: '/asistente', icon: Bot, label: 'Asistente', palabras: 'cuadrame ai ia pregunta chat' },
       { to: '/ahorcado', icon: Sprout, label: 'Árbol financiero', palabras: 'salud puntaje ahorcado vidas' },
@@ -111,7 +112,8 @@ export const EXPLICACION = {
   '/patrimonio': 'Tu patrimonio: todo lo que tienes menos todo lo que debes.',
   '/cierre-mes': 'Un balance de cómo te fue en el mes.',
   '/resumen': 'Tu mes contado en diapositivas para compartir.',
-  '/informe': 'En qué gastas más, por tipo de gasto y por lugar.',
+  '/informe': 'Cuánto entra y cuánto sale, y en qué gastas más.',
+  '/traslados': 'Pasos de plata entre tus cuentas que no deben contar como gasto ni ingreso.',
   '/insights': 'Cosas curiosas que encontramos en tus gastos.',
   '/asistente': 'Pregúntale a CuadraMe cosas sobre tu plata.',
   '/ahorcado': 'Un puntaje de qué tan sana va tu plata.',

@@ -71,6 +71,10 @@ PATRON_TRASLADO = re.compile(
 MARCA_TRASLADO_PROPIO = "posible_traslado_propio"
 # El usuario dijo "es un gasto/ingreso real": nunca se empareja como traslado.
 MARCA_NO_TRASLADO = "no_es_traslado"
+# El usuario dijo "es un traslado entre mis cuentas": neutral siempre y su otra pata se empareja.
+MARCA_ES_TRASLADO = "es_traslado_propio"
+# Diferencia máxima (pesos) entre lo que sale y lo que entra para seguir llamándolo traslado (comisión).
+TOLERANCIA_COMISION = 2000.0
 
 
 def _descartado(m) -> bool:
@@ -148,129 +152,373 @@ def es_interes(categoria: str, descripcion: str) -> bool:
     return "interes" in _sin_acentos(categoria or "").lower() or bool(PATRON_INTERES.search(descripcion or ""))
 
 
-def tipo_base(m, tipos_cuenta: dict[str, str] | None = None) -> str:
-    """Tipo efectivo de UN movimiento mirándolo solo a él (sin emparejar)."""
+def _razon_dura(m, tipos_cuenta: dict[str, str] | None = None) -> str | None:
+    """Motivo por el que UN movimiento es neutral mirándolo solo a él (sin emparejar), o None."""
     tipo = _g(m, "tipo")
     if tipo not in ("income", "expense"):
-        return "transfer"
-    if _g(m, "fuente") in (FUENTE_TRANSFERENCIA, FUENTE_AJUSTE, FUENTE_APORTE_META):
-        return "transfer"
-    if _sin_acentos(_g(m, "categoria", "") or "").strip().lower() in CATEGORIAS_NEUTRAS:
-        return "transfer"
+        return "traslado_app"
+    fuente = _g(m, "fuente")
+    if fuente == FUENTE_TRANSFERENCIA:
+        return "traslado_app"
+    if fuente == FUENTE_AJUSTE:
+        return "ajuste"
+    if fuente == FUENTE_APORTE_META:
+        return "aporte_meta"
+    cat = _sin_acentos(_g(m, "categoria", "") or "").strip().lower()
+    if cat in CATEGORIAS_NEUTRAS and not _descartado(m):
+        # Categorías neutras que el sistema o la persona ponen a propósito. «Transferencias» (plural,
+        # la de un tercero) NO está en la lista: la neutralidad de un traslado se decide por
+        # emparejamiento, decisión o regla, no por la categoría.
+        return {"pago de tarjeta": "pago_tarjeta", "ajuste de saldo": "ajuste", "aporte a meta": "aporte_meta"}.get(cat, "categoria")
     if tipo == "expense" and es_pago_tarjeta(_g(m, "descripcion", "") or ""):
-        return "transfer"
+        return "pago_tarjeta"
     # Lo que ENTRA a una cuenta de crédito es el abono de un pago, no un ingreso.
     if tipo == "income" and (tipos_cuenta or {}).get(_g(m, "cuenta_id")) == "credito":
-        return "transfer"
-    return tipo
+        return "abono_tarjeta"
+    return None
+
+
+def tipo_base(m, tipos_cuenta: dict[str, str] | None = None) -> str:
+    """Tipo efectivo de UN movimiento mirándolo solo a él (sin emparejar)."""
+    return "transfer" if _razon_dura(m, tipos_cuenta) else _g(m, "tipo")
 
 
 class TiposCuenta(dict):
-    """{cuenta_id: tipo} que además lleva `.monedas` {cuenta_id: moneda}: así los informes que ya
-    llaman tipos_efectivos(movs, tipos_cuenta_de(...)) no emparejan traslados de monedas distintas
-    sin tener que cambiar cada llamada."""
+    """{cuenta_id: tipo} que además lleva, para que todo informe que ya llama
+    tipos_efectivos(movs, tipos_cuenta_de(...)) decida igual sin cambiar cada llamada:
+      .monedas {cuenta_id: moneda}  (no se emparejan monedas distintas)
+      .reglas  {huella: 'traslado'|'real'}  (lo que la persona decidió y pidió recordar)
+      .nombres [nombre, ...]  (nombre del perfil / completo: «Enviaste a <tu nombre>» es propio)
+      .tolerancia_comision  (pesos de diferencia admitidos entre salida y entrada de un traslado)"""
     monedas: dict[str, str] = {}
+    reglas: dict[str, str] = {}
+    nombres: list[str] = []
+    tolerancia_comision: float = TOLERANCIA_COMISION
 
 
-def _fuerza_pista(m) -> int:
-    """Cuántas pistas de 'traslado' tiene UN movimiento (descripción tipo traslado / marca del lector)."""
-    f = 0
+# ── Pistas de traslado propio ────────────────────────────────────────────────────────────────
+_BANCOS_PROPIOS = r"nu|nequi|bancolombia|davivienda|daviplata|dale|bbva|movii|bre-?b|lulo|rappipay"
+# Frases que casi siempre significan «entre MIS cuentas» (pista FUERTE, vale por dos).
+PATRON_PROPIO_FUERTE = re.compile(
+    r"entre\s+(?:tus|mis)\s+cuentas|\b(?:a|de|desde|hacia)\s+(?:tu|mi)\s+(?:propia\s+)?cuenta\b|\bcajita\b|\bbolsillo\b|"
+    rf"\brecarga\s+(?:de\s+|a\s+|en\s+|desde\s+)?(?:mi\s+|tu\s+)?(?:{_BANCOS_PROPIOS})\b|"
+    rf"\b(?:{_BANCOS_PROPIOS})\s*(?:→|->|=>|\ba\b|\bhacia\b)\s*(?:{_BANCOS_PROPIOS})\b",
+    re.IGNORECASE,
+)
+_PALABRAS_NOMBRE_VACIAS = {"de", "del", "la", "las", "los", "el", "y", "san", "da", "van"}
+
+
+def _tokens_nombre(texto: str) -> set[str]:
+    t = _sin_acentos(texto or "").lower()
+    return {x for x in re.findall(r"[a-z]{3,}", t) if x not in _PALABRAS_NOMBRE_VACIAS}
+
+
+def menciones_propias(descripcion: str, nombres) -> int:
+    """Cuántas palabras del nombre de la persona aparecen en la descripción (apellidos parciales,
+    sin tildes ni mayúsculas): 'ENVIASTE A DANIEL PARRADO' con 'Daniel Alfonso Parrado Cárdenas' = 2."""
+    d = _tokens_nombre(descripcion)
+    if not d:
+        return 0
+    mejor = 0
+    for n in nombres or []:
+        mejor = max(mejor, len(d & _tokens_nombre(n)))
+    return mejor
+
+
+_STOP_HUELLA = {
+    "de", "del", "la", "el", "los", "las", "a", "para", "por", "en", "con", "y", "mi", "tu", "su",
+    "enviaste", "envio", "envia", "recibiste", "recibi", "transferencia", "transferiste", "transf", "trf",
+    "traslado", "pago", "abono", "deposito", "giro", "nequi", "daviplata", "bre", "bancolombia",
+    "davivienda", "nu", "movimiento", "cuenta", "ahorros", "desde", "hacia", "pse", "llave",
+}
+
+
+def huella_traslado(descripcion: str) -> str:
+    """Huella estable de una descripción para recordar decisiones de traslado: palabras que
+    identifican a la contraparte, sin números, fechas ni verbos bancarios. '' si no queda nada útil."""
+    t = _sin_acentos(descripcion or "").lower()
+    t = re.sub(r"\d+", " ", t)
+    toks = [x for x in re.findall(r"[a-z]{2,}", t) if x not in _STOP_HUELLA]
+    huella = " ".join(toks[:4])
+    return huella if len(huella) >= 4 else ""
+
+
+def _sin_costo(m) -> bool:
+    """False para intereses, comisiones, 4x1000 y rendimientos: jamás son un traslado."""
     from app.costos_financieros import es_costo_o_rendimiento, NOMBRES_SISTEMA
-    if _g(m, "categoria") in NOMBRES_SISTEMA or es_costo_o_rendimiento(_g(m, "descripcion", "") or ""):
-        return 0  # intereses, comisiones, 4x1000 y rendimientos jamás se emparejan como traslado
-    if PATRON_TRASLADO.search(_g(m, "descripcion", "") or ""):
+    return not (_g(m, "categoria") in NOMBRES_SISTEMA or es_costo_o_rendimiento(_g(m, "descripcion", "") or ""))
+
+
+def _fuerza_pista(m, nombres=None) -> int:
+    """Cuántas pistas de 'traslado' tiene UN movimiento: descripción tipo traslado (1), marca del
+    lector (2), frase de «entre mis cuentas» (2), tu nombre completo (2) o parcial (1), y la
+    confirmación de la persona (2)."""
+    if not _sin_costo(m):
+        return 0
+    desc = _g(m, "descripcion", "") or ""
+    notas = _g(m, "notas", "") or ""
+    f = 0
+    if PATRON_TRASLADO.search(desc):
         f += 1
-    if MARCA_TRASLADO_PROPIO in (_g(m, "notas", "") or ""):
-        f += 1
+    if MARCA_TRASLADO_PROPIO in notas:
+        f += 2
+    if MARCA_ES_TRASLADO in notas:
+        f += 2
+    if PATRON_PROPIO_FUERTE.search(_sin_acentos(desc)):
+        f += 2
+    menc = menciones_propias(desc, nombres)
+    f += 2 if menc >= 2 else menc
     return f
 
 
-def tipos_efectivos(movs, tipos_cuenta: dict[str, str] | None = None) -> dict[str, str]:
-    """{id_movimiento: 'income'|'expense'|'transfer'} para toda la lista.
+def _es_pista_fuerte(m, nombres=None) -> bool:
+    """Pista que sola basta para decir «posible traslado» aunque no aparezca la otra pata."""
+    if not _sin_costo(m):
+        return False
+    desc = _g(m, "descripcion", "") or ""
+    return (MARCA_TRASLADO_PROPIO in (_g(m, "notas", "") or "")
+            or bool(PATRON_PROPIO_FUERTE.search(_sin_acentos(desc)))
+            or menciones_propias(desc, nombres) >= 2)
 
-    Neutral ('transfer', ni ingreso ni gasto) = (a) las dos patas de un traslado creado en la app
-    (fuente transferencia_interna), (b) pagos de tarjeta y su abono, y (c) PARES DETECTADOS entre
-    cuentas propias: un egreso en una cuenta y un ingreso del MISMO monto y moneda en otra cuenta
-    del mismo usuario, a <= 2 días, con al menos una descripción/marca de traslado. Se emparejan
-    1:1 con el mejor candidato (más pistas, luego fecha más cercana, luego id). Lo que no tiene
-    pareja (transferencia a/de un tercero) sigue siendo gasto/ingreso real.
 
-    Rendimiento: índice por monto redondeado y ventana de fechas con bisección; no hay doble
-    recorrido de toda la lista."""
+def _decision(m, reglas) -> str | None:
+    """'traslado' | 'real' | None: lo que la persona decidió en este movimiento o por regla."""
+    notas = _g(m, "notas", "") or ""
+    if MARCA_NO_TRASLADO in notas:
+        return "real"
+    if MARCA_ES_TRASLADO in notas:
+        return "traslado"
+    if reglas:
+        return reglas.get(huella_traslado(_g(m, "descripcion", "") or ""))
+    return None
+
+
+def clasificar(movs, tipos_cuenta: dict[str, str] | None = None) -> dict[str, dict]:
+    """{id: {'tipo': 'income'|'expense'|'transfer', 'razon': str, 'par': id|None}} para toda la lista.
+
+    REGLA ÚNICA de qué cuenta como ingreso o gasto. Es neutral ('transfer') lo que NO es plata
+    ganada ni gastada: (a) traslados creados en la app, ajustes de saldo y aportes a meta;
+    (b) pagos de tarjeta y su abono; (c) PARES detectados entre cuentas propias: un egreso y un
+    ingreso del mismo monto y moneda en cuentas distintas del mismo usuario, a <= 2 días, 1:1, con
+    al menos una pista de traslado (nombre propio, «a tu cuenta», Bre-B, Nequi...); también con una
+    comisión pequeña de diferencia (<= tolerancia, con pistas fuertes); (d) lo que la persona
+    marcó («Es un traslado») o recordó por regla; (e) un «posible traslado»: pista fuerte (tu
+    nombre, «entre tus cuentas») sin la otra pata todavía. Lo que la persona marcó «No es un
+    traslado» nunca es neutral por emparejamiento. Todo lo demás es ingreso/gasto real.
+    La neutralidad no depende de la categoría «Transferencias» ni del tipo guardado: una
+    transferencia a un tercero es gasto; un traslado propio se reconoce por su pareja o decisión.
+
+    Rendimiento: índice por monto redondeado y ventana de fechas con bisección."""
     movs = list(movs)
-    res = {_g(m, "id"): tipo_base(m, tipos_cuenta) for m in movs}
+    tc = tipos_cuenta if tipos_cuenta is not None else {}
+    reglas = getattr(tc, "reglas", None) or {}
+    nombres = getattr(tc, "nombres", None) or []
+    tol = float(getattr(tc, "tolerancia_comision", TOLERANCIA_COMISION) or 0)
+    monedas = getattr(tc, "monedas", None) or {}
 
-    gastos = [m for m in movs if res[_g(m, "id")] == "expense"]
-    ingresos = [m for m in movs if res[_g(m, "id")] == "income"]
-    if not gastos or not ingresos:
-        return res
-
-    monedas = getattr(tipos_cuenta, "monedas", None) or {}
+    res: dict[str, dict] = {}
+    gastos, ingresos = [], []
+    for m in movs:
+        mid = _g(m, "id")
+        razon = _razon_dura(m, tc)
+        if razon:
+            res[mid] = {"tipo": "transfer", "razon": razon, "par": None}
+            continue
+        res[mid] = {"tipo": _g(m, "tipo"), "razon": "normal", "par": None}
+        dec = _decision(m, reglas)
+        if dec == "real":
+            continue
+        if dec == "traslado":
+            res[mid] = {"tipo": "transfer", "razon": "decision" if MARCA_ES_TRASLADO in (_g(m, "notas", "") or "") else "regla", "par": None}
+        (gastos if _g(m, "tipo") == "expense" else ingresos).append(m)
 
     def moneda(m):
         return monedas.get(_g(m, "cuenta_id")) or _g(m, "moneda")
 
-    por_monto: dict[int, list] = {}
-    for i in ingresos:
-        if _g(i, "fecha") and not _descartado(i):
-            por_monto.setdefault(round(abs(_g(i, "monto", 0) or 0)), []).append(i)
-    claves = {}
-    for k, lista in por_monto.items():
-        lista.sort(key=lambda x: _g(x, "fecha"))
-        claves[k] = [_g(x, "fecha").timestamp() for x in lista]
-
     usados: set = set()
-    for g in sorted((x for x in gastos if _g(x, "fecha") and not _descartado(x)), key=lambda x: (_g(x, "fecha"), str(_g(x, "id")))):
-        k = round(abs(_g(g, "monto", 0) or 0))
-        lista = por_monto.get(k)
-        if not lista:
-            continue
-        t = _g(g, "fecha").timestamp()
-        desde = bisect_left(claves[k], t - VENTANA_EMPAREJAR_SEG)
-        hasta = bisect_right(claves[k], t + VENTANA_EMPAREJAR_SEG)
-        fg = _fuerza_pista(g)
-        mejor = None
-        for i in lista[desde:hasta]:
-            iid = _g(i, "id")
-            if iid in usados or _g(i, "cuenta_id") == _g(g, "cuenta_id"):
+
+    def emparejar(g, i, razon):
+        usados.add(_g(i, "id"))
+        usados.add(_g(g, "id"))
+        res[_g(g, "id")] = {"tipo": "transfer", "razon": razon, "par": _g(i, "id")}
+        res[_g(i, "id")] = {"tipo": "transfer", "razon": razon, "par": _g(g, "id")}
+
+    pg = [x for x in gastos if _g(x, "fecha")]
+    pi = [x for x in ingresos if _g(x, "fecha")]
+    if pg and pi:
+        fuerza = {_g(x, "id"): _fuerza_pista(x, nombres) for x in pg + pi}
+        por_monto: dict[int, list] = {}
+        for i in pi:
+            por_monto.setdefault(round(abs(_g(i, "monto", 0) or 0)), []).append(i)
+        claves = {}
+        for k, lista in por_monto.items():
+            lista.sort(key=lambda x: _g(x, "fecha"))
+            claves[k] = [_g(x, "fecha").timestamp() for x in lista]
+
+        orden = sorted(pg, key=lambda x: (_g(x, "fecha"), str(_g(x, "id"))))
+        # Pasada 1: mismo monto (a $1), con alguna pista de traslado.
+        for g in orden:
+            k = round(abs(_g(g, "monto", 0) or 0))
+            lista = por_monto.get(k)
+            if not lista:
                 continue
-            if abs((_g(i, "monto", 0) or 0) - (_g(g, "monto", 0) or 0)) >= 1:
-                continue
-            mg, mi = moneda(g), moneda(i)
-            if mg and mi and mg != mi:
-                continue
-            fuerza = fg + _fuerza_pista(i)
-            if not fuerza:
-                continue
-            clave = (-fuerza, abs(_g(i, "fecha").timestamp() - t), str(iid))
-            if mejor is None or clave < mejor[0]:
-                mejor = (clave, iid)
-        if mejor:
-            usados.add(mejor[1])
-            res[_g(g, "id")] = "transfer"
-            res[mejor[1]] = "transfer"
+            t = _g(g, "fecha").timestamp()
+            desde = bisect_left(claves[k], t - VENTANA_EMPAREJAR_SEG)
+            hasta = bisect_right(claves[k], t + VENTANA_EMPAREJAR_SEG)
+            fg = fuerza[_g(g, "id")]
+            mejor = None
+            for i in lista[desde:hasta]:
+                iid = _g(i, "id")
+                if iid in usados or _g(i, "cuenta_id") == _g(g, "cuenta_id"):
+                    continue
+                if abs((_g(i, "monto", 0) or 0) - (_g(g, "monto", 0) or 0)) >= 1:
+                    continue
+                mg, mi = moneda(g), moneda(i)
+                if mg and mi and mg != mi:
+                    continue
+                f = fg + fuerza[iid]
+                if not f:
+                    continue
+                clave = (-f, abs(_g(i, "fecha").timestamp() - t), str(iid))
+                if mejor is None or clave < mejor[0]:
+                    mejor = (clave, i)
+            if mejor:
+                emparejar(g, mejor[1], "par")
+
+        # Pasada 2: con una comisión pequeña de diferencia (sale un poco más de lo que entra);
+        # exige pistas fuertes (suma >= 3) porque el monto ya no es idéntico.
+        if tol > 0:
+            libres_i = sorted((i for i in pi if _g(i, "id") not in usados), key=lambda x: _g(x, "fecha"))
+            tiempos = [_g(x, "fecha").timestamp() for x in libres_i]
+            for g in orden:
+                if _g(g, "id") in usados:
+                    continue
+                t = _g(g, "fecha").timestamp()
+                mejor = None
+                for i in libres_i[bisect_left(tiempos, t - VENTANA_EMPAREJAR_SEG):bisect_right(tiempos, t + VENTANA_EMPAREJAR_SEG)]:
+                    iid = _g(i, "id")
+                    dif = (_g(g, "monto", 0) or 0) - (_g(i, "monto", 0) or 0)
+                    if iid in usados or _g(i, "cuenta_id") == _g(g, "cuenta_id") or not (0 < dif <= tol):
+                        continue
+                    mg, mi = moneda(g), moneda(i)
+                    if mg and mi and mg != mi:
+                        continue
+                    if fuerza[_g(g, "id")] + fuerza[iid] < 3:
+                        continue
+                    clave = (dif, abs(_g(i, "fecha").timestamp() - t), str(iid))
+                    if mejor is None or clave < mejor[0]:
+                        mejor = (clave, i)
+                if mejor:
+                    emparejar(g, mejor[1], "par_comision")
+
+    # «Posible traslado»: pista fuerte y la otra pata aún no está. Neutral hasta que la persona responda.
+    for m in gastos + ingresos:
+        mid = _g(m, "id")
+        if res[mid]["razon"] == "normal" and _es_pista_fuerte(m, nombres):
+            res[mid] = {"tipo": "transfer", "razon": "posible", "par": None}
     return res
 
 
-def tipos_de_cuentas(cuentas) -> TiposCuenta:
-    """TiposCuenta desde objetos Cuenta ya cargados (tipo y moneda)."""
+def notas_con_decision(notas: str | None, decision: str) -> str:
+    """`notas` con la decisión de la persona: 'traslado' deja la marca de «es un traslado entre mis
+    cuentas»; 'real' deja «no es un traslado» (y quita la pista del lector). La otra marca se retira."""
+    partes = [x for x in (notas or "").split(" · ")
+              if x and x not in (MARCA_ES_TRASLADO, MARCA_NO_TRASLADO)]
+    if decision == "real":
+        partes = [x for x in partes if x != MARCA_TRASLADO_PROPIO]
+    partes.append(MARCA_ES_TRASLADO if decision == "traslado" else MARCA_NO_TRASLADO)
+    return " · ".join(partes)
+
+
+def sugerir_traslados(movs, tipos_cuenta: dict[str, str] | None = None) -> list[dict]:
+    """Sugerencias para la herramienta «Revisar posibles traslados» (nada se aplica solo):
+      - 'par': un egreso y un ingreso de igual monto (o con una comisión pequeña) en cuentas distintas,
+        a <= 2 días, que NO traen ninguna pista de traslado y por eso hoy cuentan como gasto e ingreso.
+      - 'posible': un movimiento con pista fuerte (tu nombre, «entre tus cuentas») cuya otra pata aún
+        no se ha importado; hoy es neutral y se pregunta «¿Fue entre tus cuentas?».
+    Lo que la persona ya decidió («No es un traslado») no se vuelve a sugerir.
+    Devuelve [{'tipo', 'ids': [...], 'diferencia': pesos}] (par: [id_egreso, id_ingreso])."""
+    movs = list(movs)
+    tc = tipos_cuenta if tipos_cuenta is not None else {}
+    reglas = getattr(tc, "reglas", None) or {}
+    monedas = getattr(tc, "monedas", None) or {}
+    tol = float(getattr(tc, "tolerancia_comision", TOLERANCIA_COMISION) or 0)
+    cl = clasificar(movs, tc)
+    out = [{"tipo": "posible", "ids": [_g(m, "id")], "diferencia": 0.0}
+           for m in movs if cl[_g(m, "id")]["razon"] == "posible"]
+
+    def libre(m):
+        return cl[_g(m, "id")]["razon"] == "normal" and _decision(m, reglas) != "real" and _sin_costo(m) and _g(m, "fecha")
+
+    gastos = sorted((m for m in movs if _g(m, "tipo") == "expense" and libre(m)), key=lambda m: (_g(m, "fecha"), str(_g(m, "id"))))
+    ingresos = sorted((m for m in movs if _g(m, "tipo") == "income" and libre(m)), key=lambda m: _g(m, "fecha"))
+    tiempos = [_g(m, "fecha").timestamp() for m in ingresos]
+    usados: set = set()
+    for g in gastos:
+        t = _g(g, "fecha").timestamp()
+        mejor = None
+        for i in ingresos[bisect_left(tiempos, t - VENTANA_EMPAREJAR_SEG):bisect_right(tiempos, t + VENTANA_EMPAREJAR_SEG)]:
+            iid = _g(i, "id")
+            if iid in usados or _g(i, "cuenta_id") == _g(g, "cuenta_id"):
+                continue
+            dt = abs(_g(i, "fecha").timestamp() - t)
+            dif = (_g(g, "monto", 0) or 0) - (_g(i, "monto", 0) or 0)
+            if dt > VENTANA_EMPAREJAR_SEG or not (-1 < dif < 1 or 0 < dif <= tol):
+                continue
+            mg, mi = monedas.get(_g(g, "cuenta_id")) or _g(g, "moneda"), monedas.get(_g(i, "cuenta_id")) or _g(i, "moneda")
+            if mg and mi and mg != mi:
+                continue
+            clave = (abs(dif) >= 1, dt, str(iid))
+            if mejor is None or clave < mejor[0]:
+                mejor = (clave, i, dif)
+        if mejor:
+            usados.add(_g(mejor[1], "id"))
+            out.append({"tipo": "par", "ids": [_g(g, "id"), _g(mejor[1], "id")], "diferencia": max(round(mejor[2]), 0)})
+    return out
+
+
+def tipos_efectivos(movs, tipos_cuenta: dict[str, str] | None = None) -> dict[str, str]:
+    """{id_movimiento: 'income'|'expense'|'transfer'}: el tipo que cuenta para informes. Ver `clasificar`."""
+    return {k: v["tipo"] for k, v in clasificar(movs, tipos_cuenta).items()}
+
+
+def _contexto_de_decisiones(db, owners, out: "TiposCuenta", nombres_extra=None) -> None:
+    """Carga en `out` las reglas de traslado y los nombres de las personas dueñas de las cuentas.
+    Tolerante: si la tabla aún no existe (script SQL sin correr) sigue sin reglas."""
+    from app.models import Perfil
+    owners = [o for o in set(owners) if o]
+    out.reglas, out.nombres = {}, list(nombres_extra or [])
+    if not owners or db is None:
+        return
+    try:
+        from app.models_pendientes import ReglaTraslado
+        for r in db.query(ReglaTraslado).filter(ReglaTraslado.usuario_id.in_(owners)).all():
+            out.reglas[r.huella] = r.decision
+    except Exception:  # noqa: BLE001  (tabla opcional)
+        db.rollback()
+    for p in db.query(Perfil).filter(Perfil.usuario_id.in_(owners)).all():
+        if p.nombre_preferido:
+            out.nombres.append(p.nombre_preferido)
+
+
+def tipos_de_cuentas(cuentas, db=None, nombres_extra=None) -> TiposCuenta:
+    """TiposCuenta desde objetos Cuenta ya cargados (tipo y moneda). Con `db` también trae las
+    reglas de traslado y el nombre de las personas dueñas (mismas decisiones en todos los informes)."""
     out = TiposCuenta()
     out.monedas = {}
+    out.reglas, out.nombres = {}, list(nombres_extra or [])
     for c in cuentas:
         out[c.id] = c.tipo
         out.monedas[c.id] = c.moneda
+    if db is not None:
+        _contexto_de_decisiones(db, [c.usuario_id for c in cuentas], out, nombres_extra)
     return out
 
 
-def tipos_cuenta_de(db, ids) -> dict[str, str]:
+def tipos_cuenta_de(db, ids, nombres_extra=None) -> dict[str, str]:
     """{cuenta_id: tipo} para las cuentas dadas (import perezoso: este módulo es puro)."""
     from app.models import Cuenta
-    out = TiposCuenta()
-    out.monedas = {}
-    for c in db.query(Cuenta).filter(Cuenta.id.in_(list(ids))).all():
-        out[c.id] = c.tipo
-        out.monedas[c.id] = c.moneda
-    return out
+    return tipos_de_cuentas(db.query(Cuenta).filter(Cuenta.id.in_(list(ids))).all(), db, nombres_extra)
 
 
 def gastos_por_categoria(db, ids_accesibles, desde: datetime, monedas: dict[str, str] | None = None) -> dict[str, float]:

@@ -64,7 +64,7 @@ def construir_cierre(db: Session, usuario_id: str, mes: str) -> dict:
     ids = cuentas_ids_accesibles(db, usuario_id)
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()
     monedas = {c.id: c.moneda for c in cuentas}
-    tipos = tipos_de_cuentas(cuentas)
+    tipos = tipos_de_cuentas(cuentas, db)
     previo = mes_anterior(mes)
     movs = (
         db.query(Movimiento)

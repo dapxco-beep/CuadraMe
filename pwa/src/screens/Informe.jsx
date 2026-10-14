@@ -12,6 +12,7 @@ import { formatVeces } from '../lib/format'
 import SelectorPeriodo from '../components/SelectorPeriodo'
 import BarraProgreso from '../components/BarraProgreso'
 import EnlaceCostos from '../components/EnlaceCostos'
+import IngresosGastos from '../components/IngresosGastos'
 
 // Colores distintos para la dona (cada segmento también lleva su nombre y % en la
 // lista, así que el color nunca es la única señal).
@@ -127,7 +128,7 @@ export default function Informe() {
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-xl font-bold">En qué gasto</h1>
+        <h1 className="text-xl font-bold">En qué gasto mi plata</h1>
       </header>
 
       <section className="px-6 mt-2">
@@ -138,6 +139,8 @@ export default function Informe() {
       </section>
 
       <EnlaceCostos className="mx-6 mt-3" />
+
+      <IngresosGastos params={params} fmt={fmt} className="mx-6 mt-4" />
 
       {cargando && <div className="mx-6 mt-6 space-y-4"><EsqueletoGrafica alto={160} etiqueta="Cargando tu informe" /><EsqueletoLista filas={4} /></div>}
       {error && <p role="alert" className="mx-6 mt-6 text-sm text-danger text-center">{error}</p>}
