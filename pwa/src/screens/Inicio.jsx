@@ -157,7 +157,7 @@ export default function Inicio() {
     // Aviso solo si algo se rompió (semáforo rojo); si el tablero falla, no se muestra nada.
     Promise.resolve().then(() => api.conexionesEstado?.()).then((c) => activo && setConexionFalla(!!c?.hay_falla)).catch(() => {})
     // Cuántas cosas esperan en «Traer movimientos» (si falla, el acceso se muestra sin número).
-    Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && (setTareasSync(s?.tareas?.length ?? null), setLineaCorreo(resumenCarriles(s?.tareas)), setSinCategorizar((s?.tareas || []).find((t) => t.id === 'movimientos_por_categorizar')?.cantidad || 0))).catch(() => {})
+    Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && (setTareasSync(s?.tareas ? s.tareas.filter((t) => !t.opcional).length : null), setLineaCorreo(resumenCarriles(s?.tareas)), setSinCategorizar((s?.tareas || []).find((t) => t.id === 'movimientos_por_categorizar')?.cantidad || 0))).catch(() => {})
     // Tendencia del gasto de los últimos meses para la mini gráfica (opcional: sin datos no se dibuja).
     Promise.resolve().then(() => api.tendencias?.(6)).then((t) => activo && setTendencia(t?.meses ?? null)).catch(() => {})
     return () => {

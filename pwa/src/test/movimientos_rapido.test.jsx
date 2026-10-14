@@ -99,8 +99,9 @@ describe('categorizar sin abrir el movimiento', () => {
     await screen.findByText('Netflix')
     await userEvent.click(chipDe('Compra PANADERIA LA 80 0105'))
     const hoja = await screen.findByRole('dialog')
-    // "Recordar para «comercio»" viene marcada y muestra cuántos más hay del mismo comercio
-    expect(within(hoja).getByRole('checkbox', { name: /Recordar para «panaderia»/ })).toBeChecked()
+    // «Recordar para este comercio» es opcional: viene activada solo porque se repite (2 más + este = 3)
+    // y muestra cuántos más hay del mismo comercio
+    await waitFor(() => expect(within(hoja).getByRole('checkbox', { name: /Recordar para este comercio/ })).toBeChecked())
     expect(await within(hoja).findByText('2 movimientos más')).toBeInTheDocument()
     await userEvent.click(within(hoja).getByRole('button', { name: /Comida/ }))
 

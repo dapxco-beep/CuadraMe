@@ -25,7 +25,8 @@ export const tareasDeBloque = (tareas, bloque) => (tareas || []).filter((t) => b
 // UN solo contador de "cosas por resolver": el mismo número que muestra Inicio
 // (cantidad de tareas pendientes de GET /sincronizacion/estado). Los contadores de cada
 // bloque suman exactamente este total.
-export const totalPorResolver = (tareas) => (tareas || []).length
+// Las tareas opcionales (categorizar) son una invitación suave: no suman al contador.
+export const totalPorResolver = (tareas) => (tareas || []).filter((t) => !t.opcional).length
 
 export const cantidadDe = (tareas, id) => (tareas || []).find((t) => t.id === id)?.cantidad || 0
 

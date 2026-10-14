@@ -11,6 +11,7 @@ from app.auth import UsuarioActual, get_current_user, get_current_user_by_api_ke
 from sqlalchemy import and_, or_
 
 from app import duplicados as dup
+from app import pendientes
 from app.clave_comercio import clave_comercio, huella_en_descripcion
 from app.autocat import (
     ClasificadorUsuario,
@@ -71,11 +72,9 @@ router = APIRouter(prefix="/movimientos", tags=["movimientos"])
 # "transfer" sin efecto en saldo) por esta fuente.
 FUENTE_TRANSFERENCIA = "transferencia_interna"
 
-# "Por revisar": categorizados automáticamente sin confirmar, o en 'Otros'.
-_PENDIENTE_REVISION = or_(
-    Movimiento.cat_confirmada.is_(False),
-    and_(Movimiento.categoria == "Otros", Movimiento.fuente != FUENTE_TRANSFERENCIA),
-)
+# «Por categorizar» ya NO es «todo lo que la app categorizó sola»: la definición vive en
+# app/pendientes.py (Otros, baja confianza o marcado por el usuario) y es la misma para el
+# contador de Inicio, el de Movimientos, la lista y los consejos.
 
 
 def _delta_saldo(tipo: str, monto: float) -> float:
@@ -139,9 +138,11 @@ def listar_movimientos(
     if monto_max is not None:
         query = query.filter(Movimiento.monto <= monto_max)
     if por_revisar:
-        query = query.filter(_PENDIENTE_REVISION)
+        query = query.filter(pendientes.filtro_ids(db, usuario.id, ids_accesibles))
 
-    return dup.anotar_canales(db, query.order_by(Movimiento.fecha.desc()).offset(offset).limit(limit).all())
+    filas = query.order_by(Movimiento.fecha.desc()).offset(offset).limit(limit).all()
+    pendientes.anotar(db, usuario.id, filas)  # por_categorizar: la PWA no repite la regla
+    return dup.anotar_canales(db, filas)
 
 
 @router.get("/por-revisar/conteo")
@@ -149,15 +150,14 @@ def conteo_por_revisar(
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
-    """Cuántos movimientos esperan revisión: los que la app categorizó sola y
-    nadie confirmó, más los que quedaron en 'Otros'. Los traslados propios no cuentan."""
+    """Cuántos movimientos esperan categoría (definición única en app/pendientes.py): los que
+    están en 'Otros', los que la app puso sola con poca confianza y los que marcaste tú. Lo
+    categorizado con seguridad por una regla, el aprendizaje o el diccionario NO cuenta; tampoco
+    traslados, pagos de tarjeta, ajustes ni comercios que silenciaste. `auto` = baja confianza + marcados."""
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
-    base = db.query(Movimiento).filter(
-        Movimiento.cuenta_id.in_(ids_accesibles), Movimiento.fuente != FUENTE_TRANSFERENCIA
-    )
-    auto = base.filter(Movimiento.cat_confirmada.is_(False)).count()
-    otros = base.filter(Movimiento.categoria == "Otros", Movimiento.cat_confirmada.isnot(False)).count()
-    return {"auto": auto, "otros": otros, "total": auto + otros}
+    c = pendientes.conteo(db, usuario.id, ids_accesibles)
+    return {"auto": c["baja"] + c["marcadas"], "otros": c["otros"], "total": c["total"],
+            "baja": c["baja"], "marcadas": c["marcadas"], "silenciados": c["silenciados"]}
 
 
 @router.get("/por-confirmar", response_model=list[MovimientoOut])
@@ -199,6 +199,11 @@ def confirmar_categorias(
     )
     if data.movimiento_ids is not None:
         q = q.filter(Movimiento.id.in_(data.movimiento_ids))
+    else:
+        # «Confirmar todas» = las N que cuenta el contador (poca confianza o marcadas), no lo que
+        # una regla o el diccionario ya categorizó con seguridad.
+        q = q.filter(Movimiento.id.in_(
+            [m.id for m, _ in pendientes.pendientes(db, usuario.id, ids_accesibles) if m.cat_confirmada is False] or ["-"]))
     n = q.update({"cat_confirmada": True}, synchronize_session=False)
     db.commit()
     return {"ok": True, "confirmados": n}
@@ -969,7 +974,7 @@ def clasificar_movimiento(
     if resultado:
         return ClasificarResponse(
             categoria=resultado["categoria"],
-            tipo=resultado["tipo"],
+            tipo=resultado["tipo"] or "expense",  # una regla sin tipo no fuerza ninguno
             confianza=resultado["confianza"],
             fuente=resultado["fuente"],
         )

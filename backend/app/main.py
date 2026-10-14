@@ -10,6 +10,7 @@ from app.compresion import GZipSelectivo
 from app.seguridad import SeguridadMiddleware, limpiar_evento_sentry
 from app import models_asistente  # noqa: F401  (registra la tabla uso_asistente para create_all)
 from app import limites_diarios  # noqa: F401  (registra la tabla uso_diario para create_all)
+from app import models_pendientes  # noqa: F401  (registra comercios_silenciados para create_all)
 from app import models_comentarios  # noqa: F401  (registra la tabla comentarios para create_all)
 from app import models_rendimientos  # noqa: F401  (registra cajitas y tasas_referencia para create_all)
 from app import models_avisos  # noqa: F401  (registra eventos_actividad y ajustes_avisos para create_all)
@@ -43,6 +44,7 @@ from app.routers import (
     metas,
     metricas,
     movimientos,
+    por_categorizar,
     pagos,
     patrimonio,
     planificacion,
@@ -124,6 +126,8 @@ if engine.dialect.name == "postgresql":
         conn.execute(text("ALTER TABLE categorias ADD COLUMN IF NOT EXISTS es_sistema BOOLEAN DEFAULT FALSE"))
         conn.execute(text("ALTER TABLE categorias ADD COLUMN IF NOT EXISTS tipo VARCHAR DEFAULT 'ambos'"))
         conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS cat_origen VARCHAR"))
+        # Reglas «en pausa» (supabase/migraciones/categorizar_selectivo.sql). NULL = activa.
+        conn.execute(text("ALTER TABLE reglas_categoria ADD COLUMN IF NOT EXISTS activa BOOLEAN DEFAULT TRUE"))
         conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS cat_confirmada BOOLEAN DEFAULT TRUE"))
         # Registro con Apple Wallet: alias de tarjeta y recordatorio nocturno.
         # (Como SQL suelto: supabase/migraciones/wallet_recordatorio.sql.)
@@ -230,6 +234,7 @@ app.add_middleware(
 
 app.include_router(cuentas.router)
 app.include_router(movimientos.router)
+app.include_router(por_categorizar.router)
 app.include_router(pagos.router)
 app.include_router(presupuestos.router)
 app.include_router(reportes.router)

@@ -324,20 +324,25 @@ def _regla_ingreso_sin_repartir(d, hoy):
 
 
 def _regla_sin_categorizar(d, hoy):
+    # Misma definición que el contador de Inicio y de Movimientos (app/pendientes.py): lo que una
+    # regla tuya, el aprendizaje o el diccionario ya categorizó con seguridad NO cuenta.
+    from app import pendientes
+
+    sil = set(d.get("silenciadas") or ())
     sin = [
         m for m in d.get("movimientos", [])
-        if m["fecha"] >= hoy - timedelta(days=60)
-        and (not m.get("cat_confirmada", True) or (m["categoria"] or "").strip().lower() in CATEGORIAS_SIN_DEFINIR)
+        if m["fecha"] >= hoy - timedelta(days=60) and pendientes.motivo(m, sil)
     ]
     if len(sin) < MIN_SIN_CATEGORIZAR:
         return []
     total = sum(m["monto"] for m in sin if m["tipo"] == "expense")
     return [_consejo(
-        f"sin-categorizar:{_mes(hoy)}", "sin_categorizar", 3, "Hay movimientos sin categoría",
-        f"Tienes {len(sin)} movimientos sin categoría clara"
+        f"sin-categorizar:{_mes(hoy)}", "sin_categorizar", 3, "Puedes ordenar lo que más pesa",
+        f"Hay {len(sin)} movimientos sin categoría clara"
         + (f" (gastos por {_pesos(total)})" if total else "")
-        + ". Sin categoría no podemos decirte en qué se va tu plata ni avisarte con tu presupuesto.",
-        f"{len(sin)} movimientos", "Categorizarlos", "/sincronizacion", "revisar-extractos")]
+        + ". No hace falta categorizarlos todos: con los comercios que más pesan o se repiten ya ves "
+        "en qué se va tu plata. El resto puede quedarse como está.",
+        f"{len(sin)} movimientos", "Ver lo que más pesa", "/categorizar", "revisar-extractos")]
 
 
 def _regla_debito_vs_credito(d, hoy):
@@ -496,6 +501,7 @@ def reunir_datos(db, usuario_id: str, hoy: datetime) -> dict:
             "id": m.id, "cuenta_id": m.cuenta_id, "fecha": m.fecha, "descripcion": m.descripcion or "",
             "categoria": m.categoria or "", "monto": cop(m.monto, m.cuenta_id), "fuente": m.fuente,
             "cat_confirmada": m.cat_confirmada is not False,
+            "cat_origen": m.cat_origen,
         }
         tipo = efectivos.get(m.id, "transfer")
         if tipo in ("income", "expense"):
@@ -550,6 +556,7 @@ def reunir_datos(db, usuario_id: str, hoy: datetime) -> dict:
         "recurrentes": [r.nombre for r in activas(db.query(Recurrente), Recurrente)],
         "renta": renta,
         "plata_ociosa": _plata_ociosa_de(db, usuario_id, hoy),
+        "silenciadas": sorted(__import__("app.pendientes", fromlist=["x"]).silencios(db, usuario_id)),
     }
 
 

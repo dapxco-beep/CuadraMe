@@ -6,6 +6,7 @@ import { useVolver } from '../lib/useVolver'
 import { api } from '../lib/api'
 import { formatCOP, formatPorcentaje, formatVeces } from '../lib/format'
 import { useCategorias } from '../lib/CategoriasContext'
+import SugerenciasReglas from '../components/SugerenciasReglas'
 
 /** Texto de progreso de arriba: «Entrenaste 12 comercios · 83% de tus movimientos ya tienen categoría». */
 export function textoProgreso(p) {
@@ -150,7 +151,7 @@ export default function EntrenarCategorias() {
       </header>
 
       <p className="mx-6 mt-2 text-xs text-ink-soft">
-        Enséñame qué es cada comercio y no te lo vuelvo a preguntar. Primero van los que más plata mueven.
+        Enséñame solo lo que quieras: los comercios que se repiten o pesan valen la pena, el resto puede quedarse como está. Primero van los que más plata mueven.
       </p>
 
       {datos && (
@@ -172,6 +173,8 @@ export default function EntrenarCategorias() {
       {aviso && (
         <p className="mx-6 mt-3 rounded-2xl bg-accent-soft px-4 py-3 text-sm text-ink" role="status">{aviso}</p>
       )}
+
+      <SugerenciasReglas onCreadas={cargar} />
 
       <form onSubmit={buscar} className="mx-6 mt-4">
         <label className="text-xs text-ink-soft font-medium uppercase tracking-wide">¿Por qué se categorizó así?</label>

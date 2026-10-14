@@ -150,6 +150,8 @@ describe('Auto-categorización visible', () => {
   })
 
   it('el filtro "Por revisar" pide solo los pendientes y permite confirmar con un toque', async () => {
+    // El servidor decide qué es pendiente (campo por_categorizar).
+    api.movimientos.mockResolvedValue(MOVS.map((m) => (m.id === 'm1' ? { ...m, por_categorizar: true } : m)))
     montar(<Movimientos />)
     const chip = await screen.findByRole('button', { name: /Por revisar \(1\)/ })
     await userEvent.click(chip)
