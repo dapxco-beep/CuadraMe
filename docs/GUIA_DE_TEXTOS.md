@@ -138,3 +138,7 @@ Enséñale la pantalla a alguien 5 segundos. ¿Sabe **para qué sirve** y **cuá
 | Corrección de saldo | **Ajuste de saldo** | Neutral |
 
 Dinero siempre con `formatCOP` / `fmt` (lib/format, respeta «ocultar saldos»). La regla vive en `backend/app/contabilidad.py` y su espejo `pwa/src/lib/contabilidad.js` (casos compartidos en `backend/tests/fixtures/contabilidad_casos.json`). La pantalla «¿En qué gasto mi plata?» lleva la nota «No incluye traslados entre tus cuentas ni pagos de tarjeta» y «Ver lo que no se cuenta».
+
+## Cuadre mes a mes
+
+Lenguaje llano, sin «libro» ni «conciliado»: «el banco dice» / «tu app dice», «No cuadra · $X», «Cuadra ✓», «Arrastra $X de junio», «Falta el extracto de junio», «Hueco o extracto faltante entre X y Y», «Solo falta el saldo inicial». Frase modelo: «Junio no cuadra: el banco registró $800.000 más que tu app. Falta importar 1 línea del extracto.» Toda reparación pide un «Sí, hacerlo» explícito y se puede deshacer; el ajuste de saldo es el último recurso y exige marcar que se entiende el riesgo. Si el PDF no trae saldo se dice y se pide «Escribe el saldo que dice tu extracto al [fecha]» (origen «manual»). Lógica en `backend/app/cuadre_encadenado.py`.
