@@ -62,6 +62,27 @@ Regla de oro: si tu mamá no lo diría en voz alta, no va en la pantalla.
 - Ayuda «¿Cuál es la diferencia?» (dentro de «Conexión de Gmail»): un ejemplo de una línea por uso. Nunca decir «carril» al usuario (es un término interno).
 - Si falla uno, se nombra cuál: «Extractos: No pudimos…», y el otro sigue funcionando.
 
+### «Todos los extractos» (lista dentro de la sección Extractos)
+
+Cada fila dice, en este orden: **banco + tipo + mes en grande** («Nu Colombia · Cuenta · Julio 2026»; tarjeta con corte conocido: «Tarjeta Nu · corte 14 jul 2026»), el **estado** con ícono y texto, y **una frase de lo que pasó**.
+
+| Estado | Ícono | Frase de resultado |
+|---|---|---|
+| Revisado | check (verde) | «Leímos 37 movimientos: 37 ya estaban registrados, 0 nuevos.» · «…5 nuevos agregados, 32 ya estaban.» · «No encontramos movimientos en este extracto.» |
+| Por revisar | lupa sobre archivo | «Leímos N movimientos: X ya estaban y Y faltan por registrar.» |
+| Sin procesar | bandeja | «Llegó a tu correo y aún no lo hemos leído.» |
+| Necesita clave | llave | «Está protegido con clave. Guarda la clave del PDF para poder leerlo.» |
+| No se pudo leer | triángulo (rojo) | «No pudimos leer este extracto: <motivo>. <siguiente paso>» · antiguos: «No se pudo leer (motivo no guardado).» |
+| Anterior a tu fecha de inicio | calendario tachado | «Es anterior a tu fecha de inicio, así que no se trae.» |
+
+- **Prohibido** «0 movimientos coinciden con el banco»: con cero no se cuenta, se dice qué pasó (la frase de arriba).
+- Motivos de error (columna `motivo_error`): clave faltante, clave incorrecta, formato no reconocido, PDF escaneado (sin texto), archivo vacío o dañado, problema momentáneo. Cada uno trae su siguiente paso concreto (ver `MOTIVOS` en `backend/app/extractos_vista.py`).
+- Mismo extracto en varios correos (o en varios intentos): UNA fila con «x2 correos» / «x3 intentos».
+- Sin mes claro: «Mes por confirmar» con un selector «¿De qué mes es este extracto?». Un mes deducido solo de la fecha del correo dice «Mes deducido de la fecha del correo» y deja «Cambiar mes».
+- Contador arriba de la lista: «6 revisados · 3 con clave pendiente · 4 sin procesar · 3 con error» (solo lo que no es cero).
+- Los correos que hablan de un extracto pero no traen el PDF van plegados: «Correos sin archivo adjunto (N)», con la razón.
+- La cobertura por mes usa los MISMOS nombres de estado (Revisado, Por revisar, Sin procesar, Necesita clave, No se pudo leer) y, al tocar una celda, lista los extractos de ese mes con su título.
+
 Palabras que sí puedes usar tal cual: cuenta, saldo, gasto, ingreso, tarjeta, cupo, corte, extracto, presupuesto, meta, deuda, categoría.
 Si es la primera vez que aparece una (cupo, corte), usa la **Ayudita** (`<Ayudita termino="...">`) o una frase de apoyo.
 
