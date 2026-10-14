@@ -32,7 +32,7 @@ from pathlib import Path
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app import classifier  # noqa: E402
+from app import classifier, memoria_usuario as mu  # noqa: E402
 from app.autocat import _BASE, decidir_categoria  # noqa: E402
 from app.clave_comercio import clave_comercio, es_transferencia_entre_personas  # noqa: E402
 from app.comercios_conocidos import clasificar_por_diccionario  # noqa: E402
@@ -65,7 +65,8 @@ def cargar_confirmados(ruta: str) -> list[dict]:
         cat = _reparar(m.get("categoria") or "").strip()
         if desc and cat:
             salida.append({"descripcion": desc, "categoria": cat, "tipo": m.get("tipo") or "",
-                       "mes": str(m.get("fecha") or "")[:7]})
+                       "mes": str(m.get("fecha") or "")[:7], "fecha": str(m.get("fecha") or ""),
+                       "monto": m.get("monto"), "cuenta_tipo": m.get("cuenta_tipo") or ""})
     return salida
 
 
@@ -98,7 +99,42 @@ def reglas_sugeribles(movs: list[dict], min_meses: int = 3, min_consistencia: fl
     return {"reglas_sugeribles": n_reglas, "movimientos_cubiertos": round(cubiertos / len(movs), 3) if movs else 0}
 
 
-def evaluar(movs: list[dict], min_confianza: float | None = None, modo: str = "comercio") -> dict:
+def _historial(resto: list[dict], usar: bool) -> dict | None:
+    if not usar:
+        return None
+    mem = mu.construir_memoria(resto)
+    return {"memoria": mem, "senales": mu.construir_senales(resto, mem)}
+
+
+def _ctx(m: dict) -> dict:
+    return {k: m.get(k) for k in ("monto", "fecha", "tipo", "cuenta_tipo")}
+
+
+def curva(filas: list[dict], umbrales=(0.0, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9)) -> list[dict]:
+    """Cobertura (% de movimientos con propuesta de confianza >= umbral) vs precisión de lo propuesto."""
+    n = len(filas)
+    out = []
+    for u in umbrales:
+        sel = [f for f in filas if f["pred"] != OTROS and (f["conf"] or 0) >= u]
+        aciertos = sum(f["real"].lower() == f["pred"].lower() for f in sel)
+        out.append({"umbral": u, "cobertura": round(len(sel) / n, 3) if n else 0,
+                    "precision": round(aciertos / len(sel), 3) if sel else None, "n": len(sel)})
+    return out
+
+
+def calibracion(filas: list[dict], cortes=(0.5, 0.6, 0.7, 0.8, 0.9, 1.01)) -> list[dict]:
+    out = []
+    for a, b in zip(cortes, cortes[1:]):
+        sel = [f for f in filas if f["pred"] != OTROS and f["conf"] is not None and a <= f["conf"] < b]
+        if sel:
+            out.append({"rango": f"{a:.2f}-{min(b, 1.0):.2f}", "n": len(sel),
+                        "confianza_media": round(sum(f["conf"] for f in sel) / len(sel), 3),
+                        "precision": round(sum(f["real"].lower() == f["pred"].lower() for f in sel) / len(sel), 3)})
+    return out
+
+
+def evaluar(movs: list[dict], min_confianza: float | None = None, modo: str = "comercio",
+            usar_historial: bool = True) -> dict:
     """modo='comercio': deja fuera todos los movimientos del mismo comercio (¿qué tal con comercios NUEVOS?).
     modo='movimiento': deja fuera solo el movimiento evaluado (¿qué tal con los comercios que ya repetiste?)."""
     if min_confianza is not None:
@@ -111,16 +147,27 @@ def evaluar(movs: list[dict], min_confianza: float | None = None, modo: str = "c
     resultados: list[dict | None] = [None] * len(movs)
     if modo == "movimiento":
         for i, m in enumerate(movs):
-            modelo = classifier.build_model(movs[:i] + movs[i + 1:])
-            resultados[i] = decidir_categoria(m["descripcion"], [], modelo, activas)
+            resto = movs[:i] + movs[i + 1:]
+            modelo = classifier.build_model(resto)
+            resultados[i] = decidir_categoria(m["descripcion"], [], modelo, activas,
+                                              historial=_historial(resto, usar_historial), contexto=_ctx(m))
     else:
         for huella, idx in grupos.items():
             resto = [m for m in movs if _grupo(m["descripcion"]) != huella]
             modelo = classifier.build_model(resto)
+            hist = _historial(resto, usar_historial)
             for i in idx:
-                resultados[i] = decidir_categoria(movs[i]["descripcion"], [], modelo, activas)
+                resultados[i] = decidir_categoria(movs[i]["descripcion"], [], modelo, activas,
+                                                  historial=hist, contexto=_ctx(movs[i]))
 
     n = len(movs)
+    ambiguos = 0
+    if usar_historial:
+        for i, m in enumerate(movs):
+            if resultados[i] is None:
+                resto = [x for j, x in enumerate(movs) if (j != i if modo == "movimiento" else _grupo(x["descripcion"]) != _grupo(m["descripcion"]))]
+                h = mu.consultar_memoria(m["descripcion"], mu.construir_memoria(resto))
+                ambiguos += bool(h and h["estado"] == "ambiguo")
     filas = []
     for m, r in zip(movs, resultados):
         filas.append({
@@ -180,6 +227,10 @@ def evaluar(movs: list[dict], min_confianza: float | None = None, modo: str = "c
             ejemplo.setdefault(f["grupo"], f["desc"])
     return {
         "n": n,
+        "ambiguos": ambiguos,
+        "curva": curva(filas),
+        "calibracion": calibracion(filas),
+        "firmes": {"umbral": mu.UMBRAL_PROPUESTA, **curva(filas, (mu.UMBRAL_PROPUESTA,))[0]},
         "exactitud_global": round(sum(map(ok, filas)) / n, 3) if n else 0,
         "cobertura_otros": round(sum(f["pred"] == OTROS for f in filas) / n, 3) if n else 0,
         "exactitud_sobre_propuestas": round(sum(map(ok, propuestas)) / len(propuestas), 3) if propuestas else 0,
@@ -212,6 +263,14 @@ def imprimir(res: dict, top: int, mostrar_errores: bool) -> dict:
     print(f"Transferencias entre personas (n={sg['n_personas']}): propuestas como «Transferencias» "
           f"{sg['personas_propuestas_como_transferencias']:.0%}; la persona las dejó como «Transferencias» "
           f"{sg['personas_que_la_persona_dejo_como_transferencias']:.0%} (el resto son gastos que el nombre no revela)")
+    print(f"Ambiguos (dos categorías en pugna, se le pregunta con sus 2 opciones): {res['ambiguos']}")
+    print("\nCurva cobertura vs precisión (confianza >= umbral):")
+    for c in res["curva"]:
+        pr = "n/d" if c["precision"] is None else f"{c['precision']:.1%}"
+        print(f"  >= {c['umbral']:.2f}: cobertura {c['cobertura']:.1%}  precisión {pr}  (n={c['n']})")
+    print("Calibración (confianza media vs precisión real por rango):")
+    for c in res["calibracion"]:
+        print(f"  {c['rango']}: n={c['n']} confianza {c['confianza_media']:.2f} -> acierta {c['precision']:.0%}")
     rc = res["recurrentes"]
     print(f"Patrones recurrentes (misma huella en 3 o más meses): {rc['reglas_sugeribles']} reglas sugeribles "
           f"cubrirían {rc['movimientos_cubiertos']:.0%} del historial")
@@ -242,6 +301,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--min-confianza", type=float, default=None, help="umbral del modelo aprendido (por defecto el de producción)")
     ap.add_argument("--modo", choices=["comercio", "movimiento"], default="comercio",
                     help="comercio: deja fuera todo el comercio (comercios nuevos); movimiento: solo el evaluado (comercios repetidos)")
+    ap.add_argument("--sin-historial", action="store_true", help="desactiva memoria por usuario y señales (línea base)")
     ap.add_argument("--salida-json", help="guarda SOLO los agregados")
     ap.add_argument("--mostrar-errores", action="store_true", help="LOCAL: imprime descripciones crudas")
     a = ap.parse_args(argv)
@@ -249,7 +309,7 @@ def main(argv: list[str] | None = None) -> int:
     if not movs:
         print("No hay movimientos confirmados para evaluar.")
         return 1
-    res = evaluar(movs, a.min_confianza, a.modo)
+    res = evaluar(movs, a.min_confianza, a.modo, not a.sin_historial)
     agregados = imprimir(res, a.top, a.mostrar_errores)
     if a.salida_json:
         Path(a.salida_json).write_text(json.dumps(agregados, ensure_ascii=False, indent=1), encoding="utf-8")

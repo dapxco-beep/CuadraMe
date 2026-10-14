@@ -16,6 +16,7 @@ from app.clave_comercio import clave_comercio, es_huella_peligrosa, huella_en_de
 from app.comercios_conocidos import clasificar_por_diccionario
 from app.costos_financieros import NOMBRES_SISTEMA, clasificar_costo
 from app.diccionario_categorias import CATEGORIA_RESPALDO
+from app import memoria_usuario as mu
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, es_pago_tarjeta
 from app.models import Categoria, Movimiento, ReglaCategoria
 
@@ -25,6 +26,8 @@ ORIGEN_POR_FUENTE = {
     "regla_tarjeta": "regla",
     "diccionario": "comercio",
     "learned": "similar",
+    "historial": "similar",  # lo que ESTE usuario ya confirmó para el mismo beneficiario/comercio
+    "senales": "similar",
 }
 # Nombres que el sistema usa por su cuenta y no dependen de la lista del usuario.
 CATEGORIAS_DE_SISTEMA = {CATEGORIA_PAGO_TARJETA, "Transferencia", "Transferencias", *NOMBRES_SISTEMA}
@@ -91,11 +94,18 @@ UMBRAL_APRENDIDO_FUERTE = 0.8
 
 def decidir_categoria(
     descripcion: str, reglas: list, modelo: dict, activas: set[str], texto_extra: str = "",
+    historial: dict | None = None, contexto: dict | None = None,
 ) -> dict | None:
     """Decisión PURA (sin base de datos) de la categoría: pago de tarjeta -> reglas
     del usuario -> modelo aprendido -> diccionario. La usan ClasificadorUsuario y
     el script de evaluación offline (tools/evaluar_clasificador.py), así lo que se
-    mide es exactamente lo que corre en producción."""
+    mide es exactamente lo que corre en producción.
+
+    `historial` = {"memoria", "senales"} (memoria_usuario, del propio usuario) y `contexto` =
+    {monto, fecha, tipo, cuenta_tipo}: ambos opcionales. Con historial: lo que el usuario ya
+    confirmó para ese beneficiario/comercio (también personas) gana al parecido por palabras;
+    dos categorías en pugna = ambiguo (no se propone); y al final las señales (monto, día,
+    pasarela...) proponen solo si están seguras, si no se abstiene."""
     if es_pago_tarjeta(descripcion):
         # El pago de una tarjeta no es un gasto (las compras ya se contaron).
         return {"categoria": CATEGORIA_PAGO_TARJETA, "tipo": "expense", "confianza": 1.0,
@@ -105,6 +115,18 @@ def decidir_categoria(
         # Los cobros/rendimientos del banco (4x1000, cuota de manejo, intereses...) son categorías de
         # SISTEMA: ni el historial ni una palabra suelta los pisan (solo una regla explícita del usuario).
         r = clasificar_costo(descripcion)
+    memoria = (historial or {}).get("memoria")
+    if not r and memoria:
+        h = mu.consultar_memoria(descripcion, memoria)
+        if h and h["estado"] == "ambiguo":
+            return None  # dos categorías en pugna: que decida el usuario (ver opciones_ambiguas)
+        if h and h["categoria"]:
+            cat = _ajustar(activas, h["categoria"])
+            if cat != "Otros" or h["categoria"] == "Otros":
+                veces = f"{h['n']} veces" if h["n"] > 1 else "1 vez"
+                r = {"categoria": cat, "tipo": (contexto or {}).get("tipo") or h.get("tipo") or "expense",
+                     "confianza": h["confianza"], "fuente": "historial",
+                     "razon": f"aprendida de tu historial ({veces})"}
     if not r:
         aprendido = classify(descripcion, modelo)
         r = aprendido
@@ -120,9 +142,19 @@ def decidir_categoria(
             r = {**r, "categoria": _ajustar(activas, r["categoria"])}
             if r["categoria"] == "Otros":
                 r = None  # la categoría sugerida no existe para él: mejor preguntarle
+    sen = (historial or {}).get("senales")
+    if sen and (not r or (r.get("fuente") == "diccionario" and r.get("categoria") == "Transferencias"
+                          and r.get("confianza", 1) < mu.UMBRAL_PROPUESTA)):
+        # Sin nada mejor (o solo un «Transferencias» a ciegas): las señales proponen si están seguras.
+        s = mu.predecir_senales(descripcion, contexto, sen, memoria)
+        if s:
+            cat = _ajustar(activas, s["categoria"])
+            if cat != "Otros":
+                r = {"categoria": cat, "tipo": (contexto or {}).get("tipo") or "expense",
+                     "confianza": s["confianza"], "fuente": "senales", "razon": s["razon"]}
     if not r:
         return None
-    return {**r, "origen": origen_de(r.get("fuente"))}
+    return {**r, "origen": origen_de(r.get("fuente")), "tentativa": r.get("confianza", 1) < mu.UMBRAL_PROPUESTA}
 
 
 class ClasificadorUsuario:
