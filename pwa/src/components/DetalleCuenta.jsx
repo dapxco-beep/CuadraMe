@@ -9,6 +9,7 @@ import Ayudita from './Ayudita'
 import { CajitasDeCuenta } from './TuPlataTrabajando'
 import Hoja from './Hoja'
 import { leerMonto } from '../lib/cuentaNueva'
+import { TarjetaCuadreBanco } from './CuadreMes'
 import InputMonto from './InputMonto'
 
 // Detalle de UNA cuenta: saldo actual sin ambigüedad, cómo va el mes, últimos
@@ -85,6 +86,8 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
           </p>
 
           {c.tipo === 'ahorro' && <CajitasDeCuenta cuentaId={c.id} />}
+
+          {c.tipo !== 'efectivo' && <TarjetaCuadreBanco cuentaId={c.id} moneda={c.moneda} onCambio={cargar} />}
 
           <div className="grid grid-cols-1 gap-2 mt-4">
             <button

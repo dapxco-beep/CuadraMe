@@ -308,7 +308,7 @@ def evaluar(
     traer (fecha, monto, tipo) y que cuentan como si ya estuvieran. `pendientes`: líneas por revisar sin resolver
     (bloquean el ajuste). Pura salvo por las lecturas."""
     base = {"cuenta_id": cuenta.id, "orientacion": ORIENTACION, "fecha_corte": fecha_corte.isoformat() if fecha_corte else None,
-            "moneda_cuenta": cuenta.moneda or "COP", "causas": [], "advertencias": [], "acciones": {}}
+            "moneda_cuenta": cuenta.moneda or "COP", "tipo_cuenta": cuenta.tipo, "causas": [], "advertencias": [], "acciones": {}}
     if aviso_cuenta:
         base["advertencias"].append({"codigo": "otra_cuenta", "texto": aviso_cuenta})
     if moneda and (cuenta.moneda or "COP") != moneda:
