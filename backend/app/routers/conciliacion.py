@@ -42,7 +42,7 @@ from app.extractos_conciliados import evidencia_conciliado
 from app.models import Cuenta, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil
 from app.extracto_tarjeta import leer_datos_tarjeta, proponer_actualizacion
 from app.config import settings
-from app.pdf_extract import ORIGEN_GMAIL, ORIGEN_MANUAL, extraer_via_ia, pdf_a_texto, pdf_pide_clave
+from app.pdf_extract import ORIGEN_GMAIL, ORIGEN_MANUAL, _decodificar_pdf, extraer_via_ia, pdf_a_texto, pdf_pide_clave
 from app.routers.consentimientos import tiene_consentimiento
 from app.schemas import (
     HistorialExtractoOut,
@@ -140,7 +140,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
         # Por qué no se pudo leer: queda guardado para decírselo a la persona en la lista de extractos.
         motivo_codigo = clasificar_motivo(
             texto=texto_plano, pide_clave=pide_clave, clave_dada=bool(data.password),
-            pdf_vacio=not (data.pdf_base64 or "").strip())
+            pdf_vacio=_decodificar_pdf(data.pdf_base64 or "") is None)  # vacío, roto o no es un PDF
         if sin_senales and texto_plano:
             motivo_codigo = "formato_no_reconocido"
         historial = HistorialExtracto(
