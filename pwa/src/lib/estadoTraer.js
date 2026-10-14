@@ -29,8 +29,11 @@ export function textoOrigenes(origenes) {
 
 // Leyenda de la cobertura por mes: el color nunca va solo.
 export const LEYENDA_COBERTURA = [
-  { clave: 'conciliado', texto: 'Al día' },
-  { clave: 'parcial', texto: 'Falta algo' },
+  { clave: 'conciliado', texto: 'Revisado' },
+  { clave: 'parcial', texto: 'Por revisar' },
+  { clave: 'extracto_pendiente', texto: 'Sin procesar' },
+  { clave: 'falta_clave', texto: 'Necesita clave' },
+  { clave: 'no_se_pudo_leer', texto: 'No se pudo leer' },
   { clave: 'sin_extracto', texto: 'Sin extracto' },
   { clave: 'anterior', texto: 'Anterior a tu fecha de inicio' },
 ]
@@ -48,5 +51,6 @@ export function textoDetalleCelda(c) {
     if (c.por_confirmar) partes.push(`${c.por_confirmar} por confirmar`)
     return partes.join(' · ')
   }
-  return `${c.movimientos} ${c.movimientos === 1 ? 'movimiento' : 'movimientos'} · ${c.conciliados} ya coinciden con el banco · ${c.por_confirmar} por confirmar`
+  const mov = `${c.movimientos} ${c.movimientos === 1 ? 'movimiento' : 'movimientos'} este mes`
+  return `${mov} · ${c.conciliados ? `${c.conciliados} confirmados con el banco` : 'ninguno confirmado con un extracto todavía'} · ${c.por_confirmar} por confirmar`
 }

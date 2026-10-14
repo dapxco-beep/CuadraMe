@@ -557,6 +557,12 @@ export const api = {
   conciliarExtractoCorreo: (id, cuentaId) =>
     request(`/correos/extractos/${id}/conciliar`, { method: 'POST', body: { cuenta_id: cuentaId } }),
   descartarExtractoCorreo: (id) => request(`/correos/extractos/${id}/descartar`, { method: 'POST' }),
+  // «Intentar de nuevo»: vuelve a bajar y abrir el PDF (no importa movimientos).
+  reintentarExtractoCorreo: (id) => request(`/correos/extractos/${id}/reintentar`, { method: 'POST' }),
+  // «Todos los extractos»: la lista completa (también viene en /sincronizacion/estado como `todos_extractos`).
+  todosLosExtractos: () => request('/sincronizacion/extractos', { sinCache: true }),
+  // Fijar de qué mes es un extracto cuando no se pudo deducir. `mes` = 'AAAA-MM'.
+  fijarMesExtracto: (id, mes) => request(`/sincronizacion/extractos/${id}/mes`, { method: 'PUT', body: { mes } }),
   clavePdfEstado: () => request('/correos/clave-pdf'),
   guardarClavePdf: (clave) => request('/correos/clave-pdf', { method: 'PUT', body: { clave } }),
   borrarClavePdf: () => request('/correos/clave-pdf', { method: 'DELETE' }),

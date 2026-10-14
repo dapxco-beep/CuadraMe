@@ -6,10 +6,12 @@ import { api } from './api'
 // El color nunca va solo: cada estado trae símbolo y texto.
 export const ESTADOS_CELDA = {
   // Verde: al día. Amarillo: falta algo. Gris: sin extracto. Tachado: anterior a tu fecha de inicio.
-  conciliado: { simbolo: '✓', texto: 'Al día', clase: 'bg-cuadra-soft text-cuadra border-cuadra/30' },
-  parcial: { simbolo: '⚠', texto: 'Falta algo', clase: 'bg-accent-soft text-accent border-accent/40' },
-  extracto_pendiente: { simbolo: '⚠', texto: 'Por revisar', clase: 'bg-accent-soft text-accent border-accent/40' },
-  falta_clave: { simbolo: '🔑', texto: 'Falta la clave', clase: 'bg-accent-soft text-accent border-accent/40' },
+  // Los textos son LOS MISMOS que los estados de «Todos los extractos» (Revisado, Por revisar, Sin procesar...).
+  conciliado: { simbolo: '✓', texto: 'Revisado', clase: 'bg-cuadra-soft text-cuadra border-cuadra/30' },
+  parcial: { simbolo: '⚠', texto: 'Por revisar', clase: 'bg-accent-soft text-accent border-accent/40' },
+  extracto_pendiente: { simbolo: '⚠', texto: 'Sin procesar', clase: 'bg-accent-soft text-accent border-accent/40' },
+  falta_clave: { simbolo: '🔑', texto: 'Necesita clave', clase: 'bg-accent-soft text-accent border-accent/40' },
+  no_se_pudo_leer: { simbolo: '✕', texto: 'No se pudo leer', clase: 'bg-danger-soft text-danger border-danger/40' },
   sin_extracto: { simbolo: '—', texto: 'Sin extracto', clase: 'bg-paper-raised text-ink-soft border-line' },
   anterior: { simbolo: '✕', texto: 'Anterior a tu fecha de inicio', clase: 'bg-transparent text-ink-soft/60 border-line line-through' },
   vacio: { simbolo: '·', texto: 'Sin datos', clase: 'bg-transparent text-ink-soft/50 border-transparent' },
@@ -37,7 +39,9 @@ export function separarExtractos(lista) {
   return { pendientes: todos.filter((e) => !esConciliado(e)), conciliados: todos.filter(esConciliado) }
 }
 
+// Nunca dice «0 movimientos coinciden»: con 0 no hay nada que contar y se calla.
 export function textoCruzados(n) {
+  if (!n) return 'Sin movimientos para comparar'
   return n === 1 ? '1 movimiento coincide con el banco' : `${n} movimientos coinciden con el banco`
 }
 
@@ -46,7 +50,7 @@ export function textoEstadoExtracto(ex) {
   switch (ex?.estado) {
     case 'procesado':
     case 'ya_conciliado':
-      return ex.cruzados != null ? `Revisado · ${textoCruzados(ex.cruzados)}` : 'Revisado'
+      return ex.cruzados ? `Revisado · ${textoCruzados(ex.cruzados)}` : 'Revisado'
     case 'nuevo':
       return 'Nuevo · listo para revisar'
     case 'falta_clave':

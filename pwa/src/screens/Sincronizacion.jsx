@@ -19,15 +19,16 @@ import {
 import { cantidadDe, pasoActual, sinDatos, tareasDeBloque } from '../lib/centro'
 import BarraProgreso from '../components/BarraProgreso'
 import BloqueCentro from '../components/BloqueCentro'
-import { EnlaceBancoNoEsta } from '../components/BancoNoEsta'
+import BancoNoEsta, { EnlaceBancoNoEsta } from '../components/BancoNoEsta'
 import { InterruptoresLectura, LecturaCarril } from '../components/CarrilesCorreo'
 import ConexionGmail from '../components/ConexionGmail'
 import CorreosYaRegistrados from '../components/CorreosYaRegistrados'
 import CrearCuentaBanco from '../components/CrearCuentaBanco'
 import EstadoClavePdf, { textoEstadoClave } from '../components/EstadoClavePdf'
-import ExtractosYaConciliados from '../components/ExtractosYaConciliados'
+import TodosLosExtractos from '../components/TodosLosExtractos'
 import PuntoDePartida from '../components/PuntoDePartida'
-import { BOTON_TAREA, LEYENDA_COBERTURA, separarEstados, textoDetalleCelda, textoOrigenes } from '../lib/estadoTraer'
+import { BOTON_TAREA, LEYENDA_COBERTURA, textoDetalleCelda } from '../lib/estadoTraer'
+import { FILTRO_DE_TAREA } from '../lib/extractosVista'
 import Hoja from '../components/Hoja'
 import PasosCentro from '../components/PasosCentro'
 import SubirArchivos from '../components/SubirArchivos'
@@ -136,7 +137,8 @@ export default function Sincronizacion() {
   const [ignorados, setIgnorados] = useState(null) // extractos ignorados; null = no cargados
   const [correosIgnorados, setCorreosIgnorados] = useState(null)
   const [verTodos, setVerTodos] = useState(false)
-  const [verTodosAlDia, setVerTodosAlDia] = useState(false)
+  // Filtros de «Todos los extractos» (los abren «Por hacer» y la cobertura por mes).
+  const [filtroExt, setFiltroExt] = useState({ estados: [], cuenta: '', mes: '', texto: '' })
   const [cola, setCola] = useState({ items: [], total: 0 })
   const [cargando, setCargando] = useState(true)
   const raiz = useRef(null)
@@ -153,6 +155,7 @@ export default function Sincronizacion() {
   const [detalle, setDetalle] = useState(null) // { cuentaId, mes }
   const [crearBanco, setCrearBanco] = useState(null)
   const [elegirBanco, setElegirBanco] = useState(false)
+  const [bancoNoEsta, setBancoNoEsta] = useState(null) // «Mi banco no está» desde una fila: null = cerrado, texto = banco
   const [cuentaPorExtracto, setCuentaPorExtracto] = useState({})
   const [ocupados, setOcupados] = useState(new Set())
   const [avisoExt, setAvisoExt] = useState('')
@@ -406,9 +409,10 @@ export default function Sincronizacion() {
     switch (t.id) {
       case 'falta_clave':
         setMostrarClave(true)
+        abrirGrupoExtractos(FILTRO_DE_TAREA.falta_clave, null)
         return abrirBloque('extractos', 'sinc-clave')
       case 'extractos_por_conciliar':
-        return abrirBloque('extractos', 'sinc-extractos-correo')
+        return abrirGrupoExtractos(FILTRO_DE_TAREA.extractos_por_conciliar)
       case 'correos_por_revisar':
         return navigate('/movimientos?filtro=por-revisar') // los movimientos del correo se aprueban en Movimientos
       case 'sin_cuenta':
@@ -419,11 +423,86 @@ export default function Sincronizacion() {
       case 'movimientos_por_categorizar':
         return abrirBloque('revisar', 'sinc-categorizar')
       case 'extractos_sin_leer':
-        return pedirSubir({ manual: false })
+        return abrirGrupoExtractos(FILTRO_DE_TAREA.extractos_sin_leer)
       case 'posibles_duplicados':
         return navigate(t.ruta)
       default:
         return navigate(t.ruta)
+    }
+  }
+
+  // ── Todos los extractos: abrir un grupo, acciones por fila ─────────
+  // Abre la sección, deja solo ese estado (o ese mes y cuenta) y baja a la lista. `ancla` null = no mover la pantalla.
+  function abrirGrupoExtractos(estados = [], ancla = 'sinc-todos-extractos', extra = {}) {
+    setFiltroExt({ estados, cuenta: '', mes: '', texto: '', ...extra })
+    setAbiertos((a) => ({ ...a, extractos: true }))
+    if (ancla) irA(ancla)
+  }
+
+  async function reintentarFila(it) {
+    if (!it.extracto_id || ocupados.has(it.id)) return
+    setOcupados((s) => new Set(s).add(it.id))
+    setAvisoExt('')
+    try {
+      const r = await api.reintentarExtractoCorreo(it.extracto_id)
+      setAvisoExt(r?.mensaje || (r?.ok ? 'Listo: ya lo podemos revisar.' : 'No pudimos leerlo todavía.'))
+      await cargar()
+    } catch (err) {
+      setAvisoExt(mensajeAmable(err?.message, { porDefecto: 'No pudimos intentarlo ahora. Revisa tu conexión e intenta de nuevo.' }))
+    } finally {
+      if (montado.current) {
+        setOcupados((s) => {
+          const n = new Set(s)
+          n.delete(it.id)
+          return n
+        })
+      }
+    }
+  }
+
+  async function fijarMesFila(it, mes) {
+    if (!it.extracto_id || !mes) return
+    setAvisoExt('')
+    try {
+      await api.fijarMesExtracto(it.extracto_id, mes)
+      await cargar()
+    } catch (err) {
+      setAvisoExt(mensajeAmable(err?.message, { porDefecto: 'No pudimos guardar el mes. Intenta de nuevo.' }))
+    }
+  }
+
+  // El extracto de Gmail que está detrás de una fila (para conciliar con la cuenta que ya conocemos).
+  const extractoDeFila = (it) => extractos.find((e) => e.id === it.extracto_id)
+    || (it.extracto_id ? { id: it.extracto_id, cuenta_sugerida_id: it.cuenta_id, banco: it.banco, estado: 'nuevo' } : null)
+
+  function accionFila(accion, it) {
+    switch (accion) {
+      case 'ver':
+        return pedirSubir({ historialId: it.historial_id })
+      case 'revisar': {
+        if (it.historial_id) return pedirSubir({ historialId: it.historial_id })
+        const ex = extractoDeFila(it)
+        if (ex && cuentaElegida(ex)) return conciliar(ex)
+        setAvisoExt('Elige la cuenta de este extracto para poder revisarlo.')
+        return abrirBloque('extractos', 'sinc-extractos-correo')
+      }
+      case 'revisar_de_nuevo': {
+        const ex = extractoDeFila(it)
+        return ex ? conciliar(ex) : null
+      }
+      case 'poner_clave':
+        setMostrarClave(true)
+        return abrirBloque('extractos', 'sinc-clave')
+      case 'probar_clave':
+        return probarClave(it.extracto_id)
+      case 'intentar_de_nuevo':
+        return reintentarFila(it)
+      case 'subir_de_nuevo':
+        return pedirSubir({ cuentaId: it.cuenta_id, manual: false })
+      case 'mi_banco_no_esta':
+        return setBancoNoEsta(it.banco || '')
+      default:
+        return null
     }
   }
 
@@ -605,7 +684,7 @@ export default function Sincronizacion() {
 
   // Lo ya conciliado no es pendiente: va aparte, plegado.
   const { pendientes, conciliados } = separarExtractos(extractos)
-  const { alDia } = separarEstados(estado?.extractos)
+  const todosExtractos = estado?.todos_extractos || null
   const visibles = verTodos ? pendientes : pendientes.slice(0, EXTRACTOS_VISIBLES)
   const alternar = (b) => setAbiertos((a) => ({ ...a, [b]: !a[b] }))
   const activos = lecturaActiva()
@@ -883,14 +962,6 @@ export default function Sincronizacion() {
               </div>
             )}
 
-            <ExtractosYaConciliados
-              items={conciliados}
-              nombreCuenta={nombreCuenta}
-              ocupados={ocupados}
-              onVer={(ex) => pedirSubir({ historialId: ex.historial_id })}
-              onRevisar={conciliar}
-            />
-
             {ignorados === null ? (
               <button onClick={verIgnorados} className="text-xs text-ink-soft mt-3 underline min-h-[32px]">Ver extractos ignorados</button>
             ) : (
@@ -908,39 +979,19 @@ export default function Sincronizacion() {
           </>
         )}
 
+        {/* Todos los extractos: de todos los estados, del más reciente al más antiguo, con su mes */}
+        <TodosLosExtractos
+          datos={todosExtractos}
+          filtro={filtroExt}
+          onFiltro={setFiltroExt}
+          onAccion={accionFila}
+          onFijarMes={fijarMesFila}
+          ocupados={ocupados}
+        />
+
         <Sub id="sinc-subir" titulo="Subir un archivo">
           <SubirArchivos inicial={subir} onImportado={cargar} />
         </Sub>
-
-      {/* Al día: una línea humana por extracto, aunque no se haya agregado nada */}
-      <section className="mt-5" aria-label="Al día" data-testid="al-dia-extractos">
-        <h2 className="text-[15px] font-semibold">Al día</h2>
-        {alDia.length === 0 ? (
-          <p className="text-xs text-ink-soft mt-1">Cuando revises un extracto, aquí queda lo que pasó con cada uno.</p>
-        ) : (
-          <ul className="mt-2 rounded-2xl bg-paper-raised border border-line divide-y divide-line">
-            {alDia.slice(0, verTodosAlDia ? alDia.length : 5).map((x) => (
-              <li key={x.id} className="px-3.5 py-2.5 flex items-start gap-2" data-testid={`al-dia-${x.id}`}>
-                <CheckCircle2 size={16} className="text-cuadra shrink-0 mt-0.5" aria-hidden="true" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs leading-snug">{x.frase}</p>
-                  <p className="text-[11px] text-ink-soft mt-0.5">
-                    Vino por {textoOrigenes(x.origenes)}
-                    {x.duplicadas_detectadas ? ` · ${x.duplicadas_detectadas} ya las habías registrado y se juntaron, sin repetir` : ''}
-                    {x.copias > 1 ? ` · ${x.copias} copias del mismo extracto, se cuenta una vez` : ''}
-                  </p>
-                </div>
-                {x.historial_id && (
-                  <button onClick={() => pedirSubir({ historialId: x.historial_id })} className="text-xs font-semibold text-accent min-h-[44px] px-1 shrink-0">Ver</button>
-                )}
-              </li>
-            ))}
-            {alDia.length > 5 && (
-              <li><button onClick={() => setVerTodosAlDia((v) => !v)} className="w-full min-h-[44px] text-xs font-semibold text-accent">{verTodosAlDia ? 'Ver menos' : `Ver los ${alDia.length}`}</button></li>
-            )}
-          </ul>
-        )}
-      </section>
 
       {/* Cobertura por mes y cuenta */}
       <section className="mt-5" aria-label="Cobertura por mes">
@@ -1017,7 +1068,24 @@ export default function Sincronizacion() {
                     {textoDetalleCelda(celdaDetalle)}
                     {celdaDetalle.extractos ? ` · ${celdaDetalle.extractos} ${celdaDetalle.extractos === 1 ? 'extracto' : 'extractos'}` : ''}
                   </p>
+                  {celdaDetalle.lista?.length > 0 && (
+                    <ul className="mt-2 flex flex-col gap-1" aria-label="Extractos de este mes">
+                      {celdaDetalle.lista.map((x) => (
+                        <li key={x.id} className="text-xs">
+                          <span className="font-semibold">{x.titulo}</span> · {x.estado_etiqueta}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <div className="flex flex-wrap gap-2 mt-3">
+                    {celdaDetalle.lista?.length > 0 && (
+                      <button
+                        onClick={() => abrirGrupoExtractos([], 'sinc-todos-extractos', { cuenta: `c:${cuentaDetalle.id}`, mes: celdaDetalle.mes })}
+                        className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5"
+                      >
+                        Ver {celdaDetalle.lista.length === 1 ? 'el extracto' : 'los extractos'} de este mes
+                      </button>
+                    )}
                     {celdaDetalle.estado === 'extracto_pendiente' && (
                       <button onClick={() => abrirBloque('extractos', 'sinc-extractos-correo')} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5">Revisar extracto</button>
                     )}
@@ -1159,6 +1227,8 @@ export default function Sincronizacion() {
       </BloqueCentro>
       </div>
       </div>
+
+      {bancoNoEsta !== null && <BancoNoEsta bancoInicial={bancoNoEsta} onClose={() => setBancoNoEsta(null)} />}
 
       {elegirBanco && (
         <Hoja onCerrar={() => setElegirBanco(false)} titulo="Bancos sin cuenta">
