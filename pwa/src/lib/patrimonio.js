@@ -3,7 +3,7 @@
 // lo hace el backend; aquí solo hay lo necesario para dibujar y para la vista
 // previa del formulario.
 
-import { Car, ChartPie, Coins, Globe, House, Landmark, TrendingUp, Wallet } from 'lucide-react'
+import { Car, Package, ChartPie, Coins, Globe, House, Landmark, TrendingUp, Wallet } from 'lucide-react'
 
 export const CLASES = {
   cdt: { label: 'CDT', icono: Landmark },
@@ -13,11 +13,12 @@ export const CLASES = {
   cripto: { label: 'Cripto', icono: Coins },
   inmueble: { label: 'Inmueble', icono: House },
   vehiculo: { label: 'Vehículo', icono: Car },
+  otro: { label: 'Otro bien', icono: Package },
   cuentas: { label: 'Efectivo y cuentas', icono: Wallet },
 }
 
 export const CLASES_MERCADO = ['fondo', 'etf', 'accion', 'cripto']
-export const CLASES_BIEN = ['inmueble', 'vehiculo']
+export const CLASES_BIEN = ['inmueble', 'vehiculo', 'otro']
 
 // Colores de la dona: salen de los tokens del tema (claro/oscuro) mezclados con tinta
 // para tener ocho tonos distinguibles sin hardcodear hexadecimales.

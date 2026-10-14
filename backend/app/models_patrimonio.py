@@ -37,6 +37,13 @@ class ActivoPatrimonio(Base):
     costo_adquisicion = Column(Float, nullable=True)  # inmueble/vehículo: lo que costó
     fecha_adquisicion = Column(DateTime, nullable=True)
     notas = Column(String, default="")
+    # Opcionales por tipo (todo es opcional): arriendo del inmueble, año y depreciación estimada
+    # del vehículo, y deuda enlazada (hipoteca / crédito de vehículo) para ver el patrimonio neto.
+    arriendo_mensual = Column(Float, nullable=True)
+    anio = Column(Float, nullable=True)
+    depreciacion_pct = Column(Float, nullable=True)  # % anual estimado
+    deuda_id = Column(String, nullable=True)
+    broker = Column(String, nullable=True)  # plataforma/broker en texto libre (opcional)
     activo = Column(Boolean, default=True)
     creado_en = Column(DateTime, default=datetime.utcnow)
 

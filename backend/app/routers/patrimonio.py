@@ -20,6 +20,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app import inversiones_calc as inv_calc
 from app import patrimonio_calc as calc
 from app import precios
 from app.auth import UsuarioActual, cron_autorizado, get_current_user
@@ -28,6 +29,7 @@ from app.database import get_db
 from app.fx import convertir_a_cop
 from app.models import Cuenta, Deuda
 from app.models_patrimonio import ActivoPatrimonio, FlujoActivo, SnapshotPatrimonio, ValorActivo
+from app import models_inversiones  # noqa: F401  (registra las tablas de Inversiones en create_all)
 from app.utiles import ahora_co
 
 router = APIRouter(prefix="/patrimonio", tags=["patrimonio"])
@@ -56,6 +58,11 @@ class ActivoIn(BaseModel):
     costo_adquisicion: Optional[float] = None
     fecha_adquisicion: Optional[datetime] = None
     notas: Optional[str] = ""
+    arriendo_mensual: Optional[float] = None
+    anio: Optional[float] = None
+    depreciacion_pct: Optional[float] = None
+    deuda_id: Optional[str] = None
+    broker: Optional[str] = None
 
     @field_validator("clase")
     @classmethod
@@ -159,8 +166,12 @@ def _serializar_activo(a: ActivoPatrimonio, flujos: list, hoy: datetime) -> dict
         "precio_actual": a.precio_actual, "precio_fecha": a.precio_fecha,
         "fuente_precio": a.fuente_precio,
         "costo_adquisicion": a.costo_adquisicion, "fecha_adquisicion": a.fecha_adquisicion,
-        "notas": a.notas,
+        "notas": a.notas, "arriendo_mensual": a.arriendo_mensual, "anio": a.anio,
+        "depreciacion_pct": a.depreciacion_pct, "deuda_id": a.deuda_id, "broker": a.broker,
         **ev,
+        **(inv_calc.extras_bien(a.clase, ev["valor"], a.costo_adquisicion, a.precio_fecha,
+                                a.arriendo_mensual, hoy) if a.clase in calc.CLASES_BIEN else
+           {"actualizado_hace": inv_calc.hace_cuanto(a.precio_fecha, hoy)} if a.clase != "cdt" else {}),
         "valor_cop": convertir_a_cop(ev["valor"], a.moneda),
     }
 

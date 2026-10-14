@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { haceCuanto } from '../lib/inversiones'
 import { EsqueletoGrafica, EsqueletoTarjeta } from '../components/Esqueletos'
 import { Info, Landmark, Plus, TrendingDown, TrendingUp, X } from 'lucide-react'
 import Icono from '../components/Icono'
@@ -14,7 +16,7 @@ import Hoja from '../components/Hoja'
 import InputMonto from '../components/InputMonto'
 
 const MONEDAS = ['COP', 'USD', 'EUR']
-const CLASES_ACTIVO = ['cdt', 'fondo', 'etf', 'accion', 'cripto', 'inmueble', 'vehiculo']
+const CLASES_ACTIVO = ['cdt', 'fondo', 'etf', 'accion', 'cripto', 'inmueble', 'vehiculo', 'otro']
 
 function colorGanancia(v) {
   if (v === null || v === undefined || v === 0) return 'text-ink-soft'
@@ -66,6 +68,7 @@ export default function Patrimonio() {
       </header>
 
       <p className="mx-5 text-xs text-ink-soft">Tu patrimonio es todo lo que tienes menos todo lo que debes.</p>
+      <OfertaInversiones />
 
       {cargando && !datos ? (
         <div className="mx-5 mt-3 space-y-3">
@@ -176,6 +179,27 @@ export default function Patrimonio() {
   )
 }
 
+function OfertaInversiones() {
+  const [oculto, setOculto] = useState(() => {
+    try { return localStorage.getItem('cuadrame:oferta-inversiones') === '1' } catch { return false }
+  })
+  if (oculto) return null
+  return (
+    <div className="mx-5 mt-3 rounded-2xl border border-line bg-paper-raised p-3 text-xs" data-testid="oferta-inversiones">
+      <p className="mb-2">¿Tienes inversiones o bienes que quieras seguir? (acciones, fondos, CDT, cripto, un inmueble, un carro…)</p>
+      <div className="flex gap-3">
+        <Link to="/inversiones" className="font-semibold text-accent min-h-11 flex items-center">Ver Inversiones</Link>
+        <button
+          onClick={() => { try { localStorage.setItem('cuadrame:oferta-inversiones', '1') } catch { /* sin almacenamiento */ } setOculto(true) }}
+          className="font-semibold text-ink-soft min-h-11"
+        >
+          Ahora no
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function TarjetaNeto({ datos }) {
   const variacion = datos.variacion_mes_anterior
   const sube = variacion !== null && variacion !== undefined && variacion >= 0
@@ -223,7 +247,7 @@ function TarjetaActivo({ activo: a, indice, onEditar }) {
   const meta = CLASES[a.clase]
   return (
     <button
-      onClick={onEditar}
+      onClick={a.fuente_precio === 'inversiones' ? () => { window.location.hash = '#/inversiones' } : onEditar}
       className="w-full text-left rounded-2xl bg-paper-raised border border-line p-4 stagger-item"
       style={{ '--stagger-i': indice }}
       aria-label={`Editar ${a.nombre}`}
@@ -264,7 +288,16 @@ function TarjetaActivo({ activo: a, indice, onEditar }) {
         </p>
       )}
       {a.clase !== 'cdt' && a.precio_fecha && (
-        <p className="text-[11px] text-ink-soft mt-1.5">Precio al {fechaCorta(a.precio_fecha)} (manual)</p>
+        <p className="text-[11px] text-ink-soft mt-1.5">
+          {a.fuente_precio === 'inversiones' ? 'Precio' : 'Valor manual'} al {fechaCorta(a.precio_fecha)} · actualizado {haceCuanto(a.precio_fecha)}
+          {a.sugerir_actualizar ? ' · te conviene revisarlo' : ''}
+        </p>
+      )}
+      {a.variacion_tipo && (
+        <p className="text-[11px] text-ink-soft mt-1">
+          {a.variacion_tipo === 'valorizacion' ? 'Valorización' : 'Depreciación'}: {formatPct(a.variacion_pct)} frente a lo que costó (estimación)
+          {a.arriendo_anual_pct ? ` · arriendo ≈ ${a.arriendo_anual_pct.toFixed(1).replace('.', ',')} % anual del valor` : ''}
+        </p>
       )}
     </button>
   )
@@ -304,6 +337,9 @@ function FormActivo({ activo, onClose, onGuardado }) {
   const [precio, setPrecio] = useState(activo?.precio_actual != null ? String(activo.precio_actual) : '')
   const [costoAdq, setCostoAdq] = useState(activo?.costo_adquisicion != null ? String(activo.costo_adquisicion) : '')
   const [fechaAdq, setFechaAdq] = useState(deFecha(activo?.fecha_adquisicion))
+  const [arriendo, setArriendo] = useState(activo?.arriendo_mensual != null ? String(activo.arriendo_mensual) : '')
+  const [anio, setAnio] = useState(activo?.anio != null ? String(activo.anio) : '')
+  const [deprec, setDeprec] = useState(activo?.depreciacion_pct != null ? String(activo.depreciacion_pct) : '')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
@@ -347,6 +383,9 @@ function FormActivo({ activo, onClose, onGuardado }) {
         precio_actual: Number(precio),
         costo_adquisicion: costoAdq === '' ? null : Number(costoAdq),
         fecha_adquisicion: aFecha(fechaAdq),
+        arriendo_mensual: clase === 'inmueble' && arriendo !== '' ? Number(arriendo) : null,
+        anio: clase === 'vehiculo' && anio !== '' ? Number(anio) : null,
+        depreciacion_pct: clase === 'vehiculo' && deprec !== '' ? Number(deprec) : null,
       }
     }
 
@@ -485,6 +524,22 @@ function FormActivo({ activo, onClose, onGuardado }) {
               <input type="date" value={fechaAdq} onChange={(e) => setFechaAdq(e.target.value)} className={claseInput} />
             </Campo>
           </div>
+          {clase === 'inmueble' && (
+            <Campo etiqueta="Arriendo que recibes al mes (opcional)">
+              <InputMonto value={arriendo} onValor={setArriendo} placeholder="Ej. 1.800.000" className={claseInput} />
+            </Campo>
+          )}
+          {clase === 'vehiculo' && (
+            <div className="grid grid-cols-2 gap-3">
+              <Campo etiqueta="Año del vehículo (opcional)">
+                <input value={anio} onChange={(e) => setAnio(soloNumero(e.target.value))} inputMode="numeric" placeholder="Ej. 2021" className={claseInput} />
+              </Campo>
+              <Campo etiqueta="Depreciación anual estimada % (opcional)">
+                <input value={deprec} onChange={(e) => setDeprec(soloNumero(e.target.value))} inputMode="decimal" placeholder="Ej. 10" className={claseInput} />
+              </Campo>
+            </div>
+          )}
+          <p className="text-[11px] text-ink-soft mb-3">Es una estimación que tú actualizas; te recordamos revisarla cada tanto, sin obligarte.</p>
         </>
       )}
 

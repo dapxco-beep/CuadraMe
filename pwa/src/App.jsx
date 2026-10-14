@@ -40,6 +40,7 @@ const DetalleMovimiento = lazy(() => import('./screens/DetalleMovimiento'))
 const Agregar = lazy(() => import('./screens/Agregar'))
 const Presupuesto = lazy(() => import('./screens/Presupuesto'))
 const Patrimonio = lazy(() => import('./screens/Patrimonio'))
+const Inversiones = lazy(() => import('./screens/Inversiones'))
 const Metas = lazy(() => import('./screens/Metas'))
 const Recurrentes = lazy(() => import('./screens/Recurrentes'))
 const Deudas = lazy(() => import('./screens/Deudas'))
@@ -121,6 +122,7 @@ function AppGate() {
         <Route path="/amigos" element={<CuentasAmigos />} />
         <Route path="/presupuesto" element={<Presupuesto />} />
         <Route path="/patrimonio" element={<Patrimonio />} />
+        <Route path="/inversiones" element={<Inversiones />} />
         <Route path="/metas" element={<Metas />} />
         <Route path="/recurrentes" element={<Recurrentes />} />
         <Route path="/deudas" element={<Deudas />} />

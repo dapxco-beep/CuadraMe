@@ -51,6 +51,7 @@ from app.routers import (
     por_categorizar,
     pagos,
     patrimonio,
+    inversiones,
     planificacion,
     perfil,
     presupuestos,
@@ -264,6 +265,7 @@ app.include_router(categorias.router)
 app.include_router(backup.router)
 app.include_router(metricas.router)
 app.include_router(patrimonio.router)
+app.include_router(inversiones.router)
 app.include_router(planificacion.router)
 app.include_router(gastos_compartidos.router)
 app.include_router(facturas.router)
