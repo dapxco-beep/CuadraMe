@@ -926,6 +926,9 @@ class ProcesarExtractoResponse(BaseModel):
     # Qué pasó con cada línea leída (modelo único de app/estado_traer.py): leidas, ya_estaban,
     # nuevas_agregadas, por_revisar, descartadas, anteriores, duplicadas_detectadas, dudosas.
     conteo: Optional[dict] = None
+    # Lo que el extracto dice de saldos (para cuadrar): {saldo_inicial, saldo_final, fecha_corte,
+    # periodo_inicio, moneda, origen, cadena_ok, pago_minimo}; None si el extracto no trae saldos legibles.
+    saldos_extracto: Optional[dict] = None
 
 
 class ResolverDudososRequest(BaseModel):
@@ -952,6 +955,12 @@ class HistorialExtractoOut(BaseModel):
     importados: int
     estado: str
     creado_en: datetime
+    saldo_inicial_extracto: Optional[float] = None
+    saldo_final_extracto: Optional[float] = None
+    fecha_corte: Optional[str] = None
+    moneda: Optional[str] = None
+    cuadre_estado: Optional[str] = None
+    cuadre_diferencia: Optional[float] = None
 
     class Config:
         from_attributes = True

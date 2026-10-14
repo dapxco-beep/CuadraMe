@@ -14,6 +14,7 @@ from app.autocat import (
     guardar_regla_aprendida, origen_de,
 )
 from app import duplicados as dup
+from app import cuadre_extracto
 from app import estado_traer
 from app import punto_partida
 from app.conciliacion import _CUENTA_UNICA
@@ -247,6 +248,8 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
         importados=auto_importados,
         estado="pendiente_revision",
     )
+    saldos_extracto = _saldos_del_extracto(cuenta, texto_plano, movimientos)
+    cuadre_extracto.guardar_saldos(historial, saldos_extracto)
     db.add(historial)
     db.flush()  # para tener historial.id y marcarlo en los movimientos completados
 
@@ -300,6 +303,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
         ya_registrados=resultado["exactos"] + resultado["aproximados"] + completados + resultado.get("borrados_antes", 0),
         borrados_antes=resultado.get("borrados_antes", 0),
         propuesta_tarjeta=_propuesta_tarjeta(cuenta, texto_plano),
+        saldos_extracto=saldos_extracto,
         aviso_cuenta=aviso_cuenta_distinta(cuenta, texto_plano[:6000], db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()),
         ok=True,
         historial_id=historial.id,
@@ -380,6 +384,24 @@ def _periodo_ya_conciliado(db: Session, usuario_id: str, cuenta_id: str, review:
     return {"mes": mes, "cruzados": ev["cruzados"]} if ev else None
 
 
+def _saldos_del_extracto(cuenta, texto: str, movimientos: list[dict]) -> dict | None:
+    """Saldos que imprime el extracto (para cuadrar), o None si no trae ninguno legible. Nunca rompe el proceso."""
+    try:
+        credito = cuenta.tipo == "credito"
+        saldos = cuadre_extracto.leer_saldos_extracto(texto or "", es_credito=credito,
+                                                      datos_tarjeta=leer_datos_tarjeta(texto) if credito else None)
+        if saldos:
+            saldos["cadena_ok"] = cuadre_extracto.cadena_coincide(saldos, movimientos)
+            if not saldos.get("periodo_inicio") or not saldos.get("fecha_corte"):
+                fechas = [d for d in (parse_bank_date(m.get("fecha")) for m in movimientos) if d]
+                if fechas:
+                    saldos.setdefault("periodo_inicio", min(fechas).date().isoformat())
+                    saldos.setdefault("fecha_corte", max(fechas).date().isoformat())
+        return saldos
+    except Exception:  # noqa: BLE001 - leer saldos es un extra: si falla, el extracto se procesa como siempre
+        return None
+
+
 def _propuesta_tarjeta(cuenta, texto: str) -> dict | None:
     """Si la cuenta es una tarjeta de crédito, lee cupo, pago, fechas y tasa del extracto y
     PROPONE actualizar la tarjeta (nunca la modifica). Cualquier fallo se ignora: leer el
@@ -441,6 +463,7 @@ def obtener_review(
         aproximados=historial.aproximados,
         faltantes=historial.faltantes,
         descartados=historial.descartados or 0,
+        saldos_extracto=cuadre_extracto.saldos_de_historial(historial),
         review=review,
         completados=completados,
         sobrantes=sobrantes,
@@ -640,6 +663,8 @@ def importar_faltantes(
     if all(i["estado"] != "faltante" for i in review):
         historial.estado = "conciliado"
     estado_traer.sincronizar_contadores(historial, review)  # los contadores del historial ya no se quedan viejos
+    if not any(i.get("estado") in ("faltante", "dudoso") for i in review):
+        cuadre_extracto.registrar_cuadre(db, cuenta, historial)  # recuerda si este mes cuadra (para avisar si deja de cuadrar)
 
     db.commit()
     dup.absorber_correos(db, usuario.id)

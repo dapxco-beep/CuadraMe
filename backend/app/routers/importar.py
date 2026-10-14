@@ -31,6 +31,7 @@ from app import punto_partida
 from app.conciliacion import _CUENTA_UNICA, _cand_ledger, auditar_movimientos, compute_fingerprint
 from app.conciliacion import es_transferencia_propia
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_IMPORTADO_SIN_SALDO, con_marca_traslado, es_pago_tarjeta
+from app import cuadre_extracto
 from app.database import get_db
 from app.importador_tabular import MAX_BYTES, MAX_FILAS, CAMPOS, ErrorArchivo, analizar
 from app.limites import verificar_limite
@@ -208,6 +209,9 @@ def vista_previa(
         **analisis,
         "propuesta": propuesta,
         "anteriores": anteriores,  # líneas anteriores al punto de partida: no se ofrecen para importar
+        # Saldos del archivo (columna «saldo» coherente) para cuadrar; None si no los trae. En tarjetas de crédito no se
+        # lee: cada banco muestra la deuda con un signo distinto y es mejor pedirla a mano que adivinar.
+        "saldos": cuadre_extracto.saldos_de_filas(movs) if cuenta.tipo != "credito" else None,
         # Aviso, no bloqueo: ese mes de esa cuenta ya estaba conciliado (los duplicados se detectan por huella).
         "ya_conciliado": _periodo_ya_conciliado(db, usuario.id, cuenta.id, auditoria["review"]),
         "resumen": {
