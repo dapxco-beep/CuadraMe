@@ -90,33 +90,33 @@ export function Evolucion({ d, fmt = formatCOP, acumulado = false, vista = 'graf
   if (vista === 'tabla') {
     return (
       <div className="overflow-x-auto">
-        <table className="w-full text-xs">
+        <table className="w-full text-[11px] min-[400px]:text-xs">
           <caption className="sr-only">Ingresos, gastos y ahorro por {d.agrupar === 'semana' ? 'semana' : 'mes'}</caption>
           <thead>
             <tr className="text-ink-soft text-left">
               <th scope="col" className="py-1.5 font-semibold">{d.agrupar === 'semana' ? 'Semana' : 'Mes'}</th>
-              <th scope="col" className="py-1.5 font-semibold text-right">Ingresos</th>
-              <th scope="col" className="py-1.5 font-semibold text-right">Gastos</th>
-              <th scope="col" className="py-1.5 font-semibold text-right">Ahorro</th>
-              <th scope="col" className="py-1.5 font-semibold text-right">Ahorro acumulado</th>
+              <th scope="col" className="py-1.5 pl-2 font-semibold text-right">Ingresos</th>
+              <th scope="col" className="py-1.5 pl-2 font-semibold text-right">Gastos</th>
+              <th scope="col" className="py-1.5 pl-2 font-semibold text-right">Ahorro</th>
+              {acumulado && <th scope="col" className="py-1.5 pl-2 font-semibold text-right">Acumulado</th>}
             </tr>
           </thead>
           <tbody>
             {puntos.map((p) => (
               <tr key={p.clave} className="border-t border-line">
                 <th scope="row" className="py-2 text-left font-medium">
-                  {p.etiqueta_larga}
+                  <span title={p.etiqueta_larga}>{d.agrupar === 'mes' ? `${p.etiqueta} ${p.clave.slice(0, 4)}` : p.etiqueta}</span>
                   {p.en_curso && <span className="block text-[11px] text-ink-soft font-normal">en curso</span>}
                 </th>
                 {p.con_datos ? (
                   <>
-                    <td className="py-2 text-right t-cifra">{fmt(p.ingresos)}</td>
-                    <td className="py-2 text-right t-cifra">{fmt(p.gastos)}</td>
-                    <td className={`py-2 text-right t-cifra ${p.ahorro < 0 ? 'text-danger' : ''}`}>{fmt(p.ahorro)}</td>
-                    <td className="py-2 text-right t-cifra">{fmt(p.acumulado)}</td>
+                    <td className="py-2 pl-2 text-right t-cifra whitespace-nowrap">{fmt(p.ingresos)}</td>
+                    <td className="py-2 pl-2 text-right t-cifra whitespace-nowrap">{fmt(p.gastos)}</td>
+                    <td className={`py-2 pl-2 text-right t-cifra whitespace-nowrap ${p.ahorro < 0 ? 'text-danger' : ''}`}>{fmt(p.ahorro)}</td>
+                    {acumulado && <td className="py-2 pl-2 text-right t-cifra whitespace-nowrap">{fmt(p.acumulado)}</td>}
                   </>
                 ) : (
-                  <td colSpan={4} className="py-2 text-right text-ink-soft">Sin movimientos</td>
+                  <td colSpan={acumulado ? 4 : 3} className="py-2 text-right text-ink-soft">Sin movimientos</td>
                 )}
               </tr>
             ))}
@@ -143,7 +143,7 @@ export function Evolucion({ d, fmt = formatCOP, acumulado = false, vista = 'graf
       >
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className="w-full h-auto block md:max-w-[620px] md:mx-auto"
+          className="w-full h-auto block md:max-w-[520px] md:mx-auto"
           role="img"
           aria-label={resumenAria(puntos, d.agrupar, fmt)}
         >
@@ -221,13 +221,13 @@ export function Evolucion({ d, fmt = formatCOP, acumulado = false, vista = 'graf
 
           {/* Eje de tiempo: meses abreviados en español */}
           {puntos.map((q, i) => {
-            if (!(i % cadaK === 0 || i === n - 1 || i === activo)) return null
+            if (!((i % cadaK === 0 && n - 1 - i >= Math.ceil(cadaK * 0.7)) || i === n - 1)) return null
             const nuevoAnio = d.agrupar === 'mes' && (i === 0 || q.clave.endsWith('-01'))
             return (
               <g key={`x-${q.clave}`}>
                 <text
-                  x={x(i)} y={BASE + 13} textAnchor="middle" fontSize="9.5" fontWeight={i === activo ? 700 : 400}
-                  fill={i === activo ? 'var(--color-ink)' : 'var(--color-ink-soft)'} style={FUENTE}
+                  x={x(i)} y={BASE + 13} textAnchor="middle" fontSize="9.5" fontWeight={i === n - 1 ? 700 : 400}
+                  fill={i === n - 1 ? 'var(--color-ink)' : 'var(--color-ink-soft)'} style={FUENTE}
                 >
                   {q.etiqueta}
                 </text>
@@ -278,18 +278,18 @@ export function Evolucion({ d, fmt = formatCOP, acumulado = false, vista = 'graf
             {p.en_curso && <span className="ml-1.5 font-normal text-ink-soft">· en curso, aún no termina</span>}
           </p>
           {p.con_datos ? (
-            <dl className="grid grid-cols-3 gap-2 mt-2">
-              <div>
+            <dl className="grid grid-cols-1 min-[400px]:grid-cols-3 gap-1.5 min-[400px]:gap-2 mt-2">
+              <div className="flex items-baseline justify-between min-[400px]:block">
                 <dt className="text-[11px] text-ink-soft">Ingresos</dt>
                 <dd className="text-sm font-bold t-cifra">{fmt(p.ingresos)}</dd>
               </div>
-              <div>
+              <div className="flex items-baseline justify-between min-[400px]:block">
                 <dt className="text-[11px] text-ink-soft">Gastos</dt>
                 <dd className="text-sm font-bold t-cifra">{fmt(p.gastos)}</dd>
               </div>
-              <div>
+              <div className="flex items-baseline justify-between min-[400px]:block">
                 <dt className="text-[11px] text-ink-soft">Ahorro</dt>
-                <dd className={`text-sm font-bold t-cifra ${p.ahorro < 0 ? 'text-danger' : 'text-accent'}`}>{fmt(p.ahorro)}</dd>
+                <dd className={`text-sm font-bold t-cifra ${p.ahorro < 0 ? 'text-danger' : 'text-ink'}`}>{fmt(p.ahorro)}</dd>
               </div>
             </dl>
           ) : (
