@@ -26,7 +26,7 @@ from app.extractos_conciliados import (  # noqa: F401
 )
 from app.extractos_gmail import banco_por_remitente, cuentas_del_banco
 from app.models import CorreoGasto, Cuenta, ExtractoCorreo, HistorialExtracto, Movimiento, SyncGmail
-from app.routers.movimientos import _PENDIENTE_REVISION
+from app import pendientes
 from app.schemas import MovimientoOut
 from app.utiles import ahora_co
 from app.wallet import FUENTES_POR_CONFIRMAR
@@ -98,12 +98,12 @@ def _cond_bandeja(ids_accesibles: list[str], desde: datetime):
     )
 
 
-def _cola_categorizar(db: Session, ids_accesibles: list[str], desde_bandeja: datetime):
-    """'Otros' o categorizados solos sin confirmar, salvo los que ya están en la
+def _cola_categorizar(db: Session, usuario_id: str, ids_accesibles: list[str], desde_bandeja: datetime):
+    """Lo que espera categoría (definición única: app/pendientes.py), salvo lo que ya está en la
     bandeja '¿son tuyos?' (esos se resuelven allí y no se cuentan dos veces)."""
     return db.query(Movimiento).filter(
         Movimiento.cuenta_id.in_(ids_accesibles),
-        _PENDIENTE_REVISION,
+        Movimiento.id.in_(pendientes.ids_pendientes(db, usuario_id, ids_accesibles) or ["-"]),
         not_(_cond_bandeja(ids_accesibles, desde_bandeja)),
     )
 
@@ -282,7 +282,7 @@ def estado(
     n_no_leyo = sum(1 for x in lista_ext if x["estado"] == estado_traer.NO_SE_PUDO_LEER)
     n_duplicados = len(grupos_posibles_duplicados(db, usuario.id))
     desde_bandeja = hoy - timedelta(days=DIAS_BANDEJA)
-    n_categorizar = _cola_categorizar(db, ids_accesibles, desde_bandeja).count()
+    n_categorizar = _cola_categorizar(db, usuario.id, ids_accesibles, desde_bandeja).count()
     n_confirmar = db.query(func.count(Movimiento.id)).filter(_cond_bandeja(ids_accesibles, desde_bandeja)).scalar() or 0
     absorber_correos(db, usuario.id)  # lo que ya tiene su movimiento no cuenta como «por revisar»
     n_ya_registrados = (
@@ -322,7 +322,9 @@ def estado(
     }
     tareas = [
         {"id": i, "titulo": t, "detalle": d, "cantidad": int(n), "ruta": r,
-         "carril": carril_de.get(i), "carril_nombre": carriles_correo.NOMBRE_CARRIL.get(carril_de.get(i), "")}
+         "carril": carril_de.get(i), "carril_nombre": carriles_correo.NOMBRE_CARRIL.get(carril_de.get(i), ""),
+         # Categorizar es una invitación, no una obligación: no cuenta como «cosa por resolver».
+         "opcional": i == "movimientos_por_categorizar"}
         for i, t, d, n, r in candidatas if n > 0
     ]
 
@@ -360,7 +362,7 @@ def por_categorizar(
     se recordaría. Para responder se usa POST /movimientos/{id}/recategorizar-comercio
     con `aplicar_a_todos`: crea la regla y recategoriza los demás del comercio."""
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
-    q = _cola_categorizar(db, ids_accesibles, ahora_co() - timedelta(days=DIAS_BANDEJA))
+    q = _cola_categorizar(db, usuario.id, ids_accesibles, ahora_co() - timedelta(days=DIAS_BANDEJA))
     total = q.count()
     filas = q.order_by(Movimiento.fecha.desc(), Movimiento.id).offset(offset).limit(limite).all()
     items = []

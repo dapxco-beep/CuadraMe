@@ -5,6 +5,7 @@ from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
 from sqlalchemy import func
 
+from app import pendientes
 from app.autocat import ClasificadorUsuario
 from app.clave_comercio import clave_comercio, es_huella_peligrosa
 from app.classifier import tokenize
@@ -223,6 +224,7 @@ def vocabulario(
                 Movimiento.fuente != "transferencia_interna")
         .all()
     )
+    silenciados = pendientes.silencios(db, usuario.id)
     reglas = db.query(ReglaCategoria).filter(ReglaCategoria.usuario_id == usuario.id).all()
     huellas_con_regla = {clave_comercio(r.patron) for r in reglas}
     con_categoria = sum(1 for m in movs if (m.categoria or "Otros") != "Otros")
@@ -230,8 +232,8 @@ def vocabulario(
     grupos: dict[str, dict] = {}
     palabras: dict[str, dict] = {}
     for m in movs:
-        pendiente = (m.categoria or "Otros") == "Otros" or m.cat_confirmada is False
-        if not pendiente:
+        # Misma definición única que el contador de Inicio (app/pendientes.py).
+        if not pendientes.motivo(m, silenciados):
             continue
         h = clave_comercio(m.descripcion)
         if not h or h in huellas_con_regla:

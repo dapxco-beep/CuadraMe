@@ -236,6 +236,8 @@ class MovimientoOut(BaseModel):
     notas: str
     cat_origen: Optional[str] = None
     cat_confirmada: Optional[bool] = True
+    # ¿Espera categoría? Lo decide el servidor (app/pendientes.py); None = esta respuesta no lo calculó.
+    por_categorizar: Optional[bool] = None
     # Por dónde llegó (manual | atajo | correo | extracto | importacion) y qué canales lo confirmaron
     # (insignia «Registrado desde...»). Opcionales: los movimientos viejos pueden no traerlos.
     origen: Optional[str] = None
@@ -398,6 +400,7 @@ class ReglaCategoriaOut(BaseModel):
     categoria: str
     tipo: Optional[str]
     prioridad: int
+    activa: Optional[bool] = True  # False = en pausa (no se aplica)
 
     class Config:
         from_attributes = True

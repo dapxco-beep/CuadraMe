@@ -129,6 +129,8 @@ def aplicar_reglas(descripcion: str, reglas: list) -> dict | None:
     1) coincidencia EXACTA de huella de comercio (clave_comercio) y, si no hay,
     2) por 'contiene': el patrón dentro de la descripción, o su huella como
     palabras completas dentro de la huella de la descripción."""
+    # Una regla en pausa (activa = False) no se aplica; NULL (reglas viejas) cuenta como activa.
+    reglas = [r for r in reglas if getattr(r, "activa", True) is not False]
     huella = clave_comercio(descripcion)
     if huella:
         for regla in reglas:

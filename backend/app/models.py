@@ -143,6 +143,8 @@ class ReglaCategoria(Base):
     tipo = Column(String, nullable=True)  # income | expense | transfer | null (no forzar tipo)
     prioridad = Column(Integer, default=0)  # reglas con mayor prioridad se evalúan primero
     creado_en = Column(DateTime, default=datetime.utcnow)
+    # En pausa (False) = no se aplica a movimientos nuevos, pero no se pierde. NULL = activa.
+    activa = Column(Boolean, default=True)
 
 
 class Movimiento(Base):
