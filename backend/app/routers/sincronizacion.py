@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
 from app import carriles_correo
+from app import cuadre_encadenado
 from app import punto_partida
 from app.autocat import patron_de_comercio
 from app.compartidos import cuentas_ids_accesibles
@@ -237,6 +238,7 @@ def estado(
     }
     lista_ext = estado_traer.lista_extractos(db, usuario.id, inicio_pp)
     resumen_celdas = estado_traer.resumen_por_celda(lista_ext)
+    cuadre_cuentas = cuadre_encadenado.anotar_lista(db, usuario.id, lista_ext, inicio_pp)  # insignia «Cuadra / No cuadra»
     parciales_celda: dict[tuple[str, str], int] = {}
     for x in lista_ext:
         if x["historial_id"] and x["estado"] == estado_traer.POR_REVISAR and x["cuenta_id"] and x["mes"]:
@@ -324,6 +326,9 @@ def estado(
          "Llegaron solos: confirma que son tuyos.", n_confirmar, "/movimientos?revisar=1"),
         ("correos_por_revisar", "Movimientos del correo por revisar",
          "Mira la fecha, el monto y la cuenta de cada uno, y apruébalos o descártalos.", n_correos, "/movimientos?filtro=por-revisar"),
+        ("cuadre_no_cuadra", "Un mes no cuadra con tu banco",
+         next((r["resumen"] for r in cuadre_cuentas.values() if r.get("resumen")), ""),
+         sum(1 for r in cuadre_cuentas.values() if r.get("resumen")), "/sincronizacion#cuadre"),
         ("extractos_sin_leer", "Extractos que no pudimos leer",
          "Sube el archivo de nuevo o agrega esos movimientos a mano.", n_no_leyo, "/sincronizacion#extractos"),
         ("posibles_duplicados", "Posibles movimientos repetidos",
@@ -333,7 +338,7 @@ def estado(
     # los movimientos del día a día con los extractos para conciliar.
     carril_de = {
         "falta_clave": "extractos", "extractos_por_conciliar": "extractos", "extractos_sin_leer": "extractos",
-        "correos_por_revisar": "movimientos",
+        "correos_por_revisar": "movimientos", "cuadre_no_cuadra": "extractos",
     }
     tareas = [
         {"id": i, "titulo": t, "detalle": d, "cantidad": int(n), "ruta": r,
@@ -355,6 +360,8 @@ def estado(
         # «Todos los extractos»: la misma lista, completa y ordenada por mes, con contadores y correos sin PDF.
         "todos_extractos": estado_traer.vista_completa(db, usuario.id, inicio_pp, lista=lista_ext),
         "estados_extracto": list(estado_traer.ESTADOS),
+        # Cuadre mes a mes por cuenta (calculado al consultar; ver app/cuadre_encadenado.py).
+        "cuadre_mensual": list(cuadre_cuentas.values()),
         # Punto de partida: elección actual, cuántos correos/extractos anteriores se ignoran y, en modo
         # histórico, qué meses faltan por cuenta.
         "punto_partida": {
@@ -401,7 +408,10 @@ def todos_los_extractos(
     estado_traer.persistir_periodos(db, usuario.id)
     depurar_conciliados(db, usuario.id)
     estado_traer.reconciliar_pendientes(db, usuario.id)
-    return estado_traer.vista_completa(db, usuario.id, punto_partida.fecha_inicio(db, usuario.id))
+    inicio = punto_partida.fecha_inicio(db, usuario.id)
+    lista = estado_traer.lista_extractos(db, usuario.id, inicio)
+    cuadre_encadenado.anotar_lista(db, usuario.id, lista, inicio)
+    return estado_traer.vista_completa(db, usuario.id, inicio, lista=lista)
 
 
 @router.put("/extractos/{extracto_id}/mes")

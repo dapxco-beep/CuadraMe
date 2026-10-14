@@ -241,6 +241,7 @@ ATAQUES = [
     # cuadre con el extracto: B no evalúa, ajusta, registra saldo inicial ni lee el cuadre de cuentas/historiales de A
     ("GET", "/conciliacion/cuadre?cuenta_id={cuenta}", None),
     ("GET", "/conciliacion/cuadre/que-falta?cuenta_id={cuenta}&historial_id={historial}", None),
+    ("GET", "/conciliacion/cuadre/encadenado?cuenta_id={cuenta}", None),
     ("POST", "/conciliacion/cuadre/evaluar", {"cuenta_id": "{cuenta}", "historial_id": "{historial}", "saldo_final": 1, "fecha_corte": "2026-01-31"}),
     ("POST", "/conciliacion/cuadre/saldos", {"historial_id": "{historial}", "saldo_final": 1, "fecha_corte": "2026-01-31", "confirmar": True}),
     ("POST", "/conciliacion/cuadre/ajuste", {"cuenta_id": "{cuenta}", "saldo_final": 1, "fecha_corte": "2026-01-31", "confirmar": True, "confirmar_reforzado": True}),

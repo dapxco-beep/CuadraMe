@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app import cuadre_encadenado
 from app import cuadre_extracto as cx
 from app import punto_partida
 from app.auth import UsuarioActual, get_current_user
@@ -136,6 +137,24 @@ def cuadre_de_la_cuenta(
     cuenta frente a la suma de sus movimientos» y las alertas de meses que dejaron de cuadrar. Solo lee."""
     cuenta = _cuenta(db, usuario, cuenta_id)
     return cx.cuadre_por_mes(db, cuenta, inicio_pp=_inicio_pp(db, usuario))
+
+
+@router.get("/encadenado")
+def cuadre_encadenado_de_la_cuenta(
+    cuenta_id: str = Query(...),
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Cuadre mes a mes de la cuenta: cada mes contra el saldo inicial y final del banco, la cadena entre meses,
+    el mes culpable, la causa probable y las acciones sugeridas. SIEMPRE recalculado; `cuadre_estado` del historial
+    solo se guarda como caché con fecha. Solo lee movimientos (las acciones son POST aparte, con confirmación)."""
+    cuenta = _cuenta(db, usuario, cuenta_id)
+    r = cuadre_encadenado.calcular(db, cuenta, _inicio_pp(db, usuario), guardar_cache=True)
+    try:
+        db.commit()
+    except Exception:  # la caché es opcional: si no se puede guardar, la respuesta sigue valiendo
+        db.rollback()
+    return r
 
 
 @router.post("/evaluar")
