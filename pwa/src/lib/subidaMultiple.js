@@ -123,6 +123,7 @@ export function normalizarPdf(r) {
     completados: (r.review || []).filter((m) => m.estado === 'completado').map(filaInfo),
     sobrantes: (r.review || []).filter((m) => m.estado === 'sobrante').map(filaInfo),
     propuestaTarjeta: r.propuesta_tarjeta || null,
+    saldosExtracto: r.saldos_extracto || null, // saldos que imprime el extracto (para cuadrar con el banco)
     avisoCuenta: r.aviso_cuenta || null, // el PDF parece de otro producto del mismo banco (tarjeta vs ahorros)
   }
 }
@@ -175,6 +176,7 @@ export function normalizarTabular(r) {
     anteriores: items.filter((i) => i.estado === 'anterior').length,
     yaConciliado: r.ya_conciliado || null,
     descartados: r.resumen?.con_error || 0,
+    saldosExtracto: r.saldos || null,
   }
 }
 

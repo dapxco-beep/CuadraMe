@@ -5,6 +5,8 @@ import { productoDeTexto, recordarCuenta, textoOpcionCuenta } from '../lib/cuent
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import PrevioImportacion from './PrevioImportacion'
+import CuadreExtracto from './CuadreExtracto'
+import { lineasPorImportar } from '../lib/cuadreExtracto'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { AvisoCategorizados } from './CategorizacionAuto'
@@ -321,7 +323,7 @@ export default function SubidaMultiple({
             }))],
           })
         }
-        salida.push({ id: a.id, nombre: a.nombre, cuenta: nombreCuenta(a.cuentaId), ok: true, ...r })
+        salida.push({ id: a.id, nombre: a.nombre, cuenta: nombreCuenta(a.cuentaId), ok: true, cuentaId: a.cuentaId, historialId: a.historialId, saldosExtracto: a.saldosExtracto, ...r })
       } catch (err) {
         salida.push({ id: a.id, nombre: a.nombre, cuenta: nombreCuenta(a.cuentaId), ok: false, error: err.message || 'No se pudo importar' })
       }
@@ -376,6 +378,9 @@ export default function SubidaMultiple({
             </li>
           ))}
         </ul>
+        {resultados.filter((r) => r.ok && (r.historialId || r.saldosExtracto)).map((r) => (
+          <CuadreExtracto key={`cuadre-${r.id}`} cuentaId={r.cuentaId} historialId={r.historialId} saldos={r.saldosExtracto} despues className="mt-4" />
+        ))}
         <AvisoCategorizados n={totalAuto} className="mt-4" />
         <div className="flex gap-2 mt-5">
           <button onClick={onCancelar} className="flex-1 rounded-2xl border border-line py-3 text-sm font-semibold">Subir otros</button>
@@ -456,6 +461,8 @@ export default function SubidaMultiple({
                   </p>
                   <AvisoYaConciliado info={a.yaConciliado} cuenta={nombreCuenta(a.cuentaId)} className="mb-2" />
                   <PrevioImportacion items={a.items} onDecidir={(lista, d) => decidirDudosos(a, lista, d)} className="mb-2" />
+                  <CuadreExtracto cuentaId={a.cuentaId} historialId={a.historialId} saldos={a.saldosExtracto} avisoCuenta={a.avisoCuenta}
+                    porImportar={lineasPorImportar(a.items, seleccion, a.id)} className="mb-2" />
                   <PropuestaTarjeta propuesta={a.propuestaTarjeta} cuentaId={a.cuentaId} className="mb-2" />
                   {a.avisoCuenta && (
                     <p className="flex items-start gap-1.5 text-xs font-medium text-accent mb-2" role="status" data-testid="aviso-cuenta">

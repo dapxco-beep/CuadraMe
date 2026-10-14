@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     cors_origins_extra: str = ""
     cors_origin_regex: str = r"https://pwa-.*-dapxco\.vercel\.app"  # previews de Vercel
     cron_secret: str = ""
+    # Cuadre con el extracto: un ajuste de saldo «grande» pide confirmación reforzada (puede ocultar
+    # un movimiento que falta). Es grande si pasa este porcentaje del saldo del banco o este monto.
+    cuadre_ajuste_grande_pct: float = 0.05
+    cuadre_ajuste_grande_monto: float = 500000.0
     # Opcional: con esta clave (Supabase → Settings → API → service_role) el borrado de
     # cuenta también elimina el usuario de Supabase Auth. Sin ella se borran todos los
     # datos de CuadraMe, pero el registro de login (correo) queda en Supabase.

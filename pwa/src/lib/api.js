@@ -469,6 +469,16 @@ export const api = {
       method: 'POST',
       body: aprender ? { fingerprints, categorias, ...aprender } : { fingerprints, categorias },
     }),
+  // Cuadre con el extracto (saldo del banco frente al de tus movimientos).
+  cuadreCuenta: (cuentaId) => request(`/conciliacion/cuadre?cuenta_id=${encodeURIComponent(cuentaId)}`),
+  cuadreEvaluar: (body) => request('/conciliacion/cuadre/evaluar', { method: 'POST', body }),
+  cuadreQueFalta: (cuentaId, historialId) =>
+    request(`/conciliacion/cuadre/que-falta?cuenta_id=${encodeURIComponent(cuentaId)}${historialId ? `&historial_id=${encodeURIComponent(historialId)}` : ''}`),
+  cuadreSaldos: (body) => request('/conciliacion/cuadre/saldos', { method: 'POST', body }),
+  cuadreAjuste: (body) => request('/conciliacion/cuadre/ajuste', { method: 'POST', body }),
+  cuadreSaldoInicial: (body) => request('/conciliacion/cuadre/saldo-inicial', { method: 'POST', body }),
+  cuadreDeshacer: (movimientoId) =>
+    request('/conciliacion/cuadre/deshacer', { method: 'POST', body: { movimiento_id: movimientoId, confirmar: true } }),
   eliminarHistorialExtracto: (id) => request(`/conciliacion/historial/${id}`, { method: 'DELETE' }),
 
   categorias: (incluirInactivas = false) =>

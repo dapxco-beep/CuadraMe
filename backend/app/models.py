@@ -420,6 +420,18 @@ class HistorialExtracto(Base):
     estado = Column(String, default="pendiente_revision")  # pendiente_revision | conciliado | error
     review_json = Column(String, default="[]")  # snapshot del review para reabrir sin re-subir el PDF
     creado_en = Column(DateTime, default=datetime.utcnow)
+    # Cuadre con el extracto (app/cuadre_extracto.py). Todos opcionales: un extracto sin saldos
+    # legibles funciona como siempre. Los saldos van en la convención de la cuenta: en una tarjeta
+    # de crédito la deuda es NEGATIVA (-800.000 = debes 800.000).
+    saldo_inicial_extracto = Column(Float, nullable=True)
+    saldo_final_extracto = Column(Float, nullable=True)
+    fecha_corte = Column(String, nullable=True)  # AAAA-MM-DD: fecha a la que el banco da el saldo final
+    periodo_inicio = Column(String, nullable=True)  # AAAA-MM-DD: primer día del extracto
+    moneda = Column(String, nullable=True)  # COP | USD ... si el extracto la dice
+    saldos_origen = Column(String, nullable=True)  # extracto | tabla | manual
+    cuadre_estado = Column(String, nullable=True)  # cuadra | diferencia (última vez que se midió)
+    cuadre_diferencia = Column(Float, nullable=True)
+    cuadre_en = Column(DateTime, nullable=True)
 
 
 class Consentimiento(Base):

@@ -158,6 +158,13 @@ if engine.dialect.name == "postgresql":
         # Resultado de probar la clave del PDF en cada extracto (mismo archivo .sql).
         conn.execute(text("ALTER TABLE extractos_correo ADD COLUMN IF NOT EXISTS clave_resultado VARCHAR NULL"))
         conn.execute(text("ALTER TABLE extractos_correo ADD COLUMN IF NOT EXISTS clave_probada_en TIMESTAMP NULL"))
+        # Cuadre con el extracto (supabase/migraciones/cuadre_extracto.sql). Todo opcional.
+        for _col, _tipo in (
+            ("saldo_inicial_extracto", "FLOAT"), ("saldo_final_extracto", "FLOAT"), ("fecha_corte", "VARCHAR"),
+            ("periodo_inicio", "VARCHAR"), ("moneda", "VARCHAR"), ("saldos_origen", "VARCHAR"),
+            ("cuadre_estado", "VARCHAR"), ("cuadre_diferencia", "FLOAT"), ("cuadre_en", "TIMESTAMP"),
+        ):
+            conn.execute(text(f"ALTER TABLE historial_extractos ADD COLUMN IF NOT EXISTS {_col} {_tipo} NULL"))
         # Casi toda consulta filtra por cuenta y ordena/filtra por fecha.
         conn.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_movimientos_cuenta_fecha "
@@ -267,6 +274,9 @@ app.include_router(sincronizacion.router)
 from app.routers import costos_bancarios as costos_bancarios_router  # noqa: E402
 
 app.include_router(costos_bancarios_router.router)
+from app.routers import cuadre as cuadre_router  # noqa: E402
+
+app.include_router(cuadre_router.router)
 
 
 @app.get("/health")
