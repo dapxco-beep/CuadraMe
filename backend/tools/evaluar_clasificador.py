@@ -64,7 +64,8 @@ def cargar_confirmados(ruta: str) -> list[dict]:
         desc = _reparar(m.get("descripcion") or "").strip()
         cat = _reparar(m.get("categoria") or "").strip()
         if desc and cat:
-            salida.append({"descripcion": desc, "categoria": cat, "tipo": m.get("tipo") or ""})
+            salida.append({"descripcion": desc, "categoria": cat, "tipo": m.get("tipo") or "",
+                       "mes": str(m.get("fecha") or "")[:7]})
     return salida
 
 
@@ -78,7 +79,23 @@ def enmascarar(huella: str, desc_ejemplo: str) -> str:
     if r and r.get("categoria") not in _NO_MARCA and r.get("fuente") == "diccionario" and r.get("palabra"):
         return f"[marca] {r['palabra']}"
     h = hashlib.sha256(huella.encode()).hexdigest()[:6]
-    return f"{huella[:1]}***-{h}"
+    return f"***-{h}"
+
+
+def reglas_sugeribles(movs: list[dict], min_meses: int = 3, min_consistencia: float = 0.8) -> dict:
+    """Cuántos comercios (huellas) se repiten en >= 3 meses con casi siempre la misma categoría: esos
+    merecen una REGLA sugerida (la persona la acepta). Mide cuánto del historial cubrirían."""
+    grupos: dict[str, list[dict]] = defaultdict(list)
+    for m in movs:
+        grupos[_grupo(m["descripcion"])].append(m)
+    cubiertos = n_reglas = 0
+    for ms in grupos.values():
+        meses = {m["mes"] for m in ms if m.get("mes")}
+        cats = Counter(m["categoria"] for m in ms)
+        if len(meses) >= min_meses and cats.most_common(1)[0][1] / len(ms) >= min_consistencia:
+            n_reglas += 1
+            cubiertos += len(ms)
+    return {"reglas_sugeribles": n_reglas, "movimientos_cubiertos": round(cubiertos / len(movs), 3) if movs else 0}
 
 
 def evaluar(movs: list[dict], min_confianza: float | None = None, modo: str = "comercio") -> dict:
@@ -169,6 +186,7 @@ def evaluar(movs: list[dict], min_confianza: float | None = None, modo: str = "c
         "exactitud_sin_otros_reales": round(sum(map(ok, reales_no_otros)) / len(reales_no_otros), 3) if reales_no_otros else 0,
         "confianza_media": round(sum(confs) / len(confs), 3) if confs else 0,
         "segmentos": segmentos,
+        "recurrentes": reglas_sugeribles(movs),
         "por_categoria": por_cat,
         "por_fuente": por_fuente,
         "confusion": [(a, b, c) for (a, b), c in confusion.most_common(10)],
@@ -194,6 +212,9 @@ def imprimir(res: dict, top: int, mostrar_errores: bool) -> dict:
     print(f"Transferencias entre personas (n={sg['n_personas']}): propuestas como «Transferencias» "
           f"{sg['personas_propuestas_como_transferencias']:.0%}; la persona las dejó como «Transferencias» "
           f"{sg['personas_que_la_persona_dejo_como_transferencias']:.0%} (el resto son gastos que el nombre no revela)")
+    rc = res["recurrentes"]
+    print(f"Patrones recurrentes (misma huella en 3 o más meses): {rc['reglas_sugeribles']} reglas sugeribles "
+          f"cubrirían {rc['movimientos_cubiertos']:.0%} del historial")
     print("\nPor categoría real (n, exactitud, % que cae en Otros):")
     for cat, d in sorted(res["por_categoria"].items(), key=lambda kv: -kv[1]["n"]):
         print(f"  {cat:<28} n={d['n']:<4} exactitud={d['exactitud']:.0%}  otros={d['en_otros']:.0%}")
