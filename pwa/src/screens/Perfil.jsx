@@ -15,6 +15,8 @@ import { useClaveAtajo } from '../lib/useClaveAtajo'
 import Cuadri from '../brand/Cuadri'
 import { useMostrarCuadri } from '../lib/cuadri'
 import { useModoMenu } from '../lib/modoSimple'
+import { Boton } from '../components/ui'
+import { errorNombre, limpiarNombre, useNombre } from '../lib/nombre'
 import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../lib/push'
 
 export default function Perfil() {
@@ -31,6 +33,28 @@ export default function Perfil() {
   const [confianza, setConfianza] = useState(0.75)
   const [guardandoConfianza, setGuardandoConfianza] = useState(false)
   const [eliminandoCuenta, setEliminandoCuenta] = useState(false)
+  const { nombre: nombreGuardado, sugerido, guardar: guardarNombre } = useNombre()
+  const [nombreEdit, setNombreEdit] = useState(null) // null = sin tocar (muestra el guardado)
+  const [errorNombrePerfil, setErrorNombrePerfil] = useState('')
+  const [guardandoNombre, setGuardandoNombre] = useState(false)
+  const nombreVisible = nombreEdit ?? (nombreGuardado || sugerido || '')
+
+  async function guardarMiNombre(e) {
+    e.preventDefault()
+    const problema = errorNombre(nombreVisible)
+    if (problema) return setErrorNombrePerfil(problema)
+    setGuardandoNombre(true)
+    setErrorNombrePerfil('')
+    try {
+      await guardarNombre(limpiarNombre(nombreVisible))
+      setNombreEdit(null)
+      avisar('Listo, ahora te llamamos así.')
+    } catch (err) {
+      setErrorNombrePerfil(err.message || 'No pudimos guardar tu nombre. Intenta de nuevo.')
+    } finally {
+      setGuardandoNombre(false)
+    }
+  }
 
   useEffect(() => {
     estadoPermiso().then(setPermisoPush)
@@ -118,12 +142,36 @@ export default function Perfil() {
 
       <section className="px-6 mt-4 flex items-center gap-4">
         <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-paper-raised text-xl font-semibold">
-          {usuario?.nombre?.[0]?.toUpperCase() || '?'}
+          {(nombreGuardado || sugerido || usuario?.nombre || usuario?.email || '?')[0]?.toUpperCase()}
         </div>
-        <div>
-          <p className="font-semibold">{usuario?.nombre}</p>
-          <p className="text-sm text-ink-soft">{usuario?.email}</p>
+        <div className="min-w-0">
+          {(nombreGuardado || usuario?.nombre) && <p className="font-semibold truncate">{nombreGuardado || usuario?.nombre}</p>}
+          <p className="text-sm text-ink-soft break-all">{usuario?.email}</p>
         </div>
+      </section>
+
+      {/* Cómo te llamamos: solo el nombre; el correo de la cuenta no se edita aquí */}
+      <section className="mx-6 mt-4" aria-label="Cómo te llamamos">
+        <form onSubmit={guardarMiNombre} className="rounded-2xl bg-paper-raised border border-line p-4" noValidate>
+          <label htmlFor="perfil-nombre" className="text-sm font-medium">Cómo te llamamos</label>
+          <div className="flex gap-2 mt-2">
+            <input
+              id="perfil-nombre"
+              value={nombreVisible}
+              onChange={(e) => { setNombreEdit(e.target.value); setErrorNombrePerfil('') }}
+              autoComplete="given-name"
+              maxLength={80}
+              aria-invalid={errorNombrePerfil ? 'true' : undefined}
+              aria-describedby={errorNombrePerfil ? 'perfil-nombre-error' : undefined}
+              className="flex-1 min-w-0 rounded-2xl border border-line bg-paper px-4 py-2.5 text-sm outline-none focus:border-accent"
+            />
+            <Boton type="submit" cargando={guardandoNombre} disabled={nombreEdit === null || nombreEdit.trim() === (nombreGuardado || '')}>
+              Guardar
+            </Boton>
+          </div>
+          {errorNombrePerfil && <p id="perfil-nombre-error" role="alert" className="text-sm text-danger mt-2">{errorNombrePerfil}</p>}
+          <p className="text-xs text-ink-soft mt-2">Así te saludamos en la app, los avisos y los correos.</p>
+        </form>
       </section>
 
       {/* Modo simple: por defecto el menú muestra solo lo esencial; aquí se muestran todas las funciones */}

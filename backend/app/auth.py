@@ -27,10 +27,11 @@ _jwks_client = jwt.PyJWKClient(f"{settings.supabase_url}/auth/v1/.well-known/jwk
 
 
 class UsuarioActual:
-    def __init__(self, id: str, email: str, nombre: str = ""):
+    def __init__(self, id: str, email: str, nombre: str = "", nombre_pila: str = ""):
         self.id = id
         self.email = email
         self.nombre = nombre
+        self.nombre_pila = nombre_pila  # given_name de Google, si viene
 
 
 def cron_autorizado(secreto_recibido: str) -> bool:
@@ -78,7 +79,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> UsuarioActual:
 
     meta = payload.get("user_metadata") or {}
     nombre = meta.get("nombre") or meta.get("full_name") or meta.get("name") or ""
-    usuario = UsuarioActual(id=usuario_id, email=email, nombre=nombre)
+    pila = meta.get("given_name") if isinstance(meta.get("given_name"), str) else ""
+    usuario = UsuarioActual(id=usuario_id, email=email, nombre=nombre, nombre_pila=pila)
     # Avisos al administrador: primera vez que se ve a esta persona (en segundo plano; nunca falla).
     from app import avisos
 

@@ -14,6 +14,7 @@ import Recorrido from '../components/Recorrido'
 import { PASOS_RECORRIDO } from '../lib/recorrido'
 import {
   CLAVE_CELEBRADAS, CLAVE_MOSTRAR, FRASES, POSES, POSE_RECORRIDO, frase, guardarMostrarCuadri, leerMostrarCuadri, yaCelebrado,
+  conNombre,
 } from '../lib/cuadri'
 
 beforeEach(() => {
@@ -200,7 +201,7 @@ describe('Recorrido con Cuadri como guía', () => {
     montar()
     const guia = () => screen.getByTestId('recorrido-cuadri')
     expect(guia().querySelector('svg')).toHaveAttribute('data-pose', POSE_RECORRIDO.inicio)
-    expect(guia()).toHaveTextContent(FRASES.recorrido.inicio)
+    expect(guia()).toHaveTextContent(conNombre(FRASES.recorrido.inicio, ''))
     fireEvent.click(screen.getByRole('button', { name: /^Siguiente/ }))
     expect(guia().querySelector('svg')).toHaveAttribute('data-pose', 'senalando')
     fireEvent.click(screen.getByRole('button', { name: `Ir al paso ${PASOS_RECORRIDO.length}: ${PASOS_RECORRIDO.at(-1).area}` }))

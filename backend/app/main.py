@@ -147,6 +147,9 @@ if engine.dialect.name == "postgresql":
         conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS api_key_ultimo_uso TIMESTAMP"))
         # Monitor de crecimiento: fecha de alta del perfil (supabase/migraciones/perfil_creado_en.sql).
         conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS creado_en TIMESTAMP"))
+        # Cómo le decimos a la persona (supabase/migraciones/nombre_preferido.sql). Opcionales.
+        conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS nombre_preferido VARCHAR NULL"))
+        conn.execute(text("ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS nombre_confirmado BOOLEAN DEFAULT FALSE"))
         # Deduplicación entre canales (supabase/migraciones/duplicados_canales.sql). Opcionales.
         conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS origen VARCHAR NULL"))
         conn.execute(text("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS huella_externa VARCHAR NULL"))

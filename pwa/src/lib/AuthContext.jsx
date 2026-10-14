@@ -73,7 +73,13 @@ export function AuthProvider({ children }) {
     ? {
         id: session.user.id,
         email: session.user.email,
-        nombre: session.user.user_metadata?.nombre || session.user.email.split('@')[0],
+        // Sin inventar: el correo no es un nombre. Si no hay, queda vacío y la app se lee bien sin él.
+        nombre:
+          session.user.user_metadata?.nombre ||
+          session.user.user_metadata?.full_name ||
+          session.user.user_metadata?.name ||
+          '',
+        nombrePila: session.user.user_metadata?.given_name || '',
       }
     : null
 

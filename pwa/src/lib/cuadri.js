@@ -4,6 +4,8 @@
 //  - NUNCA burlarse de un gasto ni culpar a la persona ("gastaste de más" no; "revisemos juntos" sí).
 //  - NUNCA prometer ahorro, rentabilidad ni dar asesoría ("compra/invierte en…" no).
 //  - Una idea por frase, máximo ~60 caracteres, para que quepa en un globo pequeño.
+//  - Con nombre: el marcador {nombre} va SIEMPRE precedido de coma («¡Hola, {nombre}!»), así sin
+//    nombre se quita con su coma y la frase se lee igual de bien (ver conNombre). Úsalo poco.
 // Para cambiar un texto basta editar este objeto; la app lo lee por clave.
 
 import { useEffect, useState } from 'react'
@@ -13,7 +15,7 @@ export const POSES = ['feliz', 'hablando', 'sorprendido', 'preocupado', 'senalan
 // Cada clave admite varias frases: `frase(clave, semilla)` elige una de forma estable (misma
 // semilla = misma frase), así no cambia sola en cada render.
 export const FRASES = {
-  saludo: ['¡Hola! Soy Cuadri, vamos a cuadrar tus cuentas.', '¡Qué bueno verte! Empecemos con calma.'],
+  saludo: ['¡Hola, {nombre}! Soy Cuadri, vamos a cuadrar tus cuentas.', '¡Qué bueno verte! Empecemos con calma.'],
   cuadra: ['¡Eso cuadra!', '¡Todo en su sitio!'],
   noCuadra: ['Ups, algo no cuadra… lo revisamos juntos.', 'Mmm, aquí falta una pieza. La buscamos juntos.'],
   cargando: ['Un momentico, estoy acomodando tus cuentas…', 'Contando con cuidado…'],
@@ -26,11 +28,11 @@ export const FRASES = {
   asistentePensando: ['Déjame pensarlo un momentico…'],
   ayuda: ['Te muestro cómo se hace, paso a paso.'],
   aprende: ['Una lección de un minuto, sin letra menuda.'],
-  celebraPasos: ['¡Terminaste los primeros pasos! Eso cuadra.'],
-  celebraMeta: ['¡Meta cumplida! Eso sí cuadra.'],
+  celebraPasos: ['¡Terminaste los primeros pasos, {nombre}! Eso cuadra.'],
+  celebraMeta: ['¡Meta cumplida, {nombre}! Eso sí cuadra.'],
   celebraMes: ['¡Cerraste el mes con plata de sobra! Eso cuadra.'],
   recorrido: {
-    inicio: '¡Hola! Te muestro dónde está todo.',
+    inicio: '¡Hola, {nombre}! Te muestro dónde está todo.',
     cuentas: 'Aquí van tus cuentas y tarjetas.',
     traer: 'Mira, hay varias formas de que los movimientos lleguen solos.',
     movimientos: 'Aquí ves lo que entra y lo que sale.',
@@ -55,11 +57,24 @@ export const POSE_RECORRIDO = {
   privacidad: 'celebrando',
 }
 
-export function frase(clave, semilla = 0) {
+// Pone el nombre donde está {nombre}. Sin nombre quita el marcador con su coma:
+// «¡Hola, {nombre}! Soy Cuadri» -> «¡Hola! Soy Cuadri». Nunca queda «Hola, !» ni llaves sueltas.
+export function conNombre(texto, nombre = '') {
+  if (typeof texto !== 'string') return texto
+  const n = String(nombre || '').trim()
+  if (n) return texto.replaceAll('{nombre}', n)
+  return texto
+    .replace(/,\s*\{nombre\}/g, '')
+    .replace(/\{nombre\},?\s*/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+export function frase(clave, semilla = 0, nombre = '') {
   const v = FRASES[clave]
   if (!Array.isArray(v) || !v.length) return ''
   const n = typeof semilla === 'number' ? semilla : [...String(semilla)].reduce((a, c) => a + c.charCodeAt(0), 0)
-  return v[Math.abs(n) % v.length]
+  return conNombre(v[Math.abs(n) % v.length], nombre)
 }
 
 // ── Preferencia «Mostrar a Cuadri» (por dispositivo, activada por defecto) ──

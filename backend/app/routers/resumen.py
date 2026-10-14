@@ -14,7 +14,9 @@ from app import resumen_semanal as rs
 from app.auth import UsuarioActual, cron_autorizado, get_current_user
 from app.crons import Corrida, liberar_marca, reclamar_marca
 from app.database import get_db
+from app.models import Perfil
 from app.models_fiscal import AjusteUsuario
+from app.nombre import nombre_para_mostrar
 from app.utiles import ahora_co
 
 router = APIRouter(prefix="/resumen", tags=["resumen"])
@@ -64,7 +66,9 @@ def _enviar_a(db: Session, aj: AjusteUsuario, hoy, semana: str) -> str:
     if not reclamar_marca(db, aj.usuario_id, CLAVE_MARCA, semana):
         return "ya_enviado"
     try:
-        ok = rs.enviar_correo(aj.email_resumen, rs.asunto(datos), rs.html_correo(datos), rs.texto_plano(datos))
+        perfil = db.query(Perfil).filter(Perfil.usuario_id == aj.usuario_id).first()
+        nombre = nombre_para_mostrar(perfil.nombre_preferido if perfil else "")
+        ok = rs.enviar_correo(aj.email_resumen, rs.asunto(datos, nombre), rs.html_correo(datos, nombre), rs.texto_plano(datos, nombre))
     except Exception:
         liberar_marca(db, aj.usuario_id, CLAVE_MARCA)  # que la próxima corrida lo reintente
         raise

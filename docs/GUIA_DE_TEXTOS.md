@@ -96,3 +96,9 @@ Los errores usan `role="alert"` y salen pegados al campo o al botón.
 ## Antes de publicar un texto: prueba de los 5 segundos
 
 Enséñale la pantalla a alguien 5 segundos. ¿Sabe **para qué sirve** y **cuál es la acción principal**? Si no, sobra información o falta una frase.
+
+## Nombre de la persona
+
+- Se usa poco y solo donde ayuda: saludo de Inicio, algunas frases de Cuadri, resumen semanal y push semanal.
+- En `lib/cuadri.js` el marcador es `{nombre}` y va siempre precedido de coma («¡Hola, {nombre}!»): sin nombre se quita con su coma. Nunca escribas un texto que dependa del nombre para entenderse.
+- Nunca en lugares públicos ni en el panel de administración.

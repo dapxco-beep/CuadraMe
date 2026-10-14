@@ -3,6 +3,7 @@ import { LazyMotion, MotionConfig } from 'framer-motion'
 import { api } from './lib/api'
 import { precargarArranque } from './lib/arranque'
 import ConsentimientoGlobal from './components/ConsentimientoGlobal'
+import { useNombre } from './lib/nombre'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from './lib/ThemeContext'
 import { AuthProvider, useAuth } from './lib/AuthContext'
@@ -31,6 +32,7 @@ const cargarAnimaciones = () => import('./lib/funcionesAnimacion').then((r) => r
 // viajan en el paquete principal.
 const CrearCuenta = lazy(() => import('./screens/CrearCuenta'))
 const NuevaPassword = lazy(() => import('./screens/NuevaPassword'))
+const PedirNombre = lazy(() => import('./screens/PedirNombre'))
 const AutorizacionTratamiento = lazy(() => import('./screens/AutorizacionTratamiento'))
 const Cuentas = lazy(() => import('./screens/Cuentas'))
 const Movimientos = lazy(() => import('./screens/Movimientos'))
@@ -270,7 +272,21 @@ function PuertaAutorizacion({ children }) {
       </Suspense>
     )
   }
-  return children
+  return <PuertaNombre>{children}</PuertaNombre>
+}
+
+// Después de la autorización y ANTES del primer uso: «¿Cómo te llamamos?», una sola vez por persona
+// (también a quien ya tenía cuenta y no lo ha respondido). Si no se puede consultar, no estorba.
+function PuertaNombre({ children }) {
+  const { cargando, confirmado } = useNombre()
+  const [hecho, setHecho] = useState(false)
+  if (cargando) return <CargandoMarca />
+  if (confirmado || hecho) return children
+  return (
+    <Suspense fallback={<Cargando />}>
+      <PedirNombre onListo={() => setHecho(true)} />
+    </Suspense>
+  )
 }
 
 export default function App() {
