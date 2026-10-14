@@ -56,7 +56,7 @@ describe('lógica de selección (pura)', () => {
     s = alternarMovimiento(s, 'm1') // ya cubierto por el comercio
     s = alternarMovimiento(s, 'm9')
     expect(contarSeleccion(s, GRUPOS)).toBe(3 + 1)
-    expect(contarSeleccion(alternarComercio(s, 'kopi zebra'), GRUPOS)).toBe(1)
+    expect(contarSeleccion(alternarComercio(s, 'kopi zebra'), GRUPOS)).toBe(2) // quedan m1 y m9 sueltos
   })
   it('seleccionar los visibles y ninguno', () => {
     expect(seleccionarVisibles(GRUPOS).huellas.size).toBe(3)
@@ -165,7 +165,7 @@ describe('pantalla Por categorizar', () => {
     api.porCategorizar.mockResolvedValue({ ...RESUMEN, relevantes: 0, total_grupos: 1, grupos: [{ ...GRUPOS[2] }], conteo: { ...RESUMEN.conteo, total: 1 } })
     montar()
     expect(await screen.findByText('Lo importante ya está categorizado')).toBeInTheDocument()
-    expect(screen.getByText(/pueden quedarse como están/)).toBeInTheDocument()
+    expect(screen.getByText(/Pueden quedarse como están/)).toBeInTheDocument()
   })
 
   it('«Ver todos» pide la lista completa', async () => {
