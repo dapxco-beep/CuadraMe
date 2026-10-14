@@ -81,6 +81,8 @@ describe('Desde tu correo: extractos encontrados', () => {
     expect(screen.queryByText(/Nequi/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Extractos ya revisados \(1\)/ }))
     expect(screen.getByText(/Nequi · julio 2026/)).toBeTruthy()
+    // El mensaje de privacidad vive en «Conexión de Gmail» (plegada por defecto): se abre para leerlo.
+    fireEvent.click(screen.getByTestId('bloque-sinc-conexion').querySelector('h2 button'))
     expect(screen.getByText(/Solo tengo permiso de/)).toBeTruthy()
     expect(screen.getByText(/No guardo tus correos ni los PDF/)).toBeTruthy()
   })

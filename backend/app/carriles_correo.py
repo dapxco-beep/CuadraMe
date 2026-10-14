@@ -17,8 +17,8 @@ from app import estado_traer, punto_partida
 from app.models import CorreoGasto, Movimiento, Perfil, SyncGmail
 
 NOMBRE_CARRIL = {
-    "movimientos": "Movimientos del día a día",
-    "extractos": "Extractos para conciliar",
+    "movimientos": "Movimientos",
+    "extractos": "Extractos",
 }
 
 

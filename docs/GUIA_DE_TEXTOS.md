@@ -44,20 +44,23 @@ Regla de oro: si tu mamá no lo diría en voz alta, no va en la pantalla.
 | Periodo | «Cada cuánto» (mensual, quincenal, semanal) | |
 | Límite | «Lo máximo que quieres gastar» | |
 
-### El correo tiene DOS usos (nombres fijos)
+### El correo tiene DOS usos y la pantalla «Traer movimientos» tiene TRES secciones (nombres fijos)
 
 | Nombre | Qué es | Texto de apoyo |
 |---|---|---|
-| **Movimientos del día a día** | Las notificaciones del banco por correo (compra, transferencia, retiro, pago). Se aprueban y pasan a Movimientos como provisionales. | «Las notificaciones de tu banco: así ves en el momento lo que gastas.» |
-| **Extractos para conciliar** | El PDF mensual del banco. Sirve para confirmar y cuadrar el mes. | «El extracto mensual del banco: sirve para confirmar y cuadrar el mes.» |
+| **Movimientos** | Las notificaciones del banco por correo (compra, transferencia, retiro, pago) + «Agregar uno a mano». Se revisan en la pantalla **Movimientos** («Por revisar · N del correo») y pasan a la lista como provisionales. | «Las notificaciones de tu banco: así ves en el momento lo que gastas.» |
+| **Extractos** | TODOS los extractos para conciliar: los que llegan al correo y los que subes tú (PDF, Excel o CSV), con la cobertura por mes y cuenta. | «El extracto mensual del banco: sirve para confirmar y cuadrar el mes.» |
+| **Conexión de Gmail** | Conectar o desconectar, interruptores «Leer notificaciones» y «Leer extractos», última vez, errores y desde qué fecha leo. Plegada por defecto. | «Solo tengo permiso de lectura…» |
 
-- Aquí «conciliar» SÍ se usa, porque es el nombre del uso (botón «Conciliar»); en el resto de la app sigue valiendo «Revisar el extracto».
-- Interruptor de cada tarjeta: «Leer esto de mi correo». Apagado: «no leo ni guardo notificaciones/extractos de tu correo».
-- Listas: «Movimientos nuevos del correo» (con «Aprobar los N que parecen correctos») y «Extractos para conciliar».
+- Aquí «conciliar» SÍ se usa (botón «Conciliar», «extractos por conciliar»); en el resto de la app sigue valiendo «Revisar el extracto».
+- Cada sección tiene su «Por hacer» y su contador propio. Lo que no es del correo va en «Otras cosas por hacer».
+- La tarjeta de Movimientos NO repite la lista: dice el estado de la lectura y ofrece «Ver los N por revisar» (lleva a Movimientos).
+- En Movimientos: chip «Del correo por revisar (N)» y sección «Por revisar · N del correo». Cada tarjeta muestra primero la fecha y hora del movimiento («Jue 8 oct 2026 · 4:30 pm»); si el banco la escribió distinta a cuando llegó el correo: «Fecha del movimiento (la que usaré) · Llegó el correo el …». Botones: «Aprobar», «Editar» (fecha, monto), «Descartar»; en bloque: «Aprobar los N que parecen correctos». Encabezados por día: Hoy, Ayer, 8 oct.
+- Apagado: «no leo ni guardo notificaciones/extractos de tu correo» + «Encenderlo en «Conexión de Gmail»».
 - Etiqueta de un movimiento que aún no respalda un extracto: «Falta confirmar con el extracto»; cuando llega: «confirmado por extracto».
-- Contadores sin mezclar: «3 movimientos por aprobar · 1 extracto por conciliar».
-- Ayuda «¿Cuál es la diferencia?»: un ejemplo de una línea por uso. Nunca decir «carril» al usuario (es un término interno).
-- Si falla uno, se nombra cuál: «Extractos para conciliar: No pudimos…», y el otro sigue funcionando.
+- Contadores sin mezclar: «3 movimientos por revisar · 1 extracto por conciliar».
+- Ayuda «¿Cuál es la diferencia?» (dentro de «Conexión de Gmail»): un ejemplo de una línea por uso. Nunca decir «carril» al usuario (es un término interno).
+- Si falla uno, se nombra cuál: «Extractos: No pudimos…», y el otro sigue funcionando.
 
 Palabras que sí puedes usar tal cual: cuenta, saldo, gasto, ingreso, tarjeta, cupo, corte, extracto, presupuesto, meta, deuda, categoría.
 Si es la primera vez que aparece una (cupo, corte), usa la **Ayudita** (`<Ayudita termino="...">`) o una frase de apoyo.

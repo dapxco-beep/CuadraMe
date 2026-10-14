@@ -112,7 +112,7 @@ def _desde_inicio(inicio):
     """Condición SQL: correos recibidos desde el punto de partida (o sin fecha). Sin inicio no filtra."""
     if not inicio:
         return True
-    return or_(CorreoGasto.recibido_en.is_(None), CorreoGasto.recibido_en >= inicio)
+    return punto_partida.correo_desde_inicio(inicio)
 
 
 def _sin_cuenta(db: Session, usuario_id: str, cuentas: list[Cuenta], extractos: list[ExtractoCorreo],
@@ -307,8 +307,8 @@ def estado(
          "Dime la categoría y la recuerdo para la próxima.", n_categorizar, "/sincronizacion#categorizar"),
         ("movimientos_por_confirmar", "Movimientos por confirmar",
          "Llegaron solos: confirma que son tuyos.", n_confirmar, "/movimientos?revisar=1"),
-        ("correos_por_revisar", "Movimientos nuevos del correo",
-         "Aprueba o descarta lo que leí en tu correo.", n_correos, "/correos"),
+        ("correos_por_revisar", "Movimientos del correo por revisar",
+         "Mira la fecha, el monto y la cuenta de cada uno, y apruébalos o descártalos.", n_correos, "/movimientos?filtro=por-revisar"),
         ("extractos_sin_leer", "Extractos que no pudimos leer",
          "Sube el archivo de nuevo o agrega esos movimientos a mano.", n_no_leyo, "/sincronizacion#extractos"),
         ("posibles_duplicados", "Posibles movimientos repetidos",

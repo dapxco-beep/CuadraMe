@@ -43,6 +43,7 @@ vi.mock('../lib/CategoriasContext', () => ({
 
 import { DialogosProvider } from '../lib/DialogosContext'
 import Sincronizacion from '../screens/Sincronizacion'
+import CorreosPorRevisar from '../components/CorreosPorRevisar'
 
 function montar() {
   return render(
@@ -104,14 +105,12 @@ describe('Extractos ya conciliados', () => {
 })
 
 describe('Correos por revisar: aprender la regla al aprobar', () => {
-  beforeEach(() => {
-    api.sincronizacionEstado.mockResolvedValue(ESTADO_CORREO)
-    api.correosPendientes.mockResolvedValue([CORREO])
-    api.extractosCorreo.mockResolvedValue([])
-  })
+  // Los movimientos del correo se aprueban en la pantalla Movimientos: aquí se prueban las tarjetas.
+  const montarTarjetas = (correos = [CORREO]) =>
+    render(<DialogosProvider><CorreosPorRevisar correos={correos} onResuelto={vi.fn()} /></DialogosProvider>)
 
   it('muestra la razón de la categoría y, si la cambia, deja «Recordar» marcado y lo envía', async () => {
-    montar()
+    montarTarjetas()
     await screen.findByText(NOMBRE)
     expect(screen.getByText(/Comida · por palabra clave/)).toBeTruthy()
     expect(screen.queryByTestId('recordar-regla')).toBeNull() // sin cambiar nada no hay nada que recordar
@@ -127,7 +126,7 @@ describe('Correos por revisar: aprender la regla al aprobar', () => {
   })
 
   it('desmarcar «Recordar» aprueba con la categoría pero sin guardar regla', async () => {
-    montar()
+    montarTarjetas()
     await screen.findByText(NOMBRE)
     fireEvent.change(screen.getByLabelText(`Categoría de ${NOMBRE}`), { target: { value: 'Hogar' } })
     fireEvent.click(within(screen.getByTestId('recordar-regla')).getByLabelText(/Recordar para/))
@@ -138,8 +137,7 @@ describe('Correos por revisar: aprender la regla al aprobar', () => {
   })
 
   it('si quedó en «Otros» le pregunta la categoría', async () => {
-    api.correosPendientes.mockResolvedValue([{ ...CORREO, categoria_sugerida: 'Otros', razon_categoria: null, preguntar_categoria: true }])
-    montar()
+    montarTarjetas([{ ...CORREO, categoria_sugerida: 'Otros', razon_categoria: null, preguntar_categoria: true }])
     await screen.findByText(NOMBRE)
     expect(screen.getByTestId('pregunta-cat-k1')).toBeTruthy()
     expect(screen.getByLabelText(`Categoría de ${NOMBRE}`).value).toBe('')

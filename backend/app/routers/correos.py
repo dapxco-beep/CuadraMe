@@ -52,11 +52,13 @@ from app.extractos_gmail import (
 )
 from app import reevaluar_ignorados
 from app.gmail_extract import (
+    buscar_fecha_en_texto,
     detectar_tipo,
     es_posible_traslado_propio,
     extraer_comercio,
     extraer_moneda,
     extraer_monto,
+    fecha_movimiento_info,
     texto_cuerpo,
 )
 from app.gmail_oauth import (
@@ -74,7 +76,7 @@ from app import carriles_correo as carriles
 from app.models import Categoria, ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil, SyncGmail
 from app.routers.consentimientos import exigir_consentimiento, tiene_consentimiento
 from app.routers.conciliacion import procesar_extracto_de_gmail as procesar_extracto
-from app.utiles import utc_a_co
+from app.utiles import ahora_co, utc_a_co
 from app.duplicados import absorber_correos
 from app import duplicados as dup
 from app.schemas import (
@@ -127,6 +129,9 @@ def _con_cuenta(db: Session, usuario_id: str, correos: list[CorreoGasto]) -> lis
     salida = []
     for c in correos:
         o = CorreoGastoOut.model_validate(c)
+        info = fecha_movimiento_info(c)
+        o.fecha_movimiento, o.fecha_movimiento_con_hora, o.fecha_del_texto = info["fecha"], info["con_hora"], info["del_texto"]
+        o.recibido_en_co = utc_a_co(c.recibido_en or c.creado_en)
         if c.estado == "ya_registrado":
             o.registrado_como = registrados.get(c.movimiento_id)
         o.banco_detectado, o.cuenta_sugerida_id, o.falta_cuenta = inferir_cuenta_por_remitente(c.remitente, cuentas, f"{c.asunto} {c.snippet}")
@@ -306,6 +311,11 @@ def _clave_pdf(db: Session, usuario_id: str) -> str | None:
         return None
 
 
+def _fecha_del_texto_utc(texto: str, recibido):
+    co = buscar_fecha_en_texto(texto, recibido)
+    return co + timedelta(hours=5) if co else None
+
+
 def _crear_correo(msg: dict, usuario_id: str, modelo: ClasificadorUsuario) -> CorreoGasto:
     """Convierte un mensaje de Gmail en un CorreoGasto 'pendiente' (sugerencia
     que el usuario debe aprobar; nunca crea movimientos). La categoría la decide
@@ -323,13 +333,16 @@ def _crear_correo(msg: dict, usuario_id: str, modelo: ClasificadorUsuario) -> Co
             texto = f"{asunto} {snippet} {cuerpo}"
     comercio = extraer_comercio(remitente, asunto, snippet if texto == f"{asunto} {snippet}" else texto)
     resultado = modelo.clasificar(comercio, texto)
+    recibido = fecha_mensaje(msg)
     return CorreoGasto(
         usuario_id=usuario_id,
         gmail_msg_id=msg["id"],
         remitente=remitente,
         asunto=asunto,
         snippet=snippet[:400],
-        recibido_en=fecha_mensaje(msg),
+        recibido_en=recibido,
+        # La fecha que el banco escribió en el texto («el 3 de julio de 2026 a las 11:05 am»); None si no la trae.
+        fecha_movimiento=_fecha_del_texto_utc(texto, recibido),
         monto=extraer_monto(texto, estricto=(texto != f"{asunto} {snippet}")),
         moneda=extraer_moneda(texto),
         comercio=comercio,
@@ -438,11 +451,11 @@ def _ultima_del_tipo(sync: SyncGmail, tipo: str) -> datetime | None:
 
 
 def _exigir_extractos_activos(perfil: Perfil) -> None:
-    """Con «Extractos para conciliar» apagado no se descargan adjuntos del correo, ni a pedido."""
+    """Con «Extractos» apagado no se descargan adjuntos del correo, ni a pedido."""
     if perfil.gmail_leer_extractos is False:
         raise HTTPException(
             status_code=400,
-            detail="Tienes apagado «Extractos para conciliar». Enciéndelo para leer extractos de tu correo.",
+            detail="Tienes apagada la lectura de «Extractos». Enciéndela para leer extractos de tu correo.",
         )
 
 
@@ -942,7 +955,11 @@ def listar_correos(
         q = q.filter(CorreoGasto.estado == estados[filtro])
     inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
     if inicio_pp and filtro == "nuevos":
-        q = q.filter(or_(CorreoGasto.recibido_en.is_(None), CorreoGasto.recibido_en >= inicio_pp))
+        q = q.filter(or_(CorreoGasto.recibido_en.is_(None), CorreoGasto.recibido_en >= inicio_pp - timedelta(days=60)))
+        # Margen de 60 dias en SQL; el corte exacto usa la fecha del movimiento (puede ser anterior a la de recepcion).
+        filas = [c for c in q.order_by(CorreoGasto.creado_en.desc(), CorreoGasto.id).all()
+                 if not punto_partida.es_anterior(fecha_movimiento_info(c)["fecha"], inicio_pp)]
+        return _con_cuenta(db, usuario.id, filas[offset:offset + limite])
     return _con_cuenta(db, usuario.id, q.order_by(CorreoGasto.creado_en.desc(), CorreoGasto.id).offset(offset).limit(limite).all())
 
 
@@ -1285,8 +1302,13 @@ def listar_pendientes(
     )
     inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
     if inicio_pp:  # los correos anteriores al punto de partida no se muestran (tampoco se borran)
-        q = q.filter(or_(CorreoGasto.recibido_en.is_(None), CorreoGasto.recibido_en >= inicio_pp))
-    return _con_cuenta(db, usuario.id, q.order_by(CorreoGasto.creado_en.desc()).all())
+        # Margen de 60 dias en SQL; el corte exacto usa la fecha del MOVIMIENTO (que puede ser anterior a la de recepcion).
+        q = q.filter(or_(CorreoGasto.recibido_en.is_(None), CorreoGasto.recibido_en >= inicio_pp - timedelta(days=60)))
+    filas = [c for c in q.order_by(CorreoGasto.creado_en.desc()).all()
+             if not punto_partida.es_anterior(fecha_movimiento_info(c)["fecha"], inicio_pp)]
+    # Lo mas reciente primero, segun la fecha del movimiento (no la de lectura).
+    filas.sort(key=lambda c: fecha_movimiento_info(c)["fecha"] or datetime.min, reverse=True)
+    return _con_cuenta(db, usuario.id, filas)
 
 
 def _validar_categoria(db: Session, usuario_id: str, categoria: str) -> None:
@@ -1376,6 +1398,18 @@ def aprobar_correo(
     if (correo.monto or 0) <= 0:
         raise HTTPException(status_code=400, detail=MENSAJE_MONTO_INVALIDO)
 
+    # La fecha del movimiento: la que corrigió la persona o, si no, la leída del correo (nunca la de lectura).
+    info_fecha = fecha_movimiento_info(correo)
+    fecha_mov = info_fecha["fecha"]
+    if data.fecha is not None:
+        ahora = ahora_co()
+        if data.fecha > ahora + timedelta(days=1):
+            raise HTTPException(status_code=400, detail="La fecha del movimiento no puede ser futura")
+        if data.fecha < ahora - timedelta(days=5 * 365):
+            raise HTTPException(status_code=400, detail="La fecha del movimiento es demasiado antigua")
+        fecha_mov = data.fecha.replace(tzinfo=None)
+        correo.fecha_movimiento = fecha_mov + timedelta(hours=5)
+
     cuenta = (
         db.query(Cuenta)
         .filter(Cuenta.id == data.cuenta_id, Cuenta.usuario_id == usuario.id)
@@ -1417,7 +1451,7 @@ def aprobar_correo(
         tipo=tipo,
         monto=correo.monto,
         # recibido_en y creado_en están en UTC: el movimiento va en hora Colombia.
-        fecha=utc_a_co(correo.recibido_en or correo.creado_en),
+        fecha=fecha_mov or utc_a_co(correo.recibido_en or correo.creado_en),
         fuente="email",
         # La categoría la sugirió la app al leer el correo: queda por revisar
         # salvo que sea 'Otros' (que ya aparece en la vista por revisar).

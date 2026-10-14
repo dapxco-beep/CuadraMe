@@ -92,7 +92,7 @@ describe('rutas viejas: redirigen al centro con state para abrir el bloque', () 
     )
   const leer = async () => JSON.parse((await screen.findByTestId('destino')).textContent)
 
-  it('/correos conserva ?gmail=sin_acceso (regreso de Google) y abre «Desde tu correo»', async () => {
+  it('/correos conserva ?gmail=sin_acceso (regreso de Google) y abre la sección de Gmail', async () => {
     montar('/correos?gmail=sin_acceso', '/correos')
     expect(await leer()).toEqual({ ruta: '/sincronizacion?gmail=sin_acceso', state: { abrir: 'correo' } })
   })
@@ -132,7 +132,7 @@ describe('rutas viejas: redirigen al centro con state para abrir el bloque', () 
     )
     expect(await screen.findByTestId('revision-multiple')).toBeTruthy()
     expect(api.obtenerReviewExtracto).toHaveBeenCalledWith('h1')
-    expect(screen.getByRole('button', { name: /Subir archivos/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByTestId('bloque-sinc-extractos').querySelector('h2 button')).toHaveAttribute('aria-expanded', 'true')
   })
 })
 
@@ -266,8 +266,11 @@ describe('contadores y estados', () => {
     expect(totalPorResolver(TAREAS)).toBe(5)
     // «Bancos sin cuenta» vive solo en «Por hacer» (no repite fila dentro de «Por revisar»)
     expect(tareasDeBloque(TAREAS, 'por_hacer').map((t) => t.id)).toEqual(['sin_cuenta'])
+    expect(tareasDeBloque(TAREAS, 'movimientos').map((t) => t.id)).toEqual(['correos_por_revisar'])
+    expect(tareasDeBloque(TAREAS, 'extractos').map((t) => t.id)).toEqual(['falta_clave', 'extractos_por_conciliar'])
     expect(
-      tareasDeBloque(TAREAS, 'correo').length + tareasDeBloque(TAREAS, 'revisar').length + tareasDeBloque(TAREAS, 'por_hacer').length,
+      tareasDeBloque(TAREAS, 'movimientos').length + tareasDeBloque(TAREAS, 'extractos').length
+        + tareasDeBloque(TAREAS, 'revisar').length + tareasDeBloque(TAREAS, 'por_hacer').length,
     ).toBe(5)
     expect(cantidadDe(TAREAS, 'extractos_por_conciliar')).toBe(4)
     expect(cantidadDe(TAREAS, 'no_existe')).toBe(0)
@@ -276,10 +279,13 @@ describe('contadores y estados', () => {
   it('el encabezado y los bloques muestran el mismo total', async () => {
     montarCentro()
     expect(await screen.findByText('Tienes 5 cosas por resolver')).toBeTruthy()
-    const correo = screen.getByRole('button', { name: /Desde tu correo/ })
+    const movimientos = screen.getByTestId('bloque-sinc-movimientos').querySelector('h2 button')
+    const extractos = screen.getByTestId('bloque-sinc-extractos').querySelector('h2 button')
     const revisar = screen.getByRole('button', { name: /Por revisar/ })
-    expect(within(correo).getByLabelText('3 por resolver')).toBeTruthy()
-    expect(within(revisar).getByLabelText('1 por resolver')).toBeTruthy() // «Bancos sin cuenta» (la 5.ª) vive solo en «Por hacer»: 3 + 1 + 1 = 5
+    // Cada sección cuenta lo suyo y no se mezclan: 1 + 2 + 1, y «Bancos sin cuenta» (la 5.ª) vive solo en «Otras cosas por hacer».
+    expect(within(movimientos).getByLabelText('1 por resolver')).toBeTruthy()
+    expect(within(extractos).getByLabelText('2 por resolver')).toBeTruthy()
+    expect(within(revisar).getByLabelText('1 por resolver')).toBeTruthy()
     expect(screen.getAllByTestId(/^tarea-/)).toHaveLength(5)
   })
 
@@ -292,7 +298,7 @@ describe('contadores y estados', () => {
     expect(document.querySelector('#sinc-sin-cuenta')).toBeNull()
     expect(screen.queryByText(/Sin cuenta ·/)).toBeNull()
     expect(screen.getAllByText('Bancos sin cuenta')).toHaveLength(1)
-    expect(within(screen.getByTestId('por-hacer')).getByText('Bancos sin cuenta')).toBeTruthy()
+    expect(within(screen.getByTestId('por-hacer-general')).getByText('Bancos sin cuenta')).toBeTruthy()
     fireEvent.click(screen.getByTestId('tarea-sin_cuenta')) // con un banco abre directo «Crear cuenta»
     expect(await screen.findByRole('dialog', { name: 'Crear cuenta Nequi' })).toBeTruthy()
   })
@@ -313,7 +319,8 @@ describe('contadores y estados', () => {
     api.sincronizacionEstado.mockResolvedValue(estadoCon([]))
     montarCentro()
     expect(await screen.findByTestId('resumen-tareas')).toHaveTextContent('Todo al día')
-    expect(screen.getByTestId('al-dia-sinc-correo')).toBeTruthy()
+    expect(screen.getByTestId('al-dia-sinc-movimientos')).toBeTruthy()
+    expect(screen.getByTestId('al-dia-sinc-extractos')).toBeTruthy()
     expect(screen.getByTestId('al-dia-sinc-revisar')).toBeTruthy()
     expect(screen.queryByLabelText(/por resolver$/)).toBeNull()
   })

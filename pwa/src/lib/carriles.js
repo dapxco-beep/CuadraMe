@@ -1,12 +1,14 @@
 // Los dos usos del correo, dichos en palabras. Sin React, fáciles de probar.
-//   movimientos = notificaciones del banco: así ves en el momento lo que gastas (día a día)
-//   extractos   = el extracto mensual del banco: sirve para confirmar y cuadrar el mes (conciliar)
+//   movimientos = notificaciones del banco: así ves en el momento lo que gastas (día a día). Se aprueban en la
+//                 pantalla Movimientos («Por revisar · N del correo»).
+//   extractos   = el extracto mensual del banco: sirve para confirmar y cuadrar el mes (conciliar). Los del correo
+//                 y los que subes como archivo viven juntos en la sección «Extractos».
 
 export const CARRILES = ['movimientos', 'extractos']
 
 export const NOMBRE_CARRIL = {
-  movimientos: 'Movimientos del día a día',
-  extractos: 'Extractos para conciliar',
+  movimientos: 'Movimientos',
+  extractos: 'Extractos',
 }
 
 export const TEXTO_CARRIL = {
@@ -35,14 +37,14 @@ export function carrilDeTarea(t) {
   return null
 }
 
-/** «3 movimientos por aprobar · 1 extracto por conciliar» (no mezcla los dos conteos). '' si no hay ninguno. */
+/** «3 movimientos por revisar · 1 extracto por conciliar» (no mezcla los dos conteos). '' si no hay ninguno. */
 export function resumenCarriles(tareas) {
   const lista = tareas || []
   const suma = (ids) => lista.filter((t) => ids.includes(t.id)).reduce((s, t) => s + (t.cantidad || 0), 0)
   const mov = suma(['correos_por_revisar'])
   const ext = suma(['extractos_por_conciliar', 'falta_clave'])
   const partes = []
-  if (mov) partes.push(`${plural(mov, 'movimiento', 'movimientos')} por aprobar`)
+  if (mov) partes.push(`${plural(mov, 'movimiento', 'movimientos')} por revisar`)
   if (ext) partes.push(`${plural(ext, 'extracto', 'extractos')} por conciliar`)
   return partes.join(' · ')
 }
@@ -52,7 +54,7 @@ export function contadoresCarril(carril, c) {
   if (!c) return []
   if (carril === 'movimientos') {
     return [
-      { clave: 'por_revisar', texto: plural(c.por_revisar || 0, 'por aprobar', 'por aprobar') },
+      { clave: 'por_revisar', texto: plural(c.por_revisar || 0, 'por revisar', 'por revisar') },
       { clave: 'ya_registrados', texto: plural(c.ya_registrados || 0, 'ya registrado', 'ya registrados') },
       ...(c.provisionales ? [{ clave: 'provisionales', texto: `${plural(c.provisionales, 'falta', 'faltan')} confirmar con el extracto` }] : []),
     ]

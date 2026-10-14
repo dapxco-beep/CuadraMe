@@ -14,9 +14,9 @@ Reglas:
   - Sin elección (modo NULL) todo funciona como siempre: ninguna función de aquí filtra.
 """
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
-from sqlalchemy import func
+from sqlalchemy import and_, func, not_, or_
 from sqlalchemy.orm import Session
 
 from app.contabilidad import delta_saldo
@@ -140,6 +140,18 @@ def guardar(db: Session, usuario_id: str, modo: str, fecha: date, saldos: dict |
     return {"retrocedio": retrocedio}
 
 
+def correo_desde_inicio(inicio: datetime):
+    """Condición SQL: el correo cuenta desde el punto de partida. Vale la fecha del MOVIMIENTO si el
+    correo la trae (UTC: el inicio es medianoche de Colombia, +5 h) y, si no, la de recepción."""
+    from app.models import CorreoGasto
+
+    con_fecha = CorreoGasto.fecha_movimiento.isnot(None)
+    return or_(
+        and_(con_fecha, CorreoGasto.fecha_movimiento >= inicio + timedelta(hours=5)),
+        and_(not_(con_fecha), or_(CorreoGasto.recibido_en.is_(None), CorreoGasto.recibido_en >= inicio)),
+    )
+
+
 def contar_anteriores(db: Session, usuario_id: str, inicio: datetime | None) -> dict:
     """Cuántos correos y extractos de Gmail quedan fuera por ser anteriores al inicio."""
     if not inicio:
@@ -150,7 +162,7 @@ def contar_anteriores(db: Session, usuario_id: str, inicio: datetime | None) -> 
         db.query(func.count(CorreoGasto.id))
         .filter(
             CorreoGasto.usuario_id == usuario_id, CorreoGasto.estado == "pendiente", CorreoGasto.monto > 0,
-            CorreoGasto.recibido_en.isnot(None), CorreoGasto.recibido_en < inicio,
+            not_(correo_desde_inicio(inicio)),
         )
         .scalar() or 0
     )

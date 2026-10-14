@@ -691,6 +691,12 @@ class CorreoGastoOut(BaseModel):
     confianza: float
     estado: str
     movimiento_id: Optional[str]
+    # Calculados al leer, en hora de Colombia (sin zona, listos para mostrar): la fecha del MOVIMIENTO que
+    # se usará al aprobar (la del texto del correo o, si no trae, la de recepción) y cuándo llegó el correo.
+    fecha_movimiento: Optional[datetime] = None
+    fecha_movimiento_con_hora: bool = False
+    fecha_del_texto: bool = False  # True: el banco la escribió en el correo; False: es la de recepción
+    recibido_en_co: Optional[datetime] = None
     # Solo en estado 'ya_registrado': el movimiento que ya existía {descripcion, monto, fecha, canales}.
     registrado_como: Optional[dict] = None
     # Calculados al leer (no son columnas): quién envió el correo y qué cuenta le corresponde.
@@ -735,6 +741,8 @@ class AprobarCorreoRequest(BaseModel):
     categoria: Optional[str] = None
     recordar: bool = False
     aplicar_anteriores: bool = False
+    # Fecha del movimiento corregida por la persona (hora de Colombia). Sin ella se usa la leída del correo.
+    fecha: Optional[datetime] = None
 
 
 class LecturaCorreoRequest(BaseModel):

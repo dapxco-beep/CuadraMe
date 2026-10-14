@@ -84,13 +84,13 @@ describe('Sincronización: cuadrícula', () => {
     expect(screen.getByRole('button', { name: /Nu Colombia \(Crédito ••4821\), mayo 2026/ })).toBeTruthy()
   })
 
-  it('"Subir el extracto de este mes" abre el bloque Subir archivos con cuenta y mes, sin salir del centro', async () => {
+  it('"Subir el extracto de este mes" abre la sección Extractos (subir archivo) con cuenta y mes, sin salir del centro', async () => {
     montar()
     fireEvent.click(await screen.findByRole('button', { name: /Nu Colombia \(Ahorros\), mayo 2026/ }))
     const det = screen.getByRole('region', { name: 'Detalle del mes' })
     fireEvent.click(within(det).getByRole('button', { name: 'Subir el extracto de este mes' }))
     expect(await screen.findByText(/Sube el extracto de/)).toHaveTextContent('mayo 2026 de Nu Colombia')
-    expect(screen.getByRole('button', { name: /Subir archivos/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByTestId('bloque-sinc-extractos').querySelector('h2 button')).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByLabelText('Archivos a subir')).toBeTruthy()
     expect(screen.queryByTestId('destino')).toBeNull()
   })

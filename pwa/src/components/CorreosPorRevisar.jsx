@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, CheckCheck, X } from 'lucide-react'
+import { CalendarDays, Check, CheckCheck, Mail, Pencil, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { parsearMontoEscrito } from '../lib/centro'
@@ -10,6 +10,7 @@ import InputMonto from './InputMonto'
 import SelectorCuentaBanco from './SelectorCuentaBanco'
 import { cuentaRecordada } from '../lib/cuentasBanco'
 import RecordarRegla, { RECORDAR_INICIAL } from './RecordarRegla'
+import { agruparPorDia, etiquetaFechaHora, fechaParaEnviar, fechasDistintas, valorInputFecha } from '../lib/fechaCorreo'
 
 /**
  * Movimientos que CuadraMe leyó en tus correos: tú apruebas o descartas cada uno.
@@ -23,6 +24,8 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
   const [recordarPorCorreo, setRecordarPorCorreo] = useState({}) // id -> { recordar, anteriores }
   const [cuentaPorCorreo, setCuentaPorCorreo] = useState({})
   const [montoPorCorreo, setMontoPorCorreo] = useState({}) // id -> texto escrito
+  const [editando, setEditando] = useState(new Set()) // ids con el panel «Editar» abierto
+  const [fechaPorCorreo, setFechaPorCorreo] = useState({}) // id -> 'AAAA-MM-DD' elegido
   const [procesando, setProcesando] = useState(new Set())
   const [crearCuenta, setCrearCuenta] = useState(null) // { banco }
   const [error, setError] = useState('')
@@ -38,7 +41,19 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
   const cuentaElegida = (c) => existe(cuentaPorCorreo[c.id]) || existe(c.cuenta_sugerida_id) || (c.pregunta_cuenta ? recordada(c) : '')
   // Monto que se aprobaría: el del correo o, si no se pudo leer, el que escribe la persona.
   const sinMonto = (c) => !(c.monto > 0)
-  const montoDe = (c) => (sinMonto(c) ? parsearMontoEscrito(montoPorCorreo[c.id]) : c.monto)
+  // Con «Editar» abierto y un monto escrito, vale ese; si no, el del correo.
+  const montoEscrito = (c) => (montoPorCorreo[c.id] ? parsearMontoEscrito(montoPorCorreo[c.id]) : 0)
+  const montoDe = (c) => (sinMonto(c) ? montoEscrito(c) : montoEscrito(c) > 0 ? montoEscrito(c) : c.monto)
+  const fechaElegida = (c) => fechaPorCorreo[c.id] || valorInputFecha(c.fecha_movimiento)
+  const fechaCambio = (c) => Boolean(c.fecha_movimiento) && fechaElegida(c) !== valorInputFecha(c.fecha_movimiento)
+  const hoyISO = new Date().toISOString().slice(0, 10)
+  const alternarEdicion = (id) =>
+    setEditando((prev) => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
 
   function ocupar(id, si) {
     setProcesando((prev) => {
@@ -62,7 +77,8 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
       const cambio = elegida && elegida !== c.categoria_sugerida
       const rec = recordarPorCorreo[c.id] || RECORDAR_INICIAL
       const extra = {
-        ...(sinMonto(c) ? { monto } : {}),
+        ...(sinMonto(c) || monto !== c.monto ? { monto } : {}),
+        ...(fechaCambio(c) ? { fecha: fechaParaEnviar(fechaElegida(c), c.fecha_movimiento) } : {}),
         ...(elegida
           ? { categoria: elegida, ...(cambio && elegida !== 'Otros' ? { recordar: !!rec.recordar, aplicar_anteriores: !!rec.recordar && !!rec.anteriores } : {}) }
           : {}),
@@ -79,7 +95,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
 
   // «Parecen correctos»: ya traen cuenta, monto y categoría clara (nada que el usuario tenga que elegir).
   const correctos = correos.filter(
-    (c) => cuentaElegida(c) && c.monto > 0 && !c.preguntar_categoria && !c.falta_cuenta && !categoriaPorCorreo[c.id] && !procesando.has(c.id),
+    (c) => cuentaElegida(c) && c.monto > 0 && !c.preguntar_categoria && !c.falta_cuenta && !categoriaPorCorreo[c.id] && !editando.has(c.id) && !procesando.has(c.id),
   )
   const [aprobandoTodos, setAprobandoTodos] = useState(false)
 
@@ -129,13 +145,29 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
           {aprobandoTodos ? 'Aprobando...' : `Aprobar los ${correctos.length} que parecen correctos`}
         </button>
       )}
+      {agruparPorDia(correos).map((g) => (
+      <div key={g.clave} className="mb-3" data-testid={`dia-${g.clave}`}>
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-soft mb-1.5 px-1">{g.etiqueta}</h4>
       <ul className="flex flex-col gap-3">
-        {correos.map((c) => {
+        {g.items.map((c) => {
           const falta = sinMonto(c)
           const monto = montoDe(c)
           const cuentaId = cuentaElegida(c)
           return (
             <li key={c.id} className="rounded-2xl bg-paper border border-line p-4" data-testid={`correo-${c.id}`}>
+              {c.fecha_movimiento && (
+                <div className="mb-2" data-testid={`fecha-${c.id}`}>
+                  <p className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
+                    <CalendarDays size={16} className="text-accent shrink-0" aria-hidden="true" />
+                    {etiquetaFechaHora(fechaCambio(c) ? fechaParaEnviar(fechaElegida(c), c.fecha_movimiento) : c.fecha_movimiento, c.fecha_movimiento_con_hora)}
+                  </p>
+                  {c.fecha_del_texto && fechasDistintas(c.fecha_movimiento, c.recibido_en_co) && (
+                    <p className="text-[11px] text-ink-soft mt-0.5 ml-[22px]">
+                      Fecha del movimiento (la que usaré) · Llegó el correo el {etiquetaFechaHora(c.recibido_en_co)}
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold truncate">{c.comercio}</p>
@@ -168,6 +200,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
                   : `${iconoDe(c.categoria_sugerida) ? `${iconoDe(c.categoria_sugerida)} ` : ''}${c.categoria_sugerida}${c.razon_categoria && !categoriaPorCorreo[c.id] ? ` · ${c.razon_categoria}` : ''}`}
                 {c.banco_detectado ? ` · ${c.banco_detectado}` : ''}
               </p>
+              <p className="flex items-center gap-1 text-[11px] text-ink-soft mt-0.5"><Mail size={16} className="shrink-0" aria-hidden="true" /> Leído de tu correo</p>
 
               {c.preguntar_categoria && !categoriaPorCorreo[c.id] && (
                 <p className="text-xs font-medium text-accent mt-1" data-testid={`pregunta-cat-${c.id}`}>
@@ -220,6 +253,34 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
                 </button>
               )}
 
+              {editando.has(c.id) && (
+                <div className="grid grid-cols-2 gap-2 mt-3" data-testid={`editar-${c.id}`}>
+                  <label className="block">
+                    <span className="text-xs font-medium text-ink-soft">Fecha del movimiento</span>
+                    <input
+                      type="date"
+                      value={fechaElegida(c)}
+                      max={hoyISO}
+                      onChange={(e) => e.target.value && setFechaPorCorreo((p) => ({ ...p, [c.id]: e.target.value }))}
+                      aria-label={`Fecha de ${c.comercio}`}
+                      className="w-full mt-1 rounded-xl border border-line bg-paper-raised px-3 py-2 text-sm"
+                    />
+                  </label>
+                  {!falta && (
+                    <label className="block">
+                      <span className="text-xs font-medium text-ink-soft">Monto</span>
+                      <InputMonto
+                        value={montoPorCorreo[c.id] || ''}
+                        onValor={(v) => setMontoPorCorreo((p) => ({ ...p, [c.id]: v }))}
+                        placeholder={String(c.monto)}
+                        aria-label={`Corregir monto de ${c.comercio}`}
+                        className="w-full mt-1 rounded-xl border border-line bg-paper-raised px-3 py-2 text-sm outline-none focus:border-accent"
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={() => aprobar(c)}
@@ -235,11 +296,20 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
                 >
                   <X size={16} aria-hidden="true" /> Descartar
                 </button>
+                <button
+                  onClick={() => alternarEdicion(c.id)}
+                  aria-expanded={editando.has(c.id)}
+                  className="px-3 rounded-xl border border-line text-sm text-ink-soft flex items-center gap-1.5 min-h-[44px]"
+                >
+                  <Pencil size={16} aria-hidden="true" /> Editar
+                </button>
               </div>
             </li>
           )
         })}
       </ul>
+      </div>
+      ))}
 
       {crearCuenta && (
         <CrearCuentaBanco

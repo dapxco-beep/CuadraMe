@@ -181,8 +181,7 @@ describe('Centro: pasos, resumen y correos ignorados', () => {
   it('«Ver correos ignorados» los lista', async () => {
     api.correosLista.mockResolvedValue([{ id: 'i1', asunto: 'Promo 0', remitente: 'b@banco.co' }])
     montar(null, '/sincronizacion')
-    // Sin nada por resolver el bloque está plegado («Todo al día»): se abre para verlo.
-    fireEvent.click(await screen.findByRole('button', { name: /Desde tu correo/ }))
+    // La sección «Movimientos» está abierta por defecto (modo simple): el enlace se ve sin abrir nada.
     fireEvent.click(await screen.findByRole('button', { name: 'Ver correos ignorados' }))
     expect(await screen.findByText('Promo 0')).toBeTruthy()
     expect(api.correosLista).toHaveBeenCalledWith('ignorados', 0, 30)

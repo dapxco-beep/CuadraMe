@@ -301,6 +301,9 @@ class CorreoGasto(Base):
     asunto = Column(String, default="")
     snippet = Column(String, default="")
     recibido_en = Column(DateTime, nullable=True)
+    # Fecha (y hora) del MOVIMIENTO que el banco escribio en el texto del correo, en UTC como `recibido_en`.
+    # NULL = no la trae (vale la de recepcion) o es un correo viejo (se calcula al vuelo al listar).
+    fecha_movimiento = Column(DateTime, nullable=True)
     monto = Column(Float, default=0)
     moneda = Column(String, default="COP")
     comercio = Column(String, default="")

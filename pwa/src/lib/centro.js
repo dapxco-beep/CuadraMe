@@ -3,14 +3,15 @@
 
 export const RUTA_CENTRO = '/sincronizacion'
 
-// Los tres bloques del centro.
-export const BLOQUES = ['correo', 'subir', 'revisar']
+// Las secciones del centro: Movimientos (Gmail), Extractos (correo + archivos), Conexión de Gmail y Por revisar.
+export const BLOQUES = ['movimientos', 'extractos', 'conexion', 'revisar']
 
 // Cada tarea de GET /sincronizacion/estado vive en un solo bloque.
 const BLOQUE_DE_TAREA = {
-  correos_por_revisar: 'correo',
-  extractos_por_conciliar: 'correo',
-  falta_clave: 'correo',
+  correos_por_revisar: 'movimientos',
+  extractos_por_conciliar: 'extractos',
+  falta_clave: 'extractos',
+  extractos_sin_leer: 'extractos',
   movimientos_por_confirmar: 'revisar',
   movimientos_por_categorizar: 'revisar',
   // Vive solo en «Por hacer» (arriba): no repite una fila dentro de «Por revisar».

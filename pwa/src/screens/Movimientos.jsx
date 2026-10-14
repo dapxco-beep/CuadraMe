@@ -30,6 +30,8 @@ import Hoja from '../components/Hoja'
 import TablaMovimientos from '../components/TablaMovimientos'
 import DetalleMovimiento from './DetalleMovimiento'
 import EtiquetaOrigen from '../components/EtiquetaOrigen'
+import PorRevisarCorreo from '../components/PorRevisarCorreo'
+import { usePorRevisarCorreo } from '../lib/usePorRevisarCorreo'
 
 const TAMANO_PAGINA = 200
 const MAX_LOTES = 15 // tope de seguridad al re-pedir lo ya cargado (3.000 movimientos)
@@ -221,6 +223,10 @@ export default function Movimientos() {
     [setParams]
   )
 
+  // Lo que llegó por el correo y espera aprobación: sección propia arriba de la lista (filtro «Del correo»).
+  const porCorreo = usePorRevisarCorreo()
+  const soloCorreo = params.get('filtro') === 'por-revisar'
+
   const consulta = useMemo(() => consultaServidor(f), [f])
   const consultaKey = JSON.stringify(consulta)
 
@@ -274,6 +280,23 @@ export default function Movimientos() {
       return { items: acum, hay }
     },
     [pedir]
+  )
+
+  // Al aprobar o descartar un correo: sale de la sección y, si pasó a la lista, aparece sin recargar la pantalla.
+  const correoResuelto = useCallback(
+    async (c) => {
+      porCorreo.quitar(c)
+      try {
+        const { items, hay } = await traerHasta(Math.max(TAMANO_PAGINA, movimientos.length))
+        setMovimientos(items)
+        setHayMas(hay)
+      } catch {
+        /* la lista se actualiza sola la próxima vez */
+      }
+      recargarConteo()
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [porCorreo.quitar, traerHasta, movimientos.length]
   )
 
   const recargarConteo = useCallback(() => {
@@ -796,6 +819,11 @@ export default function Movimientos() {
               </div>
 
               <div className="px-5 mb-3 flex gap-2 overflow-x-auto no-scrollbar lg:flex-wrap lg:overflow-visible">
+                {(porCorreo.correos.length > 0 || soloCorreo) && (
+                  <button onClick={() => cambiarParams({ filtro: soloCorreo ? '' : 'por-revisar' })} aria-pressed={soloCorreo} className={botonChip(soloCorreo)}>
+                    Del correo por revisar{porCorreo.correos.length > 0 ? ` (${porCorreo.correos.length})` : ''}
+                  </button>
+                )}
                 {/* Sin repetir la misma lista con dos nombres: «Por revisar» no sale si es idéntica a «Sin categorizar»,
                     y «Por confirmar» solo sale cuando hay además otra clase de pendientes. */}
                 {(((conteo.total > 0) && !(conteo.otros > 0 && conteo.auto === 0)) || f.revisar) && (
@@ -956,7 +984,12 @@ export default function Movimientos() {
         </div>
 
         <div className="col">
-          {cargando ? (
+          <PorRevisarCorreo correos={porCorreo.correos} onResuelto={correoResuelto} onCuentaCreada={porCorreo.recargar} className="mx-5 mb-4" />
+          {soloCorreo ? (
+            porCorreo.cargado && porCorreo.correos.length === 0 && (
+              <EstadoVacio icono={ListChecks} titulo="Nada por revisar del correo" texto="Cuando llegue una notificación de tu banco, la verás aquí con su fecha." className="mx-5" />
+            )
+          ) : cargando ? (
             <EsqueletoLista filas={8} className="mx-5" etiqueta="Cargando movimientos" />
           ) : errorCarga ? (
             <div role="alert" className="mx-5 rounded-3xl bg-danger-soft border border-danger/30 p-6 text-center">
