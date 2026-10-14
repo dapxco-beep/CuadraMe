@@ -65,7 +65,9 @@ export function fechasDistintas(iso, otroIso) {
 /** Agrupa tarjetas (ya ordenadas) por día del movimiento: [{ clave, etiqueta, items }]. */
 export function agruparPorDia(correos, hoy = new Date()) {
   const grupos = []
-  for (const c of correos || []) {
+  // Lo más reciente primero (el servidor ya lo manda así; esto protege de cualquier otro orden).
+  const ordenados = [...(correos || [])].sort((x, y) => String(y.fecha_movimiento || '').localeCompare(String(x.fecha_movimiento || '')))
+  for (const c of ordenados) {
     const clave = claveDia(c.fecha_movimiento || c.recibido_en_co) || 'sin-fecha'
     let g = grupos.find((x) => x.clave === clave)
     if (!g) {
