@@ -86,6 +86,7 @@ export const RAZON_AUTO = {
   sugerida: 'sugerida por tu correo',
   wallet: 'por tu pago con el celular',
   atajo: 'por tu atajo',
+  marcada: 'la marcaste para revisar',
 }
 
 // Un movimiento "espera revisión" si la app lo categorizó sola sin confirmar,
@@ -93,6 +94,15 @@ export const RAZON_AUTO = {
 export function esAuto(m) {
   return m.cat_confirmada === false
 }
+// «Por categorizar»: lo decide el servidor (campo por_categorizar, ver backend/app/pendientes.py).
+// Si la respuesta no lo trae, se aplica la misma regla: Otros, poca confianza o marcado por el usuario.
+// Lo categorizado con seguridad (regla, comercio conocido, aprendizaje) NO es pendiente.
+const ORIGENES_SEGUROS = ['regla', 'comercio', 'similar', 'wallet', 'atajo', 'cierre_app', 'voz']
 export function porRevisar(m) {
-  return m.fuente !== 'transferencia_interna' && (esAuto(m) || m.categoria === 'Otros')
+  if (typeof m.por_categorizar === 'boolean') return m.por_categorizar
+  if (m.fuente === 'transferencia_interna' || m.tipo === 'transfer') return false
+  if (m.cat_origen === 'marcada') return true
+  if (m.cat_origen === 'dejada') return false
+  if (!m.categoria || m.categoria === 'Otros') return true
+  return esAuto(m) && !ORIGENES_SEGUROS.includes(m.cat_origen)
 }

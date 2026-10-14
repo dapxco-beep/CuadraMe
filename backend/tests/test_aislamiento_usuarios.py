@@ -253,6 +253,9 @@ ATAQUES = [
     ("PUT", "/categorias/{categoria}", {"nombre": "hackeada"}),
     ("DELETE", "/categorias/{categoria}", None),
     ("DELETE", "/reglas-categoria/{regla}", None),
+    ("POST", "/reglas-categoria/lote", {"ids": ["{regla}"], "accion": "borrar"}),
+    ("POST", "/por-categorizar/accion", {"accion": "dejar", "movimiento_ids": ["{movimiento}"]}),
+    ("POST", "/por-categorizar/deshacer", {"previos": [{"id": "{movimiento}", "categoria": "Comida"}]}),
     ("DELETE", "/presupuestos/{presupuesto}", None),
     ("POST", "/presupuestos/mover-sobre", {"presupuesto_origen_id": "{presupuesto}",
                                            "presupuesto_destino_id": "{presupuesto2}", "monto": 1}),
@@ -428,6 +431,8 @@ SIN_ID_DE_RECURSO = {
     "/perfil/confianza-autoimport", "/perfil/autoimportar-extractos", "/perfil/eliminar-cuenta",
     "/planificacion/config", "/planificacion/distribuir-ingreso", "/planificacion/plan-meta", "/push/suscribir",
     "/push/desuscribir", "/push/probar", "/reglas-categoria/aprender", "/reglas-categoria", "/categorias",
+    "/por-categorizar/silencios/quitar", "/reglas-categoria/sugerencias/crear",
+    "/reglas-categoria/sugerencias/descartar", "/reglas-categoria/sugerencias/restaurar",
     "/cuentas", "/presupuestos", "/cierre-mes/{mes}", "/cierre-mes/{mes}/generar", "/gastos-compartidos/contactos", "/cuentas/invitaciones/pendientes",
     "/correos/{correo_id}/aprobar", "/movimientos/rapido-voz", "/resumen/preferencias",
     "/comentarios",  # POST: crea un comentario propio (no recibe ids)

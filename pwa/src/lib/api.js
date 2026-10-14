@@ -601,6 +601,21 @@ export const api = {
   // Aprendizaje: guarda la regla del comercio de una descripción (una por huella) y, si se pide, recategoriza los anteriores.
   aprenderRegla: (data) => request('/reglas-categoria/aprender', { method: 'POST', body: data }),
   vocabularioCategorias: () => request('/categorias/vocabulario'),
+  // Reglas a elección: vista previa, sugerencias (el usuario elige cuáles crear) y acciones en lote.
+  vistaPreviaRegla: (descripcion, excluirId) =>
+    request(`/reglas-categoria/vista-previa?descripcion=${encodeURIComponent(descripcion)}${excluirId ? `&excluir_id=${excluirId}` : ''}`),
+  sugerenciasReglas: () => request('/reglas-categoria/sugerencias'),
+  crearSugerencias: (elegidas, aplicarAnteriores = false) =>
+    request('/reglas-categoria/sugerencias/crear', { method: 'POST', body: { elegidas, aplicar_anteriores: aplicarAnteriores } }),
+  descartarSugerencias: (huellas) => request('/reglas-categoria/sugerencias/descartar', { method: 'POST', body: { huellas } }),
+  restaurarSugerencias: (huellas) => request('/reglas-categoria/sugerencias/restaurar', { method: 'POST', body: { huellas } }),
+  reglasEnLote: (ids, accion) => request('/reglas-categoria/lote', { method: 'POST', body: { ids, accion } }),
+  // «Por categorizar» a elección (lista por comercio, acciones sobre lo seleccionado, deshacer).
+  porCategorizar: (limite = 10, todos = false) => request(`/por-categorizar?limite=${limite}${todos ? '&todos=true' : ''}`),
+  accionPorCategorizar: (body) => request('/por-categorizar/accion', { method: 'POST', body }),
+  deshacerPorCategorizar: (body) => request('/por-categorizar/deshacer', { method: 'POST', body }),
+  silenciosPorCategorizar: () => request('/por-categorizar/silencios'),
+  quitarSilencios: (huellas) => request('/por-categorizar/silencios/quitar', { method: 'POST', body: { huellas } }),
   explicarCategoria: (q) => request(`/categorias/explicar?q=${encodeURIComponent(q)}`),
 
   flujoCajaFuturo: (meses = 3) => request(`/reportes/flujo-caja-futuro?meses=${meses}`),

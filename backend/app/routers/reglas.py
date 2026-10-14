@@ -233,5 +233,8 @@ def lote_reglas(
         n = q.delete(synchronize_session=False)
     else:
         n = q.update({"activa": data.accion == "reanudar"}, synchronize_session=False)
+    if not n:
+        db.rollback()
+        raise HTTPException(status_code=404, detail="Regla no encontrada")
     db.commit()
     return {"ok": True, "afectadas": n}

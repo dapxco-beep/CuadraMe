@@ -211,6 +211,9 @@ def deshacer(
             m.cat_confirmada = p.cat_confirmada is not False
             m.cat_origen = p.cat_origen
             restaurados += 1
+    if data.previos and not restaurados:
+        db.rollback()
+        raise HTTPException(status_code=404, detail="Movimiento no encontrado")
     quitados = 0
     if data.huellas:
         tipos = (data.tipo_silencio,) if data.tipo_silencio else pendientes.SILENCIOS_QUE_OCULTAN

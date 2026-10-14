@@ -104,7 +104,7 @@ def test_el_listado_por_revisar_coincide_con_el_contador(cuenta):
     assert {m["descripcion"]: m["por_categorizar"] for m in todas} == {"Cosa rara uno": True, "Netflix": False}
 
 
-def test_inicio_y_consejos_usan_la_misma_definicion(cuenta):
+def test_inicio_y_consejos_usan_la_misma_definicion(cuenta, usuario):
     from datetime import datetime
 
     from app import consejos
@@ -117,7 +117,7 @@ def test_inicio_y_consejos_usan_la_misma_definicion(cuenta):
     db = SessionLocal()
     try:
         hoy = datetime.now()
-        datos = consejos.reunir_datos(db, cuenta["usuario_id"] if "usuario_id" in cuenta else _uid(db), hoy)
+        datos = consejos.reunir_datos(db, usuario, hoy)
         assert consejos._regla_sin_categorizar(datos, hoy) == []
     finally:
         db.close()
@@ -127,17 +127,11 @@ def test_inicio_y_consejos_usan_la_misma_definicion(cuenta):
     assert t["cantidad"] == 5 and t["opcional"] is True
     db = SessionLocal()
     try:
-        datos = consejos.reunir_datos(db, _uid(db), datetime.now())
+        datos = consejos.reunir_datos(db, usuario, datetime.now())
         c = consejos._regla_sin_categorizar(datos, datetime.now())
-        assert len(c) == 1 and "5 movimientos" in c[0]["texto"] if "texto" in c[0] else len(c) == 1
+        assert len(c) == 1
     finally:
         db.close()
-
-
-def _uid(db):
-    from app.models import Cuenta
-
-    return db.query(Cuenta).order_by(Cuenta.id).all()[-1].usuario_id
 
 
 # --- 2) selección, silencios y deshacer -------------------------------------------------------

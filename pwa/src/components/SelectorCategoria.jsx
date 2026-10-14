@@ -3,6 +3,7 @@ import { Plus, Search, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCategorias } from '../lib/CategoriasContext'
 import { claveComercio, huellaPeligrosa, patronDeComercio } from '../lib/comercio'
+import { recordarPorDefecto, textoVistaPrevia } from '../lib/porCategorizar'
 import Hoja from './Hoja'
 
 const sinTildes = (t) => (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -25,7 +26,9 @@ export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, 
   const huella = movimiento ? claveComercio(patronDeComercio(movimiento.descripcion)) : ''
   const peligro = movimiento ? huellaPeligrosa(huella) : null
   const puedeRecordar = !!movimiento && !peligro
-  const [recordar, setRecordar] = useState(true)
+  // La regla es OPCIONAL: solo viene activada si el comercio se repite 3 o más veces (compras únicas: apagada).
+  const [recordar, setRecordar] = useState(false)
+  const [tocoRecordar, setTocoRecordar] = useState(false)
   const [anteriores, setAnteriores] = useState(false)
   const [similares, setSimilares] = useState(0)
 
@@ -34,7 +37,13 @@ export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, 
     if (!puedeRecordar) return undefined
     let vigente = true
     Promise.resolve(api.similaresConteo?.(movimiento.descripcion, movimiento.id))
-      .then((r) => vigente && setSimilares(r?.conteo || 0))
+      .then((r) => {
+        if (!vigente) return
+        const otros = r?.conteo || 0
+        setSimilares(otros)
+        // Con el interruptor sin tocar, se activa solo si con este movimiento son 3 o más.
+        setRecordar((actual) => (tocoRecordar ? actual : recordarPorDefecto(otros + 1)))
+      })
       .catch(() => {})
     return () => {
       vigente = false
@@ -105,11 +114,18 @@ export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, 
                   type="checkbox"
                   checked={puedeRecordar && recordar}
                   disabled={!puedeRecordar}
-                  onChange={(e) => setRecordar(e.target.checked)}
+                  onChange={(e) => {
+                    setTocoRecordar(true)
+                    setRecordar(e.target.checked)
+                  }}
                   className="mt-0.5 w-4 h-4 accent-[var(--c-accent)]"
                 />
                 <span className="text-sm">
-                  Recordar para «{huella || patronDeComercio(movimiento.descripcion)}»
+                  Recordar para este comercio
+                  <span className="block text-xs text-ink-soft mt-0.5">«{huella || patronDeComercio(movimiento.descripcion)}»</span>
+                  {puedeRecordar && recordar && (
+                    <span className="block text-xs text-ink-soft mt-0.5" data-testid="vista-previa-regla">{textoVistaPrevia(similares)}</span>
+                  )}
                   {peligro && <span className="block text-xs text-ink-soft mt-0.5">{peligro}: solo cambio este movimiento.</span>}
                 </span>
               </label>
