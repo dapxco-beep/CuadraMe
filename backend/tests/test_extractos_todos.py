@@ -309,3 +309,11 @@ def test_la_cobertura_dice_lo_mismo_que_la_lista(limpio):
     todos = est["todos_extractos"]["items"]
     assert celda["lista"][0]["titulo"] == todos[0]["titulo"]
     assert est["todos_extractos"]["contadores"]["no_se_pudo_leer"] == 1
+
+
+def test_banco_del_titulo_usa_la_cuenta_cuando_lo_detectado_viene_en_minuscula_o_generico():
+    assert ev.banco_para_titulo("nu", "Nu Colombia") == "Nu Colombia"
+    assert ev.banco_para_titulo("generico", "Nu Colombia") == "Nu Colombia"
+    assert ev.banco_para_titulo("generico", "") == ""
+    assert ev.banco_para_titulo("Bancolombia", "Mi ahorro") == "Bancolombia"
+    assert ev.banco_para_titulo("nu", "") == "Nu"

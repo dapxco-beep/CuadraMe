@@ -431,7 +431,7 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
         extra = {
             "tipo": mejor["tipo"], "mes_fuente": mejor["mes_fuente"], "mes_deducido": bool(mejor["mes_deducido"]),
             "mes_por_confirmar": not mejor["mes"], "mes_etiqueta": ev.etiqueta_mes(mejor["mes"]),
-            "titulo": ev.titulo_extracto(banco=mejor["banco"] or mejor["cuenta"], tipo=mejor["tipo"], mes=mejor["mes"],
+            "titulo": ev.titulo_extracto(banco=ev.banco_para_titulo(mejor["banco"], mejor["cuenta"]), tipo=mejor["tipo"], mes=mejor["mes"],
                                          corte=mejor["corte"]),
             "estado_vista": vista, "estado_etiqueta": ev.ETIQUETA_ESTADO[vista],
             "resultado": ev.frase_resultado(vista, mejor["conteo"], clave_estado=mejor["clave_estado"],

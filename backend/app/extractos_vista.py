@@ -161,6 +161,17 @@ def nombre_corto_banco(banco: str) -> str:
     return re.sub(r"\s+colombia$", "", (banco or "").strip(), flags=re.IGNORECASE) or (banco or "")
 
 
+def banco_para_titulo(banco: str, cuenta: str = "") -> str:
+    """Nombre del banco para el título. Lo detectado en el PDF viene en minúscula o genérico («nu», «generico»):
+    en ese caso se usa el nombre de la cuenta de la persona (o el banco con mayúscula inicial)."""
+    b = (banco or "").strip()
+    if b and b.lower() not in ("generico", "desconocido") and not b.islower():
+        return b
+    if cuenta:
+        return cuenta
+    return "" if b.lower() in ("generico", "desconocido") else b.capitalize()
+
+
 def titulo_extracto(*, banco: str, tipo: str, mes: str | None, corte: str = "") -> str:
     """Lo primero que se lee en la fila. «Nu Colombia · Cuenta · Julio 2026» /
     «Tarjeta Nu · corte 14 jul 2026» (tarjeta con fecha de corte conocida)."""
