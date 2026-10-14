@@ -84,6 +84,29 @@ def movimientos_confirmados(db: Session, usuario_id: str) -> list[dict]:
     return [{"descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo} for m in movs]
 
 
+def decidir_categoria(
+    descripcion: str, reglas: list, modelo: dict, activas: set[str], texto_extra: str = "",
+) -> dict | None:
+    """Decisión PURA (sin base de datos) de la categoría: pago de tarjeta -> reglas
+    del usuario -> modelo aprendido -> diccionario. La usan ClasificadorUsuario y
+    el script de evaluación offline (tools/evaluar_clasificador.py), así lo que se
+    mide es exactamente lo que corre en producción."""
+    if es_pago_tarjeta(descripcion):
+        # El pago de una tarjeta no es un gasto (las compras ya se contaron).
+        return {"categoria": CATEGORIA_PAGO_TARJETA, "tipo": "expense", "confianza": 1.0,
+                "fuente": "regla_tarjeta", "origen": "regla", "razon": "es el pago de una tarjeta"}
+    r = aplicar_reglas(descripcion, reglas) or classify(descripcion, modelo)
+    if not r:
+        r = clasificar_por_diccionario(f"{descripcion} {texto_extra}".strip())
+        if r:
+            r = {**r, "categoria": _ajustar(activas, r["categoria"])}
+            if r["categoria"] == "Otros":
+                r = None  # la categoría sugerida no existe para él: mejor preguntarle
+    if not r:
+        return None
+    return {**r, "origen": origen_de(r.get("fuente"))}
+
+
 class ClasificadorUsuario:
     """ÚNICO punto donde se decide la categoría de un movimiento nuevo. Orden:
       1) reglas del usuario (huella exacta primero, luego 'contiene'),
@@ -105,20 +128,7 @@ class ClasificadorUsuario:
 
     def clasificar(self, descripcion: str, texto_extra: str = "") -> dict | None:
         """dict con categoria, tipo, confianza, fuente, origen, razon; None si no se reconoce."""
-        if es_pago_tarjeta(descripcion):
-            # El pago de una tarjeta no es un gasto (las compras ya se contaron).
-            return {"categoria": CATEGORIA_PAGO_TARJETA, "tipo": "expense", "confianza": 1.0,
-                    "fuente": "regla_tarjeta", "origen": "regla", "razon": "es el pago de una tarjeta"}
-        r = aplicar_reglas(descripcion, self.reglas) or classify(descripcion, self.modelo)
-        if not r:
-            r = clasificar_por_diccionario(f"{descripcion} {texto_extra}".strip())
-            if r:
-                r = {**r, "categoria": _ajustar(self.activas, r["categoria"])}
-                if r["categoria"] == "Otros":
-                    r = None  # la categoría sugerida no existe para él: mejor preguntarle
-        if not r:
-            return None
-        return {**r, "origen": origen_de(r.get("fuente"))}
+        return decidir_categoria(descripcion, self.reglas, self.modelo, self.activas, texto_extra)
 
     def detalle(self, descripcion: str) -> tuple[str, str | None]:
         r = self.clasificar(descripcion)
