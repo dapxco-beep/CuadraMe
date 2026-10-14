@@ -33,7 +33,7 @@ const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`
 export function carrilDeTarea(t) {
   if (t?.carril) return t.carril
   if (t?.id === 'correos_por_revisar') return 'movimientos'
-  if (['extractos_por_conciliar', 'falta_clave', 'extractos_sin_leer'].includes(t?.id)) return 'extractos'
+  if (['extractos_por_conciliar', 'falta_clave', 'extractos_sin_leer', 'cuadre_no_cuadra'].includes(t?.id)) return 'extractos'
   return null
 }
 

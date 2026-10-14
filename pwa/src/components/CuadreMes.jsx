@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { ORIENTACION, textoEstadoMes } from '../lib/cuadreExtracto'
 import CuadreExtracto from './CuadreExtracto'
+import CuadreEncadenado from './CuadreEncadenado'
 
 // Estado del cuadre por mes de UNA cuenta (cuadra / con diferencia / sin extracto). Se puede enganchar en cualquier
 // pantalla (p. ej. la cobertura mensual de Traer movimientos): solo necesita `cuentaId`.
@@ -128,6 +129,7 @@ export function TarjetaCuadreBanco({ cuentaId, moneda = 'COP', onCambio }) {
         </p>
       )}
       {!sinExtractos && <CuadreMes cuentaId={cuentaId} datos={d} className="mt-2" />}
+      <CuadreEncadenado cuentaId={cuentaId} moneda={moneda} onCambio={() => { onCambio?.(); Promise.resolve().then(() => api.cuadreCuenta(cuentaId)).then(setD).catch(() => {}) }} className="mt-3" />
       <button onClick={() => setRevisando((v) => !v)} aria-expanded={revisando}
         className="mt-3 w-full min-h-[44px] rounded-xl border border-line text-xs font-semibold">
         Revisar

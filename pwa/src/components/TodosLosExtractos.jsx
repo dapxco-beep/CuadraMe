@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, CalendarX2, CheckCircle2, ChevronDown, FileSearch, Inbox, KeyRound, Paperclip, Search } from 'lucide-react'
+import { AlertTriangle, CalendarX2, CheckCircle2, ChevronDown, FileSearch, Inbox, KeyRound, Paperclip, Scale, Search } from 'lucide-react'
 import Icono from './Icono'
 import {
   ESTADOS_VISTA, TEXTO_ACCION, agruparPorMes, estadoVista, filtrar, opcionesCuenta, textoContadores,
@@ -84,7 +84,16 @@ function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado }) {
           </span>
         )}
       </div>
-      <p className="mt-1.5"><EtiquetaEstado id={it.estado_vista} texto={it.estado_etiqueta} /></p>
+      <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <EtiquetaEstado id={it.estado_vista} texto={it.estado_etiqueta} />
+        {it.cuadre && (
+          <span data-testid="insignia-cuadre" data-cuadre={it.cuadre.estado}
+            className={`inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs font-semibold ${it.cuadre.estado === 'cuadra' ? 'text-cuadra' : it.cuadre.estado === 'sin_saldo' ? 'text-ink-soft' : 'text-accent'}`}>
+            <Icono icono={it.cuadre.estado === 'cuadra' ? CheckCircle2 : it.cuadre.estado === 'sin_saldo' ? Scale : AlertTriangle} tam="sm" />
+            {it.cuadre.texto}
+          </span>
+        )}
+      </p>
       <p className={`text-sm mt-1.5 leading-snug ${esError ? 'text-danger' : 'text-ink-soft'}`} role={esError ? 'alert' : undefined}>{it.resultado}</p>
       {it.mes_deducido && !it.mes_por_confirmar && (
         <p className="text-xs text-ink-soft mt-1">

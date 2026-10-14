@@ -4,7 +4,7 @@ import { useVolver } from '../lib/useVolver'
 import { useEstadoLista } from '../lib/useEstadoLista'
 import {
   ArrowLeft, BellRing, CheckCheck, CheckCircle2, ChevronLeft, ChevronRight, FileCheck2, FileText, KeyRound, ListChecks, Mail, Plug, RefreshCw, Tag,
-  Wallet, X, AlertTriangle, CopyCheck, Pencil,
+  Wallet, X, AlertTriangle, CopyCheck, Pencil, Scale,
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
@@ -26,6 +26,7 @@ import CorreosYaRegistrados from '../components/CorreosYaRegistrados'
 import CrearCuentaBanco from '../components/CrearCuentaBanco'
 import EstadoClavePdf, { textoEstadoClave } from '../components/EstadoClavePdf'
 import TodosLosExtractos from '../components/TodosLosExtractos'
+import CuadreEncadenado from '../components/CuadreEncadenado'
 import PuntoDePartida from '../components/PuntoDePartida'
 import { BOTON_TAREA, LEYENDA_COBERTURA, textoDetalleCelda } from '../lib/estadoTraer'
 import { FILTRO_DE_TAREA } from '../lib/extractosVista'
@@ -89,6 +90,7 @@ const ICONO_TAREA = {
   correos_por_revisar: Mail,
   extractos_sin_leer: AlertTriangle,
   posibles_duplicados: CopyCheck,
+  cuadre_no_cuadra: Scale,
 }
 
 // Lista de tareas «Por hacer» de UNA sección (o de «Otras cosas»): una tarjeta por tarea, con su botón.
@@ -424,6 +426,8 @@ export default function Sincronizacion() {
         return abrirBloque('revisar', 'sinc-categorizar')
       case 'extractos_sin_leer':
         return abrirGrupoExtractos(FILTRO_DE_TAREA.extractos_sin_leer)
+      case 'cuadre_no_cuadra':
+        return abrirBloque('extractos', 'sinc-cuadre')
       case 'posibles_duplicados':
         return navigate(t.ruta)
       default:
@@ -978,6 +982,12 @@ export default function Sincronizacion() {
           </Sub>
           </>
         )}
+
+        {/* Cuadre mes a mes por cuenta: dónde se descuadra y qué hacer */}
+        {(estado?.cuadre_mensual || []).filter((c) => c.meses?.length || c.sin_saldo?.length).map((c, i) => (
+          <CuadreEncadenado key={c.cuenta_id} id={i === 0 ? 'sinc-cuadre' : undefined} cuentaId={c.cuenta_id} moneda={c.moneda}
+            datos={c} onCambio={cargar} className="mt-5 scroll-mt-4" />
+        ))}
 
         {/* Todos los extractos: de todos los estados, del más reciente al más antiguo, con su mes */}
         <TodosLosExtractos
