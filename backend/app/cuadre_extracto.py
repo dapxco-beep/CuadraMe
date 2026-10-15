@@ -93,7 +93,7 @@ def _valor_tras(texto: str, etiquetas: list[str], largo: int = 40) -> float | No
         if not m:
             continue
         resto = texto[m.end(): m.end() + largo]
-        n = re.match(r"[\s:.\-]*" + _NUM, resto)
+        n = re.match(r"[\s:.\-+]*" + _NUM, resto)
         if n:
             v = _numero(n.group(1))
             if v is not None:
@@ -153,14 +153,42 @@ def detectar_moneda(texto: str) -> str | None:
     return None
 
 
-_ETQ_INICIAL = [r"saldo\s+anterior", r"saldo\s+inicial(?:\s+del\s+periodo)?", r"saldo\s+al\s+inicio", r"saldo\s+del\s+extracto\s+anterior"]
+_ETQ_INICIAL = [r"saldo\s+anterior", r"saldo\s+inicial(?:\s+del\s+periodo)?", r"saldo\s+al\s+inicio", r"saldo\s+del\s+extracto\s+anterior",
+                r"tu\s+dinero\s+al\s+inicio\s+del\s+mes"]  # último: Nu (cuenta de ahorros)
 _ETQ_FINAL = [r"saldo\s+final(?:\s+del\s+periodo)?", r"saldo\s+actual", r"nuevo\s+saldo", r"saldo\s+a\s+la\s+fecha\s+de\s+corte",
-              r"saldo\s+al\s+corte", r"saldo\s+al\s+cierre", r"saldo\s+al\s+final"]
+              r"saldo\s+al\s+corte", r"saldo\s+al\s+cierre", r"saldo\s+al\s+final",
+              r"tu\s+dinero\s+a\s+final\s+del\s+mes"]  # último: Nu (cuenta de ahorros)
 _ETQ_DEUDA = [r"saldo\s+total", r"deuda\s+total", r"total\s+deuda", r"saldo\s+a\s+la\s+fecha\s+de\s+corte", r"saldo\s+al\s+corte",
               r"saldo\s+final", r"nuevo\s+saldo", r"valor\s+total\s+a\s+pagar", r"total\s+a\s+pagar", r"pago\s+total"]
 _ETQ_DEUDA_INICIAL = [r"saldo\s+anterior", r"saldo\s+inicial", r"saldo\s+extracto\s+anterior"]
 _ETQ_CORTE = [r"fecha\s+de\s+corte", r"fecha\s+corte", r"fecha\s+de\s+cierre", r"corte\s+del\s+extracto", r"saldo\s+al\s+corte",
               r"hasta\s+el"]
+
+
+def _resumen_nu(t: str, ini: float | None, fin: float | None) -> dict:
+    """Extras del «Resumen de tus movimientos» de la cuenta Nu (texto ya sin tildes). En Nu el «saldo» del
+    extracto es el TOTAL (cuenta + cajitas), y en CuadraMe las cajitas son parte del saldo de la cuenta
+    (ver models_rendimientos.py), así que `saldo_final` = «a final del mes» ya es el que se compara con el
+    libro. Aquí solo se añaden, si existen, el desglose (cuenta / cajitas) y la verificación
+    inicio + entró - salió + rendimiento = final. Nunca inventa: cada clave solo está si se leyó."""
+    out: dict = {}
+    entro = _valor_tras(t, [r"lo\s+que\s+entro\s+a\s+tu\s+cuenta"])
+    salio = _valor_tras(t, [r"lo\s+que\s+salio\s+de\s+tu\s+cuenta"])
+    rend = _valor_tras(t, [r"rendimiento\s+total\s+de\s+tu\s+cuenta"])
+    en_cuenta = _valor_tras(t, [r"dinero\s+en\s+tu\s+cuenta\s+nu"])
+    en_cajitas = _valor_tras(t, [r"dinero\s+en\s+tus\s+cajitas"])
+    if en_cuenta is not None:
+        out["saldo_cuenta_principal"] = en_cuenta
+    if en_cajitas is not None:
+        out["saldo_cajitas"] = en_cajitas
+    if en_cuenta is not None and en_cajitas is not None and fin is not None:
+        out["desglose_cuadra"] = abs(en_cuenta + en_cajitas - fin) < TOLERANCIA
+    if None not in (ini, fin, entro, salio):
+        out["entradas"], out["salidas"] = abs(entro), abs(salio)
+        if rend is not None:
+            out["rendimiento"] = rend
+        out["resumen_cuadra"] = abs(ini + abs(entro) - abs(salio) + (rend or 0) - fin) < TOLERANCIA
+    return out
 
 
 def leer_saldos_extracto(texto: str, es_credito: bool = False, datos_tarjeta: dict | None = None) -> dict | None:
@@ -191,6 +219,7 @@ def leer_saldos_extracto(texto: str, es_credito: bool = False, datos_tarjeta: di
             out["saldo_inicial"] = ini
         if fin is not None:
             out["saldo_final"] = fin
+        out.update(_resumen_nu(t, ini, fin))
     if "saldo_final" not in out and "saldo_inicial" not in out:
         return None
     desde, hasta = _fechas_del_periodo(t)

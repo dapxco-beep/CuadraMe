@@ -32,7 +32,7 @@ from app.extractos_conciliados import (
     mes_del_extracto,
     periodo_en_asunto,
 )
-from app.cuentas_banco import pregunta_de_cuentas, producto_de_texto
+from app.cuentas_banco import pregunta_de_cuentas, producto_de_cuenta, producto_de_texto
 from app.extractos_gmail import (
     MAX_PDF_BYTES,
     abrir_pdf,
@@ -420,6 +420,22 @@ LOTE_PDFS = 5
 PAGINA_GMAIL = 100
 DIAS_PRIMERA_SYNC = 90
 SOLAPE_DIAS = 1
+# Los extractos llegan una vez al mes y lo ya visto se salta sin costo: su fase mira un año atrás (no solo los
+# 90 días de los gastos), si no, los meses viejos y los que se atrasaron nunca aparecen. Respeta el punto de partida.
+DIAS_EXTRACTOS = 365
+
+
+def desde_de_fase(fase: str, desde: datetime, inicio: datetime | None = None, modo: str | None = None,
+                  ref: datetime | None = None) -> datetime:
+    if fase != "extractos":
+        return desde
+    amplio = (ref or datetime.utcnow()) - timedelta(days=DIAS_EXTRACTOS)
+    if inicio:
+        amplio = inicio if modo == "historico" else max(amplio, inicio)
+    r = min(desde, amplio)
+    return max(r, inicio) if inicio else r
+
+
 MAX_CORRIDA_HORAS = 6
 FASES = ("etiqueta", "notificaciones", "extractos")
 
@@ -503,8 +519,9 @@ def _consulta_fase(fase: str, desde: datetime, pais: str = "CO") -> dict:
 
 
 def _listar(gmail, fase: str, desde: datetime, label_id: str | None, token: str | None, max_results: int,
-            pais: str = "CO") -> dict:
-    kw = _consulta_fase(fase, desde, pais)
+            pais: str = "CO", inicio: datetime | None = None, modo: str | None = None,
+            ref: datetime | None = None) -> dict:
+    kw = _consulta_fase(fase, desde_de_fase(fase, desde, inicio, modo, ref), pais)
     if fase == "etiqueta":
         kw["labelIds"] = [label_id]
     if token:
@@ -541,7 +558,7 @@ def _iniciar_corrida(gmail, sync: SyncGmail, label_id: str | None, completa: boo
     # Estimación del total (una llamada barata por fase) para la barra de progreso.
     total = 0
     for fase in fases:
-        r = _listar(gmail, fase, desde, label_id, None, 1, _pais_de(sync))
+        r = _listar(gmail, fase, desde, label_id, None, 1, _pais_de(sync), inicio, modo, ahora)
         total += int(r.get("resultSizeEstimate", len(r.get("messages", []))) or 0)
     sync.total_estimado = total
 
@@ -622,6 +639,10 @@ def _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos: se
     recibido = fecha_mensaje(msg)
     # ¿Se puede saber el periodo y la cuenta sin abrir el PDF?
     cuenta_unica = cuentas_del_banco(banco, cuentas) if banco else []
+    # El atajo es solo para el MISMO producto: «extracto de tu tarjeta Nu» no es el de la cuenta Nu.
+    prod_asunto = producto_de_texto(f"{asunto} {' '.join(a['archivo'] for a in adjuntos)}")
+    if len(cuenta_unica) == 1 and prod_asunto and producto_de_cuenta(cuenta_unica[0]) not in (prod_asunto, None):
+        cuenta_unica = []
     periodo_previo = periodo_en_asunto(asunto, recibido)
     ev = (
         evidencia_conciliado(db, usuario_id, cuenta_unica[0].id, mes_del_extracto(periodo_previo, None))
@@ -692,8 +713,9 @@ def _correr_lote(gmail, db: Session, usuario_id: str, sync: SyncGmail, label_id:
                 sync.reintento_clave_hecho = True
             from app import paises as _paises
             pais_corrida = _paises.pais_de_usuario(db, usuario_id)
+            inicio_pp, modo_pp = punto_partida.desde_para_sync(db, usuario_id)
             r = _listar(gmail, sync.fase, sync.desde, label_id, sync.cursor_token, PAGINA_GMAIL,
-                        pais_corrida)
+                        pais_corrida, inicio_pp, modo_pp, sync.iniciada_en)
             sync.cursor_token = r.get("nextPageToken")
             sync.fase_iniciada = True
             ids = [m["id"] for m in r.get("messages", [])]

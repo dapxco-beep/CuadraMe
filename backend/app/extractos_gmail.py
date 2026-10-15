@@ -17,7 +17,7 @@ from datetime import datetime
 
 import pdfplumber
 
-from app.cuentas_banco import filtrar_por_producto, producto_de_texto
+from app.cuentas_banco import filtrar_por_producto, producto_de_cuenta, producto_de_texto
 
 # ── Remitentes conocidos ────────────────────────────────────────────
 # Para ampliar la cobertura basta con agregar una línea: dominio -> nombre.
@@ -385,5 +385,11 @@ def sugerir_cuenta(banco: str, ultimos4: str, cuentas: list, texto: str = "") ->
     últimos 4 dígitos (en el alias o el nombre) y con el TIPO que insinúa el `texto`
     (tarjeta de crédito/cupo/pago mínimo -> crédito; cuenta de ahorros/Cajita -> débito).
     Solo devuelve algo si hay un ganador claro."""
-    cands, _ = candidatas_banco(banco, ultimos4, cuentas, texto)
-    return cands[0].id if len(cands) == 1 else None
+    cands, producto = candidatas_banco(banco, ultimos4, cuentas, texto)
+    if len(cands) != 1:
+        return None
+    # Una sola cuenta del banco no basta: si el extracto es de OTRO producto (p. ej. la tarjeta de crédito
+    # Nu y la persona solo tiene la cuenta Nu de ahorros), asignarlo allí taparía el extracto de esa cuenta.
+    if producto and producto_de_cuenta(cands[0]) not in (producto, None):
+        return None
+    return cands[0].id
