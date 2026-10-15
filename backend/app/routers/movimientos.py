@@ -142,7 +142,7 @@ def listar_movimientos(
         query = query.filter(pendientes.filtro_ids(db, usuario.id, ids_accesibles))
 
     filas = query.order_by(Movimiento.fecha.desc()).offset(offset).limit(limit).all()
-    pendientes.anotar(db, usuario.id, filas)  # por_categorizar: la PWA no repite la regla
+    pendientes.anotar(db, usuario.id, filas, ids_accesibles)  # por_categorizar: la PWA no repite la regla
     return dup.anotar_canales(db, filas)
 
 

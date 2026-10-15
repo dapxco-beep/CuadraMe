@@ -41,6 +41,10 @@ _SISTEMA_MIN = {n.lower() for n in NOMBRES_SISTEMA}
 SILENCIOS_QUE_OCULTAN = ("no_preguntar", "ocultar")
 
 MOTIVOS = ("marcada", "otros", "baja")
+# Regla única de Daniel: la app solo pide categorizar lo que se repite MÁS de 3 veces (>= 4) o lo que
+# el cliente marcó él mismo. El resto queda con la categoría que le asignó el modelo/reglas (o «Otros»)
+# sin pedir nada y sin contar como pendiente; sigue visible y editable en Movimientos.
+MIN_REPETICIONES_PENDIENTE = 4
 
 
 def _g(m, campo, defecto=None):
@@ -136,17 +140,29 @@ def _candidatos(db: Session, ids_cuentas):
     )
 
 
+def seleccionar(items, huellas_silenciadas=frozenset()) -> list[tuple]:
+    """[(item, motivo)] aplicando la regla única: motivo() no vacío Y (marcada por el cliente, o su
+    comercio/huella se repite >= MIN_REPETICIONES_PENDIENTE veces entre lo que espera categoría).
+    Sirve para Movimiento o dict. Es lo ÚNICO que decide qué cuenta como pendiente."""
+    con_motivo = []
+    por_huella: dict[str, int] = defaultdict(int)
+    for m in items:
+        mot = motivo(m, huellas_silenciadas)
+        if mot:
+            con_motivo.append((m, mot))
+            por_huella[huella_de(_g(m, "descripcion", ""))] += 1
+    return [
+        (m, mot) for m, mot in con_motivo
+        if mot == "marcada" or por_huella[huella_de(_g(m, "descripcion", ""))] >= MIN_REPETICIONES_PENDIENTE
+    ]
+
+
 def pendientes(db: Session, usuario_id: str, ids_cuentas) -> list[tuple[Movimiento, str]]:
     """[(movimiento, motivo)] de lo que espera categoría, del más reciente al más antiguo."""
     if not ids_cuentas:
         return []
     sil = silencios(db, usuario_id)
-    salida = []
-    for m in _candidatos(db, ids_cuentas).order_by(Movimiento.fecha.desc()).all():
-        mot = motivo(m, sil)
-        if mot:
-            salida.append((m, mot))
-    return salida
+    return seleccionar(_candidatos(db, ids_cuentas).order_by(Movimiento.fecha.desc()).all(), sil)
 
 
 def ids_pendientes(db: Session, usuario_id: str, ids_cuentas) -> list[str]:
@@ -193,8 +209,8 @@ def grupos(lista: list[tuple[Movimiento, str]], limite_ids: int = 300) -> list[d
 
 
 def es_relevante(g: dict, total_monto: float) -> bool:
-    """Vale la pena preguntar por él: se repite (3 o más) o pesa (>= 10 % de lo pendiente)."""
-    return g["conteo"] >= 3 or (total_monto > 0 and g["monto_total"] >= 0.10 * total_monto)
+    """Todo grupo pendiente ya cumplió la regla (>= 4 repeticiones o marcado por el cliente)."""
+    return g["conteo"] >= MIN_REPETICIONES_PENDIENTE or "marcada" in g.get("motivos", ())
 
 
 def resumen(db: Session, usuario_id: str, ids_cuentas, limite: int = 10, todos: bool = False) -> dict:
@@ -222,11 +238,15 @@ def resumen(db: Session, usuario_id: str, ids_cuentas, limite: int = 10, todos: 
     }
 
 
-def anotar(db: Session, usuario_id: str, movs) -> None:
-    """Pone `por_categorizar` (bool) en cada movimiento de una lista, para que la PWA no repita la regla."""
-    sil = silencios(db, usuario_id)
+def anotar(db: Session, usuario_id: str, movs, ids_cuentas=None) -> None:
+    """Pone `por_categorizar` (bool) en cada movimiento de una lista, para que la PWA no repita la regla.
+    Con ids_cuentas usa el universo completo (la repetición se cuenta sobre todos sus movimientos)."""
+    if ids_cuentas:
+        ids = {m.id for m, _ in pendientes(db, usuario_id, ids_cuentas)}
+    else:
+        ids = {m.id for m, _ in seleccionar(movs, silencios(db, usuario_id))}
     for m in movs:
-        m.por_categorizar = motivo(m, sil) is not None
+        m.por_categorizar = m.id in ids
 
 
 def filtro_ids(db: Session, usuario_id: str, ids_cuentas):
@@ -235,4 +255,4 @@ def filtro_ids(db: Session, usuario_id: str, ids_cuentas):
 
 
 __all__ = ["motivo", "pendientes", "conteo", "resumen", "huella_de", "silenciar", "quitar_silencios",
-           "ORIGEN_DEJADA", "ORIGEN_MARCADA"]
+           "seleccionar", "MIN_REPETICIONES_PENDIENTE", "ORIGEN_DEJADA", "ORIGEN_MARCADA"]

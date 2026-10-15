@@ -330,8 +330,8 @@ def _regla_sin_categorizar(d, hoy):
 
     sil = set(d.get("silenciadas") or ())
     sin = [
-        m for m in d.get("movimientos", [])
-        if m["fecha"] >= hoy - timedelta(days=60) and pendientes.motivo(m, sil)
+        m for m, _ in pendientes.seleccionar(
+            [m for m in d.get("movimientos", []) if m["fecha"] >= hoy - timedelta(days=60)], sil)
     ]
     if len(sin) < MIN_SIN_CATEGORIZAR:
         return []
@@ -340,8 +340,8 @@ def _regla_sin_categorizar(d, hoy):
         f"sin-categorizar:{_mes(hoy)}", "sin_categorizar", 3, "Puedes ordenar lo que más pesa",
         f"Hay {len(sin)} movimientos sin categoría clara"
         + (f" (gastos por {_pesos(total)})" if total else "")
-        + ". No hace falta categorizarlos todos: con los comercios que más pesan o se repiten ya ves "
-        "en qué se va tu plata. El resto puede quedarse como está.",
+        + ". Son comercios que se repiten 4 veces o más; el resto "
+        "puede quedarse como está.",
         f"{len(sin)} movimientos", "Ver lo que más pesa", "/categorizar", "revisar-extractos")]
 
 

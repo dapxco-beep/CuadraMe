@@ -229,12 +229,11 @@ def test_estado_grilla_y_tareas_con_numeros_a_mano():
     ]
     # Tareas, en orden y solo con cantidad > 0:
     #   falta_clave 1 | por conciliar 2 (m3 + Davivienda) | sin_cuenta 2 bancos |
-    #   categorizar 1 (solo Otros: lo de una regla ya está categorizado) | confirmar 1 (Wallet) | correos 3 (2 Daviplata + 1 Nequi)
+    #   categorizar 0 (un solo «Otros»: no llega a 4 repeticiones) | confirmar 1 (Wallet) | correos 3 (2 Daviplata + 1 Nequi)
     assert [(t["id"], t["cantidad"]) for t in d["tareas"]] == [
         ("falta_clave", 1),
         ("extractos_por_conciliar", 2),
         ("sin_cuenta", 2),
-        ("movimientos_por_categorizar", 1),
         ("movimientos_por_confirmar", 1),
         ("correos_por_revisar", 3),
     ]
@@ -264,7 +263,7 @@ def test_por_categorizar_pagina_y_aprende_la_regla_del_comercio():
     ahora = ahora_co()
     db = SessionLocal()
     try:
-        for i in range(3):
+        for i in range(4):  # 4 repeticiones del comercio: ya se pregunta
             db.add(_mov(uid, cuenta, ahora - timedelta(days=20 + i), "Otros", desc=f"PANADERIA LA 80 {i}"))
         db.add(_mov(uid, cuenta, ahora - timedelta(days=20), "Comida"))  # confirmado: no entra
         db.add(_mov(uid, cuenta, ahora - timedelta(days=21), "Transporte", conf=False, desc="Uber"))  # auto sin confirmar
@@ -274,12 +273,12 @@ def test_por_categorizar_pagina_y_aprende_la_regla_del_comercio():
         db.close()
 
     p1 = client.get("/sincronizacion/por-categorizar?limite=2").json()
-    # Solo las 3 de «Otros»: el Uber (regla) ya está categorizado con confianza alta, no es pendiente.
-    assert p1["total"] == 3 and len(p1["items"]) == 2 and p1["offset"] == 0
+    # Solo las 4 de «Otros» (se repiten 4 veces): el Uber (regla) ya está categorizado con confianza alta.
+    assert p1["total"] == 4 and len(p1["items"]) == 2 and p1["offset"] == 0
     p2 = client.get("/sincronizacion/por-categorizar?limite=2&offset=2").json()
-    assert len(p2["items"]) == 1
+    assert len(p2["items"]) == 2
     todos = {m["id"]: m for m in p1["items"] + p2["items"]}
-    assert len(todos) == 3 and "Wallet" not in {m["descripcion"] for m in todos.values()}
+    assert len(todos) == 4 and "Wallet" not in {m["descripcion"] for m in todos.values()}
     assert all(m["patron"] for m in todos.values())
 
     # Responder con 'recordar para este comercio' reutiliza el endpoint existente:
@@ -288,7 +287,7 @@ def test_por_categorizar_pagina_y_aprende_la_regla_del_comercio():
     r = client.post(f"/movimientos/{panaderia['id']}/recategorizar-comercio", json={
         "categoria": "Comida", "aplicar_a_todos": True, "patron": "PANADERIA LA 80",
     })
-    assert r.status_code == 200 and r.json()["actualizados"] == 3
+    assert r.status_code == 200 and r.json()["actualizados"] == 4
     db = SessionLocal()
     try:
         regla = db.query(ReglaCategoria).filter(ReglaCategoria.usuario_id == uid).one()
@@ -296,7 +295,7 @@ def test_por_categorizar_pagina_y_aprende_la_regla_del_comercio():
         assert (regla.patron, regla.categoria) == ("panaderia", "Comida")
     finally:
         db.close()
-    # La cola bajó de 3 a 0.
+    # La cola bajó de 4 a 0.
     despues = client.get("/sincronizacion/por-categorizar").json()
     assert despues["total"] == 0
     assert not [t for t in client.get("/sincronizacion/estado").json()["tareas"] if t["id"] == "movimientos_por_categorizar"]

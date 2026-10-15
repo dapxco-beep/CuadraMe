@@ -91,7 +91,7 @@ from app.models import Movimiento  # noqa: E402
 
 # Umbral único: una regla se sugiere (o «recordar» viene activado) solo si el comercio aparece MÁS de 3
 # veces (>= 4) en los movimientos del propio usuario. La PWA lo recibe como `recomendada`.
-MIN_REPETICIONES_REGLA = 4
+MIN_REPETICIONES_REGLA = pendientes.MIN_REPETICIONES_PENDIENTE  # = 4, una sola constante
 MIN_MESES_RECURRENTE = 3
 MAX_SUGERENCIAS = 30
 
