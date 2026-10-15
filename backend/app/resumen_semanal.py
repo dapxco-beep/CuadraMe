@@ -12,8 +12,7 @@ from sqlalchemy.orm import Session
 from app import punto_partida
 from app.compartidos import cuentas_ids_accesibles
 from app.config import settings
-from app.contabilidad import gastos_por_categoria, tipos_cuenta_de, tipos_efectivos
-from app.fx import convertir_a_cop
+from app.contabilidad import ConvertidorBase, gastos_por_categoria, moneda_base_de, tipos_cuenta_de, tipos_efectivos
 from app.models import Cuenta, Movimiento
 from app.recordatorios import presupuestos_altos, tarjetas_por_vencer
 
@@ -31,7 +30,7 @@ def datos_semana(db: Session, usuario_id: str, hoy: datetime) -> dict:
     """Todo lo que lleva el correo de UN usuario. `vacio` = no hay nada que contar
     (sin gastos ni avisos): en ese caso no se manda correo."""
     ids = cuentas_ids_accesibles(db, usuario_id)
-    por_cat = gastos_por_categoria(db, ids, hoy - timedelta(days=DIAS_SEMANA)) if ids else {}
+    por_cat = gastos_por_categoria(db, ids, hoy - timedelta(days=DIAS_SEMANA), base=moneda_base_de(db, usuario_id)) if ids else {}
     ordenadas = sorted(por_cat.items(), key=lambda kv: -kv[1])
     total = sum(por_cat.values())
     datos = {
@@ -157,6 +156,7 @@ def comparativo_push(db: Session, usuario_id: str, ids_cuentas: list[str], ahora
     inicio_ant = ahora - timedelta(days=2 * DIAS_SEMANA)
     inicio_pp = punto_partida.fecha_inicio(db, usuario_id)
     monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_cuentas)).all()}
+    conv = ConvertidorBase(moneda_base_de(db, usuario_id))
     # 3 días antes: solo para emparejar traslados del borde (igual que gastos_por_categoria).
     movs = (db.query(Movimiento)
             .filter(Movimiento.cuenta_id.in_(ids_cuentas), Movimiento.fecha >= inicio_ant - timedelta(days=3),
@@ -171,12 +171,12 @@ def comparativo_push(db: Session, usuario_id: str, ids_cuentas: list[str], ahora
     for m in semana:
         if te[m.id] == "expense":
             cat = m.categoria or "Otros"
-            por_cat[cat] = por_cat.get(cat, 0.0) + convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
+            por_cat[cat] = por_cat.get(cat, 0.0) + conv(m.monto, monedas.get(m.cuenta_id, "COP"))
     gastos = sum(por_cat.values())
     anterior = None
     if inicio_pp is None or inicio_pp <= inicio_ant:
         anterior = sum(
-            convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
+            conv(m.monto, monedas.get(m.cuenta_id, "COP"))
             for m in movs if inicio_ant <= m.fecha < inicio_sem and te[m.id] == "expense")
     top = max(por_cat.items(), key=lambda kv: kv[1])[0] if por_cat else None
     return {"gastos": gastos, "anterior": anterior, "top": top, "movimientos": len(semana)}

@@ -514,17 +514,18 @@ def _inversiones_de(db, usuario_id: str, hoy: datetime) -> dict:
 def reunir_datos(db, usuario_id: str, hoy: datetime) -> dict:
     from app import contabilidad as cont
     from app.compartidos import cuentas_ids_accesibles
-    from app.fx import convertir_a_cop
+    from app.contabilidad import ConvertidorBase, moneda_base_de
     from app.models import Cuenta, Deuda, Meta, Movimiento, Presupuesto, Recurrente
     from app.tarjetas import calc_tarjeta, extractos_guardados, movimientos_tras_corte
 
     ids = cuentas_ids_accesibles(db, usuario_id)
     cuentas_db = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all() if ids else []
     monedas = {c.id: c.moneda or "COP" for c in cuentas_db}
+    conv = ConvertidorBase(moneda_base_de(db, usuario_id))
 
     def cop(monto, cuenta_id):
         mon = monedas.get(cuenta_id, "COP")
-        return float(monto or 0) if mon == "COP" else convertir_a_cop(float(monto or 0), mon)
+        return conv(float(monto or 0), mon)
 
     guardados = extractos_guardados(db, [c.id for c in cuentas_db if c.tipo == "credito"])
     cuentas = []

@@ -344,3 +344,15 @@ export function totalesIngresosGastos(movs, ctx = {}, filtro = () => true) {
   }
   return { ingresos, gastos, balance: ingresos - gastos, tasaAhorro: ingresos > 0 ? ((ingresos - gastos) / ingresos) * 100 : null }
 }
+
+// Moneda base: espejo de a_base() en backend/app/contabilidad.py. `tasas` = {MONEDA: unidades de base
+// por 1 de esa moneda}. Devuelve [valor, convertido]; sin tasa NO se suma a ciegas (convertido=false).
+export function aBase(monto, origen, base, tasas = {}) {
+  const b = String(base || 'COP').toUpperCase()
+  const o = String(origen || b).toUpperCase()
+  const v = Number(monto) || 0
+  if (o === b) return [v, true]
+  const t = tasas[o]
+  if (!t || t <= 0) return [v, false]
+  return [v * t, true]
+}

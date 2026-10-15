@@ -1,0 +1,11 @@
+{
+  "casos": [
+    {"nombre": "misma moneda no toca el monto", "monto": 1500, "origen": "COP", "base": "COP", "tasas": {}, "esperado": [1500, true]},
+    {"nombre": "origen vacio cuenta como base", "monto": 700, "origen": null, "base": "COP", "tasas": {}, "esperado": [700, true]},
+    {"nombre": "USD a COP con tasa", "monto": 10, "origen": "USD", "base": "COP", "tasas": {"USD": 4000}, "esperado": [40000, true]},
+    {"nombre": "minusculas se normalizan", "monto": 2, "origen": "usd", "base": "cop", "tasas": {"USD": 4000}, "esperado": [8000, true]},
+    {"nombre": "sin tasa se marca y no se convierte", "monto": 10, "origen": "EUR", "base": "COP", "tasas": {"USD": 4000}, "esperado": [10, false]},
+    {"nombre": "tasa invalida cuenta como sin tasa", "monto": 10, "origen": "USD", "base": "COP", "tasas": {"USD": 0}, "esperado": [10, false]},
+    {"nombre": "base distinta de COP", "monto": 4000, "origen": "COP", "base": "MXN", "tasas": {"COP": 0.0045}, "esperado": [18, true]}
+  ]
+}

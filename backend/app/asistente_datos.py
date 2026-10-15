@@ -14,7 +14,7 @@ from app.asistente import MESES, sanitizar_dato
 from app.asistente_calc import gasto_por_categoria
 from app.compartidos import cuentas_ids_accesibles
 from app.finanzas import calc_progreso_meta
-from app.fx import convertir_a_cop
+from app.contabilidad import ConvertidorBase, moneda_base_de
 from app.informe_datos import cargar_movs_efectivos
 from app.models import Cuenta, Deuda, Meta, Presupuesto, Recurrente
 from app.tarjetas import calc_tarjeta
@@ -36,6 +36,8 @@ def cargar_datos(db: Session, usuario_id: str, hoy: datetime) -> dict:
     para la IA se usa `contexto_ia`."""
     ids = cuentas_ids_accesibles(db, usuario_id)
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()
+    base = moneda_base_de(db, usuario_id)
+    conv = ConvertidorBase(base)
 
     # Un año de historia para poder responder por cualquier mes reciente
     # ("¿en qué gasté más en julio?"). Los tipos ya son los EFECTIVOS: sin pagos
@@ -75,7 +77,7 @@ def cargar_datos(db: Session, usuario_id: str, hoy: datetime) -> dict:
         if c.tipo == "credito":
             t = calc_tarjeta(c, hoy)
             if t["proximo_pago"] and t["proximo_pago"][:7] == hoy.strftime("%Y-%m") and t["cupo_usado"] > 0:
-                cuotas_pendientes += convertir_a_cop(t["pago_minimo_estimado"], c.moneda)
+                cuotas_pendientes += conv(t["pago_minimo_estimado"], c.moneda)
 
     metas = db.query(Meta).filter(Meta.usuario_id == usuario_id, Meta.activa.is_(True)).all()
     aportes_metas = 0.0
@@ -86,12 +88,14 @@ def cargar_datos(db: Session, usuario_id: str, hoy: datetime) -> dict:
 
     presupuestos = db.query(Presupuesto).filter(Presupuesto.usuario_id == usuario_id, Presupuesto.activo.is_(True)).all()
 
-    saldo_liquido = sum(convertir_a_cop(c.saldo, c.moneda) for c in cuentas if c.tipo in TIPOS_LIQUIDOS)
+    saldo_liquido = sum(conv(c.saldo, c.moneda) for c in cuentas if c.tipo in TIPOS_LIQUIDOS)
 
     return {
         "hoy": hoy,
         "cuentas": [{"id": c.id, "nombre": c.nombre, "tipo": c.tipo, "moneda": c.moneda} for c in cuentas],
         "saldo_liquido": saldo_liquido,
+        "moneda_base": base,
+        "monedas_sin_tasa": sorted(conv.sin_tasa),
         "movs": movs,
         "ingreso_mensual": ingreso_mensual,
         "gasto_mensual": gasto_mensual,
