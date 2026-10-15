@@ -14,12 +14,13 @@ from sqlalchemy.orm import Session
 
 from app.crons import reclamar_marca
 from app.extractos_gmail import banco_por_remitente, es_aviso_no_transaccion, es_notificacion_transaccion
+from app.gmail_extract import extraer_monto
 from app.models import CorreoGasto, SyncGmail
 
 logger = logging.getLogger(__name__)
 
 CLAVE = "reevaluar_ignorados"
-VERSION = "v2-sin-avisos-ni-cifras-sueltas"  # súbela cuando el lector de montos mejore y valga la pena releer
+VERSION = "v3-sin-nit-ni-documentos"  # súbela cuando el lector de montos mejore y valga la pena releer
 
 
 def candidatos(db: Session, usuario_id: str) -> list[CorreoGasto]:
@@ -44,6 +45,25 @@ def avisos_pendientes(db: Session, usuario_id: str) -> list[CorreoGasto]:
     return [f for f in filas if es_aviso_no_transaccion(f.asunto or "", f.snippet or "")]
 
 
+def corregir_montos_de_documentos(db: Session, usuario_id: str) -> int:
+    """Pendientes cuyo monto era en realidad un NIT, número de cuenta o teléfono. Solo toca los que el lector
+    viejo leía así (mismo monto sin sanear) y el nuevo lee distinto: con otro monto lo corrige; sin monto
+    los pasa a «ignorado» (no se borran, para que no resuciten)."""
+    n = 0
+    filas = db.query(CorreoGasto).filter(CorreoGasto.usuario_id == usuario_id, CorreoGasto.estado == "pendiente").all()
+    for f in filas:
+        texto = f"{f.asunto or ''} {f.snippet or ''}"
+        viejo = extraer_monto(texto, sanear=False)
+        nuevo = extraer_monto(texto)
+        if viejo and abs(viejo - (f.monto or 0)) < 0.01 and abs(nuevo - viejo) >= 0.01:
+            if nuevo > 0:
+                f.monto = nuevo
+            else:
+                f.estado = "ignorado"
+            n += 1
+    return n
+
+
 def preparar(db: Session, usuario_id: str) -> int:
     """Devuelve cuántos correos se soltaron para releerlos. Nunca lanza: una falla aquí no debe
     impedir la sincronización."""
@@ -52,6 +72,7 @@ def preparar(db: Session, usuario_id: str) -> int:
             return 0
         for f in avisos_pendientes(db, usuario_id):
             f.estado = "ignorado"  # no se borra: así no se vuelve a leer ni resucita
+        corregir_montos_de_documentos(db, usuario_id)
         filas = candidatos(db, usuario_id)
         for f in filas:
             db.delete(f)
