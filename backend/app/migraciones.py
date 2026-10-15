@@ -26,6 +26,7 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'ALTER TABLE presupuestos ADD COLUMN IF NOT EXISTS ultima_alerta_mes VARCHAR',
             'ALTER TABLE historial_extractos ADD COLUMN IF NOT EXISTS motivo_error VARCHAR NULL',
             'ALTER TABLE extractos_correo ADD COLUMN IF NOT EXISTS motivo_error VARCHAR NULL',
+            'ALTER TABLE extractos_correo ADD COLUMN IF NOT EXISTS datos_cuerpo VARCHAR NULL',
             'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS gmail_leer_movimientos BOOLEAN DEFAULT TRUE',
             'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS gmail_leer_extractos BOOLEAN DEFAULT TRUE',
             'ALTER TABLE correos_gastos ADD COLUMN IF NOT EXISTS fecha_movimiento TIMESTAMP',

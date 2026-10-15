@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import Literal, Optional
 
@@ -792,6 +793,18 @@ class ExtractoCorreoOut(BaseModel):
     pregunta_cuenta: Optional[str] = None
     # Solo si pide clave (o ya se abrió con ella): 'abrio' | 'no_abrio' | 'por_probar' | 'sin_clave'.
     clave_estado: Optional[str] = None
+    # Solo tarjeta: lo que decía el CUERPO del aviso (pago_minimo, periodo_facturado, fecha_corte, fecha_limite).
+    datos_cuerpo: Optional[dict] = None
+
+    @field_validator("datos_cuerpo", mode="before")
+    @classmethod
+    def _datos_cuerpo_json(cls, v):
+        if isinstance(v, str):
+            try:
+                v = json.loads(v)
+            except ValueError:
+                return None
+        return v if isinstance(v, dict) else None
 
     class Config:
         from_attributes = True

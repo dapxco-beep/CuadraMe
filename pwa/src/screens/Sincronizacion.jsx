@@ -26,6 +26,7 @@ import CorreosYaRegistrados from '../components/CorreosYaRegistrados'
 import CrearCuentaBanco from '../components/CrearCuentaBanco'
 import EstadoClavePdf, { textoEstadoClave } from '../components/EstadoClavePdf'
 import TodosLosExtractos from '../components/TodosLosExtractos'
+import BuscarExtractoPorAsunto from '../components/BuscarExtractoPorAsunto'
 import CuadreEncadenado from '../components/CuadreEncadenado'
 import PuntoDePartida from '../components/PuntoDePartida'
 import { BOTON_TAREA, LEYENDA_COBERTURA, textoDetalleCelda } from '../lib/estadoTraer'
@@ -968,6 +969,8 @@ export default function Sincronizacion() {
               </div>
             )}
 
+            <BuscarExtractoPorAsunto onAgregado={cargar} />
+
             {ignorados === null ? (
               <button onClick={verIgnorados} className="text-xs text-ink-soft mt-3 underline min-h-[32px]">Ver extractos ignorados</button>
             ) : (
@@ -1304,6 +1307,12 @@ function FilaExtracto({
   const banco = ex.banco || BANCO_SIN_IDENTIFICAR
   const sinBanco = !ex.banco
   const puedeConciliar = ex.estado === 'nuevo'
+  // Correo de tarjeta de crédito y la persona no tiene una cuenta de crédito de ese banco: no se oculta, se avisa.
+  const marca = (ex.banco || '').toLowerCase().split(/\s+/)[0]
+  const faltaTarjeta = productoDeTexto(`${ex.asunto || ''} ${ex.archivo || ''}`) === 'credito'
+    && !ex.cuenta_sugerida_id
+    && !cuentas.some((c) => c.tipo === 'credito' && (!marca || (c.nombre || '').toLowerCase().includes(marca)))
+  const nombreCorto = (b) => b.replace(/\s*colombia$/i, '')
   return (
     <div className="rounded-2xl bg-paper p-3.5" data-testid={`extracto-${ex.id}`}>
       <div className="flex items-start gap-3">
@@ -1316,6 +1325,22 @@ function FilaExtracto({
           <p className={`text-xs font-medium mt-0.5 ${ex.estado === 'falta_clave' || ex.estado === 'error' ? 'text-danger' : ex.estado === 'procesado' ? 'text-cuadra' : 'text-accent'}`}>
             {textoEstadoExtracto(ex)}
           </p>
+          {ex.datos_cuerpo && (
+            <p className="text-xs text-ink-soft mt-0.5" data-testid="datos-cuerpo">
+              Según el correo:{' '}
+              {[
+                ex.datos_cuerpo.pago_minimo != null && `pago mínimo $${Math.round(ex.datos_cuerpo.pago_minimo).toLocaleString('es-CO')}`,
+                ex.datos_cuerpo.periodo_facturado && `período ${ex.datos_cuerpo.periodo_facturado}`,
+                ex.datos_cuerpo.fecha_corte && `corte ${ex.datos_cuerpo.fecha_corte}`,
+                ex.datos_cuerpo.fecha_limite && `pagar antes del ${ex.datos_cuerpo.fecha_limite}`,
+              ].filter(Boolean).join(' · ')}
+            </p>
+          )}
+          {faltaTarjeta && (
+            <p className="text-xs text-ink-soft mt-0.5" data-testid="falta-cuenta-tarjeta">
+              Es el extracto de tu tarjeta de crédito {ex.banco ? nombreCorto(ex.banco) : ''}: crea tu cuenta de tarjeta para conciliarlo.
+            </p>
+          )}
           {ex.estado === 'falta_clave' && ex.clave_estado === 'no_abrio' && (
             <p className="text-xs text-danger mt-0.5" data-testid="clave-no-abrio">
               La clave guardada no abrió este extracto: revísala.

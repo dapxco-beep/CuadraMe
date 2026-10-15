@@ -379,6 +379,76 @@ def candidatas_banco(banco: str, ultimos4: str, cuentas: list, texto: str = "") 
     return cands, producto
 
 
+# ── Datos del CUERPO del correo de la tarjeta (sin abrir el PDF) ─────────────────────────────────
+_MES_PAL = r"(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)"
+_DIA_MES = rf"(\d{{1,2}}\s+(?:de\s+)?{_MES_PAL}(?:\s+(?:de[l]?\s+)?20\d{{2}})?)"
+
+
+def texto_cuerpo(msg: dict, tope: int = 20000) -> str:
+    """Texto plano del cuerpo del correo (text/plain; si no hay, el HTML sin etiquetas). Solo para leer
+    unos pocos datos al vuelo: el cuerpo NO se guarda."""
+    import html as _html
+
+    plano, web = [], []
+
+    def recorrer(parte: dict):
+        cuerpo = (parte.get("body") or {}).get("data")
+        tipo = (parte.get("mimeType") or "").lower()
+        if cuerpo and tipo in ("text/plain", "text/html"):
+            try:
+                t = base64.urlsafe_b64decode(cuerpo + "=" * (-len(cuerpo) % 4)).decode("utf-8", "replace")
+            except Exception:  # noqa: BLE001
+                t = ""
+            (plano if tipo == "text/plain" else web).append(t)
+        for hija in parte.get("parts", []) or []:
+            recorrer(hija)
+
+    recorrer(msg.get("payload", {}) or {})
+    if plano:
+        t = "\n".join(plano)
+    else:
+        t = _html.unescape(re.sub(r"<[^>]+>", " ", "\n".join(web)))
+    return re.sub(r"[ \t\r\f\v ]+", " ", t)[:tope]
+
+
+def datos_cuerpo_tarjeta(texto: str) -> dict | None:
+    """Pago mínimo, período facturado, fecha de corte y fecha límite que trae el CUERPO del aviso de la
+    tarjeta de crédito. Solo lo que tiene etiqueta clara; las fechas se guardan tal cual vienen (sin año
+    no se inventa). None si no hay nada o el correo no habla de una tarjeta."""
+    from app.extracto_tarjeta import leer_datos_tarjeta
+
+    t = _sin_acentos(texto or "")
+    if "tarjeta" not in t:
+        return None
+    out: dict = {}
+    pm = leer_datos_tarjeta(texto).get("pago_minimo")
+    if pm:
+        out["pago_minimo"] = pm
+    m = re.search(rf"periodo\s+facturado\s*[:\-]?\s*{_DIA_MES}\s*(?:-|–|a|al|hasta)\s*{_DIA_MES}", t)
+    if m:
+        out["periodo_facturado"] = f"{m.group(1)} - {m.group(2)}"
+    m = re.search(rf"fecha\s+de\s+corte\s*[:\-]?\s*{_DIA_MES}", t)
+    if m:
+        out["fecha_corte"] = m.group(1)
+    m = re.search(rf"fecha\s+limite\s+de\s+pago\s*[:\-]?\s*{_DIA_MES}", t)
+    if m:
+        out["fecha_limite"] = m.group(1)
+    return out or None
+
+
+def asunto_para_gmail(texto: str, maximo: int = 80) -> str | None:
+    """Texto del cliente -> frase segura para `subject:"…"`. Sin comillas, barras, llaves, paréntesis ni
+    caracteres de control: dentro de la frase nada se interpreta como operador de Gmail. None si queda
+    demasiado corto."""
+    t = re.sub(r"[\x00-\x1f\x7f\"\\{}()<>]", " ", texto or "")
+    t = re.sub(r"\s+", " ", t).strip()[:maximo].strip()
+    return t if len(t) >= 3 else None
+
+
+def construir_query_asunto(asunto: str, dias: int = 365) -> str:
+    return f'has:attachment filename:pdf newer_than:{dias}d subject:"{asunto}"'
+
+
 def sugerir_cuenta(banco: str, ultimos4: str, cuentas: list, texto: str = "") -> str | None:
     """Elige la cuenta del usuario que mejor encaja con el extracto/correo. Compara
     el nombre del banco (sin acentos); si el banco tiene varias cuentas desempata con los
