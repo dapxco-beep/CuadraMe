@@ -170,6 +170,18 @@ export default function CuadreEncadenado({ cuentaId, moneda = 'COP', datos = nul
     return () => { vigente = false }
   }, [cuentaId, datos])
 
+  // Saldos que la app puede leer sola (se vuelve a traer el extracto del correo): se piden sin botón, una vez.
+  const releyendo = !!d?.sin_saldo?.some((s) => s.releyendo)
+  const [lecturaHecha, setLecturaHecha] = useState(false)
+  useEffect(() => {
+    if (!releyendo || lecturaHecha) return undefined
+    let vigente = true
+    Promise.resolve().then(() => api.cuadreReleerSaldos())
+      .catch(() => {})
+      .then(() => { if (vigente) { setLecturaHecha(true); cargar() } })
+    return () => { vigente = false }
+  }, [releyendo, lecturaHecha, cargar])
+
   if (!d || (!d.meses?.length && !d.sin_saldo?.length)) return null
   const cur = d.moneda || moneda
   const filas = aFilas(d.meses || [])
@@ -186,7 +198,9 @@ export default function CuadreEncadenado({ cuentaId, moneda = 'COP', datos = nul
 
       {d.sin_saldo?.length > 0 && (
         <div className="mt-2 flex flex-col gap-2">
-          {d.sin_saldo.map((s) => <SaldoAMano key={s.historial_id} item={s} moneda={cur} onGuardado={hecho} />)}
+          {d.sin_saldo.map((s) => (s.releyendo && !lecturaHecha
+            ? <p key={s.historial_id} className="rounded-xl bg-paper-raised p-3 text-xs text-ink-soft" role="status" data-testid="leyendo-saldos">Leyendo los saldos de tus extractos…</p>
+            : <SaldoAMano key={s.historial_id} item={s.releyendo ? { ...s, texto: 'No pude leer el saldo de este extracto. Escríbelo una vez y listo.' } : s} moneda={cur} onGuardado={hecho} />))}
         </div>
       )}
 

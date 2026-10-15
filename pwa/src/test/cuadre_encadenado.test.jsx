@@ -80,12 +80,23 @@ describe('CuadreEncadenado', () => {
     api.cuadreSaldos.mockResolvedValue({ ok: true })
     api.cuadreEncadenado.mockResolvedValue({ ...DATOS, meses: [], sin_saldo: [] })
     const datos = { ...DATOS, meses: [], resumen: null, impacto: null, saldo_corregido: null,
-      sin_saldo: [{ historial_id: 'hn', fecha_sugerida: '2026-09-30', texto: 'Este extracto no trae el saldo y no lo invento. Escribe el saldo que dice tu extracto al 30 sep 2026 y puedo verificar el mes.' }] }
+      sin_saldo: [{ historial_id: 'hn', fecha_sugerida: '2026-09-30', texto: 'No pude leer el saldo de este extracto. Escríbelo una vez y listo.' }] }
     montar(<CuadreEncadenado cuentaId="c1" datos={datos} />)
-    expect(screen.getByText(/no lo invento/)).toBeInTheDocument()
+    expect(screen.getByText(/No pude leer el saldo/)).toBeInTheDocument()
     await u.type(screen.getByLabelText(/Saldo del extracto/), '1250000')
     await u.click(screen.getByRole('button', { name: 'Guardar saldo' }))
     await waitFor(() => expect(api.cuadreSaldos).toHaveBeenCalledWith({ historial_id: 'hn', saldo_final: 1250000, fecha_corte: '2026-09-30', confirmar: true }))
+  })
+
+  it('si hay saldos por releer los lee sola, sin pedir nada a mano, y luego recarga', async () => {
+    api.cuadreReleerSaldos = vi.fn().mockResolvedValue({ leidos: 1 })
+    api.cuadreEncadenado.mockResolvedValue({ ...DATOS, meses: [], sin_saldo: [] })
+    const datos = { ...DATOS, meses: [], resumen: null, impacto: null, saldo_corregido: null,
+      sin_saldo: [{ historial_id: 'hn', fecha_sugerida: '2026-09-30', releyendo: true, texto: 'Leyendo los saldos de tus extractos…' }] }
+    montar(<CuadreEncadenado cuentaId="c1" datos={datos} />)
+    expect(screen.getByTestId('leyendo-saldos')).toBeInTheDocument()
+    expect(screen.queryByTestId('saldo-a-mano')).toBeNull()
+    await waitFor(() => expect(api.cuadreReleerSaldos).toHaveBeenCalledTimes(1))
   })
 
   it('formatea el cambio del mes con signo', () => {

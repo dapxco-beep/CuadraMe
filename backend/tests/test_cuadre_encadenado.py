@@ -203,7 +203,7 @@ def test_extracto_sin_saldo_pide_escribirlo_y_se_guarda_como_manual():
         db.close()
     r = _enc(cuenta)
     assert r["meses"] == [] and len(r["sin_saldo"]) == 1
-    assert "no lo invento" in r["sin_saldo"][0]["texto"] and "Escribe el saldo" in r["sin_saldo"][0]["texto"]
+    assert "No pude leer el saldo" in r["sin_saldo"][0]["texto"] and not r["sin_saldo"][0]["releyendo"]
     ok = client.post("/conciliacion/cuadre/saldos", json={"historial_id": hid, "saldo_final": 100_000, "fecha_corte": "2026-09-30",
                                                            "saldo_inicial": 0, "confirmar": True})
     assert ok.status_code == 200, ok.text
