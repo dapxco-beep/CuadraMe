@@ -4,7 +4,9 @@ import logging
 import time
 from typing import Optional
 
-from pydantic import BaseModel
+import re
+
+from pydantic import BaseModel, Field
 from google.auth.exceptions import RefreshError
 from datetime import datetime, timedelta
 
@@ -36,6 +38,10 @@ from app.cuentas_banco import pregunta_de_cuentas, producto_de_cuenta, producto_
 from app.extractos_gmail import (
     MAX_PDF_BYTES,
     abrir_pdf,
+    asunto_para_gmail,
+    construir_query_asunto,
+    datos_cuerpo_tarjeta,
+    texto_cuerpo,
     banco_por_remitente,
     claves_candidatas,
     construir_query_extractos,
@@ -614,7 +620,8 @@ def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, exist
     return candidato
 
 
-def _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos: set) -> tuple[int, int]:
+def _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos: set,
+                       forzar: bool = False) -> tuple[int, int]:
     """Lee un correo con posible extracto. Devuelve (PDF descargados, extractos
     nuevos para el usuario). Si el asunto ya dice el periodo ('extracto de
     septiembre') y ese periodo de esa cuenta ya está conciliado, se guarda como
@@ -626,8 +633,14 @@ def _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos: se
     banco = banco_por_remitente(remitente) or ""
     adjuntos = [
         a for a in listar_adjuntos_pdf(msg)
-        if contiene_palabra_extracto(asunto, a["archivo"], snippet) and a["tamano"] <= MAX_PDF_BYTES
+        # `forzar`: la persona eligió este correo a mano (búsqueda por asunto), no hace falta la palabra «extracto».
+        if (forzar or contiene_palabra_extracto(asunto, a["archivo"], snippet)) and a["tamano"] <= MAX_PDF_BYTES
     ]
+    try:  # solo 4 datos del aviso de la tarjeta; el cuerpo en sí no se guarda
+        cuerpo = datos_cuerpo_tarjeta(f"{asunto}\n{texto_cuerpo(msg)}\n{snippet}") if adjuntos else None
+    except Exception:  # noqa: BLE001 - leer de más nunca rompe la sincronización
+        cuerpo = None
+    cuerpo_json = json.dumps(cuerpo, ensure_ascii=False) if cuerpo else None
     vistos.add(ref_id)
     if not adjuntos:
         # Marca para no volver a leer este correo en cada sincronización.
@@ -652,7 +665,7 @@ def _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos: se
     for adj in adjuntos:
         fila = ExtractoCorreo(
             usuario_id=usuario_id, gmail_msg_id=ref_id, archivo=adj["archivo"],
-            remitente=remitente, asunto=asunto, banco=banco, recibido_en=recibido,
+            remitente=remitente, asunto=asunto, banco=banco, recibido_en=recibido, datos_cuerpo=cuerpo_json,
         )
         if ev:
             fila.periodo, fila.cuenta_sugerida_id = periodo_previo, cuenta_unica[0].id
@@ -1065,6 +1078,119 @@ def listar_extractos(
             o.cruzados = ev["cruzados"] if ev else None
         salida.append(o)
     return salida
+
+
+# ── Búsqueda manual por asunto ───────────────────────────────────────
+MAX_RESULTADOS_ASUNTO = 15
+DIAS_BUSQUEDA_ASUNTO = 365
+_ID_GMAIL = re.compile(r"^[A-Za-z0-9_-]{2,64}$")
+
+
+class BuscarAsuntoIn(BaseModel):
+    asunto: str = Field(min_length=1, max_length=200)
+
+
+class ProcesarAsuntoIn(BaseModel):
+    ids: list[str] = Field(min_length=1, max_length=MAX_RESULTADOS_ASUNTO)
+
+
+class CorreoEncontradoOut(BaseModel):
+    gmail_msg_id: str
+    remitente: str
+    asunto: str
+    fecha: Optional[datetime] = None
+    archivos: list[str] = []
+    ya_en_lista: bool = False
+
+
+def _gmail_del_usuario(db: Session, usuario_id: str):
+    perfil = _get_or_create_perfil(db, usuario_id)
+    if not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
+        raise HTTPException(status_code=400, detail="Gmail no está conectado")
+    _exigir_extractos_activos(perfil)
+    return cliente_gmail(perfil.gmail_refresh_token_enc)
+
+
+@router.post("/extractos/buscar-asunto", response_model=list[CorreoEncontradoOut])
+def buscar_extractos_por_asunto(
+    data: BuscarAsuntoIn,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«¿No ves un extracto?»: busca en TU Gmail (solo lectura) correos con PDF adjunto de los últimos 365
+    días cuyo asunto contenga el texto. El texto va solo como `subject:"…"` (sin operadores libres). No guarda
+    nada: devuelve remitente, fecha y asunto para que la persona elija cuáles procesar."""
+    verificar_limite(f"buscar-asunto:{usuario.id}", 20, 3600, "Buscaste muchas veces seguidas. Intenta en unos minutos.")
+    frase = asunto_para_gmail(data.asunto)
+    if not frase:
+        raise HTTPException(status_code=400, detail="Escribe al menos 3 letras del asunto del correo.")
+    gmail = _gmail_del_usuario(db, usuario.id)
+    try:
+        r = gmail.users().messages().list(
+            userId="me", q=construir_query_asunto(frase, DIAS_BUSQUEDA_ASUNTO), maxResults=MAX_RESULTADOS_ASUNTO,
+        ).execute()
+        ids = [m["id"] for m in r.get("messages", [])][:MAX_RESULTADOS_ASUNTO]
+        conocidos = {x[0] for x in db.query(ExtractoCorreo.gmail_msg_id).filter(
+            ExtractoCorreo.usuario_id == usuario.id, ExtractoCorreo.estado != "ignorado").all()}
+        salida = []
+        for i in ids:
+            msg = gmail.users().messages().get(userId="me", id=i, format="full").execute()
+            adjuntos = listar_adjuntos_pdf(msg)
+            if not adjuntos:
+                continue
+            h = encabezados(msg)
+            salida.append(CorreoEncontradoOut(
+                gmail_msg_id=i, remitente=h.get("From", "")[:200], asunto=h.get("Subject", "")[:200],
+                fecha=fecha_mensaje(msg), archivos=[a["archivo"] for a in adjuntos][:5], ya_en_lista=i in conocidos,
+            ))
+        return salida
+    except RefreshError:
+        raise HTTPException(status_code=400, detail="Se perdió el acceso a Gmail. Conéctalo de nuevo.")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Error buscando por asunto (usuario %s)", usuario.id)
+        raise HTTPException(status_code=502, detail="No pudimos consultar tu correo ahora. Intenta de nuevo.")
+
+
+@router.post("/extractos/buscar-asunto/procesar")
+def procesar_extractos_por_asunto(
+    data: ProcesarAsuntoIn,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Mete a la lista de extractos los correos que la persona eligió (misma tubería que la sincronización:
+    clave del PDF, cuenta/producto, ya conciliado). Un correo ya listado no se duplica."""
+    verificar_limite(f"buscar-asunto-procesar:{usuario.id}", 20, 3600, "Procesaste muchos correos seguidos. Intenta en unos minutos.")
+    ids = []
+    for i in data.ids:
+        if not _ID_GMAIL.match(i):
+            raise HTTPException(status_code=400, detail="Correo no válido.")
+        if i not in ids:
+            ids.append(i)
+    gmail = _gmail_del_usuario(db, usuario.id)
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
+    clave = _clave_pdf(db, usuario.id)
+    agregados = 0
+    try:
+        for i in ids:
+            previas = db.query(ExtractoCorreo).filter(ExtractoCorreo.usuario_id == usuario.id, ExtractoCorreo.gmail_msg_id == i).all()
+            if any(p.estado != "ignorado" for p in previas):
+                continue  # ya está en la lista: no se duplica
+            for p in previas:  # lo había descartado el filtro automático: la persona lo pide a propósito
+                db.delete(p)
+            db.flush()
+            _d, nuevos = _procesar_extracto(gmail, db, usuario.id, i, cuentas, clave, set(), forzar=True)
+            agregados += nuevos
+        db.commit()
+    except RefreshError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Se perdió el acceso a Gmail. Conéctalo de nuevo.")
+    except Exception:
+        db.rollback()
+        logger.exception("Error procesando por asunto (usuario %s)", usuario.id)
+        raise HTTPException(status_code=502, detail="No pudimos leer ese correo ahora. Intenta de nuevo.")
+    return {"ok": True, "extractos_nuevos": agregados}
 
 
 @router.post("/extractos/{extracto_id}/conciliar", response_model=ProcesarExtractoResponse)

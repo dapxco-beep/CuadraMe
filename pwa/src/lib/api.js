@@ -579,6 +579,9 @@ export const api = {
     request(`/correos/extractos?limite=${limite}&offset=${offset}${estado ? `&estado=${estado}` : ''}`),
   conciliarExtractoCorreo: (id, cuentaId) =>
     request(`/correos/extractos/${id}/conciliar`, { method: 'POST', body: { cuenta_id: cuentaId } }),
+  // «¿No ves un extracto?»: busca por asunto en tu Gmail (solo lectura) y luego procesa los elegidos.
+  buscarExtractosPorAsunto: (asunto) => request('/correos/extractos/buscar-asunto', { method: 'POST', body: { asunto } }),
+  procesarExtractosPorAsunto: (ids) => request('/correos/extractos/buscar-asunto/procesar', { method: 'POST', body: { ids } }),
   descartarExtractoCorreo: (id) => request(`/correos/extractos/${id}/descartar`, { method: 'POST' }),
   // «Intentar de nuevo»: vuelve a bajar y abrir el PDF (no importa movimientos).
   reintentarExtractoCorreo: (id) => request(`/correos/extractos/${id}/reintentar`, { method: 'POST' }),

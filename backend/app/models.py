@@ -358,6 +358,9 @@ class ExtractoCorreo(Base):
     clave_probada_en = Column(DateTime, nullable=True)
     # Por qué no se pudo leer (ver app/extractos_vista.MOTIVOS): opcional; NULL = sin error o error antiguo.
     motivo_error = Column(String, nullable=True)
+    # JSON con SOLO 4 datos que el cuerpo del aviso de la tarjeta trae (pago mínimo, período facturado, fecha de
+    # corte, fecha límite). El cuerpo del correo nunca se guarda. Útil aunque el PDF no se pueda abrir.
+    datos_cuerpo = Column(String, nullable=True)
 
 
 class SyncGmail(Base):
