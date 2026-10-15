@@ -268,6 +268,7 @@ ATAQUES = [
     ("POST", "/movimientos/transferencia", {"cuenta_origen_id": "{cuenta}", "cuenta_destino_id": "{cuenta2}", "monto": 1}),
     ("POST", "/movimientos/{mov}/recategorizar-comercio", {"categoria": "Comida"}),
     ("POST", "/movimientos/recategorizar-masivo", {"movimiento_ids": ["{mov}", "{mov2}"], "categoria": "Comida"}),
+    ("POST", "/movimientos/{mov}/pasar-a-efectivo?crear_cuenta=true", None),
     ("POST", "/movimientos/mover-masivo", {"movimiento_ids": ["{mov}"], "cuenta_id": "{cuenta2}"}),
     ("POST", "/movimientos/eliminar-masivo", {"movimiento_ids": ["{mov}", "{mov2}"]}),
     ("POST", "/movimientos/confirmar-categorias", {"movimiento_ids": ["{mov}"]}),

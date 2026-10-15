@@ -503,7 +503,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           <Fila label="Origen" valor={nombreOrigen(movimiento.fuente)} />
           {sentidoEfectivo && (
             <div className="rounded-xl bg-accent-soft p-3 mt-2" role="group" aria-label="Pasar a efectivo">
-              <p className="text-sm font-semibold">💵 {oferta.pregunta}</p>
+              <p className="text-sm font-semibold">{oferta.pregunta}</p>
               <p className="text-xs text-ink-soft mt-1">{oferta.apoyo}</p>
               <button
                 onClick={pasarAEfectivo}
