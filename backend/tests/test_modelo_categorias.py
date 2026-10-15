@@ -193,10 +193,10 @@ def test_el_aprendido_no_mezcla_usuarios(usuario, cuenta):
 def test_sugerencia_marca_recurrente_si_hay_3_meses(usuario, cuenta):
     from datetime import datetime
     with SessionLocal() as db:
-        for dia, mes in ((5, 1), (6, 2), (7, 3)):
+        for dia, mes in ((5, 1), (6, 2), (7, 3), (8, 3)):
             db.add(Movimiento(usuario_id=usuario, cuenta_id=cuenta["id"], descripcion="Compra en KOPI ZEBRA", monto=9000,
                               tipo="expense", categoria="Comida", cat_confirmada=True, fecha=datetime(2026, mes, dia)))
-        for dia in (1, 2, 3):
+        for dia in (1, 2, 3, 4):
             db.add(Movimiento(usuario_id=usuario, cuenta_id=cuenta["id"], descripcion="Compra en QUIRIGUA AZUL", monto=9000,
                               tipo="expense", categoria="Ocio", cat_confirmada=True, fecha=datetime(2026, 4, dia)))
         db.commit()
