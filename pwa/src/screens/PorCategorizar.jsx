@@ -303,7 +303,7 @@ export default function PorCategorizar() {
                 Tienes <b>{plural(datos.conteo.total, 'movimiento', 'movimientos')}</b> en {plural(datos.total_grupos, 'comercio', 'comercios')}.{' '}
                 {datos.relevantes > 0 && (
                   <>
-                    {plural(datos.relevantes, 'comercio pesa o se repite', 'comercios pesan o se repiten')}: con esos ya ves en qué se va tu plata.
+                    {plural(datos.relevantes, 'comercio se repite', 'comercios se repiten')} 4 veces o más (o los que marcaste tú).
                   </>
                 )}
               </p>

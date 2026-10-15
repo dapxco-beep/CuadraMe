@@ -67,14 +67,37 @@ def test_categorizado_con_confianza_alta_no_cuenta(cuenta):
 
 
 def test_otros_baja_confianza_y_marcados_si_cuentan(cuenta):
-    _mov(cuenta, "Cosa rara uno")  # Otros
-    baja = _mov(cuenta, "Cosa sugerida", "Ocio")
-    _poner(baja["id"], cat_confirmada=False, cat_origen="sugerida")
-    marcada = _mov(cuenta, "Compra marcada", "Comida")
+    for _ in range(4):  # 4 repeticiones: ya se pregunta
+        _mov(cuenta, "Cosa rara uno")  # Otros
+        baja = _mov(cuenta, "Cosa sugerida", "Ocio")
+        _poner(baja["id"], cat_confirmada=False, cat_origen="sugerida")
+    marcada = _mov(cuenta, "Compra marcada", "Comida")  # una sola vez, pero la marcó el cliente
     _poner(marcada["id"], cat_origen="marcada")
     c = _conteo()
-    assert (c["total"], c["otros"], c["baja"], c["marcadas"]) == (3, 1, 1, 1)
-    assert c["auto"] == 2
+    assert (c["total"], c["otros"], c["baja"], c["marcadas"]) == (9, 4, 4, 1)
+    assert c["auto"] == 5
+
+
+def test_regla_mas_de_3_repeticiones(cuenta):
+    """1-3 apariciones NO son pendientes (ni en contador, ni en lista, ni en tareas); 4+ sí; marcado sí."""
+    for _ in range(3):
+        _mov(cuenta, "Zoltan tres veces")
+    _mov(cuenta, "Quimbaya una vez")
+    assert _conteo()["total"] == 0
+    assert client.get("/por-categorizar").json()["conteo"]["total"] == 0
+    assert client.get("/movimientos?por_revisar=true").json() == []
+    tareas = client.get("/sincronizacion/estado").json()["tareas"]
+    assert not [t for t in tareas if t["id"] == "movimientos_por_categorizar"]
+    assert len(client.get("/movimientos").json()) == 4  # siguen visibles y editables
+    _mov(cuenta, "Zoltan tres veces")  # la 4.a
+    m = _mov(cuenta, "Quimbaya una vez", "Comida")
+    _poner(m["id"], cat_origen="marcada")
+    esperado = 4 + 1
+    assert _conteo()["total"] == esperado
+    assert client.get("/por-categorizar").json()["conteo"]["total"] == esperado
+    assert len(client.get("/movimientos?por_revisar=true").json()) == esperado
+    t = next(t for t in client.get("/sincronizacion/estado").json()["tareas"] if t["id"] == "movimientos_por_categorizar")
+    assert t["cantidad"] == esperado
 
 
 def test_lo_confirmado_por_el_usuario_no_cuenta(cuenta):
@@ -94,11 +117,12 @@ def test_traslados_pagos_de_tarjeta_y_ajustes_nunca_cuentan(cuenta):
 
 
 def test_el_listado_por_revisar_coincide_con_el_contador(cuenta):
-    _mov(cuenta, "Cosa rara uno")
+    for _ in range(4):
+        _mov(cuenta, "Cosa rara uno")
     alta = _mov(cuenta, "Netflix", "Ocio")
     _poner(alta["id"], cat_confirmada=False, cat_origen="regla")
     lista = client.get("/movimientos?por_revisar=true").json()
-    assert len(lista) == _conteo()["total"] == 1
+    assert len(lista) == _conteo()["total"] == 4
     assert lista[0]["por_categorizar"] is True
     todas = client.get("/movimientos").json()
     assert {m["descripcion"]: m["por_categorizar"] for m in todas} == {"Cosa rara uno": True, "Netflix": False}
@@ -122,7 +146,7 @@ def test_inicio_y_consejos_usan_la_misma_definicion(cuenta, usuario):
     finally:
         db.close()
     for i in range(5):
-        _mov(cuenta, f"Pendiente {i}")
+        _mov(cuenta, "Pendiente repetido")
     t = next(t for t in client.get("/sincronizacion/estado").json()["tareas"] if t["id"] == "movimientos_por_categorizar")
     assert t["cantidad"] == 5 and t["opcional"] is True
     db = SessionLocal()
@@ -137,28 +161,30 @@ def test_inicio_y_consejos_usan_la_misma_definicion(cuenta, usuario):
 # --- 2) selección, silencios y deshacer -------------------------------------------------------
 
 def test_resumen_agrupa_por_comercio_y_ordena_por_impacto(cuenta):
-    for _ in range(3):
+    for _ in range(4):
         _mov(cuenta, "Compra en ZOLTAN PEQUE", monto=5000)
-    _mov(cuenta, "Compra en QUIMBAYA GRANDE", monto=900000)
+    q = _mov(cuenta, "Compra en QUIMBAYA GRANDE", monto=900000)
+    _poner(q["id"], cat_origen="marcada")
     r = client.get("/por-categorizar").json()
-    assert r["conteo"]["total"] == 4
-    assert [g["conteo"] for g in r["grupos"]] == [1, 3]
+    assert r["conteo"]["total"] == 5
+    assert [g["conteo"] for g in r["grupos"]] == [1, 4]
     assert r["grupos"][0]["monto_total"] == 900000
-    assert r["grupos"][1]["relevante"] is True  # se repite 3 veces
+    assert r["grupos"][1]["relevante"] is True  # se repite 4 veces
     assert r["relevantes"] >= 1
 
 
 def test_limite_visible_y_ver_todos(cuenta):
     nombres = "alfa beta gamma delta epsilon zeta eta theta iota kappa lambda sigma".split()
     for i, n in enumerate(nombres):
-        _mov(cuenta, f"Local {n} Extraño", monto=1000 * (i + 1))
+        m = _mov(cuenta, f"Local {n} Extraño", monto=1000 * (i + 1))
+        _poner(m["id"], cat_origen="marcada")
     r = client.get("/por-categorizar?limite=10").json()
     assert len(r["grupos"]) == 10 and r["hay_mas"] is True and r["total_grupos"] == 12
     assert len(client.get("/por-categorizar?todos=true").json()["grupos"]) == 12
 
 
 def test_no_preguntar_silencia_y_se_deshace(cuenta):
-    for _ in range(3):
+    for _ in range(4):
         _mov(cuenta, "Compra en ZOLTAN PEQUE")
     g = client.get("/por-categorizar").json()["grupos"][0]
     r = client.post("/por-categorizar/accion", json={"accion": "no_preguntar", "huellas": [g["huella"]]}).json()
@@ -168,20 +194,21 @@ def test_no_preguntar_silencia_y_se_deshace(cuenta):
     client.post("/por-categorizar/accion", json={"accion": "no_preguntar", "huellas": [g["huella"]]})  # idempotente
     assert len(client.get("/por-categorizar/silencios").json()["silencios"]) == 1
     client.post("/por-categorizar/deshacer", json={"huellas": [g["huella"]], "tipo_silencio": "no_preguntar"})
-    assert _conteo()["total"] == 3
+    assert _conteo()["total"] == 4
 
 
 def test_ocultar_y_quitar_silencio(cuenta):
-    m = _mov(cuenta, "Compra en OTRO LUGAR")
-    client.post("/por-categorizar/accion", json={"accion": "ocultar", "movimiento_ids": [m["id"]]})
+    ids = [_mov(cuenta, "Compra en OTRO LUGAR")["id"] for _ in range(4)]
+    client.post("/por-categorizar/accion", json={"accion": "ocultar", "movimiento_ids": ids})
     assert _conteo()["total"] == 0
     h = client.get("/por-categorizar/silencios").json()["silencios"][0]["huella"]
     client.post("/por-categorizar/silencios/quitar", json={"huellas": [h]})
-    assert _conteo()["total"] == 1
+    assert _conteo()["total"] == 4
 
 
 def test_silencio_es_por_usuario(cuenta):
-    _mov(cuenta, "Compra en LUGAR X")
+    for _ in range(4):
+        _mov(cuenta, "Compra en LUGAR X")
     h = client.get("/por-categorizar").json()["grupos"][0]["huella"]
     client.post("/por-categorizar/accion", json={"accion": "ocultar", "huellas": [h]})
     assert _conteo()["total"] == 0
@@ -190,12 +217,12 @@ def test_silencio_es_por_usuario(cuenta):
 
 
 def test_dejar_como_estan_saca_de_pendientes_y_se_deshace(cuenta):
-    ids = [_mov(cuenta, f"Cosa {i} rara")["id"] for i in range(3)]
+    ids = [_mov(cuenta, "Cosa rara repetida")["id"] for i in range(4)]
     r = client.post("/por-categorizar/accion", json={"accion": "dejar", "movimiento_ids": ids}).json()
-    assert r["movimientos"] == 3 and _conteo()["total"] == 0
+    assert r["movimientos"] == 4 and _conteo()["total"] == 0
     assert {m["categoria"] for m in client.get("/movimientos").json()} == {"Otros"}  # decisión, no categoría inventada
     client.post("/por-categorizar/deshacer", json={"previos": r["previos"]})
-    assert _conteo()["total"] == 3
+    assert _conteo()["total"] == 4
 
 
 def test_marcar_para_revisar_y_deshacer(cuenta):
@@ -208,17 +235,17 @@ def test_marcar_para_revisar_y_deshacer(cuenta):
 
 
 def test_ponerles_categoria_a_lo_seleccionado_sin_crear_regla(cuenta):
-    for i in range(3):
+    for i in range(4):
         _mov(cuenta, "Compra en ZOLTAN PEQUE")
     g = client.get("/por-categorizar").json()["grupos"][0]
     r = client.post("/por-categorizar/accion", json={"accion": "categoria", "huellas": [g["huella"]], "categoria": "Comida"}).json()
-    assert r["movimientos"] == 3 and r["reglas_creadas"] == []
+    assert r["movimientos"] == 4 and r["reglas_creadas"] == []
     assert _conteo()["total"] == 0
     assert client.get("/reglas-categoria").json() == []  # ninguna regla sin pedirla
 
 
 def test_categoria_con_recordar_crea_la_regla_y_se_deshace_todo(cuenta):
-    for _ in range(3):
+    for _ in range(4):
         _mov(cuenta, "Compra en ZOLTAN PEQUE")
     otro = _mov(cuenta, "Compra en ZOLTAN PEQUE", "Ocio")  # ya categorizado por el usuario
     g = client.get("/por-categorizar").json()["grupos"][0]
@@ -233,7 +260,7 @@ def test_categoria_con_recordar_crea_la_regla_y_se_deshace_todo(cuenta):
     assert client.get("/reglas-categoria").json() == []
     por_id = {m["id"]: m["categoria"] for m in client.get("/movimientos").json()}
     assert por_id[otro["id"]] == "Ocio"  # lo que la regla cambió en los anteriores, también vuelve
-    assert _conteo()["otros"] == 3
+    assert _conteo()["otros"] == 4
 
 
 def test_categoria_inexistente_y_sin_seleccion(cuenta):
