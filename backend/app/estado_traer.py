@@ -386,7 +386,11 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
     # Un renglón por (cuenta, mes). Los de error solo cuentan si no hay un intento bueno después.
     def clave_grupo(c):
         if c["mes"] and c["cuenta_id"]:
-            return ("c", c["cuenta_id"], c["mes"])
+            # El correo dice claramente que es de OTRO producto que la cuenta a la que quedó (la tarjeta Nu
+            # asignada a la cuenta Nu): es otro extracto del mismo mes, no una copia.
+            texto = ev.tipo_de_extracto(None, c.get("asunto", ""), c.get("archivo", "")) if c["origen"] == "correo" else ""
+            ajeno = texto if texto and c["tipo"] and texto != c["tipo"] else ""
+            return ("c", c["cuenta_id"], c["mes"], ajeno)
         if c["mes"] and c["banco"]:
             return ("b", _norm(c["banco"]), c["tipo"], c["mes"])
         if c["estado"] == NO_SE_PUDO_LEER and c["origen"] == "archivo" and c["cuenta_id"]:
