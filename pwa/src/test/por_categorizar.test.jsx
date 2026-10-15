@@ -46,7 +46,7 @@ beforeEach(() => {
     deshacerPorCategorizar: vi.fn().mockResolvedValue({ ok: true }),
     quitarSilencios: vi.fn().mockResolvedValue({ ok: true }),
     movimientos: vi.fn().mockResolvedValue([]),
-    similaresConteo: vi.fn().mockResolvedValue({ conteo: 2 }),
+    similaresConteo: vi.fn().mockResolvedValue({ conteo: 3 }),
   })
 })
 
@@ -126,14 +126,14 @@ describe('pantalla Por categorizar', () => {
     await waitFor(() => expect(api.accionPorCategorizar.mock.calls[1][0].accion).toBe('ocultar'))
   })
 
-  it('«Ponerles categoría…» a un comercio: la regla es opcional y viene activada porque se repite 3 veces', async () => {
+  it('«Ponerles categoría…» a un comercio: la regla es opcional y viene activada porque se repite 4 veces', async () => {
     const user = userEvent.setup()
     montar()
     await user.click(await screen.findByRole('checkbox', { name: /Seleccionar kopi zebra/ }))
     await user.click(screen.getByRole('button', { name: /Ponerles categoría/ }))
     const recordar = await screen.findByRole('checkbox', { name: /Recordar para este comercio/ })
-    await waitFor(() => expect(recordar).toBeChecked()) // 2 más + este = 3
-    expect(screen.getByTestId('vista-previa-regla')).toHaveTextContent('Afectará 2 movimientos pasados y los futuros.')
+    await waitFor(() => expect(recordar).toBeChecked()) // 3 más + este = 4
+    expect(screen.getByTestId('vista-previa-regla')).toHaveTextContent('Afectará 3 movimientos pasados y los futuros.')
     await user.click(recordar) // la persona la apaga
     await user.click(screen.getByRole('button', { name: /Comida/ }))
     await waitFor(() =>

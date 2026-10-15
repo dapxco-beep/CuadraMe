@@ -82,7 +82,7 @@ beforeEach(() => {
     conteoPorRevisar: vi.fn().mockResolvedValue({ auto: 0, otros: 3, total: 3 }),
     recategorizarMasivo: vi.fn().mockResolvedValue({ ok: true, actualizados: 1 }),
     aprenderRegla: vi.fn().mockResolvedValue({ guardada: true, actualizada: false, huella: 'panaderia', anteriores_actualizados: 0 }),
-    similaresConteo: vi.fn().mockResolvedValue({ huella: 'panaderia', conteo: 2 }),
+    similaresConteo: vi.fn().mockResolvedValue({ huella: 'panaderia', conteo: 3 }),
     reglasCategoria: vi.fn().mockResolvedValue([{ id: 'r1', patron: 'panaderia', categoria: 'Comida' }]),
     eliminarReglaCategoria: vi.fn().mockResolvedValue({ ok: true }),
     eliminarMovimientosMasivo: vi.fn().mockResolvedValue({ ok: true, actualizados: 4, omitidos: 0 }),
@@ -99,10 +99,10 @@ describe('categorizar sin abrir el movimiento', () => {
     await screen.findByText('Netflix')
     await userEvent.click(chipDe('Compra PANADERIA LA 80 0105'))
     const hoja = await screen.findByRole('dialog')
-    // «Recordar para este comercio» es opcional: viene activada solo porque se repite (2 más + este = 3)
+    // «Recordar para este comercio» es opcional: viene activada solo porque se repite (3 más + este = 4)
     // y muestra cuántos más hay del mismo comercio
     await waitFor(() => expect(within(hoja).getByRole('checkbox', { name: /Recordar para este comercio/ })).toBeChecked())
-    expect(await within(hoja).findByText('2 movimientos más')).toBeInTheDocument()
+    expect(await within(hoja).findByText('3 movimientos más')).toBeInTheDocument()
     await userEvent.click(within(hoja).getByRole('button', { name: /Comida/ }))
 
     await waitFor(() => expect(api.recategorizarMasivo).toHaveBeenCalledWith(['m1'], 'Comida'))
