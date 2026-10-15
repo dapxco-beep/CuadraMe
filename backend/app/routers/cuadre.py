@@ -139,6 +139,16 @@ def cuadre_de_la_cuenta(
     return cx.cuadre_por_mes(db, cuenta, inicio_pp=_inicio_pp(db, usuario))
 
 
+@router.get("/resumen")
+def resumen_de_cuadre(
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Una línea por cuenta con el estado de cuadre (cuadra / no cuadra / sin saldo / sin extractos), el motivo y
+    la siguiente acción. Para Cuentas e Inicio. Solo lee y solo mira las cuentas del usuario."""
+    return cuadre_encadenado.resumen_usuario(db, usuario.id, _inicio_pp(db, usuario))
+
+
 @router.get("/encadenado")
 def cuadre_encadenado_de_la_cuenta(
     cuenta_id: str = Query(...),
