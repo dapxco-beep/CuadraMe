@@ -9,6 +9,7 @@ import Ayudita from '../components/Ayudita'
 import { formatFechaLarga, formatMoneda, nombreOrigen } from '../lib/format'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
+import { cuentaEfectivoPara, ofertaEfectivo, sugerenciaEfectivo } from '../lib/efectivo'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { esAuto } from '../lib/comercio'
@@ -216,6 +217,31 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
 
   if (!movimiento) {
     return <EsqueletoPantalla variante="texto" etiqueta="Cargando el movimiento" />
+  }
+
+  // «¿Lo pasamos a tu efectivo?»: solo retiros/consignaciones de una cuenta que no es efectivo.
+  const sentidoEfectivo =
+    !esTransferencia && cuenta?.tipo !== 'efectivo' && cuenta?.tipo !== 'credito'
+      ? sugerenciaEfectivo(movimiento.tipo, movimiento.descripcion)
+      : null
+  const tieneEfectivo = !!cuentaEfectivoPara(cuentas, cuenta)
+  const oferta = ofertaEfectivo(sentidoEfectivo, tieneEfectivo)
+
+  async function pasarAEfectivo() {
+    setTrasladando(true)
+    try {
+      await api.pasarAEfectivo(id, !tieneEfectivo)
+      const actualizado = await api.movimiento(id)
+      setMovimiento(actualizado)
+      parchearEnCaches(actualizado)
+      onCambio?.(actualizado)
+      await recargarCuentas?.()
+      avisar('Listo: pasó a tu efectivo. No cuenta como gasto.', 'ok')
+    } catch (err) {
+      avisar(err.message || 'No pudimos pasarlo. Revisa tu conexión e intenta de nuevo.')
+    } finally {
+      setTrasladando(false)
+    }
   }
 
   const signo = signoDe(movimiento)
@@ -475,6 +501,19 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
             </div>
           )}
           <Fila label="Origen" valor={nombreOrigen(movimiento.fuente)} />
+          {sentidoEfectivo && (
+            <div className="rounded-xl bg-accent-soft p-3 mt-2" role="group" aria-label="Pasar a efectivo">
+              <p className="text-sm font-semibold">💵 {oferta.pregunta}</p>
+              <p className="text-xs text-ink-soft mt-1">{oferta.apoyo}</p>
+              <button
+                onClick={pasarAEfectivo}
+                disabled={trasladando}
+                className="mt-2 min-h-11 px-4 rounded-xl bg-accent text-white text-sm font-semibold disabled:opacity-60"
+              >
+                {oferta.boton}
+              </button>
+            </div>
+          )}
           {!esTransferencia && <InsigniaCanales canales={movimiento.canales} />}
           {movimiento.notas && !esTransferencia && <Fila label="Notas" valor={movimiento.notas} />}
         </div>
