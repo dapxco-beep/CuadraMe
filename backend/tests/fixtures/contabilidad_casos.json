@@ -1618,6 +1618,1004 @@
     "e": "expense",
     "i": "income"
    }
+  },
+  {
+   "nombre": "Par Nu a Nequi por correo y extracto con tilde",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 400000,
+     "descripcion": "Envío a mi Nequi",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-05T09:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 400000,
+     "descripcion": "RECIBISTE DE NU",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T08:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer",
+    "i": "transfer"
+   }
+  },
+  {
+   "nombre": "Par con puente festivo y pistas fuertes (4 dias)",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 900000,
+     "descripcion": "Transferencia a mi Nequi",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-02T18:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 900000,
+     "descripcion": "Recibiste de Nu",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T10:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "transfer",
+    "i": "transfer"
+   }
+  },
+  {
+   "nombre": "Par de 4 dias con pistas debiles NO se empareja",
+   "movs": [
+    {
+     "id": "e",
+     "tipo": "expense",
+     "monto": 90000,
+     "descripcion": "Enviaste a Pedro",
+     "cuenta_id": "U",
+     "categoria": "Otros",
+     "fecha": "2026-10-02T18:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    },
+    {
+     "id": "i",
+     "tipo": "income",
+     "monto": 90000,
+     "descripcion": "Recibiste de Pedro",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T10:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "e": "expense",
+    "i": "income"
+   }
+  },
+  {
+   "nombre": "Una punta: Envio a mi Nequi",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Envío a mi Nequi",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Una punta: Transferiste a tu cuenta",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Transferiste a tu cuenta",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Una punta: nombre propio completo",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Enviaste a DANIEL ALFONSO PARRADO CARDENAS",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [
+    "Daniel Alfonso Parrado Cardenas"
+   ],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Una punta: nombre propio truncado por el banco",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Enviaste a DANIEL ALFONSO PARR",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [
+    "Daniel Alfonso Parrado Cardenas"
+   ],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Una punta: apellidos primero y sin tildes",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "income",
+     "monto": 250000,
+     "descripcion": "Recibido de PARRADO CARDENAS DANIEL",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [
+    "Daniel Alfonso Parrado Cardenas"
+   ],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Una punta: Bre-B a mi llave",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Bre-B a mi llave",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Una punta: traslado a ahorro",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Traslado a ahorro",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Una punta: traslado a cajita",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Traslado a cajita Vacaciones",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Una punta: consignacion a cuenta propia",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "income",
+     "monto": 250000,
+     "descripcion": "Consignación a cuenta propia",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Una punta: movimiento entre cuentas",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Movimiento entre cuentas",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Una punta: avance en efectivo de tarjeta",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "AVANCE EN EFECTIVO",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Una punta: pago de tarjeta de credito propia",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Pago de tarjeta de crédito propia",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Homonimo parcial: solo un nombre es gasto",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Enviaste a Daniel Gomez",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [
+    "Daniel Alfonso Parrado Cardenas"
+   ],
+   "reglas": {},
+   "esperado": {
+    "a": "expense"
+   }
+  },
+  {
+   "nombre": "Nombre de pila solo no basta",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Enviaste a Daniel",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [
+    "Daniel"
+   ],
+   "reglas": {},
+   "esperado": {
+    "a": "expense"
+   }
+  },
+  {
+   "nombre": "Otra persona con nombre distinto es gasto",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Enviaste a Maria Perez",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [
+    "Daniel Alfonso Parrado Cardenas"
+   ],
+   "reglas": {},
+   "esperado": {
+    "a": "expense"
+   }
+  },
+  {
+   "nombre": "Homonimo exacto de 2 palabras queda como posible traslado",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Enviaste a LUIS PEREZ",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [
+    "Luis Alberto Perez Gomez"
+   ],
+   "reglas": {},
+   "esperado": {
+    "a": "transfer"
+   }
+  },
+  {
+   "nombre": "Prefijo corto no es truncamiento",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Enviaste a Daniel Par",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [
+    "Daniel Alfonso Parrado Cardenas"
+   ],
+   "reglas": {},
+   "esperado": {
+    "a": "expense"
+   }
+  },
+  {
+   "nombre": "Avance de obra es un gasto",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Avance de obra casa",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "expense"
+   }
+  },
+  {
+   "nombre": "Intereses de avances siguen siendo costo",
+   "movs": [
+    {
+     "id": "a",
+     "tipo": "expense",
+     "monto": 250000,
+     "descripcion": "Intereses de avances",
+     "cuenta_id": "N",
+     "categoria": "Otros",
+     "fecha": "2026-10-06T12:00:00",
+     "fuente": "importacion_archivo",
+     "notas": ""
+    }
+   ],
+   "cuentas": {
+    "N": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "U": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "B": {
+     "tipo": "ahorro",
+     "moneda": "COP"
+    },
+    "T": {
+     "tipo": "credito",
+     "moneda": "COP"
+    },
+    "D": {
+     "tipo": "ahorro",
+     "moneda": "USD"
+    }
+   },
+   "nombres": [],
+   "reglas": {},
+   "esperado": {
+    "a": "expense"
+   }
   }
  ]
 }

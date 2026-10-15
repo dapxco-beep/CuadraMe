@@ -66,6 +66,7 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS creado_en TIMESTAMP',
             'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS nombre_preferido VARCHAR NULL',
             'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS nombre_confirmado BOOLEAN DEFAULT FALSE',
+            'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS nombre_titular VARCHAR NULL',
             'ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS origen VARCHAR NULL',
             'ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS huella_externa VARCHAR NULL',
             'CREATE INDEX IF NOT EXISTS ix_movimientos_huella ON movimientos (usuario_id, huella_externa)',

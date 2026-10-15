@@ -58,6 +58,9 @@ class Perfil(Base):
     # no existan en la base (supabase/migraciones/perfil_pais.sql). NULL = perfil anterior -> CO.
     pais = deferred(Column(String, nullable=True))
     moneda_base = deferred(Column(String, nullable=True))  # moneda en que se muestran informes y patrimonio
+    # Nombre completo del titular (de Google): SOLO para reconocer traslados propios en los extractos
+    # («Enviaste a DANIEL ALFONSO PARRADO»). No se muestra ni se envía fuera. supabase/migraciones/perfil_nombre_titular.sql
+    nombre_titular = deferred(Column(String, nullable=True))
     zona_horaria = deferred(Column(String, nullable=True))
     idioma = deferred(Column(String, nullable=True))  # es-CO, es-MX, es-AR...
     pais_confirmado = deferred(Column(Boolean, nullable=True))  # la persona lo eligió/confirmó (no solo sugerido)

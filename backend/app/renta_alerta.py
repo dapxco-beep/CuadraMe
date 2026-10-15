@@ -117,7 +117,9 @@ def calcular_renta(datos: dict, anio: int, hoy: date) -> dict:
     uvt = uvt_del_anio(anio)
     topes = topes_en_pesos(anio)
     cuentas = datos.get("cuentas", [])
-    tipos = {c["id"]: c["tipo"] for c in cuentas}
+    # `tipos_cuenta` (de reunir_datos) lleva monedas, reglas y nombre del titular: mismas decisiones
+    # de traslado que los demás informes. Sin él (pruebas) se usa solo el tipo de cada cuenta.
+    tipos = datos.get("tipos_cuenta") or {c["id"]: c["tipo"] for c in cuentas}
     movs = datos.get("movimientos", [])
     fin_anio = datetime(anio + 1, 1, 1)
     ini_anio = datetime(anio, 1, 1)
@@ -288,7 +290,10 @@ def reunir_datos(db, usuario_id: str, anio: int, hoy: datetime) -> dict:
     bienes = db.query(ActivoPatrimonio).filter(
         ActivoPatrimonio.usuario_id == usuario_id, ActivoPatrimonio.activo.is_(True),
         ActivoPatrimonio.clase.in_(["inmueble", "vehiculo"])).count()
+    from app.contabilidad import tipos_de_cuentas
+
     return {
+        "tipos_cuenta": tipos_de_cuentas(cuentas_db, db),
         "cuentas": [{"id": c.id, "tipo": c.tipo, "saldo": cop(c.saldo, c.id)} for c in cuentas_db],
         "movimientos": movs,
         "activos_cop": calcular_resumen(db, usuario_id, hoy)["total_activos"],

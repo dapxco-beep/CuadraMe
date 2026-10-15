@@ -15,6 +15,8 @@ export const MARCA_NO_TRASLADO = 'no_es_traslado'
 export const MARCA_ES_TRASLADO = 'es_traslado_propio'
 export const TOLERANCIA_COMISION = 2000
 const VENTANA_SEG = 2 * 86400
+// Puentes festivos: 4 días solo con pistas fuertes (suma >= 3). Espejo de VENTANA_FESTIVO_SEG.
+const VENTANA_FESTIVO_SEG = 4 * 86400
 
 const CATEGORIAS_NEUTRAS = ['transferencia', 'pago de tarjeta', 'ajuste de saldo', 'aporte a meta']
 const NOMBRES_SISTEMA = ['Intereses de tarjeta', 'Cuota de manejo', 'Comisiones y seguros', '4x1000 (GMF)', 'Rendimientos']
@@ -42,7 +44,8 @@ export function esPagoTarjeta(descripcion) {
 const PATRON_TRASLADO = new RegExp(
   'transfer|traslado|\\btrasl\\b|entre\\s+cuentas|nequi|daviplata|\\bdale\\b|movii|' +
     '\\benvi[oa]|enviaste|recibiste|bre-?b|a\\s+mi\\s+cuenta|desde\\s+mi\\s+cuenta|' +
-    'a\\s+tu\\s+cuenta|de\\s+tu\\s+cuenta|^\\s*para\\s+\\S',
+    'a\\s+tu\\s+cuenta|de\\s+tu\\s+cuenta|^\\s*para\\s+\\S|' +
+    '\\benviad[oa]\\b|\\brecibid[oa]\\b|\\bavances?\\b(?!\\s+de\\s+obra)',
   'i'
 )
 const BANCOS_PROPIOS = 'nu|nequi|bancolombia|davivienda|daviplata|dale|bbva|movii|bre-?b|lulo|rappipay'
@@ -52,6 +55,23 @@ const PATRON_PROPIO_FUERTE = new RegExp(
     '\\b(?:' + BANCOS_PROPIOS + ')\\s*(?:→|->|=>|\\ba\\b|\\bhacia\\b)\\s*(?:' + BANCOS_PROPIOS + ')\\b',
   'i'
 )
+
+// Frases de «es mío» sin nombre (espejo de PATRON_PROPIO_FRASES): «Envío a mi Nequi», «Bre-B a mi llave»,
+// «Consignación a cuenta propia», «Movimiento entre cuentas», «Traslado a ahorro», «Avance en efectivo».
+const PROPIOS_DESTINO =
+  'cuenta|nequi|nu|nubank|bancolombia|davivienda|daviplata|dale|bbva|movii|lulo|rappipay|llave|bre-?b|ahorros?|cajita|bolsillo|meta|alcancia|vault'
+const PATRON_PROPIO_FRASES = new RegExp(
+  '\\b(?:a|de|desde|hacia|para)\\s+(?:mi|tu)\\s+(?:propia\\s+)?(?:' + PROPIOS_DESTINO + ')\\b|' +
+    '\\bcuentas?\\s+propias?\\b|\\bpropias?\\s+cuentas?\\b|\\bmismo\\s+titular\\b|' +
+    '\\b(?:movimientos?|traslados?)\\s+entre\\s+cuentas\\b|' +
+    '\\btraslados?\\s+(?:a|hacia|de)\\s+(?:mi\\s+)?(?:cajita|bolsillo|ahorros?|meta|alcancia|vault)\\b|' +
+    '\\bavances?\\s+(?:en\\s+)?(?:efectivo|cajero|tarjeta|tc|tdc|credito|cupo)\\b',
+  'i'
+)
+function esPropioPorFrase(desc) {
+  const d = sinAcentos(desc || '')
+  return PATRON_PROPIO_FUERTE.test(d) || PATRON_PROPIO_FRASES.test(d)
+}
 
 // ── Costos y rendimientos del banco (nunca son un traslado). Espejo reducido de costos_financieros.py.
 const PREFIJOS_COSTO = new Set(['pago', 'pagos', 'cargo', 'cargos', 'abono', 'cobro', 'valor', 'debito', 'credito', 'de', 'por', 'del', 'la', 'el', 'los', 'las', 'mensual', 'automatico', 'automatica', 'tc', 'tdc', 'tarjeta', 'nu', 'bancolombia', 'davivienda', 'bbva', 'nequi', 'daviplata', 'iva', 'impuesto', 'total', 'tu', 'su', 'mi', 'aplicado', 'aplicada', 'nuevo', 'nueva', 'devolucion', 'reverso', 'reversion', 'reintegro'])
@@ -105,18 +125,26 @@ function sinCosto(m) {
 
 // ── Decisiones, nombres y huellas ────────────────────────────────────────────────────────────
 const NOMBRE_VACIAS = new Set(['de', 'del', 'la', 'las', 'los', 'el', 'y', 'san', 'da', 'van'])
+function listaTokens(t) {
+  return (sinAcentos(t || '').toLowerCase().match(/[a-z]{3,}/g) || []).filter((x) => !NOMBRE_VACIAS.has(x))
+}
 function tokensNombre(t) {
-  return new Set((sinAcentos(t || '').toLowerCase().match(/[a-z]{3,}/g) || []).filter((x) => !NOMBRE_VACIAS.has(x)))
+  return new Set(listaTokens(t))
 }
 
 // Cuántas palabras del nombre de la persona aparecen en la descripción (sin tildes ni mayúsculas).
+// La última palabra puede ser un nombre truncado por el banco (prefijo de >= 4 letras).
 export function mencionesPropias(descripcion, nombres = []) {
-  const d = tokensNombre(descripcion)
+  const toks = listaTokens(descripcion)
+  const d = new Set(toks)
   if (!d.size) return 0
+  const ult = toks[toks.length - 1]
   let mejor = 0
   for (const n of nombres || []) {
+    const nt = tokensNombre(n)
     let c = 0
-    for (const x of tokensNombre(n)) if (d.has(x)) c++
+    for (const x of nt) if (d.has(x)) c++
+    if (ult.length >= 4 && !nt.has(ult) && [...nt].some((x) => x.startsWith(ult) && !d.has(x))) c++
     mejor = Math.max(mejor, c)
   }
   return mejor
@@ -149,10 +177,10 @@ function fuerzaPista(m, nombres) {
   const desc = m.descripcion || ''
   const n = notasDe(m)
   let f = 0
-  if (PATRON_TRASLADO.test(desc)) f += 1
+  if (PATRON_TRASLADO.test(sinAcentos(desc))) f += 1
   if (n.includes(MARCA_TRASLADO_PROPIO)) f += 2
   if (n.includes(MARCA_ES_TRASLADO)) f += 2
-  if (PATRON_PROPIO_FUERTE.test(sinAcentos(desc))) f += 2
+  if (esPropioPorFrase(desc)) f += 2
   const menc = mencionesPropias(desc, nombres)
   return f + (menc >= 2 ? 2 : menc)
 }
@@ -160,7 +188,7 @@ function fuerzaPista(m, nombres) {
 function pistaFuerte(m, nombres) {
   if (!sinCosto(m)) return false
   const desc = m.descripcion || ''
-  return notasDe(m).includes(MARCA_TRASLADO_PROPIO) || PATRON_PROPIO_FUERTE.test(sinAcentos(desc)) || mencionesPropias(desc, nombres) >= 2
+  return notasDe(m).includes(MARCA_TRASLADO_PROPIO) || esPropioPorFrase(desc) || mencionesPropias(desc, nombres) >= 2
 }
 
 // Motivo por el que UN movimiento es neutral mirándolo solo a él, o null.
@@ -269,8 +297,8 @@ export function clasificar(movs, ctx = {}) {
       if (!lista) continue
       const t = tiempo(g)
       const ks = claves.get(k)
-      const desde = lowerBound(ks, t - VENTANA_SEG)
-      const hasta = upperBound(ks, t + VENTANA_SEG)
+      const desde = lowerBound(ks, t - VENTANA_FESTIVO_SEG)
+      const hasta = upperBound(ks, t + VENTANA_FESTIVO_SEG)
       let mejor = null
       for (const i of lista.slice(desde, hasta)) {
         if (usados.has(i.id) || i.cuenta_id === g.cuenta_id) continue
@@ -280,7 +308,9 @@ export function clasificar(movs, ctx = {}) {
         if (mg && mi && mg !== mi) continue
         const f = fuerza[g.id] + fuerza[i.id]
         if (!f) continue
-        const clave = [-f, Math.abs(tiempo(i) - t), String(i.id)]
+        const dt = Math.abs(tiempo(i) - t)
+        if (dt > VENTANA_SEG && f < 3) continue // puente festivo: solo con pistas fuertes
+        const clave = [-f, dt, String(i.id)]
         if (!mejor || cmpClave(clave, mejor.clave) < 0) mejor = { clave, i }
       }
       if (mejor) emparejar(g, mejor.i, 'par')

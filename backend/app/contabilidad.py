@@ -61,7 +61,8 @@ PATRON_PAGO_TARJETA = re.compile(
 PATRON_TRASLADO = re.compile(
     r"transfer|traslado|\btrasl\b|entre\s+cuentas|nequi|daviplata|\bdale\b|movii|"
     r"\benvi[oa]|enviaste|recibiste|bre-?b|a\s+mi\s+cuenta|desde\s+mi\s+cuenta|"
-    r"a\s+tu\s+cuenta|de\s+tu\s+cuenta|^\s*para\s+\S",
+    r"a\s+tu\s+cuenta|de\s+tu\s+cuenta|^\s*para\s+\S|"
+    r"\benviad[oa]\b|\brecibid[oa]\b|\bavances?\b(?!\s+de\s+obra)",
     re.IGNORECASE,
 )
 
@@ -131,6 +132,9 @@ def tipo_con_direccion(tipo: str | None, descripcion: str = "") -> str | None:
 PATRON_INTERES = re.compile(r"\binter[eé]s(?:es)?\b", re.IGNORECASE)
 
 VENTANA_EMPAREJAR_SEG = 2 * 86400
+# Puentes festivos de Colombia: viernes -> martes son 4 días. Solo se acepta esa distancia
+# cuando las pistas son fuertes (suma >= 3), para no emparejar de más.
+VENTANA_FESTIVO_SEG = 4 * 86400
 
 
 def _g(m, campo, defecto=None):
@@ -205,23 +209,54 @@ PATRON_PROPIO_FUERTE = re.compile(
     rf"\b(?:{_BANCOS_PROPIOS})\s*(?:→|->|=>|\ba\b|\bhacia\b)\s*(?:{_BANCOS_PROPIOS})\b",
     re.IGNORECASE,
 )
+_PROPIOS_DESTINO = (
+    r"cuenta|nequi|nu|nubank|bancolombia|davivienda|daviplata|dale|bbva|movii|lulo|rappipay|llave|"
+    r"bre-?b|ahorros?|cajita|bolsillo|meta|alcancia|vault"
+)
+# Más frases que significan «es mío» aunque no traigan el nombre: «Envío a mi Nequi», «Bre-B a mi llave»,
+# «Consignación a cuenta propia», «Movimiento entre cuentas», «Traslado a ahorro», «Avance en efectivo».
+PATRON_PROPIO_FRASES = re.compile(
+    rf"\b(?:a|de|desde|hacia|para)\s+(?:mi|tu)\s+(?:propia\s+)?(?:{_PROPIOS_DESTINO})\b|"
+    r"\bcuentas?\s+propias?\b|\bpropias?\s+cuentas?\b|\bmismo\s+titular\b|"
+    r"\b(?:movimientos?|traslados?)\s+entre\s+cuentas\b|"
+    r"\btraslados?\s+(?:a|hacia|de)\s+(?:mi\s+)?(?:cajita|bolsillo|ahorros?|meta|alcancia|vault)\b|"
+    r"\bavances?\s+(?:en\s+)?(?:efectivo|cajero|tarjeta|tc|tdc|credito|cupo)\b",
+    re.IGNORECASE,
+)
 _PALABRAS_NOMBRE_VACIAS = {"de", "del", "la", "las", "los", "el", "y", "san", "da", "van"}
 
 
-def _tokens_nombre(texto: str) -> set[str]:
+def _lista_tokens(texto: str) -> list[str]:
     t = _sin_acentos(texto or "").lower()
-    return {x for x in re.findall(r"[a-z]{3,}", t) if x not in _PALABRAS_NOMBRE_VACIAS}
+    return [x for x in re.findall(r"[a-z]{3,}", t) if x not in _PALABRAS_NOMBRE_VACIAS]
+
+
+def _tokens_nombre(texto: str) -> set[str]:
+    return set(_lista_tokens(texto))
+
+
+def _es_propio_por_frase(desc: str) -> bool:
+    d = _sin_acentos(desc or "")
+    return bool(PATRON_PROPIO_FUERTE.search(d) or PATRON_PROPIO_FRASES.search(d))
 
 
 def menciones_propias(descripcion: str, nombres) -> int:
     """Cuántas palabras del nombre de la persona aparecen en la descripción (apellidos parciales,
     sin tildes ni mayúsculas): 'ENVIASTE A DANIEL PARRADO' con 'Daniel Alfonso Parrado Cárdenas' = 2."""
-    d = _tokens_nombre(descripcion)
+    toks = _lista_tokens(descripcion)
+    d = set(toks)
     if not d:
         return 0
+    # Los bancos truncan el nombre al final («DANIEL ALFONSO PARR»): la última palabra puede ser
+    # un prefijo (>= 4 letras) de una palabra del nombre que aún no coincidió.
+    ult = toks[-1]
     mejor = 0
     for n in nombres or []:
-        mejor = max(mejor, len(d & _tokens_nombre(n)))
+        nt = _tokens_nombre(n)
+        c = len(d & nt)
+        if len(ult) >= 4 and ult not in nt and any(x.startswith(ult) and x not in d for x in nt):
+            c += 1
+        mejor = max(mejor, c)
     return mejor
 
 
@@ -258,13 +293,13 @@ def _fuerza_pista(m, nombres=None) -> int:
     desc = _g(m, "descripcion", "") or ""
     notas = _g(m, "notas", "") or ""
     f = 0
-    if PATRON_TRASLADO.search(desc):
+    if PATRON_TRASLADO.search(_sin_acentos(desc)):  # sin tildes: «Envío» también cuenta
         f += 1
     if MARCA_TRASLADO_PROPIO in notas:
         f += 2
     if MARCA_ES_TRASLADO in notas:
         f += 2
-    if PATRON_PROPIO_FUERTE.search(_sin_acentos(desc)):
+    if _es_propio_por_frase(desc):
         f += 2
     menc = menciones_propias(desc, nombres)
     f += 2 if menc >= 2 else menc
@@ -277,7 +312,7 @@ def _es_pista_fuerte(m, nombres=None) -> bool:
         return False
     desc = _g(m, "descripcion", "") or ""
     return (MARCA_TRASLADO_PROPIO in (_g(m, "notas", "") or "")
-            or bool(PATRON_PROPIO_FUERTE.search(_sin_acentos(desc)))
+            or _es_propio_por_frase(desc)
             or menciones_propias(desc, nombres) >= 2)
 
 
@@ -363,8 +398,8 @@ def clasificar(movs, tipos_cuenta: dict[str, str] | None = None) -> dict[str, di
             if not lista:
                 continue
             t = _g(g, "fecha").timestamp()
-            desde = bisect_left(claves[k], t - VENTANA_EMPAREJAR_SEG)
-            hasta = bisect_right(claves[k], t + VENTANA_EMPAREJAR_SEG)
+            desde = bisect_left(claves[k], t - VENTANA_FESTIVO_SEG)
+            hasta = bisect_right(claves[k], t + VENTANA_FESTIVO_SEG)
             fg = fuerza[_g(g, "id")]
             mejor = None
             for i in lista[desde:hasta]:
@@ -379,7 +414,10 @@ def clasificar(movs, tipos_cuenta: dict[str, str] | None = None) -> dict[str, di
                 f = fg + fuerza[iid]
                 if not f:
                     continue
-                clave = (-f, abs(_g(i, "fecha").timestamp() - t), str(iid))
+                dt = abs(_g(i, "fecha").timestamp() - t)
+                if dt > VENTANA_EMPAREJAR_SEG and f < 3:
+                    continue  # puente festivo: solo con pistas fuertes
+                clave = (-f, dt, str(iid))
                 if mejor is None or clave < mejor[0]:
                     mejor = (clave, i)
             if mejor:
@@ -499,6 +537,14 @@ def _contexto_de_decisiones(db, owners, out: "TiposCuenta", nombres_extra=None) 
     for p in db.query(Perfil).filter(Perfil.usuario_id.in_(owners)).all():
         if p.nombre_preferido:
             out.nombres.append(p.nombre_preferido)
+        # Nombre completo del titular (de Google), solo para reconocer «Enviaste a <TU NOMBRE>».
+        # Columna opcional (perfil_nombre_titular.sql): sin ella solo se usa el nombre preferido.
+        try:
+            if p.nombre_titular:
+                out.nombres.append(p.nombre_titular)
+        except Exception:  # noqa: BLE001
+            db.rollback()
+            break
 
 
 def tipos_de_cuentas(cuentas, db=None, nombres_extra=None) -> TiposCuenta:
