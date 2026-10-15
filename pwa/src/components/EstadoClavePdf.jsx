@@ -45,7 +45,7 @@ export default function EstadoClavePdf({
   }
 
   return (
-    <div id={id} className="rounded-2xl bg-paper border border-line p-4 mb-3" data-testid="estado-clave-pdf">
+    <div id={id} className="rounded-2xl bg-paper p-4 mb-3" data-testid="estado-clave-pdf">
       <div className="flex items-start justify-between gap-2 mb-1">
         <p className="flex items-center gap-1.5 text-xs font-semibold min-w-0">
           <KeyRound size={16} aria-hidden="true" className="shrink-0" /> Clave del PDF

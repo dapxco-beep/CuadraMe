@@ -20,7 +20,7 @@ export function LecturaCarril({ carril, activo = true, info, leyendo = {}, resul
   const ocupado = Boolean(leyendo.movimientos || leyendo.extractos)
   const contadores = contadoresCarril(carril, info)
   return (
-    <div className="rounded-2xl bg-paper border border-line p-4" data-testid={`carril-${carril}`} aria-label={`Lectura de ${NOMBRE_CARRIL[carril].toLowerCase()} del correo`}>
+    <div className="rounded-2xl bg-paper p-4" data-testid={`carril-${carril}`} aria-label={`Lectura de ${NOMBRE_CARRIL[carril].toLowerCase()} del correo`}>
       <p className="text-xs text-ink-soft">{TEXTO_CARRIL[carril]}</p>
       {activo ? (
         <>
@@ -35,7 +35,7 @@ export function LecturaCarril({ carril, activo = true, info, leyendo = {}, resul
             type="button"
             onClick={() => onTraer(carril)}
             disabled={ocupado}
-            className="mt-3 w-full flex items-center justify-center gap-2 border border-line bg-paper-raised font-semibold rounded-xl min-h-[44px] text-sm disabled:opacity-60"
+            className="mt-3 w-full flex items-center justify-center gap-2 bg-paper-raised shadow-sm font-semibold rounded-xl min-h-[44px] text-sm disabled:opacity-60"
           >
             {lee ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={16} aria-hidden="true" />}
             {lee ? (lee.total_estimado ? `Leyendo ${lee.leidos} de ${lee.total_estimado}` : 'Buscando...') : BOTON_CARRIL[carril]}
@@ -96,7 +96,7 @@ export function InterruptoresLectura({ activos, errores = {}, onCambiar, guardan
         </div>
       )}
 
-      <ul className="rounded-2xl bg-paper border border-line divide-y divide-line">
+      <ul className="rounded-2xl bg-paper divide-y divide-line/50">
         {['movimientos', 'extractos'].map((carril) => (
           <li key={carril} data-testid={`interruptor-${carril}`}>
             <label className="flex items-center justify-between gap-3 px-4 py-2 min-h-[56px] text-sm font-medium">

@@ -63,19 +63,19 @@ function irA(id) {
 // Subsección dentro de un bloque: título corto, contador y su propio «Todo al día».
 function Sub({ id, titulo, cuenta = 0, children }) {
   return (
-    <div id={id} className="mt-5 scroll-mt-4">
-      <h3 className="text-[13px] font-semibold flex items-center gap-2">
+    <div id={id} className="mt-6 pt-5 border-t border-line/50 scroll-mt-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-soft flex items-center gap-2">
         {titulo}
-        {cuenta > 0 && <span className="text-accent" aria-label={`${cuenta} pendientes`}>{cuenta}</span>}
+        {cuenta > 0 && <span className="text-accent normal-case" aria-label={`${cuenta} pendientes`}>{cuenta}</span>}
       </h3>
-      <div className="mt-2">{children}</div>
+      <div className="mt-3">{children}</div>
     </div>
   )
 }
 
 function AlDia({ texto = 'Todo al día' }) {
   return (
-    <p className="flex items-center gap-1.5 text-xs text-ink-soft rounded-xl bg-paper border border-line px-3 py-2.5">
+    <p className="flex items-center gap-2 text-xs text-ink-soft py-1.5">
       <CheckCircle2 size={16} className="text-cuadra shrink-0" aria-hidden="true" /> {texto}
     </p>
   )
@@ -104,7 +104,7 @@ function ListaTareas({ tareas, onAccion }) {
             <button
               onClick={() => onAccion(t)}
               data-testid={`tarea-${t.id}`}
-              className="w-full rounded-2xl bg-paper-raised border border-line px-3.5 py-3 min-h-[48px] flex items-center gap-3 text-left"
+              className="w-full rounded-2xl bg-paper px-3.5 py-3 min-h-[56px] flex items-center gap-3 text-left"
             >
               <span className="w-8 h-8 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
                 <Icono size={16} aria-hidden="true" />
@@ -112,7 +112,7 @@ function ListaTareas({ tareas, onAccion }) {
               <span className="flex-1 min-w-0">
                 <span className="block text-sm font-semibold leading-tight">{t.titulo}</span>
                 <span className="block text-xs text-ink-soft mt-0.5">{t.detalle}</span>
-                <span className="inline-block mt-1.5 rounded-lg bg-accent text-paper-raised text-xs font-semibold px-3 py-1.5">{BOTON_TAREA[t.id] || 'Resolver'}</span>
+                <span className="inline-block mt-1 text-xs font-semibold text-accent">{BOTON_TAREA[t.id] || 'Resolver'}</span>
               </span>
               <span className="text-sm font-bold text-accent" aria-label={`${t.cantidad} pendientes`}>{t.cantidad}</span>
               <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
@@ -219,10 +219,10 @@ export default function Sincronizacion() {
         const conectado = Boolean(gm?.conectado)
         // Modo simple: las dos secciones de contenido a la vista y la conexión plegada (salvo que falte conectar).
         setAbiertos((a) => ({
-          movimientos: true,
-          extractos: true,
+          movimientos: a.movimientos || tareasDeBloque(est?.tareas || [], 'movimientos').length > 0,
+          extractos: a.extractos || tareasDeBloque(est?.tareas || [], 'extractos').length > 0,
           conexion: a.conexion || !conectado,
-          revisar: true,
+          revisar: a.revisar || tareasDeBloque(est?.tareas || [], 'revisar').length > 0,
         }))
       }
       setEstado(est)
@@ -702,15 +702,15 @@ export default function Sincronizacion() {
           <ArrowLeft size={20} />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold">Traer movimientos</h1>
-          <p className="text-sm text-ink-soft" data-testid="resumen-tareas">{resumenTareas(tareas)}</p>
+          <h1 className="text-xl font-bold leading-tight">Traer movimientos</h1>
+          <p className="text-sm text-ink-soft mt-0.5" data-testid="resumen-tareas">{resumenTareas(tareas)}</p>
           {resumenCarriles(tareas) && <p className="text-xs text-ink-soft mt-0.5" data-testid="resumen-carriles">{resumenCarriles(tareas)}</p>}
         </div>
         <button
           onClick={() => setVerEstado(true)}
-          className="shrink-0 flex items-center gap-1.5 text-xs font-semibold text-accent min-h-[44px] px-1"
+          className="shrink-0 flex items-center justify-center gap-1.5 text-xs font-semibold text-accent min-h-[44px] min-w-[44px] px-1"
         >
-          <Plug size={16} aria-hidden="true" /> Conexiones
+          <Plug size={16} aria-hidden="true" /> <span className="max-[400px]:sr-only">Conexiones</span>
         </button>
       </header>
 
@@ -785,6 +785,7 @@ export default function Sincronizacion() {
       <BloqueCentro
         id="sinc-movimientos"
         titulo="Movimientos"
+        subtitulo="Avisos de tu banco por correo"
         icono={BellRing}
         cuenta={tareasMov.length}
         abierto={abiertos.movimientos}
@@ -795,7 +796,7 @@ export default function Sincronizacion() {
         </p>
         {tareasMov.length > 0 && (
           <div className="mt-3" data-testid="por-hacer-movimientos">
-            <h3 className="text-[13px] font-semibold">Por hacer</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Por hacer</h3>
             <ListaTareas tareas={tareasMov} onAccion={accionTarea} />
           </div>
         )}
@@ -828,7 +829,7 @@ export default function Sincronizacion() {
             )}
           </div>
         ) : (
-          <div className="mt-3 rounded-2xl bg-paper border border-line p-4">
+          <div className="mt-3 rounded-2xl bg-paper p-4">
             <p className="text-sm font-semibold">Conecta tu Gmail para traer tus movimientos</p>
             <button onClick={() => abrirBloque('conexion')} className="mt-1 text-xs font-semibold text-accent min-h-[44px]">Ir a «Conexión de Gmail»</button>
           </div>
@@ -837,7 +838,7 @@ export default function Sincronizacion() {
         <button
           type="button"
           onClick={() => navigate('/agregar')}
-          className="mt-3 w-full flex items-center justify-center gap-2 border border-line bg-paper-raised font-semibold rounded-xl min-h-[44px] text-sm"
+          className="mt-3 w-full flex items-center justify-center gap-2 bg-paper font-semibold rounded-xl min-h-[44px] text-sm"
         >
           <Pencil size={16} aria-hidden="true" /> Agregar uno a mano
         </button>
@@ -845,7 +846,7 @@ export default function Sincronizacion() {
         {conectado && (
           <>
             {(punto?.anteriores?.correos || 0) > 0 && (
-              <p className="text-xs text-ink-soft mt-3 rounded-xl bg-paper border border-line px-3 py-2.5" data-testid="correos-anteriores">
+              <p className="text-xs text-ink-soft mt-3 rounded-xl bg-paper px-3 py-2.5" data-testid="correos-anteriores">
                 {punto.anteriores.correos === 1
                   ? '1 correo anterior a tu fecha de inicio no se muestra.'
                   : `${punto.anteriores.correos} correos anteriores a tu fecha de inicio no se muestran.`}{' '}
@@ -874,6 +875,7 @@ export default function Sincronizacion() {
       <BloqueCentro
         id="sinc-extractos"
         titulo="Extractos"
+        subtitulo="Confirma y cuadra cada mes"
         icono={FileCheck2}
         cuenta={tareasExt.length}
         abierto={abiertos.extractos}
@@ -884,7 +886,7 @@ export default function Sincronizacion() {
         </p>
         {tareasExt.length > 0 && (
           <div className="mt-3" data-testid="por-hacer-extractos">
-            <h3 className="text-[13px] font-semibold">Por hacer</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Por hacer</h3>
             <ListaTareas tareas={tareasExt} onAccion={accionTarea} />
           </div>
         )}
@@ -959,7 +961,7 @@ export default function Sincronizacion() {
                   </div>
                 ))}
                 {pendientes.length > EXTRACTOS_VISIBLES && (
-                  <button onClick={() => setVerTodos((v) => !v)} className="border border-line rounded-xl py-2.5 text-sm font-semibold">
+                  <button onClick={() => setVerTodos((v) => !v)} className="bg-paper rounded-xl min-h-[44px] text-sm font-semibold">
                     {verTodos ? 'Ver menos' : `Ver los ${pendientes.length} extractos`}
                   </button>
                 )}
@@ -1004,13 +1006,12 @@ export default function Sincronizacion() {
         </Sub>
 
       {/* Cobertura por mes y cuenta */}
-      <section className="mt-5" aria-label="Cobertura por mes">
-        <h2 className="text-[15px] font-semibold">Cobertura por mes</h2>
-        <Sub id="sinc-cuentas" titulo="Cuentas por mes">
+      <section aria-label="Cobertura por mes">
+        <Sub id="sinc-cuentas" titulo="Cobertura por mes · cuentas">
           {filasCuentas.length === 0 ? (
             <p className="text-sm text-ink-soft">Aún no tienes cuentas.</p>
           ) : (
-            <div className="rounded-2xl bg-paper border border-line p-3">
+            <div className="rounded-2xl bg-paper p-3">
               {!ventanaFija && (
                 <div className="flex items-center justify-between mb-2" aria-label="Ventana de meses">
                   <button onClick={() => moverVentana(-1)} className="flex items-center gap-1 text-xs font-semibold text-accent min-h-[40px] pr-3">
@@ -1062,7 +1063,7 @@ export default function Sincronizacion() {
               </ul>
 
               {celdaDetalle && cuentaDetalle && (
-                <div className="mt-3 rounded-xl bg-paper-raised border border-line p-3" role="region" aria-label="Detalle del mes">
+                <div className="mt-3 rounded-xl bg-paper-raised ring-1 ring-line/60 p-3" role="region" aria-label="Detalle del mes">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-semibold capitalize">{nombreFila[cuentaDetalle.id]} · {nombreMes(celdaDetalle.mes)}</p>
@@ -1138,6 +1139,7 @@ export default function Sincronizacion() {
       <BloqueCentro
         id="sinc-conexion"
         titulo="Conexión de Gmail"
+        subtitulo={conectado ? 'Conectado' : 'Sin conectar'}
         icono={Plug}
         cuenta={0}
         mostrarAlDia={false}
@@ -1170,6 +1172,7 @@ export default function Sincronizacion() {
       <BloqueCentro
         id="sinc-revisar"
         titulo="Por revisar"
+        subtitulo="Confirmar y categorizar"
         icono={CheckCheck}
         cuenta={tareasRevisar.length}
         abierto={abiertos.revisar}
@@ -1194,7 +1197,7 @@ export default function Sincronizacion() {
           ) : (
             <div className="flex flex-col gap-2.5">
               {cola.items.map((m) => (
-                <div key={m.id} className="rounded-2xl bg-paper border border-line p-3.5" data-testid={`cat-${m.id}`}>
+                <div key={m.id} className="rounded-2xl bg-paper p-3.5" data-testid={`cat-${m.id}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold break-words line-clamp-2">{m.descripcion}</p>
@@ -1228,7 +1231,7 @@ export default function Sincronizacion() {
                 </div>
               ))}
               {cola.items.length < cola.total && (
-                <button onClick={masPorCategorizar} className="border border-line rounded-xl py-2.5 text-sm font-semibold">Cargar más</button>
+                <button onClick={masPorCategorizar} className="bg-paper rounded-xl min-h-[44px] text-sm font-semibold">Cargar más</button>
               )}
             </div>
           )}
@@ -1302,7 +1305,7 @@ function FilaExtracto({
   const sinBanco = !ex.banco
   const puedeConciliar = ex.estado === 'nuevo'
   return (
-    <div className="rounded-2xl bg-paper border border-line p-3.5" data-testid={`extracto-${ex.id}`}>
+    <div className="rounded-2xl bg-paper p-3.5" data-testid={`extracto-${ex.id}`}>
       <div className="flex items-start gap-3">
         <FileText size={20} className="text-accent shrink-0 mt-0.5" aria-hidden="true" />
         <div className="min-w-0 flex-1">
