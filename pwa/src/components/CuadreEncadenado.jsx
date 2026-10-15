@@ -35,7 +35,7 @@ function SaldoAMano({ item, moneda, onGuardado }) {
     }
   }
   return (
-    <form onSubmit={guardar} className="rounded-xl border border-line bg-paper p-3 text-xs" data-testid="saldo-a-mano">
+    <form onSubmit={guardar} className="rounded-xl bg-paper-raised p-3 text-xs" data-testid="saldo-a-mano">
       <p>{item.texto}</p>
       <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
         <label className="flex-1 flex flex-col gap-1 text-ink-soft">
@@ -126,7 +126,7 @@ function Accion({ accion, onHecho, moneda, ocupado, setOcupado }) {
           {accion.texto}
         </button>
       ) : (
-        <div className="rounded-xl border border-line bg-paper p-3" role="group" aria-label={`Confirmar: ${accion.texto}`}>
+        <div className="rounded-xl bg-paper-raised p-3" role="group" aria-label={`Confirmar: ${accion.texto}`}>
           <p className="font-semibold">{accion.texto}</p>
           {accion.confirmacion && <p className={`mt-1 ${fuerte ? 'text-danger font-medium' : 'text-ink-soft'}`}>{accion.confirmacion}</p>}
           {fuerte && (
@@ -177,7 +177,7 @@ export default function CuadreEncadenado({ cuentaId, moneda = 'COP', datos = nul
   const hecho = () => { cargar(); onCambio?.() }
 
   return (
-    <section id={id} className={`rounded-2xl bg-paper-raised border border-line p-4 ${className}`} aria-label="Cuadre mes a mes" data-testid="cuadre-encadenado">
+    <section id={id} className={`rounded-2xl bg-paper p-4 ${className}`} aria-label="Cuadre mes a mes" data-testid="cuadre-encadenado">
       <h3 className="text-sm font-semibold flex items-center gap-1.5">
         <Scale size={16} aria-hidden="true" /> Cuadre mes a mes{d.cuenta ? ` · ${d.cuenta}` : ''}
       </h3>
@@ -233,7 +233,7 @@ export default function CuadreEncadenado({ cuentaId, moneda = 'COP', datos = nul
       {problemas.length > 0 && (
         <ul className="mt-3 flex flex-col gap-3" aria-label="Qué hacer">
           {problemas.map((m) => (
-            <li key={m.mes} className="rounded-xl border border-line bg-paper p-3 text-xs" data-testid={`problema-${m.mes}`}>
+            <li key={m.mes} className="rounded-xl bg-paper-raised p-3 text-xs" data-testid={`problema-${m.mes}`}>
               <p className="font-semibold text-sm">{m.etiqueta}</p>
               <p className="mt-1">{m.texto}</p>
               {m.causas?.filter((c) => c.probable && !m.texto.includes(c.texto)).map((c) => (

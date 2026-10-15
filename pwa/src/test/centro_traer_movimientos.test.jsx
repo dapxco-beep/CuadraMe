@@ -165,7 +165,7 @@ describe('subir archivos: una sola zona, cada archivo a su lector', () => {
     api.procesarExtracto.mockResolvedValue(respuestaPdf('CAFE PDF'))
     api.importarVistaPrevia.mockImplementation(({ nombre_archivo }) => Promise.resolve(vistaPrevia(`FILA ${nombre_archivo}`)))
     montarCentro()
-    const zona = await screen.findByLabelText('Archivos a subir')
+    const zona = await (async () => { const bx = (await screen.findAllByRole('button')).find((x) => x.getAttribute('aria-expanded') === 'false' && /^Extractos/.test(x.textContent.trim())); if (bx) fireEvent.click(bx); return screen.findByLabelText('Archivos a subir') })()
     fireEvent.change(zona, { target: { files: [pdf('a.pdf'), csv('b.csv'), xlsx('c.xlsx')] } })
     await userEvent.click(await screen.findByRole('button', { name: /Procesar 3 archivos/ }))
     await waitFor(() => expect(screen.getAllByText('Listo')).toHaveLength(3))
@@ -188,7 +188,7 @@ describe('subir archivos: una sola zona, cada archivo a su lector', () => {
       .mockResolvedValueOnce(respuestaPdf('DOS')) // el reintento
     api.importarFaltantes.mockResolvedValue({ ok: true, importados: 1 })
     montarCentro()
-    fireEvent.change(await screen.findByLabelText('Archivos a subir'), { target: { files: [pdf('uno.pdf'), pdf('dos.pdf'), pdf('tres.pdf')] } })
+    fireEvent.change(await (async () => { const bx = (await screen.findAllByRole('button')).find((x) => x.getAttribute('aria-expanded') === 'false' && /^Extractos/.test(x.textContent.trim())); if (bx) fireEvent.click(bx); return screen.findByLabelText('Archivos a subir') })(), { target: { files: [pdf('uno.pdf'), pdf('dos.pdf'), pdf('tres.pdf')] } })
     await userEvent.click(await screen.findByRole('button', { name: /Procesar 3 archivos/ }))
     expect(await screen.findByText('Servidor ocupado')).toBeTruthy()
     await waitFor(() => expect(screen.getAllByText('Listo')).toHaveLength(2))
@@ -201,7 +201,7 @@ describe('subir archivos: una sola zona, cada archivo a su lector', () => {
 
   it('un formato que no se puede leer se rechaza con motivo y no se envía', async () => {
     montarCentro()
-    fireEvent.change(await screen.findByLabelText('Archivos a subir'), { target: { files: [new File(['x'], 'foto.png', { type: 'image/png' })] } })
+    fireEvent.change(await (async () => { const bx = (await screen.findAllByRole('button')).find((x) => x.getAttribute('aria-expanded') === 'false' && /^Extractos/.test(x.textContent.trim())); if (bx) fireEvent.click(bx); return screen.findByLabelText('Archivos a subir') })(), { target: { files: [new File(['x'], 'foto.png', { type: 'image/png' })] } })
     expect(await screen.findByText(/foto\.png: Formato no soportado/)).toBeTruthy()
     expect(api.procesarExtracto).not.toHaveBeenCalled()
   })

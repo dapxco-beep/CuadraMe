@@ -42,7 +42,7 @@ export default function CorreosYaRegistrados({ cantidad = 0, onCambio }) {
   }
 
   return (
-    <div className="mt-3 rounded-2xl border border-line bg-paper" data-testid="correos-ya-registrados">
+    <div className="mt-3 rounded-2xl bg-paper" data-testid="correos-ya-registrados">
       <button
         onClick={() => setAbierto((a) => !a)}
         aria-expanded={abierto}
@@ -59,7 +59,7 @@ export default function CorreosYaRegistrados({ cantidad = 0, onCambio }) {
       </button>
 
       {abierto && (
-        <div className="border-t border-line">
+        <div className="border-t border-line/50">
           {error && <p className="text-xs text-danger px-3.5 py-2" role="alert">{error}</p>}
           {lista === null && !error && <p className="text-xs text-ink-soft px-3.5 py-3">Cargando...</p>}
           {lista && lista.length === 0 && <p className="text-xs text-ink-soft px-3.5 py-3">No hay correos escondidos.</p>}

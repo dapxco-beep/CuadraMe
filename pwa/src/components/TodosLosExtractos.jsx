@@ -239,7 +239,7 @@ export default function TodosLosExtractos({ datos, filtro, onFiltro, onAccion, o
         {grupos.map((g) => (
           <section key={g.mes || 'sin-mes'} aria-label={g.etiqueta} data-testid={`mes-${g.mes || 'sin-mes'}`}>
             <h4 className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft mb-1.5">{g.etiqueta} · {g.items.length}</h4>
-            <ul className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
+            <ul className="rounded-2xl bg-paper divide-y divide-line/50 overflow-hidden">
               {g.items.map((it) => (
                 <FilaExtractoVista key={it.id} it={it} onAccion={onAccion} onFijarMes={onFijarMes} ocupado={Boolean(ocupados?.has(it.id))} />
               ))}
@@ -264,7 +264,7 @@ export default function TodosLosExtractos({ datos, filtro, onFiltro, onAccion, o
           {sinAdjuntoAbierto && (
             <div>
               <p className="text-xs text-ink-soft mb-2">{datos.razon_sin_adjunto || 'Estos correos no traían el PDF del extracto.'}</p>
-              <ul className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
+              <ul className="rounded-2xl bg-paper divide-y divide-line/50 overflow-hidden">
                 {sinAdjunto.map((c) => (
                   <li key={c.id} className="px-4 py-2.5">
                     <p className="text-sm font-medium break-words">{c.asunto || 'Correo sin asunto'}</p>
