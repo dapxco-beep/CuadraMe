@@ -54,6 +54,16 @@ const montar = () =>
     </DialogosProvider>
   )
 
+// El rediseño deja plegadas las secciones sin tareas: se abre «Extractos» como lo haría la persona.
+const abrirExtractos = async () => {
+  const boton = await waitFor(() => {
+    const b = screen.getAllByRole('button').find((x) => x.getAttribute('aria-expanded') === 'false' && /^Extractos/.test(x.textContent.trim()))
+    if (!b) throw new Error('sin sección Extractos plegada')
+    return b
+  }).catch(() => null)
+  if (boton) fireEvent.click(boton)
+}
+
 beforeEach(() => {
   Object.values(api).forEach((f) => f.mockReset())
   api.sincronizacionEstado.mockResolvedValue(estadoCon(MESES))
@@ -80,12 +90,14 @@ describe('helpers', () => {
 describe('Sincronización: cuadrícula', () => {
   it('nombres homónimos distinguibles en la cuadrícula', async () => {
     montar()
+    await abrirExtractos()
     expect(await screen.findByRole('button', { name: /Nu Colombia \(Ahorros\), mayo 2026/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Nu Colombia \(Crédito ••4821\), mayo 2026/ })).toBeTruthy()
   })
 
   it('"Subir el extracto de este mes" abre la sección Extractos (subir archivo) con cuenta y mes, sin salir del centro', async () => {
     montar()
+    await abrirExtractos()
     fireEvent.click(await screen.findByRole('button', { name: /Nu Colombia \(Ahorros\), mayo 2026/ }))
     const det = screen.getByRole('region', { name: 'Detalle del mes' })
     fireEvent.click(within(det).getByRole('button', { name: 'Subir el extracto de este mes' }))
@@ -97,6 +109,7 @@ describe('Sincronización: cuadrícula', () => {
 
   it('"Meses anteriores" pide la ventana anterior al servidor', async () => {
     montar()
+    await abrirExtractos()
     await screen.findByRole('button', { name: /Nu Colombia \(Ahorros\), mayo 2026/ })
     api.sincronizacionEstado.mockResolvedValue(estadoCon(['2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04']))
     const hoy = new Date()
@@ -107,6 +120,7 @@ describe('Sincronización: cuadrícula', () => {
 
   it('si el servidor ignora la ventana, se esconden los botones de desplazar', async () => {
     montar()
+    await abrirExtractos()
     await screen.findByRole('button', { name: /Nu Colombia \(Ahorros\), mayo 2026/ })
     fireEvent.click(screen.getByRole('button', { name: /Meses anteriores/ })) // responde la misma ventana
     await waitFor(() => expect(screen.queryByRole('button', { name: /Meses anteriores/ })).toBeNull())

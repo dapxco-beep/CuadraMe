@@ -180,7 +180,8 @@ def test_por_tu_regla_y_los_de_otros_tambien_se_revisan(usuario, cuenta):
     b = _mov(cuenta, "xyzzy qwerty")
     assert b["categoria"] == "Otros"
     conteo = client.get("/movimientos/por-revisar/conteo").json()  # lo de la regla ya está categorizado: solo cuenta «Otros»
-    assert (conteo["auto"], conteo["otros"], conteo["total"]) == (0, 1, 1)
+    # Regla de Daniel: un «Otros» que aparece una sola vez NO se pide (solo lo repetido ≥4 o lo que marca el cliente)
+    assert (conteo["auto"], conteo["otros"], conteo["total"]) == (0, 0, 0)
 
 
 def test_lo_que_el_usuario_elige_nace_confirmado(usuario, cuenta):

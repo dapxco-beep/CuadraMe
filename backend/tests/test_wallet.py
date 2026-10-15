@@ -135,7 +135,9 @@ def test_transaccion_de_wallet_crea_movimiento_por_confirmar_y_mueve_saldo():
 
     # aparece en 'Por revisar' y en la bandeja por confirmar
     revisar = client.get("/movimientos?por_revisar=true").json()
-    assert m["id"] in [x["id"] for x in revisar]
+    # Un movimiento de wallet suelto no entra a «por categorizar» (regla de Daniel: solo repetidos ≥4 o marcados),
+    # pero sí espera la confirmación de que existe:
+    assert m["id"] not in [x["id"] for x in revisar]
     assert m["id"] in [x["id"] for x in client.get("/movimientos/por-confirmar").json()]
 
 
