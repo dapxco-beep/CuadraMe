@@ -12,6 +12,7 @@ from app.contabilidad import (
     CATEGORIA_APORTE_META,
     FUENTE_APORTE_META,
     gastos_por_categoria,
+    moneda_base_de,
     tipos_cuenta_de,
     tipos_efectivos,
 )
@@ -334,7 +335,7 @@ def _premiar_presupuestos_de(db: Session, usuario_id: str, inicio_mes, clave_mes
         return False
 
     ids_accesibles = cuentas_ids_accesibles(db, usuario_id)
-    gastado_mes = gastos_por_categoria(db, ids_accesibles, inicio_mes)
+    gastado_mes = gastos_por_categoria(db, ids_accesibles, inicio_mes, base=moneda_base_de(db, usuario_id))
     if any(gastado_mes.get(p.categoria, 0.0) > p.limite for p in presupuestos):
         return False
 

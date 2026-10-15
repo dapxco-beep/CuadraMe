@@ -26,7 +26,7 @@ from app import precios
 from app.auth import UsuarioActual, cron_autorizado, get_current_user
 from app.crons import Corrida
 from app.database import get_db
-from app.fx import convertir_a_cop
+from app.contabilidad import ConvertidorBase, moneda_base_de
 from app.models import Cuenta, Deuda
 from app.models_patrimonio import ActivoPatrimonio, FlujoActivo, SnapshotPatrimonio, ValorActivo
 from app import models_inversiones  # noqa: F401  (registra las tablas de Inversiones en create_all)
@@ -156,7 +156,8 @@ def evaluar_activo(a: ActivoPatrimonio, flujos: list, hoy: datetime) -> dict:
     return {"valor": valor, "costo": costo, **rent, "xirr_pct": tir, **extra}
 
 
-def _serializar_activo(a: ActivoPatrimonio, flujos: list, hoy: datetime) -> dict:
+def _serializar_activo(a: ActivoPatrimonio, flujos: list, hoy: datetime, conv=None) -> dict:
+    conv = conv or ConvertidorBase("COP")  # `valor_cop` es el nombre histórico: lleva la moneda base
     ev = evaluar_activo(a, flujos, hoy)
     return {
         "id": a.id, "clase": a.clase, "nombre": a.nombre, "moneda": a.moneda,
@@ -172,7 +173,7 @@ def _serializar_activo(a: ActivoPatrimonio, flujos: list, hoy: datetime) -> dict
         **(inv_calc.extras_bien(a.clase, ev["valor"], a.costo_adquisicion, a.precio_fecha,
                                 a.arriendo_mensual, hoy) if a.clase in calc.CLASES_BIEN else
            {"actualizado_hace": inv_calc.hace_cuanto(a.precio_fecha, hoy)} if a.clase != "cdt" else {}),
-        "valor_cop": convertir_a_cop(ev["valor"], a.moneda),
+        "valor_cop": conv(ev["valor"], a.moneda),
     }
 
 
@@ -192,7 +193,9 @@ def calcular_resumen(db: Session, uid: str, hoy: Optional[datetime] = None) -> d
         .order_by(ActivoPatrimonio.creado_en)
         .all()
     )
-    activos = [_serializar_activo(a, flujos.get(a.id, []), hoy) for a in activos_db]
+    base = moneda_base_de(db, uid)
+    conv = ConvertidorBase(base)
+    activos = [_serializar_activo(a, flujos.get(a.id, []), hoy, conv) for a in activos_db]
 
     por_clase: dict = {}
     for a in activos:
@@ -200,7 +203,7 @@ def calcular_resumen(db: Session, uid: str, hoy: Optional[datetime] = None) -> d
     total_activos = sum(por_clase.values())
 
     cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == uid).all()
-    total_cuentas = sum(convertir_a_cop(c.saldo or 0, c.moneda or "COP") for c in cuentas)
+    total_cuentas = sum(conv(c.saldo or 0, c.moneda or "COP") for c in cuentas)
 
     # La deuda de una tarjeta de crédito ya está restada dentro de `total_cuentas` (su saldo es
     # negativo). Si además se registró como Deuda de tipo 'tarjeta', se cuenta UNA sola vez:
@@ -216,7 +219,7 @@ def calcular_resumen(db: Session, uid: str, hoy: Optional[datetime] = None) -> d
     pasivos_duplicados = [{"id": d.id, "nombre": d.nombre} for d in deudas_db if d.id in duplicadas]
     total_deudas = sum(p["saldo"] for p in pasivos)
     deudas_tarjeta = sum(
-        max(0.0, -convertir_a_cop(c.saldo or 0, c.moneda or "COP")) for c in cuentas if c.tipo == "credito"
+        max(0.0, -conv(c.saldo or 0, c.moneda or "COP")) for c in cuentas if c.tipo == "credito"
     )
 
     # La dona incluye las cuentas como una "clase" más: es el efectivo/líquido.
@@ -225,7 +228,8 @@ def calcular_resumen(db: Session, uid: str, hoy: Optional[datetime] = None) -> d
         dist_valores["cuentas"] = total_cuentas
 
     return {
-        "moneda_base": "COP",
+        "moneda_base": base,
+        "monedas_sin_tasa": sorted(conv.sin_tasa),
         "patrimonio_neto": calc.patrimonio_neto(total_activos, total_cuentas, total_deudas),
         "total_activos": total_activos,
         "total_cuentas": total_cuentas,

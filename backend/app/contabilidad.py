@@ -521,15 +521,77 @@ def tipos_cuenta_de(db, ids, nombres_extra=None) -> dict[str, str]:
     return tipos_de_cuentas(db.query(Cuenta).filter(Cuenta.id.in_(list(ids))).all(), db, nombres_extra)
 
 
-def gastos_por_categoria(db, ids_accesibles, desde: datetime, monedas: dict[str, str] | None = None) -> dict[str, float]:
-    """{categoria: gasto en COP} desde `desde` hasta hoy, con la regla contable
+# ── Moneda base ──────────────────────────────────────────────────────────────────────
+# Regla única: todo total se expresa en la moneda base del perfil. Un monto en otra moneda se
+# convierte con una tasa (1 origen = tasa base). Sin tasa NO se suma a ciegas: la moneda queda
+# marcada en `sin_tasa` para que la pantalla lo avise. Espejo: pwa/src/lib/contabilidad.js (aBase).
+def a_base(monto, origen, base, tasas=None):
+    """(valor_en_base, convertido). `tasas` = {moneda: unidades de base por 1 de esa moneda}."""
+    b = (base or "COP").upper()
+    o = (origen or b).upper()
+    monto = float(monto or 0)
+    if o == b:
+        return monto, True
+    t = (tasas or {}).get(o)
+    if not t or t <= 0:
+        return monto, False
+    return monto * t, True
+
+
+def moneda_base_de(db, usuario_id: str) -> str:
+    """Moneda base del perfil; sin ella, la moneda de su país (perfiles viejos -> COP)."""
+    from app import paises
+
+    try:
+        from app.models import Perfil
+
+        p = db.query(Perfil).filter(Perfil.usuario_id == usuario_id).first()
+        base = getattr(p, "moneda_base", None) if p else None
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        base = None
+    if base:
+        return base.upper()
+    c = paises.config_pais(paises.pais_de_usuario(db, usuario_id))
+    return (c or {}).get("moneda", "COP")
+
+
+class ConvertidorBase:
+    """Callable (monto, moneda_origen) -> monto en base, con tasas de app.fx. `sin_tasa` junta
+    las monedas que no se pudieron convertir (su monto se deja tal cual, marcado)."""
+
+    def __init__(self, base: str = "COP"):
+        self.base = (base or "COP").upper()
+        self.sin_tasa: set[str] = set()
+        self._tasas: dict[str, float] = {}
+
+    def __call__(self, monto, origen=None):
+        from app import fx
+
+        o = (origen or self.base).upper()
+        if o != self.base and o not in self._tasas and o not in self.sin_tasa:
+            t, _f, _fuente = fx.tasa(o, self.base)
+            if t:
+                self._tasas[o] = t
+        valor, ok = a_base(monto, o, self.base, self._tasas)
+        if not ok:
+            self.sin_tasa.add(o)
+        return valor
+
+
+def gastos_por_categoria(db, ids_accesibles, desde: datetime, monedas: dict[str, str] | None = None,
+                         base: str = "COP") -> dict[str, float]:
+    """{categoria: gasto en moneda base (COP por defecto)} desde `desde` hasta hoy, con la regla contable
     (sin pagos de tarjeta ni traslados). Lo usan los presupuestos y los avisos.
     Se leen 3 días antes de `desde` solo para poder emparejar traslados del borde."""
     from datetime import timedelta
 
-    from app.fx import convertir_a_cop
     from app.models import Cuenta, Movimiento
 
+    conv = ConvertidorBase(base)
     ids = list(ids_accesibles)
     if not ids:
         return {}
@@ -540,7 +602,7 @@ def gastos_por_categoria(db, ids_accesibles, desde: datetime, monedas: dict[str,
     out: dict[str, float] = {}
     for m in movs:
         if m.fecha >= desde and te[m.id] == "expense":
-            out[m.categoria] = out.get(m.categoria, 0.0) + convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
+            out[m.categoria] = out.get(m.categoria, 0.0) + conv(m.monto, monedas.get(m.cuenta_id, "COP"))
     return out
 
 

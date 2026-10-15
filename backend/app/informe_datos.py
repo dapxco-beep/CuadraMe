@@ -1,6 +1,6 @@
 """
 Carga de movimientos "efectivos" para informes y asistente: aplica la regla
-contable (contabilidad.py) y convierte a COP. Es el único punto donde estas
+contable (contabilidad.py) y convierte a la moneda base del perfil (COP por defecto). Es el único punto donde estas
 pantallas leen movimientos, para que todas cuenten igual.
 """
 from datetime import datetime, timedelta
@@ -8,8 +8,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.compartidos import cuentas_ids_accesibles
-from app.contabilidad import clasificar, tipos_cuenta_de
-from app.fx import convertir_a_cop
+from app.contabilidad import ConvertidorBase, clasificar, moneda_base_de, tipos_cuenta_de
 from app import punto_partida
 from app.models import Cuenta, Movimiento
 
@@ -25,12 +24,13 @@ def cargar_movs_efectivos(
     hasta: datetime | None = None,
     limite: int | None = None,
 ) -> list[dict]:
-    """[{id, fecha, tipo('income'|'expense'|'transfer'), monto(COP), categoria,
+    """[{id, fecha, tipo(income|expense|transfer), monto(moneda base del perfil), sin_tasa, categoria,
     descripcion, cuenta_id, razon, par}] de las cuentas accesibles, más recientes primero."""
     ids = list(cuentas_ids_accesibles(db, usuario_id))
     if not ids:
         return []
     monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()}
+    conv = ConvertidorBase(moneda_base_de(db, usuario_id))
     q = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids))
     # Punto de partida: informes y asistente arrancan en esa fecha (lo anterior se oculta, no se borra).
     inicio_pp = punto_partida.fecha_inicio(db, usuario_id)
@@ -53,7 +53,8 @@ def cargar_movs_efectivos(
             "tipo": te[m.id]["tipo"],
             "razon": te[m.id]["razon"],
             "par": te[m.id]["par"],
-            "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP")),
+            "monto": conv(m.monto, monedas.get(m.cuenta_id, "COP")),
+            "sin_tasa": (monedas.get(m.cuenta_id) or "COP").upper() in conv.sin_tasa,
             "categoria": m.categoria or "Otros",
             "descripcion": m.descripcion or "",
             "fuente": m.fuente or "manual",

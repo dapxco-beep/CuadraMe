@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import {
+  aBase,
   clasificar,
   contextoDeCuentas,
   huellaTraslado,
@@ -19,6 +20,18 @@ function ctxDe(caso) {
   const cuentas = Object.entries(caso.cuentas).map(([id, v]) => ({ id, tipo: v.tipo, moneda: v.moneda }))
   return contextoDeCuentas(cuentas, { reglas: caso.reglas, nombres: caso.nombres })
 }
+
+describe('paridad de moneda base (backend/tests/fixtures/moneda_base_casos.json)', () => {
+  const { casos: casosBase } = JSON.parse(
+    readFileSync(resolve(__dirname, '../../../backend/tests/fixtures/moneda_base_casos.json'), 'utf-8'),
+  )
+  for (const caso of casosBase) {
+    it(caso.nombre, () => {
+      const [v, ok] = aBase(caso.monto, caso.origen, caso.base, caso.tasas)
+      expect([Number(v.toFixed(6)), ok]).toEqual(caso.esperado)
+    })
+  }
+})
 
 describe('paridad con backend/app/contabilidad.py', () => {
   for (const caso of casos) {

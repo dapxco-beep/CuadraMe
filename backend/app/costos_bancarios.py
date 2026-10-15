@@ -303,7 +303,7 @@ def alertas_de_costos(tabla: dict, mora: dict, cuentas: dict, desgloses: list[di
 def analizar_usuario(db, usuario_id: str, desde: date, hasta: date, hoy: datetime) -> dict:
     from app import contabilidad as cont
     from app.compartidos import cuentas_ids_accesibles
-    from app.fx import convertir_a_cop
+    from app.contabilidad import ConvertidorBase, moneda_base_de
     from app.informe_datos import cargar_movs_efectivos
     from app.models import Cuenta, Movimiento
     from app.models_cuotas import DesgloseExtractoTarjeta
@@ -326,9 +326,10 @@ def analizar_usuario(db, usuario_id: str, desde: date, hasta: date, hoy: datetim
     pagos = []
     if tarjetas:
         monedas = {c.id: c.moneda or "COP" for c in cuentas_db}
+        conv = ConvertidorBase(moneda_base_de(db, usuario_id))
         for m in db.query(Movimiento).filter(Movimiento.cuenta_id.in_(tarjetas), Movimiento.tipo == "income",
                                              Movimiento.fecha >= inicio_lectura, Movimiento.fecha < fin).all():
             if m.fuente != cont.FUENTE_AJUSTE:
                 pagos.append({"cuenta_id": m.cuenta_id, "fecha": m.fecha,
-                              "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))})
+                              "monto": conv(m.monto, monedas.get(m.cuenta_id, "COP"))})
     return analizar(movs, cuentas, desgloses, pagos, hoy, desde, hasta)
