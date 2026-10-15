@@ -172,3 +172,35 @@ def test_vuelve_a_ignorado_lo_que_entro_como_aviso(db):
     assert estados["El extracto de tu Cuenta Nu ya está aquí"] == "ignorado"
     assert estados["Faltan fondos para pagar en Didi"] == "ignorado"
     assert estados["¡Recibiste plata por Bre-B!"] == "pendiente"  # una transacción real no se toca
+
+
+# ── NIT, cuentas y teléfonos no son dinero (regresión: «NIT de Nu» salía como gasto) ──────────
+@pytest.mark.parametrize("texto", [
+    "Nu Colombia Compañía de Financiamiento S.A. NIT 901.658.107-1",
+    "Nubank Colombia NIT: 901658107-1 Bogotá",
+    "Tu cuenta 12345678901 fue actualizada",
+    "Escríbenos al celular 300 123 4567 o al WhatsApp 3001234567",
+    "Documento CC 1.020.304.050 verificado",
+    "Referencia 884.221.907 de tu solicitud",
+])
+def test_nit_cuentas_y_telefonos_no_son_monto(texto):
+    assert extraer_monto(texto) == 0
+
+
+def test_el_monto_real_sobrevive_junto_a_un_nit():
+    assert extraer_monto("Pagaste $ 45.000 en TIENDA. Nu Colombia NIT 901.658.107-1") == 45000
+    assert extraer_monto("NIT 901.658.107-1 Recibiste 30.000 de ANA") == 30000
+
+
+def test_corrige_pendientes_que_eran_un_nit(db):
+    db.add_all([
+        _correo(UID, "Nu <nu@nu.com.co>", "Información de tu cuenta", "Nu Colombia NIT 901.658.107-1", estado="pendiente", monto=901658107),
+        _correo(UID, "Nu <nu@nu.com.co>", "Pagaste en Tienda", "Nu Colombia NIT 901.658.107-1. Pagaste en Tienda 45.000", estado="pendiente", monto=901658107),
+        _correo(UID, "Nequi <notificaciones@nequi.com.co>", "¡Recibiste plata por Bre-B!", "Recibiste 30.000 de LUIS", estado="pendiente", monto=30000),
+    ])
+    db.commit()
+    reevaluar_ignorados.preparar(db, UID)
+    por = {c.asunto: c for c in db.query(CorreoGasto).filter(CorreoGasto.usuario_id == UID).all()}
+    assert por["Información de tu cuenta"].estado == "ignorado"
+    assert por["Pagaste en Tienda"].estado == "pendiente" and por["Pagaste en Tienda"].monto == 45000
+    assert por["¡Recibiste plata por Bre-B!"].monto == 30000

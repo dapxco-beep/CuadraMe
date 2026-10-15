@@ -144,7 +144,25 @@ _CIFRAS_SUELTAS = 2
 MONTO_MAXIMO_ESTRICTO = 500_000_000
 
 
-def extraer_monto(texto: str, estricto: bool = False) -> float:
+# Identificadores que NO son dinero: «NIT 901.658.107-1», «cuenta 1234567890», «CC 1.020.304.050», teléfonos,
+# referencias. Se quitan del texto antes de buscar el monto (un NIT de Nu llegó a leerse como $901.658.107).
+_DOCUMENTOS = re.compile(
+    r"(?:\bn\.?\s?i\.?\s?t\.?|\bc\.?\s?c\.?|\bc[eé]dula|\bidentificaci[oó]n|\bdocumento|\bcuenta|\bcta\.?|\bcelular|"
+    r"\btel[eé]fono|\btel\.?|\bwhatsapp|\breferencia|\bref\.?|\bc[oó]digo|\bn[uú]mero|\bnro\.?|#)"
+    r"\s*[:#.]?\s*(?:\*+|x+)?\d[\d.,\s-]*\d",
+    re.IGNORECASE,
+)
+# Un NIT trae dígito de verificación: «901.658.107-1». Un monto nunca termina en «-dígito».
+_CON_DIGITO_VERIFICACION = re.compile(r"\d{1,3}(?:[.,]\d{3})+-\d\b")
+
+
+def sin_documentos(texto: str) -> str:
+    return _CON_DIGITO_VERIFICACION.sub(" ", _DOCUMENTOS.sub(" ", texto))
+
+
+def extraer_monto(texto: str, estricto: bool = False, sanear: bool = True) -> float:
+    if sanear:
+        texto = sin_documentos(texto)
     patrones = _AMOUNT_PATTERNS[:-_CIFRAS_SUELTAS] if estricto else _AMOUNT_PATTERNS
     for patron in patrones:
         for m in patron.finditer(texto):
