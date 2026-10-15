@@ -24,3 +24,12 @@ Neutral = ni ingreso ni gasto: traslados (par detectado, decisión, regla, cread
 
 ## SQL opcional (idempotente, NO ejecutado)
 `backend/supabase/migraciones/reglas_traslado.sql`: tabla `reglas_traslado`. Sin ella todo funciona; solo no se recuerdan decisiones por regla.
+
+## Traslados propios: endurecimiento (una sola punta, nombres, homónimos)
+**Qué reconoce sin la otra punta** («pista fuerte», neutral): tu nombre con >= 2 palabras (sin tildes/mayúsculas, cualquier orden, con la última palabra truncada por el banco: `DANIEL ALFONSO PARR`), «a/de/desde mi|tu cuenta|Nequi|Nu|llave|ahorro|cajita|bolsillo|meta», «cuenta propia», «movimiento/traslado entre cuentas», «traslado a ahorro/cajita», «avance en efectivo», «entre tus cuentas», recarga entre bancos propios, la marca del lector y lo que la persona decidió o recordó por regla.
+**Nombre del titular**: `perfiles.nombre_preferido` + `perfiles.nombre_titular` (nombre completo de Google, guardado por `GET /perfil/nombre` solo para esto; no se muestra ni sale del servidor). SQL opcional `supabase/migraciones/perfil_nombre_titular.sql` (también en `migraciones.py`, idempotente). Sin la columna todo funciona con el nombre preferido.
+**Homónimos**: una sola palabra («Daniel») nunca basta; un homónimo que coincide en >= 2 palabras con el titular queda como **posible traslado** (ni gasto ni traslado confirmado) hasta que la persona responda en «Revisar posibles traslados».
+**Parejas**: mismo monto, cuentas y moneda distintas, <= 2 días con cualquier pista; hasta 4 días (puente festivo) solo con pistas fuertes (suma >= 3). «Envío», «Recibido» y «Avance» cuentan sin importar tildes.
+**Pendiente de confirmar**: un «posible traslado» es neutral PROVISIONAL (no infla ingresos ni gastos del mes) y aparece en `/traslados/sugerencias` y «No se cuenta». «No es un traslado» lo vuelve ingreso/gasto real y no se sugiere de nuevo.
+**Superficies corregidas**: `/cuentas/{id}/detalle` (clasificaba solo con esa cuenta y sin nombre/reglas), `/insights/preguntar` (mandaba a la IA el tipo guardado), alerta de renta (ahora usa el mismo contexto de nombres/reglas).
+Casos sintéticos: `backend/tests/fixtures/contabilidad_casos.json` (compartidos con la PWA) y `backend/tests/test_traslados_propios_endurecidos.py`.

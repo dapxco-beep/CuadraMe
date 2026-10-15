@@ -62,6 +62,16 @@ def nombre_de_pila(nombre_completo=None, nombre_pila_google=None) -> str:
     return ""
 
 
+def nombre_titular_limpio(nombre_completo) -> str:
+    """Nombre completo de Google listo para guardarlo como `nombre_titular` (solo para reconocer
+    traslados propios): sin correos ni números, máximo 120 letras. '' si no sirve."""
+    texto = _normalizar(nombre_completo)
+    if not texto or "@" in texto or len(texto) > 120:
+        return ""
+    tokens = [t for t in (_solo_nombre(t) for t in texto.split(" ")) if t]
+    return " ".join(tokens) if len(tokens) >= 2 else ""
+
+
 def validar_nombre(texto) -> str:
     """Nombre limpio (recortado, sin espacios dobles) o NombreInvalido con mensaje amable.
     Permite letras, tildes, espacios, guion y apóstrofo. Rechaza el resto (HTML, enlaces,

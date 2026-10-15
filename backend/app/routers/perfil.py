@@ -18,7 +18,7 @@ from app.derechos_titular import armar_json, armar_zip, borrar_todo, recopilar
 from app.limites import verificar_limite
 from app.models import Cuenta, Perfil
 from app.claves_api import asignar_clave_nueva, tiene_clave
-from app.nombre import NombreInvalido, nombre_de_pila, nombre_para_mostrar, validar_nombre
+from app.nombre import NombreInvalido, nombre_de_pila, nombre_para_mostrar, nombre_titular_limpio, validar_nombre
 from app.utiles import ahora_co
 from app.schemas import ConfianzaAutoimportUpdate, EliminarCuentaRequest
 
@@ -55,7 +55,21 @@ def _respuesta_nombre(perfil: Perfil, usuario: UsuarioActual) -> dict:
 @router.get("/nombre")
 def obtener_nombre(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
     """Cómo le decimos a ESTA persona (cada cuenta tiene el suyo). `sugerido` sale del nombre de Google."""
-    return _respuesta_nombre(_get_or_create_perfil(db, usuario.id), usuario)
+    perfil = _get_or_create_perfil(db, usuario.id)
+    _recordar_nombre_titular(db, perfil, usuario)
+    return _respuesta_nombre(perfil, usuario)
+
+
+def _recordar_nombre_titular(db: Session, perfil: Perfil, usuario: UsuarioActual) -> None:
+    """Guarda el nombre completo de Google SOLO para reconocer traslados propios (ver contabilidad.py).
+    Mejor esfuerzo: si la columna aún no existe, no pasa nada."""
+    try:
+        completo = nombre_titular_limpio(usuario.nombre)
+        if completo and perfil.nombre_titular != completo:
+            perfil.nombre_titular = completo
+            db.commit()
+    except Exception:  # noqa: BLE001
+        db.rollback()
 
 
 @router.put("/nombre")

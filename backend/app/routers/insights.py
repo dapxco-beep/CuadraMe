@@ -218,6 +218,9 @@ def preguntar(
         .all()
     )
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()
+    # Tipo EFECTIVO (regla única): un traslado propio viaja como «transfer», no como ingreso/gasto,
+    # para que la IA no lo cuente al responder «¿cuánto gasté?».
+    te_ia = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
     presupuestos = db.query(Presupuesto).filter(Presupuesto.usuario_id == usuario.id).all()
     metas = db.query(Meta).filter(Meta.usuario_id == usuario.id, Meta.activa == True).all()  # noqa: E712
     deudas = db.query(Deuda).filter(Deuda.usuario_id == usuario.id, Deuda.activa == True).all()  # noqa: E712
@@ -234,7 +237,7 @@ def preguntar(
                 # Google): solo viaja categoría, tipo y monto.
                 "descripcion": "" if m.fuente == "email" else m.descripcion,
                 "categoria": m.categoria,
-                "tipo": m.tipo,
+                "tipo": te_ia.get(m.id, m.tipo),
                 "monto": m.monto,
             }
             for m in movimientos

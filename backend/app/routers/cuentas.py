@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import bloquear_cuenta, cuenta_accesible, cuentas_ids_accesibles, puede_editar_cuenta
-from app.contabilidad import CATEGORIA_AJUSTE, FUENTE_AJUSTE, tipos_efectivos
+from app.contabilidad import CATEGORIA_AJUSTE, FUENTE_AJUSTE, tipos_cuenta_de, tipos_efectivos
 from app.database import get_db
 from app.fx import convertir_a_cop
 from app.models import Cuenta, Movimiento
@@ -181,14 +181,17 @@ def detalle_cuenta(
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
     inicio_mes = ahora_co().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     # 3 días antes del mes: solo para emparejar traslados del borde (igual que gastos_por_categoria).
+    # Se leen los movimientos de TODAS tus cuentas: la otra pata de un traslado vive en otra cuenta,
+    # y sin ella (ni tu nombre ni tus reglas) el traslado se vería como ingreso o gasto de ésta.
+    ids = cuentas_ids_accesibles(db, usuario.id)
     movs_mes = (
         db.query(Movimiento)
-        .filter(Movimiento.cuenta_id == cuenta.id, Movimiento.fecha >= inicio_mes - timedelta(days=3))
+        .filter(Movimiento.cuenta_id.in_(ids), Movimiento.fecha >= inicio_mes - timedelta(days=3))
         .all()
     )
-    te = tipos_efectivos(movs_mes, {cuenta.id: cuenta.tipo})
-    ingresos = sum(m.monto for m in movs_mes if m.fecha >= inicio_mes and te[m.id] == "income")
-    gastos = sum(m.monto for m in movs_mes if m.fecha >= inicio_mes and te[m.id] == "expense")
+    te = tipos_efectivos(movs_mes, tipos_cuenta_de(db, ids))
+    ingresos = sum(m.monto for m in movs_mes if m.cuenta_id == cuenta.id and m.fecha >= inicio_mes and te[m.id] == "income")
+    gastos = sum(m.monto for m in movs_mes if m.cuenta_id == cuenta.id and m.fecha >= inicio_mes and te[m.id] == "expense")
     ultimos = (
         db.query(Movimiento)
         .filter(Movimiento.cuenta_id == cuenta.id)
