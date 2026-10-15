@@ -73,8 +73,8 @@ export function textoResultado(accion, r) {
   return `Oculté ${plural(c, 'comercio', 'comercios')} de esta lista.`
 }
 
-/** «Recordar para este comercio» viene activado solo si el comercio se repite 3 o más veces. */
-export const MIN_REPETICIONES_RECORDAR = 3
+/** «Recordar para este comercio» viene activado solo si el comercio se repite 4 o más veces (más de 3). */
+export const MIN_REPETICIONES_RECORDAR = 4
 export const recordarPorDefecto = (repeticiones) => (repeticiones || 0) >= MIN_REPETICIONES_RECORDAR
 
 /** Vista previa de la regla: «afectará 12 movimientos pasados y los futuros». */

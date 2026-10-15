@@ -70,10 +70,10 @@ describe('lógica de selección (pura)', () => {
     expect(loQueMasPesa(GRUPOS, 5).map((g) => g.huella)).toEqual(['clinica norte', 'kopi zebra'])
     expect(loQueMasPesa([GRUPOS[2]]).length).toBe(1)
   })
-  it('recordar viene activado solo desde 3 repeticiones', () => {
+  it('recordar viene activado solo desde 4 repeticiones', () => {
     expect(recordarPorDefecto(1)).toBe(false)
-    expect(recordarPorDefecto(2)).toBe(false)
-    expect(recordarPorDefecto(3)).toBe(true)
+    expect(recordarPorDefecto(3)).toBe(false)
+    expect(recordarPorDefecto(4)).toBe(true)
     expect(textoVistaPrevia(12)).toBe('Afectará 12 movimientos pasados y los futuros.')
   })
   it('por categorizar: usa el flag del servidor y, si falta, la misma regla', () => {

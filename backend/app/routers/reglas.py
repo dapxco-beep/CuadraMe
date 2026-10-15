@@ -89,8 +89,9 @@ from app.clave_comercio import clave_comercio, es_huella_peligrosa, huella_en_de
 from app.compartidos import cuentas_ids_accesibles  # noqa: E402
 from app.models import Movimiento  # noqa: E402
 
-MIN_REPETICIONES_REGLA = 3  # «recordar» viene activado por defecto solo desde 3 veces
-MIN_REPETICIONES_SUGERENCIA = 3
+# Umbral único: una regla se sugiere (o «recordar» viene activado) solo si el comercio aparece MÁS de 3
+# veces (>= 4) en los movimientos del propio usuario. La PWA lo recibe como `recomendada`.
+MIN_REPETICIONES_REGLA = 4
 MIN_MESES_RECURRENTE = 3
 MAX_SUGERENCIAS = 30
 
@@ -103,7 +104,7 @@ def vista_previa(
     usuario: UsuarioActual = Depends(get_current_user),
 ):
     """Antes de crear la regla de un comercio: cuántas veces se repite y a cuántos movimientos
-    pasados afectaría. `recomendada` = se repite 3 o más veces (compras únicas: no vale la pena)."""
+    pasados afectaría. `recomendada` = se repite 4 o más veces (compras únicas: no vale la pena)."""
     huella = clave_comercio(descripcion)
     if not huella:
         return {"huella": "", "repeticiones": 1, "afectara_pasados": 0, "recomendada": False, "peligrosa": None,
@@ -122,7 +123,7 @@ def vista_previa(
 
 @router.get("/sugerencias")
 def sugerencias(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
-    """Reglas que valdría la pena crear: comercios que YA categorizaste tú mismo igual 3 o más
+    """Reglas que valdría la pena crear: comercios que YA categorizaste tú mismo igual 4 o más
     veces y que aún no tienen regla. Aparecen sin marcar: tú eliges cuáles crear."""
     ids = cuentas_ids_accesibles(db, usuario.id)
     reglas = db.query(ReglaCategoria).filter(ReglaCategoria.usuario_id == usuario.id).all()
@@ -150,7 +151,7 @@ def sugerencias(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(
         meses = len(g.pop("_meses"))
         mejor = max(cats, key=cats.get)
         # Solo si casi siempre lo categorizaste igual (si no, una regla mezclaría lo que haces a veces).
-        if g["conteo"] < MIN_REPETICIONES_SUGERENCIA or cats[mejor] / g["conteo"] < 0.8:
+        if g["conteo"] < MIN_REPETICIONES_REGLA or cats[mejor] / g["conteo"] < 0.8:
             continue
         # 'recurrente': misma huella en 3 o más meses distintos (un hábito, no una racha de un día).
         salida.append({**g, "categoria": mejor, "monto_total": round(g["monto_total"], 2),

@@ -252,20 +252,32 @@ def test_no_se_toca_lo_de_otro_usuario(cuenta):
 
 # --- 3) reglas a elección ---------------------------------------------------------------------
 
-def test_vista_previa_recomienda_solo_si_se_repite_3_o_mas(cuenta):
+def test_vista_previa_recomienda_solo_si_se_repite_4_o_mas(cuenta):
     _mov(cuenta, "Compra en UNICA VEZ SAS")
     r = client.get("/reglas-categoria/vista-previa", params={"descripcion": "Compra en UNICA VEZ SAS"}).json()
     assert r["repeticiones"] == 2 and r["recomendada"] is False  # este mismo movimiento ya está guardado
     r = client.get("/reglas-categoria/vista-previa", params={"descripcion": "Compra en NUNCA VISTO SAS"}).json()
     assert r["repeticiones"] == 1 and r["afectara_pasados"] == 0 and r["recomendada"] is False
-    for _ in range(3):
+    for _ in range(2):
         _mov(cuenta, "Compra en KOPI ZEBRA")
     r = client.get("/reglas-categoria/vista-previa", params={"descripcion": "Compra en KOPI ZEBRA"}).json()
-    assert r["afectara_pasados"] == 3 and r["recomendada"] is True
+    assert r["repeticiones"] == 3 and r["recomendada"] is False  # 3 apariciones: no se sugiere
+    _mov(cuenta, "Compra en KOPI ZEBRA")
+    r = client.get("/reglas-categoria/vista-previa", params={"descripcion": "Compra en KOPI ZEBRA"}).json()
+    assert r["repeticiones"] == 4 and r["recomendada"] is True  # 4 apariciones: sí
+
+
+def test_sugerencias_umbral_3_no_4_si(cuenta):
+    for _ in range(3):
+        _mov(cuenta, "Compra en TRES VECES", "Comida")
+    assert client.get("/reglas-categoria/sugerencias").json()["sugerencias"] == []
+    _mov(cuenta, "Compra en TRES VECES", "Comida")
+    sug = client.get("/reglas-categoria/sugerencias").json()["sugerencias"]
+    assert [s["huella"] for s in sug] == ["tres veces"]
 
 
 def test_sugerencias_crear_solo_las_elegidas_y_descartar(cuenta):
-    for _ in range(3):
+    for _ in range(4):
         _mov(cuenta, "Compra en KOPI ZEBRA", "Comida")
         _mov(cuenta, "Compra en QUIRIGUA AZUL", "Transporte")
         _mov(cuenta, "Compra en XANADU ROYAL", "Ocio")
