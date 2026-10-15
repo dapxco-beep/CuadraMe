@@ -221,3 +221,62 @@ def test_estado_de_sincronizacion_trae_la_insignia_y_por_hacer_dice_la_cifra():
     assert d["cuadre_mensual"] and d["cuadre_mensual"][0]["culpables"]
     e = client.get("/sincronizacion/extractos").json()
     assert "items" in e
+
+
+# ── Estado a la vista (GET /conciliacion/cuadre/resumen) ───────────────────────────────
+def _resumen():
+    r = client.get("/conciliacion/cuadre/resumen")
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_resumen_no_cuadra_dice_mes_diferencia_y_accion():
+    cuenta, _ = _escenario("ce-10")
+    r = _resumen()
+    it = next(x for x in r["cuentas"] if x["cuenta_id"] == cuenta)
+    assert it["estado"] == "no_cuadra" and it["mes"] == "2026-05"  # primer mes con problema: falta el saldo inicial
+    assert it["texto"].startswith("No cuadra en mayo (dif. $")
+    assert "saldo inicial" in it["accion"] and it["ruta"] == "/sincronizacion#cuadre"
+    assert r["hay_problema"] is True and r["n_no_cuadran"] == 1 and r["aviso"]
+
+
+def test_resumen_cuadra_cuando_todo_cierra_y_no_hay_aviso():
+    como("ce-11")
+    cuenta = client.post("/cuentas", json={"nombre": "Banco ok", "tipo": "ahorro", "saldo": 0}).json()["id"]
+    _mov(cuenta, "income", 100_000, "2026-09-02T10:00:00", "Pago")
+    _hist("ce-11", cuenta, ini=0, fin=100_000, inicio="2026-09-01", corte="2026-09-30")
+    r = _resumen()
+    it = r["cuentas"][0]
+    assert it["estado"] == "cuadra" and it["texto"] == "Cuadra a septiembre" and it["accion"] is None
+    assert r["hay_problema"] is False and r["aviso"] is None
+
+
+def test_resumen_extracto_sin_saldo_es_de_datos_y_pide_escribirlo():
+    como("ce-12")
+    client.post("/cuentas", json={"nombre": "Nu", "tipo": "ahorro", "saldo": 0})
+    cuenta = _resumen()["cuentas"][0]["cuenta_id"]
+    db = SessionLocal()
+    try:
+        db.add(HistorialExtracto(usuario_id="ce-12", cuenta_id=cuenta, banco_detectado="nu", estado="conciliado",
+                                 review_json=json.dumps([{"fecha": "2026-09-02", "descripcion": "Pago", "monto": 1,
+                                                          "tipo": "income", "estado": "exacto", "fingerprint": "q"}])))
+        db.commit()
+    finally:
+        db.close()
+    it = _resumen()["cuentas"][0]
+    assert it["estado"] == "sin_saldo" and it["de_datos"] is True
+    assert it["texto"] == "Sin saldo del extracto para cuadrar" and "Escribe el saldo" in it["accion"]
+
+
+def test_resumen_cuenta_sin_extractos_pide_subirlos_y_no_avisa():
+    como("ce-13")
+    client.post("/cuentas", json={"nombre": "Sin nada", "tipo": "ahorro", "saldo": 0})
+    r = _resumen()
+    assert r["cuentas"][0]["estado"] == "sin_extractos" and "Sube el extracto" in r["cuentas"][0]["accion"]
+    assert r["hay_problema"] is False
+
+
+def test_resumen_solo_ve_cuentas_propias():
+    _escenario("ce-14")
+    como("ce-15")
+    assert _resumen()["cuentas"] == []

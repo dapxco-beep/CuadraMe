@@ -494,6 +494,7 @@ export const api = {
   // Cuadre con el extracto (saldo del banco frente al de tus movimientos).
   cuadreCuenta: (cuentaId) => request(`/conciliacion/cuadre?cuenta_id=${encodeURIComponent(cuentaId)}`),
   cuadreEncadenado: (cuentaId) => request(`/conciliacion/cuadre/encadenado?cuenta_id=${encodeURIComponent(cuentaId)}`, { sinCache: true }),
+  cuadreResumen: () => request('/conciliacion/cuadre/resumen', { sinCache: true }),
   cuadreEvaluar: (body) => request('/conciliacion/cuadre/evaluar', { method: 'POST', body }),
   cuadreQueFalta: (cuentaId, historialId) =>
     request(`/conciliacion/cuadre/que-falta?cuenta_id=${encodeURIComponent(cuentaId)}${historialId ? `&historial_id=${encodeURIComponent(historialId)}` : ''}`),

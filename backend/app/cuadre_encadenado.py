@@ -453,3 +453,72 @@ def anotar_lista(db: Session, usuario_id: str, items: list[dict], inicio_pp: dat
             v = f["diferencia"] if abs(f["diferencia"]) >= TOL else f["acumulada"]
             it["cuadre"] = {"estado": "no_cuadra", "texto": f"No cuadra · {cx.pesos(v)}", "diferencia": v}
     return por_cuenta
+
+
+# ── Estado a la vista: una línea por cuenta ─────────────────────────────────────────────
+RUTA_CUADRE = "/sincronizacion#cuadre"
+_MALOS = ("diferencia", "solo_saldo_inicial", "cadena_rota")
+
+
+def _siguiente_paso(f: dict) -> str:
+    """Qué hacer primero en el mes con problema, según la causa más probable."""
+    cods = [c["codigo"] for c in f.get("causas", []) if c.get("probable")]
+    if "falta_importar" in cods:
+        return "Importa la línea del extracto que falta."
+    if "saldo_inicial" in cods or f["estado"] == "solo_saldo_inicial":
+        return "Registra el saldo inicial con el que abrió tu banco."
+    if "movimiento_de_mas" in cods:
+        return "Revisa el movimiento repetido."
+    if f["estado"] == "cadena_rota":
+        return "Sube el extracto que falta entre esos dos meses."
+    return "Mira el detalle mes a mes para encontrar la línea que falta."
+
+
+def resumen_cuenta(r: dict) -> dict:
+    """Una línea de estado para una cuenta, a partir de `calcular`. Pura.
+    estado: cuadra | no_cuadra | sin_saldo | sin_extractos. `de_datos` = depende de tus archivos, no de la app."""
+    base = {"cuenta_id": r["cuenta_id"], "cuenta": r["cuenta"], "moneda": r.get("moneda", "COP"), "ruta": RUTA_CUADRE,
+            "mes": None, "etiqueta": None, "diferencia": None, "meses_con_problema": 0, "faltan_extractos": [],
+            "sin_saldo": len(r.get("sin_saldo") or []), "de_datos": False}
+    con = [f for f in r.get("meses", []) if f.get("historial_id")]
+    if not con:
+        if r.get("sin_saldo"):
+            s = r["sin_saldo"][0]
+            return {**base, "estado": "sin_saldo", "mes": s.get("mes"), "etiqueta": s.get("etiqueta"), "de_datos": True,
+                    "texto": "Sin saldo del extracto para cuadrar",
+                    "motivo": (f"El extracto de {_mes_nombre(s['mes']) if s.get('mes') else 'tu banco'} no trae el saldo, "
+                               "y sin él no puedo comprobar el mes."),
+                    "accion": "Escribe el saldo que dice tu extracto."}
+        return {**base, "estado": "sin_extractos", "de_datos": True, "texto": "Aún no hay extractos para cuadrar",
+                "motivo": "Esta cuenta no tiene extractos con saldo.", "accion": "Sube el extracto de tu banco."}
+    faltan = [f["mes"] for f in r["meses"] if f["estado"] == "falta_extracto"]
+    malos = [f for f in con if f["estado"] in _MALOS]
+    if malos:
+        f = malos[0]
+        v = f["diferencia"] if abs(f["diferencia"]) >= TOL else f["acumulada"]
+        return {**base, "estado": "no_cuadra", "mes": f["mes"], "etiqueta": f["etiqueta"], "diferencia": v,
+                "meses_con_problema": len(malos), "faltan_extractos": faltan,
+                "texto": f"No cuadra en {_mes_nombre(f['mes'])} (dif. {cx.pesos(abs(v))})",
+                "motivo": f["texto"], "accion": _siguiente_paso(f)}
+    ultimo = con[-1]
+    out = {**base, "estado": "cuadra", "mes": ultimo["mes"], "etiqueta": ultimo["etiqueta"], "diferencia": 0.0,
+           "faltan_extractos": faltan, "texto": f"Cuadra a {_mes_nombre(ultimo['mes'])}",
+           "motivo": "Tus movimientos coinciden con el saldo de tu banco.", "accion": None}
+    if faltan:
+        out["motivo"] += f" Falta el extracto de {_mes_nombre(faltan[0])}."
+        out["accion"] = "Sube el extracto que falta para comprobar ese mes."
+    elif base["sin_saldo"]:
+        out["motivo"] += " Hay un extracto más sin saldo, que no pude comprobar."
+        out["accion"] = "Escribe el saldo que dice ese extracto."
+    return out
+
+
+def resumen_usuario(db: Session, usuario_id: str, inicio_pp: datetime | None = None) -> dict:
+    """Estado de cuadre de las cuentas de banco y tarjeta propias, para Cuentas e Inicio.
+    `hay_problema` = algún mes cerrado no cuadra. Aislado por usuario; solo lee."""
+    cuentas = (db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id, Cuenta.tipo.in_(("ahorro", "credito")))
+               .order_by(Cuenta.nombre).all())
+    items = [resumen_cuenta(calcular(db, c, inicio_pp)) for c in cuentas]
+    malos = [i for i in items if i["estado"] == "no_cuadra"]
+    return {"cuentas": items, "hay_problema": bool(malos), "n_no_cuadran": len(malos),
+            "aviso": f"{malos[0]['cuenta']}: {malos[0]['texto'][0].lower()}{malos[0]['texto'][1:]}" if malos else None}

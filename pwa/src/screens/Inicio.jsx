@@ -142,6 +142,14 @@ export default function Inicio() {
     [movsSemana, cuentas]
   )
   const [sinCategorizar, setSinCategorizar] = useState(0)
+  const [avisoCuadre, setAvisoCuadre] = useState(null) // {n, texto} solo si algún mes cerrado no cuadra
+  useEffect(() => {
+    let activo = true
+    Promise.resolve().then(() => api.cuadreResumen?.()).then((r) => {
+      if (activo) setAvisoCuadre(r?.hay_problema ? { n: r.n_no_cuadran, texto: r.aviso || '' } : null)
+    }).catch(() => {})
+    return () => { activo = false }
+  }, [])
 
   useEffect(() => {
     let activo = true
@@ -249,6 +257,23 @@ export default function Inicio() {
         >
           <p className="text-xs text-danger">Una de tus conexiones está fallando.</p>
           <span className="text-xs font-semibold text-danger shrink-0">Ver estado</span>
+        </Link>
+      )}
+
+      {/* Solo cuando algún mes cerrado no cuadra con el banco (también en modo simple) */}
+      {avisoCuadre && (
+        <Link
+          to="/sincronizacion"
+          state={{ abrir: 'extractos' }}
+          role="alert"
+          data-testid="aviso-cuadre"
+          className="mx-6 mt-2 rounded-2xl bg-danger-soft border border-danger/30 p-3 flex items-center justify-between gap-3"
+        >
+          <p className="text-xs text-danger">
+            {avisoCuadre.n > 1 ? `${avisoCuadre.n} cuentas no cuadran con tu banco. ` : 'Una cuenta no cuadra con tu banco. '}
+            {avisoCuadre.texto}
+          </p>
+          <span className="text-xs font-semibold text-danger shrink-0">Ver cuadre</span>
         </Link>
       )}
 

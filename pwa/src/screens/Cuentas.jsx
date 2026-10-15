@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { etiquetaCuenta, textoActualizado } from '../lib/saldos'
 import Ayudita from '../components/Ayudita'
+import LineaCuadre from '../components/LineaCuadre'
 import DetalleCuenta from '../components/DetalleCuenta'
 import { RendimientoCuenta } from '../components/TuPlataTrabajando'
 import ResumenSaldo from '../components/ResumenSaldo'
@@ -48,6 +49,16 @@ export default function Cuentas() {
   function cargarResumen() {
     Promise.resolve().then(() => api.resumenCuentas()).then(setResumen).catch(() => {})
   }
+  const [cuadrePorCuenta, setCuadrePorCuenta] = useState({})
+  useEffect(() => {
+    if (cargando) return
+    let activo = true
+    Promise.resolve().then(() => api.cuadreResumen?.()).then((r) => {
+      if (!activo || !r?.cuentas) return
+      setCuadrePorCuenta(Object.fromEntries(r.cuentas.map((x) => [x.cuenta_id, x])))
+    }).catch(() => {})
+    return () => { activo = false }
+  }, [cuentas, cargando])
   // El encabezado (saldo total / deudas de tarjeta) se vuelve a pedir cada vez que el contexto
   // recarga las cuentas: crear, editar, eliminar o ajustar un saldo lo refresca sin recargar la página.
   useEffect(() => {
@@ -137,6 +148,8 @@ export default function Cuentas() {
               <p className="mt-1.5 px-1 text-[11px] text-ink-soft" data-testid="significado-saldo">
                 {etiquetaCuenta(c).significado} <Ayudita termino={etiquetaCuenta(c).termino} />
               </p>
+              {/* Estado de cuadre con el banco, a la vista: sin ir a buscarlo a «Traer movimientos» */}
+              <LineaCuadre item={cuadrePorCuenta[c.id]} className="mt-2" />
               {/* Cuentas de ahorros: cuánto rinde (estimado) y cajitas */}
               {c.tipo === 'ahorro' && <RendimientoCuenta cuentaId={c.id} />}
               {/* Las cuentas de crédito son tarjetas reales: cupo, corte y pago */}
