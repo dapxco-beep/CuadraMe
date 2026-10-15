@@ -9,6 +9,7 @@ import { encolarMovimiento } from '../lib/colaOffline'
 import { prepararImagen } from '../lib/imagen'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
+import { cuentaInicial, guardarUltimaCuenta, leerUltimaCuenta } from '../lib/efectivo'
 import { useDialogos } from '../lib/DialogosContext'
 import SugerenciaIngreso from '../components/SugerenciaIngreso'
 import { useCategorias } from '../lib/CategoriasContext'
@@ -76,7 +77,8 @@ export default function Agregar() {
 
   // Si el usuario aún no eligió cuenta se usa la primera: se deriva al renderizar
   // en vez de copiarla a un estado con un efecto (evita un render extra).
-  const cuentaId = cuentaElegidaId || cuentas[0]?.id || ''
+  // (la última cuenta usada, si existe; así quien gasta en efectivo no la elige cada vez)
+  const cuentaId = cuentaElegidaId || cuentaInicial(cuentas, leerUltimaCuenta(auth?.usuario?.id))
   const cuentaActual = cuentas.find((c) => c.id === cuentaId)
   const esTransferencia = tipo === 'transfer'
   const destinosPosibles = cuentas.filter((c) => c.id !== cuentaId)
@@ -189,6 +191,7 @@ export default function Agregar() {
         fecha: fecha ? `${fecha}T12:00:00` : undefined,
         ...(confirmarNuevo ? { confirmar_nuevo: true } : {}),
       })
+      guardarUltimaCuenta(auth?.usuario?.id, cuentaId)
       await recargarCuentas()
       navigator.vibrate?.(12) // confirmación táctil corta (donde el celular la soporta)
       avisar?.(`Guardado: ${descripcion.trim()} · ${formatCOP(Number(monto))}`, 'ok', creado?.id ? {

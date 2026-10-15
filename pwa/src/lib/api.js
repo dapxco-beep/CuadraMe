@@ -378,6 +378,8 @@ export const api = {
   recategorizarComercio: (id, data) =>
     request(`/movimientos/${id}/recategorizar-comercio`, { method: 'POST', body: data }),
   movimiento: (id) => request(`/movimientos/${id}`),
+  pasarAEfectivo: (id, crearCuenta = false) =>
+    request(`/movimientos/${id}/pasar-a-efectivo?crear_cuenta=${crearCuenta ? 'true' : 'false'}`, { method: 'POST' }),
   editarMovimiento: (id, data) => request(`/movimientos/${id}`, { method: 'PUT', body: data }),
   crearTransferencia: (data) => request('/movimientos/transferencia', { method: 'POST', body: data }),
   crearMovimiento: (data) => request('/movimientos', { method: 'POST', body: data }),

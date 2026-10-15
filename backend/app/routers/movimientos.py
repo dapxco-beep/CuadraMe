@@ -403,6 +403,62 @@ def crear_transferencia(
     return {"ok": True, "grupo": grupo}
 
 
+@router.post("/{movimiento_id}/pasar-a-efectivo")
+def pasar_a_efectivo(
+    movimiento_id: str,
+    crear_cuenta: bool = Query(False, description="Crear la cuenta Efectivo si la persona no tiene"),
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«¿Lo pasamos a tu efectivo?»: convierte un retiro de cajero (gasto) en traslado banco ->
+    Efectivo, o una consignación en efectivo (ingreso) en traslado Efectivo -> banco. El saldo
+    del banco no cambia (ya lo había movido); el Efectivo recibe/entrega la otra pata y el
+    movimiento deja de contar como gasto/ingreso (regla única)."""
+    from app.efectivo import ICONO_EFECTIVO, NOMBRE_CUENTA_EFECTIVO, sugerencia_efectivo
+
+    ids = cuentas_ids_accesibles(db, usuario.id)
+    mov = db.query(Movimiento).filter(Movimiento.id == movimiento_id, Movimiento.cuenta_id.in_(ids)).first()
+    if not mov:
+        raise HTTPException(status_code=404, detail="Movimiento no encontrado")
+    banco = bloquear_cuenta(db, mov.cuenta_id)
+    if not banco or not puede_editar_cuenta(db, usuario.id, banco):
+        raise HTTPException(status_code=403, detail="No tienes permiso para editar esta cuenta")
+    if mov.fuente == FUENTE_TRANSFERENCIA or mov.tipo not in ("income", "expense") or banco.tipo == "efectivo":
+        raise HTTPException(status_code=400, detail="Este movimiento no se puede pasar a efectivo.")
+    if not sugerencia_efectivo(mov.tipo, mov.descripcion):
+        raise HTTPException(status_code=400, detail="Este movimiento no parece un retiro ni una consignación.")
+
+    efectivo = (db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id, Cuenta.tipo == "efectivo",
+                                        Cuenta.moneda == (banco.moneda or "COP")).order_by(Cuenta.nombre).first())
+    if not efectivo:
+        if not crear_cuenta:
+            raise HTTPException(status_code=409, detail="Aún no tienes una cuenta de efectivo. ¿La creamos?")
+        efectivo = Cuenta(usuario_id=usuario.id, nombre=NOMBRE_CUENTA_EFECTIVO, tipo="efectivo", saldo=0,
+                          moneda=banco.moneda or "COP", icono=ICONO_EFECTIVO)
+        db.add(efectivo)
+        db.flush()
+    efectivo = bloquear_cuenta(db, efectivo.id)
+
+    sale_del_banco = mov.tipo == "expense"
+    grupo = uuid.uuid4().hex
+    monto = float(mov.monto or 0)
+    # La pata del banco conserva su efecto en saldo: expense -monto == :out, income +monto == :in.
+    mov.tipo = "transfer"
+    mov.fuente = FUENTE_TRANSFERENCIA
+    mov.categoria = "Transferencia"
+    mov.notas = f"TRF:{grupo}:{'out' if sale_del_banco else 'in'}"
+    mov.descripcion = f"Retiro a {efectivo.nombre}" if sale_del_banco else f"Depósito desde {efectivo.nombre}"
+    db.add(Movimiento(
+        usuario_id=usuario.id, cuenta_id=efectivo.id, fecha=mov.fecha, tipo="transfer",
+        descripcion=f"Retiro desde {banco.nombre}" if sale_del_banco else f"Depósito a {banco.nombre}",
+        categoria="Transferencia", monto=monto, fuente=FUENTE_TRANSFERENCIA,
+        notas=f"TRF:{grupo}:{'in' if sale_del_banco else 'out'}",
+    ))
+    efectivo.saldo += monto if sale_del_banco else -monto
+    db.commit()
+    return {"ok": True, "cuenta_efectivo_id": efectivo.id, "sentido": "retiro" if sale_del_banco else "deposito"}
+
+
 @router.put("/{movimiento_id}", response_model=MovimientoOut)
 def editar_movimiento(
     movimiento_id: str,
