@@ -54,6 +54,7 @@ from app.extractos_gmail import (
     sugerir_cuenta,
 )
 from app import reevaluar_ignorados
+from app import releer_saldos
 from app.gmail_extract import (
     buscar_fecha_en_texto,
     detectar_tipo,
@@ -781,6 +782,8 @@ def _lote_de_sincronizacion(db: Session, usuario_id: str, perfil: Perfil, comple
     label_id = next((l["id"] for l in labels if l["name"].lower() == etiqueta.lower()), None)
 
     reevaluar_ignorados.preparar(db, usuario_id)  # una sola vez por usuario: relee correos de bancos sin monto
+    # Extractos ya procesados que quedaron sin saldos (lector viejo): se vuelven a traer de Gmail y se completan.
+    releer_saldos.releer(db, usuario_id, gmail, _clave_pdf(db, usuario_id))
     sync = _get_or_create_sync(db, usuario_id)
     vencida = bool(sync.iniciada_en) and datetime.utcnow() - sync.iniciada_en > timedelta(hours=MAX_CORRIDA_HORAS)
     # Una corrida a medias de otro carril no se mezcla: se arranca la de este (lo ya visto se salta).

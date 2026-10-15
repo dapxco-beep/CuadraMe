@@ -176,8 +176,9 @@ def calcular(db: Session, cuenta: Cuenta, inicio_pp: datetime | None = None, *, 
             "meses": [], "sin_saldo": [], "culpables": [], "cuadra": None, "impacto": None, "saldo_corregido": None}
 
     # Extractos sin saldo legible (p. ej. Nu): pedir el saldo a mano, nunca inventarlo.
-    from app import estado_traer
+    from app import estado_traer, releer_saldos
 
+    por_leer = releer_saldos.pendientes_por_historial(db, cuenta.usuario_id) if sin else set()
     for h in sin:
         mes = estado_traer._mes_de_historial(h)
         lineas = [cx.a_fecha(i.get("fecha")) for i in _review(h) if i.get("estado") != "sobrante"]
@@ -185,9 +186,10 @@ def calcular(db: Session, cuenta: Cuenta, inicio_pp: datetime | None = None, *, 
         base["sin_saldo"].append({
             "historial_id": h.id, "mes": mes, "etiqueta": _etiqueta(mes) if mes else "Extracto",
             "fecha_sugerida": ultima.isoformat() if ultima else None,
-            "texto": ("Este extracto no trae el saldo y no lo invento. "
-                      f"Escribe el saldo que dice tu extracto al {cx.fecha_texto(ultima) if ultima else '[fecha de corte]'} "
-                      "y puedo verificar el mes.")})
+            # Mientras haya algo por releer de Gmail, la app lo lee sola: no se pide nada a mano.
+            "releyendo": h.id in por_leer,
+            "texto": ("Leyendo los saldos de tus extractos…" if h.id in por_leer else
+                      "No pude leer el saldo de este extracto. Escríbelo una vez y listo.")})
     if not con:
         return base
 

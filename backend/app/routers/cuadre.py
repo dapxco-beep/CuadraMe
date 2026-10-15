@@ -229,6 +229,30 @@ def que_puede_faltar(
                       "Revisa si falta alguno o está repetido."), "orientacion": cx.ORIENTACION}
 
 
+@router.post("/releer-saldos")
+def releer_saldos_de_extractos(
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Lee solos los saldos de extractos que quedaron sin ellos (se vuelve a traer el PDF de Gmail). Sin botón:
+    la app lo llama al abrir el cuadre. Idempotente: cada extracto se intenta una vez por versión del lector."""
+    from app import releer_saldos
+    from app.gmail_oauth import cliente_gmail
+    from app.routers.correos import _clave_pdf, _get_or_create_perfil
+
+    vacio = {"leidos": 0, "sin_saldo": 0, "fallidos": 0, "pendientes": 0}
+    if not releer_saldos.pendientes_por_historial(db, usuario.id):
+        return vacio
+    perfil = _get_or_create_perfil(db, usuario.id)
+    if not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
+        return {**vacio, "sin_gmail": True}
+    try:
+        gmail = cliente_gmail(perfil.gmail_refresh_token_enc)
+    except Exception:  # noqa: BLE001
+        return {**vacio, "sin_gmail": True}
+    return releer_saldos.releer(db, usuario.id, gmail, _clave_pdf(db, usuario.id))
+
+
 @router.post("/saldos")
 def guardar_saldos_a_mano(
     data: SaldosManualesRequest,
