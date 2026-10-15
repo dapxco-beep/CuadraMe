@@ -25,7 +25,7 @@ def _ambiente(monkeypatch):
     app.dependency_overrides[get_current_user] = lambda: USUARIO["actual"]
     monkeypatch.setattr(router_mod, "convertir_a_cop", lambda m, mon: m, raising=False)
     from app import asistente_datos
-    monkeypatch.setattr(asistente_datos, "convertir_a_cop", lambda m, mon: m)
+    monkeypatch.setattr(asistente_datos, "convertir_a_cop", lambda m, mon: m, raising=False)
     LLAMADAS_IA.clear()
 
     def falsa_ia(msg, t=0.3):

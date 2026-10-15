@@ -22,7 +22,8 @@ TASAS = {"COP": 1, "USD": 4000, "EUR": 5000}
 @pytest.fixture(autouse=True)
 def _ambiente(monkeypatch):
     app.dependency_overrides[get_current_user] = lambda: USUARIO["actual"]
-    monkeypatch.setattr(mod, "convertir_a_cop", lambda m, mon: m * TASAS[mon])
+    from app import fx
+    monkeypatch.setattr(fx, "tasa", lambda o, b: (TASAS[o] / TASAS[b], None, "prueba"))
     yield
 
 
