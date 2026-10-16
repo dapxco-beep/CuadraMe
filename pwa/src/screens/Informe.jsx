@@ -249,12 +249,12 @@ export default function Informe() {
                       aria-expanded={abiertaAhora}
                       className="w-full text-left py-3 min-h-[56px]"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 min-[400px]:gap-3">
                         <span className="w-9 h-9 rounded-xl shrink-0 bg-accent-soft flex items-center justify-center text-lg" aria-hidden="true">
                           {iconoDe(c.categoria)}
                         </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{c.categoria}</p>
+                        <div className="flex-1 min-w-[5.25rem]">
+                          <p className="text-sm font-medium leading-tight break-words">{c.categoria}</p>
                           <BarraProgreso
                             pct={Math.max(c.pct, 1.5)}
                             label={`Participación de ${c.categoria}`}
@@ -270,7 +270,7 @@ export default function Informe() {
                           const txt = p == null || Math.abs(p) < 3 ? 'estable' : `${p > 0 ? '↑' : '↓'} ${pctCorto(p)}`
                           return (
                             <div className="shrink-0 text-ink-soft flex flex-col items-center" data-testid="tendencia-categoria">
-                              <Sparkline valores={t.valores} ancho={48} alto={16} resumen={`Tendencia de ${c.categoria} en 6 meses: ${txt} frente a su promedio`} />
+                              <Sparkline valores={t.valores} ancho={40} alto={16} resumen={`Tendencia de ${c.categoria} en 6 meses: ${txt} frente a su promedio`} />
                               <span className="text-[10px] leading-none mt-0.5" aria-hidden="true">{txt}</span>
                             </div>
                           )

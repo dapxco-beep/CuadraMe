@@ -88,7 +88,7 @@ export default function MapaActividad() {
           <p className="text-xs mt-3 min-h-[18px]" aria-live="polite">
             {seleccionado ? (
               <>
-                <span className="capitalize">{textoDia(seleccionado.dia)}</span>: <b>{fmt(seleccionado.gasto)}</b>
+                <span className="first-letter:uppercase inline-block">{textoDia(seleccionado.dia)}</span>: <b>{fmt(seleccionado.gasto)}</b>
               </>
             ) : (
               <span className="text-ink-soft">Total del periodo: <b className="text-ink">{fmt(datos.total)}</b> · toca un día para ver su gasto</span>

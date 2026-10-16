@@ -73,7 +73,7 @@ export function pctCorto(pct) {
 }
 
 /** Frase de la evolución de una serie: «En septiembre, Transporte subió 18 % frente a su promedio.» */
-export function fraseEvolucion(nombre, resumen, etiquetaMes = '') {
+function fraseEvolucionBase(nombre, resumen, etiquetaMes = '') {
   if (!resumen) return 'Todavía no hay un mes completo para comparar.'
   const pct = resumen.vs_promedio_pct
   const mes = etiquetaMes ? `En ${etiquetaMes}, ` : ''
@@ -81,4 +81,9 @@ export function fraseEvolucion(nombre, resumen, etiquetaMes = '') {
   if (Math.abs(pct) < 3) return `${mes}${nombre} se mantuvo en su promedio.`
   const verbo = pct > 0 ? 'subió' : 'bajó'
   return `${mes}${nombre} ${verbo} ${pctCorto(pct)} frente a su promedio.`
+}
+
+export function fraseEvolucion(nombre, resumen, etiquetaMes = '') {
+  const f = fraseEvolucionBase(nombre, resumen, etiquetaMes)
+  return f.charAt(0).toUpperCase() + f.slice(1)
 }

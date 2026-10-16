@@ -181,7 +181,7 @@ export default function DiaADia({ desde, hasta, className = '' }) {
           <ChevronLeft size={20} aria-hidden="true" />
         </button>
         <div className="flex-1 text-center min-w-0" aria-live="polite" data-testid="dia-elegido">
-          <p className="text-xs font-semibold capitalize truncate">{etiqueta(actual)}</p>
+          <p className="text-xs font-semibold first-letter:uppercase truncate">{etiqueta(actual)}</p>
           <p className="text-[11px] text-ink-soft">
             {vista === 'gasto'
               ? `Gastaste ${fmt(actual.gasto)}${actual.ingreso > 0 ? ` · Entró ${fmt(actual.ingreso)}` : ''}`

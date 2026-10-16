@@ -119,7 +119,7 @@ describe('EvolucionCategoria', () => {
     render(<MemoryRouter><EvolucionCategoria fmt={fmt} /></MemoryRouter>)
     const chips = await screen.findByRole('group', { name: 'Categoría' })
     expect(within(chips).getAllByRole('button').map((b) => b.textContent)).toEqual(['Todas', 'Transporte', 'Mercado'])
-    expect(screen.getByTestId('frase-evolucion').textContent).toBe('En septiembre, Tu gasto total subió 14 % frente a su promedio.')
+    expect(screen.getByTestId('frase-evolucion').textContent).toBe('En septiembre, tu gasto total subió 14 % frente a su promedio.')
     await user.click(within(chips).getByRole('button', { name: 'Transporte' }))
     expect(screen.getByTestId('frase-evolucion').textContent).toBe('En septiembre, Transporte subió 18 % frente a su promedio.')
     expect(await screen.findByRole('list', { name: 'Subcategorías' })).toHaveTextContent('Sin subcategoría')

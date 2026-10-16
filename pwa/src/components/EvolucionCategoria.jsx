@@ -30,7 +30,7 @@ export default function EvolucionCategoria({ fmt, className = '' }) {
   const top = useMemo(() => (datos?.categorias || []).slice(0, 5), [datos])
 
   const serie = cat === null ? datos?.serie_total : datos?.categorias.find((c) => c.categoria === cat)
-  const nombre = cat ?? 'Tu gasto total'
+  const nombre = cat ?? 'tu gasto total'
   const subs = cat !== null && det.datos?.categoria === cat && det.datos.tiene_subcategorias ? det.datos.subcategorias : null
 
   const cols = useMemo(() => {
@@ -65,7 +65,7 @@ export default function EvolucionCategoria({ fmt, className = '' }) {
   const frase = fraseEvolucion(nombre, rs, mesRes)
   const c = activo !== null ? cols[activo] : null
   const filas = c && [
-    { nombre: 'Gasto', valor: fmt(c.valor), color: 'var(--color-brand)' },
+    { nombre: c.segs.length ? 'Total' : 'Gasto', valor: fmt(c.valor), color: c.segs.length ? 'transparent' : 'var(--color-brand)' },
     ...c.segs.map((s) => ({ nombre: s.nombre, valor: fmt(s.valor), color: s.color })),
     { nombre: 'Vs mes anterior', valor: textoVar(c.vsAnt) },
     { nombre: 'Vs su promedio', valor: textoVar(c.vsProm) },
@@ -82,7 +82,7 @@ export default function EvolucionCategoria({ fmt, className = '' }) {
         <div role="group" aria-label="Cantidad de meses" className="flex rounded-full bg-paper border border-line p-0.5 shrink-0">
           {[6, 12].map((n) => (
             <button key={n} type="button" aria-pressed={nMeses === n} onClick={() => setNMeses(n)}
-              className={`px-3 min-h-[32px] rounded-full text-xs font-semibold ${nMeses === n ? 'bg-accent text-white' : 'text-ink-soft'}`}>{n} meses</button>
+              className={`px-3 min-h-[32px] relative after:content-[''] after:absolute after:-inset-y-1.5 after:inset-x-0 rounded-full text-xs font-semibold ${nMeses === n ? 'bg-accent text-white' : 'text-ink-soft'}`}>{n} meses</button>
           ))}
         </div>
       </div>
@@ -138,7 +138,7 @@ export default function EvolucionCategoria({ fmt, className = '' }) {
                       return el
                     })
                   : m.valor > 0 && <path className="gr-barra" style={{ '--i': i }} d={rutaBarra(cx(i) - ancho / 2, y(m.valor), ancho, y0)} fill={`url(#${gid}-b)`} />}
-                {i % paso === 0 && <text x={cx(i)} y={H - 6} textAnchor="middle" fontSize="10" fill="var(--color-ink-soft)" style={FUENTE}>{m.etiqueta}</text>}
+                {(cols.length - 1 - i) % paso === 0 && <text x={cx(i)} y={H - 6} textAnchor="middle" fontSize="10" fill="var(--color-ink-soft)" style={FUENTE}>{m.etiqueta}</text>}
               </g>
             )
           })}

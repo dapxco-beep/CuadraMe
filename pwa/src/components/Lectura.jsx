@@ -10,7 +10,7 @@ export default function Lectura({ pct, titulo, filas = [], pie = null }) {
       className="absolute top-0 z-10 pointer-events-none rounded-xl border border-line bg-paper-raised/95 backdrop-blur px-3 py-2 shadow-lg min-w-[148px] max-w-[220px]"
       style={{ left: `${pct}%`, transform: pos }}
     >
-      <p className="text-[11px] font-semibold text-ink capitalize leading-tight">{titulo}</p>
+      <p className="text-[11px] font-semibold text-ink first-letter:uppercase leading-tight">{titulo}</p>
       <dl className="mt-1 space-y-0.5">
         {filas.map((f) => (
           <div key={f.nombre} className="flex items-center justify-between gap-3 text-[11px] leading-snug">
@@ -22,7 +22,7 @@ export default function Lectura({ pct, titulo, filas = [], pie = null }) {
           </div>
         ))}
       </dl>
-      {pie && <p className="text-[10px] text-ink-soft mt-1 leading-snug">{pie}</p>}
+      {pie && <p className="text-[10px] text-ink-soft mt-1 leading-snug">{String(pie).replace(/ %/g, ' %')}</p>}
     </div>
   )
 }
