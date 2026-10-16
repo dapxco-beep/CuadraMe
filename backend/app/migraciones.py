@@ -26,7 +26,6 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'ALTER TABLE presupuestos ADD COLUMN IF NOT EXISTS ultima_alerta_mes VARCHAR',
             'ALTER TABLE historial_extractos ADD COLUMN IF NOT EXISTS motivo_error VARCHAR NULL',
             'ALTER TABLE extractos_correo ADD COLUMN IF NOT EXISTS motivo_error VARCHAR NULL',
-            'ALTER TABLE extractos_correo ADD COLUMN IF NOT EXISTS datos_cuerpo VARCHAR NULL',
             'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS gmail_leer_movimientos BOOLEAN DEFAULT TRUE',
             'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS gmail_leer_extractos BOOLEAN DEFAULT TRUE',
             'ALTER TABLE correos_gastos ADD COLUMN IF NOT EXISTS fecha_movimiento TIMESTAMP',
@@ -67,7 +66,6 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS creado_en TIMESTAMP',
             'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS nombre_preferido VARCHAR NULL',
             'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS nombre_confirmado BOOLEAN DEFAULT FALSE',
-            'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS nombre_titular VARCHAR NULL',
             'ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS origen VARCHAR NULL',
             'ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS huella_externa VARCHAR NULL',
             'CREATE INDEX IF NOT EXISTS ix_movimientos_huella ON movimientos (usuario_id, huella_externa)',
@@ -97,6 +95,15 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS idioma VARCHAR NULL',
             'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS pais_confirmado BOOLEAN NULL',
             'CREATE INDEX IF NOT EXISTS ix_movimientos_cuenta_fecha ON movimientos (cuenta_id, fecha DESC)',
+        ],
+    ),
+    (
+        # Columnas que se agregaron DESPUÉS de desplegar 0001 (por eso van aparte: una migración ya
+        # aplicada no se vuelve a ejecutar, y producción dio 500 por faltar datos_cuerpo).
+        "0002_nombre_titular_y_datos_cuerpo",
+        [
+            'ALTER TABLE extractos_correo ADD COLUMN IF NOT EXISTS datos_cuerpo VARCHAR NULL',
+            'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS nombre_titular VARCHAR NULL',
         ],
     ),
 ]
