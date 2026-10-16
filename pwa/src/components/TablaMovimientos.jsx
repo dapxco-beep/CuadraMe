@@ -6,6 +6,7 @@ import { formatMoneda } from '../lib/format'
 import { direccionDe, signoDe } from '../lib/traslados'
 import { COLUMNAS_TABLA, ordenarMovimientos } from '../lib/movimientosLista'
 import EtiquetaOrigen from './EtiquetaOrigen'
+import { fechaHoraMovimiento } from '../lib/fechaMovimiento'
 
 // Tabla de movimientos para escritorio. Mismas reglas que la lista: filas virtualizadas (alto fijo,
 // solo se pintan las visibles más un margen), selección masiva con casillas y el detalle en el panel.
@@ -23,7 +24,7 @@ function leerColumnas() {
   return {}
 }
 
-const fechaCorta = (iso) => new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })
+const fechaCorta = (iso) => fechaHoraMovimiento(iso, { anio: true })
 
 const Casilla = ({ marcada, etiqueta, onClick }) => (
   <button type="button" role="checkbox" aria-checked={marcada} aria-label={etiqueta} onClick={onClick} className="w-11 h-11 flex items-center justify-center">
@@ -54,7 +55,7 @@ const Fila = memo(function Fila({ m, columnas, icono, moneda, cuenta, esSel, act
             e.preventDefault()
             onAbrir(m.id)
           }}
-          className="block truncate text-sm font-semibold py-2"
+          title={m.descripcion} className="block truncate text-sm font-semibold py-2"
         >
           {m.descripcion}
           <EtiquetaOrigen origen={m.origen} canales={m.canales} className="ml-2 align-middle" />

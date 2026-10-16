@@ -5,6 +5,7 @@ import { formatCOP } from '../lib/format'
 import { leerMonto } from '../lib/cuentaNueva'
 import { codigoError, cuerpoEvaluar, mensajeError, ORIENTACION } from '../lib/cuadreExtracto'
 import InputMonto from './InputMonto'
+import { diaCorto } from '../lib/fechaMovimiento'
 
 // «Cuadre con el banco»: compara el saldo que dice el extracto con lo que suman tus movimientos.
 // Nunca cambia nada sin tu permiso: el ajuste y el saldo inicial piden confirmación y se pueden deshacer.
@@ -257,9 +258,9 @@ function Lista({ filas = [], vacio, f }) {
   return (
     <ul className="divide-y divide-line">
       {filas.slice(0, 20).map((x, i) => (
-        <li key={`${x.fecha}-${i}`} className="py-1 flex justify-between gap-2">
-          <span className="min-w-0 break-words">{String(x.fecha || '').slice(0, 10)} · {x.descripcion}</span>
-          <span className="shrink-0">{x.tipo === 'income' ? '+' : '-'}{f(x.monto)}</span>
+        <li key={`${x.fecha}-${i}`} className="py-1.5 flex items-start justify-between gap-2">
+          <span className="min-w-0 break-words">{diaCorto(x.fecha) || String(x.fecha || '').slice(0, 10)} · {x.descripcion}</span>
+          <span className="shrink-0 whitespace-nowrap tabular-nums">{x.tipo === 'income' ? '+' : '-'}{f(x.monto)}</span>
         </li>
       ))}
     </ul>

@@ -9,6 +9,7 @@ import Ayudita from './Ayudita'
 import { CajitasDeCuenta } from './TuPlataTrabajando'
 import Hoja from './Hoja'
 import { leerMonto } from '../lib/cuentaNueva'
+import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
 import { TarjetaCuadreBanco } from './CuadreMes'
 import InputMonto from './InputMonto'
 
@@ -126,14 +127,15 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
           ) : (
             <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line">
               {det.movimientos.map((m) => (
-                <Link key={m.id} to={`/movimientos/${m.id}`} className="flex items-center gap-3 px-4 py-3">
+                <Link key={m.id} to={`/movimientos/${m.id}`} className="flex items-start gap-3 px-4 py-3 min-h-[56px]">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{m.descripcion}</p>
-                    <p className="text-xs text-ink-soft">
+                    <p className="text-sm font-semibold break-words line-clamp-3">{m.descripcion}</p>
+                    <p className="text-xs text-ink-soft mt-0.5 break-words">{fechaHoraMovimiento(fechaDeMovimiento(m))}</p>
+                    <p className="text-xs text-ink-soft break-words">
                       {m.fuente === 'ajuste_saldo' ? 'No cuenta como gasto ni ingreso' : m.categoria}
                     </p>
                   </div>
-                  <span className={`text-sm font-semibold shrink-0 ${m.tipo === 'income' ? 'text-accent' : ''}`}>
+                  <span className={`text-sm font-semibold shrink-0 whitespace-nowrap tabular-nums ${m.tipo === 'income' ? 'text-accent' : ''}`}>
                     {m.tipo === 'income' ? '+' : m.tipo === 'expense' ? '-' : ''}
                     {fmt(m.monto, c.moneda)}
                   </span>

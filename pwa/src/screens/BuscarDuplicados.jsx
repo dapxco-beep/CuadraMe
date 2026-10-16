@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { useVolver } from '../lib/useVolver'
 import { useCuentas } from '../lib/CuentasContext'
 import { formatMoneda } from '../lib/format'
+import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
 import { ETIQUETA_CANAL } from '../lib/canales'
 import { useDialogos } from '../lib/DialogosContext'
 
@@ -133,9 +134,9 @@ export default function BuscarDuplicados() {
                         aria-label={`Conservar ${m.descripcion}`}
                       />
                       <span className="flex-1 min-w-0">
-                        <span className="block text-sm font-medium truncate">{m.descripcion}</span>
-                        <span className="block text-xs text-ink-soft">
-                          {new Date(m.fecha).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        <span className="block text-sm font-semibold break-words line-clamp-3">{m.descripcion}</span>
+                        <span className="block text-xs text-ink-soft break-words">
+                          {fechaHoraMovimiento(fechaDeMovimiento(m), { anio: true })}
                           {' · '}
                           {nombreCuenta(m.cuenta_id, m.cuenta_nombre)}
                           {' · '}
@@ -143,7 +144,7 @@ export default function BuscarDuplicados() {
                           {m.conciliado ? ' · cruzado con el banco' : ''}
                         </span>
                       </span>
-                      <span className="text-sm font-bold shrink-0">{formatMoneda(m.monto)}</span>
+                      <span className="text-sm font-bold shrink-0 whitespace-nowrap tabular-nums">{formatMoneda(m.monto)}</span>
                     </label>
                   ))}
                 </div>

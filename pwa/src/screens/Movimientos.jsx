@@ -30,6 +30,7 @@ import Hoja from '../components/Hoja'
 import TablaMovimientos from '../components/TablaMovimientos'
 import DetalleMovimiento from './DetalleMovimiento'
 import EtiquetaOrigen from '../components/EtiquetaOrigen'
+import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
 import PorRevisarCorreo from '../components/PorRevisarCorreo'
 import { usePorRevisarCorreo } from '../lib/usePorRevisarCorreo'
 
@@ -55,7 +56,7 @@ function etiquetaDia(fechaISO) {
 // Una fila de la lista. Está memoizada: al categorizar UN movimiento solo se vuelve a pintar su
 // fila (las demás reciben las mismas props y React las salta), clave con miles de movimientos.
 const FilaMovimiento = memo(function FilaMovimiento({
-  m, icono, moneda, esSel, modoSel, panel, botonConfirmar, indice, onToggle, onChip, onConfirmar, onAbrir,
+  m, icono, moneda, cuentaNombre, esSel, modoSel, panel, botonConfirmar, indice, onToggle, onChip, onConfirmar, onAbrir,
 }) {
   const timer = useRef(null)
   const larga = useRef(false)
@@ -133,8 +134,11 @@ const FilaMovimiento = memo(function FilaMovimiento({
         </button>
         <div className="min-w-0 flex-1">
           <Link to={`/movimientos/${m.id}`} onClick={alClic} className="block pt-2.5 min-w-0">
-            <p className="text-sm font-semibold truncate">{m.descripcion}</p>
-            <EtiquetaOrigen origen={m.origen} canales={m.canales} className="mt-0.5" />
+            <p className="text-sm font-semibold break-words line-clamp-4" title={m.descripcion}>{m.descripcion}</p>
+            <p className="text-xs text-ink-soft mt-0.5 break-words" data-testid="fila-fecha-cuenta">
+              {[fechaHoraMovimiento(fechaDeMovimiento(m)), cuentaNombre].filter(Boolean).join(' · ')}
+            </p>
+            <EtiquetaOrigen origen={m.origen} canales={m.canales} className="mt-1" />
           </Link>
           <div className="flex items-center flex-wrap gap-y-1 pt-0.5 pb-2.5">
             {esTransfer ? (
@@ -174,9 +178,9 @@ const FilaMovimiento = memo(function FilaMovimiento({
           onClick={alClic}
           tabIndex={-1}
           aria-hidden="true"
-          className="pt-2.5 shrink-0"
+          className="pt-2.5 shrink-0 max-w-[45%]"
         >
-          <span className={`text-[15px] font-bold ${direccion === 'income' ? 'text-gold' : direccion ? 'text-ink' : 'text-ink-soft'}`}>
+          <span className={`text-[15px] font-bold tabular-nums whitespace-nowrap ${direccion === 'income' ? 'text-gold' : direccion ? 'text-ink' : 'text-ink-soft'}`}>
             {signoDe(m)}
             {formatMoneda(m.monto, moneda)}
           </span>
@@ -1071,10 +1075,11 @@ export default function Movimientos() {
                                 abrirPanel(m.id)
                               }
                             }}
-                            className="flex items-center justify-between gap-3 py-2 text-xs"
+                            className="flex items-start justify-between gap-3 py-2.5 min-h-[44px] text-xs"
                           >
-                            <span className="truncate">
-                              {new Date(m.fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })} · {m.descripcion}
+                            <span className="min-w-0 break-words">
+                              <span className="block line-clamp-3">{m.descripcion}</span>
+                              <span className="block text-ink-soft">{fechaHoraMovimiento(fechaDeMovimiento(m))}</span>
                             </span>
                             <span className="font-semibold shrink-0">{formatMoneda(m.monto, monedaDe[m.cuenta_id])}</span>
                           </Link>
@@ -1116,6 +1121,7 @@ export default function Movimientos() {
                       m={m}
                       icono={iconoDe(m.categoria)}
                       moneda={monedaDe[m.cuenta_id]}
+                      cuentaNombre={nombreCuentaTabla(m.cuenta_id)}
                       esSel={seleccionados.has(m.id)}
                       modoSel={modoSeleccion}
                       panel={lateral}

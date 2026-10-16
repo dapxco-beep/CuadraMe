@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { EsqueletoPantalla } from '../components/Esqueletos'
 import { useParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
-import { ArrowLeft, ArrowLeftRight, Info, Pencil, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, Copy, Info, Pencil, Trash2, X } from 'lucide-react'
 import { CATEGORIA_PAGO_TARJETA, esPagoTarjeta } from '../lib/contabilidad'
 import Icono from '../components/Icono'
 import Ayudita from '../components/Ayudita'
-import { formatFechaLarga, formatMoneda, nombreOrigen } from '../lib/format'
+import { formatMoneda, nombreOrigen } from '../lib/format'
+import { diaCorto, fechaHoraMovimiento, horaCorta } from '../lib/fechaMovimiento'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
 import { cuentaEfectivoPara, ofertaEfectivo, sugerenciaEfectivo } from '../lib/efectivo'
@@ -283,7 +284,24 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           {signo}
           {formatMoneda(movimiento.monto, cuenta?.moneda)}
         </p>
-        <p className="text-sm text-ink-soft mt-2 text-center px-6">{movimiento.descripcion}</p>
+        <p className="text-base font-semibold mt-3 text-center px-6 break-words max-w-full" data-testid="detalle-descripcion">{movimiento.descripcion}</p>
+        <p className="text-sm text-ink-soft mt-1 text-center px-6 break-words" data-testid="detalle-fecha-cuenta">
+          {[fechaHoraMovimiento(movimiento.fecha, { anio: true }), cuenta?.nombre].filter(Boolean).join(' · ')}
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              navigator.clipboard?.writeText(movimiento.descripcion)
+              avisar('Descripción copiada', 'ok')
+            } catch {
+              // sin portapapeles: se puede seleccionar el texto a mano
+            }
+          }}
+          className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-accent min-h-[44px] px-3"
+        >
+          <Copy size={16} aria-hidden="true" /> Copiar descripción
+        </button>
       </div>
 
       {editando ? (
@@ -406,7 +424,8 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
             </div>
           )}
           {cuenta && <Fila label="Cuenta" valor={cuenta.nombre} />}
-          <Fila label="Fecha" valor={formatFechaLarga(movimiento.fecha)} />
+          <Fila label="Fecha" valor={diaCorto(movimiento.fecha, { anio: true })} />
+          {horaCorta(movimiento.fecha) && <Fila label="Hora" valor={horaCorta(movimiento.fecha)} />}
           <Fila label="Tipo" valor={etiquetaTipo(movimiento)} />
           {(movimiento.categoria === CATEGORIA_PAGO_TARJETA || esPagoTarjeta(movimiento.descripcion) ||
             (cuenta?.tipo === 'credito' && (movimiento.tipo === 'income' || (movimiento.notas || '').endsWith(':in')))) && (
@@ -482,9 +501,9 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                   {contrapartes.map((o) => (
                     <li key={o.id} className="flex items-center gap-3 rounded-xl border border-line px-3 py-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm truncate">{o.descripcion}</p>
-                        <p className="text-xs text-ink-soft">
-                          {cuentas.find((c) => c.id === o.cuenta_id)?.nombre} · {new Date(o.fecha).toLocaleDateString('es-CO')}
+                        <p className="text-sm font-medium break-words line-clamp-3">{o.descripcion}</p>
+                        <p className="text-xs text-ink-soft break-words">
+                          {cuentas.find((c) => c.id === o.cuenta_id)?.nombre} · {fechaHoraMovimiento(o.fecha, { anio: true })}
                         </p>
                       </div>
                       <button
@@ -554,9 +573,9 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
 
 function Fila({ label, valor }) {
   return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-      <p className="text-sm text-ink-soft">{label}</p>
-      <p className="text-sm font-medium text-right">{valor}</p>
+    <div className="flex items-start justify-between gap-4 px-4 py-3.5 min-h-[44px]">
+      <p className="text-sm text-ink-soft shrink-0">{label}</p>
+      <p className="text-sm font-medium text-right break-words min-w-0">{valor}</p>
     </div>
   )
 }
