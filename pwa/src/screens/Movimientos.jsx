@@ -3,7 +3,7 @@ import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { Boton } from '../components/ui'
 import { Link, useLocation, useNavigationType, useSearchParams } from 'react-router-dom'
-import { ArrowLeftRight, Check, ChevronDown, Download, ListChecks, Search, Shuffle, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeftRight, Check, ChevronDown, ChevronRight, Download, ListChecks, PieChart, Search, Shuffle, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
 import Icono from '../components/Icono'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
@@ -873,6 +873,24 @@ export default function Movimientos() {
                     className="bg-transparent outline-none text-sm flex-1 placeholder:text-ink-soft"
                   />
                 </div>
+              </div>
+
+              {/* Del listado al detalle: en qué se va la plata (por categoría, comercio y periodo) */}
+              <div className="px-5 mb-3">
+                <Link
+                  to="/informe"
+                  data-testid="ver-detalle-gastos"
+                  className="flex items-center gap-3 rounded-2xl border border-line bg-paper-raised px-4 min-h-[52px]"
+                >
+                  <span className="w-9 h-9 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
+                    <PieChart size={20} aria-hidden="true" />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-semibold leading-tight">Ver detalle de tus gastos</span>
+                    <span className="block text-xs text-ink-soft mt-0.5">Por categoría, comercio y periodo</span>
+                  </span>
+                  <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
+                </Link>
               </div>
 
               <div className="px-5 mb-3 flex gap-2 overflow-x-auto no-scrollbar lg:flex-wrap lg:overflow-visible">

@@ -132,6 +132,13 @@ describe('Movimientos', () => {
     expect(screen.getByText(/US\$|USD/)).toBeInTheDocument()
   })
 
+  it('tiene un acceso al detalle de los gastos (En qué gasto)', async () => {
+    montar(<Movimientos />)
+    const enlace = await screen.findByTestId('ver-detalle-gastos')
+    expect(enlace).toHaveAttribute('href', '/informe')
+    expect(enlace).toHaveTextContent('Ver detalle de tus gastos')
+  })
+
   it('ofrece cargar más cuando la página viene llena', async () => {
     api.movimientos.mockResolvedValueOnce(Array.from({ length: 200 }, (_, i) => ({ ...MOVS[0], id: `x${i}` })))
     montar(<Movimientos />)
