@@ -106,6 +106,12 @@ errores_atajo.registrar(app)
 # Va ANTES que CORS a propósito: add_middleware apila de afuera hacia adentro, así que
 # CORS queda como capa externa y hasta un 413 sale con sus cabeceras CORS (si no, el
 # navegador lo mostraría como "error de red" en vez del mensaje claro).
+# El más interno de todos: un error inesperado se convierte en un 500 normal que SÍ pasa por CORS. Sin esto
+# Starlette lo responde desde su capa externa, sin cabeceras CORS, y el navegador lo muestra como «sin
+# conexión» aunque el servidor esté arriba (así pasó cuando faltó una columna tras un despliegue).
+from app.errores_500 import Errores500Middleware  # noqa: E402
+
+app.add_middleware(Errores500Middleware)
 app.add_middleware(SeguridadMiddleware, con_csp=_es_prod)
 
 # Compresión gzip de lo que pasa de 1 KB (JSON de listas y reportes): ver app/compresion.py.

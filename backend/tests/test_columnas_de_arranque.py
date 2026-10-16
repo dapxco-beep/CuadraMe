@@ -65,3 +65,15 @@ def test_migracion_fallida_no_queda_registrada():
         pass
     with eng.connect() as c:
         assert c.execute(text("SELECT COUNT(*) FROM schema_migrations")).scalar() == 0
+
+
+# ── Una migración ya desplegada NO se edita: se agrega una nueva al final ──────────────────────
+def test_migraciones_desplegadas_estan_congeladas():
+    import hashlib
+
+    from app.migraciones import MIGRACIONES
+
+    huellas = {mid: (len(s), hashlib.sha256(chr(10).join(s).encode()).hexdigest()[:16]) for mid, s in MIGRACIONES}
+    # 0001 ya corrió en producción: agregarle sentencias no las ejecuta (así faltó datos_cuerpo y dio 500).
+    assert huellas["0001_columnas_historicas"] == (77, "83b84688c8f5e091")
+    assert huellas["0002_nombre_titular_y_datos_cuerpo"][0] == 2
