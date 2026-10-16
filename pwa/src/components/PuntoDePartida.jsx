@@ -301,7 +301,7 @@ export default function PuntoDePartida({ variante = 'perfil', inicial = null, on
                 )}
               </span>
               <span className="block text-xs mt-1.5">{m.explicacion}</span>
-              <span className="block text-xs text-ink-soft mt-1">{m.ejemplo}</span>
+              <span className="hidden sm:block text-xs text-ink-soft mt-1">{m.ejemplo}</span>
             </button>
           )
         })}

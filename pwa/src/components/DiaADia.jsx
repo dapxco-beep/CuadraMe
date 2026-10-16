@@ -46,7 +46,13 @@ export default function DiaADia({ desde, hasta, className = '' }) {
     setDatos(null)
     setError('')
     setSel(null)
-    api.gastoDiario(desde, hasta)
+    // El servidor acepta como máximo 400 días: si el periodo es más largo, se muestran los últimos 400.
+    const limite = new Date(`${hasta}T12:00:00`)
+    limite.setDate(limite.getDate() - 399)
+    const desdeOk = desde && hasta && new Date(`${desde}T12:00:00`) < limite
+      ? `${limite.getFullYear()}-${String(limite.getMonth() + 1).padStart(2, '0')}-${String(limite.getDate()).padStart(2, '0')}`
+      : desde
+    api.gastoDiario(desdeOk, hasta)
       .then((d) => activo && setDatos(d))
       .catch((e) => activo && setError(e.message || 'No pudimos cargar el día a día.'))
     return () => {
@@ -149,8 +155,8 @@ export default function DiaADia({ desde, hasta, className = '' }) {
                   width={Math.max(2, paso * 0.7)}
                   height={Math.max(h, d.gasto > 0 ? 2 : 0)}
                   rx={1.5}
-                  fill={i === idx ? 'var(--c-accent)' : 'var(--c-serie-2)'}
-                  opacity={i === idx ? 1 : 0.75}
+                  fill="var(--c-accent)"
+                  opacity={i === idx ? 1 : 0.42}
                 />
               )
             })}

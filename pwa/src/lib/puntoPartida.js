@@ -8,7 +8,7 @@ export const MODOS = {
     titulo: 'Empezar desde hoy',
     recomendado: true,
     explicacion:
-      'Tomamos el saldo de hoy de cada cuenta como punto de partida y solo registramos lo que pase desde ahora. Lo anterior no estorba ni aparece por revisar.',
+      'Tomamos tu saldo de hoy y solo registramos lo que pase desde ahora.',
     ejemplo: 'Ejemplo: hoy tienes $1.200.000 en tu cuenta de ahorros; ese es tu saldo inicial.',
   },
   historico: {
@@ -16,7 +16,7 @@ export const MODOS = {
     titulo: 'Recrear mi histórico',
     recomendado: false,
     explicacion:
-      'Eliges desde cuándo (3, 6, 12 meses o una fecha) y traemos tus extractos de ese tiempo para ver tu historia completa mes a mes.',
+      'Eliges desde cuándo y traemos tus extractos para ver tu historia mes a mes.',
     ejemplo: 'Ejemplo: desde enero, con el extracto de cada mes de cada cuenta.',
   },
 }

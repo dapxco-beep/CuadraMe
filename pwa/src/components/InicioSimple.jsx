@@ -5,6 +5,7 @@ import { IlustracionVacia, Isotipo, Monto } from '../brand/Marca'
 import ConsejoParaTi from './ConsejoParaTi'
 import { OfrecerPrimeraMeta } from './FormMeta'
 import Icono from './Icono'
+import SemanaMini from './SemanaMini'
 import { RenglonTuPlata } from './TuPlataTrabajando'
 import { Boton } from './ui'
 import { nombreDe } from '../lib/tituloMovimiento'
@@ -33,6 +34,7 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
             <p className="text-lg font-bold t-cifra mt-0.5" data-testid="gastos-semana">
               {gastosSemana === null ? '—' : fmt(gastosSemana)}
             </p>
+            <SemanaMini />
           </div>
         </div>
       </section>
