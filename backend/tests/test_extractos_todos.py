@@ -317,3 +317,12 @@ def test_banco_del_titulo_usa_la_cuenta_cuando_lo_detectado_viene_en_minuscula_o
     assert ev.banco_para_titulo("generico", "") == ""
     assert ev.banco_para_titulo("Bancolombia", "Mi ahorro") == "Bancolombia"
     assert ev.banco_para_titulo("nu", "") == "Nu"
+
+
+def test_estado_corto_dice_en_una_linea_que_pasa_con_cada_extracto():
+    c = {"leidas": 52, "ya_estaban": 0, "nuevas_agregadas": 0, "por_revisar": 52}
+    assert ev.estado_corto("por_revisar", c) == "Falta importar 52"
+    assert ev.estado_corto("revisado", {"leidas": 37, "por_revisar": 0}) == "Conciliado ✓ · 37 movimientos"
+    assert ev.estado_corto("revisado", {"leidas": 1, "por_revisar": 0}) == "Conciliado ✓ · 1 movimiento"
+    assert ev.estado_corto("necesita_clave", {}) == "No se pudo leer: falta la clave del PDF"
+    assert ev.estado_corto("necesita_clave", {}, clave_estado="no_abrio") == "No se pudo leer: la clave del PDF no abrió"

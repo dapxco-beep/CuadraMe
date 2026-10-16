@@ -26,6 +26,8 @@ import CorreosYaRegistrados from '../components/CorreosYaRegistrados'
 import CrearCuentaBanco from '../components/CrearCuentaBanco'
 import EstadoClavePdf, { textoEstadoClave } from '../components/EstadoClavePdf'
 import TodosLosExtractos from '../components/TodosLosExtractos'
+import ExtractosAMedias from '../components/ExtractosAMedias'
+import { extractosAMedias } from '../lib/retomar'
 import BuscarExtractoPorAsunto from '../components/BuscarExtractoPorAsunto'
 import CuadreEncadenado from '../components/CuadreEncadenado'
 import PuntoDePartida from '../components/PuntoDePartida'
@@ -725,6 +727,13 @@ export default function Sincronizacion() {
           />
         </section>
       )}
+
+      {/* Lo que quedó a medias SIEMPRE se ve aquí arriba, aunque la sección de Extractos esté plegada. */}
+      <ExtractosAMedias
+        lista={extractosAMedias(estado)}
+        onSeguir={(x) => pedirSubir({ historialId: x.historialId, cuentaId: x.cuentaId })}
+        className="mx-6 mt-3"
+      />
 
       {sinDatos({ estado, conectado }) && <PasosCentro paso={pasoActual({ conectado, tareas })} />}
 

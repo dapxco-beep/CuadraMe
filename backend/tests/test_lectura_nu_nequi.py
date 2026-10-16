@@ -119,3 +119,29 @@ def test_nequi_formato_dolar_con_coma_de_miles_lee_todo_y_cierra_la_cadena():
     assert sum(m["monto"] for m in movs if m["tipo"] == "income") == 60000
     assert sum(m["monto"] for m in movs if m["tipo"] == "expense") == 57028
     assert 2000 + 60000 - 57028 == 4972
+
+
+# Tarjeta de crédito Nu (texto sintético): las compras vienen SIN signo +/-, solo el pago lleva signo.
+NU_TARJETA = """Nu Colombia
+Tarjeta de crédito
+Período 14 MAY - 13 JUN 2026
+Movimientos
+13 jun Pago recibido +$300.000,00
+10 jun Compra en TIENDA UNO $22.000,00
+09 jun Compra en MERCADO XYZ $11.400,00
+08 jun Compra en CAFE CENTRAL $8.500,00
+"""
+
+
+def test_tarjeta_nu_con_compras_sin_signo_avisa_las_lineas_que_no_leyo():
+    """El lector de la cuenta Nu solo toma líneas con +/-: en la tarjeta quedaba 1 línea y nadie se enteraba.
+    Ahora lo leído se conserva y las líneas sin leer se cuentan para avisar."""
+    movs, descartados = parse_texto_con_regex(NU_TARJETA)
+    assert len(movs) == 1
+    assert descartados == 3
+
+
+def test_cuenta_nu_completa_no_cuenta_lineas_sin_leer():
+    fijar_nombre_titular("Ana Maria Lopez Rojas")
+    _, descartados = parse_texto_con_regex(NU)
+    assert descartados == 0

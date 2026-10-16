@@ -94,6 +94,7 @@ function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado }) {
           </span>
         )}
       </p>
+      {it.estado_corto && <p className={`text-sm font-semibold mt-1.5 ${esError ? 'text-danger' : ''}`} data-testid="estado-corto">{it.estado_corto}</p>}
       <p className={`text-sm mt-1.5 leading-snug ${esError ? 'text-danger' : 'text-ink-soft'}`} role={esError ? 'alert' : undefined}>{it.resultado}</p>
       {it.mes_deducido && !it.mes_por_confirmar && (
         <p className="text-xs text-ink-soft mt-1">

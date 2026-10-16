@@ -467,11 +467,19 @@ def _parse_nu_por_lineas(texto: str, anio: str) -> list[dict]:
     return movimientos
 
 
+def _lineas_nu_sin_leer(texto: str, leidas: int) -> int:
+    """Líneas que empiezan con fecha («13 jun …») y traen un valor en pesos pero el lector estricto no
+    tomó (p. ej. la TARJETA de Nu: sus compras vienen sin signo +/-, que es lo que exige el lector de la
+    cuenta). Se cuentan para avisar «hay líneas sin leer» en vez de dar por bueno un extracto de 1 línea."""
+    candidatas = sum(1 for l in texto.splitlines() if _RE_INICIA_FECHA_NU.match(l) and re.search(r"[$]\s*\d", l))
+    return max(0, candidatas - leidas)
+
+
 def _parse_nu(texto: str, anio: str) -> tuple[list[dict], int]:
     anio = _anio_del_periodo(texto) or anio
     estrictos = _parse_nu_por_lineas(texto, anio)
     if estrictos:
-        return estrictos, 0
+        return estrictos, _lineas_nu_sin_leer(texto, len(estrictos))
     movimientos = []
     descartados = 0
     patron = re.compile(

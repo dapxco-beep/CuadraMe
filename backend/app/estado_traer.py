@@ -438,6 +438,7 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             "titulo": ev.titulo_extracto(banco=ev.banco_para_titulo(mejor["banco"], mejor["cuenta"]), tipo=mejor["tipo"], mes=mejor["mes"],
                                          corte=mejor["corte"]),
             "estado_vista": vista, "estado_etiqueta": ev.ETIQUETA_ESTADO[vista],
+            "estado_corto": ev.estado_corto(vista, mejor["conteo"], clave_estado=mejor["clave_estado"]),
             "resultado": ev.frase_resultado(vista, mejor["conteo"], clave_estado=mejor["clave_estado"],
                                             motivo=motivo_err, copias=copias),
             "motivo_error": motivo_err,

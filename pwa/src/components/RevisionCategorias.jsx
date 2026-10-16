@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CheckCircle2, CircleHelp, Sparkles, Tag } from 'lucide-react'
 import { EMOJI_DEFECTO, EMOJI_SIN_CATEGORIA, ESTADOS_CATEGORIA, textoResumenCategorias } from '../lib/estadoCategoria'
 import { opcionesCategoria } from '../lib/importar'
+import HojaNuevaCategoria, { OPCION_NUEVA_CATEGORIA, TEXTO_NUEVA_CATEGORIA } from './HojaNuevaCategoria'
 
 // Piezas de la revisión de un extracto o archivo: cómo quedó cada categoría (con su emoji, el mismo
 // de Movimientos), el resumen de arriba y la acción en bloque. Todas son presentacionales: la
@@ -68,6 +69,7 @@ export function ResumenCategorias({ resumen, onMarcar, className = '' }) {
 export function CategoriaEnBloque({ cantidad, nombres, iconoDe, onAplicar, aviso = '', className = '' }) {
   const [categoria, setCategoria] = useState('')
   const [recordar, setRecordar] = useState(true)
+  const [creando, setCreando] = useState(false)
   if (!cantidad) return null
   return (
     <div className={`rounded-2xl bg-paper border border-line p-4 ${className}`} data-testid="categoria-en-bloque">
@@ -78,15 +80,17 @@ export function CategoriaEnBloque({ cantidad, nombres, iconoDe, onAplicar, aviso
         <span className="sr-only">Categoría para las marcadas</span>
         <select
           value={categoria}
-          onChange={(e) => setCategoria(e.target.value)}
+          onChange={(e) => (e.target.value === OPCION_NUEVA_CATEGORIA ? setCreando(true) : setCategoria(e.target.value))}
           className="w-full rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-xs"
         >
           <option value="">Elige la categoría</option>
           {opcionesCategoria(nombres, '').map((n) => (
             <option key={n} value={n}>{iconoDe(n)} {n}</option>
           ))}
+          <option value={OPCION_NUEVA_CATEGORIA}>{TEXTO_NUEVA_CATEGORIA}</option>
         </select>
       </label>
+      {creando && <HojaNuevaCategoria onCerrar={() => setCreando(false)} onCreada={(n) => setCategoria(n)} />}
       <label className="flex items-center gap-2 mt-2 text-xs min-h-[44px]">
         <input
           type="checkbox"

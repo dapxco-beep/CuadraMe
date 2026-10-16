@@ -300,3 +300,20 @@ def frase_resultado(vista: str, conteo: dict, *, clave_estado: str | None = None
 
 
 RAZON_SIN_ADJUNTO = "El correo habla de un extracto pero no trae el PDF adjunto (o el archivo no parece un extracto)."
+
+
+def estado_corto(vista: str, conteo: dict, *, clave_estado: str | None = None) -> str:
+    """Una frase corta y fija por extracto (lo primero que se lee en la fila):
+    «Conciliado ✓ · 37 movimientos», «Falta importar 5», «No se pudo leer: falta la clave del PDF»."""
+    leidas, falta = conteo.get("leidas", 0), conteo.get("por_revisar", 0)
+    if vista == NECESITA_CLAVE:
+        return "No se pudo leer: la clave del PDF no abrió" if clave_estado == "no_abrio" else "No se pudo leer: falta la clave del PDF"
+    if vista == NO_SE_PUDO_LEER:
+        return "No se pudo leer el archivo"
+    if vista == ANTERIOR:
+        return "Anterior a tu fecha de inicio"
+    if vista == SIN_PROCESAR:
+        return "Sin revisar todavía"
+    if vista == POR_REVISAR:
+        return f"Falta importar {falta}" if falta else "Falta revisarlo"
+    return f"Conciliado ✓ · {_n(leidas, 'movimiento', 'movimientos')}"
