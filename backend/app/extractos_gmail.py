@@ -63,6 +63,7 @@ DOMINIOS_BANCOS: dict[str, str] = {
     "uala.com.co": "Ualá",
     # Remitentes reales que NO son subdominio del dominio principal del banco.
     "notificacionesbancolombia.com.co": "Bancolombia",
+    "notificacionesbancolombia.com": "Bancolombia",  # alertasynotificaciones@ (el remitente real de las alertas)
     "bancolombia.com": "Bancolombia",
     "nequi.co": "Nequi",
     "nu.com": "Nu Colombia",
@@ -105,6 +106,7 @@ PALABRAS_TRANSACCION = (
     "compra", "pago", "transferencia", "retiro", "consignaci", "recibiste",
     "enviaste", "abono", "débito", "debito", "crédito", "credito",
     "transacci", "te enviaron", "movimiento", "avance",
+    "pagaste", "te pagaron", "retiraste", "cobro", "cobramos", "devoluci", "reembolso", "rendimiento",
 )
 
 MAX_PDF_BYTES = 15 * 1024 * 1024
@@ -186,6 +188,7 @@ PALABRAS_AVISO_NO_TRANSACCION = (
     "faltan fondos", "fondos insuficientes", "no pudimos", "no se pudo", "rechazad", "declinad",
     "novedades", "preaprobad", "oferta", "promoci", "inicio de sesion", "acceso a tu", "codigo de verificacion",
     "clave dinamica", "actualiza tu", "pedido fue entregado", "retirar tu compra",
+    "sin cobro", "encuesta", "te invitamos",
 )
 
 
@@ -193,7 +196,7 @@ def es_aviso_no_transaccion(asunto: str, snippet: str = "") -> bool:
     """True si el correo es un aviso (extracto listo, tarjeta agregada, pago fallido, publicidad...) y no
     una transacción. Se mira sobre todo el ASUNTO; el fragmento solo para «faltan fondos» y similares."""
     a = _sin_acentos(asunto)
-    if any(p in a for p in PALABRAS_AVISO_NO_TRANSACCION):
+    if any(p in a for p in PALABRAS_AVISO_NO_TRANSACCION) or contiene_palabra_extracto(asunto):
         return True
     s = _sin_acentos(snippet)
     return any(p in s for p in ("faltan fondos", "fondos insuficientes", "no se pudo completar", "fue rechazad"))

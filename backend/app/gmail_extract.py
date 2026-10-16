@@ -98,7 +98,7 @@ _COMERCIO_MAP = [
 _FIN = r"(?=[,;.\n]|\s+(?:por|con|desde|de\s+tu|a\s+las|el\s+(?:\d|d[ií]a)|valor|usando|cuenta|tarjeta|COP|USD)\b|\s+\$|\s*$)"
 _NOMBRE = r"([A-Za-zÀ-ú0-9*][^,;.\n$]{1,38}?)"
 _CONCEPTOS = [
-    (re.compile(r"compra\s+(?:(?:exitosa|aprobada|realizada)\s+)?(?:en|con\s+tu\s+tarjeta\s+en)\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Compra en "),
+    (re.compile(r"compra\s+(?:(?:exitosa|aprobada|realizada)\s+)?(?:por\s+(?:\$|COP|USD|EUR)?\s*[\d.,]+\s+)?(?:en|con\s+tu\s+tarjeta\s+en)\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Compra en "),
     (re.compile(r"(?:enviaste|env[ií]o|transferiste|transferencia)\s+(?:de\s+manera\s+exitosa\s+)?(?:de\s+)?(?:\$?\s*[\d.,]+\s+)?a\s+(?:la\s+llave\s+\S+\s+de\s+)?" + _NOMBRE + _FIN, re.IGNORECASE), "Envío a "),
     (re.compile(r"(?:recibiste|te\s+enviaron|te\s+transfirieron)\s+(?:\$?\s*[\d.,]+\s+)?de\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Recibido de "),
     (re.compile(r"pago\s+de\s+(servicios?\s+p[uú]blicos|servicios?|factura|impuestos?|pensi[oó]n|matr[ií]cula|arriendo|cuota)", re.IGNORECASE), "Pago de "),
@@ -109,9 +109,16 @@ _CONCEPTOS = [
 ]
 _ASTERISCO = re.compile(r"\*([A-Z][A-Z0-9 ]{2,25})\*")
 
-_INGRESO_RE = re.compile(r"recibiste|te enviaron|consignaron|abono|dep[oó]sito", re.IGNORECASE)
-_EGRESO_RE = re.compile(r"enviaste|transferiste|pagaste|pago|compra|retiro|d[eé]bito|cargo", re.IGNORECASE)
-_TRANSFER_RE = re.compile(r"transferencia\s+entre|transferiste a tu|traslado entre cuentas", re.IGNORECASE)
+_INGRESO_RE = re.compile(
+    r"recibiste|te enviaron|te pagaron|consignaron|te consignaron|abono|dep[oó]sito|devoluci[oó]n|reembolso|reversi[oó]n|rendimientos?",
+    re.IGNORECASE,
+)
+_EGRESO_RE = re.compile(r"enviaste|transferiste|pagaste|pago|compra|retiro|retiraste|d[eé]bito|cargo|cobro|cobramos|avance", re.IGNORECASE)
+_TRANSFER_RE = re.compile(
+    r"transferencia\s+entre|transferiste a tu|traslado entre cuentas|entre\s+(?:tus|sus)\s+cuentas|cuentas\s+propias|"
+    r"(?:pag[óo]|pagaste)\s+.{0,40}?\s+a\s+(?:tu|su)\s+tarjeta",
+    re.IGNORECASE,
+)
 
 
 def _parse_num(raw: str) -> float:
