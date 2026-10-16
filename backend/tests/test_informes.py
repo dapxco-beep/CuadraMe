@@ -217,6 +217,23 @@ def test_api_meses_y_diario():
     assert [x["dia"] for x in d["dias"]] == ["2026-01-01", "2026-01-02", "2026-01-03"]
 
 
+def test_disponible_por_dia_se_reconstruye_hacia_atras():
+    dias = ["2026-10-01", "2026-10-02", "2026-10-03"]
+    # el 2 entraron 1.000, el 3 salieron 300 y el 4 (después del rango) salieron 100; hoy hay 5.000
+    delta = {"2026-10-02": 1_000, "2026-10-03": -300, "2026-10-04": -100}
+    assert inf.disponible_por_dia(dias, delta, 5_000) == [4_400, 5_400, 5_100]
+    assert inf.disponible_por_dia([], delta, 5_000) == []
+    assert inf.disponible_por_dia(dias, {}, 5_000) == [5_000, 5_000, 5_000]
+
+
+def test_api_diario_trae_el_disponible_de_cada_dia():
+    _sembrar()
+    d = client.get("/informes/diario").json()
+    assert "disponible_hoy" in d and all("disponible" in x for x in d["dias"])
+    # el último día del rango coincide con el disponible de hoy cuando no hay movimientos posteriores
+    assert d["dias"][-1]["disponible"] == d["disponible_hoy"]
+
+
 def test_api_preguntar_resuelve_con_calculo_y_sin_datos():
     _sembrar()
     r = client.post("/insights/preguntar", json={"pregunta": "¿En qué gasté más?"}).json()

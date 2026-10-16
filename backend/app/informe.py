@@ -267,6 +267,22 @@ def gasto_diario(movs: list[dict], rango: dict) -> list[dict]:
     return dias
 
 
+def disponible_por_dia(dias: list[str], delta_por_dia: dict[str, float], disponible_actual: float) -> list[int]:
+    """Plata disponible al CIERRE de cada día de `dias` (ISO, en orden). Se reconstruye hacia atrás desde
+    el disponible de hoy: lo que había al cierre de un día es lo de hoy menos todo lo que se movió DESPUÉS de
+    ese día. `delta_por_dia` trae lo que mueve el saldo cada día (incluye días posteriores al rango)."""
+    if not dias:
+        return []
+    despues = sum(v for k, v in delta_por_dia.items() if k > dias[-1])
+    out: list[float] = []
+    acumulado = despues
+    for d in reversed(dias):
+        out.append(disponible_actual - acumulado)
+        acumulado += delta_por_dia.get(d, 0.0)
+    out.reverse()
+    return [round(v) for v in out]
+
+
 def resumen_rango(movs: list[dict], rango: dict) -> dict:
     """Ingresos, gastos, ahorro y top 3 categorías de un rango."""
     ing = sum(m["monto"] for m in movs if m["tipo"] == "income" and en_rango(m, rango))

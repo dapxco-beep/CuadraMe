@@ -3,7 +3,7 @@ Informes: 'en qué gasto mi plata' con periodo configurable, meses con datos
 (para navegar el resumen mensual) y gasto diario (mapa de calor). Todo con la
 regla contable: sin pagos de tarjeta ni traslados entre cuentas propias.
 """
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -11,7 +11,11 @@ from sqlalchemy.orm import Session
 from app import informe as inf
 from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
+from app.compartidos import cuentas_ids_accesibles
+from app.contabilidad import delta_saldo
+from app.fx import convertir_a_cop
 from app.informe_datos import cargar_movs_efectivos
+from app.models import Cuenta, Movimiento
 from app.utiles import ahora_co
 
 router = APIRouter(prefix="/informes", tags=["informes"])
@@ -139,6 +143,23 @@ def meses(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_cu
     }
 
 
+def _disponible_dia_a_dia(db: Session, usuario_id: str, dias: list[str]) -> tuple[int, list[int]]:
+    """(disponible hoy, disponible al cierre de cada día). «Disponible» = cuentas que no son tarjeta de crédito,
+    igual que el saldo de Inicio; el movimiento de cada día usa la regla única del saldo (contabilidad.delta_saldo)."""
+    ids = list(cuentas_ids_accesibles(db, usuario_id))
+    cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all() if ids else []
+    propias = {c.id: c for c in cuentas if c.tipo != "credito"}
+    actual = sum(convertir_a_cop(c.saldo or 0, c.moneda or "COP") for c in propias.values())
+    if not dias or not propias:
+        return round(actual), [round(actual)] * len(dias)
+    inicio = datetime.fromisoformat(dias[0])
+    delta: dict[str, float] = {}
+    for m in db.query(Movimiento).filter(Movimiento.cuenta_id.in_(list(propias)), Movimiento.fecha >= inicio).all():
+        k = m.fecha.date().isoformat()
+        delta[k] = delta.get(k, 0.0) + convertir_a_cop(delta_saldo(m), propias[m.cuenta_id].moneda or "COP")
+    return round(actual), inf.disponible_por_dia(dias, delta, actual)
+
+
 @router.get("/diario")
 def diario(
     desde: str | None = None,
@@ -156,10 +177,14 @@ def diario(
         raise HTTPException(status_code=422, detail="Elige un rango de máximo 400 días")
     movs = cargar_movs_efectivos(db, usuario.id, rango["desde"], rango["hasta"])
     dias = inf.gasto_diario(movs, rango)
+    disponible_hoy, disp = _disponible_dia_a_dia(db, usuario.id, [d["dia"] for d in dias])
+    for d, v in zip(dias, disp):
+        d["disponible"] = v
     return {
         "desde": dias[0]["dia"] if dias else desde,
         "hasta": dias[-1]["dia"] if dias else hasta,
         "total": sum(d["gasto"] for d in dias),
+        "disponible_hoy": disponible_hoy,
         "dias": dias,
     }
 

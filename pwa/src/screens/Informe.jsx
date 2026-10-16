@@ -15,6 +15,7 @@ import EnlaceCostos from '../components/EnlaceCostos'
 import IngresosGastos from '../components/IngresosGastos'
 import GraficoEvolucion from '../components/GraficoEvolucion'
 import { nombreDe } from '../lib/tituloMovimiento'
+import DiaADia from '../components/DiaADia'
 
 // Colores distintos para la dona (cada segmento también lleva su nombre y % en la
 // lista, así que el color nunca es la única señal).
@@ -201,6 +202,9 @@ export default function Informe() {
             )}
           </section>
 
+          {/* Día a día: lo que gastas cada día y cuánta plata te queda, en el mismo periodo */}
+          <DiaADia desde={informe.desde} hasta={informe.hasta} className="lg:col-start-1 lg:row-start-2" />
+
           <section className="mx-6 mt-4 card-marca bg-paper-raised border border-line p-4 lg:col-start-2 lg:row-start-1 lg:row-span-2">
             <h2 className="text-[15px] font-semibold mb-3">Por categoría</h2>
             <div className="flex items-center gap-4">
@@ -292,7 +296,7 @@ export default function Informe() {
           </section>
 
           {informe.comercios.length > 0 && (
-            <section className="mx-6 mt-4 card-marca bg-paper-raised border border-line p-4 lg:col-start-1 lg:row-start-2">
+            <section className="mx-6 mt-4 card-marca bg-paper-raised border border-line p-4 lg:col-start-1 lg:row-start-3">
               <div className="flex items-center gap-2 mb-2">
                 <Store size={16} className="text-ink-soft" aria-hidden="true" />
                 <h2 className="text-[15px] font-semibold">Dónde más gastas</h2>

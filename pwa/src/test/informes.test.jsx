@@ -148,6 +148,7 @@ const INFORME = {
 describe('Informe "En qué gasto"', () => {
   beforeEach(() => {
     api.informeGasto = vi.fn().mockResolvedValue(INFORME)
+    api.gastoDiario = vi.fn().mockResolvedValue({ desde: '2026-10-01', hasta: '2026-10-03', total: 0, disponible_hoy: 0, dias: [] })
     api.informeMovimientos = vi.fn().mockResolvedValue({
       movimientos: [{ id: 'm1', fecha: '2026-10-02T12:00:00', descripcion: 'Éxito', monto: 100_000, categoria: 'Comida' }],
     })
