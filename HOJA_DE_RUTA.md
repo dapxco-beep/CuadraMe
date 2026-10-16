@@ -1,6 +1,18 @@
 # CuadraMe — Hoja de ruta
 
-Última actualización: 2026-10-03. Estado: backend y frontend desplegados y estables en producción (Railway + Vercel). Todo lo marcado ✅ ya está en producción; lo marcado ⏳ necesita algo de ti antes de activarse; lo marcado 🔲 es trabajo pendiente de construir.
+Última actualización: 2026-10-15. Estado: backend y frontend desplegados y estables en producción (Railway + Vercel). Todo lo marcado ✅ ya está en producción; lo marcado ⏳ necesita algo de ti antes de activarse; lo marcado 🔲 es trabajo pendiente de construir.
+
+---
+
+## 🆕 Revisión de diseño, celular y correos (2026-10-15) — ✅ desplegado
+
+- **En qué gasto → «Día a día»** (`DiaADia.jsx`): gasto por día y plata disponible al cierre de cada día, en el periodo elegido. Dos vistas («Lo que gastas» / «Lo que te queda»), día elegido con detalle y flechas de 44 px. `GET /informes/diario` ahora trae `disponible` por día y `disponible_hoy` (reconstruido hacia atrás desde el saldo de hoy de las cuentas que no son tarjeta, con la regla única `contabilidad.delta_saldo`). Rango máximo 400 días.
+- **Movimientos:** acceso «Ver detalle de tus gastos» que lleva a En qué gasto.
+- **Correos, corpus de regresión** (`backend/tests/test_corpus_correos.py`, 35 casos SINTÉTICOS): movimientos, Bre-B/llaves, traslados propios, extractos, avisos y no-banco. Se «reentrena» agregando una fila por cada correo real que falle y ajustando la regla. Ya corregido: dominio `notificacionesbancolombia.com`, verbos «pagaste/retiraste/cobro/devolución/rendimientos», «compra por $X en COMERCIO», pago a tarjeta propia, «resumen mensual» como extracto. Límite: no se puede saber el nombre de quien tiene una llave si el correo solo trae el número.
+- **Ya estaban desplegados por otra sesión** (mismos cambios): menú lateral sin repetidos, esqueleto de carga + precarga de pantallas, Asistente con preguntas primero, saldo antes del onboarding, «+» con teclado listo y vibración, alerta de cobros recurrentes solo si sube.
+- **Dependencias al día:** fastapi 0.143.2, pydantic 2.14.1, pydantic-settings 2.16.0, sentry-sdk 2.72.0 (pruebas verdes); PWA con el `package-lock.json` actualizado. Pendiente: `framer-motion` 14 (cambio mayor) y 3 avisos moderados de `npm audit` en `@capacitor/cli` (herramienta de iOS; arreglo = cambio mayor).
+- **Pendientes de producto:** ver la app en un celular real (nada de esto se vio aún en pantalla), medir el peso del paquete en 4G, mini gráfico de la semana en Inicio, y alimentar el corpus de correos con casos reales.
+- **Cómo desplegar sin pisar nada:** varias sesiones trabajan en paralelo y `main` avanza. Antes de desplegar: `git log HEAD..main`; si hay commits, crear una rama desde `main`, pasar solo lo propio (cherry-pick) y desplegar desde ahí.
 
 ---
 
