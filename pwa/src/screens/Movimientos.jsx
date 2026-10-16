@@ -3,7 +3,7 @@ import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { Boton } from '../components/ui'
 import { Link, useLocation, useNavigationType, useSearchParams } from 'react-router-dom'
-import { ArrowLeftRight, Check, ChevronDown, ChevronRight, Download, ListChecks, PieChart, Search, Shuffle, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeftRight, Check, RefreshCw, ChevronDown, ChevronRight, Download, ListChecks, PieChart, Search, Shuffle, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
 import Icono from '../components/Icono'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
@@ -35,6 +35,7 @@ import PorRevisarCorreo from '../components/PorRevisarCorreo'
 import { BotonLapiz, EditorNombre, PistaBanco } from '../components/NombreEditable'
 import { limpiarNombre, MIN_REPETICIONES_NOMBRE, nombreDe, tieneNombrePropio } from '../lib/tituloMovimiento'
 import { usePorRevisarCorreo } from '../lib/usePorRevisarCorreo'
+import { actualizarDesdeCorreo, resumenActualizacion } from '../lib/sincronizarGmail'
 
 const TAMANO_PAGINA = 200
 const MAX_LOTES = 15 // tope de seguridad al re-pedir lo ya cargado (3.000 movimientos)
@@ -234,6 +235,54 @@ export default function Movimientos() {
   // Lo que llegó por el correo y espera aprobación: sección propia arriba de la lista (filtro «Del correo»).
   const porCorreo = usePorRevisarCorreo()
   const soloCorreo = params.get('filtro') === 'por-revisar'
+
+  // Movimientos «en vivo»: al abrir, al volver a la app (máx. 1 vez cada 5 min) y con el botón de refresco
+  // se leen las notificaciones del banco. Lo nuevo cae en «Por revisar» (arriba); la lista no se mueve.
+  const [leyendoCorreo, setLeyendoCorreo] = useState(false)
+  const [avisoCorreo, setAvisoCorreo] = useState('')
+  const gmailConectado = useRef(null) // null = aún no se sabe
+  const leyendoRef = useRef(false)
+  const actualizarCorreo = useCallback(
+    async (manual = false) => {
+      if (leyendoRef.current) return
+      if (gmailConectado.current === null) {
+        try {
+          const e = await Promise.resolve(api.gmailEstado?.())
+          gmailConectado.current = !!e?.conectado
+        } catch {
+          gmailConectado.current = false
+        }
+      }
+      if (!gmailConectado.current) {
+        if (manual) setAvisoCorreo('Conecta tu correo en «Traer movimientos» para leer tus notificaciones.')
+        return
+      }
+      leyendoRef.current = true
+      setLeyendoCorreo(true)
+      const r = await actualizarDesdeCorreo({ manual })
+      leyendoRef.current = false
+      setLeyendoCorreo(false)
+      if (r.omitido) return
+      if (r.error) setAvisoCorreo(manual ? r.error : '')
+      else {
+        if (r.nuevos) porCorreo.recargar()
+        if (r.nuevos || manual) setAvisoCorreo(resumenActualizacion(r))
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [porCorreo.recargar]
+  )
+  useEffect(() => {
+    actualizarCorreo(false)
+    const alVolver = () => document.visibilityState === 'visible' && actualizarCorreo(false)
+    document.addEventListener('visibilitychange', alVolver)
+    return () => document.removeEventListener('visibilitychange', alVolver)
+  }, [actualizarCorreo])
+  useEffect(() => {
+    if (!avisoCorreo) return undefined
+    const t = setTimeout(() => setAvisoCorreo(''), 6000)
+    return () => clearTimeout(t)
+  }, [avisoCorreo])
 
   const consulta = useMemo(() => consultaServidor(f), [f])
   const consultaKey = JSON.stringify(consulta)
@@ -819,6 +868,14 @@ export default function Movimientos() {
         ) : (
           <div className="flex items-center gap-2 ml-auto">
             <button
+              onClick={() => actualizarCorreo(true)}
+              disabled={leyendoCorreo}
+              aria-label="Actualizar desde el correo"
+              className="w-11 h-11 rounded-full border border-line text-ink-soft flex items-center justify-center disabled:opacity-60"
+            >
+              <RefreshCw size={16} className={leyendoCorreo ? 'animate-spin' : ''} />
+            </button>
+            <button
               onClick={() => setModoSeleccion(true)}
               className="text-xs text-ink-soft font-medium px-3 min-h-[44px] rounded-full border border-line"
             >
@@ -853,6 +910,10 @@ export default function Movimientos() {
           </div>
         )}
       </header>
+
+      <p role="status" aria-live="polite" className="px-5 -mt-2 mb-2 text-xs text-ink-soft min-h-[16px]" data-testid="estado-correo">
+        {leyendoCorreo ? 'Leyendo tu correo…' : avisoCorreo}
+      </p>
 
       {/* ≥1024 px: filtros (o el detalle del movimiento) a la izquierda, lista a la derecha */}
       <div className={`dos-col ${enTabla ? 'dos-col-riel-tabla' : 'dos-col-5-6'}`}>

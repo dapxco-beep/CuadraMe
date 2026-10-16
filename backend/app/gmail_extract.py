@@ -95,7 +95,7 @@ _COMERCIO_MAP = [
 # Concepto del movimiento leído del asunto/cuerpo. Cada patrón captura el nombre (comercio o
 # persona); el prefijo es lo que se antepone para que la descripción se lea sola.
 # El nombre termina en puntuación o en una palabra de "detalle" (por, con, el, desde...).
-_FIN = r"(?=[,;.\n]|\s+(?:por|con|desde|de\s+tu|a\s+las|el\s+(?:\d|d[ií]a)|valor|usando|cuenta|tarjeta|COP|USD)\b|\s+\$|\s*$)"
+_FIN = r"(?=[,;.\n]|\s+(?:por|con|desde|de\s+tu|en\s+tu|a\s+las|el\s+(?:\d|d[ií]a)|valor|usando|cuenta|tarjeta|COP|USD)\b|\s+\$|\s*$)"
 _NOMBRE = r"([A-Za-zÀ-ú0-9*][^,;.\n$]{1,38}?)"
 _CONCEPTOS = [
     (re.compile(r"compra\s+(?:(?:exitosa|aprobada|realizada)\s+)?(?:por\s+(?:\$|COP|USD|EUR)?\s*[\d.,]+\s+)?(?:en|con\s+tu\s+tarjeta\s+en)\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Compra en "),
@@ -104,6 +104,9 @@ _CONCEPTOS = [
     (re.compile(r"pago\s+de\s+(servicios?\s+p[uú]blicos|servicios?|factura|impuestos?|pensi[oó]n|matr[ií]cula|arriendo|cuota)", re.IGNORECASE), "Pago de "),
     (re.compile(r"(?:recibo|factura)\s+de\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Pago de "),
     (re.compile(r"pago\s+(?:en|a)\s+" + _NOMBRE + _FIN, re.IGNORECASE), "Pago a "),
+    # Nu: «Pagaste en: ICETEX. La cantidad de: $1.000.000,00» / «Compraste en: Rappi. La cantidad de: ...».
+    (re.compile(r"compraste\s+(?:en|con)\s*:?\s*" + _NOMBRE + _FIN, re.IGNORECASE), "Compra en "),
+    (re.compile(r"pagaste\s+(?:en|a)\s*:?\s*" + _NOMBRE + _FIN, re.IGNORECASE), "Pago a "),
     (re.compile(r"establecimiento[:\s]+" + _NOMBRE + _FIN, re.IGNORECASE), "Compra en "),
     (re.compile(r"retiro\s+(?:en\s+)?(cajero|corresponsal)", re.IGNORECASE), "Retiro en "),
 ]
@@ -123,7 +126,8 @@ _TRANSFER_RE = re.compile(
 
 def _parse_num(raw: str) -> float:
     """Convierte '1.234.567,50' o '1,234,567.50' o '1234567' a float."""
-    raw = raw.strip()
+    # «$1.000.000,00.» (punto final de la frase) no es un separador: sin esto se leía 100.000.000.
+    raw = raw.strip().strip(".,")
     partes = re.split(r"[.,]", raw)
     if len(partes) > 1 and len(partes[-1]) <= 2 and len(partes) > 1:
         entero = "".join(partes[:-1])

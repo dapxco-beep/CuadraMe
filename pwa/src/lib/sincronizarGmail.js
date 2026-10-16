@@ -78,3 +78,34 @@ export function resumenSync(r) {
   if (ext) partes.push(`${ext} extracto${ext === 1 ? '' : 's'}`)
   return `Encontré ${partes.join(' y ')}.`
 }
+
+// ── Movimientos «en vivo» ───────────────────────────────────────────────────────────────────
+// Lectura ligera de las notificaciones del banco (carril «movimientos», sin extractos) al abrir Movimientos,
+// al volver a la app y con el botón «Actualizar desde el correo». Reutiliza el endpoint de siempre y la
+// MISMA marca que «Traer movimientos» (CLAVE_SYNC): si una acaba de correr, la otra no repite.
+export const CINCO_MIN = 5 * 60 * 1000
+
+// Frase corta para el aviso: «Traje 2 movimientos nuevos» / «Todo al día».
+export function resumenActualizacion(r) {
+  const n = r?.nuevos || 0
+  if (!n) return 'Todo al día: no hay nada nuevo en tu correo.'
+  return `Traje ${n} movimiento${n === 1 ? '' : 's'} nuevo${n === 1 ? '' : 's'}`
+}
+
+/**
+ * Devuelve { nuevos, omitido } y nunca lanza. `manual` ignora el límite de 5 min. `conectado === false`
+ * (Gmail sin conectar) no llama a nada. Máximo 3 lotes por actualización (unos 120 correos): lo que falte
+ * lo sigue la próxima, que retoma el cursor del servidor.
+ */
+export async function actualizarDesdeCorreo({ manual = false, conectado = true, cadaMs = CINCO_MIN } = {}) {
+  if (!conectado) return { nuevos: 0, omitido: true }
+  if (!manual && !tocaSincronizar(cadaMs)) return { nuevos: 0, omitido: true }
+  try {
+    const r = await sincronizarTodo({ tipo: 'movimientos', maxLlamadas: 3 })
+    if (!r?.ok) return { nuevos: 0, error: r?.error || 'No se pudo leer tu correo.' }
+    marcarSincronizado()
+    return { nuevos: r.nuevos || 0 }
+  } catch (err) {
+    return { nuevos: 0, error: err?.message || 'No se pudo leer tu correo.' }
+  }
+}

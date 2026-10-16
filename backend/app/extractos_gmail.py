@@ -109,6 +109,14 @@ PALABRAS_TRANSACCION = (
     "pagaste", "te pagaron", "retiraste", "cobro", "cobramos", "devoluci", "reembolso", "rendimiento",
 )
 
+# Frases de asunto de notificaciones de transacción (Nu y similares); se buscan sin importar el remitente.
+FRASES_ASUNTO_TRANSACCION = (
+    "pagaste con", "compraste con", "compraste en", "pagaste en", "recibiste una transferencia", "te enviaron",
+)
+
+# Nombres con los que un banco digital firma el remitente cuando su dominio no está en la lista.
+_NOMBRES_REMITENTE = {"nu": "Nu Colombia", "nubank": "Nu Colombia", "nu colombia": "Nu Colombia"}
+
 MAX_PDF_BYTES = 15 * 1024 * 1024
 
 
@@ -148,7 +156,10 @@ def construir_query_extractos(dias: int = 180, desde: datetime | None = None, pa
 
 
 def construir_query_notificaciones(dias: int = 14, desde: datetime | None = None, pais: str | None = "CO") -> str:
-    return f"from:({_grupo_remitentes(pais)}) {_ventana(dias, desde)} -has:attachment"
+    # Además de los remitentes conocidos, el ASUNTO de las notificaciones que los bancos digitales mandan desde
+    # dominios que cambian («Pagaste con tu Cuenta de ahorros Nu»): así no depende de acertar el dominio.
+    asuntos = " OR ".join(f'"{f}"' for f in FRASES_ASUNTO_TRANSACCION)
+    return f"(from:({_grupo_remitentes(pais)}) OR subject:({asuntos})) {_ventana(dias, desde)} -has:attachment"
 
 
 # ── Remitente / clasificación de correos ────────────────────────────
@@ -172,7 +183,8 @@ def banco_por_remitente(remitente: str) -> str | None:
     for base, nombre in paises.todos_los_dominios().items():
         if dominio == base or dominio.endswith("." + base):
             return nombre
-    return None
+    m = re.match(r'^\s*"?([^"<@]+?)"?\s*<', remitente or "")
+    return _NOMBRES_REMITENTE.get(_sin_acentos(m.group(1)).strip()) if m else None
 
 
 def contiene_palabra_extracto(*textos: str) -> bool:
