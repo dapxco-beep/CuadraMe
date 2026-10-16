@@ -93,6 +93,12 @@ const COLA = {
   total: 2,
 }
 
+// «Ver todo» es una hoja con pestañas: se abre y, si hace falta, se cambia de pestaña.
+const abrirTodo = (tab) => {
+  fireEvent.click(screen.getByTestId('ver-todo'))
+  if (tab) fireEvent.click(screen.getByTestId(`tab-${tab}`))
+}
+
 function montar(ruta = '/sincronizacion') {
   return render(
     <DialogosProvider>
@@ -152,31 +158,34 @@ describe('helpers de Sincronización', () => {
 })
 
 describe('pantalla Sincronización', () => {
-  it('muestra el resumen, las tareas en orden y quita las que ya no hay', async () => {
+  it('muestra UNA cosa a la vez: el estado, el paso principal y lo que viene después', async () => {
     montar()
-    expect(await screen.findByText('Tienes 5 cosas por resolver')).toBeTruthy()
+    expect(await screen.findByText('Tienes 5 cosas por hacer')).toBeTruthy()
+    // Un solo botón grande, con la tarea de más prioridad (la clave); las demás esperan su turno.
     const tarjetas = screen.getAllByTestId(/^tarea-/).map((t) => t.getAttribute('data-testid'))
-    // Cada sección con su «Por hacer»: primero lo general, luego Movimientos y luego Extractos.
-    expect(tarjetas).toEqual(['tarea-sin_cuenta', 'tarea-movimientos_por_categorizar', 'tarea-correos_por_revisar', 'tarea-falta_clave', 'tarea-extractos_por_conciliar'])
-    expect(screen.queryByTestId('tarea-movimientos_por_confirmar')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Traer todo ahora' })).toBeTruthy()
+    expect(tarjetas).toEqual(['tarea-falta_clave'])
+    expect(screen.getByTestId('paso-titulo').textContent).toBe('Falta la clave de tu PDF')
+    expect(screen.getByTestId('progreso-pasos').textContent).toMatch(/Paso 1 de 5/)
+    expect(screen.getByTestId('despues').textContent).toMatch(/Después: crea tu cuenta de Nequi y 3 más/)
+    // Un solo botón para buscar; ya no hay «Traer todo ahora» ni uno por uso del correo.
+    expect(screen.getByRole('button', { name: 'Buscar ahora' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Traer todo ahora' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Traer movimientos' })).toBeNull()
   })
 
-  it('sin tareas muestra "Todo al día" con la fecha de la última vez', async () => {
+  it('sin tareas muestra "Todo al día" con la fecha de la última vez "Todo al día" con la fecha de la última vez', async () => {
     api.sincronizacionEstado.mockResolvedValue({ ...ESTADO, tareas: [], sin_cuenta: [], ultima_sync: new Date(Date.now() - 2 * 3600 * 1000).toISOString().replace('Z', '') })
     montar()
     const vacio = await screen.findByTestId('todo-al-dia')
-    expect(vacio.textContent).toMatch(/Todo al día · última vez hace 2 h/)
-    expect(screen.getByTestId('resumen-tareas').textContent).toBe('Todo al día')
-    // Cada bloque con cero pendientes queda en «Todo al día».
-    expect(screen.getByTestId('al-dia-sinc-movimientos')).toBeTruthy()
-    expect(screen.getByTestId('al-dia-sinc-extractos')).toBeTruthy()
-    expect(screen.getByTestId('al-dia-sinc-revisar')).toBeTruthy()
+    expect(vacio.textContent).toBe('Todo al día')
+    expect(screen.getByTestId('resumen-tareas').textContent).toBe('Miré tu correo hace 2 h')
+    expect(screen.queryByTestId('progreso-pasos')).toBeNull()
   })
 
   it('las casillas de mes miden 44 px de toque como mínimo y en 360 px el nombre pasa arriba de las casillas', async () => {
     montar()
-    await screen.findByText('Tienes 5 cosas por resolver')
+    await screen.findByText('Tienes 5 cosas por hacer')
+    abrirTodo('meses')
     const celdas = screen.getAllByRole('button', { name: /Bancolombia Ahorros, .* 2026: / })
     expect(celdas.length).toBeGreaterThan(0)
     celdas.forEach((c) => { expect(c.className).toContain("h-11"); expect(c.className).toContain("min-h-[44px]") })
@@ -189,7 +198,8 @@ describe('pantalla Sincronización', () => {
 
   it('la grilla tiene texto accesible por celda y al tocarla abre el detalle del mes', async () => {
     montar()
-    await screen.findByText('Tienes 5 cosas por resolver')
+    await screen.findByText('Tienes 5 cosas por hacer')
+    abrirTodo('meses')
     expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, junio 2026: Revisado' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, julio 2026: Necesita clave' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, agosto 2026: Sin procesar' })).toBeTruthy()
@@ -201,9 +211,11 @@ describe('pantalla Sincronización', () => {
 
   it('"Crear cuenta Nequi" abre el selector con Nequi ya elegido y crea la cuenta', async () => {
     api.crearCuenta.mockResolvedValue({ id: 'nq', nombre: 'Nequi' })
+    api.sincronizacionEstado.mockResolvedValue({ ...ESTADO, tareas: ESTADO.tareas.filter((t) => t.id === 'sin_cuenta') })
     montar()
-    await screen.findByText('Tienes 5 cosas por resolver')
-    fireEvent.click(screen.getByTestId('tarea-sin_cuenta')) // la tarea de «Por hacer» abre directo el selector (un solo banco)
+    await screen.findByText('Tienes 1 cosa por hacer')
+    expect(screen.getByTestId('paso-titulo').textContent).toBe('Crea tu cuenta de Nequi')
+    fireEvent.click(screen.getByTestId('tarea-sin_cuenta')) // el paso abre directo el selector (un solo banco)
     const hoja = screen.getByRole('dialog', { name: 'Crear cuenta Nequi' })
     expect(within(hoja).getByRole('button', { name: /Nequi/, pressed: true })).toBeTruthy()
     fireEvent.click(within(hoja).getByRole('button', { name: 'Crear cuenta' }))
@@ -215,7 +227,8 @@ describe('pantalla Sincronización', () => {
   it('los extractos dicen banco, estado en palabras y no se concilian sin cuenta elegida', async () => {
     api.conciliarExtractoCorreo.mockResolvedValue({ ok: true, historial_id: 'h1' })
     montar()
-    await screen.findByText('Tienes 5 cosas por resolver')
+    await screen.findByText('Tienes 5 cosas por hacer')
+    abrirTodo('extractos')
     const nuevo = screen.getByTestId('extracto-e1')
     expect(within(nuevo).getByText('Nuevo · listo para revisar')).toBeTruthy()
     expect(within(nuevo).getByText('Cuenta: Bancolombia Ahorros')).toBeTruthy()
@@ -247,7 +260,9 @@ describe('pantalla Sincronización', () => {
 
   it('por categorizar: elegir categoría recuerda el comercio por defecto; la casilla lo evita', async () => {
     api.recategorizarComercio.mockResolvedValue({ ok: true, actualizados: 3, patron: 'PANADERIA LA 80' })
+    api.sincronizacionEstado.mockResolvedValue({ ...ESTADO, tareas: ESTADO.tareas.filter((t) => t.id === 'movimientos_por_categorizar') })
     montar()
+    fireEvent.click(await screen.findByTestId('tarea-movimientos_por_categorizar'))
     await screen.findByTestId('cat-m1')
     const m1 = screen.getByTestId('cat-m1')
     const casilla = within(m1).getByRole('checkbox')
@@ -261,7 +276,7 @@ describe('pantalla Sincronización', () => {
     await waitFor(() => expect(api.recategorizarComercio).toHaveBeenCalledWith('m2', { categoria: 'Transporte', aplicar_a_todos: false, patron: 'Uber' }))
   })
 
-  it('Traer todo ahora lee Gmail por lotes con progreso y resume lo nuevo', async () => {
+  it('Buscar ahora lee Gmail por lotes con progreso y resume lo nuevo', async () => {
     let terminar
     const segundo = new Promise((res) => { terminar = res })
     api.sincronizarCorreos
@@ -269,9 +284,9 @@ describe('pantalla Sincronización', () => {
       .mockReturnValueOnce(segundo)
       .mockResolvedValueOnce({ ok: true, completado: true, leidos: 0, extractos_encontrados: 2 }) // el uso «extractos»
     montar()
-    await screen.findByText('Tienes 5 cosas por resolver')
-    fireEvent.click(screen.getByRole('button', { name: 'Traer todo ahora' }))
-    expect(await screen.findByText('Leí 120 de 340')).toBeTruthy()
+    await screen.findByText('Tienes 5 cosas por hacer')
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar ahora' }))
+    expect(await screen.findByText('Leyendo tus avisos del banco… 120 de 340')).toBeTruthy()
     terminar({ ok: true, completado: true, leidos: 340, total_estimado: 340, nuevos: 12 })
     expect(await screen.findByText(/Leí 340 correos\. Encontré 12 movimientos nuevos y 2 extractos\./)).toBeTruthy()
     expect(api.sincronizarCorreos).toHaveBeenCalledTimes(3) // 2 lotes de movimientos + 1 de extractos
@@ -285,7 +300,7 @@ describe('pantalla Sincronización', () => {
     montar()
     expect(await screen.findByText('Sin conexión')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
-    expect(await screen.findByText('Tienes 5 cosas por resolver')).toBeTruthy()
+    expect(await screen.findByText('Tienes 5 cosas por hacer')).toBeTruthy()
   })
 })
 

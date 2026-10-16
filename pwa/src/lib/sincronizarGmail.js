@@ -38,9 +38,9 @@ export async function sincronizarCarriles({ activos = {}, completa = false, onPr
 export const CLAVE_SYNC = 'cuadrame_gmail_sync'
 const SEIS_HORAS = 6 * 60 * 60 * 1000
 
-export function tocaSincronizar() {
+export function tocaSincronizar(cadaMs = SEIS_HORAS) {
   try {
-    return Date.now() - Number(localStorage.getItem(CLAVE_SYNC) || 0) > SEIS_HORAS
+    return Date.now() - Number(localStorage.getItem(CLAVE_SYNC) || 0) > cadaMs
   } catch {
     return false
   }

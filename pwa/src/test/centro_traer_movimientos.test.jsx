@@ -57,6 +57,13 @@ function Destino() {
   return <p data-testid="destino">{JSON.stringify({ ruta: l.pathname + l.search, state: l.state })}</p>
 }
 
+// «Subir archivos» vive en «Conexiones y claves» → «Subir un archivo» (una hoja, no una sección apilada).
+const zonaDeSubida = async () => {
+  fireEvent.click(await screen.findByTestId('abrir-conexiones'))
+  fireEvent.click(await screen.findByTestId('menu-subir'))
+  return screen.findByLabelText('Archivos a subir')
+}
+
 const montarCentro = (entrada = '/sincronizacion') =>
   render(
     <DialogosProvider>
@@ -118,7 +125,7 @@ describe('rutas viejas: redirigen al centro con state para abrir el bloque', () 
     expect(destinoRedireccion('/otra', { search: '' }).state).toEqual({ abrir: 'revisar' })
   })
 
-  it('al llegar con state abre el bloque y la revisión (sin salir del centro)', async () => {
+  it('al llegar con state abre la hoja con la revisión (sin salir del centro)', async () => {
     api.obtenerReviewExtracto.mockResolvedValue({
       ok: true, historial_id: 'h1', cuenta_id: 'c2', banco_detectado: 'Bancolombia', total_movimientos: 1,
       review: [{ fingerprint: 'f1', fecha: '2026-09-02', descripcion: 'Compra D1', monto: 1000, tipo: 'expense', estado: 'faltante' }],
@@ -132,7 +139,6 @@ describe('rutas viejas: redirigen al centro con state para abrir el bloque', () 
     )
     expect(await screen.findByTestId('revision-multiple')).toBeTruthy()
     expect(api.obtenerReviewExtracto).toHaveBeenCalledWith('h1')
-    expect(screen.getByTestId('bloque-sinc-extractos').querySelector('h2 button')).toHaveAttribute('aria-expanded', 'true')
   })
 })
 
@@ -150,7 +156,7 @@ describe('subir archivos: una sola zona, cada archivo a su lector', () => {
   })
 
   beforeEach(() => {
-    // Sin nada por resolver, el bloque «Subir archivos» se abre solo.
+    // Sin nada por resolver: la pantalla está en calma y «Subir un archivo» está en «Conexiones y claves».
     api.sincronizacionEstado.mockResolvedValue(estadoCon([]))
   })
 
@@ -165,7 +171,7 @@ describe('subir archivos: una sola zona, cada archivo a su lector', () => {
     api.procesarExtracto.mockResolvedValue(respuestaPdf('CAFE PDF'))
     api.importarVistaPrevia.mockImplementation(({ nombre_archivo }) => Promise.resolve(vistaPrevia(`FILA ${nombre_archivo}`)))
     montarCentro()
-    const zona = await (async () => { const bx = (await screen.findAllByRole('button')).find((x) => x.getAttribute('aria-expanded') === 'false' && /^Extractos/.test(x.textContent.trim())); if (bx) fireEvent.click(bx); return screen.findByLabelText('Archivos a subir') })()
+    const zona = await zonaDeSubida()
     fireEvent.change(zona, { target: { files: [pdf('a.pdf'), csv('b.csv'), xlsx('c.xlsx')] } })
     await userEvent.click(await screen.findByRole('button', { name: /Procesar 3 archivos/ }))
     await waitFor(() => expect(screen.getAllByText('Listo')).toHaveLength(3))
@@ -188,7 +194,7 @@ describe('subir archivos: una sola zona, cada archivo a su lector', () => {
       .mockResolvedValueOnce(respuestaPdf('DOS')) // el reintento
     api.importarFaltantes.mockResolvedValue({ ok: true, importados: 1 })
     montarCentro()
-    fireEvent.change(await (async () => { const bx = (await screen.findAllByRole('button')).find((x) => x.getAttribute('aria-expanded') === 'false' && /^Extractos/.test(x.textContent.trim())); if (bx) fireEvent.click(bx); return screen.findByLabelText('Archivos a subir') })(), { target: { files: [pdf('uno.pdf'), pdf('dos.pdf'), pdf('tres.pdf')] } })
+    fireEvent.change(await zonaDeSubida(), { target: { files: [pdf('uno.pdf'), pdf('dos.pdf'), pdf('tres.pdf')] } })
     await userEvent.click(await screen.findByRole('button', { name: /Procesar 3 archivos/ }))
     expect(await screen.findByText('Servidor ocupado')).toBeTruthy()
     await waitFor(() => expect(screen.getAllByText('Listo')).toHaveLength(2))
@@ -201,7 +207,7 @@ describe('subir archivos: una sola zona, cada archivo a su lector', () => {
 
   it('un formato que no se puede leer se rechaza con motivo y no se envía', async () => {
     montarCentro()
-    fireEvent.change(await (async () => { const bx = (await screen.findAllByRole('button')).find((x) => x.getAttribute('aria-expanded') === 'false' && /^Extractos/.test(x.textContent.trim())); if (bx) fireEvent.click(bx); return screen.findByLabelText('Archivos a subir') })(), { target: { files: [new File(['x'], 'foto.png', { type: 'image/png' })] } })
+    fireEvent.change(await zonaDeSubida(), { target: { files: [new File(['x'], 'foto.png', { type: 'image/png' })] } })
     expect(await screen.findByText(/foto\.png: Formato no soportado/)).toBeTruthy()
     expect(api.procesarExtracto).not.toHaveBeenCalled()
   })
@@ -276,61 +282,48 @@ describe('contadores y estados', () => {
     expect(cantidadDe(TAREAS, 'no_existe')).toBe(0)
   })
 
-  it('el encabezado y los bloques muestran el mismo total', async () => {
+  it('el encabezado y el paso muestran el mismo total, y solo hay UN botón de paso', async () => {
     montarCentro()
-    expect(await screen.findByText('Tienes 5 cosas por resolver')).toBeTruthy()
-    const movimientos = screen.getByTestId('bloque-sinc-movimientos').querySelector('h2 button')
-    const extractos = screen.getByTestId('bloque-sinc-extractos').querySelector('h2 button')
-    const revisar = screen.getByRole('button', { name: /Por revisar/ })
-    // Cada sección cuenta lo suyo y no se mezclan: 1 + 2 + 1, y «Bancos sin cuenta» (la 5.ª) vive solo en «Otras cosas por hacer».
-    expect(within(movimientos).getByLabelText('1 por resolver')).toBeTruthy()
-    expect(within(extractos).getByLabelText('2 por resolver')).toBeTruthy()
-    expect(within(revisar).getByLabelText('1 por resolver')).toBeTruthy()
-    expect(screen.getAllByTestId(/^tarea-/)).toHaveLength(5)
+    expect(await screen.findByText('Tienes 5 cosas por hacer')).toBeTruthy()
+    expect(screen.getByTestId('progreso-pasos')).toHaveTextContent('Paso 1 de 5')
+    expect(screen.getAllByTestId(/^tarea-/)).toHaveLength(1)
+    expect(screen.queryByText(/Por revisar/)).toBeNull() // ya no hay secciones apiladas con su contador
   })
 
-  it('«Bancos sin cuenta» aparece una sola vez (tarea en «Por hacer»): ni en «Por revisar» ni en la cobertura, y el acceso a «Crear cuenta» sigue', async () => {
-    api.sincronizacionEstado.mockResolvedValue(estadoCon(TAREAS, { sin_cuenta: [{ banco: 'Nequi', correos: 2, extractos: 0 }] }))
+  it('«Bancos sin cuenta» aparece una sola vez (como paso) y el acceso a «Crear cuenta» sigue', async () => {
+    api.sincronizacionEstado.mockResolvedValue(estadoCon(TAREAS.filter((t) => t.id === 'sin_cuenta'), { sin_cuenta: [{ banco: 'Nequi', correos: 2, extractos: 0 }] }))
     montarCentro()
-    await screen.findByText('Tienes 5 cosas por resolver')
-    const revisar = screen.getByRole('button', { name: /Por revisar/ })
-    expect(within(revisar).getByLabelText('1 por resolver')).toBeTruthy() // solo «por categorizar»: sin_cuenta no se repite aquí
-    expect(document.querySelector('#sinc-sin-cuenta')).toBeNull()
-    expect(screen.queryByText(/Sin cuenta ·/)).toBeNull()
-    expect(screen.getAllByText('Bancos sin cuenta')).toHaveLength(1)
-    expect(within(screen.getByTestId('por-hacer-general')).getByText('Bancos sin cuenta')).toBeTruthy()
+    await screen.findByText('Tienes 1 cosa por hacer')
+    expect(screen.getAllByText('Crea tu cuenta de Nequi')).toHaveLength(1)
     fireEvent.click(screen.getByTestId('tarea-sin_cuenta')) // con un banco abre directo «Crear cuenta»
     expect(await screen.findByRole('dialog', { name: 'Crear cuenta Nequi' })).toBeTruthy()
   })
 
   it('con varios bancos sin cuenta, la tarea abre una hoja para elegir cuál crear', async () => {
-    api.sincronizacionEstado.mockResolvedValue(estadoCon(TAREAS, { sin_cuenta: [
+    api.sincronizacionEstado.mockResolvedValue(estadoCon(TAREAS.filter((t) => t.id === 'sin_cuenta'), { sin_cuenta: [
       { banco: 'Nequi', correos: 2, extractos: 0 }, { banco: 'Daviplata', correos: 1, extractos: 0 },
     ] }))
     montarCentro()
-    await screen.findByText('Tienes 5 cosas por resolver')
+    await screen.findByText('Tienes 1 cosa por hacer')
     fireEvent.click(screen.getByTestId('tarea-sin_cuenta'))
     expect(await screen.findByRole('button', { name: 'Crear cuenta Daviplata' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Crear cuenta Nequi' }))
     expect(await screen.findByRole('dialog', { name: 'Crear cuenta Nequi' })).toBeTruthy()
   })
 
-  it('al llegar a cero cada bloque queda en «Todo al día» y el contador desaparece', async () => {
+  it('al llegar a cero queda «Todo al día», sin contador de pasos', async () => {
     api.sincronizacionEstado.mockResolvedValue(estadoCon([]))
     montarCentro()
-    expect(await screen.findByTestId('resumen-tareas')).toHaveTextContent('Todo al día')
-    expect(screen.getByTestId('al-dia-sinc-movimientos')).toBeTruthy()
-    expect(screen.getByTestId('al-dia-sinc-extractos')).toBeTruthy()
-    expect(screen.getByTestId('al-dia-sinc-revisar')).toBeTruthy()
-    expect(screen.queryByLabelText(/por resolver$/)).toBeNull()
+    expect(await screen.findByTestId('todo-al-dia')).toHaveTextContent('Todo al día')
+    expect(screen.queryByTestId('progreso-pasos')).toBeNull()
+    expect(screen.queryByTestId(/^tarea-/)).toBeNull()
   })
 
-  it('sin datos muestra la barra Conecta → Trae → Revisa; con datos no', async () => {
+  it('primer uso (sin Gmail y sin datos): el primer paso es conectar; con datos no', async () => {
     api.sincronizacionEstado.mockResolvedValue(estadoCon([], { ultima_sync: null }))
     api.gmailEstado.mockResolvedValue({ conectado: false })
     montarCentro()
-    const pasos = await screen.findByTestId('pasos')
-    expect(within(pasos).getByText('Conecta').closest('li')).toHaveAttribute('aria-current', 'step')
+    expect(await screen.findByTestId('paso-titulo')).toHaveTextContent('Conecta tu Gmail')
     expect(sinDatos({ estado: estadoCon(TAREAS), conectado: true })).toBe(false)
   })
 
@@ -340,13 +333,13 @@ describe('contadores y estados', () => {
       .mockResolvedValueOnce({ ok: true, completado: false, leidos: 10, total_estimado: 40 })
       .mockReturnValueOnce(new Promise((res) => { terminar = res }))
     montarCentro()
-    fireEvent.click(await screen.findByRole('button', { name: 'Traer todo ahora' }))
-    expect(await screen.findByText('Leí 10 de 40')).toBeTruthy()
-    const barra = screen.getByRole('progressbar', { name: 'Progreso de la búsqueda de movimientos' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Buscar ahora' }))
+    expect(await screen.findByText('Leyendo tus avisos del banco… 10 de 40')).toBeTruthy()
+    const barra = screen.getByRole('progressbar', { name: 'Progreso de la búsqueda' })
     expect(barra).toHaveAttribute('aria-valuenow', '25')
     expect(barra.closest('[aria-live="polite"]')).toBeTruthy()
     terminar({ ok: true, completado: true, leidos: 40, total_estimado: 40, nuevos: 0, extractos_encontrados: 0 })
-    await waitFor(() => expect(screen.queryByRole('progressbar', { name: 'Progreso de la búsqueda de movimientos' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('progressbar', { name: 'Progreso de la búsqueda' })).toBeNull())
   })
 
   it('error de carga con «Reintentar»', async () => {
@@ -354,6 +347,6 @@ describe('contadores y estados', () => {
     montarCentro()
     expect(await screen.findByRole('alert')).toHaveTextContent('Sin conexión')
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
-    expect(await screen.findByText('Tienes 5 cosas por resolver')).toBeTruthy()
+    expect(await screen.findByText('Tienes 5 cosas por hacer')).toBeTruthy()
   })
 })

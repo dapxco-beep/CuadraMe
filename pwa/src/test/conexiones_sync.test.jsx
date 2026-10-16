@@ -156,35 +156,31 @@ describe('Conexiones y estado', () => {
   })
 })
 
-describe('Centro: pasos, resumen y correos ignorados', () => {
+describe('Centro: asistente, resumen y correos ignorados', () => {
   beforeEach(() => {
     localStorage.setItem('cuadrame_gmail_sync', String(Date.now())) // sin sincronización automática al abrir
     api.sincronizacionEstado.mockResolvedValue({ meses: [], cuentas: [], sin_cuenta: [], tareas: [], ultima_sync: null })
     api.sincronizacionPorCategorizar.mockResolvedValue({ items: [], total: 0 })
   })
 
-  it('muestra los pasos Conecta, Trae, Revisa y el resumen claro tras sincronizar', async () => {
+  it('sin nada por hacer queda en calma, y «Buscar ahora» resume lo que trajo', async () => {
     // «Traer todo» lee cada uso por separado: movimientos por un lado, extractos por el otro.
     api.sincronizarCorreos.mockImplementation(async (p) => (p?.tipo === 'extractos'
       ? { ok: true, completado: true, extractos_encontrados: 3, tipo: 'extractos' }
       : { ok: true, completado: true, nuevos: 18, tipo: 'movimientos' }))
     montar(null, '/sincronizacion')
-    expect(await screen.findByTestId('pasos')).toBeTruthy()
-    expect(screen.getByText('Conecta')).toBeTruthy()
-    expect(screen.getByText('Revisa')).toBeTruthy()
-    // Conectado y sin datos: va en el paso 2.
-    expect(screen.getByText('Trae').closest('li').getAttribute('aria-current')).toBe('step')
-    fireEvent.click(screen.getByRole('button', { name: 'Traer todo ahora' }))
+    expect(await screen.findByTestId('todo-al-dia')).toBeTruthy()
+    expect(screen.queryByTestId('pasos')).toBeNull() // ya no hay barra Conecta → Trae → Revisa: un asistente, un paso a la vez
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar ahora' }))
     expect(await screen.findByText(/Encontré 18 movimientos nuevos y 3 extractos\./)).toBeTruthy()
   })
 
   it('«Ver correos ignorados» los lista', async () => {
     api.correosLista.mockResolvedValue([{ id: 'i1', asunto: 'Promo 0', remitente: 'b@banco.co' }])
     montar(null, '/sincronizacion')
-    // Sin tareas en «Movimientos», la sección arranca plegada: se abre antes de buscar el enlace.
-    await screen.findByTestId('pasos').catch(() => null)
-    const bm = (await screen.findAllByRole('button')).find((x) => x.getAttribute('aria-expanded') === 'false' && /^Movimientos/.test(x.textContent.trim()))
-    if (bm) fireEvent.click(bm)
+    // Los correos ya registrados e ignorados viven en «Ver todo» → «Correos».
+    fireEvent.click(await screen.findByTestId('ver-todo'))
+    fireEvent.click(await screen.findByTestId('tab-correos'))
     fireEvent.click(await screen.findByRole('button', { name: 'Ver correos ignorados' }))
     expect(await screen.findByText('Promo 0')).toBeTruthy()
     expect(api.correosLista).toHaveBeenCalledWith('ignorados', 0, 30)

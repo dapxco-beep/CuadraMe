@@ -114,6 +114,7 @@ describe('Traer movimientos: clave del PDF', () => {
       mensaje: 'La clave funcionó en 1 extracto. Esta clave no abrió el extracto Davivienda agosto 2026: revísala.',
     })
     montar()
+    fireEvent.click(await screen.findByTestId('tarea-falta_clave')) // el paso «Falta la clave» abre su hoja
     const caja = await screen.findByTestId('estado-clave-pdf')
     expect(within(caja).getByTestId('clave-estado')).toHaveTextContent('Clave guardada ✓')
     fireEvent.click(within(caja).getByRole('button', { name: /Probar la clave ahora/ }))
@@ -126,6 +127,7 @@ describe('Traer movimientos: clave del PDF', () => {
   it('cada extracto protegido dice si la clave lo abrió y permite probarla solo en ese', async () => {
     api.probarClavePdf.mockResolvedValue({ ok: true, abrieron: 1, no_abrieron: 0, restantes: 0, mensaje: 'La clave funcionó en 1 extracto.' })
     montar()
+    fireEvent.click(await screen.findByTestId('ver-todo')) // la lista de extractos está en «Ver todo»
     const noAbrio = await screen.findByTestId('extracto-e2')
     expect(within(noAbrio).getByTestId('clave-no-abrio')).toHaveTextContent('La clave guardada no abrió este extracto: revísala.')
     const porProbar = screen.getByTestId('extracto-e1')
@@ -139,6 +141,7 @@ describe('Traer movimientos: clave del PDF', () => {
     api.guardarClavePdf.mockResolvedValue({ ok: true, configurada: true })
     api.probarClavePdf.mockResolvedValue({ ok: true, abrieron: 2, no_abrieron: 0, restantes: 0, mensaje: 'La clave funcionó en 2 extractos.' })
     montar()
+    fireEvent.click(await screen.findByTestId('tarea-falta_clave')) // el paso «Falta la clave» abre su hoja
     const caja = await screen.findByTestId('estado-clave-pdf')
     expect(within(caja).getByTestId('clave-estado')).toHaveTextContent('Sin clave guardada')
     fireEvent.change(within(caja).getByLabelText('Clave del PDF'), { target: { value: '1020304050' } })

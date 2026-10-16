@@ -54,14 +54,10 @@ const montar = () =>
     </DialogosProvider>
   )
 
-// El rediseño deja plegadas las secciones sin tareas: se abre «Extractos» como lo haría la persona.
+// La cobertura por mes vive en «Ver todo» → «Por mes».
 const abrirExtractos = async () => {
-  const boton = await waitFor(() => {
-    const b = screen.getAllByRole('button').find((x) => x.getAttribute('aria-expanded') === 'false' && /^Extractos/.test(x.textContent.trim()))
-    if (!b) throw new Error('sin sección Extractos plegada')
-    return b
-  }).catch(() => null)
-  if (boton) fireEvent.click(boton)
+  fireEvent.click(await screen.findByTestId('ver-todo'))
+  fireEvent.click(await screen.findByTestId('tab-meses'))
 }
 
 beforeEach(() => {
@@ -95,14 +91,13 @@ describe('Sincronización: cuadrícula', () => {
     expect(screen.getByRole('button', { name: /Nu Colombia \(Crédito ••4821\), mayo 2026/ })).toBeTruthy()
   })
 
-  it('"Subir el extracto de este mes" abre la sección Extractos (subir archivo) con cuenta y mes, sin salir del centro', async () => {
+  it('"Subir el extracto de este mes" abre la hoja de subir archivo con cuenta y mes, sin salir del centro', async () => {
     montar()
     await abrirExtractos()
     fireEvent.click(await screen.findByRole('button', { name: /Nu Colombia \(Ahorros\), mayo 2026/ }))
     const det = screen.getByRole('region', { name: 'Detalle del mes' })
     fireEvent.click(within(det).getByRole('button', { name: 'Subir el extracto de este mes' }))
     expect(await screen.findByText(/Sube el extracto de/)).toHaveTextContent('mayo 2026 de Nu Colombia')
-    expect(screen.getByTestId('bloque-sinc-extractos').querySelector('h2 button')).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByLabelText('Archivos a subir')).toBeTruthy()
     expect(screen.queryByTestId('destino')).toBeNull()
   })
