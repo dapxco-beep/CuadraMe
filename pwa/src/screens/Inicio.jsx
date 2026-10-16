@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftRight, Bot, ChevronDown, ChevronRight, CreditCard, Gift, HeartPulse, Landmark, LayoutGrid, Lightbulb, LineChart, PieChart,
   PiggyBank, Plus, RefreshCw, Repeat, Sparkles, Wallet,
@@ -40,6 +40,8 @@ import { estadoCuadre } from '../lib/cuadre'
 import { contextoDeCuentas } from '../lib/contabilidad'
 import { fechaHace,gastosDeLaSemana, siguientePasoInicio } from '../lib/inicioSimple'
 import { resumenCarriles } from '../lib/carriles'
+import ExtractosAMedias from '../components/ExtractosAMedias'
+import { extractosAMedias } from '../lib/retomar'
 
 const DIAS_CUENTA_NUEVA = 14
 
@@ -131,6 +133,8 @@ export default function Inicio() {
   const [gmailConectado, setGmailConectado] = useState(true)
   const [conexionFalla, setConexionFalla] = useState(false)
   const [tareasSync, setTareasSync] = useState(null)
+  const [aMedias, setAMedias] = useState([]) // extractos con movimientos por importar
+  const navigate = useNavigate()
   const [lineaCorreo, setLineaCorreo] = useState('') // «3 movimientos por aprobar · 1 extracto por conciliar»
   const [cargando, setCargando] = useState(!hayPrevio)
   const [errorCarga, setErrorCarga] = useState('')
@@ -174,7 +178,7 @@ export default function Inicio() {
     // Aviso solo si algo se rompió (semáforo rojo); si el tablero falla, no se muestra nada.
     Promise.resolve().then(() => api.conexionesEstado?.()).then((c) => activo && setConexionFalla(!!c?.hay_falla)).catch(() => {})
     // Cuántas cosas esperan en «Traer movimientos» (si falla, el acceso se muestra sin número).
-    Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && (setTareasSync(s?.tareas ? s.tareas.filter((t) => !t.opcional).length : null), setLineaCorreo(resumenCarriles(s?.tareas)), setSinCategorizar((s?.tareas || []).find((t) => t.id === 'movimientos_por_categorizar')?.cantidad || 0))).catch(() => {})
+    Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && (setTareasSync(s?.tareas ? s.tareas.filter((t) => !t.opcional).length : null), setLineaCorreo(resumenCarriles(s?.tareas)), setAMedias(extractosAMedias(s)), setSinCategorizar((s?.tareas || []).find((t) => t.id === 'movimientos_por_categorizar')?.cantidad || 0))).catch(() => {})
     // Tendencia del gasto de los últimos meses para la mini gráfica (opcional: sin datos no se dibuja).
     Promise.resolve().then(() => api.tendencias?.(6)).then((t) => activo && setTendencia(t?.meses ?? null)).catch(() => {})
     return () => {
@@ -285,6 +289,14 @@ export default function Inicio() {
       {!esperarSaldo && <AsistentePrimerUso variante="inicio" camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />}
       {/* Un solo mensaje arriba: mientras el camino de 3 pasos esté en pantalla, el recorrido de 1 minuto no compite con él (sigue en Ayuda y Perfil). */}
       {!enCamino && <RecorridoEntrada variante="inicio" />}
+
+      {/* Extractos a medio conciliar: aviso discreto, en cualquiera de los dos modos */}
+      <ExtractosAMedias
+        compacto
+        lista={aMedias}
+        onSeguir={(x) => navigate('/sincronizacion', { state: { abrir: 'extractos', historialId: x.historialId, cuentaId: x.cuentaId } })}
+        className="mx-6 mt-3 !w-auto"
+      />
 
       {/* Modo simple: tres bloques y un «Ver más»; con «Mostrar todas las funciones», todo a la vista */}
       {!completo && (

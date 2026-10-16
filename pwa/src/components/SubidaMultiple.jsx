@@ -19,6 +19,8 @@ import { opcionesCategoria } from '../lib/importar'
 import { claveComercio, huellaPeligrosa } from '../lib/comercio'
 import { EMOJI_DEFECTO, estadoCategoria, resumirCategorias } from '../lib/estadoCategoria'
 import { CategoriaEnBloque, ChipCategoria, ResumenCategorias } from './RevisionCategorias'
+import HojaNuevaCategoria, { OPCION_NUEVA_CATEGORIA, TEXTO_NUEVA_CATEGORIA } from './HojaNuevaCategoria'
+import { borrarBorrador, guardarBorrador, leerBorrador, resumenLote } from '../lib/retomar'
 import {
   ETIQUETA_ARCHIVO,
   MAX_ARCHIVOS,
@@ -88,6 +90,7 @@ export default function SubidaMultiple({
   const CATEGORIAS = catsCtx?.nombres || []
   const iconoDe = catsCtx?.iconoDe || (() => EMOJI_DEFECTO)
   const [avisoBloque, setAvisoBloque] = useState('')
+  const [creandoPara, setCreandoPara] = useState(null) // { clave, it }: fila que está creando una categoría nueva
   const [archivos, setArchivos] = useState(() => {
     const { aceptados } = validarSeleccion(archivosIniciales)
     return aceptados.map((f) => nuevoArchivo(f, cuentas, cuentaInicial))
@@ -119,17 +122,42 @@ export default function SubidaMultiple({
   const hayPendientes = archivos.some((a) => a.estado === 'pendiente')
   const nombreCuenta = (id) => cuentas.find((c) => c.id === id)?.nombre || 'Cuenta'
 
+  // Borrador de la revisión: cada cambio (marcas, categorías, reglas) se guarda por extracto, así salir y volver no pierde nada.
+  useEffect(() => {
+    if (fase !== 'revision') return
+    for (const a of archivosRef.current) {
+      if (a.estado !== 'listo' || !a.historialId) continue
+      const pref = `${a.id}:`
+      const quitar = (o) => Object.fromEntries(Object.entries(o).filter(([c]) => c.startsWith(pref)).map(([c, v]) => [c.slice(pref.length), v]))
+      guardarBorrador(a.historialId, {
+        seleccion: [...seleccion].filter((c) => c.startsWith(pref)).map((c) => c.slice(pref.length)),
+        categorias: quitar(categorias),
+        aprender: quitar(aprender),
+      })
+    }
+  }, [fase, seleccion, categorias, aprender])
+
   const parchar = (id, parche) => setArchivos((prev) => prev.map((a) => (a.id === id ? { ...a, ...parche } : a)))
 
   function empezarRevision(lista) {
-    setSeleccion(new Set(clavesFaltantes(lista)))
+    const sel = new Set(clavesFaltantes(lista))
     const cats = {}
+    const apr = {}
     for (const a of lista) {
       if (a.estado !== 'listo') continue
       for (const it of a.items) cats[`${a.id}:${it.k}`] = it.categoria || 'Otros'
+      // Revisión que se dejó a medias (salió a crear una categoría, cerró la app...): vuelve como estaba.
+      const b = a.historialId ? leerBorrador(a.historialId) : null
+      if (!b) continue
+      const validas = new Set(a.items.map((it) => it.k))
+      for (const it of a.items) sel.delete(`${a.id}:${it.k}`)
+      for (const k of b.seleccion) if (validas.has(k)) sel.add(`${a.id}:${k}`)
+      for (const [k, v] of Object.entries(b.categorias)) if (validas.has(k)) cats[`${a.id}:${k}`] = v
+      for (const [k, v] of Object.entries(b.aprender)) if (validas.has(k)) apr[`${a.id}:${k}`] = v
     }
+    setSeleccion(sel)
     setCategorias(cats)
-    setAprender({})
+    setAprender(apr)
     setFase('revision')
   }
 
@@ -323,6 +351,7 @@ export default function SubidaMultiple({
             }))],
           })
         }
+        if (a.historialId) borrarBorrador(a.historialId) // ya se importó: el borrador no hace falta
         salida.push({ id: a.id, nombre: a.nombre, cuenta: nombreCuenta(a.cuentaId), ok: true, cuentaId: a.cuentaId, historialId: a.historialId, saldosExtracto: a.saldosExtracto, ...r })
       } catch (err) {
         salida.push({ id: a.id, nombre: a.nombre, cuenta: nombreCuenta(a.cuentaId), ok: false, error: err.message || 'No se pudo importar' })
@@ -421,6 +450,9 @@ export default function SubidaMultiple({
           </p>
         )}
 
+        {resumenLote(archivos) && (
+          <p className="text-sm font-semibold mb-3" data-testid="resumen-lote">{resumenLote(archivos)}</p>
+        )}
         <ResumenCategorias resumen={resumenCats} onMarcar={marcarPorEstado} className="mb-3" />
 
         <div className="flex gap-2 mb-4">
@@ -541,12 +573,13 @@ export default function SubidaMultiple({
                                 <select
                                   aria-label={`Categoría de ${it.descripcion}`}
                                   value={categorias[clave] || 'Otros'}
-                                  onChange={(e) => cambiarCategoria(clave, it, e.target.value)}
+                                  onChange={(e) => (e.target.value === OPCION_NUEVA_CATEGORIA ? setCreandoPara({ clave, it }) : cambiarCategoria(clave, it, e.target.value))}
                                   className="w-full rounded-xl border border-line bg-paper-raised px-3 py-2 text-xs"
                                 >
                                   {opcionesCategoria(CATEGORIAS, categorias[clave]).map((c) => (
                                     <option key={c} value={c}>{iconoDe(c)} {c}</option>
                                   ))}
+                                  <option value={OPCION_NUEVA_CATEGORIA}>{TEXTO_NUEVA_CATEGORIA}</option>
                                 </select>
                                 {it.razon && !aprender[clave] && <p className="text-[11px] text-ink-soft mt-1">Auto · {it.razon}</p>}
                                 {aprender[clave] && (
@@ -594,6 +627,12 @@ export default function SubidaMultiple({
           </section>
         ))}
 
+        {creandoPara && (
+          <HojaNuevaCategoria
+            onCerrar={() => setCreandoPara(null)}
+            onCreada={(nombre) => cambiarCategoria(creandoPara.clave, creandoPara.it, nombre)}
+          />
+        )}
         {error && <p className="text-sm text-danger mb-3" role="alert">{error}</p>}
         <div className="flex gap-2">
           <button onClick={revisionInicial ? onCancelar : () => setFase('cola')} className="flex-1 rounded-2xl border border-line py-3 text-sm font-semibold">
