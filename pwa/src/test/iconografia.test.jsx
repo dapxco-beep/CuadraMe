@@ -10,7 +10,7 @@ import { ICONO } from '../lib/tokens'
 // Archivos donde el emoji es dato del usuario (selector/valor por defecto de cuenta o categoría),
 // texto de un script/mensaje, o pertenecen a otro frente de trabajo (Traer movimientos).
 const PERMITIDOS = new Set([
-  'SelectorEmoji.jsx', 'CrearCuentaBanco.jsx', 'CrearCuenta.jsx', 'Cuentas.jsx', 'Categorias.jsx', 'SelectorCuenta.jsx',
+  'SelectorEmoji.jsx', 'HojaNuevaCategoria.jsx', 'CrearCuentaBanco.jsx', 'CrearCuenta.jsx', 'Cuentas.jsx', 'Categorias.jsx', 'SelectorCuenta.jsx',
   'SelectorCategoria.jsx', 'ConectarDispositivo.jsx', 'Sincronizacion.jsx', 'Correos.jsx', 'Conciliacion.jsx', 'ImportarArchivo.jsx',
 ])
 const EMOJI = /\p{Extended_Pictographic}/u
