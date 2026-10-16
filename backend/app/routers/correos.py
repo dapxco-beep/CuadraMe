@@ -43,6 +43,7 @@ from app.extractos_gmail import (
     construir_query_asunto,
     datos_cuerpo_tarjeta,
     texto_cuerpo,
+    _sin_acentos,
     banco_por_remitente,
     claves_candidatas,
     construir_query_extractos,
@@ -614,7 +615,12 @@ def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, exist
     # detectados solos solo si además parecen una transacción real. Los descartados se
     # guardan 'ignorado' y no se releen.
     tiene_monto = (correo.monto or 0) > 0
-    candidato = tiene_monto and (con_etiqueta or es_notificacion_transaccion(correo.asunto, correo.snippet))
+    # Por el asunto también se listan correos de remitentes desconocidos: esos solo entran si traen la etiqueta o
+    # si el remitente es un banco conocido.
+    candidato = tiene_monto and (
+        con_etiqueta
+        or (banco_por_remitente(correo.remitente) and es_notificacion_transaccion(correo.asunto, correo.snippet))
+    )
     if not candidato:
         correo.estado = "ignorado"
     db.add(correo)
@@ -783,6 +789,19 @@ def _respuesta_sync(sync: SyncGmail) -> SincronizarCorreosResponse:
     )
 
 
+def _id_etiqueta(labels: list, etiqueta: str) -> str | None:
+    """Id de la etiqueta del usuario: sin importar mayúsculas, tildes ni espacios, y también si vive dentro de
+    otra («Finanzas/Gastos»). Antes solo valía el nombre exacto, y con otro nombre la fase «etiqueta» se saltaba."""
+    buscada = _sin_acentos(etiqueta).strip()
+    for l in labels:
+        if _sin_acentos(l.get("name", "")).strip() == buscada:
+            return l["id"]
+    for l in labels:
+        if _sin_acentos(l.get("name", "")).strip().endswith("/" + buscada):
+            return l["id"]
+    return None
+
+
 def _lote_de_sincronizacion(db: Session, usuario_id: str, perfil: Perfil, completa: bool = False,
                             dias: int = DIAS_PRIMERA_SYNC, tipo: str = "todo") -> tuple[SyncGmail, int, int]:
     """UN lote de la sincronización de Gmail (sin sesión HTTP): lo usan el botón del usuario
@@ -793,7 +812,7 @@ def _lote_de_sincronizacion(db: Session, usuario_id: str, perfil: Perfil, comple
     etiqueta = perfil.gmail_etiqueta or "gastos"
     gmail = cliente_gmail(perfil.gmail_refresh_token_enc)
     labels = gmail.users().labels().list(userId="me").execute().get("labels", [])
-    label_id = next((l["id"] for l in labels if l["name"].lower() == etiqueta.lower()), None)
+    label_id = _id_etiqueta(labels, etiqueta)
 
     reevaluar_ignorados.preparar(db, usuario_id)  # una sola vez por usuario: relee correos de bancos sin monto
     # Extractos ya procesados que quedaron sin saldos (lector viejo): se vuelven a traer de Gmail y se completan.
