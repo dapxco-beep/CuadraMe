@@ -10,8 +10,12 @@
 - **Movimientos:** acceso «Ver detalle de tus gastos» que lleva a En qué gasto.
 - **Correos, corpus de regresión** (`backend/tests/test_corpus_correos.py`, 35 casos SINTÉTICOS): movimientos, Bre-B/llaves, traslados propios, extractos, avisos y no-banco. Se «reentrena» agregando una fila por cada correo real que falle y ajustando la regla. Ya corregido: dominio `notificacionesbancolombia.com`, verbos «pagaste/retiraste/cobro/devolución/rendimientos», «compra por $X en COMERCIO», pago a tarjeta propia, «resumen mensual» como extracto. Límite: no se puede saber el nombre de quien tiene una llave si el correo solo trae el número.
 - **Ya estaban desplegados por otra sesión** (mismos cambios): menú lateral sin repetidos, esqueleto de carga + precarga de pantallas, Asistente con preguntas primero, saldo antes del onboarding, «+» con teclado listo y vibración, alerta de cobros recurrentes solo si sube.
-- **Dependencias al día:** fastapi 0.143.2, pydantic 2.14.1, pydantic-settings 2.16.0, sentry-sdk 2.72.0 (pruebas verdes); PWA con el `package-lock.json` actualizado. Pendiente: `framer-motion` 14 (cambio mayor) y 3 avisos moderados de `npm audit` en `@capacitor/cli` (herramienta de iOS; arreglo = cambio mayor).
-- **Pendientes de producto:** ver la app en un celular real (nada de esto se vio aún en pantalla), medir el peso del paquete en 4G, mini gráfico de la semana en Inicio, y alimentar el corpus de correos con casos reales.
+- **Inicio:** mini gráfico de los últimos 7 días dentro de la tarjeta de saldo (`SemanaMini`, lleva a En qué gasto). El Día a día pide como máximo 400 días (si el periodo es más largo, muestra los últimos 400).
+- **Punto de partida (Traer movimientos):** textos más cortos; los ejemplos solo se ven en pantallas ≥ 640 px. La otra sesión rediseñó Traer movimientos como asistente guiado (un paso a la vez).
+- **Dependencias al día y sin avisos:** fastapi 0.143.2, pydantic 2.14.1, pydantic-settings 2.16.0, sentry-sdk 2.72.0, framer-motion 14 y `overrides.uuid` en la PWA (`npm audit`: 0 vulnerabilidades). Todo con pruebas verdes.
+- **Peso de arranque:** `npm run build && npm run peso` mide lo que se baja al abrir la app (hoy ≈ 233 KB comprimidos, tope 450 KB; falla si se pasa).
+- **Verificado en un celular simulado de 390 px** (Chrome sin interfaz sobre la réplica local, 7 pantallas): sin desbordes ni errores de consola. Sigue sin probarse en un teléfono físico ni con la cuenta real de producción.
+- **Único pendiente que no depende del código:** alimentar el corpus de correos con casos reales que fallen (hace falta ver tus correos).
 - **Cómo desplegar sin pisar nada:** varias sesiones trabajan en paralelo y `main` avanza. Antes de desplegar: `git log HEAD..main`; si hay commits, crear una rama desde `main`, pasar solo lo propio (cherry-pick) y desplegar desde ahí.
 
 ---
