@@ -56,26 +56,27 @@ beforeEach(() => {
 })
 
 describe('Traer movimientos y el punto de partida', () => {
-  it('la primera vez lo ofrece arriba, antes de todo lo demás', async () => {
+  it('la primera vez es el primer paso del asistente: un botón que abre la elección', async () => {
     api.sincronizacionEstado.mockResolvedValue(estado({ definido: false, modo: null, fecha: null, saldos: {}, anteriores: { correos: 0, extractos: 0 } }))
     montar()
-    const caja = await screen.findByTestId('punto-partida-elegir')
-    const titulo = screen.getByRole('heading', { name: 'Traer movimientos' })
-    // el punto de partida va antes que las secciones (Movimientos, Extractos...)
-    const bloque = screen.getByTestId('bloque-sinc-movimientos')
-    expect(titulo.compareDocumentPosition(caja) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(caja.compareDocumentPosition(bloque) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(await screen.findByTestId('paso-titulo')).toHaveTextContent('¿Desde cuándo leo tu correo?')
+    expect(screen.queryByTestId('punto-partida-elegir')).toBeNull() // la elección está detrás del botón, no suelta en la pantalla
+    fireEvent.click(screen.getByTestId('tarea-punto_partida'))
+    expect(await screen.findByTestId('punto-partida-elegir')).toBeTruthy()
   })
 
   it('«Decidir después» lo oculta y no vuelve a insistir pronto', async () => {
     api.sincronizacionEstado.mockResolvedValue(estado({ definido: false, modo: null, fecha: null, saldos: {}, anteriores: { correos: 0, extractos: 0 } }))
     const { unmount } = montar()
+    fireEvent.click(await screen.findByTestId('tarea-punto_partida'))
     await screen.findByTestId('punto-partida-elegir')
     fireEvent.click(screen.getByRole('button', { name: 'Decidir después' }))
     await waitFor(() => expect(screen.queryByTestId('punto-partida-elegir')).toBeNull())
     unmount()
     montar()
     await screen.findByRole('heading', { name: 'Traer movimientos' })
+    expect(await screen.findByTestId('todo-al-dia')).toBeTruthy()
+    expect(screen.queryByTestId('tarea-punto_partida')).toBeNull()
     expect(screen.queryByTestId('punto-partida-elegir')).toBeNull()
   })
 
@@ -86,8 +87,8 @@ describe('Traer movimientos y el punto de partida', () => {
     montar()
     await screen.findByRole('heading', { name: 'Traer movimientos' })
     expect(screen.queryByTestId('punto-partida-elegir')).toBeNull()
-    const abrir = await screen.findByRole('button', { name: /^Movimientos/ })
-    if (abrir.getAttribute('aria-expanded') === 'false') fireEvent.click(abrir)
+    fireEvent.click(await screen.findByTestId('ver-todo'))
+    fireEvent.click(await screen.findByTestId('tab-correos'))
     expect(await screen.findByTestId('correos-anteriores')).toHaveTextContent('4 correos anteriores a tu fecha de inicio no se muestran.')
   })
 })

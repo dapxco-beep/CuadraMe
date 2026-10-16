@@ -50,8 +50,8 @@ const correo = (id, extra = {}) => ({
   cuenta_sugerida_id: 'bc', banco_detectado: 'Bancolombia', ...extra,
 })
 
-// «Conexión de Gmail» está plegada por defecto (modo simple): se abre para llegar a los interruptores.
-const abrirConexion = () => fireEvent.click(screen.getByTestId('bloque-sinc-conexion').querySelector('h2 button'))
+// Los interruptores viven en la hoja «Conexiones y claves».
+const abrirConexion = () => fireEvent.click(screen.getByTestId('abrir-conexiones'))
 const montarTarjetas = (correos) =>
   render(<DialogosProvider><CorreosPorRevisar correos={correos} onResuelto={vi.fn()} /></DialogosProvider>)
 
@@ -128,35 +128,14 @@ describe('EtiquetaOrigen', () => {
 })
 
 describe('Traer movimientos: las dos tarjetas del correo', () => {
-  it('muestra «Movimientos» y «Extractos» como secciones propias, cada una con su botón, última vez y contadores; los interruptores van en la conexión', async () => {
+  it('los dos usos del correo tienen su interruptor en «Conexiones y claves»; la pantalla principal no los repite', async () => {
     montar()
-    const mov = await screen.findByTestId('carril-movimientos')
-    const ext = screen.getByTestId('carril-extractos')
-    expect(within(screen.getByTestId('bloque-sinc-movimientos')).getByRole('heading', { level: 2, name: /^Movimientos/ })).toBeTruthy()
-    expect(within(screen.getByTestId('bloque-sinc-extractos')).getByRole('heading', { level: 2, name: /^Extractos/ })).toBeTruthy()
-    expect(within(mov).getByText(/Las notificaciones de tu banco: así ves en el momento lo que gastas/)).toBeTruthy()
-    expect(within(ext).getByText(/El extracto mensual del banco: sirve para confirmar y cuadrar el mes/)).toBeTruthy()
+    await screen.findByTestId('paso-guiado')
+    expect(screen.queryByTestId('carril-movimientos')).toBeNull()
+    expect(screen.queryByTestId('carril-extractos')).toBeNull()
     abrirConexion()
-    expect(within(screen.getByTestId('interruptor-movimientos')).getByRole('switch', { name: /Leer notificaciones/i })).toBeChecked()
+    expect(within(await screen.findByTestId('interruptor-movimientos')).getByRole('switch', { name: /Leer notificaciones/i })).toBeChecked()
     expect(within(screen.getByTestId('interruptor-extractos')).getByRole('switch', { name: /Leer extractos/i })).toBeChecked()
-    expect(within(mov).getByText('3 por revisar')).toBeTruthy()
-    // los contadores de una sección no aparecen en la otra
-    expect(within(mov).queryByText('1 necesita clave')).toBeNull()
-    expect(within(ext).queryByText('3 por revisar')).toBeNull()
-    expect(within(mov).getByText('2 faltan confirmar con el extracto')).toBeTruthy()
-    expect(within(ext).getByText('1 necesita clave')).toBeTruthy()
-    expect(within(mov).getByTestId('ultima-movimientos').textContent).toMatch(/Última vez hace 2 h/)
-    expect(within(ext).getByTestId('ultima-extractos').textContent).toMatch(/Aún no he leído/)
-  })
-
-  it('cada botón trae solo su carril', async () => {
-    api.sincronizarCorreos.mockResolvedValue({ ok: true, completado: true, extractos_encontrados: 2, tipo: 'extractos' })
-    montar()
-    fireEvent.click(within(await screen.findByTestId('carril-extractos')).getByRole('button', { name: 'Buscar extractos' }))
-    expect(await screen.findByTestId('resultado-extractos')).toHaveTextContent('Encontré 2 extractos.')
-    expect(api.sincronizarCorreos).toHaveBeenCalledTimes(1)
-    expect(api.sincronizarCorreos).toHaveBeenCalledWith({ tipo: 'extractos' })
-    expect(screen.queryByTestId('resultado-movimientos')).toBeNull()
   })
 
   it('si falla un carril se dice cuál y el otro sigue funcionando', async () => {
@@ -164,31 +143,34 @@ describe('Traer movimientos: las dos tarjetas del correo', () => {
       ? { ok: false, error: 'No se pudo sincronizar tus correos.' }
       : { ok: true, completado: true, nuevos: 1, tipo: 'movimientos' }))
     montar()
-    fireEvent.click(await screen.findByRole('button', { name: 'Traer todo ahora' }))
-    expect(await screen.findByTestId('error-extractos')).toHaveTextContent('Extractos')
-    expect(screen.getByTestId('resultado-movimientos')).toHaveTextContent('Encontré 1 movimiento nuevo.')
-    expect(screen.queryByTestId('error-movimientos')).toBeNull()
+    fireEvent.click(await screen.findByRole('button', { name: 'Buscar ahora' }))
+    // Una frase dice qué trajo y cuál lectura no pudo; la otra siguió funcionando.
+    const resumen = await screen.findByTestId('resumen-busqueda')
+    expect(resumen).toHaveTextContent('Encontré 1 movimiento nuevo.')
+    expect(resumen).toHaveTextContent(/No pude leer: .*xtractos/i)
+    abrirConexion()
+    expect(await screen.findByText(/^Extractos: /i)).toBeTruthy()
   })
 
   it('el interruptor guarda solo ese carril y deja el otro como estaba', async () => {
     montar()
-    await screen.findByTestId('carril-extractos')
+    await screen.findByTestId('paso-guiado')
     abrirConexion()
-    const sw = within(screen.getByTestId('interruptor-extractos')).getByRole('switch')
+    const sw = within(await screen.findByTestId('interruptor-extractos')).getByRole('switch')
     // Al guardar, la pantalla vuelve a pedir el estado: el servidor ya responde con el cambio.
     api.gmailEstado.mockResolvedValue({ conectado: true, email: 'yo@gmail.com', leer_movimientos: true, leer_extractos: false })
     fireEvent.click(sw)
     await waitFor(() => expect(api.gmailLectura).toHaveBeenCalledWith({ leer_extractos: false }))
-    // Apagado: lo dice con claridad y ya no ofrece el botón de buscar.
-    expect(await screen.findByTestId('apagado-extractos')).toHaveTextContent('no leo ni guardo extractos')
-    expect(within(screen.getByTestId('carril-movimientos')).getByRole('button', { name: 'Traer movimientos' })).toBeTruthy()
+    // Apagado solo ese uso: el otro sigue encendido.
+    await waitFor(() => expect(within(screen.getByTestId('interruptor-extractos')).getByRole('switch')).not.toBeChecked())
+    expect(within(screen.getByTestId('interruptor-movimientos')).getByRole('switch')).toBeChecked()
   })
 
-  it('con un carril apagado, «Traer todo» solo lee el encendido', async () => {
+  it('con un uso apagado, «Buscar ahora» solo lee el encendido', async () => {
     api.gmailEstado.mockResolvedValue({ conectado: true, email: 'yo@gmail.com', leer_movimientos: false, leer_extractos: true })
     api.sincronizarCorreos.mockResolvedValue({ ok: true, completado: true, extractos_encontrados: 0, tipo: 'extractos' })
     montar()
-    fireEvent.click(await screen.findByRole('button', { name: 'Traer todo ahora' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Buscar ahora' }))
     await waitFor(() => expect(api.sincronizarCorreos).toHaveBeenCalledTimes(1))
     expect(api.sincronizarCorreos).toHaveBeenCalledWith({ tipo: 'extractos' })
   })
@@ -196,7 +178,7 @@ describe('Traer movimientos: las dos tarjetas del correo', () => {
   it('«¿Cuál es la diferencia?» explica los dos usos con un ejemplo cada uno', async () => {
     montar()
     expect(screen.queryByTestId('ayuda-carriles')).toBeNull()
-    await screen.findByTestId('carril-movimientos')
+    await screen.findByTestId('paso-guiado')
     abrirConexion()
     fireEvent.click(await screen.findByRole('button', { name: /¿Cuál es la diferencia\?/ }))
     const ayuda = screen.getByTestId('ayuda-carriles')
@@ -204,19 +186,20 @@ describe('Traer movimientos: las dos tarjetas del correo', () => {
     expect(ayuda.textContent).toMatch(/PDF de septiembre/)
   })
 
-  it('cada sección tiene su «Por hacer» propio y lo demás va en «Otras cosas por hacer»', async () => {
+  it('no hay listas de «Por hacer» por sección: un paso principal y lo demás espera su turno', async () => {
     montar()
-    const grupoExt = await screen.findByTestId('por-hacer-extractos')
-    const grupoMov = screen.getByTestId('por-hacer-movimientos')
-    expect(within(grupoExt).getByTestId('tarea-falta_clave')).toBeTruthy()
-    expect(within(grupoExt).queryByTestId('tarea-correos_por_revisar')).toBeNull()
-    expect(within(grupoMov).getByTestId('tarea-correos_por_revisar')).toBeTruthy()
-    expect(within(screen.getByTestId('por-hacer-general')).getByTestId('tarea-sin_cuenta')).toBeTruthy()
-    expect(screen.getByTestId('resumen-carriles')).toHaveTextContent('3 movimientos por revisar · 3 extractos por conciliar')
+    await screen.findByTestId('paso-guiado')
+    expect(screen.queryByTestId('por-hacer-extractos')).toBeNull()
+    expect(screen.queryByTestId('por-hacer-movimientos')).toBeNull()
+    expect(screen.queryByTestId('por-hacer-general')).toBeNull()
+    expect(screen.getAllByTestId(/^tarea-/)).toHaveLength(1)
+    expect(screen.getByTestId('tarea-falta_clave')).toBeTruthy()
   })
 
-  it('la tarjeta de Movimientos no repite la lista: ofrece «Ver los N por revisar»', async () => {
+  it('«Ver todo» → «Correos» no repite la lista: ofrece «Ver los N por revisar»', async () => {
     montar()
+    fireEvent.click(await screen.findByTestId('ver-todo'))
+    fireEvent.click(await screen.findByTestId('tab-correos'))
     const boton = await screen.findByTestId('ver-por-revisar')
     expect(boton).toHaveTextContent('Ver los 3 por revisar')
     expect(screen.queryByTestId('correo-a')).toBeNull()

@@ -44,6 +44,29 @@ Regla de oro: si tu mamá no lo diría en voz alta, no va en la pantalla.
 | Periodo | «Cada cuánto» (mensual, quincenal, semanal) | |
 | Límite | «Lo máximo que quieres gastar» | |
 
+### «Traer movimientos» es un asistente: UNA cosa a la vez
+
+La pantalla principal solo muestra (1) un estado calmado y (2) UN paso con su botón. Todo lo demás está detrás de una hoja.
+
+| Parte | Texto |
+|---|---|
+| Estado | «Todo al día» (con «Miré tu correo hace 2 h») o «Tienes 3 cosas por hacer». Las tareas opcionales (categorizar) no cuentan. |
+| Avance | «Paso 1 de 3» con una barra fina; solo si hay más de un paso. Al resolver uno avanza («Paso 2 de 3»). |
+| Paso principal | Título corto en imperativo + una frase + un botón con verbo. Orden: conectar (solo primer uso) → fecha de inicio (solo primer uso) → clave del PDF → crear cuenta → extractos a medias → importar faltantes → correos por revisar → lo demás → cuadre → categorizar (opcional). |
+| Al terminar un paso | «Listo ✓ — siguiente:» y el nuevo paso. Sin nada más: «Listo ✓» y «Todo al día». |
+| Búsqueda | Un solo botón secundario «Buscar ahora» (sin Gmail: «Conectar Gmail»). El progreso va en línea: «Leyendo tus extractos… 3 de 6», «Leyendo tus avisos del banco… 120 de 340», «Probando tu clave en los PDF…». |
+| Errores y esperas | Una frase con su acción: «Falta la clave de tu PDF → Ponerla ahora»; «La clave de tu PDF no abrió tus extractos → Cambiar la clave». Nunca «carril» ni jerga. |
+
+Textos de los pasos (fijos): «Conecta tu Gmail», «¿Desde cuándo leo tu correo?», «Falta la clave de tu PDF», «Crea tu cuenta de <banco>», «Sigue con tu extracto de <mes>», «Revisa tu extracto» / «Revisa tus N extractos», «Revisa N movimientos», «Confirma si son tuyos», «Un extracto no se pudo leer», «Puede haber movimientos repetidos», «Un mes no cuadra con tu extracto», «Pon categoría a N comercios».
+
+**Detrás (hojas):**
+- **Ver todo** (pestañas **Extractos** · **Correos** · **Por mes**): extractos a medias («Seguir»), extractos para conciliar, todos los extractos por mes con su estado, ignorados; correos ya registrados e ignorados; cobertura por mes y cuadre.
+- **Conexiones y claves**: Gmail, «Leer notificaciones» / «Leer extractos», última lectura, clave del PDF y, bajo «Otras formas de traer movimientos»: subir un archivo, buscar un extracto por su asunto, agregar uno a mano, fecha desde la que leo, estado de todas tus conexiones y «Mi banco no está».
+- Hojas de un paso: clave del PDF, poner categorías, revisar un extracto o archivo.
+- Automático al abrir (sin botón): leer el correo (si no se leyó hace menos de 15 min), probar la clave guardada y releer saldos. En escritorio, la columna derecha lo dice en «Lo que hago solo».
+
+Lo que sigue describe los nombres de las secciones antes del asistente; hoy esos contenidos viven en «Ver todo» y «Conexiones y claves».
+
 ### El correo tiene DOS usos y la pantalla «Traer movimientos» tiene TRES secciones (nombres fijos)
 
 | Nombre | Qué es | Texto de apoyo |

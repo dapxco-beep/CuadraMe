@@ -1,6 +1,6 @@
 // Saldo actual claro (etiquetas, tarjetas, ajuste), autorización de datos y aviso de Gmail por invitación.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from './userEvent.js'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -189,7 +189,10 @@ describe('Gmail por invitación y consentimiento', () => {
 
   it('sin la autorización de lectura de correo no conecta: pide el consentimiento primero', async () => {
     montarCorreos({ modo_pruebas: false, consentimiento: false })
-    await userEvent.click((await screen.findAllByRole('button', { name: 'Conectar Gmail' })).at(-1))
+    // Primero el asistente: el paso «Conecta tu Gmail» abre «Conexiones y claves», donde está el botón de conectar.
+    await userEvent.click(await screen.findByTestId('tarea-conectar'))
+    const hoja = await screen.findByRole('dialog', { name: 'Conexiones y claves' })
+    await userEvent.click(within(hoja).getByRole('button', { name: 'Conectar Gmail' }))
     expect(api.gmailConectar).not.toHaveBeenCalled()
     expect(await screen.findByText('Leer mi correo (Gmail, solo lectura)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Autorizo' })).toBeDisabled() // casilla sin marcar

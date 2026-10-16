@@ -67,7 +67,11 @@ function montar() {
   )
 }
 
-const extractosEncontrados = () => screen.findByRole('heading', { level: 3, name: /Extractos para conciliar/ })
+// Los extractos están en «Ver todo» (pestaña Extractos); en la pantalla principal solo hay UN paso a la vez.
+const extractosEncontrados = async () => {
+  fireEvent.click(await screen.findByTestId('ver-todo'))
+  return screen.findByTestId('seccion-extractos')
+}
 
 beforeEach(() => {
   localStorage.clear()
@@ -84,16 +88,17 @@ beforeEach(() => {
 describe('Desde tu correo: extractos encontrados', () => {
   it('lista los extractos con su estado y el mensaje de privacidad', async () => {
     montar()
-    // El conciliado (Nequi) no cuenta como pendiente: queda en su sección plegada.
-    expect((await extractosEncontrados()).textContent).toBe('Extractos para conciliar2')
+    // El conciliado (Nequi) no cuenta como pendiente: la pestaña dice «Extractos · 2».
+    await extractosEncontrados()
+    expect(screen.getByTestId('tab-extractos').textContent).toBe('Extractos · 2')
     expect(within(screen.getByTestId('extracto-e1')).getByText('Nuevo · listo para revisar')).toBeTruthy()
     expect(within(screen.getByTestId('extracto-e2')).getByText('Falta la clave del PDF')).toBeTruthy()
     // El revisado (Nequi) no está entre los pendientes; vive en «Todos los extractos», con su mes y qué pasó.
     expect(screen.queryByTestId('extracto-e3')).toBeNull()
     expect(within(screen.getByTestId('ext-c:e3')).getByRole('heading', { name: 'Nequi · Cuenta · Julio 2026' })).toBeTruthy()
     expect(screen.getByText('No encontramos movimientos en este extracto.')).toBeTruthy()
-    // El mensaje de privacidad vive en «Conexión de Gmail» (plegada por defecto): se abre para leerlo.
-    fireEvent.click(screen.getByTestId('bloque-sinc-conexion').querySelector('h2 button'))
+    // El mensaje de privacidad vive en «Conexiones y claves»: se abre para leerlo.
+    fireEvent.click(screen.getByTestId('abrir-conexiones'))
     expect(screen.getByText(/Solo tengo permiso de/)).toBeTruthy()
     expect(screen.getByText(/No guardo tus correos ni los PDF/)).toBeTruthy()
   })
@@ -130,8 +135,8 @@ describe('Desde tu correo: extractos encontrados', () => {
     api.guardarClavePdf.mockResolvedValue({ ok: true, configurada: true })
     api.borrarClavePdf.mockResolvedValue({ ok: true, configurada: false })
     montar()
-    await extractosEncontrados()
-    expect(screen.getByText(/Normalmente es tu cédula/)).toBeTruthy()
+    fireEvent.click(await screen.findByTestId('tarea-falta_clave')) // el paso «Falta la clave» abre su hoja
+    expect(await screen.findByText(/Normalmente es tu cédula/)).toBeTruthy()
     const campo = screen.getByLabelText('Clave del PDF')
     expect(campo.type).toBe('password')
     fireEvent.change(campo, { target: { value: '1020304050' } })
@@ -152,7 +157,7 @@ describe('Desde tu correo: extractos encontrados', () => {
   it('no vuelve a sincronizar si ya se hizo hace poco', async () => {
     localStorage.setItem('cuadrame_gmail_sync', String(Date.now()))
     montar()
-    await extractosEncontrados()
+    await screen.findByTestId('paso-guiado')
     expect(api.sincronizarCorreos).not.toHaveBeenCalled()
   })
 })

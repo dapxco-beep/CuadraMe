@@ -254,6 +254,13 @@ function montar() {
   )
 }
 
+// «Todos los extractos» vive en «Ver todo» (pestaña Extractos); la cobertura por mes, en la pestaña «Por mes».
+const montarYVerTodo = async (tab) => {
+  montar()
+  fireEvent.click(await screen.findByTestId('ver-todo'))
+  if (tab) fireEvent.click(await screen.findByTestId(`tab-${tab}`))
+}
+
 describe('pantalla Traer movimientos con «Todos los extractos»', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -268,7 +275,7 @@ describe('pantalla Traer movimientos con «Todos los extractos»', () => {
   })
 
   it('muestra la lista completa y ya no la lista de «Extractos ya revisados» con filas iguales', async () => {
-    montar()
+    await montarYVerTodo()
     expect(await screen.findByTestId('todos-extractos')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Extractos ya revisados/ })).toBeNull()
     expect(screen.getByText('Nu Colombia · Cuenta · Julio 2026')).toBeTruthy()
@@ -277,7 +284,7 @@ describe('pantalla Traer movimientos con «Todos los extractos»', () => {
 
   it('«Intentar de nuevo» reprocesa el extracto y dice cómo salió', async () => {
     api.reintentarExtractoCorreo.mockResolvedValue({ ok: false, estado: 'error', motivo_error: 'pdf_escaneado', mensaje: 'No pudimos leer este extracto: el PDF es una imagen.' })
-    montar()
+    await montarYVerTodo()
     const fila = await screen.findByTestId('ext-c:x')
     fireEvent.click(within(fila).getByRole('button', { name: /Intentar de nuevo/ }))
     await waitFor(() => expect(api.reintentarExtractoCorreo).toHaveBeenCalledWith('ex'))
@@ -286,7 +293,7 @@ describe('pantalla Traer movimientos con «Todos los extractos»', () => {
 
   it('fijar el mes lo guarda y recarga', async () => {
     api.fijarMesExtracto.mockResolvedValue({ ok: true })
-    montar()
+    await montarYVerTodo()
     const sin = await screen.findByTestId('ext-c:s')
     fireEvent.change(within(sin).getByLabelText('¿De qué mes es este extracto?'), { target: { value: '2026-04' } })
     fireEvent.click(within(sin).getByRole('button', { name: /Guardar el mes de/ }))
@@ -295,6 +302,7 @@ describe('pantalla Traer movimientos con «Todos los extractos»', () => {
   })
 
   it('«Por hacer» abre el grupo: los extractos con error filtran la lista', async () => {
+    api.sincronizacionEstado.mockResolvedValue({ ...ESTADO, tareas: ESTADO.tareas.filter((t) => t.id === 'extractos_sin_leer') })
     montar()
     fireEvent.click(await screen.findByTestId('tarea-extractos_sin_leer'))
     await waitFor(() => expect(screen.getAllByTestId(/^ext-/)).toHaveLength(2))
@@ -302,7 +310,7 @@ describe('pantalla Traer movimientos con «Todos los extractos»', () => {
   })
 
   it('tocar una celda de la cobertura dice lo mismo que la lista y abre los extractos de ese mes y cuenta', async () => {
-    montar()
+    await montarYVerTodo('meses')
     const celda = await screen.findByRole('button', { name: 'Nu Colombia, agosto 2026: Sin procesar' })
     fireEvent.click(celda)
     const det = screen.getByRole('region', { name: 'Detalle del mes' })
@@ -315,7 +323,7 @@ describe('pantalla Traer movimientos con «Todos los extractos»', () => {
   })
 
   it('«Poner clave» abre la clave y «Mi banco no está» abre el formulario con el banco', async () => {
-    montar()
+    await montarYVerTodo()
     const fila = await screen.findByTestId('ext-c:x')
     fireEvent.click(within(fila).getByRole('button', { name: /Mi banco no está/ }))
     expect(await screen.findByRole('dialog', { name: /Mi banco o billetera no aparece/ })).toBeTruthy()

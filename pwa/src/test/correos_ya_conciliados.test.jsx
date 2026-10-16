@@ -96,9 +96,10 @@ beforeEach(() => {
 describe('Extractos ya conciliados', () => {
   it('no cuentan ni aparecen como nuevos: quedan en una sección plegada con sus movimientos cruzados', async () => {
     montar()
-    expect((await screen.findByRole('heading', { level: 3, name: /Extractos para conciliar/ })).textContent).toBe('Extractos para conciliar1')
+    fireEvent.click(await screen.findByTestId('ver-todo')) // los extractos están en «Ver todo»
+    expect((await screen.findByTestId('tab-extractos')).textContent).toBe('Extractos · 1')
     expect(screen.getAllByText(/Nuevo · listo para revisar/)).toHaveLength(1)
-    // Los ya revisados no salen como nuevos en «Extractos para conciliar»...
+    // Los ya revisados no salen como nuevos entre los pendientes...
     expect(screen.queryByTestId('extracto-e2')).toBeNull()
     // ...pero SÍ están en «Todos los extractos», con su mes, estado y lo que pasó (no la fila repetida de antes).
     expect(screen.getByTestId('resumen-extractos').textContent).toBe('2 revisados · 1 sin procesar')
@@ -114,7 +115,7 @@ describe('Extractos ya conciliados', () => {
     api.conciliarExtractoCorreo.mockResolvedValue({ ok: true, historial_id: 'h1' })
     api.obtenerReviewExtracto.mockResolvedValue({ ok: true, historial_id: 'h1', cuenta_id: 'bc', banco_detectado: 'Nu', total_movimientos: 0, review: [] })
     montar()
-    await screen.findByRole('heading', { level: 3, name: /Extractos para conciliar/ })
+    fireEvent.click(await screen.findByTestId('ver-todo'))
     fireEvent.click(within(await screen.findByTestId('ext-c:e2')).getByRole('button', { name: /Revisar de nuevo/ }))
     await waitFor(() => expect(api.conciliarExtractoCorreo).toHaveBeenCalledWith('e2', 'bc'))
     expect(await screen.findByTestId('revision-multiple')).toBeTruthy()
