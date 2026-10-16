@@ -197,7 +197,7 @@ def test_exportar_marca_el_pago_de_tarjeta_como_no_cuenta():
     linea_pago = [l for l in csv.splitlines() if "Pago tarjeta Visa" in l][0]
     assert "No cuenta" in linea_pago
     linea_compra = [l for l in csv.splitlines() if "Restaurante Andrés" in l][0]
-    assert linea_compra.rstrip().endswith("Gasto")
+    assert ",Gasto," in linea_compra  # la última columna ahora es «Texto del banco»
 
 
 def test_clasificar_sugiere_pago_de_tarjeta():

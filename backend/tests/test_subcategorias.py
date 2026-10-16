@@ -211,7 +211,7 @@ def test_aislamiento_basico_entre_usuarios():
 
 def test_migracion_0003_es_idempotente_y_agrega_las_columnas():
     ids = [i for i, _ in migraciones.MIGRACIONES]
-    assert ids[-1] == "0003_subcategorias"
+    assert "0003_subcategorias" in ids and ids.index("0003_subcategorias") == 2
     eng = create_engine(f"sqlite:///{os.path.join(tempfile.mkdtemp(), 'mig.db')}")
     with eng.begin() as c:
         c.execute(text("CREATE TABLE movimientos (id VARCHAR)"))

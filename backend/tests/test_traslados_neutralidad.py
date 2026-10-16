@@ -128,7 +128,7 @@ def test_reportes_exportar_y_resumen_ven_el_traslado_como_neutral(escenario):
     assert s["gastos"] == 15_000 and s["ingresos"] == 2_000_000
     csv = client.get("/exportar/movimientos.csv").text
     assert "No cuenta" in [l for l in csv.splitlines() if "Enviaste a Ana Lopez" in l][0]
-    assert [l for l in csv.splitlines() if "Enviaste a Pepito" in l][0].rstrip().endswith("Gasto")
+    assert ",Gasto," in [l for l in csv.splitlines() if "Enviaste a Pepito" in l][0]  # la última columna ahora es «Texto del banco»
 
 
 def test_es_un_gasto_real_del_usuario_impide_el_emparejamiento():
