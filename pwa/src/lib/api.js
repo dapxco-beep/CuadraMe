@@ -627,6 +627,7 @@ export const api = {
   decidirTraslado: (cuerpo) => request('/traslados/decidir', { method: 'POST', body: cuerpo }),
   informeGasto: (p = {}) => request(`/informes/gasto?${new URLSearchParams(limpiar(p)).toString()}`),
   informeMovimientos: (p = {}) => request(`/informes/gasto/movimientos?${new URLSearchParams(limpiar(p)).toString()}`),
+  evolucionCategorias: (p = {}) => request(`/informes/evolucion-categorias?${new URLSearchParams(limpiar(p)).toString()}`),
   informeMeses: () => request('/informes/meses'),
   gastoDiario: (desde, hasta) =>
     request(`/informes/diario${desde && hasta ? `?desde=${desde}&hasta=${hasta}` : ''}`),

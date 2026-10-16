@@ -537,6 +537,7 @@ def evolucion_categorias(movs: list[dict], hasta_mes: tuple[int, int], meses: in
         "meses": [{"mes": f"{a}-{m:02d}", "etiqueta": MESES[m - 1][:3], "etiqueta_larga": f"{MESES[m - 1]} de {a}",
                    "parcial": parcial[i]} for i, (a, m) in enumerate(claves)],
         "total_mensual": [round(x) for x in total_mes],
+        "serie_total": serie(total_mes),
         "categorias": cats,
         "hay_datos": bool(cats),
     }

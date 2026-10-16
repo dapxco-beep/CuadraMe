@@ -691,3 +691,16 @@ button, a {
 .grupo-perfil[open] .grupo-perfil-flecha { transform: rotate(180deg); }
 @media (prefers-reduced-motion: no-preference) { .grupo-perfil-flecha { transition: transform 0.2s ease; } }
 .grupo-perfil > div > * { margin-inline: 0; }
+
+/* Gráficos del informe: entrada animada (solo si la persona no pidió menos movimiento) y táctiles. */
+.gr-lienzo { touch-action: pan-y; -webkit-tap-highlight-color: transparent; user-select: none; outline: none; }
+.gr-lienzo:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 0.75rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .gr-barra { transform-box: fill-box; transform-origin: bottom; animation: gr-crece 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 35ms); }
+  .gr-linea { stroke-dasharray: 1; stroke-dashoffset: 1; animation: gr-traza 0.9s ease-out 0.15s forwards; }
+  .gr-aparece { animation: gr-fundido 0.5s ease-out 0.3s both; }
+  .gr-barra, .gr-atenuable { transition: opacity 0.15s ease; }
+}
+@keyframes gr-crece { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes gr-traza { to { stroke-dashoffset: 0; } }
+@keyframes gr-fundido { from { opacity: 0; } to { opacity: 1; } }

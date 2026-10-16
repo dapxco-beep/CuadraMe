@@ -97,6 +97,7 @@ def test_no_cuenta_traslados_ni_pagos_de_tarjeta_ni_ingresos(datos):
     assert "Otros" not in [c["categoria"] for c in d["categorias"]]
     assert "Ingresos" not in [c["categoria"] for c in d["categorias"]]
     assert d["total_mensual"][4] == 300_000 + 80_000
+    assert d["serie_total"]["valores"] == d["total_mensual"] and d["serie_total"]["promedio"] == (100_000 + 380_000) // 5
 
 
 def test_suma_exacta_contra_el_informe_de_gasto(datos):

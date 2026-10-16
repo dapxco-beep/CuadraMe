@@ -2,16 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowDownRight, ArrowUpRight, ChevronDown, Scale } from 'lucide-react'
 import { api } from '../lib/api'
-import { abreviarCOP, pctTexto } from '../lib/informe'
+import { pctTexto } from '../lib/informe'
+import GraficoMeses from './GraficoMeses'
 import Ayudita from './Ayudita'
 import { nombreDe } from '../lib/tituloMovimiento'
 
 // Comparación Ingresos vs Gastos del periodo. Los números salen del servidor (regla única de
 // contabilidad.py): los traslados entre tus cuentas, pagos de tarjeta y ajustes no suman ni restan.
-const W = 320
-const H = 150
-const M = { izq: 36, der: 8, arr: 14, aba: 22 }
-
 function Cambio({ pct, mejorSube }) {
   if (pct === null || pct === undefined) return <span className="text-[11px] text-ink-soft">sin base para comparar</span>
   const Icono = pct >= 0 ? ArrowUpRight : ArrowDownRight
@@ -24,54 +21,9 @@ function Cambio({ pct, mejorSube }) {
   )
 }
 
-export function GraficoMeses({ meses, fmt }) {
-  const valores = meses.flatMap((m) => [m.ingresos, m.gastos, m.balance])
-  const max = Math.max(1, ...valores)
-  const min = Math.min(0, ...valores)
-  const pw = W - M.izq - M.der
-  const ph = H - M.arr - M.aba
-  const y = (v) => M.arr + ph - ((v - min) / (max - min)) * ph
-  const g = pw / Math.max(meses.length, 1)
-  const cx = (i) => M.izq + g * i + g / 2
-  const ancho = Math.max(5, Math.min(14, g * 0.3))
-  const resumen =
-    'Ingresos, gastos y balance por mes: ' +
-    meses.map((m) => `${m.etiqueta_larga}, ingresos ${fmt(m.ingresos)}, gastos ${fmt(m.gastos)}, balance ${fmt(m.balance)}`).join('; ')
-  const ticks = [...new Set([min, 0, max])]
-  return (
-    <div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block md:max-w-[560px] md:mx-auto" role="img" aria-label={resumen}>
-        {ticks.map((t) => (
-          <g key={t}>
-            <line x1={M.izq} x2={W - M.der} y1={y(t)} y2={y(t)} stroke="var(--color-line)" strokeWidth={t === 0 ? 1.2 : 0.7} strokeDasharray={t === 0 ? undefined : '2 3'} />
-            <text x={M.izq - 5} y={y(t) + 3} textAnchor="end" fontSize="9" fill="var(--color-ink-soft)" style={{ fontFamily: 'var(--font-sans)' }}>
-              {abreviarCOP(t)}
-            </text>
-          </g>
-        ))}
-        {meses.map((m, i) => (
-          <g key={m.mes}>
-            <rect x={cx(i) - ancho - 1} y={y(Math.max(m.ingresos, 0))} width={ancho} height={Math.max(Math.abs(y(0) - y(m.ingresos)), m.ingresos ? 1.5 : 0)} rx="2" fill="var(--color-cuadra)" />
-            <rect x={cx(i) + 1} y={y(Math.max(m.gastos, 0))} width={ancho} height={Math.max(Math.abs(y(0) - y(m.gastos)), m.gastos ? 1.5 : 0)} rx="2" fill="var(--color-brand)" />
-            <text x={cx(i)} y={H - 6} textAnchor="middle" fontSize="10" fill="var(--color-ink-soft)" style={{ fontFamily: 'var(--font-sans)' }}>
-              {m.etiqueta}
-            </text>
-          </g>
-        ))}
-        {meses.length > 1 && (
-          <polyline points={meses.map((m, i) => `${cx(i)},${y(m.balance)}`).join(' ')} fill="none" stroke="var(--color-ink)" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
-        )}
-      </svg>
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-soft mt-1" aria-label="Leyenda">
-        <li className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--color-cuadra)' }} aria-hidden="true" />Ingresos</li>
-        <li className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--color-brand)' }} aria-hidden="true" />Gastos</li>
-        <li className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ background: 'var(--color-ink)' }} aria-hidden="true" />Balance</li>
-      </ul>
-    </div>
-  )
-}
+export { GraficoMeses }
 
-export default function IngresosGastos({ params, fmt, className = '' }) {
+export default function IngresosGastos({ params, fmt, className = '', seleccion = null, onSeleccion }) {
   const [d, setD] = useState(null)
   const [noCuenta, setNoCuenta] = useState(null)
   const [abierto, setAbierto] = useState(false)
@@ -139,7 +91,7 @@ export default function IngresosGastos({ params, fmt, className = '' }) {
             Frente a {d.anterior.etiqueta}: ingresos {fmt(d.anterior.ingresos)}, gastos {fmt(d.anterior.gastos)}
           </p>
           <div className="mt-4">
-            <GraficoMeses meses={d.meses} fmt={fmt} />
+            <GraficoMeses meses={d.meses} fmt={fmt} seleccion={seleccion} onSeleccion={onSeleccion} />
           </div>
         </>
       )}

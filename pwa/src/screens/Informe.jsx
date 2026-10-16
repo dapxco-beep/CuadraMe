@@ -93,11 +93,19 @@ export default function Informe() {
   const [detalles, setDetalles] = useState({})
   const [desgloses, setDesgloses] = useState({})
 
-  const params = useMemo(
+  // Mes elegido tocando una barra del gráfico: enfoca el desglose sin cambiar lo que dibuja el gráfico.
+  const [sel, setSel] = useState(null)
+  const paramsBase = useMemo(
     () => (mes
       ? { periodo: 'mes', mes }
       : { periodo: valor.periodo, ...(valor.periodo === 'rango' ? { desde: valor.desde, hasta: valor.hasta } : {}) }),
     [valor, mes]
+  )
+  const params = useMemo(
+    () => (sel ? { periodo: 'mes', mes: sel } : mes
+      ? { periodo: 'mes', mes }
+      : { periodo: valor.periodo, ...(valor.periodo === 'rango' ? { desde: valor.desde, hasta: valor.hasta } : {}) }),
+    [valor, mes, sel]
   )
 
   // Enlace «Ver mi evolución» (/informe#evolucion): baja hasta la gráfica evolutiva.
@@ -153,13 +161,13 @@ export default function Informe() {
       <section className="px-6 mt-2">
         <SelectorPeriodo
           valor={mes ? { periodo: 'mes' } : valor}
-          onChange={(v) => { setMes(null); setValor(v) }}
+          onChange={(v) => { setMes(null); setSel(null); setValor(v) }}
         />
       </section>
 
       <EnlaceCostos className="mx-6 mt-3" />
 
-      <IngresosGastos params={params} fmt={fmt} className="mx-6 mt-4" />
+      <IngresosGastos params={paramsBase} fmt={fmt} className="mx-6 mt-4" seleccion={sel} onSeleccion={setSel} />
       <GraficoEvolucion fmt={fmt} className="mx-6 mt-4" />
 
       {cargando && <div className="mx-6 mt-6 space-y-4"><EsqueletoGrafica alto={160} etiqueta="Cargando tu informe" /><EsqueletoLista filas={4} /></div>}
