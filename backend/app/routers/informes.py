@@ -131,6 +131,23 @@ def desglose_por_subcategoria(
             "tiene_subcategorias": any(x["subcategoria"] for x in lista), "subcategorias": lista}
 
 
+@router.get("/evolucion-categorias")
+def evolucion_categorias(
+    meses: int = Query(6, ge=1, le=inf.MAX_MESES_CATEGORIAS),
+    categoria: str | None = None,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Gasto mensual por categoría de los últimos `meses` meses (el mes en curso cuenta como parcial). Misma regla
+    única que los reportes: sin traslados ni pagos de tarjeta, en moneda base. Con `categoria` agrega la serie por
+    subcategoría. Los meses sin gasto valen 0. Liviano: una sola lectura, cacheable en el cliente."""
+    hoy = ahora_co()
+    a, m = inf.sumar_meses(hoy.year, hoy.month, -(meses - 1))
+    ini = inf.inicio_mes(a, m)
+    movs = cargar_movs_efectivos(db, usuario.id, ini, inf.inicio_mes(*inf.sumar_meses(hoy.year, hoy.month, 1)))
+    return inf.evolucion_categorias(movs, (hoy.year, hoy.month), meses, categoria, inf.inicio_mes(hoy.year, hoy.month))
+
+
 @router.get("/meses")
 def meses(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
     """Meses que tienen movimientos (para navegar el resumen mensual) y el último."""

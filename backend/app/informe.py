@@ -325,7 +325,15 @@ def serie_mensual(movs: list[dict], hasta_mes: tuple[int, int], meses: int = 6) 
         r = _rango(inicio_mes(a, m), inicio_mes(*sumar_meses(a, m, 1)), "", "mes")
         t = _totales(movs, r)
         out.append({"mes": f"{a}-{m:02d}", "etiqueta": f"{MESES[m - 1][:3]}", "etiqueta_larga": f"{MESES[m - 1]} de {a}",
-                    "ingresos": t["ingresos"], "gastos": t["gastos"], "balance": t["balance"]})
+                    "ingresos": t["ingresos"], "gastos": t["gastos"], "balance": t["balance"],
+                    "tasa_ahorro": t["tasa_ahorro"]})
+    # Variación contra el mes anterior de la serie (la PWA solo pinta; None sin base).
+    for i, fila in enumerate(out):
+        previo = out[i - 1] if i else None
+        fila["variacion"] = ({"ingresos_pct": _variacion(fila["ingresos"], previo["ingresos"]),
+                              "gastos_pct": _variacion(fila["gastos"], previo["gastos"]),
+                              "balance_pct": _variacion_signo(fila["balance"], previo["balance"])}
+                             if previo else {"ingresos_pct": None, "gastos_pct": None, "balance_pct": None})
     return out
 
 
@@ -469,3 +477,75 @@ def no_se_cuenta(movs: list[dict], rango: dict, limite: int = 300) -> dict:
             for m in filas[:limite]
         ],
     }
+
+
+MAX_MESES_CATEGORIAS = 24
+
+
+def evolucion_categorias(movs: list[dict], hasta_mes: tuple[int, int], meses: int = 6,
+                         categoria: str | None = None, parcial_desde: datetime | None = None) -> dict:
+    """Gasto mensual por categoría de los últimos `meses` meses (el último es `hasta_mes`). Solo movimientos con tipo
+    efectivo 'expense' (sin traslados ni pagos de tarjeta, ya en moneda base). Los meses sin gasto valen 0.
+
+    Por categoría devuelve `valores` (uno por mes), `promedio` (de los meses completos de la ventana),
+    `vs_anterior_pct` y `vs_promedio_pct` por mes (None sin base) y un resumen del último mes completo.
+    Con `categoria` agrega `subcategorias`: la misma serie por subcategoría ('Sin subcategoría' = None, al final);
+    la suma de las subcategorías es exactamente la serie de la categoría.
+    `parcial_desde`: inicio del mes en curso; ese mes es parcial y no entra al promedio ni al resumen."""
+    meses = max(1, min(meses, MAX_MESES_CATEGORIAS))
+    claves, rangos = [], []
+    for n in range(-(meses - 1), 1):
+        a, m = sumar_meses(hasta_mes[0], hasta_mes[1], n)
+        claves.append((a, m))
+        rangos.append((inicio_mes(a, m), inicio_mes(*sumar_meses(a, m, 1))))
+    indice = {c: i for i, c in enumerate(claves)}
+    por_cat: dict[str, list[float]] = {}
+    por_sub: dict[str | None, list[float]] = {}
+    total_mes = [0.0] * meses
+    for m in movs:
+        if m["tipo"] != "expense":
+            continue
+        i = indice.get((m["fecha"].year, m["fecha"].month))
+        if i is None:
+            continue
+        cat = m["categoria"]
+        por_cat.setdefault(cat, [0.0] * meses)[i] += m["monto"]
+        total_mes[i] += m["monto"]
+        if categoria is not None and cat == categoria:
+            por_sub.setdefault(m.get("subcategoria") or None, [0.0] * meses)[i] += m["monto"]
+
+    parcial = [bool(parcial_desde and rangos[i][0] == parcial_desde) for i in range(meses)]
+    completos = [i for i in range(meses) if not parcial[i]]
+    idx_resumen = completos[-1] if completos else None
+
+    def serie(vals: list[float]) -> dict:
+        v = [round(x) for x in vals]
+        base = [v[i] for i in completos]
+        prom = round(sum(base) / len(base)) if base else 0
+        vs_ant = [(_variacion(v[i], v[i - 1]) if i else None) for i in range(meses)]
+        vs_prom = [_variacion(v[i], prom) for i in range(meses)]
+        return {"valores": v, "total": sum(v), "promedio": prom,
+                "vs_anterior_pct": vs_ant, "vs_promedio_pct": vs_prom,
+                "resumen": ({"mes": f"{claves[idx_resumen][0]}-{claves[idx_resumen][1]:02d}", "indice": idx_resumen,
+                             "valor": v[idx_resumen], "vs_promedio_pct": vs_prom[idx_resumen],
+                             "vs_anterior_pct": vs_ant[idx_resumen]} if idx_resumen is not None else None)}
+
+    cats = [{"categoria": c, **serie(v)} for c, v in por_cat.items()]
+    cats = [c for c in cats if c["total"] > 0]
+    cats.sort(key=lambda c: (-c["total"], c["categoria"]))
+    out = {
+        "meses": [{"mes": f"{a}-{m:02d}", "etiqueta": MESES[m - 1][:3], "etiqueta_larga": f"{MESES[m - 1]} de {a}",
+                   "parcial": parcial[i]} for i, (a, m) in enumerate(claves)],
+        "total_mensual": [round(x) for x in total_mes],
+        "serie_total": serie(total_mes),
+        "categorias": cats,
+        "hay_datos": bool(cats),
+    }
+    if categoria is not None:
+        subs = [{"subcategoria": k, **serie(v)} for k, v in por_sub.items()]
+        subs = [s for s in subs if s["total"] > 0]
+        subs.sort(key=lambda s: (s["subcategoria"] is None, -s["total"]))
+        out["categoria"] = categoria
+        out["tiene_subcategorias"] = any(s["subcategoria"] for s in subs)
+        out["subcategorias"] = subs
+    return out

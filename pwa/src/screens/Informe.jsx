@@ -14,6 +14,10 @@ import BarraProgreso from '../components/BarraProgreso'
 import EnlaceCostos from '../components/EnlaceCostos'
 import IngresosGastos from '../components/IngresosGastos'
 import GraficoEvolucion from '../components/GraficoEvolucion'
+import EvolucionCategoria from '../components/EvolucionCategoria'
+import Sparkline from '../components/Sparkline'
+import { useEvolucionCategorias } from '../lib/useEvolucionCategorias'
+import { pctCorto } from '../lib/graficos'
 import { nombreDe } from '../lib/tituloMovimiento'
 import DiaADia from '../components/DiaADia'
 
@@ -93,11 +97,19 @@ export default function Informe() {
   const [detalles, setDetalles] = useState({})
   const [desgloses, setDesgloses] = useState({})
 
-  const params = useMemo(
+  // Mes elegido tocando una barra del gráfico: enfoca el desglose sin cambiar lo que dibuja el gráfico.
+  const [sel, setSel] = useState(null)
+  const paramsBase = useMemo(
     () => (mes
       ? { periodo: 'mes', mes }
       : { periodo: valor.periodo, ...(valor.periodo === 'rango' ? { desde: valor.desde, hasta: valor.hasta } : {}) }),
     [valor, mes]
+  )
+  const params = useMemo(
+    () => (sel ? { periodo: 'mes', mes: sel } : mes
+      ? { periodo: 'mes', mes }
+      : { periodo: valor.periodo, ...(valor.periodo === 'rango' ? { desde: valor.desde, hasta: valor.hasta } : {}) }),
+    [valor, mes, sel]
   )
 
   // Enlace «Ver mi evolución» (/informe#evolucion): baja hasta la gráfica evolutiva.
@@ -139,6 +151,9 @@ export default function Informe() {
     }
   }
 
+  // Tendencia de 6 meses por categoría (mini sparkline + ↑↓ frente a su promedio). Si falla, la lista sigue igual.
+  const tendencias = useEvolucionCategorias(6, null).datos
+  const tendenciaDe = (cat) => tendencias?.categorias.find((x) => x.categoria === cat)
   const segmentos = informe?.categorias ? segmentosDona(informe.categorias) : []
 
   return (
@@ -153,13 +168,14 @@ export default function Informe() {
       <section className="px-6 mt-2">
         <SelectorPeriodo
           valor={mes ? { periodo: 'mes' } : valor}
-          onChange={(v) => { setMes(null); setValor(v) }}
+          onChange={(v) => { setMes(null); setSel(null); setValor(v) }}
         />
       </section>
 
       <EnlaceCostos className="mx-6 mt-3" />
 
-      <IngresosGastos params={params} fmt={fmt} className="mx-6 mt-4" />
+      <IngresosGastos params={paramsBase} fmt={fmt} className="mx-6 mt-4" seleccion={sel} onSeleccion={setSel} />
+      <EvolucionCategoria fmt={fmt} className="mx-6 mt-4" />
       <GraficoEvolucion fmt={fmt} className="mx-6 mt-4" />
 
       {cargando && <div className="mx-6 mt-6 space-y-4"><EsqueletoGrafica alto={160} etiqueta="Cargando tu informe" /><EsqueletoLista filas={4} /></div>}
@@ -247,6 +263,18 @@ export default function Informe() {
                             color="var(--color-brand)"
                           />
                         </div>
+                        {(() => {
+                          const t = tendenciaDe(c.categoria)
+                          if (!t || t.valores.length < 2) return null
+                          const p = t.resumen?.vs_promedio_pct
+                          const txt = p == null || Math.abs(p) < 3 ? 'estable' : `${p > 0 ? '↑' : '↓'} ${pctCorto(p)}`
+                          return (
+                            <div className="shrink-0 text-ink-soft flex flex-col items-center" data-testid="tendencia-categoria">
+                              <Sparkline valores={t.valores} ancho={48} alto={16} resumen={`Tendencia de ${c.categoria} en 6 meses: ${txt} frente a su promedio`} />
+                              <span className="text-[10px] leading-none mt-0.5" aria-hidden="true">{txt}</span>
+                            </div>
+                          )
+                        })()}
                         <div className="text-right shrink-0">
                           <p className="text-sm font-semibold">{fmt(c.monto)}</p>
                           <p className="text-[11px] text-ink-soft">{String(c.pct).replace('.', ',')} % · <Variacion pct={c.variacion_pct} anteriorLabel={`antes ${fmt(c.anterior)}`} /></p>
