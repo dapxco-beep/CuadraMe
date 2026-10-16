@@ -18,6 +18,7 @@ import Hoja from '../components/Hoja'
 import Ayudita from '../components/Ayudita'
 import InputMonto from '../components/InputMonto'
 import SeccionPlegable from '../components/SeccionPlegable'
+import DesgloseSubcategorias from '../components/DesgloseSubcategorias'
 import { useDialogos } from '../lib/DialogosContext'
 
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -234,6 +235,7 @@ export default function Presupuesto() {
                           </button>
                         </div>
                       </div>
+                      <DesgloseSubcategorias categoria={p.categoria} />
                       {p.proy && p.proy.estado !== 'sin_limite' ? (
                         <BarraProyeccion item={p.proy} animar={animarBarras} />
                       ) : (

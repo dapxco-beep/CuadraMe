@@ -423,6 +423,7 @@ export default function PorCategorizar() {
           subtitulo={comercioUnico ? comercioUnico.nombre : undefined}
           movimiento={comercioUnico ? { id: comercioUnico.movimiento_id, descripcion: comercioUnico.ejemplo } : undefined}
           recientes={nombres.slice(0, 5)}
+          conSubcategorias={false}
           onElegir={elegirCategoria}
           onCerrar={() => setEligiendo(false)}
         />
@@ -433,6 +434,7 @@ export default function PorCategorizar() {
           subtitulo={rapido.lista[rapido.i].nombre}
           movimiento={{ id: rapido.lista[rapido.i].movimiento_id, descripcion: rapido.lista[rapido.i].ejemplo }}
           recientes={nombres.slice(0, 5)}
+          conSubcategorias={false}
           onElegir={elegirRapido}
           onCerrar={() => setEligiendo(false)}
         />

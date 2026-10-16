@@ -90,10 +90,41 @@ def movimientos_de_categoria(
         "truncado": len(filas) > MAX_MOVS_CATEGORIA,
         "movimientos": [
             {"id": m["id"], "fecha": m["fecha"].isoformat(), "descripcion": m["descripcion"],
-             "monto": round(m["monto"]), "categoria": m["categoria"]}
+             "monto": round(m["monto"]), "categoria": m["categoria"],
+             "subcategoria": m.get("subcategoria")}
             for m in filas[:MAX_MOVS_CATEGORIA]
         ],
     }
+
+
+@router.get("/gasto/subcategorias")
+def desglose_por_subcategoria(
+    categoria: str,
+    periodo: str = Query("este_mes"),
+    desde: str | None = None,
+    hasta: str | None = None,
+    mes: str | None = None,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Desglose de UNA categoría por subcategoría (incluye «Sin subcategoría»). La suma es exactamente
+    el total de la categoría en el informe: las subcategorías solo detallan, no cambian la cifra."""
+    rango = _rango(periodo, desde, hasta, mes)
+    movs = _cargar(db, usuario, rango)
+    filas = [m for m in movs if m["tipo"] == "expense" and inf.en_rango(m, rango) and m["categoria"] == categoria]
+    grupos: dict[str | None, list[float]] = {}
+    for m in filas:
+        g = grupos.setdefault(m.get("subcategoria") or None, [0.0, 0])
+        g[0] += m["monto"]
+        g[1] += 1
+    total = sum(g[0] for g in grupos.values())
+    lista = [{"subcategoria": k, "total": round(g[0]), "cantidad": g[1],
+              "porcentaje": round(100 * g[0] / total) if total else 0}
+             for k, g in grupos.items()]
+    # Las subcategorías de mayor a menor y «Sin subcategoría» siempre al final.
+    lista.sort(key=lambda x: (x["subcategoria"] is None, -x["total"]))
+    return {"categoria": categoria, "etiqueta": rango["etiqueta"], "total": round(total),
+            "tiene_subcategorias": any(x["subcategoria"] for x in lista), "subcategorias": lista}
 
 
 @router.get("/meses")

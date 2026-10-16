@@ -8,6 +8,7 @@ export function CategoriasProvider({ children }) {
   const { usuario } = useAuth()
   const [categorias, setCategorias] = useState([])
   const [cargando, setCargando] = useState(true)
+  const [subcategorias, setSubcategorias] = useState([]) // [{id, categoria, nombre, movimientos}]
 
   const recargar = useCallback(async () => {
     if (!usuario) return
@@ -19,6 +20,13 @@ export function CategoriasProvider({ children }) {
       // usan `nombres` / `activas`, que ya vienen filtrados.
       const cs = await api.categorias(true)
       setCategorias(cs)
+      // Las subcategorías son opcionales: si fallan, todo sigue funcionando solo con categorías.
+      try {
+        const subs = await api.subcategorias?.()
+        if (Array.isArray(subs)) setSubcategorias(subs)
+      } catch {
+        /* sin subcategorías */
+      }
     } catch {
       // si falla, se sigue usando lo que ya había en memoria — las pantallas
       // que dependen de esto (Agregar, Presupuesto...) no deben bloquearse
@@ -42,9 +50,12 @@ export function CategoriasProvider({ children }) {
   const colores = Object.fromEntries(categorias.filter((c) => c.color).map((c) => [c.nombre, c.color]))
   const colorDe = (nombre) => colores[nombre] || null
 
+  // Subcategorías de una categoría, en el orden en que se crearon
+  const subsDe = (categoria) => subcategorias.filter((s) => s.categoria === categoria)
+
   return (
     <CategoriasContext.Provider
-      value={{ categorias, activas, nombres, nombresPresupuesto, iconoDe, colorDe, cargando, recargar }}
+      value={{ categorias, activas, nombres, nombresPresupuesto, iconoDe, colorDe, cargando, recargar, subcategorias, subsDe }}
     >
       {children}
     </CategoriasContext.Provider>

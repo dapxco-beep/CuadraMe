@@ -25,6 +25,7 @@ from app.routers import (
     avisos,
     backup,
     categorias,
+    subcategorias,
     cierre,
     comentarios,
     compartir,
@@ -155,6 +156,7 @@ app.include_router(compartir.router)
 app.include_router(reglas.router)
 app.include_router(ahorcado.router)
 app.include_router(categorias.router)
+app.include_router(subcategorias.router)
 app.include_router(backup.router)
 app.include_router(metricas.router)
 app.include_router(patrimonio.router)

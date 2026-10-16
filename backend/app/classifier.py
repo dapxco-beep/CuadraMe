@@ -130,6 +130,7 @@ def classify(descripcion: str, model: dict) -> dict | None:
 def _resultado_regla(regla, huella: str) -> dict:
     return {
         "categoria": regla.categoria,
+        "subcategoria": getattr(regla, "subcategoria", None),
         "tipo": regla.tipo,
         "confianza": 1.0,
         "fuente": "regla",

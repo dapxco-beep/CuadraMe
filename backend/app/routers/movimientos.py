@@ -12,6 +12,7 @@ from sqlalchemy import and_, or_
 
 from app import duplicados as dup
 from app import pendientes
+from app import subcategorias as subcat
 from app.clave_comercio import clave_comercio, huella_en_descripcion
 from app.autocat import (
     ClasificadorUsuario,
@@ -240,8 +241,10 @@ def recategorizar_comercio(
     ).first():
         raise HTTPException(status_code=400, detail="Esa categoría no existe en tu lista")
 
+    subcategoria = subcat.normalizar(db, usuario.id, categoria, data.subcategoria)
     mov.cat_origen = origen_tras_edicion(mov.cat_origen, mov.categoria, categoria)
     mov.categoria = categoria
+    mov.subcategoria = subcategoria  # otra categoría (o ninguna) = la subcategoría anterior ya no aplica
     mov.cat_confirmada = True
     actualizados = 1
     patron = None
@@ -250,11 +253,12 @@ def recategorizar_comercio(
     if data.aplicar_a_todos:
         origen_regla = (data.patron or "").strip() or mov.descripcion
         r = guardar_regla_aprendida(
-            db, usuario.id, origen_regla, categoria, confirmar_peligrosa=data.confirmar_peligrosa
+            db, usuario.id, origen_regla, categoria, confirmar_peligrosa=data.confirmar_peligrosa,
+            subcategoria=subcategoria,
         )
         patron = r["huella"]
         if r["guardada"]:
-            actualizados += aplicar_a_anteriores(db, usuario.id, r["huella"], categoria, {mov.id})
+            actualizados += aplicar_a_anteriores(db, usuario.id, r["huella"], categoria, {mov.id}, subcategoria=subcategoria)
         else:
             regla_omitida = r["motivo"]  # solo este movimiento; la regla pide confirmación
 
@@ -325,17 +329,23 @@ def crear_movimiento(
 
     categoria = data.categoria
     auto = datos_auto(None)
+    subcategoria = None
     if not categoria:
         resultado = _clasificar(db, usuario.id, data.descripcion)
         categoria = resultado["categoria"] if resultado else "Otros"
         if resultado:
             auto = datos_auto(origen_de(resultado.get("fuente")))
+            # Solo si el usuario ya la usó con este comercio (o está en su regla) y todavía existe.
+            subcategoria = subcat.existente_o_nada(db, usuario.id, categoria, resultado.get("subcategoria"))
+    elif data.subcategoria:
+        subcategoria = subcat.normalizar(db, usuario.id, categoria, data.subcategoria)
 
     movimiento = Movimiento(
         usuario_id=usuario.id,
         cuenta_id=data.cuenta_id,
         descripcion=data.descripcion,
         categoria=categoria,
+        subcategoria=subcategoria,
         tipo=data.tipo,
         monto=data.monto,
         fecha=data.fecha or ahora_co(),
@@ -505,11 +515,21 @@ def editar_movimiento(
             raise HTTPException(status_code=404, detail="Cuenta no encontrada")
         cuenta_nueva = bloquear_cuenta(db, destino.id)
 
+    # Subcategoría: "" la quita; con otra categoría y sin subcategoría nueva, la anterior se limpia.
+    sub_pedida = data.subcategoria if "subcategoria" in data.model_fields_set else None
+    categoria_final = cambios.get("categoria", mov.categoria)
+    if sub_pedida:
+        sub_final = subcat.normalizar(db, usuario.id, categoria_final, sub_pedida)
+    elif sub_pedida == "" or ("categoria" in cambios and cambios["categoria"] != mov.categoria):
+        sub_final = None
+    else:
+        sub_final = mov.subcategoria
     cuenta_actual.saldo -= _delta_de(mov)
     categoria_previa, origen_previo = mov.categoria, mov.cat_origen
     for campo in ("descripcion", "monto", "tipo", "categoria", "fecha", "notas"):
         if campo in cambios:
             setattr(mov, campo, cambios[campo])
+    mov.subcategoria = sub_final
     mov.cuenta_id = cuenta_nueva.id
     cuenta_nueva.saldo += _delta_de(mov)
     if "categoria" in cambios:
@@ -545,11 +565,14 @@ def recategorizar_masivo(
         c.id for c in db.query(Cuenta).filter(Cuenta.id.in_(cuentas_de_movs)).all()
         if puede_editar_cuenta(db, usuario.id, c)
     }
+    subcategoria = subcat.normalizar(db, usuario.id, data.categoria, data.subcategoria)
     actualizados = 0
     for mov in movs:
         if mov.cuenta_id not in cuentas_editables:
             continue
         mov.cat_origen = origen_tras_edicion(mov.cat_origen, mov.categoria, data.categoria)
+        if mov.categoria != data.categoria or subcategoria:
+            mov.subcategoria = subcategoria
         mov.categoria = data.categoria
         mov.cat_confirmada = True
         actualizados += 1
@@ -878,12 +901,14 @@ def _registrar_movimiento_rapido(
         auto = {"cat_origen": origen_auto, "cat_confirmada": False}
     else:
         auto = datos_auto(origen_de(resultado.get("fuente")) if resultado else None)
+    subcategoria = subcat.existente_o_nada(db, usuario_id, categoria, resultado.get("subcategoria")) if resultado else None
 
     movimiento = Movimiento(
         usuario_id=usuario_id,
         cuenta_id=cuenta.id,
         descripcion=descripcion,
         categoria=categoria,
+        subcategoria=subcategoria,
         tipo=tipo,
         monto=monto,
         fecha=momento,

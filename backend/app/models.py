@@ -153,6 +153,8 @@ class ReglaCategoria(Base):
     usuario_id = Column(String, nullable=False, index=True)
     patron = Column(String, nullable=False)  # texto a buscar en la descripción (contiene, case-insensitive)
     categoria = Column(String, nullable=False)
+    # Opcional: detalle dentro de la categoría (ver docs/SUBCATEGORIAS.md). NULL = solo categoría.
+    subcategoria = Column(String, nullable=True)
     tipo = Column(String, nullable=True)  # income | expense | transfer | null (no forzar tipo)
     prioridad = Column(Integer, default=0)  # reglas con mayor prioridad se evalúan primero
     creado_en = Column(DateTime, default=datetime.utcnow)
@@ -174,6 +176,9 @@ class Movimiento(Base):
     fecha = Column(DateTime, default=ahora_co, index=True)  # hora Colombia (naive), no UTC
     descripcion = Column(String, nullable=False)
     categoria = Column(String, default="Otros")
+    # Opcional: detalle dentro de la categoría («Transporte · Gasolina»). La categoría sigue siendo la
+    # que agrega en informes/presupuestos; esto solo desglosa. NULL = sin subcategoría.
+    subcategoria = Column(String, nullable=True)
     tipo = Column(String, nullable=False)  # income | expense | transfer
     monto = Column(Float, nullable=False)
     fuente = Column(String, default="manual")  # manual | csv_import | ai | sms
@@ -490,4 +495,18 @@ class Categoria(Base):
     color = Column(String, nullable=True)  # opcional, "#RRGGBB"
     tipo = Column(String, default="ambos")  # gasto | ingreso | ambos
     es_sistema = Column(Boolean, default=False)  # la crea la app (intereses, 4x1000, rendimientos...): no sale en presupuestos por defecto, sí en informes
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class Subcategoria(Base):
+    """Detalle opcional DENTRO de una categoría (Transporte > Gasolina, Uber). Un solo nivel.
+    Se referencia por NOMBRE de la categoría padre (igual que movimientos, reglas y presupuestos
+    referencian la categoría). Nombre único por (usuario, padre). Ver docs/SUBCATEGORIAS.md."""
+    __tablename__ = "subcategorias"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    categoria_padre = Column(String, nullable=False)
+    nombre = Column(String, nullable=False)
+    orden = Column(Integer, default=0)
     creado_en = Column(DateTime, default=datetime.utcnow)

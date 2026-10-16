@@ -41,7 +41,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
   const id = idProp ?? params.id
   const volver = useVolver('/movimientos')
   const { cuentas, recargar: recargarCuentas } = useCuentas()
-  const { nombres: categorias, iconoDe } = useCategorias()
+  const { nombres: categorias, iconoDe, subsDe } = useCategorias()
   const { confirmar, avisar } = useDialogos()
   const [movimiento, setMovimiento] = useState(null)
   const [noEncontrado, setNoEncontrado] = useState(false)
@@ -141,6 +141,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       monto: String(Math.round(movimiento.monto * 100) / 100),
       tipo: movimiento.tipo,
       categoria: movimiento.categoria,
+      subcategoria: movimiento.subcategoria || '',
       fecha: fechaParaInput(movimiento.fecha),
       cuenta_id: movimiento.cuenta_id,
       notas: movimiento.notas || '',
@@ -165,6 +166,8 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       // Importados de un extracto pueden venir como "transfer": ese tipo se respeta.
       if (movimiento.tipo !== 'transfer') cambios.tipo = form.tipo
       // La fecha solo se manda si el usuario la cambió, para no pisar la hora original.
+      // La subcategoría solo viaja si cambió (o si hay que limpiarla al cambiar de categoría).
+      if ((form.subcategoria || '') !== (movimiento.subcategoria || '')) cambios.subcategoria = form.subcategoria || ''
       if (form.fecha !== fechaParaInput(movimiento.fecha)) cambios.fecha = `${form.fecha}T12:00:00`
 
       const actualizado = await api.editarMovimiento(id, cambios)
@@ -344,13 +347,28 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
             <select
               className={`${campo} mt-1`}
               value={form.categoria}
-              onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+              onChange={(e) => setForm({ ...form, categoria: e.target.value, subcategoria: '' })}
             >
               {[...new Set([form.categoria, ...categorias])].map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </label>
+          {subsDe && subsDe(form.categoria).length > 0 && (
+            <label className="block">
+              <span className="text-xs text-ink-soft">Subcategoría (opcional)</span>
+              <select
+                className={`${campo} mt-1`}
+                value={form.subcategoria || ''}
+                onChange={(e) => setForm({ ...form, subcategoria: e.target.value })}
+              >
+                <option value="">Ninguna</option>
+                {subsDe(form.categoria).map((s) => (
+                  <option key={s.id} value={s.nombre}>{s.nombre}</option>
+                ))}
+              </select>
+            </label>
+          )}
           {cuentas.length > 1 && (
             <label className="block">
               <span className="text-xs text-ink-soft">Cuenta</span>
@@ -401,7 +419,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
         </div>
       ) : (
         <div className="mx-5 rounded-2xl bg-paper-raised border border-line divide-y divide-line">
-          <Fila label="Categoría" valor={movimiento.categoria} />
+          <Fila label="Categoría" valor={movimiento.subcategoria ? `${movimiento.categoria} · ${movimiento.subcategoria}` : movimiento.categoria} />
           {esAuto(movimiento) && (
             <div className="px-4 py-3.5">
               <p className="text-sm">

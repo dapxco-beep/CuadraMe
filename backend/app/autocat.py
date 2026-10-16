@@ -86,7 +86,7 @@ def movimientos_confirmados(db: Session, usuario_id: str) -> list[dict]:
         .all()
     )
     return [
-        {"descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo,
+        {"descripcion": m.descripcion, "categoria": m.categoria, "subcategoria": m.subcategoria, "tipo": m.tipo,
          "monto": m.monto, "fecha": m.fecha.isoformat() if m.fecha else ""}
         for m in movs
     ]
@@ -129,7 +129,7 @@ def decidir_categoria(
             if cat != "Otros" or h["categoria"] == "Otros":
                 veces = f"{h['n']} veces" if h["n"] > 1 else "1 vez"
                 r = {"categoria": cat, "tipo": (contexto or {}).get("tipo") or h.get("tipo") or "expense",
-                     "confianza": h["confianza"], "fuente": "historial",
+                     "confianza": h["confianza"], "fuente": "historial", "subcategoria": h.get("subcategoria"),
                      "razon": f"aprendida de tu historial ({veces})"}
     if not r:
         aprendido = classify(descripcion, modelo)
@@ -213,6 +213,7 @@ def clasificar_lote_detalle(db: Session, usuario_id: str, descripciones: list[st
 
 def aplicar_a_anteriores(
     db: Session, usuario_id: str, huella: str, categoria: str, excluir_ids: set[str] | None = None,
+    subcategoria: str | None = None,
 ) -> int:
     """'Aplicar también a los anteriores': recategoriza (y confirma) los movimientos
     pasados del usuario cuya huella de comercio coincide. Respeta permisos de edición
@@ -238,7 +239,7 @@ def aplicar_a_anteriores(
     for m in movs:
         if m.id in excluir_ids or not huella_en_descripcion(huella, m.descripcion or ""):
             continue
-        if m.categoria == categoria and m.cat_confirmada is not False:
+        if m.categoria == categoria and m.cat_confirmada is not False and (subcategoria is None or m.subcategoria == subcategoria):
             continue  # ya está así y confirmada
         if m.cuenta_id not in editables:
             c = db.query(Cuenta).filter(Cuenta.id == m.cuenta_id).first()
@@ -246,6 +247,8 @@ def aplicar_a_anteriores(
         if not editables[m.cuenta_id]:
             continue
         m.cat_origen = origen_tras_edicion(m.cat_origen, m.categoria, categoria)
+        if m.categoria != categoria or subcategoria is not None:
+            m.subcategoria = subcategoria  # otra categoría: la subcategoría anterior ya no aplica
         m.categoria = categoria
         m.cat_confirmada = True
         n += 1
@@ -256,7 +259,7 @@ def aplicar_a_anteriores(
 
 def guardar_regla_aprendida(
     db: Session, usuario_id: str, descripcion: str, categoria: str, tipo: str | None = None,
-    confirmar_peligrosa: bool = False,
+    confirmar_peligrosa: bool = False, subcategoria: str | None = None,
 ) -> dict:
     """Guarda (o actualiza) la regla del comercio de esta descripción.
     - Si ya hay una regla con la misma huella, se ACTUALIZA: nunca dos reglas
@@ -271,11 +274,15 @@ def guardar_regla_aprendida(
     regla = next((r for r in existentes if clave_comercio(r.patron) == huella), None)
     actualizada = regla is not None
     if regla:
+        categoria_previa = regla.categoria
         regla.categoria = categoria
+        if categoria != categoria_previa or subcategoria is not None:
+            regla.subcategoria = subcategoria  # otra categoría: la subcategoría anterior ya no aplica
         if tipo:
             regla.tipo = tipo
     else:
-        regla = ReglaCategoria(usuario_id=usuario_id, patron=huella, categoria=categoria, tipo=tipo, prioridad=0)
+        regla = ReglaCategoria(usuario_id=usuario_id, patron=huella, categoria=categoria, subcategoria=subcategoria,
+                               tipo=tipo, prioridad=0)
         db.add(regla)
     return {"guardada": True, "huella": huella, "actualizada": actualizada, "motivo": None, "requiere_confirmacion": False}
 

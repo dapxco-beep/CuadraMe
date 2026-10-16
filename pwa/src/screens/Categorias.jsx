@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { useVolver } from '../lib/useVolver'
-import { ArrowDown, ArrowLeft, ArrowUp, Check, Eye, EyeOff, Plus, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, Check, ChevronDown, ChevronRight, Eye, EyeOff, Plus, Trash2, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import SelectorEmoji from '../components/SelectorEmoji'
 import Hoja from '../components/Hoja'
+import SubcategoriasDeCategoria from '../components/SubcategoriasDeCategoria'
 
 const TIPOS = [
   { id: 'gasto', etiqueta: 'Gasto' },
@@ -165,7 +166,13 @@ export default function Categorias() {
 }
 
 function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
+  const { subsDe } = useCategorias()
+  const [abierta, setAbierta] = useState(false)
+  // Las categorías que la app maneja sola (intereses, 4x1000...) no admiten subcategorías.
+  const admite = c.activa && !c.es_sistema
+  const nSubs = subsDe ? subsDe(c.nombre).length : 0
   return (
+    <>
     <div className={`flex items-center gap-1 pl-4 pr-2 py-3 ${!c.activa ? 'opacity-70' : ''}`}>
       <button onClick={onEditar} className="flex items-center gap-3 flex-1 min-w-0 text-left" aria-label={`Editar ${c.nombre}`}>
         <span
@@ -184,6 +191,17 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
           </p>
         </div>
       </button>
+      {admite && (
+        <button
+          onClick={() => setAbierta((v) => !v)}
+          aria-expanded={abierta}
+          className="shrink-0 h-11 min-w-[44px] px-1 flex items-center justify-center gap-0.5 text-xs text-ink-soft"
+          aria-label={`Subcategorías de ${c.nombre}`}
+        >
+          {nSubs > 0 && <span>{nSubs}</span>}
+          {abierta ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        </button>
+      )}
       {onSubir !== undefined && (
         <div className="flex shrink-0">
           <button
@@ -222,6 +240,8 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
         </button>
       )}
     </div>
+    {admite && abierta && <SubcategoriasDeCategoria categoria={c} />}
+    </>
   )
 }
 
