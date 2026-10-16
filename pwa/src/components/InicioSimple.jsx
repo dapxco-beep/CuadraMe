@@ -1,3 +1,4 @@
+import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
 import { Link } from 'react-router-dom'
 import { ArrowLeftRight, ChevronRight, Footprints } from 'lucide-react'
 import { IlustracionVacia, Isotipo, Monto } from '../brand/Marca'
@@ -47,15 +48,15 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
         ) : (
           <div className="divide-y divide-line">
             {recientes.map((m) => (
-              <Link key={m.id} to={`/movimientos/${m.id}`} className="flex items-center gap-3 px-4 py-3 min-h-[56px]">
+              <Link key={m.id} to={`/movimientos/${m.id}`} className="flex items-start gap-3 px-4 py-3 min-h-[56px]">
                 <span className="w-10 h-10 rounded-full bg-accent-soft flex items-center justify-center text-lg shrink-0 text-accent" aria-hidden="true">
                   {m.tipo === 'transfer' ? <Icono icono={ArrowLeftRight} tam="md" /> : iconoDe(m.categoria)}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="t-cuerpo font-medium truncate">{m.descripcion}</p>
-                  <p className="t-apoyo">{m.tipo === 'transfer' ? 'Entre tus cuentas' : m.categoria}</p>
+                  <p className="t-cuerpo font-medium break-words line-clamp-4">{m.descripcion}</p>
+                  <p className="t-apoyo break-words">{[fechaHoraMovimiento(fechaDeMovimiento(m)), m.tipo === 'transfer' ? 'Entre tus cuentas' : m.categoria].filter(Boolean).join(' · ')}</p>
                 </div>
-                <span className={`t-cuerpo font-semibold t-cifra shrink-0 ${m.tipo === 'income' ? 'text-accent' : 'text-ink'}`}>
+                <span className={`t-cuerpo font-semibold t-cifra shrink-0 whitespace-nowrap whitespace-nowrap ${m.tipo === 'income' ? 'text-accent' : 'text-ink'}`}>
                   {m.tipo === 'income' ? '+' : m.tipo === 'expense' ? '-' : ''}
                   {fmt(m.monto)}
                 </span>

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { IlustracionVacia, Isotipo, Monto, SelloCuadre } from '../brand/Marca'
 import { api } from '../lib/api'
+import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
 import { visto } from '../lib/ultimoVisto'
 import { useBloqueo } from '../lib/BloqueoContext'
 import BotonOjo from '../components/BotonOjo'
@@ -54,7 +55,7 @@ const ACCESOS_RAPIDOS = [
 // Fila de enlace dentro de una sección: ícono + título + apoyo + flecha
 function FilaEnlace({ to, state, icono, titulo, apoyo, testId }) {
   return (
-    <Link to={to} state={state} data-testid={testId} className="flex items-center gap-3 py-3 min-h-[56px]">
+    <Link to={to} state={state} data-testid={testId} className="flex items-start gap-3 py-3 min-h-[56px]">
       <span className="w-9 h-9 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
         <Icono icono={icono} tam="md" />
       </span>
@@ -458,15 +459,15 @@ export default function Inicio() {
               ) : (
                 <div className="divide-y divide-line">
                   {movimientos.map((m) => (
-                    <Link key={m.id} to={`/movimientos/${m.id}`} className="flex items-center gap-3 py-3 min-h-[56px]">
+                    <Link key={m.id} to={`/movimientos/${m.id}`} className="flex items-start gap-3 py-3 min-h-[56px]">
                       <span className="w-10 h-10 rounded-full bg-accent-soft flex items-center justify-center text-lg shrink-0 text-accent" aria-hidden="true">
                         {m.tipo === 'transfer' ? <Icono icono={ArrowLeftRight} tam="md" /> : iconoDe(m.categoria)}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="t-cuerpo font-medium truncate">{m.descripcion}</p>
-                        <p className="t-apoyo">{m.categoria}</p>
+                        <p className="t-cuerpo font-medium break-words line-clamp-4">{m.descripcion}</p>
+                        <p className="t-apoyo break-words">{[fechaHoraMovimiento(fechaDeMovimiento(m)), cuentas.find((c) => c.id === m.cuenta_id)?.nombre, m.categoria].filter(Boolean).join(' · ')}</p>
                       </div>
-                      <span className={`t-cuerpo font-semibold t-cifra shrink-0 ${m.tipo === 'income' ? 'text-accent' : 'text-ink'}`}>
+                      <span className={`t-cuerpo font-semibold t-cifra shrink-0 whitespace-nowrap ${m.tipo === 'income' ? 'text-accent' : 'text-ink'}`}>
                         {m.tipo === 'income' ? '+' : m.tipo === 'expense' ? '-' : ''}
                         {fmt(m.monto)}
                       </span>

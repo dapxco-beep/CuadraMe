@@ -68,7 +68,7 @@ export default function CorreosYaRegistrados({ cantidad = 0, onCambio }) {
               <li key={c.id} className="px-3.5 py-3" data-testid={`ya-registrado-${c.id}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate">{c.comercio}</p>
+                    <p className="text-sm font-semibold break-words line-clamp-2">{c.comercio}</p>
                     {c.registrado_como ? (
                       <p className="text-xs text-ink-soft">
                         Ya lo tenías: «{c.registrado_como.descripcion}», registrado desde {fraseCanales(c.registrado_como.canales) || 'otro canal'}.

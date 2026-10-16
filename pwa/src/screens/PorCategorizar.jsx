@@ -6,6 +6,7 @@ import SelectorCategoria from '../components/SelectorCategoria'
 import { useVolver } from '../lib/useVolver'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
+import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
 import { useCategorias } from '../lib/CategoriasContext'
 import {
   LIMITE_VISIBLE,
@@ -58,7 +59,7 @@ function FilaComercio({ g, marcado, ids, onComercio, onMovimiento, onVer }) {
           className="mt-1 w-5 h-5 accent-[var(--c-accent)] shrink-0"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold truncate capitalize">{nombre}</p>
+          <p className="text-sm font-semibold break-words line-clamp-2 capitalize">{nombre}</p>
           <p className="text-xs text-ink-soft">
             {plural(g.conteo, 'movimiento', 'movimientos')} · {formatCOP(g.monto_total)}
             {g.categoria_actual && g.categoria_actual !== 'Otros' ? ` · hoy en ${g.categoria_actual}` : ''}
@@ -81,7 +82,7 @@ function FilaComercio({ g, marcado, ids, onComercio, onMovimiento, onVer }) {
         <ul className="mt-2 ml-8 space-y-1" aria-label={`Movimientos de ${nombre}`}>
           {movs === null && <li className="text-xs text-ink-soft">Cargando…</li>}
           {(movs || []).map((m) => (
-            <li key={m.id} className="flex items-center gap-2 text-xs">
+            <li key={m.id} className="flex items-start gap-2 text-xs min-h-[44px] py-1">
               <input
                 type="checkbox"
                 checked={marcado || ids.has(m.id)}
@@ -90,9 +91,11 @@ function FilaComercio({ g, marcado, ids, onComercio, onMovimiento, onVer }) {
                 aria-label={`Seleccionar ${m.descripcion} del ${String(m.fecha).slice(0, 10)}, ${formatCOP(m.monto)}`}
                 className="w-4 h-4 accent-[var(--c-accent)] shrink-0"
               />
-              <span className="flex-1 truncate">{m.descripcion}</span>
-              <span className="text-ink-soft shrink-0">{String(m.fecha).slice(5, 10)}</span>
-              <span className="shrink-0">{formatCOP(m.monto)}</span>
+              <span className="flex-1 min-w-0">
+                <span className="block font-medium break-words line-clamp-3">{m.descripcion}</span>
+                <span className="block text-ink-soft">{fechaHoraMovimiento(fechaDeMovimiento(m))}</span>
+              </span>
+              <span className="shrink-0 whitespace-nowrap tabular-nums font-semibold">{formatCOP(m.monto)}</span>
             </li>
           ))}
         </ul>
@@ -376,7 +379,7 @@ export default function PorCategorizar() {
             <ul className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden mt-1">
               {silencios.map((s) => (
                 <li key={s.huella} className="flex items-center gap-3 px-4 py-2">
-                  <span className="flex-1 text-sm truncate capitalize">{s.huella}</span>
+                  <span className="flex-1 text-sm break-words line-clamp-2 capitalize">{s.huella}</span>
                   <button
                     onClick={async () => {
                       await api.quitarSilencios([s.huella])

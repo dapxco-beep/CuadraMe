@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Pencil, Smartphone, Trash2, X } from 'lucide-react'
 import { api } from '../lib/api'
+import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useCuentas } from '../lib/CuentasContext'
@@ -15,11 +16,6 @@ import {
 } from '../lib/bandeja'
 import InputMonto from './InputMonto'
 
-function hora(fecha) {
-  const d = new Date(String(fecha).replace(' ', 'T'))
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })
-}
 
 /**
  * Hoja inferior "Detectamos N movimientos: ¿son tuyos?". Aparece al abrir la app
@@ -225,13 +221,12 @@ export default function BandejaPorConfirmar() {
             <li key={m.id} className="rounded-2xl border border-line bg-paper-raised p-3.5" data-testid="tarjeta-por-confirmar">
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{m.descripcion}</p>
-                  <p className="text-xs text-ink-soft mt-0.5 truncate">
-                    {cuentas.find((c) => c.id === m.cuenta_id)?.nombre || 'Cuenta'} · {m.categoria}
-                    {hora(m.fecha) ? ` · ${hora(m.fecha)}` : ''}
+                  <p className="text-sm font-semibold break-words line-clamp-3">{m.descripcion}</p>
+                  <p className="text-xs text-ink-soft mt-0.5 break-words">
+                    {[fechaHoraMovimiento(fechaDeMovimiento(m)), cuentas.find((c) => c.id === m.cuenta_id)?.nombre || 'Cuenta', m.categoria].filter(Boolean).join(' · ')}
                   </p>
                 </div>
-                <p className="text-sm font-bold shrink-0">
+                <p className="text-sm font-bold shrink-0 whitespace-nowrap tabular-nums">
                   {m.tipo === 'income' ? '+' : '-'}
                   {fmt(m.monto)}
                 </p>
@@ -307,7 +302,7 @@ function FormEdicion({ m, cuentas, ocupado, onCancelar, onGuardar }) {
   const campo = 'w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm outline-none focus:border-accent'
   return (
     <li className="rounded-2xl border border-accent/40 bg-paper-raised p-3.5 space-y-2.5" data-testid="edicion-por-confirmar">
-      <p className="text-sm font-semibold truncate">{m.descripcion}</p>
+      <p className="text-sm font-semibold break-words line-clamp-3">{m.descripcion}</p>
       <label className="block">
         <span className="text-[11px] text-ink-soft">Monto</span>
         <InputMonto

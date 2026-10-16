@@ -4,6 +4,7 @@ import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import Ayudita from '../components/Ayudita'
 import { useVolver } from '../lib/useVolver'
+import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 
@@ -106,12 +107,12 @@ export default function RevisarTraslados() {
                         {s.tipo === 'par' ? 'Sale de una cuenta y entra a otra' : 'Posible traslado: ¿Fue entre tus cuentas?'}
                       </span>
                       {s.movimientos.map((m) => (
-                        <span key={m.id} className="flex items-center justify-between gap-3 text-sm mt-1">
+                        <span key={m.id} className="flex items-start justify-between gap-3 text-sm mt-1.5">
                           <span className="min-w-0">
-                            <span className="block truncate font-medium">{m.descripcion}</span>
-                            <span className="text-xs text-ink-soft">{m.cuenta} · {(m.fecha || '').slice(0, 10)}</span>
+                            <span className="block font-semibold break-words line-clamp-3">{m.descripcion}</span>
+                            <span className="block text-xs text-ink-soft break-words">{[fechaHoraMovimiento(fechaDeMovimiento(m)), m.cuenta].filter(Boolean).join(' · ')}</span>
                           </span>
-                          <span className={`font-semibold shrink-0 ${m.tipo === 'income' ? 'text-accent' : ''}`}>
+                          <span className={`font-semibold shrink-0 whitespace-nowrap tabular-nums ${m.tipo === 'income' ? 'text-accent' : ''}`}>
                             {m.tipo === 'income' ? '+' : '-'}{fmt(m.monto)}
                           </span>
                         </span>

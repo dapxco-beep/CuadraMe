@@ -170,8 +170,8 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
               )}
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate">{c.comercio}</p>
-                  <p className="text-xs text-ink-soft truncate">{c.asunto}</p>
+                  <p className="text-sm font-semibold break-words line-clamp-2">{c.comercio}</p>
+                  <p className="text-xs text-ink-soft break-words line-clamp-2">{c.asunto}</p>
                 </div>
                 {!falta && (
                   <p className={`text-sm font-bold shrink-0 ${c.tipo_sugerido === 'income' ? 'text-accent' : 'text-ink'}`}>
