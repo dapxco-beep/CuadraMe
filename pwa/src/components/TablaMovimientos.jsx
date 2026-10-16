@@ -72,7 +72,7 @@ const Fila = memo(function Fila({ m, columnas, icono, moneda, cuenta, esSel, act
               aria-label={`Cambiar categoría de ${m.descripcion}`}
               className="inline-flex items-center gap-1 text-xs text-ink-soft rounded-full border border-line px-2.5 min-h-[32px] hover:border-accent hover:text-ink"
             >
-              <span aria-hidden="true">{icono}</span> {m.categoria}
+              <span aria-hidden="true">{icono}</span> {m.categoria}{m.subcategoria ? ` · ${m.subcategoria}` : ''}
             </button>
           )}
         </td>

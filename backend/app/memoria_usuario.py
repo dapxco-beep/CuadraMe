@@ -62,6 +62,7 @@ def construir_memoria(movs: list[dict]) -> dict:
     cats: dict[str, Counter] = defaultdict(Counter)
     meses: dict[str, set] = defaultdict(set)
     tipos: dict[str, Counter] = defaultdict(Counter)
+    subs: dict[tuple, Counter] = defaultdict(Counter)  # (clave, categoria) -> subcategorías que el usuario ya usó
     for m in movs:
         cat = (m.get("categoria") or "").strip()
         if not cat or cat.lower() == "otros":
@@ -70,11 +71,24 @@ def construir_memoria(movs: list[dict]) -> dict:
         if not k:
             continue
         cats[k][cat] += 1
+        if (m.get("subcategoria") or "").strip():
+            subs[(k, cat)][m["subcategoria"].strip()] += 1
         if m.get("tipo"):
             tipos[k][m["tipo"]] += 1
         if _mes(m.get("fecha")):
             meses[k].add(_mes(m.get("fecha")))
-    return {"cats": cats, "meses": meses, "tipos": tipos}
+    return {"cats": cats, "meses": meses, "tipos": tipos, "subs": subs}
+
+
+def subcategoria_habitual(memoria: dict | None, clave: str, categoria: str) -> str | None:
+    """Subcategoría que el usuario YA usó con este comercio dentro de esa categoría, solo si domina
+    (más de la mitad de las veces que lo categorizó así). Nunca se inventa una."""
+    c = ((memoria or {}).get("subs") or {}).get((clave, categoria))
+    if not c:
+        return None
+    total_cat = (memoria["cats"].get(clave) or {}).get(categoria, 0)
+    nombre, n = c.most_common(1)[0]
+    return nombre if total_cat and n * 2 > total_cat else None
 
 
 def consultar_memoria(descripcion: str, memoria: dict | None) -> dict | None:
@@ -93,15 +107,18 @@ def consultar_memoria(descripcion: str, memoria: dict | None) -> dict | None:
     opciones = ordenadas[:2]
     tp = memoria.get("tipos", {}).get(k)
     tipo = tp.most_common(1)[0][0] if tp else None
+    sub_hab = subcategoria_habitual(memoria, k, cat1)
     if n2 and n1 < RAZON_DOMINANCIA * n2:
         return {"estado": "ambiguo", "categoria": None, "n": total, "confianza": 0.0, "tipo": tipo, "opciones": opciones}
     if n1 == 1 and total == 1:
-        return {"estado": "una_vez", "categoria": cat1, "n": 1, "confianza": CONF_UNA_VEZ, "tipo": tipo, "opciones": opciones}
+        return {"estado": "una_vez", "categoria": cat1, "n": 1, "confianza": CONF_UNA_VEZ, "tipo": tipo, "opciones": opciones,
+                "subcategoria": sub_hab}
     pureza = n1 / total
     conf = min(CONF_CONCORDANTE_MAX, CONF_CONCORDANTE_BASE + 0.05 * (n1 - 2)) * (0.6 + 0.4 * pureza) \
         if n1 >= 2 else CONF_UNA_VEZ * pureza
     estado = "concordante" if n1 >= 2 else "una_vez"
-    return {"estado": estado, "categoria": cat1, "n": total, "confianza": round(conf, 2), "tipo": tipo, "opciones": opciones}
+    return {"estado": estado, "categoria": cat1, "n": total, "confianza": round(conf, 2), "tipo": tipo, "opciones": opciones,
+            "subcategoria": sub_hab}
 
 
 # --- señales -------------------------------------------------------------------

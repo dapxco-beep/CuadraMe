@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
+from app import subcategorias as subcat
 from app.autocat import aplicar_a_anteriores, guardar_regla_aprendida
 from app.models import Categoria, ReglaCategoria
 from app.schemas import AprenderReglaRequest, ReglaCategoriaCreate, ReglaCategoriaOut
@@ -28,7 +29,9 @@ def crear_regla(
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
-    regla = ReglaCategoria(usuario_id=usuario.id, **data.model_dump())
+    campos = data.model_dump()
+    campos["subcategoria"] = subcat.normalizar(db, usuario.id, data.categoria, data.subcategoria)
+    regla = ReglaCategoria(usuario_id=usuario.id, **campos)
     db.add(regla)
     db.commit()
     db.refresh(regla)
@@ -49,12 +52,14 @@ def aprender_regla(
         Categoria.usuario_id == usuario.id, Categoria.nombre == categoria
     ).first():
         raise HTTPException(status_code=400, detail="Esa categoría no existe en tu lista")
+    subcategoria = subcat.normalizar(db, usuario.id, categoria, data.subcategoria)
     r = guardar_regla_aprendida(
-        db, usuario.id, data.descripcion, categoria, tipo=data.tipo, confirmar_peligrosa=data.confirmar_peligrosa
+        db, usuario.id, data.descripcion, categoria, tipo=data.tipo, confirmar_peligrosa=data.confirmar_peligrosa,
+        subcategoria=subcategoria,
     )
     anteriores = 0
     if r["guardada"] and data.aplicar_anteriores:
-        anteriores = aplicar_a_anteriores(db, usuario.id, r["huella"], categoria)
+        anteriores = aplicar_a_anteriores(db, usuario.id, r["huella"], categoria, subcategoria=subcategoria)
     db.commit()
     return {**r, "anteriores_actualizados": anteriores}
 

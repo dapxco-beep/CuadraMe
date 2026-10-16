@@ -106,6 +106,18 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS nombre_titular VARCHAR NULL',
         ],
     ),
+    (
+        # Subcategorías (un nivel dentro de cada categoría). Todo opcional: lo existente no cambia.
+        "0003_subcategorias",
+        [
+            'CREATE TABLE IF NOT EXISTS subcategorias ('
+            'id VARCHAR PRIMARY KEY, usuario_id VARCHAR NOT NULL, categoria_padre VARCHAR NOT NULL, '
+            'nombre VARCHAR NOT NULL, orden INTEGER DEFAULT 0, creado_en TIMESTAMP)',
+            'CREATE INDEX IF NOT EXISTS ix_subcategorias_usuario ON subcategorias (usuario_id)',
+            'ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS subcategoria VARCHAR NULL',
+            'ALTER TABLE reglas_categoria ADD COLUMN IF NOT EXISTS subcategoria VARCHAR NULL',
+        ],
+    ),
 ]
 
 

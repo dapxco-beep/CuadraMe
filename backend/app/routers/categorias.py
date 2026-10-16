@@ -6,6 +6,7 @@ from app.database import get_db
 from sqlalchemy import func
 
 from app import pendientes
+from app import subcategorias as subcat
 from app.autocat import ClasificadorUsuario
 from app.clave_comercio import clave_comercio, es_huella_peligrosa
 from app.classifier import tokenize
@@ -383,6 +384,7 @@ def editar_categoria(
             categoria.nombre = nombre
             # Renombrar no debe dejar nada huérfano con el nombre viejo.
             _reemplazar_nombre(db, usuario.id, anterior, nombre)
+            subcat.renombrar_categoria_padre(db, usuario.id, anterior, nombre)
 
     if data.icono is not None:
         categoria.icono = data.icono
@@ -438,6 +440,9 @@ def eliminar_categoria(
         if not destino.activa:
             raise HTTPException(status_code=400, detail="La categoría de destino está oculta")
         movidos = _reemplazar_nombre(db, usuario.id, categoria.nombre, destino.nombre)
+        subcat.mover_a_otra_categoria(db, usuario.id, categoria.nombre, destino.nombre)
+    else:
+        subcat.borrar_de_categoria(db, usuario.id, categoria.nombre)
 
     db.delete(categoria)
     db.commit()

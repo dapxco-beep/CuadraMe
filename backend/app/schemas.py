@@ -81,6 +81,23 @@ class CategoriaUpdate(BaseModel):
         return "" if v == "" else _validar_color(v)
 
 
+class SubcategoriaCreate(BaseModel):
+    categoria: str = Field(min_length=1, max_length=60)  # nombre de la categoría padre
+    nombre: str = Field(min_length=1, max_length=40)
+
+
+class SubcategoriaUpdate(BaseModel):
+    nombre: str = Field(min_length=1, max_length=40)
+
+
+class SubcategoriaOut(BaseModel):
+    id: str
+    categoria: str
+    nombre: str
+    orden: int = 0
+    movimientos: int = 0  # cuántos movimientos la usan
+
+
 class CategoriasOrden(BaseModel):
     ids: list[str] = Field(min_length=1, max_length=200)
 
@@ -200,6 +217,7 @@ class MovimientoCreate(BaseModel):
     monto: float = Field(gt=0)
     tipo: Literal["income", "expense", "transfer"]
     categoria: Optional[str] = Field(default=None, max_length=60)
+    subcategoria: Optional[str] = Field(default=None, max_length=40)  # opcional, debe ser de esa categoría
     fecha: Optional[datetime] = None
     notas: Optional[str] = Field(default="", max_length=1000)
     # Si ya tienes ese gasto registrado por otro canal (atajo, correo, extracto) la app avisa (409)
@@ -214,6 +232,8 @@ class MovimientoUpdate(BaseModel):
     monto: Optional[float] = Field(default=None, gt=0)
     tipo: Optional[Literal["income", "expense", "transfer"]] = None
     categoria: Optional[str] = Field(default=None, max_length=60)
+    # "" = quitar la subcategoría. Si cambia la categoría y no se envía, la subcategoría se limpia.
+    subcategoria: Optional[str] = Field(default=None, max_length=40)
     fecha: Optional[datetime] = None
     notas: Optional[str] = Field(default=None, max_length=1000)
 
@@ -231,6 +251,7 @@ class MovimientoOut(BaseModel):
     fecha: datetime
     descripcion: str
     categoria: str
+    subcategoria: Optional[str] = None
     tipo: str
     monto: float
     fuente: str
@@ -253,6 +274,7 @@ class RecategorizarComercioRequest(BaseModel):
     categoria: str = Field(min_length=1)
     patron: Optional[str] = Field(default=None, max_length=60)  # si no viene, se deduce de la descripción
     aplicar_a_todos: bool = True
+    subcategoria: Optional[str] = Field(default=None, max_length=40)
     confirmar_peligrosa: bool = False  # guardar aunque la huella sea muy corta o genérica
 
 
@@ -323,6 +345,7 @@ class MovimientoRapidoOut(MovimientoOut):
 class RecategorizarMasivoRequest(BaseModel):
     movimiento_ids: list[str]
     categoria: str
+    subcategoria: Optional[str] = Field(default=None, max_length=40)
 
 
 class RecategorizarMasivoResponse(BaseModel):
@@ -383,6 +406,7 @@ class AdivinarLetraRequest(BaseModel):
 class ReglaCategoriaCreate(BaseModel):
     patron: str = Field(min_length=1, max_length=100)
     categoria: str = Field(max_length=60)
+    subcategoria: Optional[str] = Field(default=None, max_length=40)
     tipo: Optional[str] = None
     prioridad: int = 0
 
@@ -390,6 +414,7 @@ class ReglaCategoriaCreate(BaseModel):
 class AprenderReglaRequest(BaseModel):
     descripcion: str = Field(min_length=1, max_length=200)  # de ahí se saca la huella del comercio
     categoria: str = Field(min_length=1, max_length=60)
+    subcategoria: Optional[str] = Field(default=None, max_length=40)
     tipo: Optional[str] = None
     aplicar_anteriores: bool = False
     confirmar_peligrosa: bool = False
@@ -399,6 +424,7 @@ class ReglaCategoriaOut(BaseModel):
     id: str
     patron: str
     categoria: str
+    subcategoria: Optional[str] = None
     tipo: Optional[str]
     prioridad: int
     activa: Optional[bool] = True  # False = en pausa (no se aplica)

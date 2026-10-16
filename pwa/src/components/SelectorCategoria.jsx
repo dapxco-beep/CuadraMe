@@ -15,10 +15,19 @@ const sinTildes = (t) => (t || '').toLowerCase().normalize('NFD').replace(/[̀-�
  *  - Arriba las más usadas recientemente, búsqueda y "Crear categoría".
  *  - Con `movimiento` (uno solo o un grupo de comercio) ofrece "Recordar para «comercio»"
  *    (marcada) y "Aplicar a los anteriores" con cuántos son. En edición masiva no hay reglas.
- * onElegir(categoria, { recordar, anteriores }) lo resuelve la pantalla (actualización optimista).
+ *  - Subcategorías (opcionales, docs/SUBCATEGORIAS.md): si la categoría elegida ya tiene, se abre un segundo
+ *    paso con chips + «Nueva subcategoría» (crea y asigna en un toque) + «Solo {categoría}» para saltarlo.
+ *    Si no tiene, guarda de una como siempre; «Con subcategoría» deja detallar desde cero en un toque.
+ * onElegir(categoria, { recordar, anteriores, subcategoria }) lo resuelve la pantalla (actualización optimista).
  */
-export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, movimiento, recientes = [], onElegir, onCerrar }) {
-  const { nombres, iconoDe, recargar } = useCategorias()
+export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, movimiento, recientes = [], conSubcategorias = true, onElegir, onCerrar }) {
+  const { nombres, iconoDe, recargar, subsDe: subsDeTodas } = useCategorias()
+  // Pantallas que aún no guardan subcategoría (conSubcategorias={false}) siguen en un solo paso.
+  const subsDe = conSubcategorias ? subsDeTodas : undefined
+  const [paso, setPaso] = useState(null) // categoría elegida cuando se está escogiendo su subcategoría
+  const [detallar, setDetallar] = useState(false)
+  const [nuevaSub, setNuevaSub] = useState(null) // null = cerrado; string = texto del input
+  const [guardandoSub, setGuardandoSub] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [creando, setCreando] = useState(false)
   const [aviso, setAviso] = useState('')
@@ -58,9 +67,43 @@ export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, 
   )
   const existeExacta = nombres.some((n) => sinTildes(n) === q)
 
-  function elegir(categoria, cerrar) {
-    onElegir(categoria, { recordar: puedeRecordar && recordar, anteriores: puedeRecordar && recordar && anteriores })
+  function elegir(categoria, cerrar, subcategoria = null) {
+    onElegir(categoria, {
+      recordar: puedeRecordar && recordar,
+      anteriores: puedeRecordar && recordar && anteriores,
+      ...(subcategoria ? { subcategoria } : {}),
+    })
     cerrar()
+  }
+
+  // Tocar una categoría: si tiene subcategorías (o pidió detallar) se abre el paso 2; si no, guarda de una.
+  function tocar(categoria, cerrar) {
+    const tiene = (subsDe ? subsDe(categoria) : []).length > 0
+    if (tiene || detallar) {
+      setPaso(categoria)
+      setNuevaSub(tiene ? null : '')
+      setAviso('')
+      return
+    }
+    elegir(categoria, cerrar)
+  }
+
+  async function crearSub(cerrar) {
+    const nombre = (nuevaSub || '').trim()
+    if (!nombre) {
+      setAviso('Escribe el nombre de la subcategoría')
+      return
+    }
+    setGuardandoSub(true)
+    setAviso('')
+    try {
+      const s = await api.crearSubcategoria(paso, nombre)
+      await recargar?.()
+      elegir(paso, cerrar, s?.nombre || nombre)
+    } catch (err) {
+      setAviso(err.message || 'No se pudo crear la subcategoría. Revisa tu conexión e intenta de nuevo.')
+      setGuardandoSub(false)
+    }
   }
 
   async function crear(cerrar) {
@@ -86,12 +129,13 @@ export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, 
       key={n}
       type="button"
       aria-pressed={categoriaActual === n}
-      onClick={() => elegir(n, cerrar)}
+      onClick={() => tocar(n, cerrar)}
       className={`text-sm px-3 py-2 min-h-[40px] rounded-full border ${
         categoriaActual === n ? 'bg-ink text-paper border-ink' : 'border-line text-ink'
       }`}
     >
       <span aria-hidden="true">{iconoDe(n)}</span> {n}
+      {(subsDe ? subsDe(n) : []).length > 0 && <span className="text-ink-soft text-xs" aria-hidden="true"> ›</span>}
     </button>
   )
 
@@ -149,6 +193,82 @@ export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, 
             </div>
           )}
 
+          {paso && (
+            <div data-testid="paso-subcategoria">
+              <p className="text-sm font-semibold mb-0.5">
+                <span aria-hidden="true">{iconoDe(paso)}</span> {paso}
+              </p>
+              <p className="text-xs text-ink-soft mb-3">¿Cuál es? Es opcional.</p>
+              <div className="flex flex-wrap gap-2" role="group" aria-label={`Subcategorías de ${paso}`}>
+                {(subsDe ? subsDe(paso) : []).map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => elegir(paso, cerrar, s.nombre)}
+                    className="text-sm px-3 py-2 min-h-[40px] rounded-full border border-line text-ink"
+                  >
+                    {s.nombre}
+                  </button>
+                ))}
+                {nuevaSub === null && (
+                  <button
+                    type="button"
+                    onClick={() => setNuevaSub('')}
+                    className="text-sm px-3 py-2 min-h-[40px] rounded-full border border-dashed border-accent text-accent font-semibold"
+                  >
+                    + Nueva subcategoría
+                  </button>
+                )}
+              </div>
+              {nuevaSub !== null && (
+                <div className="flex items-center gap-2 mt-3">
+                  <input
+                    value={nuevaSub}
+                    onChange={(e) => {
+                      setNuevaSub(e.target.value)
+                      setAviso('')
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && crearSub(cerrar)}
+                    aria-label="Nombre de la subcategoría"
+                    placeholder="Ej: Gasolina"
+                    maxLength={40}
+                    autoFocus
+                    className="flex-1 bg-paper-raised border border-line rounded-2xl px-3 py-2.5 text-sm outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => crearSub(cerrar)}
+                    disabled={guardandoSub}
+                    className="rounded-2xl bg-ink text-paper text-sm font-semibold px-4 min-h-[44px] disabled:opacity-60"
+                  >
+                    Crear y poner
+                  </button>
+                </div>
+              )}
+              {aviso && <p className="text-sm text-danger mt-3">{aviso}</p>}
+              <button
+                type="button"
+                onClick={() => elegir(paso, cerrar)}
+                className="mt-4 w-full rounded-2xl border border-line py-3 text-sm font-semibold"
+              >
+                Solo {paso}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPaso(null)
+                  setNuevaSub(null)
+                  setAviso('')
+                }}
+                className="mt-2 w-full text-xs text-ink-soft underline py-2"
+              >
+                Cambiar categoría
+              </button>
+            </div>
+          )}
+
+          {!paso && (
+          <>
           <div className="flex items-center gap-2 bg-paper-raised border border-line rounded-2xl px-3 py-2.5 mb-3">
             <Search size={16} className="text-ink-soft" />
             <input
@@ -189,6 +309,17 @@ export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, 
             >
               <Plus size={16} /> {busqueda.trim() ? `Crear categoría «${busqueda.trim()}»` : 'Crear categoría'}
             </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setDetallar((d) => !d)}
+            aria-pressed={detallar}
+            hidden={!conSubcategorias}
+            className={`mt-3 w-full text-xs underline py-2 ${detallar ? 'text-accent font-semibold' : 'text-ink-soft'}`}
+          >
+            {detallar ? 'Con subcategoría: toca la categoría' : 'Con subcategoría'}
+          </button>
+          </>
           )}
         </>
       )}

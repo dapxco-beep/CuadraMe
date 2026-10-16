@@ -152,7 +152,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
                 aria-label={`Cambiar categoría de ${m.descripcion}`}
                 className="relative before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-[''] inline-flex items-center gap-1 text-xs text-ink-soft rounded-full border border-line px-2.5 min-h-[32px] hover:border-accent hover:text-ink"
               >
-                <span aria-hidden="true">{icono}</span> {m.categoria}
+                <span aria-hidden="true">{icono}</span> {m.categoria}{m.subcategoria ? ` · ${m.subcategoria}` : ''}
                 <ChevronDown size={16} aria-hidden="true" />
               </button>
             )}
@@ -465,10 +465,10 @@ export default function Movimientos() {
 
   // --- Categorizar sin abrir el movimiento (actualización optimista + Deshacer) ---
   const categorizar = useCallback(
-    async (items, categoria, { recordar = false, anteriores = false } = {}) => {
+    async (items, categoria, { recordar = false, anteriores = false, subcategoria = null } = {}) => {
       const ids = items.map((m) => m.id)
       const idSet = new Set(ids)
-      const previos = items.map((m) => ({ id: m.id, categoria: m.categoria }))
+      const previos = items.map((m) => ({ id: m.id, categoria: m.categoria, subcategoria: m.subcategoria || null }))
       const huella = items.length ? huellaDe(items[0]) : ''
       // Con "aplicar a los anteriores" los que ya están cargados cambian a la vez
       const afectados = new Set(idSet)
@@ -481,16 +481,32 @@ export default function Movimientos() {
           : null
 
       setMovimientos((prev) =>
-        prev.map((m) => (afectados.has(m.id) ? { ...m, categoria, cat_confirmada: true, cat_origen: null } : m))
+        prev.map((m) =>
+          afectados.has(m.id)
+            ? {
+                ...m,
+                categoria,
+                // otra categoría = la subcategoría anterior ya no aplica; la misma sin elegir otra se conserva
+                subcategoria: subcategoria || (m.categoria === categoria ? m.subcategoria || null : null),
+                cat_confirmada: true,
+                cat_origen: null,
+              }
+            : m
+        )
       )
 
       let regla = null
       try {
-        const llamadas = [api.recategorizarMasivo(ids, categoria)]
+        const llamadas = [subcategoria ? api.recategorizarMasivo(ids, categoria, subcategoria) : api.recategorizarMasivo(ids, categoria)]
         if (recordar && items.length) {
           llamadas.push(
             Promise.resolve(
-              api.aprenderRegla({ descripcion: items[0].descripcion, categoria, aplicar_anteriores: anteriores })
+              api.aprenderRegla({
+                descripcion: items[0].descripcion,
+                categoria,
+                ...(subcategoria ? { subcategoria } : {}),
+                aplicar_anteriores: anteriores,
+              })
             ).then((r) => {
               regla = r
             })
@@ -499,7 +515,12 @@ export default function Movimientos() {
         await Promise.all(llamadas)
       } catch (err) {
         // Falló: se devuelve todo como estaba
-        setMovimientos((prev) => prev.map((m) => (idSet.has(m.id) ? { ...m, categoria: previos.find((p) => p.id === m.id).categoria } : m)))
+        setMovimientos((prev) =>
+          prev.map((m) => {
+            const p = previos.find((x) => x.id === m.id)
+            return p ? { ...m, categoria: p.categoria, subcategoria: p.subcategoria } : m
+          })
+        )
         avisar(err.message || 'No se pudo cambiar la categoría. Revisa tu conexión e intenta de nuevo.')
         return
       }
@@ -507,7 +528,7 @@ export default function Movimientos() {
 
       const extra = anteriores && regla?.anteriores_actualizados ? regla.anteriores_actualizados : 0
       const recuerda = recordar && regla?.guardada
-      const destino = `${iconoDe(categoria)} ${categoria}`
+      const destino = `${iconoDe(categoria)} ${categoria}${subcategoria ? ` · ${subcategoria}` : ''}`
       const mensaje =
         items.length === 1
           ? extra
@@ -518,14 +539,22 @@ export default function Movimientos() {
       async function deshacer() {
         const porCategoria = new Map()
         for (const p of previos) {
-          if (p.categoria === categoria) continue
-          porCategoria.set(p.categoria, [...(porCategoria.get(p.categoria) || []), p.id])
+          if (p.categoria === categoria && !subcategoria) continue
+          const clave = `${p.categoria} ${p.subcategoria || ''}`
+          porCategoria.set(clave, { cat: p.categoria, sub: p.subcategoria, ids: [...(porCategoria.get(clave)?.ids || []), p.id] })
         }
         setMovimientos((prev) =>
-          prev.map((m) => (idSet.has(m.id) ? { ...m, categoria: previos.find((p) => p.id === m.id).categoria } : m))
+          prev.map((m) => {
+            const p = previos.find((x) => x.id === m.id)
+            return p ? { ...m, categoria: p.categoria, subcategoria: p.subcategoria } : m
+          })
         )
         try {
-          await Promise.all([...porCategoria].map(([cat, lista]) => api.recategorizarMasivo(lista, cat)))
+          await Promise.all(
+            [...porCategoria.values()].map(({ cat, sub, ids: lista }) =>
+              sub ? api.recategorizarMasivo(lista, cat, sub) : api.recategorizarMasivo(lista, cat)
+            )
+          )
           // Si el aviso creó la regla del comercio, se quita (si solo la actualizó, se deja)
           if (recuerda && !regla.actualizada) {
             const reglas = await api.reglasCategoria()

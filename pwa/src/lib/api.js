@@ -384,10 +384,10 @@ export const api = {
   crearTransferencia: (data) => request('/movimientos/transferencia', { method: 'POST', body: data }),
   crearMovimiento: (data) => request('/movimientos', { method: 'POST', body: data }),
   eliminarMovimiento: (id) => request(`/movimientos/${id}`, { method: 'DELETE' }),
-  recategorizarMasivo: (movimientoIds, categoria) =>
+  recategorizarMasivo: (movimientoIds, categoria, subcategoria) =>
     request('/movimientos/recategorizar-masivo', {
       method: 'POST',
-      body: { movimiento_ids: movimientoIds, categoria },
+      body: subcategoria ? { movimiento_ids: movimientoIds, categoria, subcategoria } : { movimiento_ids: movimientoIds, categoria },
     }),
   clasificar: (data) => request('/movimientos/clasificar', { method: 'POST', body: data }),
 
@@ -514,6 +514,19 @@ export const api = {
   editarCategoria: (id, data) => request(`/categorias/${id}`, { method: 'PUT', body: data }),
   eliminarCategoria: (id, moverA) =>
     request(`/categorias/${id}${moverA ? '?mover_a=' + encodeURIComponent(moverA) : ''}`, { method: 'DELETE' }),
+  // Subcategorías: un nivel de detalle opcional dentro de cada categoría (docs/SUBCATEGORIAS.md).
+  subcategorias: () => request('/subcategorias'),
+  crearSubcategoria: (categoria, nombre) => request('/subcategorias', { method: 'POST', body: { categoria, nombre } }),
+  editarSubcategoria: (id, nombre) => request(`/subcategorias/${id}`, { method: 'PUT', body: { nombre } }),
+  eliminarSubcategoria: (id) => request(`/subcategorias/${id}`, { method: 'DELETE' }),
+  // Desglose de UNA categoría por subcategoría en el periodo del informe (incluye «Sin subcategoría»).
+  desgloseSubcategorias: (categoria, { periodo = 'este_mes', desde, hasta, mes } = {}) => {
+    const q = new URLSearchParams({ categoria, periodo })
+    if (desde) q.set('desde', desde)
+    if (hasta) q.set('hasta', hasta)
+    if (mes) q.set('mes', mes)
+    return request(`/informes/gasto/subcategorias?${q.toString()}`)
+  },
   reordenarCategorias: (ids) => request('/categorias/orden', { method: 'PUT', body: { ids } }),
 
   // Derecho de supresión: el backend exige la palabra escrita por la persona.

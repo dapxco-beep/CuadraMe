@@ -56,6 +56,7 @@ def cargar_movs_efectivos(
             "monto": conv(m.monto, monedas.get(m.cuenta_id, "COP")),
             "sin_tasa": (monedas.get(m.cuenta_id) or "COP").upper() in conv.sin_tasa,
             "categoria": m.categoria or "Otros",
+            "subcategoria": m.subcategoria,
             "descripcion": m.descripcion or "",
             "fuente": m.fuente or "manual",
         }

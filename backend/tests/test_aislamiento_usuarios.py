@@ -98,6 +98,7 @@ def _sembrar():
                                                         "cuenta_destino_id": otra["id"], "monto": 5}))
     cat = _ok(client.post("/categorias", json={"nombre": f"{MARCA}Cat", "icono": "🐶"}))
     I["categoria"] = cat["id"]
+    I["subcategoria"] = _ok(client.post("/subcategorias", json={"categoria": "Comida", "nombre": f"{MARCA}Sub"}))["id"]
     I["regla"] = _ok(client.post("/reglas-categoria", json={"patron": "zzapatron", "categoria": "Comida"}))["id"]
     I["presupuesto"] = _ok(client.post("/presupuestos", json={"categoria": "Comida", "limite": 100}))["id"]
     I["presupuesto2"] = _ok(client.post("/presupuestos", json={"categoria": "Transporte", "limite": 100}))["id"]
@@ -228,7 +229,7 @@ def test_lecturas_de_a_si_ven_sus_datos():
     _sembrar()
     como(A)
     for ruta in ("/cuentas", "/movimientos", "/metas", "/gastos-compartidos/contactos", "/patrimonio/activos", "/inversiones",
-                 "/inversiones/brokers", "/correos/lista", "/correos/extractos", "/conciliacion/historial", "/reglas-categoria",
+                 "/inversiones/brokers", "/subcategorias", "/correos/lista", "/correos/extractos", "/conciliacion/historial", "/reglas-categoria",
                  "/sincronizacion/extractos"):  # «Todos los extractos»: la lista completa de A
         assert MARCA.lower() in client.get(ruta).text.lower(), ruta
 
@@ -275,6 +276,10 @@ ATAQUES = [
     # categorías, reglas, presupuestos
     ("PUT", "/categorias/{categoria}", {"nombre": "hackeada"}),
     ("DELETE", "/categorias/{categoria}", None),
+    # subcategorías: B no renombra ni borra las de A, ni cuelga una de la categoría de A
+    ("PUT", "/subcategorias/{subcategoria}", {"nombre": "hackeada"}),
+    ("DELETE", "/subcategorias/{subcategoria}", None),
+    ("POST", "/subcategorias", {"categoria": f"{MARCA}Cat", "nombre": "intruso"}),
     ("DELETE", "/reglas-categoria/{regla}", None),
     ("POST", "/reglas-categoria/lote", {"ids": ["{regla}"], "accion": "borrar"}),
     ("POST", "/por-categorizar/accion", {"accion": "dejar", "movimiento_ids": ["{movimiento}"]}),

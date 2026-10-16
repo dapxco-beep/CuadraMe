@@ -89,6 +89,7 @@ export default function Informe() {
   const [cargando, setCargando] = useState(true)
   const [abierta, setAbierta] = useState(null)
   const [detalles, setDetalles] = useState({})
+  const [desgloses, setDesgloses] = useState({})
 
   const params = useMemo(
     () => (mes
@@ -110,6 +111,7 @@ export default function Informe() {
     setError('')
     setAbierta(null)
     setDetalles({})
+    setDesgloses({})
     api.informeGasto(params)
       .then((d) => activo && setInforme(d))
       .catch((e) => activo && setError(e.message || 'No se pudo cargar el informe. Revisa tu conexión e intenta de nuevo.'))
@@ -122,6 +124,12 @@ export default function Informe() {
   function alternar(cat) {
     if (abierta === cat) return setAbierta(null)
     setAbierta(cat)
+    if (!desgloses[cat] && api.desgloseSubcategorias) {
+      // Desglose por subcategoría (opcional): si falla o la categoría no tiene, simplemente no se muestra.
+      Promise.resolve(api.desgloseSubcategorias(cat, params))
+        .then((d) => setDesgloses((p) => ({ ...p, [cat]: d })))
+        .catch(() => {})
+    }
     if (!detalles[cat]) {
       api.informeMovimientos({ ...params, categoria: cat })
         .then((d) => setDetalles((p) => ({ ...p, [cat]: d })))
@@ -210,6 +218,7 @@ export default function Informe() {
             <ul className="mt-4 divide-y divide-line border-t border-line">
               {informe.categorias.map((c) => {
                 const det = detalles[c.categoria]
+                const desglose = desgloses[c.categoria]
                 const abiertaAhora = abierta === c.categoria
                 return (
                   <li key={c.categoria}>
@@ -242,6 +251,19 @@ export default function Informe() {
                     </button>
                     {abiertaAhora && (
                       <div className="pb-3 pl-12">
+                        {desglose?.tiene_subcategorias && (
+                          <ul className="mb-2 rounded-xl bg-paper border border-line divide-y divide-line" aria-label={`Subcategorías de ${c.categoria}`}>
+                            {desglose.subcategorias.map((s) => (
+                              <li key={s.subcategoria || '__sin'} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+                                <span className="min-w-0 truncate">{s.subcategoria || 'Sin subcategoría'}</span>
+                                <span className="shrink-0">
+                                  <span className="font-semibold">{fmt(s.total)}</span>
+                                  <span className="text-ink-soft"> · {s.porcentaje} %</span>
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                         {!det && <p className="text-xs text-ink-soft py-2">Cargando movimientos...</p>}
                         {det?.error && <p className="text-xs text-danger py-2">No se pudieron cargar los movimientos.</p>}
                         {det && !det.error && (
@@ -251,7 +273,7 @@ export default function Informe() {
                                 <Link to={`/movimientos/${m.id}`} className="flex items-center justify-between gap-3 py-1.5 text-xs min-h-[44px]">
                                   <span className="min-w-0">
                                     <span className="block font-medium truncate">{m.descripcion}</span>
-                                    <span className="text-ink-soft">{m.fecha.slice(0, 10)}</span>
+                                    <span className="text-ink-soft">{m.fecha.slice(0, 10)}{m.subcategoria ? ` · ${m.subcategoria}` : ''}</span>
                                   </span>
                                   <span className="font-semibold shrink-0">{fmt(m.monto)}</span>
                                 </Link>
