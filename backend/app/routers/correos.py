@@ -615,12 +615,10 @@ def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, exist
     # detectados solos solo si además parecen una transacción real. Los descartados se
     # guardan 'ignorado' y no se releen.
     tiene_monto = (correo.monto or 0) > 0
-    # Por el asunto también se listan correos de remitentes desconocidos: esos solo entran si traen la etiqueta o
-    # si el remitente es un banco conocido.
-    candidato = tiene_monto and (
-        con_etiqueta
-        or (banco_por_remitente(correo.remitente) and es_notificacion_transaccion(correo.asunto, correo.snippet))
-    )
+    # Como siempre: con la etiqueta del usuario, o si el asunto/fragmento parece una notificación de transacción
+    # (los avisos, publicidad y seguridad ya los descarta es_notificacion_transaccion). La consulta por asunto solo
+    # AMPLÍA lo que Gmail devuelve; no cambia quién puede ser candidato.
+    candidato = tiene_monto and (con_etiqueta or es_notificacion_transaccion(correo.asunto, correo.snippet))
     if not candidato:
         correo.estado = "ignorado"
     db.add(correo)
