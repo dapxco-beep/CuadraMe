@@ -52,11 +52,12 @@ def exportar_csv(
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     etiquetas = _etiquetas_contables(db, usuario.id, movimientos)
-    writer.writerow(["Fecha", "Descripción", "Categoría", "Tipo", "Monto", "Fuente", "Notas", "Cuenta en resúmenes como"])
+    writer.writerow(["Fecha", "Descripción", "Categoría", "Tipo", "Monto", "Fuente", "Notas", "Cuenta en resúmenes como", "Texto del banco"])
     for m in movimientos:
         writer.writerow([
-            m.fecha.strftime("%Y-%m-%d"), celda_segura(m.descripcion), celda_segura(m.categoria),
+            m.fecha.strftime("%Y-%m-%d"), celda_segura(m.titulo or m.descripcion), celda_segura(m.categoria),
             m.tipo, m.monto, m.fuente, celda_segura(m.notas), etiquetas[m.id],
+            celda_segura(m.descripcion),
         ])
 
     buffer.seek(0)
@@ -81,15 +82,16 @@ def exportar_excel(
     ws.title = "Movimientos"
 
     etiquetas = _etiquetas_contables(db, usuario.id, movimientos)
-    encabezados = ["Fecha", "Descripción", "Categoría", "Tipo", "Monto", "Fuente", "Notas", "Cuenta en resúmenes como"]
+    encabezados = ["Fecha", "Descripción", "Categoría", "Tipo", "Monto", "Fuente", "Notas", "Cuenta en resúmenes como", "Texto del banco"]
     ws.append(encabezados)
     for cell in ws[1]:
         cell.font = Font(bold=True)
 
     for m in movimientos:
         ws.append([
-            m.fecha.strftime("%Y-%m-%d"), celda_segura(m.descripcion), celda_segura(m.categoria),
+            m.fecha.strftime("%Y-%m-%d"), celda_segura(m.titulo or m.descripcion), celda_segura(m.categoria),
             m.tipo, m.monto, m.fuente, celda_segura(m.notas), etiquetas[m.id],
+            celda_segura(m.descripcion),
         ])
 
     for col in ws.columns:

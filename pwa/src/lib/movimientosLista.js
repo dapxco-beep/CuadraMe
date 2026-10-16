@@ -36,7 +36,7 @@ export function consultaServidor(f) {
 }
 
 export function coincideFiltros(m, f) {
-  if (f.q && !(m.descripcion || '').toLowerCase().includes(f.q.toLowerCase())) return false
+  if (f.q && !`${m.titulo || ''} ${m.descripcion || ''}`.toLowerCase().includes(f.q.toLowerCase())) return false
   if (f.cat && m.categoria !== f.cat) return false
   if (f.cuenta && m.cuenta_id !== f.cuenta) return false
   if (f.tipo && m.tipo !== f.tipo) return false

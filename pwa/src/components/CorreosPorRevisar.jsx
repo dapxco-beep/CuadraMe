@@ -10,6 +10,8 @@ import InputMonto from './InputMonto'
 import SelectorCuentaBanco from './SelectorCuentaBanco'
 import { cuentaRecordada } from '../lib/cuentasBanco'
 import RecordarRegla, { RECORDAR_INICIAL } from './RecordarRegla'
+import { BotonLapiz, EditorNombre, PistaBanco } from './NombreEditable'
+import { limpiarNombre } from '../lib/tituloMovimiento'
 import { agruparPorDia, etiquetaFechaHora, fechaParaEnviar, fechasDistintas, valorInputFecha } from '../lib/fechaCorreo'
 
 /**
@@ -26,6 +28,9 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
   const [montoPorCorreo, setMontoPorCorreo] = useState({}) // id -> texto escrito
   const [editando, setEditando] = useState(new Set()) // ids con el panel «Editar» abierto
   const [fechaPorCorreo, setFechaPorCorreo] = useState({}) // id -> 'AAAA-MM-DD' elegido
+  const [tituloPorCorreo, setTituloPorCorreo] = useState({}) // id -> nombre propio (el texto del correo no se toca)
+  const [recordarTituloPorCorreo, setRecordarTituloPorCorreo] = useState({}) // id -> true si pidió recordarlo
+  const [editandoNombre, setEditandoNombre] = useState(null) // id del correo cuyo nombre se edita
   const [procesando, setProcesando] = useState(new Set())
   const [crearCuenta, setCrearCuenta] = useState(null) // { banco }
   const [error, setError] = useState('')
@@ -47,6 +52,9 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
   const fechaElegida = (c) => fechaPorCorreo[c.id] || valorInputFecha(c.fecha_movimiento)
   const fechaCambio = (c) => Boolean(c.fecha_movimiento) && fechaElegida(c) !== valorInputFecha(c.fecha_movimiento)
   const hoyISO = new Date().toISOString().slice(0, 10)
+  // Lo que se envía del nombre propio: nada si no lo cambió (el servidor usa el comercio leído).
+  const extraNombre = (c) =>
+    tituloPorCorreo[c.id] ? { titulo: tituloPorCorreo[c.id], ...(recordarTituloPorCorreo[c.id] ? { recordar_titulo: true } : {}) } : {}
   const alternarEdicion = (id) =>
     setEditando((prev) => {
       const n = new Set(prev)
@@ -77,6 +85,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
       const cambio = elegida && elegida !== c.categoria_sugerida
       const rec = recordarPorCorreo[c.id] || RECORDAR_INICIAL
       const extra = {
+        ...extraNombre(c),
         ...(sinMonto(c) || monto !== c.monto ? { monto } : {}),
         ...(fechaCambio(c) ? { fecha: fechaParaEnviar(fechaElegida(c), c.fecha_movimiento) } : {}),
         ...(elegida
@@ -106,7 +115,9 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
     let fallaron = 0
     for (const c of correctos) {
       try {
-        await api.aprobarCorreo(c.id, cuentaElegida(c))
+        const n = extraNombre(c)
+        if (Object.keys(n).length) await api.aprobarCorreo(c.id, cuentaElegida(c), n)
+        else await api.aprobarCorreo(c.id, cuentaElegida(c))
         onResuelto?.(c)
       } catch {
         fallaron += 1
@@ -170,7 +181,11 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
               )}
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold break-words line-clamp-2">{c.comercio}</p>
+                  <div className="flex items-start gap-1">
+                    <p className="text-sm font-semibold break-words line-clamp-2 min-w-0">{tituloPorCorreo[c.id] || c.comercio}</p>
+                    <BotonLapiz original={c.comercio} onClick={() => setEditandoNombre(c.id)} />
+                  </div>
+                  {tituloPorCorreo[c.id] && <PistaBanco original={c.comercio} />}
                   <p className="text-xs text-ink-soft break-words line-clamp-2">{c.asunto}</p>
                 </div>
                 {!falta && (
@@ -180,6 +195,28 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
                   </p>
                 )}
               </div>
+
+              {editandoNombre === c.id && (
+                <EditorNombre
+                  className="mt-2"
+                  original={c.comercio}
+                  valor={tituloPorCorreo[c.id] || ''}
+                  conRecordar
+                  recordarInicial={!!recordarTituloPorCorreo[c.id]}
+                  onCancelar={() => setEditandoNombre(null)}
+                  onGuardar={(texto, recordar) => {
+                    const limpio = limpiarNombre(texto)
+                    setTituloPorCorreo((p) => {
+                      const n = { ...p }
+                      if (limpio) n[c.id] = limpio
+                      else delete n[c.id]
+                      return n
+                    })
+                    setRecordarTituloPorCorreo((p) => ({ ...p, [c.id]: !!limpio && recordar }))
+                    setEditandoNombre(null)
+                  }}
+                />
+              )}
 
               {falta && (
                 <label className="block mt-2">

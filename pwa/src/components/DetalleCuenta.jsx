@@ -12,6 +12,7 @@ import { leerMonto } from '../lib/cuentaNueva'
 import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
 import { TarjetaCuadreBanco } from './CuadreMes'
 import InputMonto from './InputMonto'
+import { nombreDe } from '../lib/tituloMovimiento'
 
 // Detalle de UNA cuenta: saldo actual sin ambigüedad, cómo va el mes, últimos
 // movimientos y las dos acciones para que el saldo coincida con el banco:
@@ -129,7 +130,7 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
               {det.movimientos.map((m) => (
                 <Link key={m.id} to={`/movimientos/${m.id}`} className="flex items-start gap-3 px-4 py-3 min-h-[56px]">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold break-words line-clamp-3">{m.descripcion}</p>
+                    <p className="text-sm font-semibold break-words line-clamp-3">{nombreDe(m)}</p>
                     <p className="text-xs text-ink-soft mt-0.5 break-words">{fechaHoraMovimiento(fechaDeMovimiento(m))}</p>
                     <p className="text-xs text-ink-soft break-words">
                       {m.fuente === 'ajuste_saldo' ? 'No cuenta como gasto ni ingreso' : m.categoria}

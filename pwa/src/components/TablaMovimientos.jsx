@@ -6,6 +6,7 @@ import { formatMoneda } from '../lib/format'
 import { direccionDe, signoDe } from '../lib/traslados'
 import { COLUMNAS_TABLA, ordenarMovimientos } from '../lib/movimientosLista'
 import EtiquetaOrigen from './EtiquetaOrigen'
+import { nombreDe, tieneNombrePropio } from '../lib/tituloMovimiento'
 import { fechaHoraMovimiento } from '../lib/fechaMovimiento'
 
 // Tabla de movimientos para escritorio. Mismas reglas que la lista: filas virtualizadas (alto fijo,
@@ -55,9 +56,10 @@ const Fila = memo(function Fila({ m, columnas, icono, moneda, cuenta, esSel, act
             e.preventDefault()
             onAbrir(m.id)
           }}
-          title={m.descripcion} className="block truncate text-sm font-semibold py-2"
+          title={m.titulo ? `${m.titulo} (banco: ${m.descripcion})` : m.descripcion} className="block truncate text-sm font-semibold py-2"
         >
-          {m.descripcion}
+          {nombreDe(m)}
+          {tieneNombrePropio(m) && <span className="ml-2 text-[11px] font-normal text-ink-soft">Banco: {m.descripcion}</span>}
           <EtiquetaOrigen origen={m.origen} canales={m.canales} className="ml-2 align-middle" />
         </Link>
       </td>

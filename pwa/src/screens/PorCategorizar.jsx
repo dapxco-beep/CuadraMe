@@ -21,6 +21,7 @@ import {
   seleccionarVisibles,
   textoResultado,
 } from '../lib/porCategorizar'
+import { nombreDe } from '../lib/tituloMovimiento'
 
 // «Por categorizar» a elección. Nada es obligatorio: se puede ignorar toda la lista. Aquí la persona
 // elige a qué comercios ponerles categoría, cuáles dejar como están y de cuáles no quiere más preguntas.
@@ -92,7 +93,7 @@ function FilaComercio({ g, marcado, ids, onComercio, onMovimiento, onVer }) {
                 className="w-4 h-4 accent-[var(--c-accent)] shrink-0"
               />
               <span className="flex-1 min-w-0">
-                <span className="block font-medium break-words line-clamp-3">{m.descripcion}</span>
+                <span className="block font-medium break-words line-clamp-3">{nombreDe(m)}</span>
                 <span className="block text-ink-soft">{fechaHoraMovimiento(fechaDeMovimiento(m))}</span>
               </span>
               <span className="shrink-0 whitespace-nowrap tabular-nums font-semibold">{formatCOP(m.monto)}</span>

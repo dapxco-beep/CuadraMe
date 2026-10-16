@@ -16,6 +16,8 @@ import { useDialogos } from '../lib/DialogosContext'
 import { esAuto } from '../lib/comercio'
 import { HojaCambiarCategoria, InsigniaAuto } from '../components/CategorizacionAuto'
 import InsigniaCanales from '../components/InsigniaCanales'
+import { BotonLapiz, EditorNombre, PistaBanco } from '../components/NombreEditable'
+import { limpiarNombre, MIN_REPETICIONES_NOMBRE, nombreDe, tieneNombrePropio } from '../lib/tituloMovimiento'
 import { parchearEnCaches, quitarDeCaches } from '../lib/useEstadoLista'
 import InputMonto from '../components/InputMonto'
 import {
@@ -49,6 +51,9 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
   const [editando, setEditando] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [form, setForm] = useState(null)
+  const [editandoNombre, setEditandoNombre] = useState(false)
+  const [guardandoNombre, setGuardandoNombre] = useState(false)
+  const [repeticiones, setRepeticiones] = useState(0) // cuántos otros del mismo comercio: sugiere «Recordar este nombre»
 
   useEffect(() => {
     api
@@ -135,8 +140,31 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
   const cuenta = cuentas.find((c) => c.id === movimiento?.cuenta_id)
   const esTransferencia = movimiento?.fuente === 'transferencia_interna'
 
+  // Cambia solo el nombre que ve la persona; el texto del banco queda como está. '' = volver al original.
+  async function guardarNombre(texto, recordar) {
+    setGuardandoNombre(true)
+    try {
+      const actualizado = await api.editarMovimiento(id, { titulo: limpiarNombre(texto), ...(recordar ? { recordar_titulo: true } : {}) })
+      setMovimiento(actualizado)
+      parchearEnCaches(actualizado)
+      onCambio?.(actualizado)
+      setEditandoNombre(false)
+      avisar(limpiarNombre(texto) ? 'Nombre guardado' : 'Volvió el nombre del banco', 'ok')
+    } catch (err) {
+      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+    } finally {
+      setGuardandoNombre(false)
+    }
+  }
+
+  function abrirNombre() {
+    setEditandoNombre(true)
+    api.similaresConteo(movimiento.descripcion, id).then((r) => setRepeticiones(Number(r?.conteo) || 0)).catch(() => setRepeticiones(0))
+  }
+
   function empezarEdicion() {
     setForm({
+      titulo: movimiento.titulo || '',
       descripcion: movimiento.descripcion,
       monto: String(Math.round(movimiento.monto * 100) / 100),
       tipo: movimiento.tipo,
@@ -168,6 +196,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       // La fecha solo se manda si el usuario la cambió, para no pisar la hora original.
       // La subcategoría solo viaja si cambió (o si hay que limpiarla al cambiar de categoría).
       if ((form.subcategoria || '') !== (movimiento.subcategoria || '')) cambios.subcategoria = form.subcategoria || ''
+      if (limpiarNombre(form.titulo) !== (movimiento.titulo || '')) cambios.titulo = limpiarNombre(form.titulo)
       if (form.fecha !== fechaParaInput(movimiento.fecha)) cambios.fecha = `${form.fecha}T12:00:00`
 
       const actualizado = await api.editarMovimiento(id, cambios)
@@ -287,7 +316,23 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           {signo}
           {formatMoneda(movimiento.monto, cuenta?.moneda)}
         </p>
-        <p className="text-base font-semibold mt-3 text-center px-6 break-words max-w-full" data-testid="detalle-descripcion">{movimiento.descripcion}</p>
+        <div className="mt-3 px-6 flex items-start justify-center gap-1 max-w-full">
+          <p className="text-base font-semibold text-center break-words min-w-0" data-testid="detalle-descripcion">{nombreDe(movimiento)}</p>
+          {!esTransferencia && !editandoNombre && <BotonLapiz original={movimiento.descripcion} onClick={abrirNombre} className="mt-0.5" />}
+        </div>
+        {tieneNombrePropio(movimiento) && <PistaBanco original={movimiento.descripcion} className="px-6 text-center mt-0.5" />}
+        {editandoNombre && (
+          <EditorNombre
+            className="w-full px-5 mt-3"
+            original={movimiento.descripcion}
+            valor={movimiento.titulo || ''}
+            conRecordar
+            recordarInicial={repeticiones + 1 >= MIN_REPETICIONES_NOMBRE}
+            guardando={guardandoNombre}
+            onCancelar={() => setEditandoNombre(false)}
+            onGuardar={guardarNombre}
+          />
+        )}
         <p className="text-sm text-ink-soft mt-1 text-center px-6 break-words" data-testid="detalle-fecha-cuenta">
           {[fechaHoraMovimiento(movimiento.fecha, { anio: true }), cuenta?.nombre].filter(Boolean).join(' · ')}
         </p>
@@ -309,6 +354,17 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
 
       {editando ? (
         <div className="mx-5 rounded-2xl bg-paper-raised border border-line p-4 space-y-3 pop-in">
+          <label className="block">
+            <span className="text-xs text-ink-soft">Nombre (para ti)</span>
+            <input
+              className={`${campo} mt-1`}
+              value={form.titulo}
+              maxLength={80}
+              placeholder={movimiento.descripcion}
+              aria-label="Nombre"
+              onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+            />
+          </label>
           <label className="block">
             <span className="text-xs text-ink-soft">Descripción</span>
             <input

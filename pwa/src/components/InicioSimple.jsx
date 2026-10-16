@@ -7,6 +7,7 @@ import { OfrecerPrimeraMeta } from './FormMeta'
 import Icono from './Icono'
 import { RenglonTuPlata } from './TuPlataTrabajando'
 import { Boton } from './ui'
+import { nombreDe } from '../lib/tituloMovimiento'
 
 // Inicio para quien llega sin saber de finanzas: tres bloques y nada más.
 //   1. Cuánto tienes y qué pasó esta semana (saldo, gastos de la semana, 3 últimos movimientos)
@@ -53,7 +54,7 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
                   {m.tipo === 'transfer' ? <Icono icono={ArrowLeftRight} tam="md" /> : iconoDe(m.categoria)}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="t-cuerpo font-medium break-words line-clamp-4">{m.descripcion}</p>
+                  <p className="t-cuerpo font-medium break-words line-clamp-4">{nombreDe(m)}</p>
                   <p className="t-apoyo break-words">{[fechaHoraMovimiento(fechaDeMovimiento(m)), m.tipo === 'transfer' ? 'Entre tus cuentas' : m.categoria].filter(Boolean).join(' · ')}</p>
                 </div>
                 <span className={`t-cuerpo font-semibold t-cifra shrink-0 whitespace-nowrap whitespace-nowrap ${m.tipo === 'income' ? 'text-accent' : 'text-ink'}`}>

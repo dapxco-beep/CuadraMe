@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app import titulo as tit
 from app.auth import UsuarioActual, get_current_user
 from app.autocat import ClasificadorUsuario, aplicar_a_anteriores, clasificar_lote_detalle, datos_auto, guardar_regla_aprendida
 from app.comercios_conocidos import clasificar_por_diccionario
@@ -71,6 +72,7 @@ class FilaImportar(BaseModel):
     aplicar_anteriores: bool = False  # además, recategorizar movimientos pasados de ese comercio
     # «Sí, es el mismo gasto»: id del movimiento que ya tenías. No se crea otro; se junta con ese.
     conciliar_con: Optional[str] = Field(default=None, max_length=64)
+    titulo: Optional[str] = Field(default=None, max_length=80)  # nombre propio; la descripción no se toca
 
 
 class ConfirmarRequest(BaseModel):
@@ -277,7 +279,8 @@ def confirmar(
             auto_categorizados += 1
         nuevo = Movimiento(
             usuario_id=usuario.id, cuenta_id=cuenta.id, fecha=datetime.fromisoformat(f.fecha),
-            descripcion=f.descripcion.strip(), categoria=categoria, tipo=f.tipo, monto=f.monto,
+            descripcion=f.descripcion.strip(), titulo=tit.limpiar(f.titulo) or tit.recordado(db, usuario.id, f.descripcion),
+            categoria=categoria, tipo=f.tipo, monto=f.monto,
             # Sin ajustar saldo, la marca evita que editar/borrar luego mueva el saldo.
             fuente=FUENTE_IMPORTACION if data.ajustar_saldo else FUENTE_IMPORTADO_SIN_SALDO,
             notas=_notas_importado(f"Importado de {data.nombre_archivo[:80]}", f.descripcion), **auto,

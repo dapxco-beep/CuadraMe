@@ -14,6 +14,7 @@ import BarraProgreso from '../components/BarraProgreso'
 import EnlaceCostos from '../components/EnlaceCostos'
 import IngresosGastos from '../components/IngresosGastos'
 import GraficoEvolucion from '../components/GraficoEvolucion'
+import { nombreDe } from '../lib/tituloMovimiento'
 
 // Colores distintos para la dona (cada segmento también lleva su nombre y % en la
 // lista, así que el color nunca es la única señal).
@@ -272,7 +273,7 @@ export default function Informe() {
                               <li key={m.id}>
                                 <Link to={`/movimientos/${m.id}`} className="flex items-center justify-between gap-3 py-1.5 text-xs min-h-[44px]">
                                   <span className="min-w-0">
-                                    <span className="block font-medium truncate">{m.descripcion}</span>
+                                    <span className="block font-medium truncate">{nombreDe(m)}</span>
                                     <span className="text-ink-soft">{m.fecha.slice(0, 10)}{m.subcategoria ? ` · ${m.subcategoria}` : ''}</span>
                                   </span>
                                   <span className="font-semibold shrink-0">{fmt(m.monto)}</span>

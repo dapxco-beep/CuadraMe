@@ -118,6 +118,18 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'ALTER TABLE reglas_categoria ADD COLUMN IF NOT EXISTS subcategoria VARCHAR NULL',
         ],
     ),
+    (
+        # Nombre propio de un movimiento (el texto del banco queda intacto en `descripcion`) y las reglas
+        # «recordar este nombre para este comercio». Ver docs/TITULO_PERSONALIZADO.md.
+        "0004_titulo_personalizado",
+        [
+            'ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS titulo VARCHAR NULL',
+            'CREATE TABLE IF NOT EXISTS reglas_titulo ('
+            'id VARCHAR PRIMARY KEY, usuario_id VARCHAR NOT NULL, huella VARCHAR NOT NULL, '
+            'titulo VARCHAR NOT NULL, creado_en TIMESTAMP)',
+            'CREATE INDEX IF NOT EXISTS ix_reglas_titulo_usuario ON reglas_titulo (usuario_id)',
+        ],
+    ),
 ]
 
 

@@ -21,6 +21,8 @@ import { EMOJI_DEFECTO, estadoCategoria, resumirCategorias } from '../lib/estado
 import { CategoriaEnBloque, ChipCategoria, ResumenCategorias } from './RevisionCategorias'
 import HojaNuevaCategoria, { OPCION_NUEVA_CATEGORIA, TEXTO_NUEVA_CATEGORIA } from './HojaNuevaCategoria'
 import { borrarBorrador, guardarBorrador, leerBorrador, resumenLote } from '../lib/retomar'
+import { BotonLapiz, EditorNombre, PistaBanco } from './NombreEditable'
+import { limpiarNombre, MIN_REPETICIONES_NOMBRE } from '../lib/tituloMovimiento'
 import {
   ETIQUETA_ARCHIVO,
   MAX_ARCHIVOS,
@@ -102,6 +104,9 @@ export default function SubidaMultiple({
   const [seleccion, setSeleccion] = useState(new Set())
   const [categorias, setCategorias] = useState({})
   const [aprender, setAprender] = useState({}) // clave -> { recordar, anteriores } (solo filas editadas)
+  const [titulos, setTitulos] = useState({}) // clave -> nombre propio de la línea (el texto del banco no se toca)
+  const [recordarTitulo, setRecordarTitulo] = useState({}) // clave -> true si pidió recordar ese nombre para el comercio
+  const [editandoNombre, setEditandoNombre] = useState(null) // clave de la línea cuyo nombre se está editando
   const [importando, setImportando] = useState(false)
   const [resultados, setResultados] = useState([])
   const [error, setError] = useState('')
@@ -133,9 +138,11 @@ export default function SubidaMultiple({
         seleccion: [...seleccion].filter((c) => c.startsWith(pref)).map((c) => c.slice(pref.length)),
         categorias: quitar(categorias),
         aprender: quitar(aprender),
+        titulos: quitar(titulos),
+        recordarTitulo: quitar(recordarTitulo),
       })
     }
-  }, [fase, seleccion, categorias, aprender])
+  }, [fase, seleccion, categorias, aprender, titulos, recordarTitulo])
 
   const parchar = (id, parche) => setArchivos((prev) => prev.map((a) => (a.id === id ? { ...a, ...parche } : a)))
 
@@ -143,6 +150,8 @@ export default function SubidaMultiple({
     const sel = new Set(clavesFaltantes(lista))
     const cats = {}
     const apr = {}
+    const tits = {}
+    const rtits = {}
     for (const a of lista) {
       if (a.estado !== 'listo') continue
       for (const it of a.items) cats[`${a.id}:${it.k}`] = it.categoria || 'Otros'
@@ -154,10 +163,15 @@ export default function SubidaMultiple({
       for (const k of b.seleccion) if (validas.has(k)) sel.add(`${a.id}:${k}`)
       for (const [k, v] of Object.entries(b.categorias)) if (validas.has(k)) cats[`${a.id}:${k}`] = v
       for (const [k, v] of Object.entries(b.aprender)) if (validas.has(k)) apr[`${a.id}:${k}`] = v
+      for (const [k, v] of Object.entries(b.titulos || {})) if (validas.has(k)) tits[`${a.id}:${k}`] = v
+      for (const [k, v] of Object.entries(b.recordarTitulo || {})) if (validas.has(k)) rtits[`${a.id}:${k}`] = v
     }
     setSeleccion(sel)
     setCategorias(cats)
     setAprender(apr)
+    setTitulos(tits)
+    setRecordarTitulo(rtits)
+    setEditandoNombre(null)
     setFase('revision')
   }
 
@@ -332,9 +346,17 @@ export default function SubidaMultiple({
           // El servidor importa por huella: las filas idénticas se importan juntas, se envía una vez.
           const ks = [...new Set(marcados.map((it) => it.k))]
           const cats = Object.fromEntries(ks.map((k) => [k, categorias[`${a.id}:${k}`] || 'Otros']))
+          const conNombre = ks.filter((k) => titulos[`${a.id}:${k}`])
           r = await api.importarFaltantes(a.historialId, ks, cats, {
             recordar: ks.filter((k) => aprender[`${a.id}:${k}`]?.recordar),
             aplicar_anteriores: ks.filter((k) => aprender[`${a.id}:${k}`]?.recordar && aprender[`${a.id}:${k}`]?.anteriores),
+            // Solo viaja lo que la persona nombró; el texto original del banco no se envía ni se cambia.
+            ...(conNombre.length
+              ? {
+                  titulos: Object.fromEntries(conNombre.map((k) => [k, titulos[`${a.id}:${k}`]])),
+                  recordar_titulo: conNombre.filter((k) => recordarTitulo[`${a.id}:${k}`]),
+                }
+              : {}),
           })
         } else {
           const mismos = a.items.filter((it) => it.conciliarCon)
@@ -346,6 +368,7 @@ export default function SubidaMultiple({
               fecha: it.fecha, descripcion: it.descripcion, monto: it.monto, tipo: it.tipo, conciliar_con: it.conciliarCon,
             })), ...marcados.map((it) => ({
               fecha: it.fecha, descripcion: it.descripcion, monto: it.monto, tipo: it.tipo,
+              ...(titulos[`${a.id}:${it.k}`] ? { titulo: titulos[`${a.id}:${it.k}`] } : {}),
               categoria: categorias[`${a.id}:${it.k}`] || 'Otros',
               recordar: !!rec(it)?.recordar, aplicar_anteriores: !!(rec(it)?.recordar && rec(it)?.anteriores),
             }))],
@@ -548,7 +571,11 @@ export default function SubidaMultiple({
                                 aria-label={`Importar ${it.descripcion}`}
                               />
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium break-words line-clamp-2">{it.descripcion}</p>
+                                <div className="flex items-start gap-1">
+                                  <p className="text-sm font-medium break-words line-clamp-2 min-w-0" data-testid="nombre-linea">{titulos[clave] || it.descripcion}</p>
+                                  {!repetido && <BotonLapiz original={it.descripcion} onClick={() => setEditandoNombre(clave)} />}
+                                </div>
+                                {titulos[clave] && <PistaBanco original={it.descripcion} />}
                                 <p className="text-xs text-danger">
                                   {it.fecha} ·{' '}
                                   {repetido ? `Ya está en ${it.repetidoDe}` : it.estado === 'posible' ? 'Posible duplicado' : 'Falta registrar'}
@@ -568,6 +595,27 @@ export default function SubidaMultiple({
                                 {formatCOP(it.monto)}
                               </p>
                             </label>
+                            {editandoNombre === clave && !repetido && (
+                              <EditorNombre
+                                className="ml-8 mt-2"
+                                original={it.descripcion}
+                                valor={titulos[clave] || ''}
+                                conRecordar
+                                recordarInicial={recordarTitulo[clave] ?? (visibles.filter((x) => claveComercio(x.descripcion) === claveComercio(it.descripcion)).length >= MIN_REPETICIONES_NOMBRE)}
+                                onCancelar={() => setEditandoNombre(null)}
+                                onGuardar={(texto, recordar) => {
+                                  const limpio = limpiarNombre(texto)
+                                  setTitulos((p) => {
+                                    const n = { ...p }
+                                    if (limpio) n[clave] = limpio
+                                    else delete n[clave]
+                                    return n
+                                  })
+                                  setRecordarTitulo((p) => ({ ...p, [clave]: !!limpio && recordar }))
+                                  setEditandoNombre(null)
+                                }}
+                              />
+                            )}
                             {marcado && !repetido && (
                               <div className="ml-8 mt-2">
                                 <select

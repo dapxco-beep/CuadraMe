@@ -18,6 +18,7 @@ from app import cuadre_extracto
 from app import estado_traer
 from app.extractos_vista import clasificar_motivo
 from app import punto_partida
+from app import titulo as tit
 from app.conciliacion import _CUENTA_UNICA
 from app.wallet import ORIGENES_RAPIDOS
 from app.compartidos import cuenta_accesible, puede_editar_cuenta
@@ -215,6 +216,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
                 usuario_id=usuario.id,
                 cuenta_id=cuenta.id,
                 descripcion=item["descripcion"],
+                titulo=tit.recordado(db, usuario.id, item["descripcion"]),
                 categoria=clasif["categoria"],
                 tipo=tipo_dir,
                 monto=item["monto"],
@@ -574,6 +576,8 @@ def importar_faltantes(
     sin_categoria_clara = 0
     categorizados_auto = 0
     recordar, anteriores = set(data.recordar), set(data.aplicar_anteriores)
+    titulos_elegidos = data.titulos or {}
+    recordar_titulo = set(data.recordar_titulo)
     reglas_guardadas = anteriores_actualizados = 0
     reglas_omitidas: list[dict] = []
     # Varios extractos con periodos que se solapan comparten movimientos: si otro archivo (o
@@ -604,6 +608,13 @@ def importar_faltantes(
         fp = item.get("fingerprint")
         if fp not in fingerprints or item.get("estado") != "faltante":
             continue
+        # Nombre propio elegido en la revisión (el texto del banco, `descripcion`, no se toca).
+        if fp in titulos_elegidos:
+            nombre = tit.limpiar(titulos_elegidos[fp])
+            if nombre:
+                item["titulo"] = nombre
+            else:
+                item.pop("titulo", None)
         if punto_partida.es_anterior(parse_bank_date(item.get("fecha")), inicio_pp_imp):
             anteriores_omitidas += 1  # el inicio se movió después de procesar el extracto
             continue
@@ -645,6 +656,7 @@ def importar_faltantes(
             usuario_id=usuario.id,
             cuenta_id=cuenta.id,
             descripcion=item["descripcion"],
+            titulo=tit.limpiar(item.get("titulo")) or tit.recordado(db, usuario.id, item["descripcion"]),
             categoria=categoria,
             tipo=tipo_dir,
             monto=item["monto"],
@@ -661,6 +673,8 @@ def importar_faltantes(
         item["estado"] = "importado"
         importados += 1
 
+        if fp in recordar_titulo and item.get("titulo"):
+            tit.guardar_regla(db, usuario.id, item["descripcion"], item["titulo"])
         if fp in recordar and categoria and categoria != "Otros":
             r = guardar_regla_aprendida(db, usuario.id, item["descripcion"], categoria)
             if r["guardada"]:
@@ -856,6 +870,10 @@ def _completar_con_extracto(db: Session, mov: Movimiento, item: dict, historial_
             mov.cat_confirmada = True
     else:
         categoria = mov.categoria or "Otros"
+
+    nombre = tit.limpiar(item.get("titulo"))
+    if nombre:  # la persona le puso nombre a esta línea en la revisión: pasa al movimiento que ya existía
+        mov.titulo = nombre
 
     fecha_banco = parse_bank_date(item.get("fecha"))
     if fecha_banco and mov.fecha and fecha_banco.date() != mov.fecha.date():

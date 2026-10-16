@@ -32,6 +32,8 @@ import DetalleMovimiento from './DetalleMovimiento'
 import EtiquetaOrigen from '../components/EtiquetaOrigen'
 import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
 import PorRevisarCorreo from '../components/PorRevisarCorreo'
+import { BotonLapiz, EditorNombre, PistaBanco } from '../components/NombreEditable'
+import { limpiarNombre, MIN_REPETICIONES_NOMBRE, nombreDe, tieneNombrePropio } from '../lib/tituloMovimiento'
 import { usePorRevisarCorreo } from '../lib/usePorRevisarCorreo'
 
 const TAMANO_PAGINA = 200
@@ -56,7 +58,7 @@ function etiquetaDia(fechaISO) {
 // Una fila de la lista. Está memoizada: al categorizar UN movimiento solo se vuelve a pintar su
 // fila (las demás reciben las mismas props y React las salta), clave con miles de movimientos.
 const FilaMovimiento = memo(function FilaMovimiento({
-  m, icono, moneda, cuentaNombre, esSel, modoSel, panel, botonConfirmar, indice, onToggle, onChip, onConfirmar, onAbrir,
+  m, icono, moneda, cuentaNombre, esSel, modoSel, panel, botonConfirmar, indice, onToggle, onChip, onConfirmar, onAbrir, onNombre,
 }) {
   const timer = useRef(null)
   const larga = useRef(false)
@@ -134,7 +136,8 @@ const FilaMovimiento = memo(function FilaMovimiento({
         </button>
         <div className="min-w-0 flex-1">
           <Link to={`/movimientos/${m.id}`} onClick={alClic} className="block pt-2.5 min-w-0">
-            <p className="text-sm font-semibold break-words line-clamp-4" title={m.descripcion}>{m.descripcion}</p>
+            <p className="text-sm font-semibold break-words line-clamp-4" title={m.descripcion}>{nombreDe(m)}</p>
+            {tieneNombrePropio(m) && <PistaBanco original={m.descripcion} />}
             <p className="text-xs text-ink-soft mt-0.5 break-words" data-testid="fila-fecha-cuenta">
               {[fechaHoraMovimiento(fechaDeMovimiento(m)), cuentaNombre].filter(Boolean).join(' · ')}
             </p>
@@ -156,6 +159,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
                 <ChevronDown size={16} aria-hidden="true" />
               </button>
             )}
+            {onNombre && !esTransfer && !modoSel && <BotonLapiz className="ml-1.5" original={m.descripcion} onClick={() => onNombre(m)} />}
             {traslado && !esTransfer && (
               <span className="ml-2 text-[11px] font-semibold text-ink-soft rounded-full bg-paper-raised border border-line px-2 py-0.5">
                 {traslado}
@@ -579,6 +583,28 @@ export default function Movimientos() {
     return { items: [m], movimiento: m, categoriaActual: m.categoria, titulo: 'Categoría', subtitulo: m.descripcion, clave: m.id }
   }
   const abrirChip = useCallback((m) => setSelector(selectorDeFila(m)), [])
+
+  // Nombre propio desde la lista: solo cambia lo que se ve; el texto del banco queda en el detalle.
+  const [renombrando, setRenombrando] = useState(null)
+  const [repeticionesNombre, setRepeticionesNombre] = useState(0)
+  const abrirNombre = useCallback((m) => {
+    setRenombrando(m)
+    setRepeticionesNombre(0)
+    api.similaresConteo(m.descripcion, m.id).then((r) => setRepeticionesNombre(Number(r?.conteo) || 0)).catch(() => {})
+  }, [])
+  async function guardarNombre(texto, recordar) {
+    const m = renombrando
+    try {
+      const limpio = limpiarNombre(texto)
+      const actualizado = await api.editarMovimiento(m.id, { titulo: limpio, ...(recordar ? { recordar_titulo: true } : {}) })
+      parchearEnCaches(actualizado)
+      setMovimientos((prev) => prev.map((x) => (x.id === m.id ? { ...x, ...actualizado } : x)))
+      setRenombrando(null)
+      avisar(limpio ? 'Nombre guardado' : 'Volvió el nombre del banco', 'ok')
+    } catch (err) {
+      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+    }
+  }
   function abrirChipGrupo(g) {
     setSelector({
       items: g.items,
@@ -1107,7 +1133,7 @@ export default function Movimientos() {
                             className="flex items-start justify-between gap-3 py-2.5 min-h-[44px] text-xs"
                           >
                             <span className="min-w-0 break-words">
-                              <span className="block line-clamp-3">{m.descripcion}</span>
+                              <span className="block line-clamp-3">{nombreDe(m)}</span>
                               <span className="block text-ink-soft">{fechaHoraMovimiento(fechaDeMovimiento(m))}</span>
                             </span>
                             <span className="font-semibold shrink-0">{formatMoneda(m.monto, monedaDe[m.cuenta_id])}</span>
@@ -1160,6 +1186,7 @@ export default function Movimientos() {
                       onChip={abrirChip}
                       onConfirmar={confirmarUno}
                       onAbrir={abrirPanel}
+                      onNombre={abrirNombre}
                     />
                   ))}
                 </div>
@@ -1198,6 +1225,24 @@ export default function Movimientos() {
             if (s.masivo) salirModoSeleccion()
           }}
         />
+      )}
+
+      {renombrando && (
+        <Hoja onCerrar={() => setRenombrando(null)} titulo="Nombre del movimiento">
+          {({ cerrar }) => (
+            <>
+              <h2 className="text-lg font-semibold mb-2">Nombre del movimiento</h2>
+              <EditorNombre
+                original={renombrando.descripcion}
+                valor={renombrando.titulo || ''}
+                conRecordar
+                recordarInicial={repeticionesNombre + 1 >= MIN_REPETICIONES_NOMBRE}
+                onCancelar={cerrar}
+                onGuardar={guardarNombre}
+              />
+            </>
+          )}
+        </Hoja>
       )}
 
       {moverACuenta && (
