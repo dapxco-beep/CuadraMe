@@ -264,6 +264,7 @@ ATAQUES = [
     ("GET", "/movimientos/{mov}", None),
     ("PUT", "/movimientos/{mov}", {"monto": 1}),
     ("PUT", "/movimientos/{mov}", {"cuenta_id": "{cuenta}"}),
+    ("PUT", "/movimientos/{mov}", {"titulo": "hackeado", "recordar_titulo": True}),
     ("DELETE", "/movimientos/{mov}", None),
     ("POST", "/movimientos", {"cuenta_id": "{cuenta}", "descripcion": "x", "monto": 1, "tipo": "expense"}),
     ("POST", "/movimientos/transferencia", {"cuenta_origen_id": "{cuenta}", "cuenta_destino_id": "{cuenta2}", "monto": 1}),

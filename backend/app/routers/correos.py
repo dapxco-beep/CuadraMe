@@ -23,6 +23,7 @@ from app.config import settings
 from app.limites import verificar_limite
 from app.limites_diarios import consumir_cupo_diario
 from app.database import get_db
+from app import titulo as tit
 from app import punto_partida
 from app.extractos_vista import clasificar_motivo, frase_error
 from app.conciliacion import detectar_banco
@@ -1692,6 +1693,7 @@ def aprobar_correo(
         # El comercio o concepto que dice el correo ('Compra en Juan Valdez'), no quién lo envió.
         # El origen queda en `fuente="email"`.
         descripcion=correo.comercio,
+        titulo=tit.titulo_para_nuevo(db, usuario.id, correo.comercio, data.titulo),
         categoria=correo.categoria_sugerida,
         tipo=tipo,
         monto=correo.monto,
@@ -1705,6 +1707,8 @@ def aprobar_correo(
     )
     db.add(movimiento)
     dup.nuevo_movimiento(db, movimiento, dup.ORIGEN_CORREO, dup.huella_correo(correo.gmail_msg_id))
+    if data.recordar_titulo and tit.limpiar(data.titulo):
+        tit.guardar_regla(db, usuario.id, correo.comercio, data.titulo)
 
     if tipo == "income":
         cuenta.saldo += correo.monto

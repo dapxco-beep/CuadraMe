@@ -42,6 +42,7 @@ import { fechaHace,gastosDeLaSemana, siguientePasoInicio } from '../lib/inicioSi
 import { resumenCarriles } from '../lib/carriles'
 import ExtractosAMedias from '../components/ExtractosAMedias'
 import { extractosAMedias } from '../lib/retomar'
+import { nombreDe } from '../lib/tituloMovimiento'
 
 const DIAS_CUENTA_NUEVA = 14
 
@@ -476,7 +477,7 @@ export default function Inicio() {
                         {m.tipo === 'transfer' ? <Icono icono={ArrowLeftRight} tam="md" /> : iconoDe(m.categoria)}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="t-cuerpo font-medium break-words line-clamp-4">{m.descripcion}</p>
+                        <p className="t-cuerpo font-medium break-words line-clamp-4">{nombreDe(m)}</p>
                         <p className="t-apoyo break-words">{[fechaHoraMovimiento(fechaDeMovimiento(m)), cuentas.find((c) => c.id === m.cuenta_id)?.nombre, m.categoria].filter(Boolean).join(' · ')}</p>
                       </div>
                       <span className={`t-cuerpo font-semibold t-cifra shrink-0 whitespace-nowrap ${m.tipo === 'income' ? 'text-accent' : 'text-ink'}`}>

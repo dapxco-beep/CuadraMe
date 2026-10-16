@@ -28,6 +28,7 @@ def test_columnas_nuevas_de_patrimonio_y_perfiles_tienen_alter_en_el_arranque():
     esperado = {
         "activos_patrimonio": {"arriendo_mensual", "anio", "depreciacion_pct", "deuda_id", "broker"},
         "perfiles": {"pais", "moneda_base", "zona_horaria", "idioma", "pais_confirmado"},
+        "movimientos": {"titulo", "subcategoria"},
     }
     for tabla, cols in esperado.items():
         modelo = {c.name for c in Base.metadata.tables[tabla].c}

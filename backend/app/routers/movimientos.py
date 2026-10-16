@@ -13,6 +13,7 @@ from sqlalchemy import and_, or_
 from app import duplicados as dup
 from app import pendientes
 from app import subcategorias as subcat
+from app import titulo as tit
 from app.clave_comercio import clave_comercio, huella_en_descripcion
 from app.autocat import (
     ClasificadorUsuario,
@@ -43,7 +44,7 @@ from app.wallet import (
     mapear_cuenta_ex,
     parse_fecha,
 )
-from app.models import Categoria, Cuenta, Meta, Movimiento, ReglaCategoria
+from app.models import Categoria, Cuenta, Meta, Movimiento, ReglaCategoria, ReglaTitulo
 from app.rachas import registrar_actividad_hoy
 from app.schemas import (
     ClasificarRequest,
@@ -124,7 +125,11 @@ def listar_movimientos(
     if q:
         # Se escapan % y _ para que el texto buscado se trate como literal.
         q_literal = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        query = query.filter(Movimiento.descripcion.ilike(f"%{q_literal}%", escape="\\"))
+        # Encuentra por el texto del banco Y por el nombre que le puso la persona.
+        query = query.filter(or_(
+            Movimiento.descripcion.ilike(f"%{q_literal}%", escape="\\"),
+            Movimiento.titulo.ilike(f"%{q_literal}%", escape="\\"),
+        ))
     if categoria:
         query = query.filter(Movimiento.categoria == categoria)
     if tipo:
@@ -344,6 +349,7 @@ def crear_movimiento(
         usuario_id=usuario.id,
         cuenta_id=data.cuenta_id,
         descripcion=data.descripcion,
+        titulo=tit.titulo_para_nuevo(db, usuario.id, data.descripcion, data.titulo),
         categoria=categoria,
         subcategoria=subcategoria,
         tipo=data.tipo,
@@ -354,6 +360,8 @@ def crear_movimiento(
         **auto,
     )
     db.add(movimiento)
+    if data.recordar_titulo and tit.limpiar(data.titulo):
+        tit.guardar_regla(db, usuario.id, data.descripcion, data.titulo)
     cuenta.saldo += _delta_saldo(data.tipo, data.monto)
     if data.tipo in ("income", "expense"):
         dup.nuevo_movimiento(db, movimiento, dup.ORIGEN_MANUAL)
@@ -502,7 +510,8 @@ def editar_movimiento(
                    "elimínalo para devolver el dinero a la cuenta y descontarlo de la meta",
         )
 
-    cambios = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None}
+    cambios = {k: v for k, v in data.model_dump(exclude_unset=True).items()
+               if v is not None and k not in ("titulo", "recordar_titulo")}
 
     cuenta_actual = bloquear_cuenta(db, mov.cuenta_id)
     if not cuenta_actual or not puede_editar_cuenta(db, usuario.id, cuenta_actual):
@@ -529,6 +538,16 @@ def editar_movimiento(
     for campo in ("descripcion", "monto", "tipo", "categoria", "fecha", "notas"):
         if campo in cambios:
             setattr(mov, campo, cambios[campo])
+    if "titulo" in data.model_fields_set and data.titulo is not None:
+        # Solo cambia el nombre que ve la persona; la descripción del banco no se toca. "" = volver al original.
+        mov.titulo = tit.limpiar(data.titulo)
+        if data.recordar_titulo:
+            if mov.titulo:
+                tit.guardar_regla(db, usuario.id, mov.descripcion, mov.titulo)
+            else:  # quitó el nombre y pidió olvidarlo para este comercio
+                db.query(ReglaTitulo).filter(
+                    ReglaTitulo.usuario_id == usuario.id, ReglaTitulo.huella == pendientes.huella_de(mov.descripcion),
+                ).delete()
     mov.subcategoria = sub_final
     mov.cuenta_id = cuenta_nueva.id
     cuenta_nueva.saldo += _delta_de(mov)
@@ -907,6 +926,7 @@ def _registrar_movimiento_rapido(
         usuario_id=usuario_id,
         cuenta_id=cuenta.id,
         descripcion=descripcion,
+        titulo=tit.recordado(db, usuario_id, descripcion),
         categoria=categoria,
         subcategoria=subcategoria,
         tipo=tipo,

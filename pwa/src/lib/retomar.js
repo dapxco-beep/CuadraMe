@@ -49,10 +49,10 @@ export function resumenLote(archivos) {
 // ── Borrador de la revisión (sobrevive a salir y volver; vive solo en esta pestaña) ──────────
 const clave = (historialId) => `cuadrame:borrador-revision:${historialId}`
 
-export function guardarBorrador(historialId, { seleccion, categorias, aprender }) {
+export function guardarBorrador(historialId, { seleccion, categorias, aprender, titulos = {}, recordarTitulo = {} }) {
   if (!historialId) return
   try {
-    sessionStorage.setItem(clave(historialId), JSON.stringify({ seleccion: [...seleccion], categorias, aprender }))
+    sessionStorage.setItem(clave(historialId), JSON.stringify({ seleccion: [...seleccion], categorias, aprender, titulos, recordarTitulo }))
   } catch { /* sin almacenamiento: se sigue sin borrador */ }
 }
 
@@ -60,7 +60,7 @@ export function leerBorrador(historialId) {
   if (!historialId) return null
   try {
     const b = JSON.parse(sessionStorage.getItem(clave(historialId)) || 'null')
-    return b && typeof b === 'object' ? { seleccion: new Set(b.seleccion || []), categorias: b.categorias || {}, aprender: b.aprender || {} } : null
+    return b && typeof b === 'object' ? { seleccion: new Set(b.seleccion || []), categorias: b.categorias || {}, aprender: b.aprender || {}, titulos: b.titulos || {}, recordarTitulo: b.recordarTitulo || {} } : null
   } catch {
     return null
   }

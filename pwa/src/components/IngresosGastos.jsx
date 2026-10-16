@@ -4,6 +4,7 @@ import { ArrowDownRight, ArrowUpRight, ChevronDown, Scale } from 'lucide-react'
 import { api } from '../lib/api'
 import { abreviarCOP, pctTexto } from '../lib/informe'
 import Ayudita from './Ayudita'
+import { nombreDe } from '../lib/tituloMovimiento'
 
 // Comparación Ingresos vs Gastos del periodo. Los números salen del servidor (regla única de
 // contabilidad.py): los traslados entre tus cuentas, pagos de tarjeta y ajustes no suman ni restan.
@@ -162,7 +163,7 @@ export default function IngresosGastos({ params, fmt, className = '' }) {
                   <li key={m.id}>
                     <Link to={`/movimientos/${m.id}`} className="flex items-center justify-between gap-3 py-2 text-xs min-h-[44px]">
                       <span className="min-w-0">
-                        <span className="block font-medium truncate">{m.descripcion}</span>
+                        <span className="block font-medium truncate">{nombreDe(m)}</span>
                         <span className="text-ink-soft">{m.fecha.slice(0, 10)} · {m.motivo}</span>
                       </span>
                       <span className="font-semibold shrink-0">{fmt(m.monto)}</span>

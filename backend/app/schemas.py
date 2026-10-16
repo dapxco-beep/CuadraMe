@@ -220,6 +220,9 @@ class MovimientoCreate(BaseModel):
     subcategoria: Optional[str] = Field(default=None, max_length=40)  # opcional, debe ser de esa categoría
     fecha: Optional[datetime] = None
     notas: Optional[str] = Field(default="", max_length=1000)
+    # Nombre propio (opcional, máx. 80). La descripción original queda como está.
+    titulo: Optional[str] = Field(default=None, max_length=80)
+    recordar_titulo: bool = False
     # Si ya tienes ese gasto registrado por otro canal (atajo, correo, extracto) la app avisa (409)
     # en vez de duplicarlo; con true se guarda de todos modos («es otro gasto igual»).
     confirmar_nuevo: bool = False
@@ -236,6 +239,9 @@ class MovimientoUpdate(BaseModel):
     subcategoria: Optional[str] = Field(default=None, max_length=40)
     fecha: Optional[datetime] = None
     notas: Optional[str] = Field(default=None, max_length=1000)
+    # Nombre propio: "" lo quita (vuelve el texto del banco). Máx. 80.
+    titulo: Optional[str] = Field(default=None, max_length=80)
+    recordar_titulo: bool = False
 
 
 class TransferenciaCreate(BaseModel):
@@ -250,6 +256,7 @@ class MovimientoOut(BaseModel):
     cuenta_id: str
     fecha: datetime
     descripcion: str
+    titulo: Optional[str] = None
     categoria: str
     subcategoria: Optional[str] = None
     tipo: str
@@ -773,6 +780,9 @@ class AprobarCorreoRequest(BaseModel):
     aplicar_anteriores: bool = False
     # Fecha del movimiento corregida por la persona (hora de Colombia). Sin ella se usa la leída del correo.
     fecha: Optional[datetime] = None
+    # Nombre propio para el movimiento que se crea (la descripción del banco queda intacta).
+    titulo: Optional[str] = Field(default=None, max_length=80)
+    recordar_titulo: bool = False
 
 
 class LecturaCorreoRequest(BaseModel):
@@ -996,6 +1006,8 @@ class ImportarFaltantesRequest(BaseModel):
     categorias: Optional[dict[str, str]] = None  # fingerprint -> categoría elegida por el usuario, si la cambió
     recordar: list[str] = []  # fingerprints cuya categoría elegida se guarda como regla del comercio
     aplicar_anteriores: list[str] = []  # subconjunto de `recordar`: además recategoriza movimientos pasados
+    titulos: Optional[dict[str, str]] = None  # fingerprint -> nombre propio (máx. 80); "" = el original
+    recordar_titulo: list[str] = []  # fingerprints cuyo nombre se recuerda para ese comercio
 
 
 class HistorialExtractoOut(BaseModel):

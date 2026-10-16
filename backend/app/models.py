@@ -162,6 +162,18 @@ class ReglaCategoria(Base):
     activa = Column(Boolean, default=True)
 
 
+class ReglaTitulo(Base):
+    """«Recordar este nombre para este comercio»: huella del comercio -> título elegido por la persona.
+    Solo existe si la persona lo pidió; se aplica a movimientos nuevos (ver app/titulo.py)."""
+    __tablename__ = "reglas_titulo"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    huella = Column(String, nullable=False)
+    titulo = Column(String, nullable=False)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+
 class Movimiento(Base):
     __tablename__ = "movimientos"
     __table_args__ = (
@@ -199,6 +211,9 @@ class Movimiento(Base):
     #                   línea del extracto, id de transacción o huella del disparo del atajo).
     origen = Column(String, nullable=True)
     huella_externa = Column(String, nullable=True)
+    # Nombre que le puso la PERSONA («Recibo de la luz»). `descripcion` sigue siendo el texto original del
+    # banco: el anti-duplicados, la conciliación y las reglas por comercio trabajan con él. NULL = sin título.
+    titulo = Column(String, nullable=True)
 
 
 class HuellaOrigen(Base):
