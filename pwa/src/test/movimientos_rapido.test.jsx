@@ -271,7 +271,7 @@ describe('volver respeta filtros y scroll', () => {
     })
 
     // abrir un movimiento (ruta normal en teléfono)
-    await userEvent.click(screen.getByRole('link', { name: 'PANADERIA LA 80 BOGOTA' }))
+    await userEvent.click(screen.getByRole('link', { name: /PANADERIA LA 80 BOGOTA/ }))
     expect(screen.getByTestId('donde')).toHaveTextContent('/movimientos/m2')
     // en el detalle se edita: el caché de la lista se parchea (invalida solo ese ítem)
     const { parchearEnCaches } = await import('../lib/useEstadoLista')
