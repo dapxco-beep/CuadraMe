@@ -26,7 +26,7 @@ from app.contabilidad import (
 )
 from app import punto_partida
 from app.database import get_db
-from app.fx import convertir_a_cop
+from app.contabilidad import ConvertidorBase
 from app.models import Cuenta, Movimiento
 from app.models_pendientes import ReglaTraslado
 from app.utiles import ahora_co
@@ -38,11 +38,11 @@ MAX_SUGERENCIAS = 100
 MAX_IDS = 200
 
 
-def _resumen(m: Movimiento, cuentas: dict[str, Cuenta]) -> dict:
+def _resumen(m: Movimiento, cuentas: dict[str, Cuenta], conv: ConvertidorBase) -> dict:
     c = cuentas.get(m.cuenta_id)
     return {
         "id": m.id, "fecha": m.fecha.isoformat() if m.fecha else None, "descripcion": m.descripcion or "",
-        "monto": round(convertir_a_cop(m.monto, c.moneda if c else "COP")), "tipo": m.tipo,
+        "monto": round(conv.contar(m.monto, c.moneda if c else "COP")), "tipo": m.tipo,
         "cuenta_id": m.cuenta_id, "cuenta": c.nombre if c else "",
     }
 
@@ -63,11 +63,12 @@ def sugerencias(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(
     por_id = {m.id: m for m in movs}
     # Solo movimientos propios: la decisión se guarda en la fila y en reglas de quien decide.
     propios = {m.id for m in movs if m.usuario_id == usuario.id}
+    conv = ConvertidorBase.de_usuario(db, usuario.id)
     items = []
     for s in sugerir_traslados(movs, tc):
         if not all(i in propios for i in s["ids"]):
             continue
-        filas = [_resumen(por_id[i], cuentas) for i in s["ids"]]
+        filas = [_resumen(por_id[i], cuentas, conv) for i in s["ids"]]
         items.append({"tipo": s["tipo"], "ids": s["ids"], "diferencia": s["diferencia"], "movimientos": filas,
                       "fecha": max(f["fecha"] or "" for f in filas)})
     items.sort(key=lambda x: x["fecha"], reverse=True)

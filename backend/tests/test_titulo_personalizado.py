@@ -159,8 +159,8 @@ def test_correo_aprobado_pasa_el_titulo(usuario, cuenta):
 
 
 def test_migracion_0004_va_al_final_y_es_idempotente():
-    assert migraciones.MIGRACIONES[-1][0] == "0004_titulo_personalizado"
-    sentencias = migraciones.MIGRACIONES[-1][1]
+    assert [m[0] for m in migraciones.MIGRACIONES][3] == "0004_titulo_personalizado"  # 0005+ van después
+    sentencias = migraciones.MIGRACIONES[3][1]
     assert any("movimientos ADD COLUMN IF NOT EXISTS titulo" in s for s in sentencias)
     assert all("IF NOT EXISTS" in s for s in sentencias)
     eng = create_engine(f"sqlite:///{os.path.join(tempfile.mkdtemp(), 'm4.db')}")

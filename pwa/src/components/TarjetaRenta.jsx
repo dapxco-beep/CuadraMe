@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, CalendarClock, CheckCircle2, CircleHelp, Download, ExternalLink } from 'lucide-react'
 import { api } from '../lib/api'
-import { formatCOP } from '../lib/format'
+import { formatCOPFijo as formatCOP } from '../lib/format'
 import { ENLACE_DIAN, ESTADO_RENTA, cuentaAtras, pctBarra } from '../lib/renta'
 import { useDialogos } from '../lib/DialogosContext'
 import BarraProgreso from './BarraProgreso'

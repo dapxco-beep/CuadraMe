@@ -5,7 +5,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from app.cuotas import cuota_en_mes, estado_plan
-from app.fx import convertir_a_cop
+from app.contabilidad import ConvertidorBase
 from app.models import Cuenta
 from app.models_cuotas import CuotaTarjeta
 
@@ -41,8 +41,9 @@ def planes_activos(db: Session, usuario_id: str, cuenta_id: str | None = None) -
     return q.all()
 
 
-def comprometido_cuotas(db: Session, usuario_id: str, anio: int, mes: int, hoy: date) -> float:
-    """Total en COP que vence en (anio, mes) por compras a cuotas activas."""
+def comprometido_cuotas(db: Session, usuario_id: str, anio: int, mes: int, hoy: date, conv=None) -> float:
+    """Total en moneda base (COP por defecto) que vence en (anio, mes) por compras a cuotas activas."""
+    conv = conv or ConvertidorBase.de_usuario(db, usuario_id)
     total = 0.0
     for plan, cuenta in planes_activos(db, usuario_id):
         est = estado_plan(
@@ -52,5 +53,5 @@ def comprometido_cuotas(db: Session, usuario_id: str, anio: int, mes: int, hoy: 
         monto = cuota_en_mes(
             plan.num_cuotas, plan.cuota_mensual, est["pagadas"], plan.primera_fecha, anio, mes, cuenta.dia_pago,
         )
-        total += convertir_a_cop(monto, cuenta.moneda or "COP")
+        total += conv.contar(monto, cuenta.moneda or "COP")
     return round(total)

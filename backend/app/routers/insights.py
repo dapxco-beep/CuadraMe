@@ -18,7 +18,7 @@ from app.compartidos import cuentas_ids_accesibles
 from app.contabilidad import tipos_cuenta_de, tipos_efectivos
 from app.database import get_db
 from app.edad_dinero import calcular_edad_dinero, mensaje_edad, tendencia_edad
-from app.fx import convertir_a_cop
+from app.contabilidad import ConvertidorBase
 from app.salud_financiera import calcular_salud_financiera
 from app.insights import _resumen_fallback, detectar_anomalias, generar_resumen_semanal, responder_pregunta
 from app.routers.consentimientos import exigir_consentimiento, tiene_consentimiento
@@ -57,11 +57,12 @@ def resumen_semanal(
 
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
     monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()}
+    conv = ConvertidorBase.de_usuario(db, usuario.id)  # moneda base del perfil (fase 2)
     todos = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids_accesibles)).all()
     semana = [m for m in todos if m.fecha >= hace_7_dias and (fin_rango is None or m.fecha < fin_rango)]
 
     def monto_cop(m):
-        return convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
+        return conv.contar(m.monto, monedas.get(m.cuenta_id, "COP"))
 
     te = tipos_efectivos(todos, tipos_cuenta_de(db, ids_accesibles))  # sin pagos de tarjeta ni traslados propios
     ingresos = sum(monto_cop(m) for m in semana if te[m.id] == "income")
@@ -104,6 +105,8 @@ def resumen_semanal(
         desde=(rango["desde"].date().isoformat() if etiqueta else (hoy - timedelta(days=7)).date().isoformat()),
         hasta=((rango["hasta"] - timedelta(days=1)).date().isoformat() if etiqueta else hoy.date().isoformat()),
         etiqueta=etiqueta or "los últimos 7 días",
+        moneda_base=conv.base,
+        monedas_sin_tasa=sorted(conv.sin_tasa),
     )
 
 
@@ -115,6 +118,7 @@ def alertas_proactivas(
     duplicados que el usuario probablemente no notó por su cuenta."""
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
     monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()}
+    conv = ConvertidorBase.de_usuario(db, usuario.id)  # moneda base del perfil (fase 2)
     hace_90_dias = ahora_co() - timedelta(days=90)
     movimientos = (
         db.query(Movimiento)
@@ -132,7 +136,7 @@ def alertas_proactivas(
         {
             "id": m.id,
             "descripcion": m.descripcion,
-            "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP")),
+            "monto": conv.contar(m.monto, monedas.get(m.cuenta_id, "COP")),
             "fecha": m.fecha,
             "tipo": te[m.id],
         }
@@ -142,6 +146,8 @@ def alertas_proactivas(
     return AlertasProactivasResponse(
         comisiones=detectar_comisiones(data),
         cobros_duplicados=detectar_cobros_duplicados(data),
+        moneda_base=conv.base,
+        monedas_sin_tasa=sorted(conv.sin_tasa),
     )
 
 
@@ -153,6 +159,7 @@ def edad_del_dinero(
     de gastarse. Un solo número memorable que resume el colchón real."""
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
     monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()}
+    conv = ConvertidorBase.de_usuario(db, usuario.id)  # moneda base del perfil (fase 2)
     hace_90_dias = ahora_co() - timedelta(days=90)
     movimientos = (
         db.query(Movimiento)
@@ -161,7 +168,7 @@ def edad_del_dinero(
     )
     te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
     data = [
-        {"fecha": m.fecha, "tipo": te[m.id], "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))}
+        {"fecha": m.fecha, "tipo": te[m.id], "monto": conv.contar(m.monto, monedas.get(m.cuenta_id, "COP"))}
         for m in movimientos
     ]
 
@@ -260,9 +267,10 @@ def salud_financiera(
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()
     monedas = {c.id: c.moneda for c in cuentas}
+    conv = ConvertidorBase.de_usuario(db, usuario.id)
     # El colchón son los saldos líquidos: una cuenta de crédito no es plata propia.
     saldo_liquido = sum(
-        convertir_a_cop(c.saldo, c.moneda) for c in cuentas if c.tipo in ("ahorro", "efectivo")
+        conv.contar(c.saldo, c.moneda) for c in cuentas if c.tipo in ("ahorro", "efectivo")
     )
 
     movs = (
@@ -272,7 +280,7 @@ def salud_financiera(
     )
 
     def cop(m):
-        return convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP"))
+        return conv.contar(m.monto, monedas.get(m.cuenta_id, "COP"))
 
     te = tipos_efectivos(movs, tipos_cuenta_de(db, ids_accesibles))
     corte_30 = ahora - timedelta(days=30)
@@ -305,7 +313,7 @@ def salud_financiera(
 
     dias_registro = len({m.fecha.date() for m in ult30})
 
-    return calcular_salud_financiera(
+    salud = calcular_salud_financiera(
         saldo_liquido=saldo_liquido,
         gasto_mensual_promedio=gasto_mensual,
         ingresos_30d=ingresos_30,
@@ -314,3 +322,7 @@ def salud_financiera(
         presupuestos=presupuestos,
         dias_con_registro_30d=dias_registro,
     )
+    if isinstance(salud, dict):
+        salud.setdefault("moneda_base", conv.base)
+        salud.setdefault("monedas_sin_tasa", sorted(conv.sin_tasa))
+    return salud

@@ -10,6 +10,7 @@ import { useCategorias } from '../lib/CategoriasContext'
 import { nombreMesLargo, pctTexto, rangoPeriodo } from '../lib/informe'
 import { formatVeces } from '../lib/format'
 import SelectorPeriodo from '../components/SelectorPeriodo'
+import AvisoSinTasa from '../components/AvisoSinTasa'
 import BarraProgreso from '../components/BarraProgreso'
 import EnlaceCostos from '../components/EnlaceCostos'
 import IngresosGastos from '../components/IngresosGastos'
@@ -96,6 +97,7 @@ export default function Informe() {
   const [abierta, setAbierta] = useState(null)
   const [detalles, setDetalles] = useState({})
   const [desgloses, setDesgloses] = useState({})
+  const [recarga, setRecarga] = useState(0) // sube al poner una tasa a mano: se vuelve a pedir el informe
 
   // Mes elegido tocando una barra del gráfico: enfoca el desglose sin cambiar lo que dibuja el gráfico.
   const [sel, setSel] = useState(null)
@@ -133,7 +135,7 @@ export default function Informe() {
     return () => {
       activo = false
     }
-  }, [params])
+  }, [params, recarga])
 
   function alternar(cat) {
     if (abierta === cat) return setAbierta(null)
@@ -180,6 +182,9 @@ export default function Informe() {
 
       {cargando && <div className="mx-6 mt-6 space-y-4"><EsqueletoGrafica alto={160} etiqueta="Cargando tu informe" /><EsqueletoLista filas={4} /></div>}
       {error && <p role="alert" className="mx-6 mt-6 text-sm text-danger text-center">{error}</p>}
+      {!cargando && informe && (
+        <AvisoSinTasa monedas={informe.monedas_sin_tasa} base={informe.moneda_base} onResuelto={() => setRecarga((n) => n + 1)} className="mx-6 mt-4" />
+      )}
 
       {!cargando && informe && !informe.hay_datos && (
         <EstadoVacio

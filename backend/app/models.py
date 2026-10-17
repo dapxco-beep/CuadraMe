@@ -525,3 +525,17 @@ class Subcategoria(Base):
     nombre = Column(String, nullable=False)
     orden = Column(Integer, default=0)
     creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class TasaManual(Base):
+    """Tasa que la persona puso a mano cuando no hay tasa automática: 1 `moneda` = `tasa` de su moneda
+    `base`. Privada por usuario (fase 2 de moneda base)."""
+    __tablename__ = "tasas_manuales"
+    __table_args__ = (UniqueConstraint("usuario_id", "moneda", "base", name="uq_tasa_manual"),)
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    moneda = Column(String, nullable=False)
+    base = Column(String, nullable=False)
+    tasa = Column(Float, nullable=False)
+    fecha = Column(String, nullable=True)

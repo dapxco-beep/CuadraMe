@@ -17,6 +17,8 @@ from app.crons import Corrida, liberar_marca, reclamar_marca
 from app.compartidos import cuenta_accesible, cuentas_ids_accesibles
 from app.contabilidad import tipos_cuenta_de, tipos_de_cuentas, tipos_efectivos
 from app.database import get_db
+# IMPUESTOS (DIAN / renta) se queda en COP a propósito: se declara en pesos, sin importar la moneda base
+# del perfil (moneda base fase 2, ver docs/MONEDA_BASE.md).
 from app.fx import convertir_a_cop
 from app.impuestos import AVISO, CATEGORIAS_FISCALES, calcular_gmf, gmf_mes, organizar_deducibles
 from app.models import Cuenta, Movimiento

@@ -507,6 +507,63 @@ def guardar_pais(
     return _respuesta_pais(db, usuario.id)
 
 
+# ── Tasa manual (moneda base fase 2) ───────────────────────────────────────
+class TasaManualIn(BaseModel):
+    tasa: float = Field(gt=0, lt=1e9)
+
+
+def _moneda_valida(moneda: str) -> str:
+    m = (moneda or "").upper()
+    if not (m.isascii() and m.isalpha() and len(m) == 3):
+        raise HTTPException(status_code=422, detail="Moneda no válida.")
+    return m
+
+
+@router.get("/tasas")
+def listar_tasas(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """Tasas que ESTA persona puso a mano hacia su moneda base: {moneda: unidades de base por 1 moneda}."""
+    from app.contabilidad import moneda_base_de, tasas_manuales_de
+
+    base = moneda_base_de(db, usuario.id)
+    return {"moneda_base": base, "tasas": tasas_manuales_de(db, usuario.id, base)}
+
+
+@router.put("/tasas/{moneda}")
+def fijar_tasa(
+    moneda: str,
+    data: TasaManualIn,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«1 MXN = X <base>». Se usa en todos los totales de ESTA persona cuando no hay tasa automática
+    (o para corregirla). Solo afecta su propia cuenta."""
+    from app.contabilidad import moneda_base_de
+    from app.models import TasaManual
+
+    m = _moneda_valida(moneda)
+    base = moneda_base_de(db, usuario.id)
+    if m == base:
+        raise HTTPException(status_code=422, detail="Esa ya es tu moneda base.")
+    fila = (db.query(TasaManual)
+            .filter(TasaManual.usuario_id == usuario.id, TasaManual.moneda == m, TasaManual.base == base).first())
+    if fila:
+        fila.tasa, fila.fecha = data.tasa, date.today().isoformat()
+    else:
+        db.add(TasaManual(usuario_id=usuario.id, moneda=m, base=base, tasa=data.tasa, fecha=date.today().isoformat()))
+    db.commit()
+    return {"moneda": m, "moneda_base": base, "tasa": data.tasa}
+
+
+@router.delete("/tasas/{moneda}")
+def borrar_tasa(moneda: str, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    from app.models import TasaManual
+
+    m = _moneda_valida(moneda)
+    db.query(TasaManual).filter(TasaManual.usuario_id == usuario.id, TasaManual.moneda == m).delete()
+    db.commit()
+    return {"ok": True}
+
+
 @router.get("/paises")
 def listar_paises(usuario: UsuarioActual = Depends(get_current_user)):
     """Catálogo para el selector de país (solo los disponibles). No contiene datos de personas."""

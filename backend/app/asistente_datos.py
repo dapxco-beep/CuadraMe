@@ -37,16 +37,15 @@ def cargar_datos(db: Session, usuario_id: str, hoy: datetime) -> dict:
     ids = cuentas_ids_accesibles(db, usuario_id)
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()
     base = moneda_base_de(db, usuario_id)
-    conv = ConvertidorBase(base)
+    conv = ConvertidorBase.de_usuario(db, usuario_id)
 
     # Un año de historia para poder responder por cualquier mes reciente
     # ("¿en qué gasté más en julio?"). Los tipos ya son los EFECTIVOS: sin pagos
     # de tarjeta ni traslados entre cuentas propias (misma regla que los reportes).
     desde = _inicio_mes_atras(hoy, MESES_CONSULTA)
-    movs = [
-        m for m in cargar_movs_efectivos(db, usuario_id, desde, None, MAX_MOVIMIENTOS)
-        if m["tipo"] in ("income", "expense") and m["fecha"] >= desde
-    ]
+    cargados = cargar_movs_efectivos(db, usuario_id, desde, None, MAX_MOVIMIENTOS)
+    conv.sin_tasa.update(cargados.sin_tasa)  # monedas sin tasa vistas en los movimientos (su monto vale 0)
+    movs = [m for m in cargados if m["tipo"] in ("income", "expense") and m["fecha"] >= desde]
 
     # Promedios de los últimos meses COMPLETOS anteriores que tienen movimientos
     por_mes: dict[tuple, dict] = defaultdict(lambda: {"income": 0.0, "expense": 0.0})

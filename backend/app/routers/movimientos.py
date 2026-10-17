@@ -848,6 +848,7 @@ def _registrar_movimiento_rapido(
     moneda_cuenta = (cuenta.moneda or "COP").upper()
     if moneda_orig and moneda_orig != moneda_cuenta:
         notas = (notas + " · " if notas else "") + f"Original: {monto:g} {moneda_orig}"
+        # Conversión a la moneda DE LA CUENTA (no es un total del perfil); hoy solo para cuentas en COP (atajo CO).
         if moneda_cuenta == "COP":
             monto = round(convertir_a_cop(monto, moneda_orig), 2)
 

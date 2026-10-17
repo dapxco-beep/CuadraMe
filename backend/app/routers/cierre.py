@@ -21,7 +21,7 @@ from app.compartidos import cuentas_ids_accesibles
 from app.config import settings
 from app.contabilidad import tipos_de_cuentas, tipos_efectivos
 from app.database import get_db
-from app.fx import convertir_a_cop
+from app.contabilidad import ConvertidorBase
 from app.models import Cuenta, Deuda, Movimiento
 from app.models_fiscal import AjusteUsuario, CierreMes
 from app.models_patrimonio import SnapshotPatrimonio
@@ -64,6 +64,7 @@ def construir_cierre(db: Session, usuario_id: str, mes: str) -> dict:
     ids = cuentas_ids_accesibles(db, usuario_id)
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()
     monedas = {c.id: c.moneda for c in cuentas}
+    conv = ConvertidorBase.de_usuario(db, usuario_id)
     tipos = tipos_de_cuentas(cuentas, db)
     previo = mes_anterior(mes)
     movs = (
@@ -75,7 +76,7 @@ def construir_cierre(db: Session, usuario_id: str, mes: str) -> dict:
     te = tipos_efectivos(movs, tipos)
 
     def fila(m):
-        return {"tipo": te[m.id], "monto": convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP")),
+        return {"tipo": te[m.id], "monto": conv.contar(m.monto, monedas.get(m.cuenta_id, "COP")),
                 "categoria": m.categoria, "descripcion": m.descripcion}
 
     movs_mes = [fila(m) for m in movs if m.fecha.strftime("%Y-%m") == mes]
@@ -89,7 +90,11 @@ def construir_cierre(db: Session, usuario_id: str, mes: str) -> dict:
         for s in db.query(SnapshotPatrimonio)
         .filter(SnapshotPatrimonio.usuario_id == usuario_id, SnapshotPatrimonio.mes.in_([mes, previo])).all()
     }
-    return generar_cierre(mes, movs_mes, movs_prev, interes_deudas, snaps.get(previo), snaps.get(mes))
+    out = generar_cierre(mes, movs_mes, movs_prev, interes_deudas, snaps.get(previo), snaps.get(mes))
+    if isinstance(out, dict):
+        out["moneda_base"] = conv.base
+        out["monedas_sin_tasa"] = sorted(conv.sin_tasa)
+    return out
 
 
 def _guardar(db: Session, usuario_id: str, mes: str, informe: dict) -> CierreMes | None:

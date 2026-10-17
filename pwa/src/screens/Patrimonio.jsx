@@ -10,6 +10,7 @@ import { useDialogos } from '../lib/DialogosContext'
 import { CLASES, CLASES_BIEN, CLASES_MERCADO, formatPct, valorCDT } from '../lib/patrimonio'
 import GraficoPatrimonio from '../components/GraficoPatrimonio'
 import DonaDistribucion from '../components/DonaDistribucion'
+import AvisoSinTasa from '../components/AvisoSinTasa'
 import GraficoDescomposicion from '../components/GraficoDescomposicion'
 import { Isotipo, Monto, IlustracionVacia } from '../brand/Marca'
 import Hoja from '../components/Hoja'
@@ -69,6 +70,7 @@ export default function Patrimonio() {
 
       <p className="mx-5 text-xs text-ink-soft">Tu patrimonio es todo lo que tienes menos todo lo que debes.</p>
       <OfertaInversiones />
+      <AvisoSinTasa monedas={datos?.monedas_sin_tasa} base={datos?.moneda_base} onResuelto={cargar} className="mx-5 mt-3" />
 
       {cargando && !datos ? (
         <div className="mx-5 mt-3 space-y-3">

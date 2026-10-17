@@ -20,7 +20,6 @@ from app.config import settings
 from app.crons import Corrida, liberar_marca, reclamar_marca
 from app.database import get_db
 from app.finanzas import _dia_valido_del_mes, calc_estado_recurrente
-from app.fx import convertir_a_cop
 from app.models import Cuenta, Meta, Movimiento, Perfil, Presupuesto, PushSubscription, Recurrente
 from app.push import enviar_push
 from app.rachas import otorgar_vida_si_nueva
@@ -335,7 +334,7 @@ def _premiar_presupuestos_de(db: Session, usuario_id: str, inicio_mes, clave_mes
         return False
 
     ids_accesibles = cuentas_ids_accesibles(db, usuario_id)
-    gastado_mes = gastos_por_categoria(db, ids_accesibles, inicio_mes, base=moneda_base_de(db, usuario_id))
+    gastado_mes = gastos_por_categoria(db, ids_accesibles, inicio_mes, base=moneda_base_de(db, usuario_id), conv=ConvertidorBase.de_usuario(db, usuario_id))
     if any(gastado_mes.get(p.categoria, 0.0) > p.limite for p in presupuestos):
         return False
 

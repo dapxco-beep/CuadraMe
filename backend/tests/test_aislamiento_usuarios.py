@@ -469,6 +469,7 @@ SIN_ID_DE_RECURSO = {
     "/correos/clave-pdf", "/perfil/punto-de-partida", "/facturas/escanear", "/impuestos/ajustes",
     "/insights/preguntar", "/movimientos/clasificar", "/movimientos/rapido-prueba", "/pagos/checkout",
     "/patrimonio/snapshot", "/patrimonio/activos", "/perfil/api-key/regenerar", "/perfil/recordatorio-diario",
+    "/perfil/tasas", "/perfil/tasas/{moneda}",  # tasas manuales: solo filas del propio usuario
     "/perfil/pais",  # PUT: solo el país del propio usuario (el catálogo y el GET quedan en LISTAS)
     "/inversiones/brokers", "/inversiones/posiciones", "/inversiones/precios/actualizar", "/inversiones/importar",
     "/inversiones/opciones",  # crean/leen solo filas PROPIAS; no reciben ids ajenos

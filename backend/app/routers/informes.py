@@ -13,7 +13,7 @@ from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
 from app.compartidos import cuentas_ids_accesibles
 from app.contabilidad import delta_saldo
-from app.fx import convertir_a_cop
+from app.contabilidad import ConvertidorBase
 from app.informe_datos import cargar_movs_efectivos
 from app.models import Cuenta, Movimiento
 from app.utiles import ahora_co
@@ -52,6 +52,8 @@ def informe_gasto(
     movs = _cargar(db, usuario, rango, anterior)
     informe = inf.informe_gasto(movs, rango, anterior)
     informe["periodo"] = periodo
+    informe["moneda_base"] = movs.base
+    informe["monedas_sin_tasa"] = list(movs.sin_tasa)
     if not informe["hay_datos"]:
         # Ayuda para que la pantalla ofrezca saltar al último mes con gastos.
         todos = cargar_movs_efectivos(db, usuario.id)
@@ -145,7 +147,10 @@ def evolucion_categorias(
     a, m = inf.sumar_meses(hoy.year, hoy.month, -(meses - 1))
     ini = inf.inicio_mes(a, m)
     movs = cargar_movs_efectivos(db, usuario.id, ini, inf.inicio_mes(*inf.sumar_meses(hoy.year, hoy.month, 1)))
-    return inf.evolucion_categorias(movs, (hoy.year, hoy.month), meses, categoria, inf.inicio_mes(hoy.year, hoy.month))
+    out = inf.evolucion_categorias(movs, (hoy.year, hoy.month), meses, categoria, inf.inicio_mes(hoy.year, hoy.month))
+    if isinstance(out, dict):
+        out["moneda_base"], out["monedas_sin_tasa"] = movs.base, list(movs.sin_tasa)
+    return out
 
 
 @router.get("/meses")
@@ -166,14 +171,15 @@ def _disponible_dia_a_dia(db: Session, usuario_id: str, dias: list[str]) -> tupl
     ids = list(cuentas_ids_accesibles(db, usuario_id))
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all() if ids else []
     propias = {c.id: c for c in cuentas if c.tipo != "credito"}
-    actual = sum(convertir_a_cop(c.saldo or 0, c.moneda or "COP") for c in propias.values())
+    conv = ConvertidorBase.de_usuario(db, usuario_id)
+    actual = sum(conv.contar(c.saldo or 0, c.moneda or "COP") for c in propias.values())
     if not dias or not propias:
         return round(actual), [round(actual)] * len(dias)
     inicio = datetime.fromisoformat(dias[0])
     delta: dict[str, float] = {}
     for m in db.query(Movimiento).filter(Movimiento.cuenta_id.in_(list(propias)), Movimiento.fecha >= inicio).all():
         k = m.fecha.date().isoformat()
-        delta[k] = delta.get(k, 0.0) + convertir_a_cop(delta_saldo(m), propias[m.cuenta_id].moneda or "COP")
+        delta[k] = delta.get(k, 0.0) + conv.contar(delta_saldo(m), propias[m.cuenta_id].moneda or "COP")
     return round(actual), inf.disponible_por_dia(dias, delta, actual)
 
 
@@ -203,6 +209,8 @@ def diario(
         "total": sum(d["gasto"] for d in dias),
         "disponible_hoy": disponible_hoy,
         "dias": dias,
+        "moneda_base": movs.base,
+        "monedas_sin_tasa": list(movs.sin_tasa),
     }
 
 

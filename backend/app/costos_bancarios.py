@@ -326,7 +326,7 @@ def analizar_usuario(db, usuario_id: str, desde: date, hasta: date, hoy: datetim
     pagos = []
     if tarjetas:
         monedas = {c.id: c.moneda or "COP" for c in cuentas_db}
-        conv = ConvertidorBase(moneda_base_de(db, usuario_id))
+        conv = ConvertidorBase.de_usuario(db, usuario_id)
         for m in db.query(Movimiento).filter(Movimiento.cuenta_id.in_(tarjetas), Movimiento.tipo == "income",
                                              Movimiento.fecha >= inicio_lectura, Movimiento.fecha < fin).all():
             if m.fuente != cont.FUENTE_AJUSTE:

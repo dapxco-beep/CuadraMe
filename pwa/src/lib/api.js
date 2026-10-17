@@ -278,6 +278,9 @@ export const api = {
   editarCuenta: (id, data) => request(`/cuentas/${id}`, { method: 'PUT', body: data }),
   eliminarCuenta: (id) => request(`/cuentas/${id}`, { method: 'DELETE' }),
   resumenCuentas: () => request('/cuentas/resumen'),
+  // Tasas manuales hacia la moneda base: GET {moneda_base, tasas:{MXN: 0.05}}; PUT {tasa}: 1 MONEDA = tasa de la base.
+  tasasManuales: () => request('/perfil/tasas', { sinCache: true }),
+  fijarTasaManual: (moneda, tasa) => request(`/perfil/tasas/${encodeURIComponent(moneda)}`, { method: 'PUT', body: { tasa } }),
   detalleCuenta: (id) => request(`/cuentas/${id}/detalle`),
   cuotasTarjeta: (cuentaId) => request(`/cuotas-tarjeta${cuentaId ? `?cuenta_id=${encodeURIComponent(cuentaId)}` : ''}`),
   crearCuotaTarjeta: (data) => request('/cuotas-tarjeta', { method: 'POST', body: data }),

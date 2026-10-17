@@ -521,7 +521,7 @@ def reunir_datos(db, usuario_id: str, hoy: datetime) -> dict:
     ids = cuentas_ids_accesibles(db, usuario_id)
     cuentas_db = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all() if ids else []
     monedas = {c.id: c.moneda or "COP" for c in cuentas_db}
-    conv = ConvertidorBase(moneda_base_de(db, usuario_id))
+    conv = ConvertidorBase.de_usuario(db, usuario_id)
 
     def cop(monto, cuenta_id):
         mon = monedas.get(cuenta_id, "COP")
