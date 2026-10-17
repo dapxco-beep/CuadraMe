@@ -194,7 +194,7 @@ def calcular_resumen(db: Session, uid: str, hoy: Optional[datetime] = None) -> d
         .all()
     )
     base = moneda_base_de(db, uid)
-    conv = ConvertidorBase(base)
+    conv = ConvertidorBase.de_usuario(db, uid)
     activos = [_serializar_activo(a, flujos.get(a.id, []), hoy, conv) for a in activos_db]
 
     por_clase: dict = {}

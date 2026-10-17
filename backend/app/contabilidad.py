@@ -609,13 +609,20 @@ def moneda_base_de(db, usuario_id: str) -> str:
 
 
 class ConvertidorBase:
-    """Callable (monto, moneda_origen) -> monto en base, con tasas de app.fx. `sin_tasa` junta
-    las monedas que no se pudieron convertir (su monto se deja tal cual, marcado)."""
+    """Callable (monto, moneda_origen) -> monto en base. `sin_tasa` junta las monedas que no se pudieron
+    convertir (su monto se deja tal cual, marcado: la pantalla avisa y NO lo suma al total).
+    Orden de tasas: la que la persona puso a mano (`tasas_usuario`, privada de ella) > app.fx."""
 
-    def __init__(self, base: str = "COP"):
+    def __init__(self, base: str = "COP", tasas_usuario: dict[str, float] | None = None):
         self.base = (base or "COP").upper()
         self.sin_tasa: set[str] = set()
-        self._tasas: dict[str, float] = {}
+        self._tasas: dict[str, float] = {k.upper(): v for k, v in (tasas_usuario or {}).items() if v and v > 0}
+
+    @classmethod
+    def de_usuario(cls, db, usuario_id: str) -> "ConvertidorBase":
+        """Base del perfil + tasas manuales de esa persona (fase 2: todas las pantallas lo usan)."""
+        base = moneda_base_de(db, usuario_id)
+        return cls(base, tasas_manuales_de(db, usuario_id, base))
 
     def __call__(self, monto, origen=None):
         from app import fx
@@ -630,9 +637,33 @@ class ConvertidorBase:
             self.sin_tasa.add(o)
         return valor
 
+    def sumar(self, pares) -> float:
+        """Suma de (monto, moneda): lo que no tiene tasa NO entra en el total (queda en sin_tasa)."""
+        total = 0.0
+        for monto, origen in pares:
+            v = self(monto, origen)
+            if (origen or self.base).upper() not in self.sin_tasa:
+                total += v
+        return total
+
+
+def tasas_manuales_de(db, usuario_id: str, base: str) -> dict[str, float]:
+    """{moneda: unidades de `base` por 1 de esa moneda} que la persona fijó a mano (aislado por usuario)."""
+    try:
+        from app.models import TasaManual
+
+        filas = db.query(TasaManual).filter(TasaManual.usuario_id == usuario_id, TasaManual.base == base.upper()).all()
+        return {f.moneda.upper(): f.tasa for f in filas}
+    except Exception:  # tabla aún sin migrar: seguir con las tasas del proveedor
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return {}
+
 
 def gastos_por_categoria(db, ids_accesibles, desde: datetime, monedas: dict[str, str] | None = None,
-                         base: str = "COP") -> dict[str, float]:
+                         base: str = "COP", conv: "ConvertidorBase | None" = None) -> dict[str, float]:
     """{categoria: gasto en moneda base (COP por defecto)} desde `desde` hasta hoy, con la regla contable
     (sin pagos de tarjeta ni traslados). Lo usan los presupuestos y los avisos.
     Se leen 3 días antes de `desde` solo para poder emparejar traslados del borde."""
@@ -640,7 +671,7 @@ def gastos_por_categoria(db, ids_accesibles, desde: datetime, monedas: dict[str,
 
     from app.models import Cuenta, Movimiento
 
-    conv = ConvertidorBase(base)
+    conv = conv or ConvertidorBase(base)
     ids = list(ids_accesibles)
     if not ids:
         return {}

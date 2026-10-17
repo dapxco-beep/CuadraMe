@@ -130,6 +130,17 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'CREATE INDEX IF NOT EXISTS ix_reglas_titulo_usuario ON reglas_titulo (usuario_id)',
         ],
     ),
+    (
+        # Tasas manuales por usuario (moneda base fase 2): cuando no hay tasa automática la persona la pone.
+        "0005_tasas_manuales",
+        [
+            'CREATE TABLE IF NOT EXISTS tasas_manuales ('
+            'id VARCHAR PRIMARY KEY, usuario_id VARCHAR NOT NULL, moneda VARCHAR NOT NULL, '
+            'base VARCHAR NOT NULL, tasa FLOAT NOT NULL, fecha VARCHAR, '
+            'CONSTRAINT uq_tasa_manual UNIQUE (usuario_id, moneda, base))',
+            'CREATE INDEX IF NOT EXISTS ix_tasas_manuales_usuario ON tasas_manuales (usuario_id)',
+        ],
+    ),
 ]
 
 

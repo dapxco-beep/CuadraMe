@@ -34,7 +34,7 @@ def cargar_movs_efectivos(
     if not ids:
         return []
     monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()}
-    conv = ConvertidorBase(moneda_base_de(db, usuario_id))
+    conv = ConvertidorBase.de_usuario(db, usuario_id)
     q = db.query(*(getattr(Movimiento, c) for c in _COLUMNAS)).filter(Movimiento.cuenta_id.in_(ids))
     # Punto de partida: informes y asistente arrancan en esa fecha (lo anterior se oculta, no se borra).
     inicio_pp = punto_partida.fecha_inicio(db, usuario_id)

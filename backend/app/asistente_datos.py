@@ -37,7 +37,7 @@ def cargar_datos(db: Session, usuario_id: str, hoy: datetime) -> dict:
     ids = cuentas_ids_accesibles(db, usuario_id)
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()
     base = moneda_base_de(db, usuario_id)
-    conv = ConvertidorBase(base)
+    conv = ConvertidorBase.de_usuario(db, usuario_id)
 
     # Un año de historia para poder responder por cualquier mes reciente
     # ("¿en qué gasté más en julio?"). Los tipos ya son los EFECTIVOS: sin pagos

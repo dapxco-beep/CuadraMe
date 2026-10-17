@@ -30,7 +30,7 @@ def datos_semana(db: Session, usuario_id: str, hoy: datetime) -> dict:
     """Todo lo que lleva el correo de UN usuario. `vacio` = no hay nada que contar
     (sin gastos ni avisos): en ese caso no se manda correo."""
     ids = cuentas_ids_accesibles(db, usuario_id)
-    por_cat = gastos_por_categoria(db, ids, hoy - timedelta(days=DIAS_SEMANA), base=moneda_base_de(db, usuario_id)) if ids else {}
+    por_cat = gastos_por_categoria(db, ids, hoy - timedelta(days=DIAS_SEMANA), base=moneda_base_de(db, usuario_id), conv=ConvertidorBase.de_usuario(db, usuario_id)) if ids else {}
     ordenadas = sorted(por_cat.items(), key=lambda kv: -kv[1])
     total = sum(por_cat.values())
     datos = {
@@ -156,7 +156,7 @@ def comparativo_push(db: Session, usuario_id: str, ids_cuentas: list[str], ahora
     inicio_ant = ahora - timedelta(days=2 * DIAS_SEMANA)
     inicio_pp = punto_partida.fecha_inicio(db, usuario_id)
     monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids_cuentas)).all()}
-    conv = ConvertidorBase(moneda_base_de(db, usuario_id))
+    conv = ConvertidorBase.de_usuario(db, usuario_id)
     # 3 días antes: solo para emparejar traslados del borde (igual que gastos_por_categoria).
     movs = (db.query(Movimiento)
             .filter(Movimiento.cuenta_id.in_(ids_cuentas), Movimiento.fecha >= inicio_ant - timedelta(days=3),
