@@ -16,6 +16,13 @@
 - **Peso de arranque:** `npm run build && npm run peso` mide lo que se baja al abrir la app (hoy ≈ 233 KB comprimidos, tope 450 KB; falla si se pasa).
 - **Verificado en un celular simulado de 390 px** (Chrome sin interfaz sobre la réplica local, 7 pantallas): sin desbordes ni errores de consola. Sigue sin probarse en un teléfono físico ni con la cuenta real de producción.
 - **Único pendiente que no depende del código:** alimentar el corpus de correos con casos reales que fallen (hace falta ver tus correos).
+- **Auditoría de diseño y rendimiento (2026-10-17):** app compilada, celular simulado de 390 px, red 4G lenta + CPU 4x más lenta, y una cuenta con 12.000 movimientos.
+  - **Carga en frío:** primer contenido 0,8 s, LCP 2,5 s; arranque de 233 KB comprimidos (brotli, caché inmutable de 1 año y HSTS en producción).
+  - **Informes con 12.000 movimientos:** de ~2,4 s a ~0,9 s por endpoint en el servidor (clasificación de costos y quitar tildes memorizadas con `lru_cache`; columnas en vez de objetos ORM en `cargar_movs_efectivos`). Resultado verificado idéntico fila por fila. Los índices de la base están bien (consultas < 2 ms): el costo era cálculo en Python.
+  - **Presupuesto:** las cifras iban pegadas al nombre y partidas en 390 px; ahora van en su propia línea.
+  - **Revisado sin hallazgos:** 15 pantallas sin desbordes ni errores de consola; sin peticiones repetidas ni respuestas de error; campos de formulario ≥ 16 px; el aviso de «botones pequeños» eran falsos positivos (el área de toque de 44 px se amplía con un pseudo-elemento).
+  - **Decisión deliberada, no se tocó:** el zoom por pellizco está bloqueado (`user-scalable=no`, documentado en `lib/estabilidadVista.js`); la accesibilidad de tamaño de letra va por los ajustes del teléfono.
+  - **Pendiente de producto (no urgente):** Inicio dispara ~26 peticiones al abrir (las secundarias podrían esperar a que se despliegue su sección); con usuarios de miles de movimientos, un caché corto compartido de `cargar_movs_efectivos` bajaría Inicio de ~4 s a ~1 s, pero exige invalidar con cada escritura para no mostrar cifras viejas.
 - **Cómo desplegar sin pisar nada:** varias sesiones trabajan en paralelo y `main` avanza. Antes de desplegar: `git log HEAD..main`; si hay commits, crear una rama desde `main`, pasar solo lo propio (cherry-pick) y desplegar desde ahí.
 
 ---
