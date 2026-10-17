@@ -83,7 +83,7 @@ export default function AvisoSinTasa({ monedas, base = 'COP', onResuelto, classN
   return (
     <>
       <div role="status" className={`flex items-start gap-2 rounded-xl border border-line bg-paper-raised px-3 py-2 text-xs text-ink-soft ${className}`}>
-        <AlertCircle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+        <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
         <p className="flex-1">
           {textoSinTasa(lista)}{' '}
           <button type="button" onClick={() => setAbierta(true)} className="font-semibold text-accent underline min-h-11 px-1">

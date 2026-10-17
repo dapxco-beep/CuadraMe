@@ -265,7 +265,7 @@ def test_sincronizar_detecta_sin_etiqueta_no_duplica_y_usa_la_clave(monkeypatch,
 
     # Guardar la clave: se cifra, no se devuelve y no aparece en logs.
     g = client.put("/correos/clave-pdf", json={"clave": CLAVE})
-    assert g.json() == {"ok": True, "configurada": True}
+    assert g.json()["ok"] is True and g.json()["configurada"] is True  # + extractos_leidos/reintentados (reintento automático)
     assert CLAVE not in g.text
     assert client.get("/correos/clave-pdf").json()["configurada"] is True
     db = SessionLocal()
