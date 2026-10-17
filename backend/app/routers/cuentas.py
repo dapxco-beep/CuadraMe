@@ -210,7 +210,7 @@ def detalle_cuenta(
         "ultimo_movimiento": ultimos[0].fecha.isoformat() if ultimos else None,
         "movimientos": [
             {
-                "id": m.id, "fecha": m.fecha.isoformat(), "descripcion": m.descripcion,
+                "id": m.id, "fecha": m.fecha.isoformat(), "descripcion": m.titulo or m.descripcion, "titulo": m.titulo,
                 "categoria": m.categoria, "tipo": m.tipo, "monto": m.monto, "fuente": m.fuente,
             }
             for m in ultimos

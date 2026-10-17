@@ -5,6 +5,7 @@ sigue funcionando en base a `usuario_id` (movimientos, presupuestos, etc. no
 se comparten, solo la cuenta y sus movimientos asociados vía cuenta_id).
 """
 from fastapi import HTTPException
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.models import Cuenta, CuentaCompartida
@@ -72,3 +73,25 @@ def exigir_cuenta_propia(db: Session, usuario_id: str, cuenta_id: str | None) ->
     existe = db.query(Cuenta.id).filter(Cuenta.id == cuenta_id, Cuenta.usuario_id == usuario_id).first()
     if not existe:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+
+
+def reclamar_estado(db: Session, modelo, fila_id: str, de: str, a: str) -> bool:
+    """Transición ATÓMICA de estado: `UPDATE ... SET estado=a WHERE id=... AND estado=de`.
+
+    Es el candado de «hazlo una sola vez»: el UPDATE bloquea la fila hasta el commit/rollback, así que
+    una segunda petición (reintento de la cola offline, doble toque) espera, vuelve a evaluar el WHERE
+    con el estado ya confirmado y recibe 0 filas -> devuelve False y NO debe crear nada. En SQLite
+    (pruebas/desarrollo) el UPDATE toma el candado de escritura de la base, con el mismo efecto.
+    No hace commit: si la petición falla, el rollback deja el estado como estaba."""
+    n = db.execute(
+        update(modelo).where(modelo.id == fila_id, modelo.estado == de).values(estado=a)
+    ).rowcount
+    return n == 1
+
+
+def serializar_escritura_sqlite(db: Session, cuenta_id: str) -> None:
+    """En Postgres `bloquear_cuenta` ya serializa (FOR UPDATE). SQLite lo ignora y deja que dos
+    peticiones lean el mismo libro antes de escribir: aquí se toma el candado de escritura con un
+    UPDATE sin cambios para que la segunda lea DESPUÉS del commit de la primera. No-op en Postgres."""
+    if db.get_bind().dialect.name == "sqlite":
+        db.execute(update(Cuenta).where(Cuenta.id == cuenta_id).values(id=Cuenta.id))

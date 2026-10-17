@@ -21,7 +21,8 @@ from app import punto_partida
 from app import titulo as tit
 from app.conciliacion import _CUENTA_UNICA
 from app.wallet import ORIGENES_RAPIDOS
-from app.compartidos import cuenta_accesible, puede_editar_cuenta
+from app import extractos_error
+from app.compartidos import cuenta_accesible, puede_editar_cuenta, reclamar_estado
 from app.conciliacion import (
     es_transferencia_propia,
     _cand_extracto,
@@ -141,9 +142,11 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
         # Por qué no se pudo leer: queda guardado para decírselo a la persona en la lista de extractos.
         motivo_codigo = clasificar_motivo(
             texto=texto_plano, pide_clave=pide_clave, clave_dada=bool(data.password),
-            pdf_vacio=_decodificar_pdf(data.pdf_base64 or "") is None)  # vacío, roto o no es un PDF
+            pdf_vacio=_decodificar_pdf(data.pdf_base64 or "") is None,  # vacío, roto o no es un PDF
+            sin_movimientos=banco not in ("generico", "desconocido") and not sin_senales)
         if sin_senales and texto_plano:
             motivo_codigo = "formato_no_reconocido"
+        motivo_codigo = motivo_codigo or "pdf_ilegible"  # un error nunca queda sin motivo
         historial = HistorialExtracto(
             usuario_id=usuario.id,
             cuenta_id=cuenta.id,
@@ -547,6 +550,15 @@ def deshacer_auto_importados(
     return {"ok": True, "deshechos": deshechos, "conservados": conservados}
 
 
+def _resultado_ya_importado(historial: HistorialExtracto) -> dict:
+    """Respuesta de una importación que ya se hizo: mismo formato, sin crear nada (`ya_importado`)."""
+    return {
+        "ok": True, "importados": 0, "sin_categoria_clara": 0, "categorizados_auto": 0, "reglas_guardadas": 0,
+        "anteriores_actualizados": 0, "reglas_omitidas": [], "duplicados_omitidos": 0, "sin_direccion": 0,
+        "anteriores_omitidas": 0, "ya_importado": True, "importados_total": historial.importados or 0,
+    }
+
+
 @router.post("/historial/{historial_id}/importar")
 def importar_faltantes(
     historial_id: str,
@@ -566,8 +578,21 @@ def importar_faltantes(
     if not cuenta or not puede_editar_cuenta(db, usuario.id, cuenta):
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
 
+    # Idempotencia: pendiente_revision -> importando es atómico (reclamar_estado). Si otra petición
+    # igual (reintento de la cola offline, doble toque) ya lo tomó o lo terminó, esta NO crea nada:
+    # espera su commit, relee la revisión ya calculada y responde con ese resultado.
+    estado_previo = historial.estado
+    if estado_previo == "importando" or not reclamar_estado(db, HistorialExtracto, historial.id, estado_previo, "importando"):
+        db.rollback()
+        db.refresh(historial)
+        return _resultado_ya_importado(historial)
+    db.refresh(historial)  # la revisión que dejó la petición anterior (si la hubo), no la que se leyó antes del candado
     review = json.loads(historial.review_json or "[]")
     fingerprints = set(data.fingerprints)
+    if not any(i.get("fingerprint") in fingerprints and i.get("estado") == "faltante" for i in review):
+        historial.estado = estado_previo  # nada por importar (ya se hizo): se suelta el candado sin tocar nada
+        db.commit()
+        return _resultado_ya_importado(historial)
     importados = 0
 
     modelo = ClasificadorUsuario(db, usuario.id)
@@ -686,8 +711,7 @@ def importar_faltantes(
 
     historial.review_json = json.dumps(review, default=str)
     historial.importados = (historial.importados or 0) + importados
-    if all(i["estado"] != "faltante" for i in review):
-        historial.estado = "conciliado"
+    historial.estado = "conciliado" if all(i["estado"] != "faltante" for i in review) else estado_previo
     estado_traer.sincronizar_contadores(historial, review)  # los contadores del historial ya no se quedan viejos
     if not any(i.get("estado") in ("faltante", "dudoso") for i in review):
         cuadre_extracto.registrar_cuadre(db, cuenta, historial)  # recuerda si este mes cuadra (para avisar si deja de cuadrar)
@@ -794,6 +818,60 @@ def eliminar_historial(
     db.delete(historial)
     db.commit()
     return {"ok": True}
+
+
+def _historial_en_error(db: Session, usuario: UsuarioActual, historial_id: str) -> HistorialExtracto:
+    h = (
+        db.query(HistorialExtracto)
+        .filter(HistorialExtracto.id == historial_id, HistorialExtracto.usuario_id == usuario.id)
+        .first()
+    )
+    if not h:
+        raise HTTPException(status_code=404, detail="Historial no encontrado")
+    if h.estado != "error":
+        raise HTTPException(status_code=409, detail="Este extracto no está en error")
+    return h
+
+
+@router.delete("/historial/{historial_id}/error")
+def quitar_extracto_en_error(
+    historial_id: str,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«Quitar de la lista»: borra SOLO un extracto en error del propio usuario (nunca uno conciliado ni
+    pendiente de revisión: esos tienen movimientos detrás). Si venía de un correo, ese correo vuelve a
+    «nuevo» para poder revisarlo otra vez."""
+    h = _historial_en_error(db, usuario, historial_id)
+    for ec in db.query(ExtractoCorreo).filter(ExtractoCorreo.usuario_id == usuario.id,
+                                              ExtractoCorreo.historial_id == h.id).all():
+        ec.estado, ec.historial_id = "nuevo", None
+    db.delete(h)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/historial/{historial_id}/reintentar")
+def reintentar_extracto_en_error(
+    historial_id: str,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«Reintentar» un extracto en error que vino de un correo: se vuelve a traer el adjunto y, si ahora se
+    lee, el extracto procesado REEMPLAZA a la fila de error. Los subidos a mano no se pueden reintentar."""
+    h = _historial_en_error(db, usuario, historial_id)
+    verificar_limite(f"reintentar-error:{usuario.id}", 30, 3600, "Reintentaste muchos extractos seguidos. Podrás seguir en {espera}.")
+    return extractos_error.reintentar_historial(db, usuario, h)
+
+
+@router.post("/reintentar-errores")
+def reintentar_errores(
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Al abrir «Traer movimientos»: completa los motivos que faltan y reintenta (en lote pequeño) los errores
+    por clave que tienen correo. Nunca falla: si Gmail no responde, todo queda como estaba."""
+    return extractos_error.reintentar_errores_clave(db, usuario)
 
 
 FUENTES_RAPIDAS = ("wallet", "apple_pay", "google_pay", "shortcut", "cierre_app", "voz")

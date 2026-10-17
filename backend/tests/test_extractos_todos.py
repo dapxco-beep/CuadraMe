@@ -219,7 +219,7 @@ def test_la_fila_de_error_muestra_el_motivo_o_dice_que_no_se_guardo(limpio):
     err = [i for i in client.get("/sincronizacion/extractos").json()["items"] if i["estado_vista"] == "no_se_pudo_leer"]
     assert len(err) == 1 and err[0]["copias"] == 3 and err[0]["copias_texto"] == "x3 intentos"
     assert err[0]["resultado"].startswith("No se pudo leer (motivo no guardado)")
-    assert err[0]["acciones"] == ["subir_de_nuevo", "mi_banco_no_esta"]
+    assert err[0]["acciones"] == ["subir_de_nuevo", "quitar_de_la_lista", "mi_banco_no_esta"]
     assert err[0]["mes_por_confirmar"] and "Mes por confirmar" in err[0]["titulo"]
     # Con motivo guardado en un correo: frase concreta y siguiente paso.
     _correo(90, "error", archivo="Nu_2026-11-04.pdf", cuenta=nu, motivo="pdf_escaneado", recibido=datetime(2026, 11, 4))

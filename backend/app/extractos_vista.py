@@ -234,6 +234,10 @@ MOTIVOS = {
                       "Descarga el extracto en Excel o CSV desde tu banco y súbelo, o agrega los movimientos a mano."),
     "archivo_vacio": ("el archivo llegó vacío o dañado",
                       "Toca «Intentar de nuevo»; si sigue igual, descárgalo otra vez desde tu banco."),
+    "sin_movimientos": ("lo leímos pero no encontramos movimientos en él",
+                        "Revisa que sea el extracto del mes y no un resumen; si lo es, toca «Mi banco no está»."),
+    "pdf_ilegible": ("no pudimos leer el PDF",
+                     "Toca «Reintentar» si vino de tu correo; si lo subiste tú, quítalo y vuelve a subirlo."),
     "error_temporal": ("hubo un problema momentáneo al descargarlo",
                        "Toca «Intentar de nuevo» en un rato."),
 }
@@ -242,17 +246,19 @@ PASO_SIN_MOTIVO = "Toca «Intentar de nuevo»."
 
 
 def clasificar_motivo(*, texto: str = "", pide_clave: bool = False, clave_dada: bool = False,
-                      pdf_vacio: bool = False, sin_senales: bool = False, hay_texto_pdf: bool | None = None) -> str:
+                      pdf_vacio: bool = False, sin_senales: bool = False, hay_texto_pdf: bool | None = None,
+                      sin_movimientos: bool = False) -> str:
     """Código de MOTIVOS para un archivo del que no salieron movimientos. Pura.
     pide_clave: el PDF está cifrado · clave_dada: se probó con alguna clave · pdf_vacio: 0 bytes ·
-    sin_senales: tiene texto pero no parece un extracto de ningún banco."""
+    sin_senales: tiene texto pero no parece un extracto de ningún banco ·
+    sin_movimientos: se reconoció el banco y el texto es de un extracto, pero no salió ninguna línea."""
     if pdf_vacio:
         return "archivo_vacio"
     if pide_clave:
         return "clave_incorrecta" if clave_dada else "clave_faltante"
     if not (texto or "").strip():
         return "pdf_escaneado"
-    return "formato_no_reconocido"
+    return "sin_movimientos" if sin_movimientos else "formato_no_reconocido"
 
 
 def texto_motivo(codigo: str | None) -> tuple[str, str]:

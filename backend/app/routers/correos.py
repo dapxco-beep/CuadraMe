@@ -24,6 +24,8 @@ from app.limites import verificar_limite
 from app.limites_diarios import consumir_cupo_diario
 from app.database import get_db
 from app import titulo as tit
+from app import extractos_error
+from app.compartidos import reclamar_estado
 from app import punto_partida
 from app.extractos_vista import clasificar_motivo, frase_error
 from app.conciliacion import detectar_banco
@@ -1540,7 +1542,10 @@ def guardar_clave_pdf(
     else:
         db.add(ClavePdf(usuario_id=usuario.id, clave_enc=cifrada))
     db.commit()
-    return {"ok": True, "configurada": True}
+    # Con la clave nueva, los extractos que quedaron en error por clave y vinieron de un correo se reintentan solos.
+    reintento = extractos_error.reintentar_errores_clave(db, usuario)
+    return {"ok": True, "configurada": True, "extractos_reintentados": reintento["reintentados"],
+            "extractos_leidos": reintento["leidos"]}
 
 
 @router.delete("/clave-pdf")
@@ -1650,6 +1655,9 @@ def aprobar_correo(
     )
     if not correo:
         raise HTTPException(status_code=404, detail="Correo no encontrado")
+    if correo.estado == "aprobado" and correo.movimiento_id:
+        # Segunda llamada (reintento de la cola offline, doble toque): ya se aprobó, se devuelve ese resultado.
+        return _con_cuenta(db, usuario.id, [correo])[0]
     if correo.estado != "pendiente":
         raise HTTPException(status_code=400, detail="Este correo ya fue procesado")
 
@@ -1687,6 +1695,15 @@ def aprobar_correo(
         if falta:
             raise HTTPException(status_code=400, detail=f"No tienes una cuenta {banco}: créala o elige otra")
         raise HTTPException(status_code=400, detail="Elige la cuenta a la que pertenece este movimiento")
+
+    # Candado: pendiente -> aprobado es atómico. Dos aprobaciones simultáneas del mismo correo: la segunda
+    # espera, ve que ya no está pendiente y devuelve el resultado de la primera SIN crear otro movimiento.
+    if not reclamar_estado(db, CorreoGasto, correo.id, "pendiente", "aprobado"):
+        db.rollback()
+        db.refresh(correo)
+        if correo.estado == "aprobado":
+            return _con_cuenta(db, usuario.id, [correo])[0]
+        raise HTTPException(status_code=400, detail="Este correo ya fue procesado")
 
     # Si el usuario eligió otra categoría al aprobar, esa manda (y queda confirmada).
     eligio = data.categoria is not None and data.categoria != correo.categoria_sugerida

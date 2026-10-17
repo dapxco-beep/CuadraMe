@@ -26,6 +26,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app import extractos_error
 from app import extractos_vista as ev
 
 AL_DIA = "al_dia"
@@ -381,6 +382,8 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             sin_revisar=False, sin_cuenta=False, historial=h, mes_fuente=ev.FUENTE_LINEAS if mes_h else None,
             mes_deducido=not mes_h, tipo=ev.tipo_de_extracto(cuenta.tipo), corte=h.fecha_corte or "",
             motivo_error=h.motivo_error, asunto="", archivo="", recibido_en=h.creado_en,
+            historial_error=(h.estado == "error"),
+            reintentable=(h.estado == "error" and extractos_error.reintentable(db, h, correos)),
         ))
 
     # Un renglón por (cuenta, mes). Los de error solo cuentan si no hay un intento bueno después.
@@ -442,6 +445,8 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             "resultado": ev.frase_resultado(vista, mejor["conteo"], clave_estado=mejor["clave_estado"],
                                             motivo=motivo_err, copias=copias),
             "motivo_error": motivo_err,
+            # Todas las filas de error de este renglón (varios intentos del mismo mes): «Quitar de la lista» las limpia.
+            "historiales_error": [c["historial_id"] for c in lista if c.get("historial_error") and c["historial_id"]],
             "copias_texto": copias_texto, "asunto": mejor["asunto"], "archivo": mejor["archivo"],
             "recibido_en": mejor["recibido_en"].isoformat() if mejor["recibido_en"] else None,
             "puede_fijar_mes": mejor["extracto_id"] is not None,
@@ -465,7 +470,12 @@ def _acciones(vista: str, c: dict) -> list[str]:
     if vista == ev.NECESITA_CLAVE:
         return ["poner_clave", "probar_clave"]
     if vista == ev.NO_SE_PUDO_LEER:
-        return (["intentar_de_nuevo"] if c["extracto_id"] else ["subir_de_nuevo"]) + ["mi_banco_no_esta"]
+        if c["extracto_id"]:
+            return ["intentar_de_nuevo", "mi_banco_no_esta"]
+        if c.get("historial_error"):
+            # Subido a mano o sin correo: «Reintentar» solo si hay un correo del que volver a traer el PDF.
+            return (["reintentar"] if c.get("reintentable") else ["subir_de_nuevo"]) + ["quitar_de_la_lista", "mi_banco_no_esta"]
+        return ["subir_de_nuevo", "mi_banco_no_esta"]
     if vista == ev.REVISADO:
         return ["ver"] + (["revisar_de_nuevo"] if c["extracto_id"] and c["cuenta_id"] else [])
     return []

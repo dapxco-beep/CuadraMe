@@ -121,7 +121,7 @@ function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado }) {
               aria-label={`${TEXTO_ACCION[a]}: ${it.titulo}`}
               className={`min-h-11 text-xs font-semibold disabled:opacity-50 ${i === 0 && a !== 'ver' ? 'text-accent' : 'text-ink-soft'}`}
             >
-              {ocupado && (a === 'revisar_de_nuevo' || a === 'intentar_de_nuevo' || a === 'revisar') ? 'Un momento...' : TEXTO_ACCION[a]}
+              {ocupado && (a === 'revisar_de_nuevo' || a === 'intentar_de_nuevo' || a === 'revisar' || a === 'reintentar') ? 'Un momento...' : TEXTO_ACCION[a]}
             </button>
           ))}
         </div>

@@ -95,8 +95,8 @@ def movimientos_de_categoria(
         "cantidad": len(filas),
         "truncado": len(filas) > MAX_MOVS_CATEGORIA,
         "movimientos": [
-            {"id": m["id"], "fecha": m["fecha"].isoformat(), "descripcion": m["descripcion"],
-             "monto": round(m["monto"]), "categoria": m["categoria"],
+            {"id": m["id"], "fecha": m["fecha"].isoformat(), "descripcion": m.get("titulo") or m["descripcion"],
+             "titulo": m.get("titulo") or None, "monto": round(m["monto"]), "categoria": m["categoria"],
              "subcategoria": m.get("subcategoria")}
             for m in filas[:MAX_MOVS_CATEGORIA]
         ],
