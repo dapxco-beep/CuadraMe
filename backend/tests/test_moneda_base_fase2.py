@@ -133,3 +133,29 @@ def test_impuestos_y_renta_siguen_en_cop_aunque_la_base_sea_mxn():
         assert r["moneda_base"] == "COP"
     finally:
         db.close()
+
+
+def test_informe_y_reportes_marcan_moneda_base_y_sin_tasa():
+    como(MX)
+    from datetime import datetime
+
+    from app.models import Movimiento
+
+    db = SessionLocal()
+    try:
+        usd = db.query(Cuenta).filter(Cuenta.usuario_id == MX.id, Cuenta.moneda == "USD").first()
+        if not db.query(Movimiento).filter(Movimiento.cuenta_id == usd.id).first():
+            db.add(Movimiento(cuenta_id=usd.id, usuario_id=MX.id, descripcion="Compra sintetica", monto=20.0,
+                              tipo="expense", categoria="Comida", fecha=datetime.now()))
+            db.commit()
+    finally:
+        db.close()
+    j = client.get("/informes/gasto").json()
+    assert j["moneda_base"] == "MXN" and j["monedas_sin_tasa"] == ["USD"]
+    assert j["total"] == 0 if "total" in j else True  # sin tasa: el gasto en USD no se suma
+    _poner("USD", 17.0)
+    j = client.get("/informes/gasto").json()
+    assert j["monedas_sin_tasa"] == []
+    r = client.get("/reportes/mensual").json()
+    assert r["moneda_base"] == "MXN" and r["monedas_sin_tasa"] == []
+    assert r["gastos"] == pytest.approx(20 * 17.0)
