@@ -313,6 +313,7 @@ def ingresos_gastos(
     movs = cargar_movs_efectivos(db, usuario.id, ini, rango["hasta"])
     out = inf.ingresos_gastos(movs, rango, anterior, meses)
     out["periodo"] = periodo
+    out["moneda_base"], out["monedas_sin_tasa"] = movs.base, list(movs.sin_tasa)
     return out
 
 
@@ -336,4 +337,7 @@ def evolucion(
         ini = None
     manana = hoy.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
     movs = cargar_movs_efectivos(db, usuario.id, ini - timedelta(days=7) if ini else None, manana)
-    return inf.evolucion(movs, hoy, agrupar, meses, punto_partida.fecha_inicio(db, usuario.id))
+    out = inf.evolucion(movs, hoy, agrupar, meses, punto_partida.fecha_inicio(db, usuario.id))
+    if isinstance(out, dict):
+        out["moneda_base"], out["monedas_sin_tasa"] = movs.base, list(movs.sin_tasa)
+    return out

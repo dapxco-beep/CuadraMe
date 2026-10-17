@@ -52,6 +52,8 @@ def informe_gasto(
     movs = _cargar(db, usuario, rango, anterior)
     informe = inf.informe_gasto(movs, rango, anterior)
     informe["periodo"] = periodo
+    informe["moneda_base"] = movs.base
+    informe["monedas_sin_tasa"] = list(movs.sin_tasa)
     if not informe["hay_datos"]:
         # Ayuda para que la pantalla ofrezca saltar al último mes con gastos.
         todos = cargar_movs_efectivos(db, usuario.id)
@@ -145,7 +147,10 @@ def evolucion_categorias(
     a, m = inf.sumar_meses(hoy.year, hoy.month, -(meses - 1))
     ini = inf.inicio_mes(a, m)
     movs = cargar_movs_efectivos(db, usuario.id, ini, inf.inicio_mes(*inf.sumar_meses(hoy.year, hoy.month, 1)))
-    return inf.evolucion_categorias(movs, (hoy.year, hoy.month), meses, categoria, inf.inicio_mes(hoy.year, hoy.month))
+    out = inf.evolucion_categorias(movs, (hoy.year, hoy.month), meses, categoria, inf.inicio_mes(hoy.year, hoy.month))
+    if isinstance(out, dict):
+        out["moneda_base"], out["monedas_sin_tasa"] = movs.base, list(movs.sin_tasa)
+    return out
 
 
 @router.get("/meses")
@@ -204,6 +209,8 @@ def diario(
         "total": sum(d["gasto"] for d in dias),
         "disponible_hoy": disponible_hoy,
         "dias": dias,
+        "moneda_base": movs.base,
+        "monedas_sin_tasa": list(movs.sin_tasa),
     }
 
 

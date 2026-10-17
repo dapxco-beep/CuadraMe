@@ -616,18 +616,25 @@ class ConvertidorBase:
     def __init__(self, base: str = "COP", tasas_usuario: dict[str, float] | None = None):
         self.base = (base or "COP").upper()
         self.sin_tasa: set[str] = set()
+        self._cargar_manuales = None
         self._tasas: dict[str, float] = {k.upper(): v for k, v in (tasas_usuario or {}).items() if v and v > 0}
 
     @classmethod
     def de_usuario(cls, db, usuario_id: str) -> "ConvertidorBase":
         """Base del perfil + tasas manuales de esa persona (fase 2: todas las pantallas lo usan)."""
-        base = moneda_base_de(db, usuario_id)
-        return cls(base, tasas_manuales_de(db, usuario_id, base))
+        conv = cls(moneda_base_de(db, usuario_id))
+        # Las tasas manuales se leen SOLO si aparece otra moneda: el usuario mono-moneda no paga esa consulta.
+        conv._cargar_manuales = lambda: tasas_manuales_de(db, usuario_id, conv.base)
+        return conv
 
     def __call__(self, monto, origen=None):
         from app import fx
 
         o = (origen or self.base).upper()
+        if o != self.base and self._cargar_manuales:
+            cargar, self._cargar_manuales = self._cargar_manuales, None
+            for k, v in cargar().items():
+                self._tasas.setdefault(k, v)
         if o != self.base and o not in self._tasas and o not in self.sin_tasa:
             t, _f, _fuente = fx.tasa(o, self.base)
             if t:
