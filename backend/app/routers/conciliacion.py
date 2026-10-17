@@ -21,7 +21,7 @@ from app import punto_partida
 from app import titulo as tit
 from app.conciliacion import _CUENTA_UNICA
 from app.wallet import ORIGENES_RAPIDOS
-from app.compartidos import cuenta_accesible, puede_editar_cuenta
+from app.compartidos import cuenta_accesible, puede_editar_cuenta, reclamar_estado
 from app.conciliacion import (
     es_transferencia_propia,
     _cand_extracto,
@@ -547,6 +547,15 @@ def deshacer_auto_importados(
     return {"ok": True, "deshechos": deshechos, "conservados": conservados}
 
 
+def _resultado_ya_importado(historial: HistorialExtracto) -> dict:
+    """Respuesta de una importación que ya se hizo: mismo formato, sin crear nada (`ya_importado`)."""
+    return {
+        "ok": True, "importados": 0, "sin_categoria_clara": 0, "categorizados_auto": 0, "reglas_guardadas": 0,
+        "anteriores_actualizados": 0, "reglas_omitidas": [], "duplicados_omitidos": 0, "sin_direccion": 0,
+        "anteriores_omitidas": 0, "ya_importado": True, "importados_total": historial.importados or 0,
+    }
+
+
 @router.post("/historial/{historial_id}/importar")
 def importar_faltantes(
     historial_id: str,
@@ -566,8 +575,21 @@ def importar_faltantes(
     if not cuenta or not puede_editar_cuenta(db, usuario.id, cuenta):
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
 
+    # Idempotencia: pendiente_revision -> importando es atómico (reclamar_estado). Si otra petición
+    # igual (reintento de la cola offline, doble toque) ya lo tomó o lo terminó, esta NO crea nada:
+    # espera su commit, relee la revisión ya calculada y responde con ese resultado.
+    estado_previo = historial.estado
+    if estado_previo == "importando" or not reclamar_estado(db, HistorialExtracto, historial.id, estado_previo, "importando"):
+        db.rollback()
+        db.refresh(historial)
+        return _resultado_ya_importado(historial)
+    db.refresh(historial)  # la revisión que dejó la petición anterior (si la hubo), no la que se leyó antes del candado
     review = json.loads(historial.review_json or "[]")
     fingerprints = set(data.fingerprints)
+    if not any(i.get("fingerprint") in fingerprints and i.get("estado") == "faltante" for i in review):
+        historial.estado = estado_previo  # nada por importar (ya se hizo): se suelta el candado sin tocar nada
+        db.commit()
+        return _resultado_ya_importado(historial)
     importados = 0
 
     modelo = ClasificadorUsuario(db, usuario.id)
@@ -686,8 +708,7 @@ def importar_faltantes(
 
     historial.review_json = json.dumps(review, default=str)
     historial.importados = (historial.importados or 0) + importados
-    if all(i["estado"] != "faltante" for i in review):
-        historial.estado = "conciliado"
+    historial.estado = "conciliado" if all(i["estado"] != "faltante" for i in review) else estado_previo
     estado_traer.sincronizar_contadores(historial, review)  # los contadores del historial ya no se quedan viejos
     if not any(i.get("estado") in ("faltante", "dudoso") for i in review):
         cuadre_extracto.registrar_cuadre(db, cuenta, historial)  # recuerda si este mes cuadra (para avisar si deja de cuadrar)

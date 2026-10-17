@@ -26,7 +26,7 @@ from app import titulo as tit
 from app.auth import UsuarioActual, get_current_user
 from app.autocat import ClasificadorUsuario, aplicar_a_anteriores, clasificar_lote_detalle, datos_auto, guardar_regla_aprendida
 from app.comercios_conocidos import clasificar_por_diccionario
-from app.compartidos import bloquear_cuenta, cuenta_accesible, puede_editar_cuenta
+from app.compartidos import bloquear_cuenta, cuenta_accesible, puede_editar_cuenta, serializar_escritura_sqlite
 from app import duplicados as dup
 from app import punto_partida
 from app.conciliacion import _CUENTA_UNICA, _cand_ledger, auditar_movimientos, compute_fingerprint
@@ -236,6 +236,7 @@ def confirmar(
     if not data.filas:
         raise HTTPException(status_code=422, detail="No hay movimientos para importar.")
     cuenta = bloquear_cuenta(db, cuenta.id)
+    serializar_escritura_sqlite(db, cuenta.id)  # el libro se lee DESPUÉS de que la petición gemela confirme
 
     movs = [{"fecha": f.fecha, "descripcion": f.descripcion, "monto": f.monto, "tipo": f.tipo,
              "cuenta": cuenta.id} for f in data.filas]
