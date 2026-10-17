@@ -387,7 +387,8 @@ export const api = {
   recategorizarMasivo: (movimientoIds, categoria, subcategoria) =>
     request('/movimientos/recategorizar-masivo', {
       method: 'POST',
-      body: subcategoria ? { movimiento_ids: movimientoIds, categoria, subcategoria } : { movimiento_ids: movimientoIds, categoria },
+      // subcategoria '' = quitarla (Deshacer de «solo agregué subcategoría»); sin valor = no tocarla
+      body: subcategoria || subcategoria === '' ? { movimiento_ids: movimientoIds, categoria, subcategoria } : { movimiento_ids: movimientoIds, categoria },
     }),
   clasificar: (data) => request('/movimientos/clasificar', { method: 'POST', body: data }),
 

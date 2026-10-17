@@ -585,12 +585,15 @@ def recategorizar_masivo(
         if puede_editar_cuenta(db, usuario.id, c)
     }
     subcategoria = subcat.normalizar(db, usuario.id, data.categoria, data.subcategoria)
+    # `subcategoria: ""` (enviada a propósito) la QUITA aunque la categoría sea la misma: es lo que usa «Deshacer»
+    # cuando lo que se hizo fue solo agregar una subcategoría. Sin el campo, la misma categoría conserva la suya.
+    quitar_sub = "subcategoria" in data.model_fields_set and data.subcategoria is not None and not data.subcategoria.strip()
     actualizados = 0
     for mov in movs:
         if mov.cuenta_id not in cuentas_editables:
             continue
         mov.cat_origen = origen_tras_edicion(mov.cat_origen, mov.categoria, data.categoria)
-        if mov.categoria != data.categoria or subcategoria:
+        if mov.categoria != data.categoria or subcategoria or quitar_sub:
             mov.subcategoria = subcategoria
         mov.categoria = data.categoria
         mov.cat_confirmada = True

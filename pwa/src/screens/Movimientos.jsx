@@ -605,7 +605,10 @@ export default function Movimientos() {
         try {
           await Promise.all(
             [...porCategoria.values()].map(({ cat, sub, ids: lista }) =>
-              sub ? api.recategorizarMasivo(lista, cat, sub) : api.recategorizarMasivo(lista, cat)
+              sub
+                ? api.recategorizarMasivo(lista, cat, sub)
+                // misma categoría y antes sin subcategoría: hay que quitar la que se agregó ('' la limpia)
+                : cat === categoria ? api.recategorizarMasivo(lista, cat, '') : api.recategorizarMasivo(lista, cat)
             )
           )
           // Si el aviso creó la regla del comercio, se quita (si solo la actualizó, se deja)
