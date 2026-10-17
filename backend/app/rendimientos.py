@@ -123,10 +123,9 @@ def tasas_desactualizadas(db, hoy: date) -> list[dict]:
 
 
 # ── resumen del usuario ───────────────────────────────────────────────────────────────
-def _rendimientos_recibidos(db, ids: list[str], monedas: dict, hoy: datetime) -> float | None:
+def _rendimientos_recibidos(db, ids: list[str], monedas: dict, hoy: datetime, conv=None) -> float | None:
     """Plata de «Rendimientos» que realmente entró este mes (categoría que clasifican los extractos).
     None si la persona no tiene ningún movimiento en esa categoría."""
-    from app.fx import convertir_a_cop
     from app.models import Movimiento
 
     if not ids:
@@ -137,17 +136,18 @@ def _rendimientos_recibidos(db, ids: list[str], monedas: dict, hoy: datetime) ->
     hay = [m for m in movs if _sin_acentos(m.categoria or "").strip().lower().startswith("rendimiento")]
     if not hay:
         return None
-    return sum(convertir_a_cop(m.monto, monedas.get(m.cuenta_id, "COP")) for m in hay)
+    return sum(conv.contar(m.monto, monedas.get(m.cuenta_id, "COP")) for m in hay)
 
 
 def resumen(db, usuario_id: str, hoy: datetime) -> dict:
-    from app.fx import convertir_a_cop
+    from app.contabilidad import ConvertidorBase
     from app.models import Cuenta
     from app.models_rendimientos import Cajita
 
     cuentas = (db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id, Cuenta.tipo.in_(TIPOS_CON_RENDIMIENTO))
                .order_by(Cuenta.nombre).all())
     ids = [c.id for c in cuentas]
+    conv = ConvertidorBase.de_usuario(db, usuario_id)  # montos en moneda base (fase 2)
     cajitas = (db.query(Cajita).filter(Cajita.usuario_id == usuario_id, Cajita.activa == True).all()  # noqa: E712
                if ids else [])
     por_cuenta: dict[str, list] = {}
@@ -166,7 +166,7 @@ def resumen(db, usuario_id: str, hoy: datetime) -> dict:
         mon = c.moneda or "COP"
 
         def cop(v, m=mon):
-            return float(v or 0) if m == "COP" else convertir_a_cop(float(v or 0), m)
+            return conv.contar(float(v or 0), m)
 
         saldo = float(c.saldo or 0)
         ks = por_cuenta.get(c.id, [])
@@ -198,7 +198,7 @@ def resumen(db, usuario_id: str, hoy: datetime) -> dict:
                            "extra_anual": ahorro_extra_anual(cop(principal), c.tasa_ea, ref_mediana)})
 
     monedas = {c.id: c.moneda or "COP" for c in cuentas}
-    recibido = _rendimientos_recibidos(db, ids, monedas, hoy)
+    recibido = _rendimientos_recibidos(db, ids, monedas, hoy, conv)
     return {
         "aviso": AVISO, "aviso_estimacion": AVISO_ESTIMACION, "hay_cuentas": bool(cuentas),
         "hay_cajitas": bool(cajitas), "cuentas": filas,
@@ -211,4 +211,5 @@ def resumen(db, usuario_id: str, hoy: datetime) -> dict:
             "aviso": AVISO,
         },
         "hoy": hoy.date().isoformat(),
+        "moneda_base": conv.base, "monedas_sin_tasa": sorted(conv.sin_tasa),
     }

@@ -26,7 +26,7 @@ from app import precios
 from app.auth import UsuarioActual, cron_autorizado, get_current_user
 from app.crons import Corrida
 from app.database import get_db
-from app.contabilidad import ConvertidorBase, moneda_base_de
+from app.contabilidad import ConvertidorBase, moneda_base_de, tasas_manuales_de
 from app.models import Cuenta, Deuda
 from app.models_patrimonio import ActivoPatrimonio, FlujoActivo, SnapshotPatrimonio, ValorActivo
 from app import models_inversiones  # noqa: F401  (registra las tablas de Inversiones en create_all)
@@ -184,7 +184,8 @@ def _flujos_por_activo(db: Session, uid: str) -> dict:
     return por_activo
 
 
-def calcular_resumen(db: Session, uid: str, hoy: Optional[datetime] = None) -> dict:
+def calcular_resumen(db: Session, uid: str, hoy: Optional[datetime] = None, base: Optional[str] = None) -> dict:
+    """`base` fuerza la moneda de los totales (la renta/DIAN pide COP); por defecto, la del perfil."""
     hoy = hoy or ahora_co()
     flujos = _flujos_por_activo(db, uid)
     activos_db = (
@@ -193,8 +194,12 @@ def calcular_resumen(db: Session, uid: str, hoy: Optional[datetime] = None) -> d
         .order_by(ActivoPatrimonio.creado_en)
         .all()
     )
-    base = moneda_base_de(db, uid)
-    conv = ConvertidorBase.de_usuario(db, uid)
+    if base:
+        base = base.upper()
+        conv = ConvertidorBase(base, tasas_manuales_de(db, uid, base))
+    else:
+        base = moneda_base_de(db, uid)
+        conv = ConvertidorBase.de_usuario(db, uid)
     activos = [_serializar_activo(a, flujos.get(a.id, []), hoy, conv) for a in activos_db]
 
     por_clase: dict = {}

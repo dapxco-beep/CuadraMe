@@ -262,6 +262,8 @@ def resumen_csv(r: dict) -> str:
 
 def reunir_datos(db, usuario_id: str, anio: int, hoy: datetime) -> dict:
     from app import punto_partida
+    # IMPUESTOS (DIAN / renta) van SIEMPRE en COP, a propósito: la declaración colombiana se hace en pesos y
+    # no depende de la moneda base del perfil (moneda base fase 2, ver docs/MONEDA_BASE.md).
     from app.fx import convertir_a_cop
     from app.models import Cuenta, Movimiento
     from app.models_patrimonio import ActivoPatrimonio
@@ -296,7 +298,7 @@ def reunir_datos(db, usuario_id: str, anio: int, hoy: datetime) -> dict:
         "tipos_cuenta": tipos_de_cuentas(cuentas_db, db),
         "cuentas": [{"id": c.id, "tipo": c.tipo, "saldo": cop(c.saldo, c.id)} for c in cuentas_db],
         "movimientos": movs,
-        "activos_cop": calcular_resumen(db, usuario_id, hoy)["total_activos"],
+        "activos_cop": calcular_resumen(db, usuario_id, hoy, base="COP")["total_activos"],
         "tiene_bienes": bienes > 0,
         "inicio_datos": inicio_d,
     }

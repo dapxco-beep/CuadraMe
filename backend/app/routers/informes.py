@@ -13,7 +13,7 @@ from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
 from app.compartidos import cuentas_ids_accesibles
 from app.contabilidad import delta_saldo
-from app.fx import convertir_a_cop
+from app.contabilidad import ConvertidorBase
 from app.informe_datos import cargar_movs_efectivos
 from app.models import Cuenta, Movimiento
 from app.utiles import ahora_co
@@ -166,14 +166,15 @@ def _disponible_dia_a_dia(db: Session, usuario_id: str, dias: list[str]) -> tupl
     ids = list(cuentas_ids_accesibles(db, usuario_id))
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all() if ids else []
     propias = {c.id: c for c in cuentas if c.tipo != "credito"}
-    actual = sum(convertir_a_cop(c.saldo or 0, c.moneda or "COP") for c in propias.values())
+    conv = ConvertidorBase.de_usuario(db, usuario_id)
+    actual = sum(conv.contar(c.saldo or 0, c.moneda or "COP") for c in propias.values())
     if not dias or not propias:
         return round(actual), [round(actual)] * len(dias)
     inicio = datetime.fromisoformat(dias[0])
     delta: dict[str, float] = {}
     for m in db.query(Movimiento).filter(Movimiento.cuenta_id.in_(list(propias)), Movimiento.fecha >= inicio).all():
         k = m.fecha.date().isoformat()
-        delta[k] = delta.get(k, 0.0) + convertir_a_cop(delta_saldo(m), propias[m.cuenta_id].moneda or "COP")
+        delta[k] = delta.get(k, 0.0) + conv.contar(delta_saldo(m), propias[m.cuenta_id].moneda or "COP")
     return round(actual), inf.disponible_por_dia(dias, delta, actual)
 
 

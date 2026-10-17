@@ -31,7 +31,7 @@ from app.comercios_conocidos import clasificar_por_diccionario
 from app.compartidos import bloquear_cuenta, cuenta_accesible, cuentas_ids_accesibles, puede_editar_cuenta
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_APORTE_META, FUENTE_IMPORTADO_SIN_SALDO, delta_saldo, es_pago_tarjeta
 from app.database import get_db
-from app.fx import convertir_a_cop
+from app import fx as _fx
 from app.limites import verificar_limite
 from app.wallet import (
     FUENTES_POR_CONFIRMAR,
@@ -848,8 +848,11 @@ def _registrar_movimiento_rapido(
     moneda_cuenta = (cuenta.moneda or "COP").upper()
     if moneda_orig and moneda_orig != moneda_cuenta:
         notas = (notas + " · " if notas else "") + f"Original: {monto:g} {moneda_orig}"
-        if moneda_cuenta == "COP":
-            monto = round(convertir_a_cop(monto, moneda_orig), 2)
+        # Se convierte a la moneda DE LA CUENTA (no es un total del perfil). Sin tasa se deja el monto
+        # tal cual y la nota «Original» deja constancia (antes solo se convertía hacia COP).
+        _t, _f, _src = _fx.tasa(moneda_orig, moneda_cuenta)
+        if _t:
+            monto = round(monto * _t, 2)
 
     es_cierre = origen_auto == ORIGEN_CIERRE_APP
     nota_usuario = (descripcion or "").strip()

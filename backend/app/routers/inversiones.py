@@ -25,7 +25,8 @@ from app import precios_ticker as pt
 from app.auth import UsuarioActual, cron_autorizado, get_current_user
 from app.crons import Corrida, reclamar_marca
 from app.database import get_db
-from app.fx import convertir_a_cop
+from app import fx as _fxmod
+from app.contabilidad import moneda_base_de, tasas_manuales_de
 from app.models import Cuenta, Movimiento
 from app.models_inversiones import Broker, Posicion, PrefInversiones, TransaccionInversion
 from app.models_patrimonio import ActivoPatrimonio, SnapshotPatrimonio, ValorActivo
@@ -40,14 +41,30 @@ CAT_RENDIMIENTOS = "Rendimientos"
 
 
 class _FXApp(ic.ProveedorFX):
-    """Proveedor por defecto: la conversión que ya usa el resto de la app (app.fx).
+    """Proveedor por defecto: la conversión que ya usa el resto de la app (app.fx), hacia la MONEDA BASE
+    del perfil (fase 2; el nombre pesos_por_unidad es histórico). Primero la tasa manual de la persona.
     Intercambiable: las pruebas y un futuro proveedor de país lo reemplazan."""
 
+    def __init__(self, base="COP", tasas_usuario=None):
+        self.base = (base or "COP").upper()
+        self.tasas_usuario = {k.upper(): v for k, v in (tasas_usuario or {}).items()}
+
     def pesos_por_unidad(self, moneda):
-        return convertir_a_cop(1.0, moneda)
+        m = (moneda or "").upper()
+        if self.tasas_usuario.get(m):
+            return self.tasas_usuario[m]
+        return _fxmod.tasa(m, self.base)[0]
 
 
 fx_proveedor: ic.ProveedorFX = _FXApp()
+
+
+def _contexto_fx(db, uid):
+    """(moneda base, proveedor de tasas) de ESTA persona. Si una prueba reemplazó fx_proveedor, se respeta."""
+    base = moneda_base_de(db, uid)
+    if type(fx_proveedor) is _FXApp:
+        return base, _FXApp(base, tasas_manuales_de(db, uid, base))
+    return base, fx_proveedor
 
 # Catálogo corto para el autocompletado (sin red). Nemotécnicos de la BVC y más usados.
 CATALOGO = [
@@ -208,18 +225,19 @@ def precio_efectivo(db, p: Posicion, hoy: datetime) -> dict:
             "moneda_precio": moneda}
 
 
-def _evaluar(db, p: Posicion, txs: list, hoy: datetime) -> dict:
+def _evaluar(db, p: Posicion, txs: list, hoy: datetime, ctx=None) -> dict:
+    mbase, fx = ctx or _contexto_fx(db, p.usuario_id)
     res = ic.resumen_transacciones(txs) if txs else {
         "cantidad": p.cantidad or 0, "costo_total": (p.cantidad or 0) * (p.costo_promedio or 0),
         "costo_promedio": p.costo_promedio or 0, "realizada": 0, "dividendos": 0, "comisiones": 0,
         "aportado": (p.cantidad or 0) * (p.costo_promedio or 0), "retirado": 0}
     pr = precio_efectivo(db, p, hoy)
     vg = ic.valor_y_ganancia(res["cantidad"], pr["precio"], res["costo_total"])
-    valor_cop = ic.convertir(vg["valor"], p.moneda, "COP", fx_proveedor)
-    costo_cop = ic.convertir(res["costo_total"], p.moneda, "COP", fx_proveedor)
+    valor_cop = ic.convertir(vg["valor"], p.moneda, mbase, fx)
+    costo_cop = ic.convertir(res["costo_total"], p.moneda, mbase, fx)
     hoy_cop = None
     if pr["precio"] is not None and pr.get("anterior"):
-        hoy_cop = ic.convertir((pr["precio"] - pr["anterior"]) * res["cantidad"], p.moneda, "COP", fx_proveedor)
+        hoy_cop = ic.convertir((pr["precio"] - pr["anterior"]) * res["cantidad"], p.moneda, mbase, fx)
     total = ic.rentabilidad_total(vg["valor"] or 0, res["costo_total"], res["realizada"], res["dividendos"],
                                   res["aportado"])
     tir_pct = ic.tir(ic.flujos_tir(txs), vg["valor"] or 0, hoy) if txs else None
@@ -300,7 +318,8 @@ def calcular_portafolio(db: Session, uid: str, hoy: Optional[datetime] = None) -
     por_pos: dict = {}
     for t in txs_all:
         por_pos.setdefault(t.posicion_id, []).append(t)
-    filas = [_evaluar(db, p, por_pos.get(p.id, []), hoy) for p in pos]
+    mbase, fx = ctx = _contexto_fx(db, uid)
+    filas = [_evaluar(db, p, por_pos.get(p.id, []), hoy, ctx) for p in pos]
 
     def suma(campo):
         return sum(f[campo] or 0 for f in filas)
@@ -316,16 +335,16 @@ def calcular_portafolio(db: Session, uid: str, hoy: Optional[datetime] = None) -
         if not p:
             continue
         for f, m in ic.flujos_tir([t]):
-            cop = ic.convertir(m, p.moneda, "COP", fx_proveedor, t.tipo_cambio)
+            cop = ic.convertir(m, p.moneda, mbase, fx, t.tipo_cambio)
             if cop is None:
                 continue
             flujos.append((f, cop))
     # Lo que ENTRA al portafolio = lo que salió de tu bolsillo (negativo en `flujos`) -> positivo;
     # ventas, retiros y dividendos recibidos son salidas (negativas) para el método Dietz.
     entradas = [(f, -m) for f, m in flujos if m != 0]
-    dividendos_cop = sum((ic.convertir(f["dividendos"], f["moneda"], "COP", fx_proveedor) or 0) for f in filas)
-    realizada_cop = sum((ic.convertir(f["realizada"], f["moneda"], "COP", fx_proveedor) or 0) for f in filas)
-    aportado_cop = sum((ic.convertir(f["aportado"], f["moneda"], "COP", fx_proveedor) or 0) for f in filas)
+    dividendos_cop = sum((ic.convertir(f["dividendos"], f["moneda"], mbase, fx) or 0) for f in filas)
+    realizada_cop = sum((ic.convertir(f["realizada"], f["moneda"], mbase, fx) or 0) for f in filas)
+    aportado_cop = sum((ic.convertir(f["aportado"], f["moneda"], mbase, fx) or 0) for f in filas)
     no_real = valor_total - costo_total
     tot = ic.rentabilidad_total(valor_total, costo_total, realizada_cop, dividendos_cop, aportado_cop)
     tir_pct = ic.tir(flujos, valor_total, hoy)
@@ -370,7 +389,7 @@ def calcular_portafolio(db: Session, uid: str, hoy: Optional[datetime] = None) -
                               "valor_cop": sum(x["valor_cop"] or 0 for x in fs)})
     sueltas = por_broker.pop("_sin", [])
     if sueltas:
-        lista_brokers.append({"id": None, "nombre": "Sin plataforma", "pais": "", "tipo": "", "moneda": "COP",
+        lista_brokers.append({"id": None, "nombre": "Sin plataforma", "pais": "", "tipo": "", "moneda": mbase,
                               "cuenta_id": None, "posiciones": sueltas,
                               "valor_cop": sum(x["valor_cop"] or 0 for x in sueltas)})
     nombres_broker = {b.id: b.nombre for b in brokers}
@@ -378,6 +397,9 @@ def calcular_portafolio(db: Session, uid: str, hoy: Optional[datetime] = None) -
         f["broker"] = nombres_broker.get(f["broker_id"], "Sin plataforma")
     return {
         "tiene": bool(pos or brokers),
+        "moneda_base": mbase,
+        # posiciones en monedas sin tasa: no entran en los totales (valor_cop = None)
+        "monedas_sin_tasa": sorted({f["moneda"] for f in filas if f["valor_cop"] is None and f["moneda"] != mbase}),
         "valor_total": valor_total, "costo_total": costo_total, "aportado": aportado_cop,
         "no_realizada": no_real, "no_realizada_pct": (no_real / costo_total * 100) if costo_total else None,
         "realizada": realizada_cop, "dividendos": dividendos_cop,

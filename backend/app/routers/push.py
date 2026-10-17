@@ -20,7 +20,6 @@ from app.config import settings
 from app.crons import Corrida, liberar_marca, reclamar_marca
 from app.database import get_db
 from app.finanzas import _dia_valido_del_mes, calc_estado_recurrente
-from app.fx import convertir_a_cop
 from app.models import Cuenta, Meta, Movimiento, Perfil, Presupuesto, PushSubscription, Recurrente
 from app.push import enviar_push
 from app.rachas import otorgar_vida_si_nueva

@@ -14,7 +14,7 @@ from app import planificacion as plan
 from app import presupuesto_servicio as srv
 from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
-from app.fx import convertir_a_cop
+from app.contabilidad import ConvertidorBase
 from app.models import Meta, Presupuesto, Recurrente
 from app.models_patrimonio import ActivoPatrimonio, FlujoActivo, SnapshotPatrimonio
 from app.utiles import ahora_co
@@ -193,9 +193,10 @@ def patrimonio_descomposicion(db: Session = Depends(get_db),
     ]
     monedas = {a.id: a.moneda or "COP" for a in
                db.query(ActivoPatrimonio).filter(ActivoPatrimonio.usuario_id == usuario.id).all()}
+    conv = ConvertidorBase.de_usuario(db, usuario.id)
     aportes: dict = {}
     for f in db.query(FlujoActivo).filter(FlujoActivo.usuario_id == usuario.id).all():
         mes = f.fecha.strftime("%Y-%m")
         # flujo negativo = aporte (sale de tu bolsillo); positivo = retiro/dividendo.
-        aportes[mes] = aportes.get(mes, 0.0) - convertir_a_cop(f.monto, monedas.get(f.activo_id, "COP"))
+        aportes[mes] = aportes.get(mes, 0.0) - conv.contar(f.monto, monedas.get(f.activo_id, "COP"))
     return {"meses": plan.serie_descomposicion(snaps_d, aportes)}
