@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Info, TriangleAlert } from 'lucide-react'
 import { api } from '../lib/api'
-import { formatCOP } from '../lib/format'
+import { formatCOPFijo as formatCOP } from '../lib/format'
 import BarraProgreso from './BarraProgreso'
 import Ayudita from './Ayudita'
 import Icono from './Icono'

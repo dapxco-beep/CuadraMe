@@ -171,6 +171,16 @@ def mensaje(
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
+    extra: dict = {}
+    r = _mensaje(data, db, usuario, extra)
+    if isinstance(r, dict) and extra:
+        # Moneda base fase 2: si alguna cuenta no tiene tasa, no está sumada y la pantalla lo avisa.
+        r["moneda_base"] = extra["moneda_base"]
+        r["monedas_sin_tasa"] = extra["monedas_sin_tasa"]
+    return r
+
+
+def _mensaje(data: MensajeRequest, db: Session, usuario: UsuarioActual, extra: dict):
     exigir_consentimiento(db, usuario.id, "ia")  # Ley 1581: el texto puede ir a un proveedor de IA
     verificar_limite(f"asistente:{usuario.id}", LIMITE_HORA, 3600,
                      "Llegaste al límite de mensajes por hora. Intenta más tarde.")
@@ -179,6 +189,7 @@ def mensaje(
         # Texto seguro: sin PINs/claves/tokens y sin delimitadores del prompt
         texto = ia.redactar_secretos(data.texto).replace("<<<", " ").replace(">>>", " ").strip()
         d = cargar_datos(db, usuario.id, hoy)
+        extra.update(moneda_base=d.get("moneda_base", "COP"), monedas_sin_tasa=d.get("monedas_sin_tasa", []))
         intento = ia.detectar_intencion(texto, hoy)
         tipo = intento["intencion"]
 

@@ -7,6 +7,7 @@ import { Isotipo } from '../brand/Marca'
 import Cuadri from '../brand/Cuadri'
 import { FRASES, useMostrarCuadri } from '../lib/cuadri'
 import { EVENTO_RESUELTO } from '../components/ConsentimientoGlobal'
+import AvisoSinTasa from '../components/AvisoSinTasa'
 
 // CuadraMe AI. Principios de esta pantalla:
 //  - El asistente PROPONE; solo se guarda algo cuando el usuario toca "Confirmar".
@@ -383,6 +384,7 @@ export default function Asistente() {
               }`}
             >
               <p className="whitespace-pre-line">{m.texto}</p>
+              {m.monedas_sin_tasa?.length > 0 && <AvisoSinTasa monedas={m.monedas_sin_tasa} base={m.moneda_base} className="mt-2" />}
               {m.tipo === 'simulacion' && <TarjetaSimulacion c={m.calculo} />}
               {m.tipo === 'propuesta_movimiento' && <TarjetaPropuesta msg={m} onResuelto={(e) => resolver(i, e)} />}
               {m.tipo === 'plan' && <TarjetaPlan msg={m} onResuelto={(e) => resolver(i, e)} />}

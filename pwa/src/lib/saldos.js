@@ -69,7 +69,7 @@ export function filasPorModo(modo, resumen) {
     return Object.entries(resumen.por_moneda || {}).map(([moneda, valor]) => ({ clave: moneda, etiqueta: moneda, valor, moneda }))
   }
   if (modo === 'tipo') {
-    return Object.entries(resumen.por_tipo || {}).map(([tipo, valor]) => ({ clave: tipo, etiqueta: TIPO_LABEL[tipo] || tipo, valor, moneda: 'COP' }))
+    return Object.entries(resumen.por_tipo || {}).map(([tipo, valor]) => ({ clave: tipo, etiqueta: TIPO_LABEL[tipo] || tipo, valor, moneda: resumen.moneda_base || 'COP' }))
   }
   return []
 }

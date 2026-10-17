@@ -22,6 +22,7 @@ import TarjetaCuenta from '../components/TarjetaCuenta'
 import SelectorCuenta, { TIPOS_CUENTA } from '../components/SelectorCuenta'
 import AgregarOtraDelBanco from '../components/AgregarOtraDelBanco'
 import PanelTarjetaCredito from '../components/PanelTarjetaCredito'
+import AvisoSinTasa from '../components/AvisoSinTasa'
 import CamposCuentaNueva, { CAMPOS_VACIOS } from '../components/CamposCuentaNueva'
 import { datosCuentaNueva, productoAlterno, validarTarjetaNueva } from '../lib/cuentaNueva'
 import BotonOjo from '../components/BotonOjo'
@@ -107,9 +108,12 @@ export default function Cuentas() {
         <section className="mx-6 mt-3 hero-marca card-marca p-4" aria-label="Saldo actual total">
           <p className="t-kicker">Saldo actual total</p>
           <p className="text-3xl t-display mt-1.5">{fmt(resumen.total_cop)}</p>
-          <p className="text-xs mt-1 opacity-85">En pesos · {textoActualizado(resumen.ultimo_movimiento)}</p>
+          <p className="text-xs mt-1 opacity-85">{resumen.moneda_base && resumen.moneda_base !== 'COP' ? `En ${resumen.moneda_base}` : 'En pesos'} · {textoActualizado(resumen.ultimo_movimiento)}</p>
           <ResumenSaldo resumen={resumen} className="mt-3" />
         </section>
+      )}
+      {resumen && (
+        <AvisoSinTasa monedas={resumen.monedas_sin_tasa} base={resumen.moneda_base} onResuelto={cargarResumen} className="mx-6 mt-3" />
       )}
 
       {cargando ? (

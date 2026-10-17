@@ -6,10 +6,19 @@ const COP = new Intl.NumberFormat('es-CO', {
   maximumFractionDigits: 0,
 })
 
-// «Pesos colombianos». Los totales del backend todavía se suman en COP (ver docs/LATAM_EXPANSION.md):
-// fuera de Colombia se muestra con el código («COP 1.234») para no hacerlos pasar por pesos locales.
-const COP_CODIGO = new Map()
+// Nombre histórico: formatea en la MONEDA BASE del perfil (moneda base fase 2). Para quien tiene base COP
+// (todos hoy) es idéntico a siempre; con otra base (MXN, CLP, PEN...) usa esa moneda y el formato de su país.
+// Lo que de verdad es COP (impuestos DIAN) usa `formatCOPFijo`.
 export function formatCOP(value) {
+  const { moneda } = formatoActual()
+  if (moneda && moneda !== 'COP') return formatMoneda(value, moneda)
+  return formatCOPFijo(value)
+}
+
+// Siempre pesos colombianos (DIAN/renta: se declara en COP sin importar la moneda base). Fuera de Colombia se
+// muestra con el código («COP 1.234») para no hacerlos pasar por pesos locales.
+const COP_CODIGO = new Map()
+export function formatCOPFijo(value) {
   const { locale } = formatoActual()
   if (locale === 'es-CO') return COP.format(value)
   if (!COP_CODIGO.has(locale)) {

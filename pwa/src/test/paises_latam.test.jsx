@@ -19,7 +19,7 @@ vi.mock('../components/TarjetaGmfMes', () => ({ default: () => <div data-testid=
 import { api } from '../lib/api'
 import { PAISES, ORDEN, sugerirPais, tieneFuncion, configPais, bancosDePais } from '../lib/paises'
 import { _reiniciarPais, cargarPais, fijarPais } from '../lib/pais'
-import { formatMoneda, formatCOP } from '../lib/format'
+import { formatMoneda, formatCOP, formatCOPFijo } from '../lib/format'
 import { t } from '../lib/textosPais'
 import Impuestos from '../screens/Impuestos'
 import { DialogosProvider } from '../lib/DialogosContext'
@@ -67,7 +67,8 @@ describe('formato de dinero por país', () => {
     const mx = formatMoneda(1234.5, 'MXN')
     expect(mx).toMatch(/1,234\.50/)
     expect(formatMoneda(1234.5, 'CLP')).toMatch(/1\.?,?235|1.235/)
-    expect(formatCOP(1000)).toMatch(/COP/) // fuera de Colombia no se hace pasar por pesos locales
+    expect(formatCOP(1000)).toMatch(/1,000.00/) // fase 2: formatCOP lleva la moneda base (MXN), ya no fuerza COP
+    expect(formatCOPFijo(1000)).toMatch(/COP/) // lo que de verdad es COP (impuestos) no se confunde con pesos locales
   })
 })
 
