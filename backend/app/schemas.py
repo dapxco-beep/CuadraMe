@@ -904,6 +904,8 @@ class CobroDuplicado(BaseModel):
 class AlertasProactivasResponse(BaseModel):
     comisiones: list[ComisionDetectada]
     cobros_duplicados: list[CobroDuplicado]
+    moneda_base: str = "COP"
+    monedas_sin_tasa: list[str] = []
 
 
 # ── Insights (IA) ──────────────────────────────────────
@@ -924,6 +926,8 @@ class ResumenSemanal(BaseModel):
     texto: str
     desde: str | None = None
     hasta: str | None = None
+    moneda_base: str = "COP"
+    monedas_sin_tasa: list[str] = []
     etiqueta: str | None = None
 
 
