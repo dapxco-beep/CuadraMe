@@ -30,6 +30,9 @@ JOBS = [
     ("CuadraMe - backup diario", "/backup/cron/enviar", [2], [0], [-1]),
     ("CuadraMe - uso semanal", "/metricas/cron/revisar-uso-semanal", [8], [0], [1]),
     # Minimización de datos de Gmail: sin efecto mientras RETENCION_* valgan 0 en Railway (decide Daniel).
+    # Lee el Gmail de cada usuario conectado (un lote incremental) y manda push si hay novedades.
+    # Cada hora de 6 a 23 h (hora Colombia). Sin este cron los correos solo entran al abrir la app.
+    ("CuadraMe - leer correos de los bancos", "/correos/cron/sincronizar", list(range(6, 24)), [0], [-1]),
     ("CuadraMe - purgar retencion de datos", "/correos/cron/purgar-retencion", [3], [30], [-1]),
     # Inversiones (opcional): precios por ticker cada 30 min en horario de mercado (L-V, 8 a 17 h)
     # y push semanal del portafolio solo para quien lo activó. Se crean SOLO si Daniel lo decide.
