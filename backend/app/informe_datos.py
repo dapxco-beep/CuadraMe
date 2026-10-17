@@ -16,6 +16,10 @@ from app.models import Cuenta, Movimiento
 # entre cuentas (mismo monto, <= 2 días); quien consume filtra por su rango.
 MARGEN_EMPAREJAR = timedelta(days=3)
 
+# Solo las columnas que la regla contable y los informes leen: traerlas como filas sueltas (en vez de objetos ORM
+# completos) ahorra cerca de la mitad del tiempo con miles de movimientos.
+_COLUMNAS = ("id", "cuenta_id", "fecha", "tipo", "monto", "categoria", "subcategoria", "descripcion", "fuente", "notas")
+
 
 def cargar_movs_efectivos(
     db: Session,
@@ -31,7 +35,7 @@ def cargar_movs_efectivos(
         return []
     monedas = {c.id: c.moneda for c in db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()}
     conv = ConvertidorBase(moneda_base_de(db, usuario_id))
-    q = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids))
+    q = db.query(*(getattr(Movimiento, c) for c in _COLUMNAS)).filter(Movimiento.cuenta_id.in_(ids))
     # Punto de partida: informes y asistente arrancan en esa fecha (lo anterior se oculta, no se borra).
     inicio_pp = punto_partida.fecha_inicio(db, usuario_id)
     if inicio_pp:
@@ -43,22 +47,22 @@ def cargar_movs_efectivos(
     q = q.order_by(Movimiento.fecha.desc())
     if limite:
         q = q.limit(limite)
-    movs = q.all()
+    movs = [dict(zip(_COLUMNAS, fila)) for fila in q.all()]
     te = clasificar(movs, tipos_cuenta_de(db, ids))
     return [
         {
-            "id": m.id,
-            "cuenta_id": m.cuenta_id,
-            "fecha": m.fecha,
-            "tipo": te[m.id]["tipo"],
-            "razon": te[m.id]["razon"],
-            "par": te[m.id]["par"],
-            "monto": conv(m.monto, monedas.get(m.cuenta_id, "COP")),
-            "sin_tasa": (monedas.get(m.cuenta_id) or "COP").upper() in conv.sin_tasa,
-            "categoria": m.categoria or "Otros",
-            "subcategoria": m.subcategoria,
-            "descripcion": m.descripcion or "",
-            "fuente": m.fuente or "manual",
+            "id": m["id"],
+            "cuenta_id": m["cuenta_id"],
+            "fecha": m["fecha"],
+            "tipo": te[m["id"]]["tipo"],
+            "razon": te[m["id"]]["razon"],
+            "par": te[m["id"]]["par"],
+            "monto": conv(m["monto"], monedas.get(m["cuenta_id"], "COP")),
+            "sin_tasa": (monedas.get(m["cuenta_id"]) or "COP").upper() in conv.sin_tasa,
+            "categoria": m["categoria"] or "Otros",
+            "subcategoria": m["subcategoria"],
+            "descripcion": m["descripcion"] or "",
+            "fuente": m["fuente"] or "manual",
         }
         for m in movs
     ]

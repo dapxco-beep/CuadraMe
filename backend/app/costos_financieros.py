@@ -15,6 +15,7 @@ unos conectores antes: «Pago de», «Cargo», «IVA»...). Así «INTERESES DE 
 
 Quien clasifica de verdad es `comercios_conocidos.clasificar_por_diccionario` (que llama aquí);
 las reglas del usuario (ReglaCategoria) siempre mandan antes que esto."""
+from functools import lru_cache
 import re
 import unicodedata
 
@@ -125,7 +126,7 @@ def _posicion(palabras: list[str], frase: tuple[str, ...]) -> int | None:
     return None
 
 
-def clasificar_costo(descripcion: str) -> dict | None:
+def _clasificar_costo(descripcion: str) -> dict | None:
     """{categoria, tipo, confianza, fuente, palabra, razon} si la LÍNEA es un cobro/rendimiento bancario;
     None si no. `tipo` es el esperado ('income' para rendimientos y devoluciones de cobros, 'expense' lo
     demás): quien lee el extracto puede preferir el signo impreso."""
@@ -162,6 +163,19 @@ def clasificar_costo(descripcion: str) -> dict | None:
             return {"categoria": CAT_COMISIONES, "tipo": "expense", "confianza": 0.8, "fuente": "diccionario",
                     "palabra": " ".join(frase), "razon": f"por palabra clave «{' '.join(frase)}»"}
     return None
+
+
+@lru_cache(maxsize=50_000)
+def _clasificar_costo_memo(descripcion: str) -> dict | None:
+    return _clasificar_costo(descripcion)
+
+
+def clasificar_costo(descripcion: str) -> dict | None:
+    """Igual que `_clasificar_costo`, pero memorizado por texto: los informes clasifican TODOS los movimientos de
+    la persona en cada petición (miles de veces el mismo comercio) y esta búsqueda de frases era el cuello de
+    botella (≈2 s con 12.000 movimientos). Devuelve una copia: quien llama puede modificarla sin dañar el caché."""
+    r = _clasificar_costo_memo(descripcion or "")
+    return dict(r) if r is not None else None
 
 
 def es_costo_o_rendimiento(descripcion: str) -> bool:

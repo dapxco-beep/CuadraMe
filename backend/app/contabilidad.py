@@ -18,6 +18,7 @@ wrapped, cierre mensual, impuestos). Todo es puro: sin base de datos ni red.
 """
 import re
 import unicodedata
+from functools import lru_cache
 from bisect import bisect_left, bisect_right
 from datetime import datetime
 
@@ -144,7 +145,9 @@ def _g(m, campo, defecto=None):
     return getattr(m, campo, defecto)
 
 
+@lru_cache(maxsize=50_000)
 def _sin_acentos(t: str) -> str:
+    # Memorizada: es una función pura del texto y los informes la llaman decenas de miles de veces por petición.
     return "".join(c for c in unicodedata.normalize("NFD", t or "") if unicodedata.category(c) != "Mn")
 
 

@@ -212,28 +212,30 @@ export default function Presupuesto() {
                   const cercaDelLimite = !sobrepasado && p.pct >= p.alerta_pct
                   return (
                     <div key={p.id} className="rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': i }}>
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-semibold">
-                          {p.categoria}
-                          {p.proy && p.proy.periodo !== 'monthly' && (
-                            <span className="ml-1.5 text-[11px] font-bold text-ink-soft" data-testid="chip-periodo">
-                              {etiquetaPeriodo(p.proy.periodo)} · {textoRango(p.proy.inicio, p.proy.fin)}
-                            </span>
-                          )}
-                          {p.sobre_ajuste !== 0 && (
-                            <span className={`ml-1.5 text-[11px] font-bold ${p.sobre_ajuste > 0 ? 'text-gold' : 'text-ink-soft'}`}>
-                              {p.sobre_ajuste > 0 ? '+' : ''}{formatCOP(p.sobre_ajuste)}
-                            </span>
-                          )}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs text-ink-soft">
-                            {formatCOP(p.gastado)} / {formatCOP(p.limite)}
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">
+                            {p.categoria}
+                            {p.proy && p.proy.periodo !== 'monthly' && (
+                              <span className="ml-1.5 text-[11px] font-bold text-ink-soft" data-testid="chip-periodo">
+                                {etiquetaPeriodo(p.proy.periodo)} · {textoRango(p.proy.inicio, p.proy.fin)}
+                              </span>
+                            )}
+                            {p.sobre_ajuste !== 0 && (
+                              <span className={`ml-1.5 text-[11px] font-bold ${p.sobre_ajuste > 0 ? 'text-gold' : 'text-ink-soft'}`}>
+                                {p.sobre_ajuste > 0 ? '+' : ''}{formatCOP(p.sobre_ajuste)}
+                              </span>
+                            )}
                           </p>
-                          <button onClick={() => eliminar(p.id)} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label={`Quitar el presupuesto de ${p.categoria}`}>
+                          {/* Las cifras van en su propia línea bajo el nombre: en 390 px no caben al lado sin encimarse */}
+                          <p className="text-xs text-ink-soft mt-0.5" data-testid="gastado-limite">
+                            <span className="whitespace-nowrap">{formatCOP(p.gastado)}</span>{' '}
+                            <span className="whitespace-nowrap">/ {formatCOP(p.limite)}</span>
+                          </p>
+                        </div>
+                        <button onClick={() => eliminar(p.id)} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label={`Quitar el presupuesto de ${p.categoria}`}>
                             <X size={16} />
                           </button>
-                        </div>
                       </div>
                       <DesgloseSubcategorias categoria={p.categoria} />
                       {p.proy && p.proy.estado !== 'sin_limite' ? (
