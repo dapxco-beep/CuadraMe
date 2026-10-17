@@ -9,7 +9,7 @@ from app.auth import UsuarioActual, get_current_user
 from app.compartidos import cuentas_ids_accesibles
 from app.cuotas_servicio import comprometido_cuotas
 from app.database import get_db
-from app.fx import convertir_a_cop
+from app.contabilidad import ConvertidorBase
 from app.models import Cuenta, Meta, Presupuesto, Recurrente
 from app.schemas import (
     DisponibleCategoria,
@@ -90,6 +90,8 @@ def disponible_hoy(
         disponible_total_mes=disponible_total,
         dias_restantes_mes=max(ultimo_dia_mes - ahora.day + 1, 1),
         categorias=categorias,
+        moneda_base=gastos.conv.base,
+        monedas_sin_tasa=sorted(gastos.conv.sin_tasa),
     )
 
 
@@ -107,7 +109,8 @@ def en_mi_bolsillo(
 
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids_accesibles)).all()
-    saldo_total = sum(convertir_a_cop(c.saldo, c.moneda) for c in cuentas)
+    conv = ConvertidorBase.de_usuario(db, usuario.id)
+    saldo_total = sum(conv.contar(c.saldo, c.moneda) for c in cuentas)
 
     recurrentes = (
         db.query(Recurrente)
@@ -135,13 +138,15 @@ def en_mi_bolsillo(
     # Cuotas de compras diferidas con tarjeta que vencen este mes. El saldo de la tarjeta
     # ya refleja la deuda completa, así que por defecto solo se informan; con
     # ?incluir_cuotas=true también se restan del disponible (para quien prefiere verlo así).
-    cuotas_tarjeta = comprometido_cuotas(db, usuario.id, ahora.year, ahora.month, ahora.date())
+    cuotas_tarjeta = comprometido_cuotas(db, usuario.id, ahora.year, ahora.month, ahora.date(), conv)
     disponible_real = saldo_total - recurrentes_pendientes - aportes_comprometidos
     if incluir_cuotas:
         disponible_real -= cuotas_tarjeta
 
     return EnMiBolsillo(
         saldo_total=saldo_total,
+        moneda_base=conv.base,
+        monedas_sin_tasa=sorted(conv.sin_tasa),
         recurrentes_pendientes_mes=recurrentes_pendientes,
         aportes_comprometidos_mes=round(aportes_comprometidos),
         cuotas_tarjeta_mes=cuotas_tarjeta,

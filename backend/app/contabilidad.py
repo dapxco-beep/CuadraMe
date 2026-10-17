@@ -637,14 +637,14 @@ class ConvertidorBase:
             self.sin_tasa.add(o)
         return valor
 
+    def contar(self, monto, origen=None) -> float:
+        """Valor en base para SUMAR en un total: sin tasa devuelve 0.0 (no se suma a ciegas; la moneda
+        queda en `sin_tasa` y la pantalla lo avisa)."""
+        v = self(monto, origen)
+        return 0.0 if (origen or self.base).upper() in self.sin_tasa else v
+
     def sumar(self, pares) -> float:
-        """Suma de (monto, moneda): lo que no tiene tasa NO entra en el total (queda en sin_tasa)."""
-        total = 0.0
-        for monto, origen in pares:
-            v = self(monto, origen)
-            if (origen or self.base).upper() not in self.sin_tasa:
-                total += v
-        return total
+        return sum(self.contar(m, o) for m, o in pares)
 
 
 def tasas_manuales_de(db, usuario_id: str, base: str) -> dict[str, float]:

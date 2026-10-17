@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app import planificacion as plan
 from app.compartidos import cuentas_ids_accesibles
 from app.contabilidad import tipos_de_cuentas, tipos_efectivos
-from app.fx import convertir_a_cop
+from app.contabilidad import ConvertidorBase
 from app.models import Cuenta, Movimiento, Presupuesto
 from app.models_planificacion import ConfigPlanificacion
 
@@ -58,7 +58,7 @@ def _dt(d) -> datetime:
 
 
 class GastosPorRango:
-    """Suma gastos por categoría y rango de fechas, convirtiendo a COP."""
+    """Suma gastos por categoría y rango de fechas, convirtiendo a la moneda base del perfil (COP por defecto)."""
 
     # Ventana que se trae de la base de una sola vez. Cada presupuesto pide su periodo
     # actual y 1-3 anteriores; antes eso eran 2 consultas por cada pedido (5 presupuestos =
@@ -72,6 +72,7 @@ class GastosPorRango:
         self.ids = cuentas_ids_accesibles(db, uid)
         self._tipos = None
         self.monedas = {}
+        self.conv = ConvertidorBase.de_usuario(db, uid)
         if self.ids:
             cuentas = db.query(Cuenta).filter(Cuenta.id.in_(self.ids)).all()
             self.monedas = {c.id: c.moneda for c in cuentas}
@@ -106,7 +107,7 @@ class GastosPorRango:
         return self._gasto_por_categoria(_dt(inicio), _dt(fin)).get(categoria, 0.0)
 
     def _gasto_por_categoria(self, desde: datetime, hasta: datetime) -> dict[str, float]:
-        """{categoría: gasto en COP} del rango. Se calcula UNA vez por rango: varios
+        """{categoría: gasto en moneda base} del rango. Se calcula UNA vez por rango: varios
         presupuestos comparten el mismo periodo, y emparejar traslados (tipos_efectivos)
         es lo más caro; con 20 presupuestos se repetía 80 veces."""
         clave = (desde, hasta)
@@ -117,7 +118,7 @@ class GastosPorRango:
             hecho = {}
             for m in movs:
                 if desde <= m.fecha < hasta and te[m.id] == "expense":
-                    hecho[m.categoria] = hecho.get(m.categoria, 0.0) + convertir_a_cop(
+                    hecho[m.categoria] = hecho.get(m.categoria, 0.0) + self.conv.contar(
                         m.monto, self.monedas.get(m.cuenta_id, "COP"))
             self._por_rango[clave] = hecho
         return hecho

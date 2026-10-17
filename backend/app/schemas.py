@@ -493,6 +493,8 @@ class DisponibleHoy(BaseModel):
     disponible_total_mes: float
     dias_restantes_mes: int
     categorias: list[DisponibleCategoria]
+    moneda_base: str = "COP"
+    monedas_sin_tasa: list[str] = []
 
 
 class EnMiBolsillo(BaseModel):
@@ -508,6 +510,8 @@ class EnMiBolsillo(BaseModel):
     disponible_real: float
     disponible_real_por_dia: float
     dias_restantes_mes: int
+    moneda_base: str = "COP"  # los montos de arriba vienen en esta moneda
+    monedas_sin_tasa: list[str] = []  # cuentas en estas monedas NO están sumadas
 
 
 class EdadDelDinero(BaseModel):
@@ -536,6 +540,8 @@ class Proyeccion(BaseModel):
 class TendenciasResponse(BaseModel):
     meses: list[TendenciaMes]
     proyeccion: Proyeccion
+    moneda_base: str = "COP"
+    monedas_sin_tasa: list[str] = []
 
 
 class FlujoCajaMes(BaseModel):
@@ -549,6 +555,8 @@ class FlujoCajaMes(BaseModel):
 class FlujoCajaFuturo(BaseModel):
     saldo_actual: float
     meses: list[FlujoCajaMes]
+    moneda_base: str = "COP"
+    monedas_sin_tasa: list[str] = []
 
 
 class ReporteMensual(BaseModel):
@@ -559,6 +567,8 @@ class ReporteMensual(BaseModel):
     tasa_ahorro: float
     top_categorias: list[dict]
     salud: dict
+    moneda_base: str = "COP"
+    monedas_sin_tasa: list[str] = []
 
 
 # ── Metas de ahorro ──────────────────────────────────────

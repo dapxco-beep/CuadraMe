@@ -6,9 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import bloquear_cuenta, cuenta_accesible, cuentas_ids_accesibles, puede_editar_cuenta
-from app.contabilidad import CATEGORIA_AJUSTE, FUENTE_AJUSTE, tipos_cuenta_de, tipos_efectivos
+from app.contabilidad import CATEGORIA_AJUSTE, FUENTE_AJUSTE, ConvertidorBase, tipos_cuenta_de, tipos_efectivos
 from app.database import get_db
-from app.fx import convertir_a_cop
 from app.models import Cuenta, Movimiento
 from app.schemas import AjusteSaldoRequest, CuentaCreate, CuentaOut, CuentaUpdate
 from app.utiles import ahora_co
@@ -142,12 +141,13 @@ def resumen_saldos(
     cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all() if ids else []
     ultimos = _ultimos_movs(db, ids) if ids else {}
 
+    conv = ConvertidorBase.de_usuario(db, usuario.id)  # moneda base del perfil (fase 2)
     total = disponible = deudas = 0.0
     por_moneda: dict[str, float] = {}
     por_tipo: dict[str, float] = {}
     for c in cuentas:
         moneda = c.moneda or "COP"
-        cop = convertir_a_cop(c.saldo or 0, moneda)
+        cop = conv.contar(c.saldo or 0, moneda)  # sin tasa: no se suma (queda en monedas_sin_tasa)
         total += cop
         if c.tipo == "credito":
             deudas += max(0.0, -cop)
@@ -157,6 +157,9 @@ def resumen_saldos(
         por_tipo[c.tipo] = por_tipo.get(c.tipo, 0.0) + cop
     ultimo = max(ultimos.values()) if ultimos else None
     return {
+        # Los campos *_cop son nombres históricos: llevan la moneda base del perfil (COP para todos hoy).
+        "moneda_base": conv.base,
+        "monedas_sin_tasa": sorted(conv.sin_tasa),
         "total_cop": round(total, 2),
         "disponible_cop": round(disponible, 2),
         "deudas_tarjeta_cop": round(deudas, 2),
