@@ -18,5 +18,5 @@ En la PWA, `formatCOP` formatea en la base; `formatCOPFijo` siempre en COP.
 
 ## Se queda en COP a propósito
 - **Impuestos (DIAN/renta/GMF):** `routers/impuestos.py`, `renta_alerta.py` y las tarjetas de renta/GMF: la declaración colombiana es en pesos sin importar la base (`calcular_resumen(..., base="COP")`).
-- `movimientos.py` (atajo de pago): convierte a la moneda **de la cuenta**, no es un total del perfil.
+- `movimientos.py` (atajo de pago): convierte a la moneda **de la cuenta** (solo cuentas COP), no es un total del perfil.
 - Valores por defecto de formularios (`moneda='COP'` en altas) y el catálogo de tickers de la BVC.
