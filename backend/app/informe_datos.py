@@ -18,7 +18,7 @@ MARGEN_EMPAREJAR = timedelta(days=3)
 
 # Solo las columnas que la regla contable y los informes leen: traerlas como filas sueltas (en vez de objetos ORM
 # completos) ahorra cerca de la mitad del tiempo con miles de movimientos.
-_COLUMNAS = ("id", "cuenta_id", "fecha", "tipo", "monto", "categoria", "subcategoria", "descripcion", "fuente", "notas")
+_COLUMNAS = ("id", "cuenta_id", "fecha", "tipo", "monto", "categoria", "subcategoria", "descripcion", "titulo", "fuente", "notas")
 
 
 def cargar_movs_efectivos(
@@ -61,7 +61,8 @@ def cargar_movs_efectivos(
             "sin_tasa": (monedas.get(m["cuenta_id"]) or "COP").upper() in conv.sin_tasa,
             "categoria": m["categoria"] or "Otros",
             "subcategoria": m["subcategoria"],
-            "descripcion": m["descripcion"] or "",
+            "descripcion": m["descripcion"] or "",  # texto del banco: claves, reglas y clasificación lo leen
+            "titulo": m["titulo"] or "",  # nombre propio de la persona; para MOSTRAR: titulo or descripcion
             "fuente": m["fuente"] or "manual",
         }
         for m in movs

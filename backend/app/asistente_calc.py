@@ -225,7 +225,7 @@ def gastos_atipicos(movs: list[dict], anio: int, mes: int, minimo: float = 50_00
         if mediana > 0 and m["monto"] >= factor * mediana:
             salida.append({
                 "categoria": m["categoria"],
-                "descripcion": m.get("descripcion", ""),
+                "descripcion": m.get("titulo") or m.get("descripcion", ""),
                 "monto": round(m["monto"]),
                 "mediana_categoria": round(mediana),
                 "veces": round(m["monto"] / mediana, 1),

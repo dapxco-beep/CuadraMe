@@ -702,7 +702,7 @@ def grupos_posibles_duplicados(db: Session, usuario_id: str, dias: int = 120, li
             "id": hashlib.sha1("|".join(sorted(m.id for m in miembros)).encode()).hexdigest()[:16],
             "sugerido_conservar": elegido.id,
             "movimientos": [{
-                "id": m.id, "fecha": m.fecha, "descripcion": m.descripcion, "categoria": m.categoria, "tipo": m.tipo,
+                "id": m.id, "fecha": m.fecha, "descripcion": m.titulo or m.descripcion, "titulo": m.titulo, "categoria": m.categoria, "tipo": m.tipo,
                 "monto": m.monto, "cuenta_id": m.cuenta_id, "cuenta_nombre": nombres.get(m.cuenta_id, ""),
                 "origen": origen_de_movimiento(m), "canal": ETIQUETA_CANAL[origen_de_movimiento(m)],
                 "conciliado": m.conciliado_en is not None, "confirmado": m.cat_confirmada is not False,

@@ -6,6 +6,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import { formatMoneda } from '../lib/format'
 import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
 import { ETIQUETA_CANAL } from '../lib/canales'
+import { nombreDe } from '../lib/tituloMovimiento'
 import { useDialogos } from '../lib/DialogosContext'
 
 // «Buscar movimientos repetidos»: la app SUGIERE grupos de movimientos que parecen el mismo gasto
@@ -134,7 +135,7 @@ export default function BuscarDuplicados() {
                         aria-label={`Conservar ${m.descripcion}`}
                       />
                       <span className="flex-1 min-w-0">
-                        <span className="block text-sm font-semibold break-words line-clamp-3">{m.descripcion}</span>
+                        <span className="block text-sm font-semibold break-words line-clamp-3">{nombreDe(m)}</span>
                         <span className="block text-xs text-ink-soft break-words">
                           {fechaHoraMovimiento(fechaDeMovimiento(m), { anio: true })}
                           {' · '}

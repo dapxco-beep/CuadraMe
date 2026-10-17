@@ -198,7 +198,8 @@ def informe_gasto(movs: list[dict], rango: dict, anterior: dict | None = None, m
             k = clave_comercio(m.get("descripcion", ""))
             if not k:
                 continue
-            c = comercios.setdefault(k, {"nombre": (m.get("descripcion") or "").strip(), "monto": 0.0, "num": 0})
+            # Se agrupa por el texto del banco, pero se NOMBRA como la persona lo llamó (titulo or descripcion).
+            c = comercios.setdefault(k, {"nombre": (m.get("titulo") or m.get("descripcion") or "").strip(), "monto": 0.0, "num": 0})
             c["monto"] += m["monto"]
             c["num"] += 1
     top = sorted(comercios.values(), key=lambda c: c["monto"], reverse=True)[:max_comercios]
@@ -471,7 +472,8 @@ def no_se_cuenta(movs: list[dict], rango: dict, limite: int = 300) -> dict:
         "grupos": [{"nombre": k, "cantidad": v["cantidad"], "monto": round(v["monto"])} for k, v in grupos.items()],
         "truncado": len(filas) > limite,
         "movimientos": [
-            {"id": m["id"], "fecha": m["fecha"].isoformat(), "descripcion": m["descripcion"], "monto": round(m["monto"]),
+            {"id": m["id"], "fecha": m["fecha"].isoformat(), "descripcion": m.get("titulo") or m["descripcion"],
+             "titulo": m.get("titulo") or None, "monto": round(m["monto"]),
              "cuenta_id": m.get("cuenta_id"), "motivo": ETIQUETAS_RAZON.get(m.get("razon"), "Otro"), "razon": m.get("razon"),
              "par": m.get("par")}
             for m in filas[:limite]
