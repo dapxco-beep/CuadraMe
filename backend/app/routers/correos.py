@@ -24,6 +24,7 @@ from app.limites import verificar_limite
 from app.limites_diarios import consumir_cupo_diario
 from app.database import get_db
 from app import titulo as tit
+from app import extractos_error
 from app.compartidos import reclamar_estado
 from app import punto_partida
 from app.extractos_vista import clasificar_motivo, frase_error
@@ -1541,7 +1542,10 @@ def guardar_clave_pdf(
     else:
         db.add(ClavePdf(usuario_id=usuario.id, clave_enc=cifrada))
     db.commit()
-    return {"ok": True, "configurada": True}
+    # Con la clave nueva, los extractos que quedaron en error por clave y vinieron de un correo se reintentan solos.
+    reintento = extractos_error.reintentar_errores_clave(db, usuario)
+    return {"ok": True, "configurada": True, "extractos_reintentados": reintento["reintentados"],
+            "extractos_leidos": reintento["leidos"]}
 
 
 @router.delete("/clave-pdf")

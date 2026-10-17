@@ -93,6 +93,8 @@ export const TEXTO_ACCION = {
   probar_clave: 'Probar la clave',
   intentar_de_nuevo: 'Intentar de nuevo',
   subir_de_nuevo: 'Subir de nuevo',
+  reintentar: 'Reintentar',
+  quitar_de_la_lista: 'Quitar de la lista',
   mi_banco_no_esta: 'Mi banco no está',
 }
 

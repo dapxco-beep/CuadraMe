@@ -366,6 +366,9 @@ ATAQUES = [
     ("POST", "/conciliacion/historial/{historial}/resolver-dudosos", {"mismos": ["zz"]}),
     ("POST", "/conciliacion/historial/{historial}/importar", {"fingerprints": ["zz"]}),
     ("DELETE", "/conciliacion/historial/{historial}", None),
+    # extractos en error: B no reintenta ni quita el extracto (en error o no) de A
+    ("DELETE", "/conciliacion/historial/{historial}/error", None),
+    ("POST", "/conciliacion/historial/{historial}/reintentar", None),
     ("POST", "/conciliacion/procesar", {"pdf_base64": "AAAA", "cuenta_id": "{cuenta}"}),
     # asistente / importar con cuentas de A
     ("POST", "/asistente/confirmar/movimiento", {"cuenta_id": "{cuenta}", "descripcion": "x", "monto": 5, "tipo": "expense"}),
@@ -466,7 +469,7 @@ SIN_ID_DE_RECURSO = {
     # escrituras que solo afectan al propio usuario (no reciben ids ajenos)
     "/ahorcado/nueva-partida", "/asistente/mensaje", "/categorias/orden", "/cierre-mes/preferencias",
     "/consentimientos", "/correos/gmail/desconectar", "/correos/gmail/etiqueta", "/correos/gmail/lectura", "/correos/sincronizar",
-    "/correos/clave-pdf", "/perfil/punto-de-partida", "/facturas/escanear", "/impuestos/ajustes",
+    "/correos/clave-pdf", "/conciliacion/reintentar-errores", "/perfil/punto-de-partida", "/facturas/escanear", "/impuestos/ajustes",
     "/insights/preguntar", "/movimientos/clasificar", "/movimientos/rapido-prueba", "/pagos/checkout",
     "/patrimonio/snapshot", "/patrimonio/activos", "/perfil/api-key/regenerar", "/perfil/recordatorio-diario",
     "/perfil/pais",  # PUT: solo el país del propio usuario (el catálogo y el GET quedan en LISTAS)

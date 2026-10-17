@@ -1,7 +1,7 @@
 // «Todos los extractos»: cada fila dice banco + tipo + mes, su estado y qué pasó; filtros, buscador, grupos por mes,
 // duplicados juntos, errores con su motivo y acciones. También la pantalla (Por hacer y cobertura abren la lista).
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 const CUENTAS = [
@@ -156,6 +156,25 @@ describe('TodosLosExtractos', () => {
     expect(within(viejo).getByText(/No se pudo leer \(motivo no guardado\)/)).toBeTruthy()
     expect(within(viejo).getByText('x3 intentos')).toBeTruthy()
     expect(within(viejo).getByRole('button', { name: /Subir de nuevo/ })).toBeTruthy()
+  })
+
+  it('la fila de error con correo ofrece «Reintentar» y «Quitar de la lista»', () => {
+    const onAccion = vi.fn()
+    render(<Lista onAccion={onAccion} />)
+    const viejo = screen.getByTestId('ext-h:v')
+    expect(within(viejo).queryByRole('button', { name: /^Reintentar:/ })).toBeNull()
+    cleanup()
+    const conCorreo = fila({
+      id: 'h:r', mes: '2026-07', mes_etiqueta: 'Julio 2026', titulo: 'Nu Colombia · Cuenta · Julio 2026', motivo_error: 'clave_faltante',
+      estado_vista: 'no_se_pudo_leer', estado_etiqueta: 'No se pudo leer', acciones: ['reintentar', 'quitar_de_la_lista', 'mi_banco_no_esta'],
+      resultado: 'No pudimos leer este extracto: el PDF tiene clave y no tenemos una guardada. Guarda la clave.', historiales_error: ['h1'],
+    })
+    render(<Lista datos={{ ...DATOS, items: [conCorreo] }} onAccion={onAccion} />)
+    const el = screen.getByTestId('ext-h:r')
+    fireEvent.click(within(el).getByRole('button', { name: /^Reintentar:/ }))
+    expect(onAccion).toHaveBeenLastCalledWith('reintentar', expect.objectContaining({ id: 'h:r' }))
+    fireEvent.click(within(el).getByRole('button', { name: /^Quitar de la lista:/ }))
+    expect(onAccion).toHaveBeenLastCalledWith('quitar_de_la_lista', expect.objectContaining({ id: 'h:r' }))
   })
 
   it('cada estado trae sus acciones: Revisar, Poner clave, Probar la clave, Ver, Revisar de nuevo', () => {

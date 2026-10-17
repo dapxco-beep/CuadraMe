@@ -599,6 +599,10 @@ export const api = {
   descartarExtractoCorreo: (id) => request(`/correos/extractos/${id}/descartar`, { method: 'POST' }),
   // «Intentar de nuevo»: vuelve a bajar y abrir el PDF (no importa movimientos).
   reintentarExtractoCorreo: (id) => request(`/correos/extractos/${id}/reintentar`, { method: 'POST' }),
+  // Extractos en error: reintentar el de un correo («Reintentar»), quitarlo de la lista y reintentar los de clave en lote.
+  reintentarHistorialError: (id) => request(`/conciliacion/historial/${id}/reintentar`, { method: 'POST' }),
+  quitarHistorialError: (id) => request(`/conciliacion/historial/${id}/error`, { method: 'DELETE' }),
+  reintentarErroresExtractos: () => request('/conciliacion/reintentar-errores', { method: 'POST' }),
   // «Todos los extractos»: la lista completa (también viene en /sincronizacion/estado como `todos_extractos`).
   todosLosExtractos: () => request('/sincronizacion/extractos', { sinCache: true }),
   // Fijar de qué mes es un extracto cuando no se pudo deducir. `mes` = 'AAAA-MM'.

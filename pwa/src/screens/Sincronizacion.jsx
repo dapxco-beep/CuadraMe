@@ -186,6 +186,10 @@ export default function Sincronizacion() {
 
   useEffect(() => {
     cargar()
+    // Al abrir «Traer movimientos»: los extractos en error por clave que vinieron de un correo se reintentan solos.
+    Promise.resolve(api.reintentarErroresExtractos?.())
+      .then((r) => { if (r?.leidos && montado.current) cargar() })
+      .catch(() => {})
   }, [cargar])
 
   function moverVentana(delta) {
@@ -447,6 +451,35 @@ export default function Sincronizacion() {
     }
   }
 
+  // «Reintentar» (error con correo) y «Quitar de la lista» (solo filas en error; nunca conciliados).
+  async function accionErrorFila(accion, it) {
+    if (ocupados.has(it.id)) return
+    const ids = it.historiales_error?.length ? it.historiales_error : (it.historial_id ? [it.historial_id] : [])
+    if (!ids.length) return
+    setOcupados((s) => new Set(s).add(it.id))
+    setAvisoExt('')
+    try {
+      if (accion === 'reintentar') {
+        const r = await api.reintentarHistorialError(ids[0])
+        setAvisoExt(r?.mensaje || (r?.ok ? 'Listo: ya lo podemos revisar.' : 'No pudimos leerlo todavía.'))
+      } else {
+        for (const id of ids) await api.quitarHistorialError(id)
+        setAvisoExt('Listo: lo quitamos de la lista.')
+      }
+      await cargar()
+    } catch (err) {
+      setAvisoExt(mensajeAmable(err?.message, { porDefecto: 'No pudimos hacerlo ahora. Intenta de nuevo.' }))
+    } finally {
+      if (montado.current) {
+        setOcupados((s) => {
+          const n = new Set(s)
+          n.delete(it.id)
+          return n
+        })
+      }
+    }
+  }
+
   async function fijarMesFila(it, mes) {
     if (!it.extracto_id || !mes) return
     setAvisoExt('')
@@ -483,6 +516,9 @@ export default function Sincronizacion() {
         return probarClave(it.extracto_id)
       case 'intentar_de_nuevo':
         return reintentarFila(it)
+      case 'reintentar':
+      case 'quitar_de_la_lista':
+        return accionErrorFila(accion, it)
       case 'subir_de_nuevo':
         return pedirSubir({ cuentaId: it.cuenta_id, manual: false })
       case 'mi_banco_no_esta':
