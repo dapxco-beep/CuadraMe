@@ -22,7 +22,8 @@ import { CategoriaEnBloque, ChipCategoria, ResumenCategorias } from './RevisionC
 import HojaNuevaCategoria, { OPCION_NUEVA_CATEGORIA, TEXTO_NUEVA_CATEGORIA } from './HojaNuevaCategoria'
 import { borrarBorrador, guardarBorrador, leerBorrador, resumenLote } from '../lib/retomar'
 import LineaDosMontos from './LineaDosMontos'
-import ResumenFacturaAnterior from './ResumenFacturaAnterior'
+import PagoAplicado from './PagoAplicado'
+import ResumenTarjeta from './ResumenTarjeta'
 import { BotonLapiz, EditorNombre, PistaBanco } from './NombreEditable'
 import { limpiarNombre, MIN_REPETICIONES_NOMBRE } from '../lib/tituloMovimiento'
 import {
@@ -590,7 +591,8 @@ export default function SubidaMultiple({
                         : `${anteriores} líneas son anteriores a tu fecha de inicio y no se importan.`}
                     </p>
                   )}
-                  {a.descartados > 0 && (
+                  <ResumenTarjeta mensaje={a.mensajeLectura} completa={a.lecturaCompleta} resumen={a.resumenTarjeta} className="mb-2" />
+                  {a.descartados > 0 && !a.mensajeLectura && (
                     <p className="rounded-2xl bg-accent-soft px-3.5 py-2.5 text-xs mb-2" role="status" data-testid="aviso-descartados">
                       {textoDescartados(a.descartados)}
                     </p>
@@ -656,10 +658,15 @@ export default function SubidaMultiple({
                             {it.dudosa && !repetido && (
                               <LineaDosMontos className="ml-8 mt-2" it={it} valor={montos[clave]} onElegir={(v) => elegirMonto(clave, v)} />
                             )}
-                            {it.resumen && !repetido && (
-                              <ResumenFacturaAnterior className="ml-8 mt-2" resumen={it.resumen} aviso={it.apagada ? it.avisoLinea : null} />
+                            {it.pagoDetalle && !repetido && (
+                              <PagoAplicado className="ml-8 mt-2" detalle={it.pagoDetalle} aviso={it.apagada ? it.avisoLinea : null} />
                             )}
-                            {it.pagoTarjeta && !it.resumen && !repetido && (
+                            {it.restante != null && !repetido && (
+                              <p className="ml-8 mt-1.5 text-xs text-ink-soft" data-testid="restante-compra">
+                                {it.cuotas ? `Cuota ${it.cuotas} · ` : ''}Te falta pagar {formatCOP(it.restante)} de esta compra.
+                              </p>
+                            )}
+                            {it.pagoTarjeta && !it.pagoDetalle && !repetido && (
                               <p className="ml-8 mt-1.5 text-xs text-ink-soft" data-testid="pista-pago-tarjeta">{TEXTO_PAGO_TARJETA}</p>
                             )}
                             {editandoNombre === clave && !repetido && (

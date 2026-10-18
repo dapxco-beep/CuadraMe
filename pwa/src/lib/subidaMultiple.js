@@ -107,8 +107,11 @@ export function normalizarPdf(r) {
       montosAlt: Array.isArray(m.montos_alternativos) ? m.montos_alternativos : [],
       // «Pago ...» de un extracto de tarjeta: se sugiere como traslado entre tus cuentas, no como un gasto.
       pagoTarjeta: Boolean(m.pago_tarjeta),
-      // Fila «resumen de la factura anterior»: el pago de lo abonado es la fila importable; los tres importes se muestran.
-      resumen: m.resumen_factura || null,
+      // «Pago $A» de la tarjeta: la fila importable es por A; aquí va cómo se aplicó (capital, intereses, cargos, B y C).
+      pagoDetalle: m.pago_detalle || null,
+      // Compra en cuotas: lo que falta por pagar de la compra.
+      restante: typeof m.restante === 'number' && m.restante > 0 ? m.restante : null,
+      cuotas: m.cuotas || null,
       avisoLinea: m.aviso_linea || null,
       apagada: m.marcar_por_defecto === false, // sin certeza: la casilla queda apagada hasta que la persona confirme
     }))
@@ -130,6 +133,10 @@ export function normalizarPdf(r) {
     yaConciliado: r.ya_conciliado || null,
     // Lo que el lector no pudo leer con certeza (se avisa) y lo que cruzó con tu registro rápido.
     descartados: r.descartados || 0,
+    // Extracto de la tarjeta de Nu: ¿lo leído suma lo que dice el extracto? y los datos del resumen de la página 1.
+    mensajeLectura: r.mensaje_lectura || null,
+    lecturaCompleta: r.lectura_completa ?? null,
+    resumenTarjeta: r.resumen_tarjeta || null,
     completados: (r.review || []).filter((m) => m.estado === 'completado').map(filaInfo),
     sobrantes: (r.review || []).filter((m) => m.estado === 'sobrante').map(filaInfo),
     propuestaTarjeta: r.propuesta_tarjeta || null,
@@ -158,10 +165,44 @@ export const montoValido = (v) => Number.isFinite(Number(v)) && Number(v) >= 1
 /** «Pago de tarjeta» / «Traslado entre tus cuentas»: lo que se sugiere de una línea «Pago ...». */
 export const TEXTO_PAGO_TARJETA = 'Parece el pago de tu tarjeta desde otra cuenta tuya: se cuenta como traslado, no como gasto.'
 
-/** «Factura anterior: $A · Pagaste: $B · Quedó pendiente: $C» ('' si la línea no es un resumen de factura). */
-export function textoResumenFactura(r) {
-  if (!r) return ''
-  return `Factura anterior: ${formatCOP(r.factura_anterior)} · Pagaste: ${formatCOP(r.pagado)} · Quedó pendiente: ${formatCOP(r.saldo_pendiente)}`
+/**
+ * «Cómo se aplicó este pago: capital $x · intereses $y · cargos $z» y «Se aplicó $B y $C».
+ * null si el pago no trae el detalle.
+ */
+export function textoPagoAplicado(d) {
+  if (!d) return null
+  const partes = [['capital', d.capital], ['intereses', d.intereses], ['cargos', d.cargos]].filter(([, v]) => typeof v === 'number')
+  const aplicado = Array.isArray(d.aplicado) ? d.aplicado.filter((v) => typeof v === 'number') : []
+  if (!partes.length && !aplicado.length) return null
+  return {
+    principal: partes.length ? `Cómo se aplicó este pago: ${partes.map(([k, v]) => `${k} ${formatCOP(v)}`).join(' · ')}` : 'Cómo se aplicó este pago',
+    aplicado: aplicado.length ? `Se aplicó ${aplicado.map((v) => formatCOP(v)).join(' y ')}.` : null,
+  }
+}
+
+const FECHA_CORTA = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+const fechaIso = (iso) => (iso ? FECHA_CORTA.format(new Date(`${iso}T00:00:00Z`)) : null)
+
+/** Filas [etiqueta, valor] del resumen de la página 1 del extracto de la tarjeta (solo lo que se pudo leer). */
+export function filasResumenTarjeta(r) {
+  if (!r) return []
+  const m = (v) => (typeof v === 'number' ? formatCOP(v) : null)
+  const periodo = r.periodo?.inicio && r.periodo?.fin ? `${fechaIso(r.periodo.inicio)} a ${fechaIso(r.periodo.fin)}` : null
+  return [
+    ['Deuda a pagar este mes', m(r.deuda_a_pagar)],
+    ['Pago mínimo', m(r.pago_minimo)],
+    ['Fecha límite de pago', fechaIso(r.limite_pago)],
+    ['Fecha de corte', fechaIso(r.corte)],
+    ['Periodo facturado', periodo],
+    ['Cupo', m(r.cupo)],
+    ['Usado', m(r.usado)],
+    ['Disponible', m(r.disponible)],
+    ['Cuota de manejo', m(r.cuota_manejo)],
+    ['Cargos por conversión', m(r.cargos_conversion)],
+    ['Intereses', m(r.intereses)],
+    ['Abonaste', m(r.abonaste)],
+    ['Deuda restante', m(r.deuda_restante)],
+  ].filter(([, v]) => v)
 }
 
 /** Interpreta lo que se escribe en el campo del monto: «697.534,97», «474542», «$ 474.542,00». null si no sirve. */

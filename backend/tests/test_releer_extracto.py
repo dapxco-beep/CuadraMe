@@ -45,7 +45,7 @@ class GmailFalso:
 LECTURA_NUEVA = [
     {"fecha": "2026-10-02", "descripcion": "Compra en tienda uno", "monto": 30000.0, "tipo": "expense"},
     {"fecha": "2026-10-05", "descripcion": "Pago de la factura anterior", "monto": 474542.0, "tipo": "income",
-     "pago_tarjeta": True, "resumen_factura": True},
+     "pago_tarjeta": True, "pago_detalle": {"capital": 474542.0, "intereses": 0.0, "cargos": 0.0, "aplicado": [474542.0]}},
     {"fecha": "2026-10-09", "descripcion": "Compra en tienda dos", "monto": 15000.0, "tipo": "expense"},
 ]
 
@@ -114,7 +114,7 @@ def test_reemplaza_faltante_mal_leida_conserva_importada_y_agrega_nueva(monkeypa
     descs = {i["descripcion"]: i for i in review}
     assert "Pago $697.534,97 -$474.542,00" not in descs
     assert descs["Compra en tienda uno"]["estado"] == "importado" and descs["Compra en tienda uno"]["movimiento_id"] == "mov-1"
-    assert descs["Pago de la factura anterior"]["estado"] == "faltante" and descs["Pago de la factura anterior"]["resumen_factura"]
+    assert descs["Pago de la factura anterior"]["estado"] == "faltante" and descs["Pago de la factura anterior"]["pago_detalle"]
     assert descs["Compra en tienda dos"]["estado"] == "faltante"
     assert (estado, faltantes, importados, total) == ("pendiente_revision", 2, 1, 3)
 

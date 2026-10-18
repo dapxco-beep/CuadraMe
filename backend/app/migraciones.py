@@ -171,6 +171,14 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'CONSTRAINT uq_forma_asunto UNIQUE (esqueleto, dominio))',
         ],
     ),
+    (
+        # Lectura del extracto de la tarjeta: resumen de la página 1 y comprobaciones contra lo que sumó el lector
+        # (JSON). No hay otro lugar donde guardarlo: review_json es la lista de líneas.
+        "0009_lectura_extracto",
+        [
+            'ALTER TABLE historial_extractos ADD COLUMN IF NOT EXISTS lectura_json VARCHAR NULL',
+        ],
+    ),
 ]
 
 

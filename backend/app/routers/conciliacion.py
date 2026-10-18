@@ -25,6 +25,7 @@ from app.conciliacion import _CUENTA_UNICA
 from app.wallet import ORIGENES_RAPIDOS
 from app import extractos_error
 from app import releer_extracto
+from app.extractos_tarjeta_nu import datos_de_lectura, es_extracto_tarjeta_nu, leer_extracto_tarjeta_nu
 from app.compartidos import cuenta_accesible, puede_editar_cuenta, reclamar_estado
 from app.conciliacion import (
     es_transferencia_propia,
@@ -135,6 +136,12 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
             )
             via_ia = bool(movimientos)
 
+    # Extracto de la tarjeta de Nu: el lector comparó lo leído con los totales del propio extracto.
+    lectura = None
+    if movimientos and not via_ia and texto_plano and es_extracto_tarjeta_nu(texto_plano):
+        lectura = datos_de_lectura(leer_extracto_tarjeta_nu(texto_plano))
+    lectura_dudosa_total = bool(lectura) and not lectura["lectura_completa"]  # no cuadra: nada se importa solo
+
     if movimientos:
         parece, motivo = evaluar_extracto(texto_plano, banco, movimientos)
         if not parece:
@@ -216,7 +223,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
         clasif = modelo.clasificar(item["descripcion"])
 
         tipo_dir, notas_auto = _tipo_y_notas(item, f"Auto-importado desde extracto {banco} (confianza {clasif['confianza'] if clasif else 0})")
-        if autoimportar and not via_ia and clasif and clasif["confianza"] >= umbral and tipo_dir and not item.get("lectura_dudosa") and not item.get("resumen_factura"):
+        if autoimportar and not via_ia and clasif and clasif["confianza"] >= umbral and tipo_dir and not item.get("lectura_dudosa") and not item.get("pago_detalle") and not lectura_dudosa_total:
             fecha_dt = parse_bank_date(item["fecha"])
             movimiento = Movimiento(
                 usuario_id=usuario.id,
@@ -252,7 +259,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
             item["categoria_sugerida"] = clasif["categoria"] if clasif else "Otros"
             item["razon_categoria"] = clasif.get("razon") if clasif else None
             item["confianza_categoria"] = clasif.get("confianza") if clasif else None
-            if item.get("pago_tarjeta") and (item["categoria_sugerida"] == "Otros" or item.get("resumen_factura")):
+            if item.get("pago_tarjeta") and (item["categoria_sugerida"] == "Otros" or item.get("pago_detalle")):
                 # La línea «Pago ...» de un extracto de tarjeta: se sugiere como pago de la tarjeta (traslado
                 # entre tus cuentas), no como un gasto «Sin categoría». La persona puede cambiarla.
                 item["categoria_sugerida"] = CATEGORIA_PAGO_TARJETA
@@ -262,7 +269,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
     if auto_importados:
         resultado["faltantes"] -= auto_importados
 
-    _confirmar_pagos_de_factura(db, usuario.id, cuenta, banco, resultado["review"])
+    _confirmar_pagos_de_tarjeta(db, usuario.id, cuenta, banco, resultado["review"])
 
     historial = HistorialExtracto(
         usuario_id=usuario.id,
@@ -275,6 +282,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
         descartados=descartados,
         importados=auto_importados,
         estado="pendiente_revision",
+        lectura_json=json.dumps(lectura, default=str) if lectura else None,
     )
     saldos_extracto = _saldos_del_extracto(cuenta, texto_plano, movimientos)
     cuadre_extracto.guardar_saldos(historial, saldos_extracto)
@@ -327,6 +335,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
     completados, sobrantes = _contar_review(resultado["review"])
 
     return ProcesarExtractoResponse(
+        **(lectura or {}),
         autoimportar_activo=autoimportar,
         ya_registrados=resultado["exactos"] + resultado["aproximados"] + completados + resultado.get("borrados_antes", 0),
         borrados_antes=resultado.get("borrados_antes", 0),
@@ -352,10 +361,11 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
     )
 
 
-def _confirmar_pagos_de_factura(db: Session, usuario_id: str, cuenta, banco: str, review: list[dict]) -> None:
-    """El pago de la «factura anterior» solo viene marcado si hay certeza: hay una salida del MISMO monto (±$1) en
-    otra cuenta del mismo banco (ahorros, no crédito) con fecha a ±3 días. Si no, queda apagado con el aviso."""
-    pagos = [i for i in review if i.get("resumen_factura") and i.get("estado") == "faltante"]
+def _confirmar_pagos_de_tarjeta(db: Session, usuario_id: str, cuenta, banco: str, review: list[dict]) -> None:
+    """El pago de la tarjeta (la fila «Pago $A …» del extracto) solo viene marcado si hay certeza: hay una salida de
+    ≈A (±$1) en otra cuenta del mismo banco (ahorros, no crédito) con fecha a ±3 días. Si no, queda apagado con el
+    aviso «Parece el pago de tu tarjeta. Confirma el monto.»."""
+    pagos = [i for i in review if i.get("pago_detalle") and i.get("estado") == "faltante"]
     if not pagos:
         return
     propias = [c for c in db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id, Cuenta.id != cuenta.id).all()
@@ -506,6 +516,7 @@ def obtener_review(
     _enriquecer_dudosas(db, usuario.id, review)
     completados, sobrantes = _contar_review(review)
     return ProcesarExtractoResponse(
+        **(historial.lectura or {}),
         ok=True,
         conteo=estado_traer.conteo_de_historial(historial),
         historial_id=historial.id,

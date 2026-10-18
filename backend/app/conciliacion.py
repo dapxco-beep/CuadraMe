@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 
 from app.contabilidad import MARCA_TRASLADO_PROPIO
 from app.costos_financieros import es_costo_o_rendimiento
+from app.extractos_tarjeta_nu import es_extracto_tarjeta_nu, leer_extracto_tarjeta_nu
 from app.duplicados import Cand, ORIGEN_ATAJO, ORIGEN_EXTRACTO, ORIGEN_MANUAL, emparejar
 
 # El libro que se compara es de UNA sola cuenta: para la regla central todas comparten la misma.
@@ -237,6 +238,13 @@ def parse_texto_con_regex(texto: str) -> tuple[list[dict], int]:
     movimientos: list[dict] = []
     descartados = 0
 
+    # Extracto de la TARJETA de crédito de Nu: tiene su propio lector (la estructura no se parece a la de la cuenta de
+    # ahorros). Si lo leído no suma lo que dice el resumen del extracto, se avisa con el contador de «descartados».
+    if banco in ("nu", "generico") and es_extracto_tarjeta_nu(texto):
+        lectura = leer_extracto_tarjeta_nu(texto)
+        if lectura["movimientos"]:
+            return [{**_pista(m["descripcion"]), **m} for m in lectura["movimientos"]], 0 if lectura["lectura_completa"] else 1
+
     if banco in ("nequi", "generico"):
         movimientos, descartados = _parse_nequi_con_perdidas(texto)
         if not movimientos:
@@ -455,29 +463,10 @@ def _marcas_lectura_nu(desc: str, tarjeta: bool = False) -> dict:
     return marcas
 
 
-# ── Resumen de la factura anterior y cobros con el monto repetido (extracto de TARJETA de Nu) ───
-# «Pago $A -$B» + un tercer importe C = A − B no es un movimiento: es la fila de resumen de la factura anterior
-# (A = total de la factura anterior, B = lo que pagaste, C = lo que quedó pendiente). Lo real que contiene es UN
-# pago de B (un traslado hacia la tarjeta). El gasto de C no existe: se leía mal y inflaba los gastos.
+# ── Cobros con el monto repetido (extracto de TARJETA de Nu leído con el lector de la cuenta de ahorros) ──────
+# (El extracto de la tarjeta de crédito de Nu ya no pasa por aquí: tiene su propio lector, extractos_tarjeta_nu.py.)
 _RE_IMPORTE_CON_PESO = re.compile(r"[+\-]?\s*\$\s*(\d[\d.,]*\d|\d)")
 _RE_IMPORTE_SUELTO = re.compile(r"[+\-]?\s*\$\s*\d[\d.,]*")
-DESCRIPCION_PAGO_FACTURA_ANTERIOR = "Pago de tu tarjeta (factura anterior)"
-AVISO_PAGO_FACTURA_ANTERIOR = "Parece el pago de tu tarjeta. Confirma el monto."
-
-
-def resumen_factura_anterior(desc: str, monto: float) -> dict | None:
-    """{'factura_anterior': A, 'pagado': B, 'saldo_pendiente': C} si la línea es «Pago $A -$B» con tercer
-    importe C = |A − B| (tolerancia de centavos); None en cualquier otro caso (p. ej. dos montos que NO cumplen
-    la resta siguen yendo a «elige el correcto»)."""
-    if not _RE_PAGO_AL_INICIO.search(desc or ""):
-        return None
-    importes = [parse_monto_cop(m.group(1)) for m in _RE_IMPORTE_CON_PESO.finditer(desc or "")]
-    if len(importes) != 2 or any(v != v or v < 1 for v in importes):
-        return None
-    a, b = importes
-    if abs(abs(a - b) - abs(monto)) > 1.0:
-        return None
-    return {"factura_anterior": round(a, 2), "pagado": round(b, 2), "saldo_pendiente": round(abs(monto), 2)}
 
 
 def limpiar_descripcion_cobro(desc: str, monto: float) -> str | None:
@@ -494,19 +483,9 @@ def limpiar_descripcion_cobro(desc: str, monto: float) -> str | None:
 
 
 def _linea_nu(fecha: str, desc: str, monto: float, tipo: str, tarjeta: bool) -> dict:
-    """Arma el movimiento leído de una línea de Nu. En extractos de tarjeta convierte el resumen de la factura
-    anterior en el pago real y limpia los cobros con el monto repetido, conservando la huella anterior de la
-    línea (`huella_anterior`) para que lo ya importado antes se siga reconociendo."""
+    """Arma el movimiento leído de una línea de Nu. En extractos de tarjeta limpia los cobros con el monto repetido,
+    conservando la huella anterior de la línea (`huella_anterior`) para que lo ya importado se siga reconociendo."""
     if tarjeta:
-        res = resumen_factura_anterior(desc, monto)
-        if res:
-            return {
-                "fecha": fecha, "descripcion": DESCRIPCION_PAGO_FACTURA_ANTERIOR, "monto": res["pagado"],
-                "tipo": "income",  # un pago ABONA a la tarjeta (baja la deuda): entra a la cuenta de crédito
-                "referencia": "", "saldo": None, "pista": MARCA_TRASLADO_PROPIO, "pago_tarjeta": True,
-                "resumen_factura": res, "aviso_linea": AVISO_PAGO_FACTURA_ANTERIOR,
-                "huella_anterior": {"fecha": fecha, "monto": monto, "descripcion": desc, "tipo": tipo},
-            }
         limpia = limpiar_descripcion_cobro(desc, monto)
         if limpia:
             return {

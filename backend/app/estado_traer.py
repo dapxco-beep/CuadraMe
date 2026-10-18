@@ -483,6 +483,9 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             "puede_cambiar_cuenta": bool(mejor["historial_id"] and mejor["cuenta_id"] and mejor["historial"] is not None
                                          and mejor["historial"].estado in ("conciliado", "pendiente_revision")),
             "sugerencia_cuenta": mejor.get("sugerencia_cuenta"),
+            # Tarjeta de Nu: «Leí 17 líneas y suman lo que dice tu extracto ✓» (o lo que falta). None en los demás extractos.
+            "mensaje_lectura": mejor["historial"].mensaje_lectura if mejor.get("historial") is not None else None,
+            "lectura_completa": mejor["historial"].lectura_completa if mejor.get("historial") is not None else None,
             "acciones": _acciones(vista, mejor),
         }
         salida.append(_item(

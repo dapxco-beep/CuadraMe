@@ -1,6 +1,6 @@
 """Líneas del extracto con DOS montos («Pago $697.534,97 -$474.542,00»): el lector no adivina.
 
-Datos inventados. (Si el tercer importe SÍ es A−B es el resumen de la factura anterior: ver test_resumen_factura_anterior.py.) Antes la línea salía como un gasto de -$222.993 «Sin categoría» y se importaba sin avisar.
+Datos inventados. Antes la línea salía como un gasto de -$222.993 «Sin categoría» y se importaba sin avisar.
 Ahora: se marca `lectura_dudosa` (con los montos que aparecen escritos), no se importa sin que la persona elija
 el monto, y un «Pago ...» de un extracto de TARJETA se sugiere como traslado (pago de la tarjeta).
 """
