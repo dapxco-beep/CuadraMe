@@ -94,7 +94,7 @@ describe('lib/carriles', () => {
 
   it('dice lo que pasó en cada lectura', () => {
     expect(resumenLectura('movimientos', { nuevos: 2 })).toBe('Encontré 2 movimientos nuevos.')
-    expect(resumenLectura('extractos', { extractos_encontrados: 0 })).toMatch(/no hay extractos nuevos/)
+    expect(resumenLectura('extractos', { extractos_encontrados: 0 })).toMatch(/no hay extractos nuevos/i)
     expect(resumenLectura('extractos', { aviso: 'Están apagados' })).toBe('Están apagados')
   })
 
