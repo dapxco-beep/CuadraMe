@@ -1905,6 +1905,31 @@ def descartar_correo(
     return correo
 
 
+@router.post("/{correo_id}/recuperar", response_model=CorreoGastoOut)
+def recuperar_correo(
+    correo_id: str,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«Recuperar»: un correo descartado (al borrar un movimiento parecido, o a mano) o ignorado con
+    monto vuelve a «Por revisar». Si ya existe un movimiento equivalente, queda como ya registrado."""
+    correo = (
+        db.query(CorreoGasto)
+        .filter(CorreoGasto.id == correo_id, CorreoGasto.usuario_id == usuario.id)
+        .first()
+    )
+    if not correo:
+        raise HTTPException(status_code=404, detail="Correo no encontrado")
+    if correo.estado in ("pendiente", "ya_registrado"):
+        return _con_cuenta(db, usuario.id, [correo])[0]  # doble toque: ya está recuperado
+    if not (correo.estado == "descartado" or (correo.estado == "ignorado" and (correo.monto or 0) > 0)):
+        raise HTTPException(status_code=400, detail="Este correo no se puede recuperar")
+    dup.recuperar_correo(db, usuario.id, correo)
+    db.commit()
+    db.refresh(correo)
+    return _con_cuenta(db, usuario.id, [correo])[0]
+
+
 @router.post("/{correo_id}/no-es-duplicado", response_model=CorreoGastoOut)
 def correo_no_es_duplicado(
     correo_id: str,

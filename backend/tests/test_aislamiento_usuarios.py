@@ -346,6 +346,7 @@ ATAQUES = [
     ("PATCH", "/correos/{correo}", {"monto": 1}),
     ("POST", "/correos/{correo}/aprobar", {"cuenta_id": "{cuenta}", "monto": 5}),
     ("POST", "/correos/{correo}/descartar", None),
+    ("POST", "/correos/{correo}/recuperar", None),  # recuperar un correo descartado ajeno
     ("POST", "/correos/{correo}/no-es-duplicado", None),  # «Mostrar de todos modos» de un correo ajeno
     # buscar y unir duplicados: B no puede unir, ni marcar «no es duplicado», movimientos de A
     ("POST", "/duplicados/unir", {"conservar_id": "{mov}", "unir_ids": ["{mov2}"]}),

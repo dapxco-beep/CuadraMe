@@ -617,6 +617,35 @@ def mostrar_de_todos_modos(db: Session, usuario_id: str, correo) -> None:
         db.add(HuellaOrigen(usuario_id=usuario_id, huella=huella, origen=ORIGEN_CORREO, estado=ESTADO_NO_DUPLICADO))
 
 
+def recuperar_correo(db: Session, usuario_id: str, correo, cuentas: list | None = None) -> str:
+    """El usuario quiere de vuelta un correo 'descartado' (o 'ignorado' con monto): vuelve a «Por revisar».
+    Se quita la huella fantasma de ESE correo y se anota la excepción «no es duplicado» solo para él, así
+    `absorber_correos` no lo vuelve a descartar contra el movimiento que se borró. Los anti-duplicados reales
+    siguen: si hoy existe un movimiento vigente equivalente, queda 'ya_registrado'. Devuelve el estado final.
+    Sin commit."""
+    from app.models import Cuenta, HuellaOrigen
+
+    huella = huella_correo(correo.gmail_msg_id)
+    db.query(HuellaOrigen).filter(
+        HuellaOrigen.usuario_id == usuario_id, HuellaOrigen.huella == huella,
+        HuellaOrigen.estado == ESTADO_DESCARTADO,
+    ).delete(synchronize_session=False)
+    correo.estado = "pendiente"
+    correo.movimiento_id = None
+    if not buscar_huella(db, usuario_id, huella, (ESTADO_NO_DUPLICADO,)):
+        db.add(HuellaOrigen(usuario_id=usuario_id, huella=huella, origen=ORIGEN_CORREO, estado=ESTADO_NO_DUPLICADO))
+    db.flush()
+    cuentas = cuentas if cuentas is not None else db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).all()
+    ent = _candidato_de_correo(correo, cuentas)
+    pareja = buscar_pareja(db, usuario_id, ent, fantasmas=False) if ent else None
+    if pareja:
+        correo.estado = "ya_registrado"
+        correo.movimiento_id = pareja.ref.id
+        confirmar_por_canal(db, pareja.ref, ORIGEN_CORREO, huella, descripcion=correo.comercio, fecha=ent.fecha,
+                            categoria=correo.categoria_sugerida, hora_real=True)
+    return correo.estado
+
+
 # ── Datos que ya existen: «Buscar duplicados» ─────────────────────────────────────────────
 def _hermanas(cuentas: list) -> dict[str, frozenset]:
     """Para cada cuenta, ella misma y las del MISMO banco (por el nombre): el atajo a veces
