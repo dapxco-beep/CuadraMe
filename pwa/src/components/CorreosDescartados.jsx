@@ -23,7 +23,7 @@ export function FilaRecuperable({ c, ocupado, onRecuperar }) {
         disabled={ocupado === c.id}
         className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-accent min-h-[36px] disabled:opacity-60"
       >
-        <Undo2 size={14} aria-hidden="true" /> Recuperar
+        <Undo2 size={16} aria-hidden="true" /> Recuperar
       </button>
     </li>
   )
