@@ -266,3 +266,9 @@ def aplicar_regla(correo: dict, reglas) -> dict | None:
             sal["regla_id"] = r.id
             return sal
     return None
+
+
+def texto_del_mensaje(asunto: str, snippet: str, cuerpo: str) -> str:
+    """El texto sobre el que se aprende y se aplica una regla: asunto + cuerpo (o el fragmento si no hay cuerpo).
+    Siempre el mismo armado, para que lo que la persona ve al marcar sea lo que luego se lee."""
+    return colapsar(f"{asunto or ''} {cuerpo or snippet or ''}")

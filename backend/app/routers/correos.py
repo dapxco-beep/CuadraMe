@@ -89,7 +89,7 @@ from app.gmail_oauth import (
 )
 from app import carriles_correo as carriles
 from app.models import Categoria, ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil, ReglaCorreo, SyncGmail
-from app.reglas_correo import aplicar_regla, hay_regla_para
+from app.reglas_correo import aplicar_regla, hay_regla_para, texto_del_mensaje
 from app.routers.consentimientos import exigir_consentimiento, tiene_consentimiento
 from app.routers.conciliacion import procesar_extracto_de_gmail as procesar_extracto
 from app.utiles import ahora_co, utc_a_co
@@ -372,7 +372,7 @@ def _crear_correo(msg: dict, usuario_id: str, modelo: ClasificadorUsuario, regla
         # Hay una regla de esta persona para esta forma de correo: se lee el cuerpo (no se guarda) solo si hace falta.
         cuerpo = texto_cuerpo(msg)
         lectura = aplicar_regla(
-            {"remitente": remitente, "asunto": asunto, "texto": f"{asunto} {snippet} {cuerpo}",
+            {"remitente": remitente, "asunto": asunto, "texto": texto_del_mensaje(asunto, snippet, cuerpo),
              "monto": monto, "comercio": comercio, "tipo": tipo}, reglas)
         if lectura:
             monto = lectura.get("monto", monto)
