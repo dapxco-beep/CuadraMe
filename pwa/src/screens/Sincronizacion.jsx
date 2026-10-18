@@ -10,7 +10,7 @@ import { useBloqueo } from '../lib/BloqueoContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useCuentas } from '../lib/CuentasContext'
 import { haceCuanto, marcarSincronizado, resumenSync, sincronizarCarriles, sincronizarTodo, tocaSincronizar } from '../lib/sincronizarGmail'
-import { NOMBRE_CARRIL, resumenLectura } from '../lib/carriles'
+import { NOMBRE_CARRIL, resumenLectura, textoUltimaLectura } from '../lib/carriles'
 import {
   BANCO_SIN_IDENTIFICAR, agruparPorBanco, conciliarExtracto, estadoCelda, ESTADOS_CELDA, nombreMes,
   moverMes, nombresDesambiguados, separarExtractos, textoEstadoExtracto,
@@ -1147,6 +1147,9 @@ export default function Sincronizacion() {
                     <li data-testid="conexion-ultima">
                       {ultima ? `Última vez que leí tu correo: ${ultima}` : 'Aún no he leído tu correo'}
                     </li>
+                    {textoUltimaLectura(estado?.carriles?.movimientos?.ultima_lectura) && (
+                      <li data-testid="conexion-ultima-lectura">{textoUltimaLectura(estado.carriles.movimientos.ultima_lectura)}</li>
+                    )}
                     {Object.keys(erroresCarril).filter((k) => erroresCarril[k]).map((k) => (
                       <li key={k} className="text-danger">{NOMBRE_CARRIL[k]}: {erroresCarril[k]}</li>
                     ))}
