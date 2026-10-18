@@ -370,12 +370,27 @@ def test_correo_sin_monto_no_se_ofrece_ni_con_etiqueta():
         mensajes = SimpleNamespace(get=lambda **kw: msg)
         return SimpleNamespace(users=lambda: SimpleNamespace(messages=lambda: mensajes))
 
+    class _Consulta:
+        """Sin reglas personales de lectura: la consulta de `reglas_correo` devuelve vacío."""
+        def filter(self, *a, **k):
+            return self
+
+        def order_by(self, *a, **k):
+            return self
+
+        def all(self):
+            return []
+
     class _Db:
         def __init__(self):
             self.filas = []
+            self.info = {}
 
         def add(self, fila):
             self.filas.append(fila)
+
+        def query(self, *a, **k):
+            return _Consulta()
 
     for etiqueta in (None, "L1"):
         db = _Db()

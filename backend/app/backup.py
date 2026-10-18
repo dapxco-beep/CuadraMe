@@ -43,6 +43,8 @@ TABLAS_NO_RESPALDADAS = {
     "extractos_correo",     # asunto, remitente y nombre de adjuntos de Gmail
     "historial_extractos",  # foto de las líneas de extractos (pudieron venir de Gmail)
     "sync_gmail",           # estado/cursores de la lectura de Gmail
+    "reglas_correo",        # dominio del remitente y forma del asunto (salen de Gmail)
+    "formas_asunto_fallidas",  # contador global anónimo de formas de asunto
     "claves_pdf",           # claves de PDF (cifradas, pero nunca viajan)
     "push_subscriptions",   # endpoint y llaves de notificaciones push
 }
