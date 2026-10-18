@@ -15,6 +15,7 @@ export function extractosAMedias(estado) {
       cuenta: x.cuenta || x.banco || 'Cuenta',
       mes: x.mes_etiqueta || '',
       faltan: Number(x.por_revisar),
+      sugerencia: x.puede_cambiar_cuenta ? x.sugerencia_cuenta || null : null,
     }))
 }
 

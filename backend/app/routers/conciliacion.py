@@ -3,6 +3,7 @@ from collections import Counter
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.limites import verificar_limite
@@ -15,6 +16,7 @@ from app.autocat import (
 )
 from app import duplicados as dup
 from app import cuadre_extracto
+from app import reasignar_extracto
 from app import estado_traer
 from app.extractos_vista import clasificar_motivo
 from app import punto_partida
@@ -696,6 +698,7 @@ def importar_faltantes(
         cuenta.saldo += item["monto"] if tipo_dir == "income" else -item["monto"]
 
         item["estado"] = "importado"
+        item["movimiento_id"] = movimiento.id  # vínculo directo extracto->movimiento (reasignar_extracto lo usa)
         importados += 1
 
         if fp in recordar_titulo and item.get("titulo"):
@@ -795,6 +798,31 @@ def resolver_dudosos(
     db.commit()
     dup.absorber_correos(db, usuario.id)
     return {"ok": True, "juntados": juntados, "separados": separados, "conteo": estado_traer.contar_review(review)}
+
+
+class CambiarCuentaIn(BaseModel):
+    cuenta_id: str
+    confirmar: bool = False
+
+
+@router.get("/historial/{historial_id}/cambiar-cuenta/previa")
+def cambiar_cuenta_previa(
+    historial_id: str, cuenta_id: str,
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Vista previa SIN cambios: cuántos movimientos pasarían y cómo quedarían los saldos de ambas cuentas."""
+    return reasignar_extracto.previa(db, usuario.id, historial_id, cuenta_id)
+
+
+@router.post("/historial/{historial_id}/cambiar-cuenta")
+def cambiar_cuenta(
+    historial_id: str, data: CambiarCuentaIn,
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Pasa el extracto (y lo que importó) a otra cuenta y recalcula los saldos de las dos. Pide confirmar."""
+    if not data.confirmar:
+        raise HTTPException(status_code=400, detail="Confirma el cambio para continuar.")
+    return reasignar_extracto.cambiar(db, usuario.id, historial_id, data.cuenta_id)
 
 
 @router.delete("/historial/{historial_id}")

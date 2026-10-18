@@ -364,6 +364,9 @@ ATAQUES = [
     # conciliación (historial de extractos)
     ("GET", "/conciliacion/historial/{historial}", None),
     ("POST", "/conciliacion/historial/{historial}/deshacer-auto", None),
+    # cambiar la cuenta de un extracto: B no mueve movimientos ni saldos de A (ni ve la vista previa)
+    ("POST", "/conciliacion/historial/{historial}/cambiar-cuenta", {"cuenta_id": "{cuenta}", "confirmar": True}),
+    ("GET", "/conciliacion/historial/{historial}/cambiar-cuenta/previa?cuenta_id={cuenta}", None),
     ("POST", "/conciliacion/historial/{historial}/resolver-dudosos", {"mismos": ["zz"]}),
     ("POST", "/conciliacion/historial/{historial}/importar", {"fingerprints": ["zz"]}),
     ("DELETE", "/conciliacion/historial/{historial}", None),

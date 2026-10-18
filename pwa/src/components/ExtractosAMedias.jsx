@@ -6,7 +6,7 @@ import { textoFaltan, tituloAMedias } from '../lib/retomar'
  * con su cuenta, su mes y un botón «Seguir» que abre EXACTAMENTE esa revisión.
  * `compacto` = el aviso discreto de Inicio (una línea con un solo botón).
  */
-export default function ExtractosAMedias({ lista = [], onSeguir, compacto = false, className = '' }) {
+export default function ExtractosAMedias({ lista = [], onSeguir, onCambiarCuenta, compacto = false, className = '' }) {
   if (!lista.length) return null
   if (compacto) {
     return (
@@ -29,7 +29,7 @@ export default function ExtractosAMedias({ lista = [], onSeguir, compacto = fals
       </h2>
       <ul className="mt-2 divide-y divide-line">
         {lista.map((x) => (
-          <li key={x.historialId} className="flex items-center gap-3 py-2">
+          <li key={x.historialId} className="flex flex-wrap items-center gap-3 py-2">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate">{x.cuenta}{x.mes ? ` · ${x.mes}` : ''}</p>
               <p className="text-xs text-ink-soft">{textoFaltan(x.faltan)}</p>
@@ -42,6 +42,19 @@ export default function ExtractosAMedias({ lista = [], onSeguir, compacto = fals
             >
               Seguir
             </button>
+            {x.sugerencia && onCambiarCuenta && (
+              <div className="basis-full rounded-xl bg-paper px-3 py-2" data-testid="sugerencia-cuenta">
+                <p className="text-xs leading-snug">Parece de tu tarjeta de crédito. ¿Pasarlo a {x.sugerencia.nombre}?</p>
+                <button
+                  type="button"
+                  onClick={() => onCambiarCuenta(x, x.sugerencia.cuenta_id)}
+                  aria-label={`Pasar a ${x.sugerencia.nombre}: ${x.cuenta}${x.mes ? ` ${x.mes}` : ''}`}
+                  className="min-h-11 text-xs font-semibold text-accent"
+                >
+                  Pasarlo a {x.sugerencia.nombre}
+                </button>
+              </div>
+            )}
           </li>
         ))}
       </ul>

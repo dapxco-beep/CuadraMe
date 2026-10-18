@@ -313,6 +313,7 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
     «Todos los extractos» necesita: tipo, título, mes (con su fuente), estado de la lista, frase de resultado,
     motivo si no se pudo leer y acciones."""
     from app import punto_partida
+    from app.reasignar_extracto import sugerir_cuenta_credito
     from app.extractos_conciliados import ESTADO_YA_CONCILIADO
     from app.models import Cuenta, ExtractoCorreo, HistorialExtracto
 
@@ -364,6 +365,7 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             tipo=ev.tipo_de_extracto(cuenta.tipo if cuenta else None, e.asunto or "", e.archivo or ""),
             corte=corte, motivo_error=motivo_err, asunto=e.asunto or "", archivo=e.archivo or "",
             recibido_en=e.recibido_en or e.creado_en,
+            sugerencia_cuenta=sugerir_cuenta_credito(h, cuenta, list(cuentas.values()), f"{e.asunto or ''} {e.archivo or ''}"),
         ))
     # Subidas a mano (sin extracto de correo detrás).
     for h in historiales.values():
@@ -384,6 +386,7 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             motivo_error=h.motivo_error, asunto="", archivo="", recibido_en=h.creado_en,
             historial_error=(h.estado == "error"),
             reintentable=(h.estado == "error" and extractos_error.reintentable(db, h, correos)),
+            sugerencia_cuenta=sugerir_cuenta_credito(h, cuenta, list(cuentas.values()), h.banco_detectado or ""),
         ))
 
     # Un renglón por (cuenta, mes). Los de error solo cuentan si no hay un intento bueno después.
@@ -450,6 +453,9 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             "copias_texto": copias_texto, "asunto": mejor["asunto"], "archivo": mejor["archivo"],
             "recibido_en": mejor["recibido_en"].isoformat() if mejor["recibido_en"] else None,
             "puede_fijar_mes": mejor["extracto_id"] is not None,
+            "puede_cambiar_cuenta": bool(mejor["historial_id"] and mejor["cuenta_id"] and mejor["historial"] is not None
+                                         and mejor["historial"].estado in ("conciliado", "pendiente_revision")),
+            "sugerencia_cuenta": mejor.get("sugerencia_cuenta"),
             "acciones": _acciones(vista, mejor),
         }
         salida.append(_item(

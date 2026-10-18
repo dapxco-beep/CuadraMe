@@ -489,6 +489,11 @@ export const api = {
       body: { pdf_base64: pdfBase64, cuenta_id: cuentaId, password },
     }),
   historialExtractos: () => request('/conciliacion/historial'),
+  // Cambiar la cuenta de un extracto: la vista previa no cambia nada; el cambio pide confirmar.
+  previaCambiarCuentaExtracto: (id, cuentaId) =>
+    request(`/conciliacion/historial/${id}/cambiar-cuenta/previa?cuenta_id=${encodeURIComponent(cuentaId)}`),
+  cambiarCuentaExtracto: (id, cuentaId) =>
+    request(`/conciliacion/historial/${id}/cambiar-cuenta`, { method: 'POST', body: { cuenta_id: cuentaId, confirmar: true } }),
   obtenerReviewExtracto: (id) => request(`/conciliacion/historial/${id}`),
   resolverDudosos: (id, mismos, distintos) =>
     request(`/conciliacion/historial/${id}/resolver-dudosos`, { method: 'POST', body: { mismos, distintos } }),

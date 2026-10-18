@@ -27,6 +27,7 @@ import CrearCuentaBanco from '../components/CrearCuentaBanco'
 import EstadoClavePdf, { textoEstadoClave } from '../components/EstadoClavePdf'
 import TodosLosExtractos from '../components/TodosLosExtractos'
 import ExtractosAMedias from '../components/ExtractosAMedias'
+import CambiarCuentaExtracto from '../components/CambiarCuentaExtracto'
 import { extractosAMedias } from '../lib/retomar'
 import BuscarExtractoPorAsunto from '../components/BuscarExtractoPorAsunto'
 import CuadreEncadenado from '../components/CuadreEncadenado'
@@ -87,7 +88,7 @@ export default function Sincronizacion() {
   const navigate = useNavigate()
   const location = useLocation()
   const volver = useVolver('/')
-  const { cuentas } = useCuentas() || { cuentas: [] }
+  const { cuentas, recargar: recargarCuentas } = useCuentas() || { cuentas: [] }
   const { nombres = [], iconoDe = () => '💳' } = useCategorias() || {}
   const { fmt } = useBloqueo()
   const llegada = location.state || null
@@ -121,6 +122,7 @@ export default function Sincronizacion() {
   const [cuentaPorExtracto, setCuentaPorExtracto] = useState({})
   const [ocupados, setOcupados] = useState(new Set())
   const [avisoExt, setAvisoExt] = useState('')
+  const [cambiandoCuenta, setCambiandoCuenta] = useState(null) // { historialId, titulo, cuentaId, destino }
   const [claveInfo, setClaveInfo] = useState({}) // GET /correos/clave-pdf (nunca trae la clave)
   const [probandoClave, setProbandoClave] = useState(false)
   const [pruebaClave, setPruebaClave] = useState({ resultado: null, mensaje: '', error: '' })
@@ -517,8 +519,10 @@ export default function Sincronizacion() {
   const extractoDeFila = (it) => extractos.find((e) => e.id === it.extracto_id)
     || (it.extracto_id ? { id: it.extracto_id, cuenta_sugerida_id: it.cuenta_id, banco: it.banco, estado: 'nuevo' } : null)
 
-  function accionFila(accion, it) {
+  function accionFila(accion, it, destino = '') {
     switch (accion) {
+      case 'cambiar_cuenta':
+        return setCambiandoCuenta({ historialId: it.historial_id, titulo: it.titulo, cuentaId: it.cuenta_id, destino })
       case 'ver':
         return pedirSubir({ historialId: it.historial_id })
       case 'revisar': {
@@ -902,6 +906,18 @@ export default function Sincronizacion() {
         </div>
       </div>
 
+      {cambiandoCuenta && (
+        <CambiarCuentaExtracto
+          historialId={cambiandoCuenta.historialId}
+          titulo={cambiandoCuenta.titulo}
+          cuentaActualId={cambiandoCuenta.cuentaId}
+          destinoInicial={cambiandoCuenta.destino}
+          cuentas={cuentas}
+          onCerrar={() => setCambiandoCuenta(null)}
+          onListo={(texto) => { setAvisoExt(texto); cargar(); recargarCuentas?.() }}
+        />
+      )}
+
       {/* ── Todo lo demás, detrás de una hoja ─────────────────────── */}
       {hoja === 'todo' && (
         <Hoja onCerrar={cerrarHoja} titulo="Ver todo">
@@ -919,6 +935,7 @@ export default function Sincronizacion() {
                   <ExtractosAMedias
                     lista={aMedias}
                     onSeguir={(x) => pedirSubir({ historialId: x.historialId, cuentaId: x.cuentaId })}
+                    onCambiarCuenta={(x, destino) => setCambiandoCuenta({ historialId: x.historialId, titulo: `${x.cuenta}${x.mes ? ` · ${x.mes}` : ''}`, cuentaId: x.cuentaId, destino })}
                     className="mb-4"
                   />
                   {avisoExt && <p className="text-xs text-danger mb-2" role="alert">{avisoExt}</p>}
