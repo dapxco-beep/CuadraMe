@@ -141,3 +141,27 @@ def test_marca_invalida_y_borrado(entorno):
     assert client.delete(f"/reglas-correo/{ok['regla']['id']}").status_code == 200
     assert client.get("/reglas-correo").json() == []
     assert client.delete(f"/reglas-correo/{ok['regla']['id']}").status_code == 404
+
+
+# ── Derechos del titular (Ley 1581): las reglas se exportan y se borran con la cuenta ──────────
+def test_derechos_del_titular_incluyen_reglas_de_correo(entorno):
+    from app import derechos_titular as dt
+
+    assert client.post("/reglas-correo", json={"gmail_msg_id": "nu1", "monto_texto": "$1.000.000,00",
+                                               "comercio_texto": "ICETEX", "tipo": "expense"}).status_code == 200
+    app.dependency_overrides[get_current_user] = lambda: U2
+    assert client.post("/reglas-correo", json={"gmail_msg_id": "nu1", "monto_texto": "$1.000.000,00", "tipo": "expense"}).status_code == 200
+    db = SessionLocal()
+    try:
+        datos = dt.recopilar(db, U1.id, U1.email)
+        assert "reglas_correo" in datos and len(datos["reglas_correo"]) == 1
+        regla = datos["reglas_correo"][0]
+        assert regla["usuario_id"] == U1.id and regla["etiqueta_monto"] and "icetex" not in str(regla).lower().replace("esqueleto", "")
+        assert "reglas_correo" not in dt.TABLAS_INTERNAS and "reglas_correo" not in dt.TABLAS_PUBLICAS
+        # Exportar (zip) y borrar todo: no queda nada de U1 y la regla de U2 sigue intacta.
+        assert b"reglas_correo" in dt.armar_zip(datos, U1.email)
+        dt.borrar_todo(db, U1.id, U1.email)
+        assert db.query(ReglaCorreo).filter(ReglaCorreo.usuario_id == U1.id).count() == 0
+        assert db.query(ReglaCorreo).filter(ReglaCorreo.usuario_id == U2.id).count() == 1
+    finally:
+        db.close()
