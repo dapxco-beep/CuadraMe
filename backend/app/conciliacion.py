@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 
 from app.contabilidad import MARCA_TRASLADO_PROPIO
 from app.costos_financieros import es_costo_o_rendimiento
+from app.extractos_tarjeta_nu import es_extracto_tarjeta_nu, leer_extracto_tarjeta_nu
 from app.duplicados import Cand, ORIGEN_ATAJO, ORIGEN_EXTRACTO, ORIGEN_MANUAL, emparejar
 
 # El libro que se compara es de UNA sola cuenta: para la regla central todas comparten la misma.
@@ -236,6 +237,13 @@ def parse_texto_con_regex(texto: str) -> tuple[list[dict], int]:
     banco = detectar_banco(texto)
     movimientos: list[dict] = []
     descartados = 0
+
+    # Extracto de la TARJETA de crédito de Nu: tiene su propio lector (la estructura no se parece a la de la cuenta de
+    # ahorros). Si lo leído no suma lo que dice el resumen del extracto, se avisa con el contador de «descartados».
+    if banco in ("nu", "generico") and es_extracto_tarjeta_nu(texto):
+        lectura = leer_extracto_tarjeta_nu(texto)
+        if lectura["movimientos"]:
+            return [{**_pista(m["descripcion"]), **m} for m in lectura["movimientos"]], 0 if lectura["lectura_completa"] else 1
 
     if banco in ("nequi", "generico"):
         movimientos, descartados = _parse_nequi_con_perdidas(texto)
