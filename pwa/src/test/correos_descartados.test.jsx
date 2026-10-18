@@ -48,3 +48,13 @@ describe('Correos descartados', () => {
     expect(await screen.findByText(/Ya tenías ese movimiento registrado/)).toBeInTheDocument()
   })
 })
+
+describe('aviso al borrar', () => {
+  it('se agrega solo si el movimiento vino del correo o de un extracto', async () => {
+    const { conAvisoDeBorrado, AVISO_NO_VUELVE } = await import('../lib/canales')
+    expect(conAvisoDeBorrado('Base.', { origen: 'correo' })).toBe(`Base.\n\n${AVISO_NO_VUELVE}`)
+    expect(conAvisoDeBorrado('Base.', [{ origen: 'manual', canales: ['manual', 'extracto'] }])).toContain('Descartados')
+    expect(conAvisoDeBorrado('Base.', { origen: 'manual', canales: ['manual'] })).toBe('Base.')
+    expect(AVISO_NO_VUELVE).toBe('Si lo borras, no lo volveremos a traer del correo. Podrás recuperarlo en Ver todo → Correos → Descartados.')
+  })
+})

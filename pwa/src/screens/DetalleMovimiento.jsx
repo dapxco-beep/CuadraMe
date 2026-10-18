@@ -13,6 +13,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import { cuentaEfectivoPara, ofertaEfectivo, sugerenciaEfectivo } from '../lib/efectivo'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
+import { conAvisoDeBorrado } from '../lib/canales'
 import { esAuto } from '../lib/comercio'
 import { HojaCambiarCategoria, InsigniaAuto } from '../components/CategorizacionAuto'
 import InsigniaCanales from '../components/InsigniaCanales'
@@ -215,9 +216,12 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
 
   async function eliminar() {
     const ok = await confirmar(
-      esTransferencia
-        ? 'Se eliminarán las dos partes de la transferencia y el dinero volverá a la cuenta de origen.'
-        : 'El saldo de la cuenta se ajustará como si este movimiento nunca hubiera existido.',
+      conAvisoDeBorrado(
+        esTransferencia
+          ? 'Se eliminarán las dos partes de la transferencia y el dinero volverá a la cuenta de origen.'
+          : 'El saldo de la cuenta se ajustará como si este movimiento nunca hubiera existido.',
+        movimiento
+      ),
       { titulo: '¿Eliminar este movimiento?', confirmarTexto: 'Eliminar', peligro: true }
     )
     if (!ok) return

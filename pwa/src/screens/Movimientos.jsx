@@ -35,6 +35,7 @@ import PorRevisarCorreo from '../components/PorRevisarCorreo'
 import { BotonLapiz, EditorNombre, PistaBanco } from '../components/NombreEditable'
 import { limpiarNombre, MIN_REPETICIONES_NOMBRE, nombreDe, tieneNombrePropio } from '../lib/tituloMovimiento'
 import { usePorRevisarCorreo } from '../lib/usePorRevisarCorreo'
+import { conAvisoDeBorrado } from '../lib/canales'
 import { actualizarDesdeCorreo, resumenActualizacion } from '../lib/sincronizarGmail'
 
 const TAMANO_PAGINA = 200
@@ -781,7 +782,10 @@ export default function Movimientos() {
   async function eliminarSeleccion() {
     const ids = [...seleccionados]
     const ok = await confirmar(
-      'El saldo de las cuentas se ajustará como si estos movimientos nunca hubieran existido. Esto no se puede deshacer.',
+      conAvisoDeBorrado(
+        'El saldo de las cuentas se ajustará como si estos movimientos nunca hubieran existido. Esto no se puede deshacer.',
+        movimientos.filter((m) => ids.includes(m.id))
+      ),
       {
         titulo: `¿Eliminar ${ids.length} ${ids.length === 1 ? 'movimiento' : 'movimientos'}?`,
         confirmarTexto: 'Eliminar',
