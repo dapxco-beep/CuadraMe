@@ -93,7 +93,7 @@ export default function Sincronizacion() {
   const { cuentas, recargar: recargarCuentas } = useCuentas() || { cuentas: [] }
   const { nombres = [], iconoDe = () => '💳' } = useCategorias() || {}
   const { fmt } = useBloqueo()
-  const { confirmar } = useDialogos() || {}
+  const { confirmar, avisar } = useDialogos() || {}
   const llegada = location.state || null
 
   const [estado, setEstado] = useState(null)
@@ -191,6 +191,26 @@ export default function Sincronizacion() {
     } finally {
       if (montado.current) setCargando(false)
     }
+  }, [])
+
+  // Una vez al abrir: si una cuenta tiene extracto con su saldo inicial y nadie registró con cuánto empezó, la app lo
+  // registra sola (idempotente en el servidor) y lo avisa con «Deshacer».
+  useEffect(() => {
+    Promise.resolve(api.cuadreSaldoInicialAuto?.())
+      .then((r) => {
+        const hechos = r?.registrados || []
+        if (!hechos.length) return
+        recargarCuentas?.()
+        cargar()
+        hechos.forEach((h) => avisar?.(h.texto, 'info', {
+          accion: {
+            texto: 'Deshacer',
+            onClick: () => Promise.resolve(api.cuadreDeshacer(h.movimiento_id)).then(() => { recargarCuentas?.(); cargar() }).catch(() => {}),
+          },
+        }))
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

@@ -514,6 +514,7 @@ export const api = {
   cuadreSaldos: (body) => request('/conciliacion/cuadre/saldos', { method: 'POST', body }),
   cuadreAjuste: (body) => request('/conciliacion/cuadre/ajuste', { method: 'POST', body }),
   cuadreSaldoInicial: (body) => request('/conciliacion/cuadre/saldo-inicial', { method: 'POST', body }),
+  cuadreSaldoInicialAuto: () => request('/conciliacion/cuadre/saldo-inicial-auto', { method: 'POST' }),
   cuadreDeshacer: (movimientoId) =>
     request('/conciliacion/cuadre/deshacer', { method: 'POST', body: { movimiento_id: movimientoId, confirmar: true } }),
   eliminarHistorialExtracto: (id) => request(`/conciliacion/historial/${id}`, { method: 'DELETE' }),

@@ -19,7 +19,7 @@ from app import cuadre_extracto
 from app import reasignar_extracto
 from app import estado_traer
 from app.extractos_vista import clasificar_motivo
-from app import punto_partida
+from app import punto_partida, saldo_inicial_auto
 from app import titulo as tit
 from app.conciliacion import _CUENTA_UNICA
 from app.wallet import ORIGENES_RAPIDOS
@@ -767,7 +767,14 @@ def importar_faltantes(
 
     db.commit()
     dup.absorber_correos(db, usuario.id)
+    saldo_inicial = None
+    try:  # con el primer extracto conciliado se sabe con cuánto empezó la cuenta; si algo falla, no estorba la importación
+        if cuenta.usuario_id == usuario.id:
+            saldo_inicial = saldo_inicial_auto.registrar(db, cuenta, punto_partida.fecha_inicio(db, usuario.id))
+    except Exception:  # noqa: BLE001
+        db.rollback()
     return {
+        "saldo_inicial_auto": saldo_inicial,
         "ok": True, "importados": importados, "sin_categoria_clara": sin_categoria_clara,
         "categorizados_auto": categorizados_auto, "reglas_guardadas": reglas_guardadas,
         "anteriores_actualizados": anteriores_actualizados, "reglas_omitidas": reglas_omitidas,

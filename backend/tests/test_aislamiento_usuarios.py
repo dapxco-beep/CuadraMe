@@ -492,6 +492,7 @@ SIN_ID_DE_RECURSO = {
     "/correos/extractos/buscar-asunto", "/correos/extractos/buscar-asunto/procesar",  # leen el Gmail PROPIO; ids de mensaje de su buzón
     "/conciliacion/releer-pendientes",  # solo relee historiales del propio usuario (no recibe ids)
     "/conciliacion/cuadre/releer-saldos",  # solo toca los historiales del propio usuario (no recibe ids)
+    "/conciliacion/cuadre/saldo-inicial-auto",  # solo recorre las cuentas propias del usuario (no recibe ids)
     "/perfil/importar-respaldo", "/perfil/importar-respaldo/vista-previa", "/perfil/importar-respaldo/deshacer",  # crean filas PROPIAS desde un archivo; deshacer solo lote propio
     "/metas/simular",  # solo calcula con los números que envía (más el sobrante propio)
     "/avisos/preferencias", "/avisos/probar", "/avisos/retencion",  # solo administración (404 al resto): no reciben ids ajenos
