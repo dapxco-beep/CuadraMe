@@ -22,6 +22,7 @@ import BancoNoEsta, { EnlaceBancoNoEsta } from '../components/BancoNoEsta'
 import { InterruptoresLectura } from '../components/CarrilesCorreo'
 import ConexionGmail from '../components/ConexionGmail'
 import CorreosYaRegistrados from '../components/CorreosYaRegistrados'
+import CorreosDescartados, { FilaRecuperable, recuperarCorreo } from '../components/CorreosDescartados'
 import CrearCuentaBanco from '../components/CrearCuentaBanco'
 import EstadoClavePdf, { textoEstadoClave } from '../components/EstadoClavePdf'
 import TodosLosExtractos from '../components/TodosLosExtractos'
@@ -50,7 +51,7 @@ import { posponerPuntoDePartida, puntoDePartidaPospuesto } from '../lib/puntoPar
 const EXTRACTOS_VISIBLES = 6
 
 // Las rutas viejas piden 'correo' (Gmail) o 'subir' (archivos): hoy abren «Ver todo» en su pestaña o la hoja del archivo.
-const SECCION_DE_RUTA = { correo: 'movimientos', subir: 'extractos', movimientos: 'movimientos', extractos: 'extractos', conexion: 'conexion', revisar: 'revisar' }
+const SECCION_DE_RUTA = { correo: 'movimientos', subir: 'extractos', movimientos: 'movimientos', 'correos-descartados': 'movimientos', extractos: 'extractos', conexion: 'conexion', revisar: 'revisar' }
 const seccionDeRuta = (abrir) => SECCION_DE_RUTA[abrir] || null
 const QUINCE_MIN = 15 * 60 * 1000 // al abrir: no se vuelve a leer el correo si se leyó hace menos de esto
 
@@ -600,6 +601,21 @@ export default function Sincronizacion() {
     }
   }
 
+  const [recuperando, setRecuperando] = useState(null)
+  async function recuperarIgnorado(c) {
+    if (recuperando) return
+    setRecuperando(c.id)
+    try {
+      setAvisoExt(await recuperarCorreo(c.id))
+      setCorreosIgnorados((l) => (l || []).filter((x) => x.id !== c.id))
+      cargar()
+    } catch (err) {
+      setAvisoExt(err.message || 'No se pudo recuperar el correo. Revisa tu conexión e intenta de nuevo.')
+    } finally {
+      setRecuperando(null)
+    }
+  }
+
   async function verCorreosIgnorados() {
     try {
       const lista = await api.correosLista('ignorados', 0, 30)
@@ -997,17 +1013,25 @@ export default function Sincronizacion() {
                         </p>
                       )}
                       <CorreosYaRegistrados cantidad={estado?.correos_ya_registrados || 0} onCambio={cargar} />
+                      <CorreosDescartados
+                        cantidad={estado?.correos_descartados || 0}
+                        abierto={llegada?.abrir === 'correos-descartados'}
+                        onCambio={cargar}
+                      />
             {correosIgnorados === null ? (
               <button onClick={verCorreosIgnorados} className="text-xs text-ink-soft mt-3 underline min-h-[32px]">Ver correos ignorados</button>
             ) : (
               <div className="mt-3 rounded-2xl border border-line divide-y divide-line">
                 {correosIgnorados.length === 0 && <p className="text-xs text-ink-soft p-3">No hay correos ignorados.</p>}
-                {correosIgnorados.map((c) => (
+                {avisoExt && <p className="text-xs text-ink-soft p-3" role="status">{avisoExt}</p>}
+                {correosIgnorados.map((c) => (c.monto > 0 ? (
+                  <FilaRecuperable key={c.id} c={c} ocupado={recuperando} onRecuperar={recuperarIgnorado} />
+                ) : (
                   <div key={c.id} className="p-3">
                     <p className="text-sm font-medium truncate">{c.asunto || c.comercio}</p>
                     <p className="text-xs text-ink-soft truncate">{c.remitente}</p>
                   </div>
-                ))}
+                )))}
               </div>
             )}
                     </>

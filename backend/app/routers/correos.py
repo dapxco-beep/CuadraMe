@@ -149,6 +149,11 @@ def _con_cuenta(db: Session, usuario_id: str, correos: list[CorreoGasto]) -> lis
         o.recibido_en_co = utc_a_co(c.recibido_en or c.creado_en)
         if c.estado == "ya_registrado":
             o.registrado_como = registrados.get(c.movimiento_id)
+        elif c.estado == "descartado":
+            o.motivo_descarte = ("Se parecía a un movimiento que borraste" if c.movimiento_id
+                                 else "Lo descartaste")
+        elif c.estado == "ignorado":
+            o.motivo_descarte = "No parecía una compra"
         o.banco_detectado, o.cuenta_sugerida_id, o.falta_cuenta = inferir_cuenta_por_remitente(c.remitente, cuentas, f"{c.asunto} {c.snippet}")
         o.falta_monto = (c.monto or 0) <= 0
         if o.banco_detectado and not o.falta_cuenta and not o.cuenta_sugerida_id:
@@ -1110,6 +1115,8 @@ def listar_correos(
     q = db.query(CorreoGasto).filter(CorreoGasto.usuario_id == usuario.id)
     if filtro != "todos":
         q = q.filter(CorreoGasto.estado == estados[filtro])
+    if filtro == "descartados":
+        q = q.filter(CorreoGasto.monto > 0)  # lo recuperable: sin monto no hay nada que registrar
     inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
     if inicio_pp and filtro == "nuevos":
         q = q.filter(or_(CorreoGasto.recibido_en.is_(None), CorreoGasto.recibido_en >= inicio_pp - timedelta(days=60)))

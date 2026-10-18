@@ -588,6 +588,9 @@ export const api = {
   descartarCorreo: (id) => request(`/correos/${id}/descartar`, { method: 'POST' }),
   // «Mostrar de todos modos / No es duplicado»: un correo que se dio por ya registrado era otro gasto igual.
   correoNoEsDuplicado: (id) => request(`/correos/${id}/no-es-duplicado`, { method: 'POST' }),
+  // Recuperar un correo descartado (o ignorado con monto): vuelve a «Por revisar».
+  recuperarCorreo: (id) => request(`/correos/${id}/recuperar`, { method: 'POST' }),
+  correosDescartados: (limite = 50) => request(`/correos/lista?filtro=descartados&limite=${limite}&offset=0`),
   correosYaRegistrados: (limite = 50) => request(`/correos/lista?filtro=ya_registrados&limite=${limite}&offset=0`),
   // Buscar duplicados: sugiere grupos de movimientos repetidos; unir conserva uno; nada se borra solo.
   buscarDuplicados: () => request('/duplicados/buscar', { sinCache: true }),

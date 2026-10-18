@@ -756,6 +756,8 @@ class CorreoGastoOut(BaseModel):
     producto_detectado: Optional[str] = None  # credito | debito | None
     # El monto no se pudo leer del correo (<= 0): hay que pedirlo antes de aprobar.
     falta_monto: bool = False
+    # Solo en 'descartado'/'ignorado': por qué no está en «Por revisar», dicho con palabras de la persona.
+    motivo_descarte: Optional[str] = None
     # Por qué se sugirió esa categoría ('por tu regla «rappi»'); None si la eligió el usuario
     # o no se pudo decidir. `preguntar_categoria`: quedó en 'Otros', hay que preguntarle.
     razon_categoria: Optional[str] = None
