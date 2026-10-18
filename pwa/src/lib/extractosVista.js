@@ -97,7 +97,10 @@ export const TEXTO_ACCION = {
   quitar_de_la_lista: 'Quitar de la lista',
   mi_banco_no_esta: 'Mi banco no está',
   cambiar_cuenta: 'Cambiar de cuenta',
+  releer: 'Releer este extracto',
 }
+
+export const EXPLICACION_RELEER = 'Lo vuelvo a leer con las mejoras. No pierdes lo que ya importaste.'
 
 // El texto de un botón según la fila: un grupo de errores por clave dice «Poner la clave» (una sola vez para todos) y
 // un extracto sin banco identificado dice «Decirme de qué banco es» (no «Mi banco no está», que no explica nada).

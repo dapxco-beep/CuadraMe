@@ -618,6 +618,8 @@ export const api = {
   // Extractos en error: reintentar el de un correo («Reintentar»), quitarlo de la lista y reintentar los de clave en lote.
   reintentarHistorialError: (id) => request(`/conciliacion/historial/${id}/reintentar`, { method: 'POST' }),
   quitarHistorialError: (id) => request(`/conciliacion/historial/${id}/error`, { method: 'DELETE' }),
+  releerExtracto: (historialId) => request(`/conciliacion/historial/${historialId}/releer`, { method: 'POST' }),
+  releerPendientes: () => request('/conciliacion/releer-pendientes', { method: 'POST' }),
   reintentarErroresExtractos: () => request('/conciliacion/reintentar-errores', { method: 'POST' }),
   // «Todos los extractos»: la lista completa (también viene en /sincronizacion/estado como `todos_extractos`).
   todosLosExtractos: () => request('/sincronizacion/extractos', { sinCache: true }),

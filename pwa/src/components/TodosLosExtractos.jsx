@@ -5,6 +5,7 @@ import {
   ESTADOS_VISTA, TEXTO_ACCION, agruparPorMes, estadoVista, filtrar, opcionesCuenta, textoAccion, textoContadores,
 } from '../lib/extractosVista'
 import { textoSugerencia } from '../lib/cambiarCuenta'
+import BotonReleer from './BotonReleer'
 
 const ICONO_ESTADO = {
   revisado: CheckCircle2,
@@ -72,7 +73,7 @@ function SelectorMes({ it, onFijarMes, ocupado }) {
   )
 }
 
-function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado }) {
+function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado, releyendo = false, resultadoReleer = null }) {
   const [cambiandoMes, setCambiandoMes] = useState(false)
   const esError = it.estado_vista === 'no_se_pudo_leer'
   // Los subidos a mano sin nombre guardado no aportan («Subido a mano» ya sale en el origen): solo se listan nombres reales.
@@ -143,9 +144,12 @@ function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado }) {
           </button>
         </div>
       )}
+      {it.acciones?.includes('releer') && (
+        <BotonReleer onReleer={() => onAccion('releer', it)} ocupado={releyendo} resultado={resultadoReleer} nombre={it.titulo} />
+      )}
       {(it.acciones?.length > 0 || it.puede_cambiar_cuenta) && (
         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-          {(it.acciones || []).map((a, i) => (
+          {(it.acciones || []).filter((a) => a !== 'releer').map((a, i) => (
             <button
               key={a}
               type="button"
@@ -182,7 +186,7 @@ function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado }) {
  * Filtros por estado y por cuenta/banco, buscador por mes y contador por estado.
  * `filtro` y `onFiltro` los maneja la pantalla (así «Por hacer» y la cobertura pueden abrir un grupo).
  */
-export default function TodosLosExtractos({ datos, filtro, onFiltro, onAccion, onFijarMes, ocupados, id = 'sinc-todos-extractos' }) {
+export default function TodosLosExtractos({ datos, filtro, onFiltro, onAccion, onFijarMes, ocupados, releyendo, resultadosReleer, id = 'sinc-todos-extractos' }) {
   const [sinAdjuntoAbierto, setSinAdjuntoAbierto] = useState(false)
   const items = useMemo(() => datos?.items || [], [datos])
   const sinAdjunto = datos?.sin_adjunto || []
@@ -288,7 +292,8 @@ export default function TodosLosExtractos({ datos, filtro, onFiltro, onAccion, o
             <h4 className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft mb-1.5">{g.etiqueta} · {g.items.length}</h4>
             <ul className="rounded-2xl bg-paper divide-y divide-line/50 overflow-hidden">
               {g.items.map((it) => (
-                <FilaExtractoVista key={it.id} it={it} onAccion={onAccion} onFijarMes={onFijarMes} ocupado={Boolean(ocupados?.has(it.id))} />
+                <FilaExtractoVista key={it.id} it={it} onAccion={onAccion} onFijarMes={onFijarMes} ocupado={Boolean(ocupados?.has(it.id))}
+                  releyendo={Boolean(it.historial_id && releyendo?.has(it.historial_id))} resultadoReleer={it.historial_id ? resultadosReleer?.[it.historial_id] : null} />
               ))}
             </ul>
           </section>

@@ -125,6 +125,8 @@ export default function Sincronizacion() {
   const [cuentaPorExtracto, setCuentaPorExtracto] = useState({})
   const [ocupados, setOcupados] = useState(new Set())
   const [avisoExt, setAvisoExt] = useState('')
+  const [releyendo, setReleyendo] = useState(new Set()) // historiales que se están releyendo
+  const [resultadosReleer, setResultadosReleer] = useState({}) // {historialId: {ok, texto}}
   const [cambiandoCuenta, setCambiandoCuenta] = useState(null) // { historialId, titulo, cuentaId, destino }
   const [claveInfo, setClaveInfo] = useState({}) // GET /correos/clave-pdf (nunca trae la clave)
   const [probandoClave, setProbandoClave] = useState(false)
@@ -196,6 +198,10 @@ export default function Sincronizacion() {
     // Al abrir «Traer movimientos»: los extractos en error por clave que vinieron de un correo se reintentan solos.
     Promise.resolve(api.reintentarErroresExtractos?.())
       .then((r) => { if (r?.leidos && montado.current) cargar() })
+      .catch(() => {})
+    // Y los que quedaron por revisar con una lectura vieja se releen solos, una vez por mejora del lector.
+    Promise.resolve(api.releerPendientes?.())
+      .then((r) => { if (r?.cambiados && montado.current) cargar() })
       .catch(() => {})
   }, [cargar])
 
@@ -482,6 +488,24 @@ export default function Sincronizacion() {
     }
   }
 
+  // «Releer este extracto»: lo vuelve a leer con las mejoras sin perder lo ya importado.
+  async function releerFila(historialId) {
+    if (!historialId || releyendo.has(historialId)) return
+    setReleyendo((s) => new Set(s).add(historialId))
+    setResultadosReleer((r) => ({ ...r, [historialId]: null }))
+    let resultado
+    try {
+      const r = await api.releerExtracto(historialId)
+      resultado = { ok: true, texto: r?.mensaje || 'Listo, lo releí.' }
+      await cargar()
+    } catch (err) {
+      resultado = { ok: false, texto: mensajeAmable(err?.message, { porDefecto: 'No pudimos releerlo ahora. Intenta de nuevo en un rato.' }) }
+    } finally {
+      if (montado.current) setReleyendo((s) => { const n = new Set(s); n.delete(historialId); return n })
+    }
+    if (montado.current) setResultadosReleer((r) => ({ ...r, [historialId]: resultado }))
+  }
+
   // «Reintentar» (error con correo) y «Quitar de la lista» (solo filas en error; nunca conciliados).
   async function accionErrorFila(accion, it) {
     if (ocupados.has(it.id)) return
@@ -538,6 +562,8 @@ export default function Sincronizacion() {
 
   function accionFila(accion, it, destino = '') {
     switch (accion) {
+      case 'releer':
+        return releerFila(it.historial_id)
       case 'cambiar_cuenta':
         return setCambiandoCuenta({ historialId: it.historial_id, titulo: it.titulo, cuentaId: it.cuenta_id, destino })
       case 'ver':
@@ -982,6 +1008,9 @@ export default function Sincronizacion() {
                     lista={aMedias}
                     onSeguir={(x) => pedirSubir({ historialId: x.historialId, cuentaId: x.cuentaId })}
                     onCambiarCuenta={(x, destino) => setCambiandoCuenta({ historialId: x.historialId, titulo: `${x.cuenta}${x.mes ? ` · ${x.mes}` : ''}`, cuentaId: x.cuentaId, destino })}
+                    onReleer={(x) => releerFila(x.historialId)}
+                    releyendo={releyendo}
+                    resultadosReleer={resultadosReleer}
                     className="mb-4"
                   />
                   {avisoExt && <p className="text-xs text-danger mb-2" role="alert">{avisoExt}</p>}
@@ -1035,6 +1064,8 @@ export default function Sincronizacion() {
                     onAccion={accionFila}
                     onFijarMes={fijarMesFila}
                     ocupados={ocupados}
+                    releyendo={releyendo}
+                    resultadosReleer={resultadosReleer}
                   />
             {ignorados === null ? (
               <button onClick={verIgnorados} className="text-xs text-ink-soft mt-3 underline min-h-[32px]">Ver extractos ignorados</button>
