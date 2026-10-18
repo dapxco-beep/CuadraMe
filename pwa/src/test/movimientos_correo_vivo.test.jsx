@@ -63,7 +63,7 @@ describe('actualizarDesdeCorreo', () => {
   it('frases del aviso', () => {
     expect(resumenActualizacion({ nuevos: 2 })).toBe('Traje 2 movimientos nuevos')
     expect(resumenActualizacion({ nuevos: 1 })).toBe('Traje 1 movimiento nuevo')
-    expect(resumenActualizacion({ nuevos: 0 })).toMatch(/al día/)
+    expect(resumenActualizacion({ nuevos: 0 })).toMatch(/nada nuevo en tu correo/)
   })
 })
 

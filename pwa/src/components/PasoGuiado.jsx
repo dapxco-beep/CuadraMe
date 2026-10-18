@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronRight, FileCheck2, FileClock, KeyRound, Mail, RefreshCw, Tag, Wallet, Scale, CopyCheck, AlertTriangle, CalendarDays, CheckCheck } from 'lucide-react'
+import { CheckCircle2, ChevronRight, FileCheck2, FileClock, KeyRound, Mail, RefreshCw, Tag, Wallet, Scale, CopyCheck, AlertTriangle, CalendarDays, CheckCheck, ArrowRightLeft, Undo2 } from 'lucide-react'
 import BarraProgreso from './BarraProgreso'
 
 // La tarjeta única de «Traer movimientos»: UN estado grande y calmado, UNA acción principal, y un solo
@@ -18,6 +18,8 @@ const ICONO = {
   cuadre_no_cuadra: Scale,
   posibles_duplicados: CopyCheck,
   extractos_sin_leer: AlertTriangle,
+  extracto_cuenta_dudosa: ArrowRightLeft,
+  correos_descartados: Undo2,
 }
 
 export default function PasoGuiado({
@@ -57,16 +59,18 @@ export default function PasoGuiado({
         </p>
       )}
 
-      {estado.alDia ? (
+      {estado.alDia || estado.casi ? (
         <>
           <div className="flex items-center gap-3.5">
             <span className="w-12 h-12 rounded-full bg-cuadra-soft text-cuadra flex items-center justify-center shrink-0">
               <CheckCircle2 size={24} aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <h2 className="text-2xl font-bold leading-tight" data-testid="todo-al-dia">Todo al día</h2>
+              <h2 className="text-2xl font-bold leading-tight" data-testid={estado.casi ? 'casi-todo-al-dia' : 'todo-al-dia'}>{estado.casi ? 'Casi todo al día' : 'Todo al día'}</h2>
               <p className="text-sm text-ink-soft mt-0.5" data-testid="resumen-tareas">
-                {!conectado ? 'Gmail sin conectar: conéctalo y traigo tus movimientos solo' : ultima ? `Miré tu correo ${ultima}` : 'No hay nada que hacer ahora'}
+                {estado.casi
+                  ? `Solo queda: ${estado.pendiente}`
+                  : !conectado ? 'Gmail sin conectar: conéctalo y traigo tus movimientos solo' : ultima ? `Miré tu correo ${ultima}` : 'No hay nada que hacer ahora'}
               </p>
             </div>
           </div>

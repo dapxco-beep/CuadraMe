@@ -241,7 +241,8 @@ describe('pantalla Sincronización', () => {
 
     // Sin banco detectado: se dice, y la cuenta es obligatoria.
     const sinBanco = screen.getByTestId('extracto-e2')
-    expect(within(sinBanco).getByText(/Banco sin identificar/)).toBeTruthy()
+    expect(within(sinBanco).getByText(/No pude saber de qué banco es/)).toBeTruthy()
+    expect(within(sinBanco).getByText(/b\.pdf/)).toBeTruthy() // nada sin origen: el archivo y el asunto
     const boton = within(sinBanco).getByRole('button', { name: 'Revisar extracto' })
     expect(boton.disabled).toBe(true)
     fireEvent.change(within(sinBanco).getByLabelText(/Cuenta del extracto/), { target: { value: 'nu' } })

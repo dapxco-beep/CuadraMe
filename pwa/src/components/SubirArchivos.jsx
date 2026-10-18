@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useCuentas } from '../lib/CuentasContext'
 import { nombreMes } from '../lib/sincronizacion'
 import Hoja from './Hoja'
+import CambiarCuentaExtracto from './CambiarCuentaExtracto'
 import SubidaMultiple from './SubidaMultiple'
 import ZonaSubida from './ZonaSubida'
 import ImportarArchivo from '../screens/ImportarArchivo'
@@ -13,7 +14,8 @@ import ImportarArchivo from '../screens/ImportarArchivo'
  *   inicial: { historialId, cuentaId, mes, manual, n }  (n cambia cada vez que se pide abrir otra cosa)
  */
 export default function SubirArchivos({ inicial = {}, onImportado }) {
-  const { cuentas } = useCuentas()
+  const { cuentas, recargar: recargarCuentas } = useCuentas()
+  const [cambiandoCuenta, setCambiandoCuenta] = useState(null) // { historialId, titulo, cuentaId } desde la revisión
   const [archivos, setArchivos] = useState(null) // File[] | null
   const [revision, setRevision] = useState(null) // { historialId, cuentaId } | null
   const [manual, setManual] = useState(false)
@@ -68,6 +70,24 @@ export default function SubirArchivos({ inicial = {}, onImportado }) {
           onCancelar={volver}
           onImportado={onImportado}
           onManual={() => setManual(true)}
+          onCambiarCuenta={setCambiandoCuenta}
+        />
+      )}
+
+      {cambiandoCuenta && (
+        <CambiarCuentaExtracto
+          historialId={cambiandoCuenta.historialId}
+          titulo={cambiandoCuenta.titulo}
+          cuentaActualId={cambiandoCuenta.cuentaId}
+          cuentas={cuentas}
+          onCerrar={() => setCambiandoCuenta(null)}
+          onListo={() => {
+            // Se reabre la misma revisión: ahora dice la cuenta nueva.
+            recargarCuentas?.()
+            setCambiandoCuenta(null)
+            setVersion((v) => v + 1)
+            onImportado?.([])
+          }}
         />
       )}
 

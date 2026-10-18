@@ -58,3 +58,43 @@ describe('aviso al borrar', () => {
     expect(AVISO_NO_VUELVE).toBe('Si lo borras, no lo volveremos a traer del correo. Podrás recuperarlo en Ver todo → Correos → Descartados.')
   })
 })
+
+describe('Recuperar todos', () => {
+  const LISTA = [{ ...CORREO, id: 'a' }, { ...CORREO, id: 'b', comercio: 'OTRO' }, { ...CORREO, id: 'c', comercio: 'TERCERO' }]
+
+  it('pide confirmar con el conteo y recupera todos (los que ya existen no se repiten)', async () => {
+    api.correosDescartados = vi.fn().mockResolvedValue(LISTA)
+    api.recuperarCorreo = vi.fn().mockImplementation((id) => Promise.resolve({ estado: id === 'c' ? 'ya_registrado' : 'pendiente' }))
+    const onCambio = vi.fn()
+    render(<CorreosDescartados cantidad={3} abierto onCambio={onCambio} />)
+    const boton = await screen.findByTestId('recuperar-todos')
+    expect(boton).toHaveTextContent('Recuperar todos (3)')
+    // Sin el proveedor de diálogos no hay hoja de confirmación: ver el test del proveedor abajo.
+    await userEvent.click(boton)
+    await waitFor(() => expect(api.recuperarCorreo).toHaveBeenCalledTimes(3))
+    expect(await screen.findByText(/Listo: 2 quedaron en «Por revisar» y 1 ya estaba registrado/)).toBeInTheDocument()
+    expect(onCambio).toHaveBeenCalled()
+  })
+
+  it('con un solo correo no ofrece «Recuperar todos»', async () => {
+    api.correosDescartados = vi.fn().mockResolvedValue([CORREO])
+    render(<CorreosDescartados cantidad={1} abierto />)
+    await screen.findByText('CAMARA DE COMERCIO DE BOGOTA')
+    expect(screen.queryByTestId('recuperar-todos')).not.toBeInTheDocument()
+  })
+})
+
+describe('Recuperar todos con confirmación', () => {
+  it('si la persona cancela, no se recupera nada', async () => {
+    vi.resetModules()
+    vi.doMock('../lib/DialogosContext', () => ({ useDialogos: () => ({ confirmar: vi.fn().mockResolvedValue(false), avisar: vi.fn() }) }))
+    const { default: Comp } = await import('../components/CorreosDescartados')
+    api.correosDescartados = vi.fn().mockResolvedValue([{ ...CORREO, id: 'a' }, { ...CORREO, id: 'b' }])
+    api.recuperarCorreo = vi.fn()
+    render(<Comp cantidad={2} abierto />)
+    await userEvent.click(await screen.findByTestId('recuperar-todos'))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(api.recuperarCorreo).not.toHaveBeenCalled()
+    vi.doUnmock('../lib/DialogosContext')
+  })
+})

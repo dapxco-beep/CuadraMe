@@ -38,7 +38,7 @@ import Sincronizacion from '../screens/Sincronizacion'
 const ESTADO = {
   hay_falla: false,
   gmail: {
-    semaforo: 'verde', mensaje: 'Todo al día: tus correos se están leyendo bien.', conectado: true, email: 'yo@gmail.com',
+    semaforo: 'verde', mensaje: 'Tus correos se están leyendo bien.', conectado: true, email: 'yo@gmail.com',
     ultima_sync: new Date(Date.now() - 2 * 3600 * 1000).toISOString(), correos_leidos: 340, notificaciones: 18, extractos: 3,
     extractos_falta_clave: 1, en_curso: false,
   },
@@ -102,7 +102,7 @@ describe('sincronizarTodo', () => {
     const ahora = Date.parse('2026-10-01T12:00:00Z')
     expect(haceCuanto('2026-10-01T10:00:00', ahora)).toBe('hace 2 h')
     expect(haceCuanto(null)).toBeNull()
-    expect(resumenSync({ nuevos: 0, extractos_nuevos: 0 })).toMatch(/no hay nada nuevo/)
+    expect(resumenSync({ nuevos: 0, extractos_nuevos: 0 })).toMatch(/No hay nada nuevo en tu correo/)
   })
 })
 
@@ -116,7 +116,7 @@ describe('Conexiones y estado', () => {
     expect(screen.getByText(/última vez hace 2 h/)).toBeTruthy()
     expect(screen.getByText('340')).toBeTruthy()
     expect(screen.getByText(/1 esperan clave/)).toBeTruthy()
-    expect(screen.getByText('Todo al día: tus correos se están leyendo bien.')).toBeTruthy()
+    expect(screen.getByText('Tus correos se están leyendo bien.')).toBeTruthy()
     const filas = screen.getAllByTestId('fila-conciliacion')
     expect(filas[0].textContent).toMatch(/7.*coinciden.*3.*faltan por registrar.*2.*sin extracto/)
     expect(screen.getByRole('button', { name: 'Importar extracto' })).toBeTruthy()

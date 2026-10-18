@@ -348,7 +348,8 @@ def evaluar(
     if saldo_final is None or fecha_corte is None:
         base.update(estado="sin_saldo", texto=(
             "Este extracto no trae un saldo que pueda leer. "
-            f"Escribe el saldo que dice tu extracto al {fecha_texto(fecha_corte) if fecha_corte else '[fecha de corte]'} y lo comparo con tus movimientos."))
+            + (f"Escribe el saldo que dice tu extracto al {fecha_texto(fecha_corte)} y lo comparo con tus movimientos."
+               if fecha_corte else "Escribe el saldo que dice tu extracto y su fecha de corte, y lo comparo con tus movimientos.")))
         base["acciones"]["pedir_saldo"] = True
         return base
     if inicio_pp and datetime.combine(fecha_corte, time.max) < inicio_pp:

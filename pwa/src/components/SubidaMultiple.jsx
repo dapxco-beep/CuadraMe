@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Check, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react'
+import { AlertTriangle, ArrowRightLeft, Check, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react'
 import { productoDeTexto, recordarCuenta, textoOpcionCuenta } from '../lib/cuentasBanco'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
@@ -21,11 +21,15 @@ import { EMOJI_DEFECTO, estadoCategoria, resumirCategorias } from '../lib/estado
 import { CategoriaEnBloque, ChipCategoria, ResumenCategorias } from './RevisionCategorias'
 import HojaNuevaCategoria, { OPCION_NUEVA_CATEGORIA, TEXTO_NUEVA_CATEGORIA } from './HojaNuevaCategoria'
 import { borrarBorrador, guardarBorrador, leerBorrador, resumenLote } from '../lib/retomar'
+import LineaDosMontos from './LineaDosMontos'
 import { BotonLapiz, EditorNombre, PistaBanco } from './NombreEditable'
 import { limpiarNombre, MIN_REPETICIONES_NOMBRE } from '../lib/tituloMovimiento'
 import {
   ETIQUETA_ARCHIVO,
   MAX_ARCHIVOS,
+  TEXTO_PAGO_TARJETA,
+  montoDeLinea,
+  montoValido,
   agruparPorCuenta,
   clavesFaltantes,
   clavesUnicas,
@@ -85,7 +89,7 @@ const nuevoArchivo = (f, cuentas, cuentaInicial) => ({
 const TANDA_FILAS = 100
 
 export default function SubidaMultiple({
-  archivosIniciales = [], cuentaInicial = '', revisionInicial = null, onCancelar, onImportado, onManual,
+  archivosIniciales = [], cuentaInicial = '', revisionInicial = null, onCancelar, onImportado, onManual, onCambiarCuenta,
 }) {
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const catsCtx = useCategorias()
@@ -107,6 +111,7 @@ export default function SubidaMultiple({
   const [titulos, setTitulos] = useState({}) // clave -> nombre propio de la línea (el texto del banco no se toca)
   const [recordarTitulo, setRecordarTitulo] = useState({}) // clave -> true si pidió recordar ese nombre para el comercio
   const [editandoNombre, setEditandoNombre] = useState(null) // clave de la línea cuyo nombre se está editando
+  const [montos, setMontos] = useState({}) // clave -> monto elegido en una línea de lectura dudosa (trae varios montos)
   const [importando, setImportando] = useState(false)
   const [resultados, setResultados] = useState([])
   const [error, setError] = useState('')
@@ -140,9 +145,10 @@ export default function SubidaMultiple({
         aprender: quitar(aprender),
         titulos: quitar(titulos),
         recordarTitulo: quitar(recordarTitulo),
+        montos: quitar(montos),
       })
     }
-  }, [fase, seleccion, categorias, aprender, titulos, recordarTitulo])
+  }, [fase, seleccion, categorias, aprender, titulos, recordarTitulo, montos])
 
   const parchar = (id, parche) => setArchivos((prev) => prev.map((a) => (a.id === id ? { ...a, ...parche } : a)))
 
@@ -152,6 +158,7 @@ export default function SubidaMultiple({
     const apr = {}
     const tits = {}
     const rtits = {}
+    const mts = {}
     for (const a of lista) {
       if (a.estado !== 'listo') continue
       for (const it of a.items) cats[`${a.id}:${it.k}`] = it.categoria || 'Otros'
@@ -165,12 +172,14 @@ export default function SubidaMultiple({
       for (const [k, v] of Object.entries(b.aprender)) if (validas.has(k)) apr[`${a.id}:${k}`] = v
       for (const [k, v] of Object.entries(b.titulos || {})) if (validas.has(k)) tits[`${a.id}:${k}`] = v
       for (const [k, v] of Object.entries(b.recordarTitulo || {})) if (validas.has(k)) rtits[`${a.id}:${k}`] = v
+      for (const [k, v] of Object.entries(b.montos || {})) if (validas.has(k) && montoValido(v)) mts[`${a.id}:${k}`] = Number(v)
     }
     setSeleccion(sel)
     setCategorias(cats)
     setAprender(apr)
     setTitulos(tits)
     setRecordarTitulo(rtits)
+    setMontos(mts)
     setEditandoNombre(null)
     setFase('revision')
   }
@@ -186,7 +195,7 @@ export default function SubidaMultiple({
         const base = normalizarPdf(r)
         const cuentaId = r.cuenta_id || revisionInicial?.cuentaId || cuentaInicial || cuentas[0]?.id || ''
         const a = {
-          id: nuevoId(), file: null, nombre: `Extracto ${base.banco}`, tipo: 'pdf', cuentaId, password: '',
+          id: nuevoId(), file: null, nombre: base.origen?.titulo || `Extracto ${base.banco}`, tipo: 'pdf', cuentaId, password: '',
           estado: 'listo', error: '', nMov: r.total_movimientos, ...base,
         }
         setArchivos([a])
@@ -245,7 +254,27 @@ export default function SubidaMultiple({
     setTimeout(procesar, 0)
   }
 
-  function alternar(clave) {
+  // Elegir (o escribir) el monto de una línea que traía varios: al elegirlo, la línea queda marcada para importar.
+  function elegirMonto(clave, valor) {
+    if (!montoValido(valor)) {
+      setMontos((m) => {
+        const n = { ...m }
+        delete n[clave]
+        return n
+      })
+      setSeleccion((prev) => {
+        const n = new Set(prev)
+        n.delete(clave)
+        return n
+      })
+      return
+    }
+    setMontos((m) => ({ ...m, [clave]: Number(valor) }))
+    setSeleccion((prev) => new Set(prev).add(clave))
+  }
+
+  function alternar(clave, it) {
+    if (it?.dudosa && !montoValido(montos[clave])) return // primero se elige el monto
     setSeleccion((prev) => {
       const next = new Set(prev)
       if (next.has(clave)) next.delete(clave)
@@ -287,7 +316,9 @@ export default function SubidaMultiple({
 
   const totalJuntar = consolidado.archivos.reduce((n, a) => n + (a.estado === 'listo' && a.tipo !== 'pdf' ? a.items.filter((it) => it.conciliarCon).length : 0), 0)
   const totalMarcados = consolidado.archivos.reduce(
-    (n, a) => n + (a.estado === 'listo' ? a.items.filter((it) => seleccion.has(`${a.id}:${it.k}`) && (it.estado === 'nuevo' || it.estado === 'posible')).length : 0),
+    (n, a) => n + (a.estado === 'listo'
+      ? a.items.filter((it) => seleccion.has(`${a.id}:${it.k}`) && (it.estado === 'nuevo' || it.estado === 'posible') && (!it.dudosa || montoValido(montos[`${a.id}:${it.k}`]))).length
+      : 0),
     0
   )
   const totalFaltan = clavesFaltantes(consolidado.archivos).length
@@ -295,7 +326,7 @@ export default function SubidaMultiple({
   // Líneas que se pueden importar (las ya registradas, repetidas o anteriores al inicio no cuentan).
   const lineasPendientes = consolidado.archivos.flatMap((a) =>
     a.estado !== 'listo' ? [] : a.items
-      .filter((it) => it.estado === 'nuevo' || it.estado === 'posible')
+      .filter((it) => (it.estado === 'nuevo' || it.estado === 'posible') && (!it.dudosa || montoValido(montos[`${a.id}:${it.k}`])))
       .map((it) => ({ clave: `${a.id}:${it.k}`, it }))
   )
   const estadoDeLinea = (clave, it) => estadoCategoria(it, categorias[clave])
@@ -337,7 +368,8 @@ export default function SubidaMultiple({
     const salida = []
     for (const a of consolidado.archivos) {
       if (a.estado !== 'listo') continue
-      const marcados = a.items.filter((it) => seleccion.has(`${a.id}:${it.k}`) && (it.estado === 'nuevo' || it.estado === 'posible'))
+      const marcados = a.items.filter((it) => seleccion.has(`${a.id}:${it.k}`) && (it.estado === 'nuevo' || it.estado === 'posible')
+        && (!it.dudosa || montoValido(montos[`${a.id}:${it.k}`])))
       if (marcados.length === 0 && !(a.tipo !== 'pdf' && a.items.some((it) => it.conciliarCon))) continue
       const rec = (it) => aprender[`${a.id}:${it.k}`]
       try {
@@ -348,6 +380,10 @@ export default function SubidaMultiple({
           const cats = Object.fromEntries(ks.map((k) => [k, categorias[`${a.id}:${k}`] || 'Otros']))
           const conNombre = ks.filter((k) => titulos[`${a.id}:${k}`])
           r = await api.importarFaltantes(a.historialId, ks, cats, {
+            // Solo viaja el monto de las líneas que traían varios: el servidor no importa esas sin un monto elegido.
+            ...(marcados.some((it) => it.dudosa)
+              ? { montos: Object.fromEntries(marcados.filter((it) => it.dudosa).map((it) => [it.k, montos[`${a.id}:${it.k}`]])) }
+              : {}),
             recordar: ks.filter((k) => aprender[`${a.id}:${k}`]?.recordar),
             aplicar_anteriores: ks.filter((k) => aprender[`${a.id}:${k}`]?.recordar && aprender[`${a.id}:${k}`]?.anteriores),
             // Solo viaja lo que la persona nombró; el texto original del banco no se envía ni se cambia.
@@ -510,14 +546,34 @@ export default function SubidaMultiple({
               const claves = clavesUnicas(visibles)
               return (
                 <div key={a.id} className="mb-3">
-                  <p className="text-xs text-ink-soft mb-1.5 truncate">
-                    {a.nombre} · {a.banco} · {periodoTexto(a.periodo)}
-                    {ya > 0 ? ` · ${ya} ya registrados` : ''}
-                  </p>
+                  <div className="mb-2" data-testid="origen-extracto">
+                    <p className="text-sm font-semibold break-words">
+                      {a.origen?.titulo || (a.tipo === 'pdf' ? `Extracto de ${a.banco && a.banco !== 'desconocido' ? a.banco : nombreCuenta(a.cuentaId)}` : a.nombre)}
+                    </p>
+                    <p className="text-xs text-ink-soft break-words">
+                      {a.origen?.origen_texto || `Archivo ${a.nombre} subido a mano`}
+                    </p>
+                    <p className="text-xs text-ink-soft">
+                      {periodoTexto(a.periodo)}{ya > 0 ? ` · ${ya} ya registrados` : ''}
+                    </p>
+                    <p className="mt-1 flex items-center gap-2 text-xs">
+                      <span className="text-ink-soft">Se importa en <b className="text-ink">{nombreCuenta(a.cuentaId)}</b></span>
+                      {a.historialId && onCambiarCuenta && (
+                        <button
+                          type="button"
+                          onClick={() => onCambiarCuenta({ historialId: a.historialId, titulo: a.origen?.titulo || a.nombre, cuentaId: a.cuentaId })}
+                          aria-label={`Cambiar la cuenta de ${a.origen?.titulo || a.nombre}`}
+                          className="min-h-11 inline-flex items-center gap-1 font-semibold text-accent"
+                        >
+                          <ArrowRightLeft size={16} aria-hidden="true" /> Cambiar cuenta
+                        </button>
+                      )}
+                    </p>
+                  </div>
                   <AvisoYaConciliado info={a.yaConciliado} cuenta={nombreCuenta(a.cuentaId)} className="mb-2" />
                   <PrevioImportacion items={a.items} onDecidir={(lista, d) => decidirDudosos(a, lista, d)} className="mb-2" />
                   <CuadreExtracto cuentaId={a.cuentaId} historialId={a.historialId} saldos={a.saldosExtracto} avisoCuenta={a.avisoCuenta}
-                    porImportar={lineasPorImportar(a.items, seleccion, a.id)} className="mb-2" />
+                    porImportar={lineasPorImportar(a.items.map((it) => ({ ...it, monto: montoDeLinea(it, montos[`${a.id}:${it.k}`]) })), seleccion, a.id)} className="mb-2" />
                   <PropuestaTarjeta propuesta={a.propuestaTarjeta} cuentaId={a.cuentaId} className="mb-2" />
                   {a.avisoCuenta && (
                     <p className="flex items-start gap-1.5 text-xs font-medium text-accent mb-2" role="status" data-testid="aviso-cuenta">
@@ -564,9 +620,9 @@ export default function SubidaMultiple({
                             <label className="flex items-center gap-3">
                               <input
                                 type="checkbox"
-                                checked={marcado && !repetido}
-                                disabled={repetido}
-                                onChange={() => alternar(clave)}
+                                checked={marcado && !repetido && !(it.dudosa && !montoValido(montos[clave]))}
+                                disabled={repetido || (it.dudosa && !montoValido(montos[clave]))}
+                                onChange={() => alternar(clave, it)}
                                 className="w-5 h-5 accent-accent shrink-0"
                                 aria-label={`Importar ${it.descripcion}`}
                               />
@@ -578,7 +634,7 @@ export default function SubidaMultiple({
                                 {titulos[clave] && <PistaBanco original={it.descripcion} />}
                                 <p className="text-xs text-danger">
                                   {it.fecha} ·{' '}
-                                  {repetido ? `Ya está en ${it.repetidoDe}` : it.estado === 'posible' ? 'Posible duplicado' : 'Falta registrar'}
+                                  {repetido ? `Ya está en ${it.repetidoDe}` : it.estado === 'posible' ? 'Posible duplicado' : it.dudosa ? 'Monto por elegir' : 'Falta registrar'}
                                   {it.estado === 'nuevo' && gemelas > 1 ? ` · idéntico a otros ${gemelas - 1} (se importan juntos)` : ''}
                                 </p>
                                 {!repetido && (
@@ -591,10 +647,17 @@ export default function SubidaMultiple({
                                 )}
                               </div>
                               <p className="text-sm font-semibold shrink-0">
-                                {it.tipo === 'income' ? '+' : it.tipo === 'transfer' ? '' : '-'}
-                                {formatCOP(it.monto)}
+                                {it.dudosa && !montoValido(montos[clave])
+                                  ? <span className="text-ink-soft font-medium">Sin elegir</span>
+                                  : <>{it.tipo === 'income' ? '+' : it.tipo === 'transfer' ? '' : '-'}{formatCOP(montoDeLinea(it, montos[clave]))}</>}
                               </p>
                             </label>
+                            {it.dudosa && !repetido && (
+                              <LineaDosMontos className="ml-8 mt-2" it={it} valor={montos[clave]} onElegir={(v) => elegirMonto(clave, v)} />
+                            )}
+                            {it.pagoTarjeta && !repetido && (
+                              <p className="ml-8 mt-1.5 text-xs text-ink-soft" data-testid="pista-pago-tarjeta">{TEXTO_PAGO_TARJETA}</p>
+                            )}
                             {editandoNombre === clave && !repetido && (
                               <EditorNombre
                                 className="ml-8 mt-2"

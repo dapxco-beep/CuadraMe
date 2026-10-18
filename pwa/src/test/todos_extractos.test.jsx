@@ -348,3 +348,14 @@ describe('pantalla Traer movimientos con «Todos los extractos»', () => {
     expect(await screen.findByRole('dialog', { name: /Mi banco o billetera no aparece/ })).toBeTruthy()
   })
 })
+
+describe('nada sin nombre ni origen', () => {
+  it('textoAccion: «Poner la clave» para un grupo y «Decirme de qué banco es» sin banco', async () => {
+    const { textoAccion } = await import('../lib/extractosVista')
+    expect(textoAccion('poner_clave', { copias: 10 })).toBe('Poner la clave')
+    expect(textoAccion('poner_clave', { copias: 1 })).toBe('Poner clave')
+    expect(textoAccion('mi_banco_no_esta', { banco_sin_identificar: true })).toBe('Decirme de qué banco es')
+    expect(textoAccion('mi_banco_no_esta', { banco_sin_identificar: false })).toBe('Mi banco no está')
+    expect(textoAccion('reintentar', {})).toBe('Reintentar')
+  })
+})

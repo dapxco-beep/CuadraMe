@@ -976,21 +976,29 @@ export default function Movimientos() {
               </div>
 
               {(porCorreo.correos.length > 0 || descartados > 0) && (
-                <div className="px-5 mb-3 flex flex-wrap items-center gap-x-4 gap-y-1" data-testid="accesos-correo">
+                <div className="px-5 mb-3 flex flex-col gap-2" data-testid="accesos-correo">
                   {porCorreo.correos.length > 0 && (
                     <button
                       onClick={() => cambiarParams({ filtro: 'por-revisar' })}
-                      className="text-xs font-semibold text-accent underline min-h-[32px]"
+                      className="w-full min-h-[56px] flex items-center gap-3 rounded-2xl bg-accent-soft/50 border border-accent/30 px-4 py-2.5 text-left"
                     >
-                      Correos por revisar ({porCorreo.correos.length})
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm font-semibold text-accent">Correos por revisar ({porCorreo.correos.length})</span>
+                        <span className="block text-xs text-ink-soft">Los leí de tu banco. Apruébalos para que pasen a tu lista.</span>
+                      </span>
+                      <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
                     </button>
                   )}
                   {descartados > 0 && (
                     <button
                       onClick={() => navigate('/sincronizacion', { state: { abrir: 'correos-descartados' } })}
-                      className="text-xs font-medium text-ink-soft underline min-h-[32px]"
+                      className="w-full min-h-[56px] flex items-center gap-3 rounded-2xl bg-paper-raised border border-line px-4 py-2.5 text-left"
                     >
-                      Correos descartados ({descartados >= 100 ? '99+' : descartados})
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm font-semibold">Correos descartados ({descartados >= 100 ? '99+' : descartados})</span>
+                        <span className="block text-xs text-ink-soft">Los descartaste al borrar un movimiento parecido. Recupéralos si sí eran tuyos.</span>
+                      </span>
+                      <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
                     </button>
                   )}
                 </div>

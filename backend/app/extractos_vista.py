@@ -323,3 +323,51 @@ def estado_corto(vista: str, conteo: dict, *, clave_estado: str | None = None) -
     if vista == POR_REVISAR:
         return f"Falta importar {falta}" if falta else "Falta revisarlo"
     return f"Conciliado ✓ · {_n(leidas, 'movimiento', 'movimientos')}"
+
+
+# ── Nada sin nombre ni origen ──────────────────────────────────────────────────────────────────
+# Una fila de error nunca dice solo «desconocido» o «banco»: dice de qué banco o cuenta es, cuántos hay
+# con el mismo problema y de dónde vinieron (correo con su asunto, o subidos a mano).
+_FRASE_GRUPO = {  # motivo -> (una, varias)
+    "clave_faltante": ("espera la clave del PDF", "esperan la clave del PDF"),
+    "clave_incorrecta": ("no se abrió con la clave guardada", "no se abrieron con la clave guardada"),
+    "formato_no_reconocido": ("tiene un formato que no reconocemos", "tienen un formato que no reconocemos"),
+    "pdf_escaneado": ("es una imagen sin texto", "son imágenes sin texto"),
+    "archivo_vacio": ("llegó vacío o dañado", "llegaron vacíos o dañados"),
+    "sin_movimientos": ("no trae movimientos", "no traen movimientos"),
+    "pdf_ilegible": ("no se pudo leer", "no se pudieron leer"),
+    "error_temporal": ("tuvo un problema al descargarse", "tuvieron un problema al descargarse"),
+}
+MOTIVO_CORTO = {
+    "clave_faltante": "falta la clave", "clave_incorrecta": "clave incorrecta", "formato_no_reconocido": "formato no reconocido",
+    "pdf_escaneado": "PDF escaneado", "archivo_vacio": "archivo vacío", "sin_movimientos": "sin movimientos",
+    "pdf_ilegible": "no se leyó el PDF", "error_temporal": "falló la descarga",
+}
+BANCOS_SIN_NOMBRE = ("", "desconocido", "generico", "genérico")
+
+
+def motivo_corto(codigo: str | None) -> str:
+    """«falta la clave», «formato no reconocido»... (nunca vacío: un error antiguo sin motivo es «no se leyó el PDF»)."""
+    return MOTIVO_CORTO.get(codigo or "", MOTIVO_CORTO["pdf_ilegible"])
+
+
+def titulo_grupo_error(motivo: str | None, cantidad: int, banco: str = "") -> str:
+    """«10 extractos de Nu esperan la clave del PDF» · «1 extracto de Nequi no se pudo leer»."""
+    una, varias = _FRASE_GRUPO.get(motivo or "", _FRASE_GRUPO["pdf_ilegible"])
+    de = f" de {banco.strip()}" if (banco or "").strip() else ""
+    if cantidad == 1:
+        return f"1 extracto{de} {una}"
+    return f"{cantidad} extractos{de} {varias}"
+
+
+def origen_texto(origen: str, *, asunto: str = "", archivo: str = "", fecha_iso: str | None = None) -> str:
+    """De dónde salió un extracto, en una línea: «Correo «Llegó el extracto…» · archivo X.pdf» o
+    «Subido a mano el 14 oct 2026»."""
+    if origen == "correo":
+        partes = [f"Correo «{asunto.strip()}»" if (asunto or "").strip() else "Correo de tu banco"]
+        if (archivo or "").strip():
+            partes.append(f"archivo {archivo.strip()}")
+        return " · ".join(partes)
+    cuando = fecha_corta(fecha_iso)
+    quien = f" · archivo {archivo.strip()}" if (archivo or "").strip() else ""
+    return (f"Subido a mano el {cuando}" if cuando else "Subido a mano") + quien

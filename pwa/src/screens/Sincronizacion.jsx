@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
+import { useDialogos } from '../lib/DialogosContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useCuentas } from '../lib/CuentasContext'
 import { haceCuanto, marcarSincronizado, resumenSync, sincronizarCarriles, sincronizarTodo, tocaSincronizar } from '../lib/sincronizarGmail'
@@ -18,6 +19,7 @@ import {
 import { cantidadDe, sinDatos } from '../lib/centro'
 import { construirPasos, estadoGeneral, obligatorios, progresoPasos, textoBusqueda } from '../lib/siguientePaso'
 import PasoGuiado from '../components/PasoGuiado'
+import EstadoPorCuenta from '../components/EstadoPorCuenta'
 import BancoNoEsta, { EnlaceBancoNoEsta } from '../components/BancoNoEsta'
 import { InterruptoresLectura } from '../components/CarrilesCorreo'
 import ConexionGmail from '../components/ConexionGmail'
@@ -91,6 +93,7 @@ export default function Sincronizacion() {
   const { cuentas, recargar: recargarCuentas } = useCuentas() || { cuentas: [] }
   const { nombres = [], iconoDe = () => '💳' } = useCategorias() || {}
   const { fmt } = useBloqueo()
+  const { confirmar } = useDialogos() || {}
   const llegada = location.state || null
 
   const [estado, setEstado] = useState(null)
@@ -437,6 +440,10 @@ export default function Sincronizacion() {
         return abrirBloque('revisar', 'sinc-categorizar')
       case 'extractos_sin_leer':
         return abrirGrupoExtractos(FILTRO_DE_TAREA.extractos_sin_leer)
+      case 'extracto_cuenta_dudosa':
+        return abrirGrupoExtractos([], 'sinc-todos-extractos', { texto: 'tarjeta' })
+      case 'correos_descartados':
+        return abrirTodo('correos')
       case 'cuadre_no_cuadra':
         return abrirBloque('extractos', 'sinc-cuadre')
       case 'posibles_duplicados':
@@ -480,6 +487,16 @@ export default function Sincronizacion() {
     if (ocupados.has(it.id)) return
     const ids = it.historiales_error?.length ? it.historiales_error : (it.historial_id ? [it.historial_id] : [])
     if (!ids.length) return
+    if (accion !== 'reintentar' && confirmar) {
+      const varios = ids.length > 1
+      const ok = await confirmar(
+        varios
+          ? `Se quitan ${ids.length} extractos que no se pudieron leer. Lo que ya importaste no se toca y puedes volver a subirlos cuando quieras.`
+          : 'Se quita este extracto que no se pudo leer. Lo que ya importaste no se toca y puedes volver a subirlo cuando quieras.',
+        { titulo: varios ? `¿Quitar ${ids.length} extractos de la lista?` : '¿Quitar este extracto de la lista?', confirmarTexto: 'Quitar', peligro: true },
+      )
+      if (!ok) return
+    }
     setOcupados((s) => new Set(s).add(it.id))
     setAvisoExt('')
     try {
@@ -488,7 +505,7 @@ export default function Sincronizacion() {
         setAvisoExt(r?.mensaje || (r?.ok ? 'Listo: ya lo podemos revisar.' : 'No pudimos leerlo todavía.'))
       } else {
         for (const id of ids) await api.quitarHistorialError(id)
-        setAvisoExt('Listo: lo quitamos de la lista.')
+        setAvisoExt(ids.length > 1 ? `Listo: quitamos ${ids.length} extractos de la lista.` : 'Listo: lo quitamos de la lista.')
       }
       await cargar()
     } catch (err) {
@@ -716,7 +733,7 @@ export default function Sincronizacion() {
   const estadoG = estadoGeneral(pasos)
   const pendientesObl = obligatorios(pasos)
   const principal = pendientesObl[0] || null
-  const sugerencia = estadoG.alDia ? pasos[0] || null : null
+  const sugerencia = estadoG.alDia || estadoG.casi ? pasos[0] || null : null
   const restantes = pendientesObl.length
   if (restantes === 0) maxPasos.current = 0
   else maxPasos.current = Math.max(maxPasos.current, restantes)
@@ -809,6 +826,34 @@ export default function Sincronizacion() {
     }
   }
 
+  // Tocar un mes de «Estado por cuenta y mes»: abre la acción lógica de ese mes.
+  function accionMes(cuenta, celda, vista) {
+    const filtroMes = { cuenta: `c:${cuenta.id}`, mes: celda.mes }
+    switch (vista.accion) {
+      case 'ver':
+      case 'revisar_error':
+        return abrirGrupoExtractos([], 'sinc-todos-extractos', filtroMes)
+      case 'importar': {
+        const x = (celda.lista || []).find((l) => l.historial_id && l.estado_vista === 'por_revisar')
+        if (x) return pedirSubir({ historialId: x.historial_id, cuentaId: cuenta.id })
+        const y = (celda.lista || []).find((l) => l.extracto_id && l.acciones?.includes('revisar'))
+        if (y) return accionFila('revisar', { ...y, cuenta_id: cuenta.id, historial_id: null })
+        return abrirGrupoExtractos([], 'sinc-todos-extractos', filtroMes)
+      }
+      case 'clave':
+        return setHoja('clave')
+      case 'subir':
+        return pedirSubir({ cuentaId: cuenta.id, mes: celda.mes })
+      case 'pasar': {
+        const o = (celda.en_otra_cuenta || [])[0]
+        if (!o) return null
+        return setCambiandoCuenta({ historialId: o.historial_id, titulo: o.titulo, cuentaId: o.desde_id, destino: cuenta.id })
+      }
+      default:
+        return null
+    }
+  }
+
   const textoOcupado = sincronizando
     ? textoBusqueda({ fase: fase || 'correo', leidos: progreso.leidos, total: progreso.total_estimado })
     : fase ? textoBusqueda({ fase }) : ''
@@ -881,6 +926,7 @@ export default function Sincronizacion() {
               onVerTodo={() => abrirTodo(tab)}
             />
           </div>
+          <EstadoPorCuenta cuentas={filasCuentas} meses={meses} onMes={accionMes} className="mx-6 mt-5 mb-2" />
         </div>
 
         {/* Escritorio: lo que sigue y lo que hago solo. En el celular no se ve: una pregunta a la vez. */}
@@ -1441,8 +1487,15 @@ function FilaExtracto({
   ex, cuentas, cuentaId, nombreCuenta, ocupado, onCuenta, onConciliar, onVer, onClave, onIgnorar,
   claveConfigurada = false, probando = false, onProbarClave,
 }) {
-  const banco = ex.banco || BANCO_SIN_IDENTIFICAR
+  const banco = ex.banco || ex.asunto || BANCO_SIN_IDENTIFICAR
   const sinBanco = !ex.banco
+  // De dónde salió (nada sin origen): el asunto del correo, el archivo y cuándo llegó.
+  const cuando = ex.recibido_en ? new Date(/(Z|[+-]\d\d:?\d\d)$/.test(ex.recibido_en) ? ex.recibido_en : `${ex.recibido_en}Z`) : null
+  const origen = [
+    ex.banco && ex.asunto ? `«${ex.asunto}»` : '',
+    ex.archivo,
+    cuando && !Number.isNaN(cuando.getTime()) ? `llegó el ${cuando.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}` : '',
+  ].filter(Boolean).join(' · ')
   const puedeConciliar = ex.estado === 'nuevo'
   // Correo de tarjeta de crédito y la persona no tiene una cuenta de crédito de ese banco: no se oculta, se avisa.
   const marca = (ex.banco || '').toLowerCase().split(/\s+/)[0]
@@ -1456,6 +1509,8 @@ function FilaExtracto({
         <FileText size={20} className="text-accent shrink-0 mt-0.5" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold truncate">{banco}{ex.periodo ? ` · ${ex.periodo}` : ''}</p>
+          {origen && <p className="text-xs text-ink-soft break-words" data-testid="origen-fila">{origen}</p>}
+          {sinBanco && <p className="text-xs text-ink-soft">No pude saber de qué banco es: elige la cuenta.</p>}
           <p className="text-xs text-ink-soft truncate">
             {nombreCuenta ? `Cuenta: ${nombreCuenta}` : 'Cuenta sin elegir'}
           </p>

@@ -970,6 +970,10 @@ class MovimientoReview(BaseModel):
     pista: Optional[str] = None  # 'posible_traslado_propio': la contraparte parece el titular; mueve saldo igual
     fecha_registrada: Optional[str] = None  # aproximado: fecha del movimiento que ya tenías (para verlos lado a lado)
     duplicado_evitado: bool = False  # otro canal (correo, atajo, a mano) ya lo había registrado: se juntó, no se repitió
+    # Línea con varios montos: el lector no sabe cuál es el correcto. No se importa hasta que la persona elige.
+    lectura_dudosa: bool = False
+    montos_alternativos: Optional[list[float]] = None  # los montos que aparecen escritos en la línea
+    pago_tarjeta: bool = False  # «Pago ...» de un extracto de tarjeta: se sugiere como traslado entre tus cuentas
 
 
 class ProcesarExtractoResponse(BaseModel):
@@ -1010,6 +1014,9 @@ class ProcesarExtractoResponse(BaseModel):
     # Lo que el extracto dice de saldos (para cuadrar): {saldo_inicial, saldo_final, fecha_corte,
     # periodo_inicio, moneda, origen, cadena_ok, pago_minimo}; None si el extracto no trae saldos legibles.
     saldos_extracto: Optional[dict] = None
+    # Solo al reabrir una revisión: de dónde salió el extracto y a qué cuenta quedó
+    # {titulo, origen_texto, asunto, archivo, cuenta_id, cuenta_nombre, mes_etiqueta}.
+    origen: Optional[dict] = None
 
 
 class ResolverDudososRequest(BaseModel):
@@ -1024,6 +1031,7 @@ class ImportarFaltantesRequest(BaseModel):
     aplicar_anteriores: list[str] = []  # subconjunto de `recordar`: además recategoriza movimientos pasados
     titulos: Optional[dict[str, str]] = None  # fingerprint -> nombre propio (máx. 80); "" = el original
     recordar_titulo: list[str] = []  # fingerprints cuyo nombre se recuerda para ese comercio
+    montos: Optional[dict[str, float]] = None  # fingerprint -> monto elegido (obligatorio en líneas de lectura dudosa)
 
 
 class HistorialExtractoOut(BaseModel):

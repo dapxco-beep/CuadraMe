@@ -105,8 +105,12 @@ def test_procesar_un_archivo_roto_guarda_el_motivo_en_el_historial(monkeypatch):
     r = client.post("/conciliacion/procesar", json={"pdf_base64": base64.b64encode(cifrado).decode(),
                                                    "cuenta_id": cuenta, "password": "0000"})
     assert r.json()["motivo_error"] == "clave_incorrecta"
-    # Los intentos fallidos salen en la lista como UNA fila «x4 intentos», con el motivo del último.
+    # Los intentos fallidos salen en la lista agrupados por lo que les pasa: los que esperan la clave van en UNA
+    # fila («x2 intentos», con un solo botón «Poner la clave») y los demás en otra.
     items = client.get("/sincronizacion/extractos").json()["items"]
     err = [i for i in items if i["estado_vista"] == "no_se_pudo_leer"]
-    assert len(err) == 1 and err[0]["copias"] == 4 and err[0]["copias_texto"] == "x4 intentos"
-    assert err[0]["motivo_error"] in ("archivo_vacio", "pdf_escaneado", "clave_faltante", "clave_incorrecta")
+    assert sorted(i["copias"] for i in err) == [2, 2] and {i["copias_texto"] for i in err} == {"x2 intentos"}
+    clave = next(i for i in err if "poner_clave" in i["acciones"])
+    assert clave["titulo"] == "2 extractos de Nu Colombia esperan la clave del PDF"
+    otros = next(i for i in err if "poner_clave" not in i["acciones"])
+    assert otros["motivo_error"] in ("archivo_vacio", "pdf_escaneado")
