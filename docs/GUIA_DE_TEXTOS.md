@@ -173,3 +173,12 @@ Dinero siempre con `formatCOP` / `fmt` (lib/format, respeta «ocultar saldos»).
 ## Cuadre mes a mes
 
 Lenguaje llano, sin «libro» ni «conciliado»: «el banco dice» / «tu app dice», «No cuadra · $X», «Cuadra ✓», «Arrastra $X de junio», «Falta el extracto de junio», «Hueco o extracto faltante entre X y Y», «Solo falta el saldo inicial». Frase modelo: «Junio no cuadra: el banco registró $800.000 más que tu app. Falta importar 1 línea del extracto.» Toda reparación pide un «Sí, hacerlo» explícito y se puede deshacer; el ajuste de saldo es el último recurso y exige marcar que se entiende el riesgo. Los saldos salen solos: si un extracto quedó sin ellos, la app lo vuelve a leer del correo («Leyendo los saldos de tus extractos…»). Solo si de verdad no hay saldo legible se dice «No pude leer el saldo de este extracto. Escríbelo una vez y listo.» (origen «manual»); nunca «no lo invento». Lógica en `backend/app/cuadre_encadenado.py`.
+
+## Salud de datos («Revisé tu cuenta…») y borrado con motivo
+
+| Dónde | Texto |
+|---|---|
+| Banner (Inicio y Traer movimientos; solo si N > 0) | «Revisé tu cuenta y encontré una cosa» / «…encontré N cosas». Abre la hoja «Lo que encontré»; sin nada: «Todo en orden». |
+| Hallazgo | Un título corto + una o dos frases que dicen qué pasó y qué se puede hacer + UN botón con verbo («Crear tarjeta Nu», «Reintentar», «Guardar clave», «Revisar»). Sin tecnicismos ni montos. |
+| Tras crear la tarjeta | «Listo: creamos «Nu Tarjeta».» |
+| Al borrar algo que vino del correo o de un extracto | La hoja de confirmación es la pregunta: «¿Qué pasó?» con «Era duplicado», «Lo borré por error», «No va en mi cuenta» (en borrado de varios: «Eran duplicados», «Los borré por error», «No van en mi cuenta»). Lo hecho a mano conserva «¿Eliminar este movimiento?». |

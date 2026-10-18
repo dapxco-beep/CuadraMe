@@ -472,6 +472,7 @@ def test_b_no_acumula_filas_con_ids_de_a():
 # Prefijos cubiertos por ATAQUES o LISTAS (se calcula) + rutas que por diseño no llevan id de recurso.
 SIN_ID_DE_RECURSO = {
     # escrituras que solo afectan al propio usuario (no reciben ids ajenos)
+    "/salud/crear-tarjeta",  # crea/lee solo filas PROPIAS por nombre de banco (probado en test_salud_autocuracion)
     "/ahorcado/nueva-partida", "/asistente/mensaje", "/categorias/orden", "/cierre-mes/preferencias",
     "/consentimientos", "/correos/gmail/desconectar", "/correos/gmail/etiqueta", "/correos/gmail/lectura", "/correos/sincronizar",
     "/correos/clave-pdf", "/conciliacion/reintentar-errores", "/perfil/punto-de-partida", "/facturas/escanear", "/impuestos/ajustes",
@@ -500,7 +501,7 @@ SIN_ID_DE_RECURSO = {
 SIN_SESION = {
     "/backup/cron/enviar", "/cierre-mes/cron/cerrar-mes", "/correos/oauth/callback", "/correos/cron/sincronizar", "/correos/cron/purgar-retencion",
     "/metricas/uso", "/metricas/cron/revisar-uso-semanal", "/metricas/cron/avisos-crecimiento",
-    "/avisos/cron/resumen-diario", "/impuestos/cron/avisar-renta", "/costos-bancarios/cron/avisar-cargos",
+    "/salud/cron/resumen", "/avisos/cron/resumen-diario", "/impuestos/cron/avisar-renta", "/costos-bancarios/cron/avisar-cargos",
     "/movimientos/cuentas-rapido", "/movimientos/rapido",
     "/movimientos/rapido-voz", "/pagos/webhook", "/patrimonio/cron/snapshot-mensual",
     "/patrimonio/cron/actualizar-precios", "/inversiones/cron/actualizar-precios",
@@ -613,3 +614,23 @@ def test_preferencias_de_lectura_del_correo_son_por_usuario():
     assert carriles["extractos"]["activo"] is True
     como(B)
     assert client.get("/correos/carriles").json()["extractos"]["activo"] is False
+
+
+# ── 6. /salud: B solo ve SUS hallazgos, nunca los de A ──────────────────────────────
+def test_salud_es_aislada_por_usuario():
+    from app.models import ExtractoCorreo as _E
+
+    db = SessionLocal()
+    try:
+        db.add(_E(usuario_id=C.id, gmail_msg_id="salud-a", archivo="a.pdf", banco="Nu", asunto="Extracto ZZA",
+                  estado="falta_clave"))
+        db.commit()
+    finally:
+        db.close()
+    como(C)
+    ra = client.get("/salud").json()
+    como(B)
+    rb = client.get("/salud").json()
+    assert "clave_pdf_faltante" in {h["codigo"] for h in ra["hallazgos"]}  # control: C sí ve el suyo
+    assert "clave_pdf_faltante" not in {h["codigo"] for h in rb["hallazgos"]}
+    assert "salud-a" not in client.get("/salud").text

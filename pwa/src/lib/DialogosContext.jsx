@@ -4,6 +4,7 @@ import Hoja from '../components/Hoja'
 // Reemplaza alert() y confirm() del navegador, que se ven ajenos al diseño,
 // bloquean el hilo y en PWAs instaladas a veces ni aparecen. Dos piezas:
 //   confirmar(mensaje, opciones) -> Promise<boolean>   (hoja inferior)
+//   elegir(mensaje, { titulo, opciones: [{ valor, texto }] }) -> Promise<valor | null>  (hoja con un botón por opción)
 //   avisar(mensaje, tipo)        -> toast que se cierra solo
 const DialogosContext = createContext(null)
 
@@ -13,6 +14,12 @@ export function DialogosProvider({ children }) {
   const temporizador = useRef(null)
 
   const confirmar = useCallback((mensaje, opciones = {}) => {
+    return new Promise((resolve) => {
+      setConfirmacion({ mensaje, ...opciones, resolve })
+    })
+  }, [])
+
+  const elegir = useCallback((mensaje, opciones = {}) => {
     return new Promise((resolve) => {
       setConfirmacion({ mensaje, ...opciones, resolve })
     })
@@ -48,7 +55,7 @@ export function DialogosProvider({ children }) {
   }
 
   return (
-    <DialogosContext.Provider value={{ confirmar, avisar }}>
+    <DialogosContext.Provider value={{ confirmar, elegir, avisar }}>
       {children}
 
       {toast && (
@@ -87,27 +94,45 @@ export function DialogosProvider({ children }) {
           role="alertdialog"
           ariaLabel={confirmacion.titulo || 'Confirmar'}
           clasePanel="p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
-          onCerrar={() => responder(false)}
+          onCerrar={() => responder(confirmacion.opciones ? null : false)}
         >
           {confirmacion.titulo && <p className="text-base font-bold mb-1">{confirmacion.titulo}</p>}
           <p className="text-sm text-ink-soft whitespace-pre-line">{confirmacion.mensaje}</p>
-          <div className="flex gap-3 mt-5">
-            <button
-              autoFocus
-              onClick={() => responder(false)}
-              className="flex-1 rounded-2xl border border-line py-3.5 text-sm font-semibold"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => responder(true)}
-              className={`flex-1 rounded-2xl py-3.5 text-sm font-semibold ${
-                confirmacion.peligro ? 'bg-danger text-paper-raised' : 'bg-ink text-paper'
-              }`}
-            >
-              {confirmacion.confirmarTexto || 'Continuar'}
-            </button>
-          </div>
+          {confirmacion.opciones ? (
+            <div className="flex flex-col gap-2 mt-5">
+              {confirmacion.opciones.map((o, i) => (
+                <button
+                  key={o.valor}
+                  autoFocus={i === 0}
+                  onClick={() => responder(o.valor)}
+                  className="w-full min-h-11 rounded-2xl border border-line py-3 text-sm font-semibold"
+                >
+                  {o.texto}
+                </button>
+              ))}
+              <button onClick={() => responder(null)} className="w-full min-h-11 py-3 text-sm font-semibold text-ink-soft">
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-3 mt-5">
+              <button
+                autoFocus
+                onClick={() => responder(false)}
+                className="flex-1 rounded-2xl border border-line py-3.5 text-sm font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => responder(true)}
+                className={`flex-1 rounded-2xl py-3.5 text-sm font-semibold ${
+                  confirmacion.peligro ? 'bg-danger text-paper-raised' : 'bg-ink text-paper'
+                }`}
+              >
+                {confirmacion.confirmarTexto || 'Continuar'}
+              </button>
+            </div>
+          )}
         </Hoja>
       )}
     </DialogosContext.Provider>

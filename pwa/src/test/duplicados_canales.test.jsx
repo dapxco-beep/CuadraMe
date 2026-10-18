@@ -194,3 +194,44 @@ describe('Buscar movimientos repetidos', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Sin conexión')
   })
 })
+
+describe('borrar lo que vino del correo o de un extracto: «¿Qué pasó?»', () => {
+  const base = { id: 'm1', cuenta_id: 'c1', fecha: '2026-10-02T12:00:00', descripcion: 'Netflix', categoria: 'Mercado', tipo: 'expense', monto: 33000, notas: '' }
+
+  async function abrir(mov) {
+    Object.assign(api, {
+      movimiento: vi.fn().mockResolvedValue(mov),
+      eliminarMovimiento: vi.fn().mockResolvedValue({ ok: true }),
+    })
+    montar(
+      <Routes>
+        <Route path="/movimientos/:id" element={<DetalleMovimiento />} />
+        <Route path="/movimientos" element={<p>lista</p>} />
+      </Routes>,
+      '/movimientos/m1'
+    )
+    await userEvent.click(await screen.findByText('Eliminar movimiento'))
+  }
+
+  it('pregunta una sola vez con tres botones y manda el motivo elegido', async () => {
+    await abrir({ ...base, fuente: 'wallet', origen: 'correo', canales: ['correo'] })
+    expect(await screen.findByText('¿Qué pasó?')).toBeInTheDocument()
+    expect(screen.getByText('Era duplicado')).toBeInTheDocument()
+    expect(screen.getByText('No va en mi cuenta')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('Lo borré por error'))
+    await waitFor(() => expect(api.eliminarMovimiento).toHaveBeenCalledWith('m1', 'error'))
+  })
+
+  it('cancelar no borra nada', async () => {
+    await abrir({ ...base, fuente: 'wallet', origen: 'extracto', canales: ['extracto'] })
+    await userEvent.click(await screen.findByText('Cancelar'))
+    expect(api.eliminarMovimiento).not.toHaveBeenCalled()
+  })
+
+  it('un movimiento hecho a mano sigue con la confirmación de siempre (sin pregunta extra)', async () => {
+    await abrir({ ...base, fuente: 'manual', origen: 'manual', canales: ['manual'] })
+    expect(screen.queryByText('¿Qué pasó?')).toBeNull()
+    await userEvent.click(await screen.findByText('Eliminar', { selector: 'button' }))
+    await waitFor(() => expect(api.eliminarMovimiento).toHaveBeenCalledWith('m1'))
+  })
+})

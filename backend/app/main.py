@@ -23,6 +23,7 @@ from app.routers import (
     ahorcado,
     asistente,
     avisos,
+    salud,
     backup,
     categorias,
     subcategorias,
@@ -179,6 +180,7 @@ app.include_router(recordatorios.router)
 app.include_router(consejos.router)
 app.include_router(comentarios.router)
 app.include_router(avisos.router)
+app.include_router(salud.router)
 app.include_router(rendimientos.router)
 from app.routers import sincronizacion  # noqa: E402
 

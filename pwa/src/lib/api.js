@@ -319,8 +319,12 @@ export const api = {
       method: 'POST',
       body: { movimiento_ids: movimientoIds, cuenta_id: cuentaId },
     }),
-  eliminarMovimientosMasivo: (movimientoIds) =>
-    request('/movimientos/eliminar-masivo', { method: 'POST', body: { movimiento_ids: movimientoIds } }),
+  // motivo (opcional): 'duplicado' | 'error' | 'no_va'. Sin motivo el servidor usa 'duplicado'.
+  eliminarMovimientosMasivo: (movimientoIds, motivo) =>
+    request('/movimientos/eliminar-masivo', {
+      method: 'POST',
+      body: { movimiento_ids: movimientoIds, ...(motivo ? { motivo } : {}) },
+    }),
   conteoPorRevisar: () => request('/movimientos/por-revisar/conteo'),
   // Bandeja "¿son tuyos?": movimientos que llegaron solos (Wallet, atajos) sin confirmar.
   movimientosPorConfirmar: () => request('/movimientos/por-confirmar'),
@@ -387,7 +391,8 @@ export const api = {
   editarMovimiento: (id, data) => request(`/movimientos/${id}`, { method: 'PUT', body: data }),
   crearTransferencia: (data) => request('/movimientos/transferencia', { method: 'POST', body: data }),
   crearMovimiento: (data) => request('/movimientos', { method: 'POST', body: data }),
-  eliminarMovimiento: (id) => request(`/movimientos/${id}`, { method: 'DELETE' }),
+  // motivo (opcional): 'duplicado' | 'error' | 'no_va' (ver docs/SALUD_DE_DATOS.md). Sin motivo = 'duplicado'.
+  eliminarMovimiento: (id, motivo) => request(`/movimientos/${id}${motivo ? `?motivo=${motivo}` : ''}`, { method: 'DELETE' }),
   recategorizarMasivo: (movimientoIds, categoria, subcategoria) =>
     request('/movimientos/recategorizar-masivo', {
       method: 'POST',
@@ -620,6 +625,9 @@ export const api = {
   quitarHistorialError: (id) => request(`/conciliacion/historial/${id}/error`, { method: 'DELETE' }),
   releerExtracto: (historialId) => request(`/conciliacion/historial/${historialId}/releer`, { method: 'POST' }),
   releerPendientes: () => request('/conciliacion/releer-pendientes', { method: 'POST' }),
+  // Salud de datos (ver docs/SALUD_DE_DATOS.md): hallazgos de la persona y «Crear tu cuenta de tarjeta».
+  salud: () => request('/salud'),
+  saludCrearTarjeta: (banco) => request('/salud/crear-tarjeta', { method: 'POST', body: { banco } }),
   reintentarErroresExtractos: () => request('/conciliacion/reintentar-errores', { method: 'POST' }),
   // «Todos los extractos»: la lista completa (también viene en /sincronizacion/estado como `todos_extractos`).
   todosLosExtractos: () => request('/sincronizacion/extractos', { sinCache: true }),

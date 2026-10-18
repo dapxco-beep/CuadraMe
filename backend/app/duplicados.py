@@ -509,6 +509,35 @@ def descartar_movimiento(db: Session, mov) -> None:
             setattr(f, k, v)
 
 
+MOTIVO_DUPLICADO = "duplicado"   # «Era duplicado»: queda el fantasma, el correo/extracto equivalente no vuelve
+MOTIVO_ERROR = "error"           # «Lo borré por error»: NO queda fantasma; el correo vuelve a «Por revisar»
+MOTIVO_NO_VA = "no_va"           # «No va en mi cuenta»: queda el fantasma (no es suyo)
+MOTIVOS_BORRADO = (MOTIVO_DUPLICADO, MOTIVO_ERROR, MOTIVO_NO_VA)
+
+
+def devolver_a_por_revisar(db: Session, mov) -> None:
+    """«Lo borré por error»: el movimiento se va SIN dejar fantasma. Los correos que lo habían reconocido
+    (o que se aprobaron para crearlo) vuelven a «Por revisar» y las huellas del movimiento se olvidan, así
+    que la línea del extracto también puede volver a importarse. Sin commit."""
+    from app.models import CorreoGasto
+
+    for c in db.query(CorreoGasto).filter(CorreoGasto.usuario_id == mov.usuario_id,
+                                          CorreoGasto.movimiento_id == mov.id,
+                                          CorreoGasto.estado.in_(("ya_registrado", "aprobado"))).all():
+        c.estado = "pendiente"
+        c.movimiento_id = None
+    olvidar_movimiento(db, mov)
+
+
+def registrar_borrado(db: Session, mov, motivo: str = MOTIVO_DUPLICADO) -> None:
+    """Punto único del borrado hecho por la persona: según el motivo que ELLA dio decide si queda el fantasma
+    que bloquea el correo/extracto equivalente («duplicado» y «no va») o no («error»). Sin commit."""
+    if motivo == MOTIVO_ERROR:
+        devolver_a_por_revisar(db, mov)
+    else:
+        descartar_movimiento(db, mov)
+
+
 def olvidar_movimiento(db: Session, mov) -> None:
     """Quita las huellas de un movimiento que se borra SIN que cuente como descarte del usuario
     (p. ej. «deshacer lo importado solo»: la línea debe poder volver a aparecer)."""

@@ -36,7 +36,7 @@ import PorRevisarCorreo from '../components/PorRevisarCorreo'
 import { BotonLapiz, EditorNombre, PistaBanco } from '../components/NombreEditable'
 import { limpiarNombre, MIN_REPETICIONES_NOMBRE, nombreDe, tieneNombrePropio } from '../lib/tituloMovimiento'
 import { usePorRevisarCorreo } from '../lib/usePorRevisarCorreo'
-import { conAvisoDeBorrado } from '../lib/canales'
+import { OPCIONES_BORRADO_VARIOS, vinoDeCorreoOExtracto } from '../lib/canales'
 import { actualizarDesdeCorreo, resumenActualizacion } from '../lib/sincronizarGmail'
 
 const TAMANO_PAGINA = 200
@@ -200,7 +200,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
 export default function Movimientos() {
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: CATEGORIAS, iconoDe } = useCategorias()
-  const { avisar, confirmar } = useDialogos()
+  const { avisar, confirmar, elegir } = useDialogos()
   const modo = useModoPantalla()
   const lateral = modo === 'lateral'
   const location = useLocation()
@@ -794,18 +794,18 @@ export default function Movimientos() {
 
   async function eliminarSeleccion() {
     const ids = [...seleccionados]
-    const ok = await confirmar(
-      conAvisoDeBorrado(
-        'El saldo de las cuentas se ajustará como si estos movimientos nunca hubieran existido. Esto no se puede deshacer.',
-        movimientos.filter((m) => ids.includes(m.id))
-      ),
-      {
-        titulo: `¿Eliminar ${ids.length} ${ids.length === 1 ? 'movimiento' : 'movimientos'}?`,
-        confirmarTexto: 'Eliminar',
-        peligro: true,
-      }
-    )
-    if (!ok) return
+    const titulo = `¿Eliminar ${ids.length} ${ids.length === 1 ? 'movimiento' : 'movimientos'}?`
+    const aviso = 'El saldo de las cuentas se ajustará como si estos movimientos nunca hubieran existido. Esto no se puede deshacer.'
+    // Si alguno vino del correo o de un extracto se pregunta UNA sola vez «¿Qué pasó?» para todos (no uno por uno).
+    // Sin ninguno de esos, es la confirmación de siempre y el servidor aplica «duplicado» (no hay correo que vuelva).
+    let motivo
+    if (movimientos.some((m) => ids.includes(m.id) && vinoDeCorreoOExtracto(m))) {
+      motivo = await elegir(aviso, { titulo: `${titulo} ¿Qué pasó?`, opciones: OPCIONES_BORRADO_VARIOS })
+      if (!motivo) return
+    } else {
+      const ok = await confirmar(aviso, { titulo, confirmarTexto: 'Eliminar', peligro: true })
+      if (!ok) return
+    }
     setAplicando(true)
     // Optimista: las filas salen de la lista al instante (el servidor tarda 150-300 ms por viaje).
     // Las transferencias se omiten en el servidor, así que desde el principio no se quitan.
@@ -815,7 +815,7 @@ export default function Movimientos() {
     const set = new Set(borrados)
     setMovimientos((prev) => prev.filter((m) => !set.has(m.id)))
     try {
-      const r = await api.eliminarMovimientosMasivo(ids)
+      const r = await (motivo ? api.eliminarMovimientosMasivo(ids, motivo) : api.eliminarMovimientosMasivo(ids))
       borrados.forEach((id) => quitarDeCaches(id))
       recargarCuentas?.() // los saldos se actualizan en segundo plano: no se espera
       recargarConteo()

@@ -34,6 +34,8 @@ JOBS = [
     # Cada hora de 6 a 23 h (hora Colombia). Sin este cron los correos solo entran al abrir la app.
     ("CuadraMe - leer correos de los bancos", "/correos/cron/sincronizar", list(range(6, 24)), [0], [-1]),
     ("CuadraMe - purgar retencion de datos", "/correos/cron/purgar-retencion", [3], [30], [-1]),
+    # Monitor de salud de datos para el dueño (contadores anónimos; avisa UNA vez al día si algo supera su umbral).
+    ("CuadraMe - monitor de salud de datos", "/salud/cron/resumen", [7], [30], [-1]),
     # Inversiones (opcional): precios por ticker cada 30 min en horario de mercado (L-V, 8 a 17 h)
     # y push semanal del portafolio solo para quien lo activó. Se crean SOLO si Daniel lo decide.
     ("CuadraMe - precios de inversiones", "/inversiones/cron/actualizar-precios", [8, 10, 12, 14, 16], [0, 30], [1, 2, 3, 4, 5]),
