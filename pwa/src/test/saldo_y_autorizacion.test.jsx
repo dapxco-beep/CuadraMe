@@ -128,7 +128,7 @@ describe('Autorización de tratamiento de datos', () => {
     const listo = vi.fn()
     envolver(<AutorizacionTratamiento onListo={listo} />)
     const boxes = screen.getAllByRole('checkbox')
-    expect(boxes).toHaveLength(4)
+    expect(boxes).toHaveLength(5)
     boxes.forEach((b) => expect(b).not.toBeChecked())
     const continuar = screen.getByRole('button', { name: 'Aceptar y continuar' })
     expect(continuar).toBeDisabled()
@@ -146,6 +146,7 @@ describe('Autorización de tratamiento de datos', () => {
       { finalidad: 'lectura_correo', aceptado: false },
       { finalidad: 'ia', aceptado: true },
       { finalidad: 'notificaciones', aceptado: false },
+      { finalidad: 'estadisticas_anonimas', aceptado: false }, // opcional y apagada por defecto
     ])
   })
 

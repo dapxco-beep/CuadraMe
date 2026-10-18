@@ -14,6 +14,7 @@ from app.auth import UsuarioActual, get_current_user
 from app.autocat import ClasificadorUsuario
 from app.database import get_db
 from app.duplicados import absorber_correos
+from app.formas_asunto import registrar_forma
 from app.extractos_gmail import encabezados
 from app.gmail_extract import texto_cuerpo
 from app.limites import verificar_limite
@@ -135,6 +136,9 @@ def crear_regla(data: ReglaIn, db: Session = Depends(get_db), usuario: UsuarioAc
         or (comercio_marcado and not rc.es_comercio_generico(estandar.comercio) and estandar.comercio != comercio_marcado)
         or (data.tipo != estandar.tipo_sugerido and (estandar.monto or 0) > 0 and not rc.es_comercio_generico(estandar.comercio))
     )
+
+    if (estandar.monto or 0) <= 0 or rc.es_comercio_generico(estandar.comercio):
+        registrar_forma(db, usuario.id, remitente, asunto)  # solo cuenta si aceptó estadísticas anónimas; sin datos personales
 
     dominio = rc.dominio_remitente(remitente)
     regla = (db.query(ReglaCorreo).filter(ReglaCorreo.usuario_id == usuario.id, ReglaCorreo.remitente_dominio == dominio,

@@ -85,7 +85,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
         )}
         {fin &&
           ORDEN_OPCIONALES.map((f) => {
-            const x = fin[f]
+            const x = fin[f] || { aceptado: false }
             return (
               <div key={f} className="px-4 py-3.5 flex items-center gap-3">
                 <div className="flex-1 min-w-0">

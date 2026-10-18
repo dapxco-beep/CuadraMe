@@ -90,6 +90,7 @@ from app.gmail_oauth import (
 from app import carriles_correo as carriles
 from app.models import Categoria, ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil, ReglaCorreo, SyncGmail
 from app.reglas_correo import aplicar_regla, hay_regla_para, texto_del_mensaje
+from app.formas_asunto import registrar_forma
 from app.routers.consentimientos import exigir_consentimiento, tiene_consentimiento
 from app.routers.conciliacion import procesar_extracto_de_gmail as procesar_extracto
 from app.utiles import ahora_co, utc_a_co
@@ -675,6 +676,10 @@ def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, exist
     )
     if not candidato:
         correo.estado = "ignorado"
+        if not tiene_monto and not es_aviso_no_transaccion(correo.asunto, correo.snippet) and (
+                banco_por_remitente(correo.remitente) or es_notificacion_transaccion(correo.asunto, correo.snippet)):
+            # Parece un movimiento y no lo supimos leer: solo si la persona aceptó, se anota la FORMA del asunto (anónima).
+            registrar_forma(db, usuario_id, correo.remitente, correo.asunto)
         if resultado is not None:
             resultado["motivo"] = (
                 "aviso" if es_aviso_no_transaccion(correo.asunto, correo.snippet)

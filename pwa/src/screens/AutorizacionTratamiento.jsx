@@ -10,7 +10,7 @@ import { CORREO_RESPONSABLE, DERECHOS, FINALIDADES, ORDEN_OPCIONALES, VERSION_TE
 // Casillas SEPARADAS y NO premarcadas: una obligatoria y tres opcionales.
 export default function AutorizacionTratamiento({ onListo }) {
   const { logout } = useAuth()
-  const [marcas, setMarcas] = useState({ tratamiento_basico: false, lectura_correo: false, ia: false, notificaciones: false })
+  const [marcas, setMarcas] = useState({ tratamiento_basico: false, lectura_correo: false, ia: false, notificaciones: false, estadisticas_anonimas: false })
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 

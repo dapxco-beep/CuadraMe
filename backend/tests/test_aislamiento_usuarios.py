@@ -514,6 +514,7 @@ SIN_SESION = {
     "/inversiones/cron/resumen-semanal", "/push/vapid-public-key", "/push/cron/revisar-presupuestos",
     "/push/cron/aportes-automaticos", "/push/cron/premiar-presupuestos-mes", "/push/cron/resumen-semanal",
     "/push/cron/recordar-registro", "/push/cron/recordar-recurrentes", "/resumen/cron/semanal",
+    "/formas-asunto/cron/mas-frecuentes",  # lista interna anónima: exige X-Cron-Secret
 }
 
 

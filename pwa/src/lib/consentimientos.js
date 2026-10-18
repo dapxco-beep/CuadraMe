@@ -30,9 +30,15 @@ export const FINALIDADES = {
     obligatoria: false,
     texto: 'Autorizo recibir avisos (alertas de presupuesto, recordatorios de pago, resúmenes) por notificaciones push y correo.',
   },
+  estadisticas_anonimas: {
+    titulo: 'Compartir estadísticas anónimas de lectura',
+    obligatoria: false,
+    texto:
+      'Cuando no logre leer un correo de mi banco, autorizo que se cuente, sin mi nombre, sin montos ni comercios, la forma general de su asunto (por ejemplo, «pagaste en * con cuenta nu»). Así CuadraMe aprende a leer más bancos. Lo que yo le enseñe a leer es solo mío y nunca se comparte.',
+  },
 }
 
-export const ORDEN_OPCIONALES = ['lectura_correo', 'ia', 'notificaciones']
+export const ORDEN_OPCIONALES = ['lectura_correo', 'ia', 'notificaciones', 'estadisticas_anonimas']
 
 export const DERECHOS = ['Conocer', 'Actualizar', 'Rectificar', 'Suprimir', 'Revocar la autorización']
 

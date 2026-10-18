@@ -161,6 +161,16 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'CREATE INDEX IF NOT EXISTS ix_reglas_correo_usuario ON reglas_correo (usuario_id)',
         ],
     ),
+    (
+        # Contador global y ANÓNIMO de formas de asunto que el lector no entiende (sin usuario, sin montos ni nombres).
+        "0008_formas_asunto_fallidas",
+        [
+            'CREATE TABLE IF NOT EXISTS formas_asunto_fallidas ('
+            'id VARCHAR PRIMARY KEY, esqueleto VARCHAR NOT NULL, dominio VARCHAR NOT NULL DEFAULT \'\', '
+            'conteo INTEGER NOT NULL DEFAULT 0, primera_vez TIMESTAMP, ultima_vez TIMESTAMP, '
+            'CONSTRAINT uq_forma_asunto UNIQUE (esqueleto, dominio))',
+        ],
+    ),
 ]
 
 

@@ -36,11 +36,12 @@ logger = logging.getLogger(__name__)
 # cómo se exporta y se borra (test_derechos_titular.py lo exige).
 TABLAS_HIJAS = {"invitaciones_cuenta", "miembros_grupo_gasto", "partes_gasto"}
 # Tablas internas del sistema (no son datos del titular).
-TABLAS_INTERNAS = {"marcas_cron", "importaciones_respaldo", "tasas_referencia", "cotizaciones_inversion", "consultas_precio"}
+TABLAS_INTERNAS = {"marcas_cron", "importaciones_respaldo", "tasas_referencia", "cotizaciones_inversion", "consultas_precio", "formas_asunto_fallidas"}
 # Tablas públicas del sistema (sin dueño ni datos personales): ni se exportan ni se borran con la cuenta.
 # cotizaciones_inversion: precio de mercado por ticker, compartido entre usuarios, sin datos personales.
 # consultas_precio: contador de peticiones; no se exporta, y sus claves «u:<id>:…» se borran con la cuenta (ver borrar_todo).
-TABLAS_PUBLICAS = {"tasas_referencia", "cotizaciones_inversion", "consultas_precio"}
+# formas_asunto_fallidas: contador anónimo y opt-in de esqueletos de asunto (sin usuario ni datos personales); no hay nada del titular que exportar o borrar.
+TABLAS_PUBLICAS = {"tasas_referencia", "cotizaciones_inversion", "consultas_precio", "formas_asunto_fallidas"}
 # Columnas que NO se entregan: son credenciales del sistema, no datos del titular.
 # Entregarlas no le sirve al usuario y, si alguien interceptara el archivo, le daría acceso.
 COLUMNAS_SECRETAS = {"api_key", "api_key_hash", "gmail_refresh_token_enc", "clave_enc", "p256dh", "auth", "endpoint"}

@@ -192,6 +192,21 @@ class ReglaCorreo(Base):
     usos = Column(Integer, default=0)
 
 
+class FormaAsuntoFallida(Base):
+    """Contador GLOBAL y anónimo de «formas de asunto» que el lector no supo leer: solo el esqueleto hecho de
+    palabras de un vocabulario fijo (sin dígitos, montos, comercios ni nombres) y el dominio del remitente. SIN usuario_id
+    a propósito: no se sabe quién la envió. Solo la alimenta quien aceptó «estadísticas anónimas». Ver app/formas_asunto.py."""
+    __tablename__ = "formas_asunto_fallidas"
+    __table_args__ = (UniqueConstraint("esqueleto", "dominio", name="uq_forma_asunto"),)
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    esqueleto = Column(String, nullable=False)
+    dominio = Column(String, nullable=False, default="")
+    conteo = Column(Integer, nullable=False, default=0)
+    primera_vez = Column(DateTime, default=datetime.utcnow)
+    ultima_vez = Column(DateTime, default=datetime.utcnow)
+
+
 class Movimiento(Base):
     __tablename__ = "movimientos"
     __table_args__ = (
