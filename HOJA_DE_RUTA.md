@@ -1,6 +1,16 @@
 # CuadraMe — Hoja de ruta
 
-Última actualización: 2026-10-15. Estado: backend y frontend desplegados y estables en producción (Railway + Vercel). Todo lo marcado ✅ ya está en producción; lo marcado ⏳ necesita algo de ti antes de activarse; lo marcado 🔲 es trabajo pendiente de construir.
+Última actualización: 2026-10-18. Estado: backend y frontend desplegados y estables en producción (Railway + Vercel). Todo lo marcado ✅ ya está en producción; lo marcado ⏳ necesita algo de ti antes de activarse; lo marcado 🔲 es trabajo pendiente de construir.
+
+---
+
+## 🆕 Operación estándar y corpus de regresión (2026-10-18) — pendiente de tu aprobación
+
+- **Corpus de casos reales** (`backend/tests/casos_reales/`, 86 pruebas con guardianes, ~7 s, datos 100 % sintéticos): una prueba por cada falla que ya ocurrió (NIT/cuenta como monto, ×100 por punto final, montos sin «$», avisos que no son transacciones, comercio vacío, extracto Nu, extracto de tarjeta en ahorros, correo descartado/recuperar, ventana de correos con huecos, migraciones congeladas, 500 sin CORS, importar doble, traslados propios, cambio de cuenta de extracto). Su `README.md` tiene la tabla caso → archivo → qué rompería y el estándar para agregar uno nuevo. Hallazgo al escribirlo: «Compraste en:» vacío tomaba «La cantidad de» como comercio; corregido en `gmail_extract.py`.
+- **Scripts** (`scripts/`): `verificar_todo.ps1|.sh` (`-Rapido` = casos_reales + guardianes), `verificar_produccion.ps1|.sh` (solo lectura: /version, /health, version.json, mismo commit, 500/UndefinedColumn/Traceback en logs) y `desplegar.ps1|.sh` (pide escribir `DESPLEGAR`, verifica, commit vacío del equipo, Railway + Vercel, verifica producción; `-SoloVerificar` no despliega; nunca hace push).
+- **Runbook** `docs/OPERACION.md`: verificar, desplegar, rollback, trampas conocidas, tabla exacta de los crons de cron-job.org y checklist «antes de aceptar clientes nuevos».
+- **Regla de equipo:** toda falla nueva en producción entra primero como prueba en `casos_reales/` y luego se arregla.
+- ⏳ **Tuyo:** confirmar en cron-job.org que existen los crons de `docs/OPERACION.md` §5 (sobre todo «leer correos», «backup diario» y «purgar retención»).
 
 ---
 

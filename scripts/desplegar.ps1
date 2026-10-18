@@ -58,7 +58,7 @@ if ($sucio.Count) { Parar 'Hay cambios sin commitear en archivos versionados. Ha
 
 Write-Host "Se va a desplegar a PRODUCCION la rama '$rama' en $((& git -C $raiz rev-parse --short HEAD).Trim())." -ForegroundColor Yellow
 Write-Host 'Backend: Railway (cuadrame backend)  |  PWA: Vercel (cuadrame.dapx.shop). No se hace git push.'
-if ($Confirmacion -ne 'DESPLEGAR') {
+if ($Confirmacion -eq '') {
     $Confirmacion = Read-Host 'Escriba DESPLEGAR (en mayusculas) para continuar'
 }
 if ($Confirmacion -cne 'DESPLEGAR') { Parar 'No se escribio DESPLEGAR. No se hizo nada.' }
