@@ -720,3 +720,28 @@ def test_recuperar_no_toca_correos_de_otra_persona(e):
     app.dependency_overrides[get_current_user] = lambda: UsuarioActual(id="otra-persona", email="o@test.com", nombre="Otra")
     assert client.post(f"/correos/{ca['id']}/recuperar").status_code == 404
     assert [x["estado"] for x in e.correos("todos")] == ["descartado"]
+
+
+# ═══ 10. Filtro «Origen» en la lista de movimientos ════════════════════════════════════════════
+
+def test_filtrar_movimientos_por_origen(e):
+    e.manual(monto=10_000, desc="A mano")
+    e.atajo(monto=20_000, comercio="DEL ATAJO", minutos=-300)
+    e.llega_correo(monto=30_000, comercio="Rappi", minutos=-600)
+    (c,) = e.pendientes()
+    client.post(f"/correos/{c['id']}/aprobar", json={"cuenta_id": e.cuenta["id"]})
+    # un movimiento viejo, sin la columna `origen`: se deduce de la fuente
+    db = SessionLocal()
+    m = db.query(Movimiento).filter(Movimiento.descripcion == "A mano").first()
+    m.origen = None
+    db.commit()
+    db.close()
+
+    def montos(origen):
+        r = client.get("/movimientos", params={"origen": origen}).json()
+        return sorted(x["monto"] for x in (r["items"] if isinstance(r, dict) else r))
+
+    e.como()
+    assert montos("manual") == [10_000] and montos("atajo") == [20_000] and montos("correo") == [30_000]
+    assert montos("extracto") == []
+    assert client.get("/movimientos", params={"origen": "raro"}).status_code == 422

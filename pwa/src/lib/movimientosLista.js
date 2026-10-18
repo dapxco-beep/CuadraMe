@@ -4,10 +4,20 @@ import { claveComercio, patronDeComercio, esAuto, porRevisar } from './comercio'
 // aplican igual en el servidor (lo que se pide) y en el cliente (lo que se muestra, para que
 // una categoría recién cambiada salga o entre del filtro al instante).
 
-export const PARAMS_FILTRO = ['q', 'cuenta', 'cat', 'tipo', 'desde', 'hasta', 'revisar', 'conf', 'vista', 'orden']
+export const PARAMS_FILTRO = ['q', 'cuenta', 'cat', 'tipo', 'origen', 'desde', 'hasta', 'revisar', 'conf', 'vista', 'orden']
+
+// Por dónde llegó un movimiento (filtro «Origen» de la lista).
+export const ORIGENES_FILTRO = [
+  { id: 'correo', texto: 'Del correo' },
+  { id: 'extracto', texto: 'Del extracto' },
+  { id: 'manual', texto: 'A mano' },
+  { id: 'atajo', texto: 'Del atajo' },
+]
+const ORIGEN_VALIDO = new Set(ORIGENES_FILTRO.map((o) => o.id))
 
 export function leerFiltros(params) {
   return {
+    origen: ORIGEN_VALIDO.has(params.get('origen')) ? params.get('origen') : '',
     q: params.get('q') || '',
     cuenta: params.get('cuenta') || '',
     cat: params.get('cat') || '',
@@ -29,6 +39,7 @@ export function consultaServidor(f) {
   if (f.q) c.q = f.q
   if (f.cat) c.categoria = f.cat
   if (f.tipo) c.tipo = f.tipo
+  if (f.origen) c.origen = f.origen
   if (f.cuenta) c.cuentaId = f.cuenta
   if (f.desde) c.desde = f.desde
   if (f.hasta) c.hasta = f.hasta
@@ -40,6 +51,7 @@ export function coincideFiltros(m, f) {
   if (f.cat && m.categoria !== f.cat) return false
   if (f.cuenta && m.cuenta_id !== f.cuenta) return false
   if (f.tipo && m.tipo !== f.tipo) return false
+  if (f.origen && m.origen && m.origen !== f.origen) return false // sin `origen` (viejo) manda lo que dijo el servidor
   if (f.desde && m.fecha.slice(0, 10) < f.desde) return false
   if (f.hasta && m.fecha.slice(0, 10) > f.hasta) return false
   if (f.revisar && !porRevisar(m)) return false
@@ -48,7 +60,7 @@ export function coincideFiltros(m, f) {
 }
 
 export function hayFiltros(f) {
-  return !!(f.q || f.cuenta || f.cat || f.tipo || f.desde || f.hasta || f.revisar || f.conf)
+  return !!(f.q || f.cuenta || f.cat || f.tipo || f.origen || f.desde || f.hasta || f.revisar || f.conf)
 }
 
 /** Huella de comercio de un movimiento; si no se reconoce, la descripción en minúsculas. */
