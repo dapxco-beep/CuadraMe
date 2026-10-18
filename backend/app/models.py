@@ -174,6 +174,24 @@ class ReglaTitulo(Base):
     creado_en = Column(DateTime, default=datetime.utcnow)
 
 
+class ReglaCorreo(Base):
+    """«Enséñale a leer este correo»: regla PERSONAL de lectura para correos con la misma forma (remitente +
+    esqueleto del asunto). Guarda solo etiquetas fijas de la plantilla («la cantidad de:»), nunca el cuerpo.
+    Ver app/reglas_correo.py. `corrige`: la persona corrigió a propósito algo que el lector ya había leído."""
+    __tablename__ = "reglas_correo"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    remitente_dominio = Column(String, nullable=False, default="")
+    esqueleto_asunto = Column(String, nullable=False, default="")
+    etiqueta_monto = Column(String, nullable=True)
+    etiqueta_comercio = Column(String, nullable=True)
+    tipo = Column(String, default="expense")  # income | expense
+    corrige = Column(Boolean, default=False)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+    usos = Column(Integer, default=0)
+
+
 class Movimiento(Base):
     __tablename__ = "movimientos"
     __table_args__ = (

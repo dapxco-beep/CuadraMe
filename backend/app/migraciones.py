@@ -150,6 +150,17 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'ALTER TABLE sync_gmail ADD COLUMN IF NOT EXISTS ceros_seguidos_mov INTEGER DEFAULT 0',
         ],
     ),
+    (
+        # «Enséñale a leer este correo»: reglas PERSONALES de lectura (solo etiquetas de la plantilla, sin el cuerpo).
+        "0007_reglas_correo",
+        [
+            'CREATE TABLE IF NOT EXISTS reglas_correo ('
+            'id VARCHAR PRIMARY KEY, usuario_id VARCHAR NOT NULL, remitente_dominio VARCHAR NOT NULL, '
+            'esqueleto_asunto VARCHAR NOT NULL, etiqueta_monto VARCHAR NULL, etiqueta_comercio VARCHAR NULL, '
+            'tipo VARCHAR DEFAULT \'expense\', corrige BOOLEAN DEFAULT FALSE, creado_en TIMESTAMP, usos INTEGER DEFAULT 0)',
+            'CREATE INDEX IF NOT EXISTS ix_reglas_correo_usuario ON reglas_correo (usuario_id)',
+        ],
+    ),
 ]
 
 

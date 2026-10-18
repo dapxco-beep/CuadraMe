@@ -88,7 +88,8 @@ from app.gmail_oauth import (
     url_autorizacion,
 )
 from app import carriles_correo as carriles
-from app.models import Categoria, ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil, SyncGmail
+from app.models import Categoria, ClavePdf, Cuenta, CorreoGasto, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil, ReglaCorreo, SyncGmail
+from app.reglas_correo import aplicar_regla, hay_regla_para
 from app.routers.consentimientos import exigir_consentimiento, tiene_consentimiento
 from app.routers.conciliacion import procesar_extracto_de_gmail as procesar_extracto
 from app.utiles import ahora_co, utc_a_co
@@ -336,10 +337,22 @@ def _fecha_del_texto_utc(texto: str, recibido):
     return co + timedelta(hours=5) if co else None
 
 
-def _crear_correo(msg: dict, usuario_id: str, modelo: ClasificadorUsuario) -> CorreoGasto:
+def _reglas_de(db: Session, usuario_id: str) -> list:
+    """Reglas personales de lectura (`reglas_correo`) de ESTA persona, las más nuevas primero. Se guardan en la
+    sesión para no consultarlas por cada correo de una sincronización."""
+    cache = db.info.setdefault("reglas_correo", {})
+    if usuario_id not in cache:
+        cache[usuario_id] = (db.query(ReglaCorreo).filter(ReglaCorreo.usuario_id == usuario_id)
+                             .order_by(ReglaCorreo.creado_en.desc()).all())
+    return cache[usuario_id]
+
+
+def _crear_correo(msg: dict, usuario_id: str, modelo: ClasificadorUsuario, reglas: list | None = None) -> CorreoGasto:
     """Convierte un mensaje de Gmail en un CorreoGasto 'pendiente' (sugerencia
     que el usuario debe aprobar; nunca crea movimientos). La categoría la decide
-    el clasificador del usuario (reglas -> aprendido -> diccionario -> 'Otros')."""
+    el clasificador del usuario (reglas -> aprendido -> diccionario -> 'Otros').
+    `reglas`: las reglas personales de lectura de esa persona; solo rellenan lo que el lector estándar no
+    pudo leer (monto 0 o «Gasto sin detalle»), salvo una regla que la persona marcó como corrección."""
     h = encabezados(msg)
     remitente = h.get("From", "")
     asunto = h.get("Subject", "")
@@ -352,9 +365,26 @@ def _crear_correo(msg: dict, usuario_id: str, modelo: ClasificadorUsuario) -> Co
         if cuerpo and extraer_monto(f"{asunto} {cuerpo}", estricto=True):
             texto = f"{asunto} {snippet} {cuerpo}"
     comercio = extraer_comercio(remitente, asunto, snippet if texto == f"{asunto} {snippet}" else texto)
+    monto = extraer_monto(texto, estricto=(texto != f"{asunto} {snippet}"))
+    tipo = detectar_tipo(texto)
+    regla_id = None
+    if reglas and hay_regla_para(reglas, remitente, asunto):
+        # Hay una regla de esta persona para esta forma de correo: se lee el cuerpo (no se guarda) solo si hace falta.
+        cuerpo = texto_cuerpo(msg)
+        lectura = aplicar_regla(
+            {"remitente": remitente, "asunto": asunto, "texto": f"{asunto} {snippet} {cuerpo}",
+             "monto": monto, "comercio": comercio, "tipo": tipo}, reglas)
+        if lectura:
+            monto = lectura.get("monto", monto)
+            comercio = lectura.get("comercio", comercio)
+            tipo = lectura.get("tipo", tipo)
+            regla_id = lectura["regla_id"]
+            for r in reglas:
+                if r.id == regla_id:
+                    r.usos = (r.usos or 0) + 1
     resultado = modelo.clasificar(comercio, texto)
     recibido = fecha_mensaje(msg)
-    return CorreoGasto(
+    correo = CorreoGasto(
         usuario_id=usuario_id,
         gmail_msg_id=msg["id"],
         remitente=remitente,
@@ -363,14 +393,16 @@ def _crear_correo(msg: dict, usuario_id: str, modelo: ClasificadorUsuario) -> Co
         recibido_en=recibido,
         # La fecha que el banco escribió en el texto («el 3 de julio de 2026 a las 11:05 am»); None si no la trae.
         fecha_movimiento=_fecha_del_texto_utc(texto, recibido),
-        monto=extraer_monto(texto, estricto=(texto != f"{asunto} {snippet}")),
+        monto=monto,
         moneda=extraer_moneda(texto),
         comercio=comercio,
         categoria_sugerida=resultado["categoria"] if resultado else "Otros",
-        tipo_sugerido=detectar_tipo(texto),
+        tipo_sugerido=tipo,
         confianza=resultado["confianza"] if resultado else 0,
         estado="pendiente",
     )
+    correo._por_regla = regla_id is not None  # no es columna: solo avisa a _procesar_transaccion
+    return correo
 
 
 def _marcar_si_conciliado(db: Session, fila: ExtractoCorreo) -> bool:
@@ -624,7 +656,7 @@ def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, exist
     """Lee un correo y lo guarda. True si quedó como candidato (no ignorado). Si se pasa `resultado`,
     deja en `motivo` por qué se descartó (aviso | sin_monto | no_parece_transaccion)."""
     msg = gmail.users().messages().get(userId="me", id=ref_id, format="full").execute()
-    correo = _crear_correo(msg, usuario_id, modelo)
+    correo = _crear_correo(msg, usuario_id, modelo, _reglas_de(db, usuario_id))
     con_etiqueta = bool(label_id) and label_id in (msg.get("labelIds") or [])
     # Un correo sin monto no es un movimiento (publicidad, "tu pedido fue entregado",
     # "llegó tu extracto"): no se ofrece para revisar ni para conciliar, aunque lo
@@ -637,7 +669,8 @@ def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, exist
     # AMPLÍA lo que Gmail devuelve; no cambia quién puede ser candidato.
     # `forzar`: la persona eligió este correo a mano (búsqueda por asunto): basta el monto y que no sea un aviso.
     candidato = tiene_monto and (
-        con_etiqueta or es_notificacion_transaccion(correo.asunto, correo.snippet)
+        con_etiqueta or getattr(correo, "_por_regla", False)  # la persona enseñó a leer esta forma de correo
+        or es_notificacion_transaccion(correo.asunto, correo.snippet)
         or (forzar and not es_aviso_no_transaccion(correo.asunto, correo.snippet))
     )
     if not candidato:
