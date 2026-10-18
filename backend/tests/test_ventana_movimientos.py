@@ -26,7 +26,7 @@ def correo(id_, hace_horas, asunto="Pagaste con tu Cuenta de ahorros Nu", monto=
 
 
 class GmailPorFecha(GmailFalso):
-    """Como Gmail: `after:AAAA/MM/DD` deja los correos de esa fecha en adelante; `-has:attachment` los sin partes."""
+    """Como Gmail: `after:AAAA/MM/DD` deja los correos de esa fecha en adelante; `-filename:pdf` los sin partes."""
 
     def __init__(self, mensajes, falla=False):
         super().__init__(mensajes, {})
@@ -43,8 +43,18 @@ class GmailPorFecha(GmailFalso):
         self.consultas.append(q)
         m = re.search(r"after:(\d{4})/(\d{2})/(\d{2})", q or "")
         corte = datetime(*map(int, m.groups())) if m else datetime.min
-        ids = [i for i, x in self.mensajes.items()
-               if datetime.utcfromtimestamp(int(x["internalDate"]) / 1000) >= corte and not x["payload"]["parts"]]
+        asunto = re.search(r'subject:"([^"]*)"', q or "")
+        solo_pdf = "has:attachment" in (q or "")
+
+        def pasa(x):
+            if datetime.utcfromtimestamp(int(x["internalDate"]) / 1000) < corte:
+                return False
+            if asunto and asunto.group(1).lower() not in x["payload"]["headers"][1]["value"].lower():
+                return False
+            tiene = bool(x["payload"]["parts"])
+            return tiene if solo_pdf else (not tiene if "-filename:pdf" in q else True)
+
+        ids = [i for i, x in self.mensajes.items() if pasa(x)]
         if labelIds:
             ids = [i for i in ids if labelIds[0] in self.mensajes[i]["labelIds"]]
         ini = int(pageToken or 0)
@@ -165,3 +175,86 @@ def test_resumen_de_la_ultima_lectura_con_descartes_y_ceros_seguidos(monkeypatch
     _correr()
     ult = client.get("/correos/carriles").json()["movimientos"]["ultima_lectura"]
     assert ult["leidos"] == 0 and ult["ceros_seguidos"] == 2
+
+
+# ── Búsqueda manual de un MOVIMIENTO por asunto (correo del ICETEX) ──────────────────────────
+
+ICETEX = "Pagaste con tu Cuenta de ahorros Nu"
+CUERPO_ICETEX = "Pagaste en: ICETEX. La cantidad de: $1.000.000,00. Más el impuesto del 4xmil de: $0,00."
+
+
+def _icetex(id_="ix1", hace_horas=24 * 20):
+    m = mensaje(id_, REM, ICETEX, CUERPO_ICETEX)
+    m["internalDate"] = str(int((datetime.utcnow() - timedelta(hours=hace_horas)).timestamp() * 1000))
+    return m
+
+
+def test_buscar_movimiento_por_asunto_sin_exigir_pdf_y_procesar_a_por_revisar(monkeypatch):
+    uid = "u-vent-6"
+    g = GmailPorFecha([_icetex(), correo("otro", 5, asunto="Promoción de verano")])
+    conectar_usuario(uid, g, monkeypatch)
+    r = client.post("/correos/extractos/buscar-asunto", json={"asunto": "Pagaste con tu Cuenta", "modo": "movimiento"})
+    assert r.status_code == 200
+    hallados = r.json()
+    assert [h["gmail_msg_id"] for h in hallados] == ["ix1"] and hallados[0]["archivos"] == [] and not hallados[0]["ya_en_lista"]
+    q = g.consultas[-1]
+    assert 'subject:"Pagaste con tu Cuenta"' in q and "newer_than:365d" in q and "has:attachment" not in q
+    p = client.post("/correos/extractos/buscar-asunto/procesar", json={"ids": ["ix1"], "modo": "movimiento"})
+    assert p.status_code == 200 and p.json()["movimientos_nuevos"] == 1
+    db = SessionLocal()
+    try:
+        c = db.query(CorreoGasto).filter_by(usuario_id=uid, gmail_msg_id="ix1").one()
+        assert c.estado == "pendiente" and c.monto == 1_000_000 and c.tipo_sugerido == "expense"
+        assert "icetex" in (c.comercio or "").lower()
+    finally:
+        db.close()
+    # De nuevo: no duplica.
+    p2 = client.post("/correos/extractos/buscar-asunto/procesar", json={"ids": ["ix1"], "modo": "movimiento"}).json()
+    assert p2["movimientos_nuevos"] == 0 and p2["ya_en_lista"] == 1
+    assert client.post("/correos/extractos/buscar-asunto", json={"asunto": ICETEX, "modo": "movimiento"}).json()[0]["ya_en_lista"]
+
+
+def test_procesar_movimiento_descarta_avisos_y_respeta_el_interruptor(monkeypatch):
+    uid = "u-vent-7"
+    aviso = correo("av1", 5, asunto="Tu extracto está listo")
+    g = GmailPorFecha([aviso])
+    conectar_usuario(uid, g, monkeypatch)
+    p = client.post("/correos/extractos/buscar-asunto/procesar", json={"ids": ["av1"], "modo": "movimiento"}).json()
+    assert p["movimientos_nuevos"] == 0 and p["descartados"] == 1
+    assert client.post("/correos/extractos/buscar-asunto/procesar", json={"ids": ["../x"], "modo": "movimiento"}).status_code == 400
+    db = SessionLocal()
+    try:
+        from app.models import Perfil
+        db.query(Perfil).filter_by(usuario_id=uid).update({Perfil.gmail_leer_movimientos: False})
+        db.commit()
+    finally:
+        db.close()
+    r = client.post("/correos/extractos/buscar-asunto", json={"asunto": "Pagaste", "modo": "movimiento"})
+    assert r.status_code == 400
+
+
+def test_modo_extracto_sigue_pidiendo_pdf(monkeypatch):
+    g = GmailPorFecha([_icetex()])
+    conectar_usuario("u-vent-8", g, monkeypatch)
+    assert client.post("/correos/extractos/buscar-asunto", json={"asunto": "Pagaste con tu"}).json() == []
+    assert "has:attachment" in g.consultas[-1]
+
+
+def test_releer_60_dias_lee_mas_atras_y_solo_una_vez_por_hora(monkeypatch):
+    uid = "u-vent-9"
+    g = GmailPorFecha([_icetex("ix9", 24 * 40)])
+    conectar_usuario(uid, g, monkeypatch)
+    _sync_mov(uid, datetime.utcnow() - timedelta(hours=1))
+    r = client.post("/correos/sincronizar?tipo=movimientos&completa=true&dias=60&releer=true").json()
+    while r["ok"] and not r["completado"]:
+        r = client.post("/correos/sincronizar?tipo=movimientos").json()
+    assert r["ok"] and _ids(uid) == {"ix9"}
+    again = client.post("/correos/sincronizar?tipo=movimientos&completa=true&dias=60&releer=true")
+    assert again.status_code == 429
+    assert client.post("/correos/sincronizar?tipo=movimientos").status_code == 200  # la lectura normal no se frena
+
+
+def test_consulta_de_notificaciones_acepta_correos_con_imagenes_en_linea():
+    from app import extractos_gmail as eg
+    q = eg.construir_query_notificaciones()
+    assert "-filename:pdf" in q and "-has:attachment" not in q

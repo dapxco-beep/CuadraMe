@@ -615,7 +615,7 @@ def _reintentar_claves(gmail, db: Session, usuario_id: str, cuentas: list, clave
 
 
 def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, existentes: set,
-                          resultado: dict | None = None) -> bool:
+                          resultado: dict | None = None, forzar: bool = False) -> bool:
     """Lee un correo y lo guarda. True si quedó como candidato (no ignorado). Si se pasa `resultado`,
     deja en `motivo` por qué se descartó (aviso | sin_monto | no_parece_transaccion)."""
     msg = gmail.users().messages().get(userId="me", id=ref_id, format="full").execute()
@@ -630,7 +630,11 @@ def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, exist
     # Como siempre: con la etiqueta del usuario, o si el asunto/fragmento parece una notificación de transacción
     # (los avisos, publicidad y seguridad ya los descarta es_notificacion_transaccion). La consulta por asunto solo
     # AMPLÍA lo que Gmail devuelve; no cambia quién puede ser candidato.
-    candidato = tiene_monto and (con_etiqueta or es_notificacion_transaccion(correo.asunto, correo.snippet))
+    # `forzar`: la persona eligió este correo a mano (búsqueda por asunto): basta el monto y que no sea un aviso.
+    candidato = tiene_monto and (
+        con_etiqueta or es_notificacion_transaccion(correo.asunto, correo.snippet)
+        or (forzar and not es_aviso_no_transaccion(correo.asunto, correo.snippet))
+    )
     if not candidato:
         correo.estado = "ignorado"
         if resultado is not None:
@@ -924,6 +928,7 @@ def sincronizar(
     completa: bool = False,
     dias: int = Query(DIAS_PRIMERA_SYNC, ge=7, le=365),
     tipo: str = Query("todo", pattern="^(movimientos|extractos|todo)$"),
+    releer: bool = False,
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
@@ -939,6 +944,8 @@ def sincronizar(
     conciliar) o `todo` (por defecto, igual que siempre). Un carril que el usuario apagó en sus
     ajustes NO se lee ni se guarda nada de él; si no queda ninguno, responde sin tocar Gmail."""
     verificar_limite(f"sync-gmail:{usuario.id}", 80, 3600, "Sincronizaste muchas veces seguidas. Intenta en unos minutos.")
+    if releer and completa:  # «Releer los últimos 60 días»: ventana larga, una vez por hora (solo el primer lote)
+        verificar_limite(f"releer-mov:{usuario.id}", 1, 3600, "Ya releíste hace poco. Podrás volver a hacerlo en {espera}.")
     consumir_cupo_diario(db, usuario.id, "sync-gmail")
     perfil = _get_or_create_perfil(db, usuario.id)
     if not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
@@ -1173,10 +1180,12 @@ _ID_GMAIL = re.compile(r"^[A-Za-z0-9_-]{2,64}$")
 
 class BuscarAsuntoIn(BaseModel):
     asunto: str = Field(min_length=1, max_length=200)
+    modo: str = Field("extracto", pattern="^(extracto|movimiento)$")  # movimiento: sin exigir PDF adjunto
 
 
 class ProcesarAsuntoIn(BaseModel):
     ids: list[str] = Field(min_length=1, max_length=MAX_RESULTADOS_ASUNTO)
+    modo: str = Field("extracto", pattern="^(extracto|movimiento)$")
 
 
 class CorreoEncontradoOut(BaseModel):
@@ -1188,11 +1197,18 @@ class CorreoEncontradoOut(BaseModel):
     ya_en_lista: bool = False
 
 
-def _gmail_del_usuario(db: Session, usuario_id: str):
+def _gmail_del_usuario(db: Session, usuario_id: str, modo: str = "extracto"):
     perfil = _get_or_create_perfil(db, usuario_id)
     if not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
         raise HTTPException(status_code=400, detail="Gmail no está conectado")
-    _exigir_extractos_activos(perfil)
+    if modo == "movimiento":
+        if perfil.gmail_leer_movimientos is False:
+            raise HTTPException(
+                status_code=400,
+                detail="Tienes apagada la lectura de «Movimientos». Enciéndela para buscar movimientos en tu correo.",
+            )
+    else:
+        _exigir_extractos_activos(perfil)
     return cliente_gmail(perfil.gmail_refresh_token_enc)
 
 
@@ -1209,19 +1225,25 @@ def buscar_extractos_por_asunto(
     frase = asunto_para_gmail(data.asunto)
     if not frase:
         raise HTTPException(status_code=400, detail="Escribe al menos 3 letras del asunto del correo.")
-    gmail = _gmail_del_usuario(db, usuario.id)
+    movimiento = data.modo == "movimiento"
+    gmail = _gmail_del_usuario(db, usuario.id, data.modo)
     try:
         r = gmail.users().messages().list(
-            userId="me", q=construir_query_asunto(frase, DIAS_BUSQUEDA_ASUNTO), maxResults=MAX_RESULTADOS_ASUNTO,
+            userId="me", q=construir_query_asunto(frase, DIAS_BUSQUEDA_ASUNTO, con_pdf=not movimiento),
+            maxResults=MAX_RESULTADOS_ASUNTO,
         ).execute()
         ids = [m["id"] for m in r.get("messages", [])][:MAX_RESULTADOS_ASUNTO]
-        conocidos = {x[0] for x in db.query(ExtractoCorreo.gmail_msg_id).filter(
-            ExtractoCorreo.usuario_id == usuario.id, ExtractoCorreo.estado != "ignorado").all()}
+        if movimiento:  # ya en la lista = ya leído como correo de gastos y no descartado por el filtro
+            conocidos = {x[0] for x in db.query(CorreoGasto.gmail_msg_id).filter(
+                CorreoGasto.usuario_id == usuario.id, CorreoGasto.estado != "ignorado").all()}
+        else:
+            conocidos = {x[0] for x in db.query(ExtractoCorreo.gmail_msg_id).filter(
+                ExtractoCorreo.usuario_id == usuario.id, ExtractoCorreo.estado != "ignorado").all()}
         salida = []
         for i in ids:
             msg = gmail.users().messages().get(userId="me", id=i, format="full").execute()
             adjuntos = listar_adjuntos_pdf(msg)
-            if not adjuntos:
+            if not adjuntos and not movimiento:
                 continue
             h = encabezados(msg)
             salida.append(CorreoEncontradoOut(
@@ -1236,6 +1258,48 @@ def buscar_extractos_por_asunto(
     except Exception:
         logger.exception("Error buscando por asunto (usuario %s)", usuario.id)
         raise HTTPException(status_code=502, detail="No pudimos consultar tu correo ahora. Intenta de nuevo.")
+
+
+def _procesar_movimientos_por_asunto(db: Session, usuario_id: str, gmail, ids: list[str]) -> dict:
+    """Mete los correos elegidos por la persona por la MISMA tubería de movimientos de la sincronización
+    (monto/comercio/tipo, descarte de avisos, anti-duplicados) y los deja en «Por revisar». Sin monto o
+    siendo un aviso no se ofrecen: se cuentan en `descartados` para decirle por qué."""
+    modelo = ClasificadorUsuario(db, usuario_id)
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).all()
+    cont = {"candidatos": 0, "ya_en_lista": 0, "descartados": 0}
+    try:
+        nuevos_ids = []
+        for i in ids:
+            previas = db.query(CorreoGasto).filter(CorreoGasto.usuario_id == usuario_id, CorreoGasto.gmail_msg_id == i).all()
+            if any(p.estado != "ignorado" for p in previas):
+                cont["ya_en_lista"] += 1  # ya está: no se duplica
+                continue
+            for p in previas:  # lo había descartado el filtro automático: la persona lo pide a propósito
+                db.delete(p)
+            db.flush()
+            if _procesar_transaccion(gmail, db, usuario_id, i, modelo, None, set(), forzar=True):
+                nuevos_ids.append(i)
+                cont["candidatos"] += 1
+            else:
+                cont["descartados"] += 1
+        db.flush()
+        absorber_correos(db, usuario_id, cuentas=cuentas)  # el que ya tiene su movimiento no sale en «Por revisar»
+        por_revisar = 0
+        if nuevos_ids:
+            por_revisar = db.query(CorreoGasto).filter(
+                CorreoGasto.usuario_id == usuario_id, CorreoGasto.gmail_msg_id.in_(nuevos_ids),
+                CorreoGasto.estado == "pendiente").count()
+        db.commit()
+    except RefreshError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Se perdió el acceso a Gmail. Conéctalo de nuevo.")
+    except Exception:
+        db.rollback()
+        logger.exception("Error procesando movimientos por asunto (usuario %s)", usuario_id)
+        raise HTTPException(status_code=502, detail="No pudimos leer ese correo ahora. Intenta de nuevo.")
+    return {"ok": True, "movimientos_nuevos": por_revisar,
+            "ya_registrados": cont["candidatos"] - por_revisar, "ya_en_lista": cont["ya_en_lista"],
+            "descartados": cont["descartados"]}
 
 
 @router.post("/extractos/buscar-asunto/procesar")
@@ -1253,7 +1317,9 @@ def procesar_extractos_por_asunto(
             raise HTTPException(status_code=400, detail="Correo no válido.")
         if i not in ids:
             ids.append(i)
-    gmail = _gmail_del_usuario(db, usuario.id)
+    gmail = _gmail_del_usuario(db, usuario.id, data.modo)
+    if data.modo == "movimiento":
+        return _procesar_movimientos_por_asunto(db, usuario.id, gmail, ids)
     cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
     clave = _clave_pdf(db, usuario.id)
     agregados = 0

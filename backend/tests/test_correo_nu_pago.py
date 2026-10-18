@@ -47,7 +47,7 @@ def test_variantes_nu(cuerpo, comercio, tipo, monto):
 
 def test_consulta_incluye_asunto_y_remitente_conocido():
     q = eg.construir_query_notificaciones()
-    assert "nu.com.co" in q and 'subject:("pagaste con"' in q and q.endswith("-has:attachment")
+    assert "nu.com.co" in q and 'subject:("pagaste con"' in q and q.endswith("-filename:pdf")
     assert eg.banco_por_remitente("Nu <algo@otro-dominio.example>") == "Nu Colombia"
     assert eg.banco_por_remitente("Spam <a@otro.example>") is None
 

@@ -102,7 +102,7 @@ class GmailFalso:
             ids = [i for i, m in self.mensajes.items() if labelIds[0] in m["labelIds"]]
         else:
             self.consultas.append(q)
-            if "-has:attachment" in q:
+            if "-filename:pdf" in q:
                 ids = [i for i, m in self.mensajes.items() if not m["payload"]["parts"] and not m["labelIds"]]
             else:
                 ids = [i for i, m in self.mensajes.items() if m["payload"]["parts"]]
