@@ -373,6 +373,7 @@ ATAQUES = [
     # extractos en error: B no reintenta ni quita el extracto (en error o no) de A
     ("DELETE", "/conciliacion/historial/{historial}/error", None),
     ("POST", "/conciliacion/historial/{historial}/reintentar", None),
+    ("POST", "/conciliacion/historial/{historial}/releer", None),
     ("POST", "/conciliacion/procesar", {"pdf_base64": "AAAA", "cuenta_id": "{cuenta}"}),
     # asistente / importar con cuentas de A
     ("POST", "/asistente/confirmar/movimiento", {"cuenta_id": "{cuenta}", "descripcion": "x", "monto": 5, "tipo": "expense"}),
@@ -489,6 +490,7 @@ SIN_ID_DE_RECURSO = {
     "/correos/{correo_id}/aprobar", "/movimientos/rapido-voz", "/resumen/preferencias",
     "/comentarios",  # POST: crea un comentario propio (no recibe ids)
     "/correos/extractos/buscar-asunto", "/correos/extractos/buscar-asunto/procesar",  # leen el Gmail PROPIO; ids de mensaje de su buzón
+    "/conciliacion/releer-pendientes",  # solo relee historiales del propio usuario (no recibe ids)
     "/conciliacion/cuadre/releer-saldos",  # solo toca los historiales del propio usuario (no recibe ids)
     "/perfil/importar-respaldo", "/perfil/importar-respaldo/vista-previa", "/perfil/importar-respaldo/deshacer",  # crean filas PROPIAS desde un archivo; deshacer solo lote propio
     "/metas/simular",  # solo calcula con los números que envía (más el sobrante propio)

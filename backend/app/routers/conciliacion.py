@@ -24,6 +24,7 @@ from app import titulo as tit
 from app.conciliacion import _CUENTA_UNICA
 from app.wallet import ORIGENES_RAPIDOS
 from app import extractos_error
+from app import releer_extracto
 from app.compartidos import cuenta_accesible, puede_editar_cuenta, reclamar_estado
 from app.conciliacion import (
     es_transferencia_propia,
@@ -935,6 +936,41 @@ def reintentar_extracto_en_error(
     h = _historial_en_error(db, usuario, historial_id)
     verificar_limite(f"reintentar-error:{usuario.id}", 30, 3600, "Reintentaste muchos extractos seguidos. Podrás seguir en {espera}.")
     return extractos_error.reintentar_historial(db, usuario, h)
+
+
+@router.post("/historial/{historial_id}/releer")
+def releer_extracto_guardado(
+    historial_id: str,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«Releer este extracto»: vuelve a traer el adjunto del correo y lo lee con el lector de hoy, sin duplicar
+    ni deshacer lo importado (ver app/releer_extracto.py). Los subidos a mano no se pueden releer (409)."""
+    h = (
+        db.query(HistorialExtracto)
+        .filter(HistorialExtracto.id == historial_id, HistorialExtracto.usuario_id == usuario.id)
+        .first()
+    )
+    if not h:
+        raise HTTPException(status_code=404, detail="Historial no encontrado")
+    if h.estado != "error" and releer_extracto.correo_de(db, h) is None:
+        raise HTTPException(status_code=409, detail=releer_extracto.MSG_MANUAL)
+    verificar_limite(f"releer-extracto:{historial_id}", 1, 60, "Acabas de releer este extracto. Podrás hacerlo otra vez en {espera}.")
+    verificar_limite(f"releer-extracto-usuario:{usuario.id}", 6, 3600, "Releíste muchos extractos seguidos. Podrás seguir en {espera}.")
+    try:
+        return releer_extracto.releer_historial(db, usuario, h)
+    except releer_extracto.ReleerError as e:
+        raise HTTPException(status_code=e.estado, detail=e.mensaje)
+
+
+@router.post("/releer-pendientes")
+def releer_pendientes_al_abrir(
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Al abrir «Traer movimientos»: relee una vez (por versión del lector) los extractos por revisar que
+    vinieron de un correo (máx. 3). Nunca falla; los conciliados no se tocan."""
+    return releer_extracto.releer_pendientes(db, usuario)
 
 
 @router.post("/reintentar-errores")
