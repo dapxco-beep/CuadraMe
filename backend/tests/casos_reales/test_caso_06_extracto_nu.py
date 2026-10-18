@@ -48,14 +48,22 @@ def test_caso6_saldos_de_la_cuenta_no_son_movimientos():
     assert not [m for m in movs if "dinero al inicio" in m["descripcion"].lower()]
 
 
-def test_caso6_resumen_de_la_factura_anterior_es_un_solo_pago_de_lo_abonado():
-    movs, _ = c._parse_nu(TARJETA, "2026")
-    assert not [m for m in movs if m["monto"] == 150000.0]  # no hay «gasto» de A - B
-    pago = next(m for m in movs if m.get("resumen_factura"))
-    assert pago["monto"] == 250000.0 and pago["tipo"] == "income" and pago["fecha"] == "2026-10-05"
-    assert pago["resumen_factura"] == {"factura_anterior": 400000.0, "pagado": 250000.0, "saldo_pendiente": 150000.0}
+def test_caso6_pago_de_tarjeta_es_UN_pago_por_el_monto_A_no_un_gasto_de_A_menos_B():
+    """Caso real: «Pago $A -$B -$C» en el extracto de tarjeta. A es lo que el cliente PAGÓ; B y C son cómo se
+    aplicó (A = B + C). La lectura anterior creaba un «gasto» de A - B y luego un pago por B: los dos estaban mal."""
+    from pathlib import Path
+
+    from app import extractos_tarjeta_nu as nu
+
+    texto = (Path(__file__).resolve().parents[1] / "fixtures" / "extracto_tarjeta_nu_sintetico.txt").read_text(encoding="utf-8")
+    r = nu.leer_extracto_tarjeta_nu(texto)
+    pagos = [m for m in r["movimientos"] if m["linea_tipo"] == nu.PAGO and m["fecha"] == "2026-10-05"]
+    assert len(pagos) == 1
+    pago = pagos[0]
+    assert pago["monto"] == 600000.0 and pago["tipo"] == "income"  # A, el pago real
+    assert pago["pago_detalle"]["aplicado"] == [400000.0, 200000.0]  # B y C: cómo se aplicó
+    assert not [m for m in r["movimientos"] if m["tipo"] == "expense" and m["monto"] in (400000.0, 200000.0)]
     assert pago["pista"] == MARCA_TRASLADO_PROPIO and pago["pago_tarjeta"] is True
-    assert "lectura_dudosa" not in pago
 
 
 def test_caso6_cobro_por_cuota_cuenta_el_monto_una_vez():
