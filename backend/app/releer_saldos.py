@@ -17,6 +17,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from app import cuadre_extracto
+from app import saldo_inicial_auto
 from app.crons import MarcaCron, liberar_marca, reclamar_marca
 from app.extractos_gmail import abrir_pdf, claves_candidatas, descargar_adjunto, listar_adjuntos_pdf
 from app.models import Cuenta, ExtractoCorreo, HistorialExtracto
@@ -99,6 +100,7 @@ def releer(db: Session, usuario_id: str, gmail, clave_pdf: str | None = None, ma
                     if _sin_saldos(h):  # nunca pisar saldos que llegaron mientras tanto (p. ej. a mano)
                         cuadre_extracto.guardar_saldos(h, saldos)
                         db.commit()
+                        saldo_inicial_auto.refrescar_de_usuario(db, h.usuario_id, [h.cuenta_id])
                         res["leidos"] += 1
                 else:
                     res["sin_saldo"] += 1

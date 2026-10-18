@@ -276,7 +276,8 @@ def guardar_saldos_a_mano(
         h.saldo_inicial_extracto = data.saldo_inicial
     h.cuadre_estado = h.cuadre_diferencia = h.cuadre_en = None  # saldo nuevo: la medición anterior ya no vale
     db.commit()
-    return {"ok": True, "historial_id": h.id, "saldos": cx.saldos_de_historial(h)}
+    nuevo = saldo_inicial_auto.refrescar(db, [h.cuenta_id], _inicio_pp(db, usuario))  # el extracto más antiguo pudo cambiar
+    return {"ok": True, "historial_id": h.id, "saldos": cx.saldos_de_historial(h), "saldo_inicial_auto": nuevo[0] if nuevo else None}
 
 
 @router.post("/ajuste")
@@ -372,10 +373,44 @@ def registrar_saldo_inicial_automatico(
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
-    """Registra solo, una vez por cuenta, con cuánto empezó cada cuenta propia cuando su extracto más antiguo lo dice
-    y la cuenta no tiene historia anterior (ver app/saldo_inicial_auto.py). No recibe ids: solo toca cuentas del
-    usuario. Idempotente. Devuelve lo registrado para avisar «Registré con cuánto empezó tu cuenta… [Deshacer]»."""
+    """Registra o RECALCULA con cuánto empezó cada cuenta propia a partir de su extracto más antiguo (ver
+    app/saldo_inicial_auto.py). No recibe ids: solo toca cuentas del usuario. Idempotente: solo devuelve lo que cambió,
+    para avisar «Registré / Actualicé con cuánto empezó tu cuenta… [Deshacer]»."""
     return {"registrados": saldo_inicial_auto.registrar_todas(db, usuario.id, _inicio_pp(db, usuario))}
+
+
+class RecalcularInicialRequest(BaseModel):
+    cuenta_id: str
+
+
+@router.post("/saldo-inicial-auto/recalcular")
+def volver_a_calcular_saldo_inicial(
+    data: RecalcularInicialRequest,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«Volver a calcular el ajuste inicial» de una cuenta: levanta el «desactivado» y lo recalcula ahora."""
+    cuenta = _cuenta(db, usuario, data.cuenta_id, editar=True)
+    if (cuenta.tipo or "") == "credito":
+        raise HTTPException(status_code=409, detail={"codigo": "tarjeta", "mensaje": "Las tarjetas de crédito no llevan saldo inicial automático."})
+    r = saldo_inicial_auto.recalcular(db, cuenta, _inicio_pp(db, usuario), forzar=True)
+    db.commit()
+    if not r.get("texto"):
+        r["texto"] = {"manual": "Registraste tu saldo inicial a mano: ese manda.",
+                      "punto_partida": "Tu primer extracto es anterior a tu punto de partida: no invento ese pasado.",
+                      "sin_extracto": "Aún no hay un extracto con el saldo con el que abrió la cuenta."}.get(
+            r["estado"], "El saldo inicial ya estaba al día.")
+    return r
+
+
+@router.get("/saldo-inicial-auto/{cuenta_id}")
+def estado_saldo_inicial_automatico(
+    cuenta_id: str,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Cómo está el saldo inicial automático de una cuenta (para el detalle de la cuenta). No cambia nada."""
+    return saldo_inicial_auto.estado_de_cuenta(db, _cuenta(db, usuario, cuenta_id), _inicio_pp(db, usuario))
 
 
 @router.post("/deshacer")
@@ -394,6 +429,8 @@ def deshacer(
     if not data.confirmar:
         raise HTTPException(status_code=400, detail="Confirma que quieres deshacerlo.")
     cuenta = bloquear_cuenta(db, cuenta.id)
+    if saldo_inicial_auto.es_automatico(mov):
+        saldo_inicial_auto.desactivar(db, cuenta)  # lo deshizo la persona: no se vuelve a crear solo
     cx.deshacer(db, cuenta, mov)
     db.commit()
     return {"ok": True, "saldo_cuenta": cuenta.saldo, "texto": "Listo: lo deshice. El saldo de tu cuenta quedó como antes."}

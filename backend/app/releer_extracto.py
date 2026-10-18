@@ -30,6 +30,7 @@ from collections import Counter
 from sqlalchemy.orm import Session
 
 from app import cuadre_extracto
+from app import saldo_inicial_auto
 from app import estado_traer
 from app import punto_partida
 from app.extractos_tarjeta_nu import datos_de_lectura, es_extracto_tarjeta_nu, leer_extracto_tarjeta_nu
@@ -306,6 +307,10 @@ def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None, sol
             if saldos and (saldos.get("saldo_final") is not None or saldos.get("saldo_inicial") is not None):
                 cuadre_extracto.guardar_saldos(h, saldos)
         db.commit()
+        try:  # releer puede traer un saldo inicial distinto: el ajuste inicial se recalcula
+            saldo_inicial_auto.refrescar_de_usuario(db, usuario.id, [h.cuenta_id])
+        except Exception:  # noqa: BLE001 - no estorba a la relectura
+            db.rollback()
     except ReleerError:
         db.rollback()
         raise

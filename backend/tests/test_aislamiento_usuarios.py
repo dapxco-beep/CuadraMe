@@ -256,6 +256,8 @@ ATAQUES = [
     ("POST", "/conciliacion/cuadre/ajuste", {"cuenta_id": "{cuenta}", "saldo_final": 1, "fecha_corte": "2026-01-31", "confirmar": True, "confirmar_reforzado": True}),
     ("POST", "/conciliacion/cuadre/saldo-inicial", {"cuenta_id": "{cuenta}", "modo": "sin_explicar", "confirmar": True}),
     ("POST", "/conciliacion/cuadre/deshacer", {"movimiento_id": "{mov}", "confirmar": True}),
+    ("POST", "/conciliacion/cuadre/saldo-inicial-auto/recalcular", {"cuenta_id": "{cuenta}"}),
+    ("GET", "/conciliacion/cuadre/saldo-inicial-auto/{cuenta}", None),
     ("POST", "/cuentas/{cuenta}/invitar", {"email": "x@test.com", "rol": "editor"}),
     ("GET", "/cuentas/{cuenta}/invitaciones", None),
     ("GET", "/cuentas/{cuenta}/compartida-con", None),

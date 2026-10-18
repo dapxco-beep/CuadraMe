@@ -20,7 +20,7 @@ import json
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app import cuadre_extracto, estado_traer
+from app import cuadre_extracto, estado_traer, saldo_inicial_auto
 from app import duplicados as dup
 from app.compartidos import bloquear_cuenta, cuenta_accesible, puede_editar_cuenta
 from app.contabilidad import delta_saldo
@@ -186,8 +186,11 @@ def cambiar(db: Session, usuario_id: str, historial_id: str, cuenta_id: str) -> 
     if not any(i.get("estado") in ("faltante", "dudoso") for i in review):
         cuadre_extracto.registrar_cuadre(db, destino, historial)
     db.commit()
+    # El extracto salió de una cuenta y entró en otra: el más antiguo de AMBAS pudo cambiar → se recalculan las dos.
+    ajustes = saldo_inicial_auto.refrescar_de_usuario(db, usuario_id, [origen.id, destino.id])
     return {"ok": True, "movidos": len(plan["mover"]), "duplicados": len(plan["duplicados"]), "sin_cambios": False,
-            "origen": _lado(origen, antes_o, origen.saldo), "destino": _lado(destino, antes_d, destino.saldo)}
+            "origen": _lado(origen, antes_o, origen.saldo), "destino": _lado(destino, antes_d, destino.saldo),
+            "saldo_inicial_auto": ajustes}
 
 
 def sugerir_cuenta_credito(historial, cuenta, cuentas: list, texto: str) -> dict | None:

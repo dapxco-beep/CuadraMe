@@ -305,6 +305,7 @@ def calcular(db: Session, cuenta: Cuenta, inicio_pp: datetime | None = None, *, 
                       f"{cx.pesos(ultimo['banco_final'])}." if abs(efectos) >= TOL else None)}
     base["impacto"] = _impacto(filas_mes)
     base["resumen"] = resumen_texto(base)
+    base["desde"] = cuadra_desde(base)
     return base
 
 
@@ -409,6 +410,26 @@ def _acciones(filas_mes: list[dict], cuenta: Cuenta) -> None:
                         "confirmacion": ("Un ajuste tapa la diferencia sin decir de dónde viene y puede ocultar un movimiento que falta. "
                                          "Búscalo antes. No cuenta como gasto ni ingreso y puedes deshacerlo.")})
         f["acciones"] = acc
+
+
+def cuadra_desde(r: dict) -> dict | None:
+    """De un vistazo, desde dónde hay que corregir: «Tu cuenta cuadra desde <mes>» o «Primer mes que no cuadra: <mes>
+    por $X». Pura. None si ningún mes tiene extracto con saldo."""
+    meses = [f for f in r.get("meses", []) if f.get("historial_id")]
+    if not meses:
+        return None
+    malos = [i for i, f in enumerate(meses) if f["estado"] in _MALOS]
+    if not malos:
+        return {"estado": "cuadra", "desde": meses[0]["mes"], "primer_mes_malo": None, "diferencia": 0.0,
+                "texto": f"Tu cuenta cuadra desde {_mes_nombre(meses[0]['mes'])}."}
+    primero = meses[malos[0]]
+    dif = primero["diferencia"] if abs(primero["diferencia"]) >= TOL else primero["acumulada"]
+    despues = meses[malos[-1] + 1:]
+    desde = despues[0]["mes"] if despues else None
+    texto = f"Primer mes que no cuadra: {_mes_nombre(primero['mes'])} por {cx.pesos(abs(dif))}."
+    if desde:
+        texto += f" Tu cuenta cuadra desde {_mes_nombre(desde)}."
+    return {"estado": "no_cuadra", "desde": desde, "primer_mes_malo": primero["mes"], "diferencia": round(dif, 2), "texto": texto}
 
 
 def resumen_texto(r: dict) -> str | None:
