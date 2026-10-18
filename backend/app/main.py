@@ -191,6 +191,12 @@ app.include_router(costos_bancarios_router.router)
 from app.routers import cuadre as cuadre_router  # noqa: E402
 
 app.include_router(cuadre_router.router)
+from app.routers import reglas_correo as reglas_correo_router  # noqa: E402
+
+app.include_router(reglas_correo_router.router)
+from app.routers import formas_asunto as formas_asunto_router  # noqa: E402
+
+app.include_router(formas_asunto_router.router)
 
 
 @app.get("/health")

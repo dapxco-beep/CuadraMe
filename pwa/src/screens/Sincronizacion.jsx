@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { useEstadoLista } from '../lib/useEstadoLista'
 import {
-  ArrowLeft, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, FileText, KeyRound, ListChecks, Mail, Plug, X, Pencil,
+  ArrowLeft, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, FileText, GraduationCap, KeyRound, ListChecks, Mail, Plug, X, Pencil,
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
@@ -33,6 +33,7 @@ import ExtractosAMedias from '../components/ExtractosAMedias'
 import CambiarCuentaExtracto from '../components/CambiarCuentaExtracto'
 import { extractosAMedias } from '../lib/retomar'
 import BuscarExtractoPorAsunto from '../components/BuscarExtractoPorAsunto'
+import MisReglasCorreo from '../components/MisReglasCorreo'
 import CuadreEncadenado from '../components/CuadreEncadenado'
 import PuntoDePartida from '../components/PuntoDePartida'
 import { LEYENDA_COBERTURA, textoDetalleCelda } from '../lib/estadoTraer'
@@ -1322,6 +1323,7 @@ export default function Sincronizacion() {
                 <FilaMenu icono={FileText} texto="Subir un archivo (PDF, Excel o CSV)" onClick={() => { setSubir({ n: Date.now() }); setHoja('subir') }} testid="menu-subir" />
                 {conectado && <FilaMenu icono={Mail} texto="Buscar un extracto por su asunto" onClick={() => setHoja('asunto')} testid="menu-asunto" />}
                 {conectado && <FilaMenu icono={Mail} texto="Buscar un movimiento por su asunto" onClick={() => setHoja('asunto-mov')} testid="menu-asunto-mov" />}
+                {conectado && <FilaMenu icono={GraduationCap} texto="Mis reglas de correo" onClick={() => setHoja('reglas')} testid="menu-reglas" />}
                 <FilaMenu icono={Pencil} texto="Agregar uno a mano" onClick={() => navigate('/agregar')} testid="menu-agregar" />
                 <FilaMenu icono={CalendarDays} texto="Fecha desde la que leo tu correo" onClick={() => setHoja('punto')} testid="menu-punto" />
                 <FilaMenu icono={Plug} texto="Estado de todas tus conexiones" onClick={() => { setHoja(null); setVerEstado(true) }} testid="menu-estado" />
@@ -1430,6 +1432,17 @@ export default function Sincronizacion() {
             <>
               <h2 className="text-lg font-bold">Buscar un movimiento</h2>
               <BuscarExtractoPorAsunto modo="movimiento" onAgregado={cargar} />
+            </>
+          )}
+        </Hoja>
+      )}
+
+      {hoja === 'reglas' && (
+        <Hoja onCerrar={cerrarHoja} titulo="Mis reglas de correo">
+          {() => (
+            <>
+              <h2 className="text-lg font-bold">Mis reglas de correo</h2>
+              <MisReglasCorreo />
             </>
           )}
         </Hoja>

@@ -1188,7 +1188,7 @@ export default function Movimientos() {
         </div>
 
         <div className="col">
-          <PorRevisarCorreo correos={porCorreo.correos} onResuelto={correoResuelto} onCuentaCreada={porCorreo.recargar} className="mx-5 mb-4" />
+          <PorRevisarCorreo correos={porCorreo.correos} onResuelto={correoResuelto} onCuentaCreada={porCorreo.recargar} onRecargar={porCorreo.recargar} className="mx-5 mb-4" />
           {soloCorreo ? (
             porCorreo.cargado && porCorreo.correos.length === 0 && (
               <EstadoVacio icono={ListChecks} titulo="Nada por revisar del correo" texto="Cuando llegue una notificación de tu banco, la verás aquí con su fecha." className="mx-5" />

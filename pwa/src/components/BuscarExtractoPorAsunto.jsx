@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Loader2, Search } from 'lucide-react'
+import { GraduationCap, Loader2, Search } from 'lucide-react'
 import { api } from '../lib/api'
 import { mensajeDeError } from '../lib/mensajes'
+import HojaEnsenarCorreo from './HojaEnsenarCorreo'
 
 // Modo «movimiento»: igual pero sin exigir PDF (una notificación del banco); al agregar, queda en «Por revisar».
 // «¿No ves un extracto?»: la persona escribe el asunto (o parte) del correo; se busca en SU Gmail (solo
@@ -23,6 +24,7 @@ export default function BuscarExtractoPorAsunto({ onAgregado, modo = 'extracto' 
   const [elegidos, setElegidos] = useState({})
   const [error, setError] = useState('')
   const [listo, setListo] = useState('')
+  const [ensenando, setEnsenando] = useState(null)
 
   async function buscar(e) {
     e?.preventDefault()
@@ -57,6 +59,24 @@ export default function BuscarExtractoPorAsunto({ onAgregado, modo = 'extracto' 
       setError(mensajeDeError(err))
     } finally {
       setAgregando(false)
+    }
+  }
+
+  // Ya aprendió a leer ese correo: se pasa por la misma tubería para que quede en «Por revisar» con lo que enseñó.
+  async function alEnsenar(h, correo) {
+    if (correo?.estado === 'pendiente') {
+      setListo(textoAgregadoMov({ movimientos_nuevos: 1 }))
+      setHallados((lista) => (lista || []).filter((x) => x.gmail_msg_id !== h.gmail_msg_id))
+      return onAgregado?.()
+    }
+    if (h.ya_en_lista) return onAgregado?.()
+    try {
+      const r = await api.procesarExtractosPorAsunto([h.gmail_msg_id], modo)
+      setListo(textoAgregadoMov(r))
+      setHallados((lista) => (lista || []).filter((x) => x.gmail_msg_id !== h.gmail_msg_id))
+      onAgregado?.()
+    } catch (err) {
+      setError(mensajeDeError(err))
     }
   }
 
@@ -113,6 +133,16 @@ export default function BuscarExtractoPorAsunto({ onAgregado, modo = 'extracto' 
                     {h.ya_en_lista && <span className="block text-xs text-ink-soft">Ya está en tu lista</span>}
                   </span>
                 </label>
+                {mov && (
+                  <button
+                    type="button"
+                    onClick={() => setEnsenando(h)}
+                    className="mt-1 ml-6 min-h-[44px] px-3 rounded-xl border border-line text-xs font-medium text-ink-soft flex items-center gap-1.5"
+                    data-testid={`ensenar-${h.gmail_msg_id}`}
+                  >
+                    <GraduationCap size={16} aria-hidden="true" /> Enseñarle a leer este correo
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -124,6 +154,13 @@ export default function BuscarExtractoPorAsunto({ onAgregado, modo = 'extracto' 
             {agregando ? 'Agregando…' : `Agregar ${nElegidos || ''} ${mov ? 'a Por revisar' : 'a mis extractos'}`.replace('  ', ' ')}
           </button>
         </div>
+      )}
+      {ensenando && (
+        <HojaEnsenarCorreo
+          gmailMsgId={ensenando.gmail_msg_id}
+          onCerrar={() => setEnsenando(null)}
+          onListo={(r) => alEnsenar(ensenando, r?.correo)}
+        />
       )}
     </section>
   )

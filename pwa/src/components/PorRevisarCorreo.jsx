@@ -6,7 +6,7 @@ import CorreosPorRevisar from './CorreosPorRevisar'
  * Gmail, con su fecha, para aprobar, editar o descartar. Al aprobar pasa a la lista normal.
  *   correos: GET /correos/pendientes   ·   onResuelto(correo, aprobado)
  */
-export default function PorRevisarCorreo({ correos, onResuelto, onCuentaCreada, className = '' }) {
+export default function PorRevisarCorreo({ correos, onResuelto, onCuentaCreada, onRecargar, className = '' }) {
   if (!correos?.length) return null
   return (
     <section aria-label="Por revisar del correo" className={`rounded-3xl bg-accent-soft/40 border border-accent/30 p-4 ${className}`} data-testid="por-revisar-correo">
@@ -17,7 +17,7 @@ export default function PorRevisarCorreo({ correos, onResuelto, onCuentaCreada, 
       <p className="text-xs text-ink-soft mt-0.5 mb-3">
         Los leí de las notificaciones de tu banco. Revisa la fecha y apruébalos: así pasan a tu lista.
       </p>
-      <CorreosPorRevisar correos={correos} onResuelto={onResuelto} onCuentaCreada={onCuentaCreada} />
+      <CorreosPorRevisar correos={correos} onResuelto={onResuelto} onCuentaCreada={onCuentaCreada} onRecargar={onRecargar} />
     </section>
   )
 }

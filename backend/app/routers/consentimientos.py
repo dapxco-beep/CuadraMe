@@ -11,6 +11,8 @@ Finalidades:
 - lectura_correo (opcional): leer Gmail en solo lectura. Sin ella no se puede conectar.
 - ia (opcional): procesar texto/fotos con proveedores de IA (asistente, foto de factura).
 - notificaciones (opcional): avisos push y por correo.
+- estadisticas_anonimas (opcional, apagada por defecto): contar, sin datos personales ni usuario, qué formas de asunto
+  de correo no se leen bien (solo palabras de un vocabulario fijo), para mejorar el lector para todos.
 """
 from datetime import datetime
 
@@ -35,6 +37,7 @@ FINALIDADES = {
     "lectura_correo": {"obligatoria": False, "titulo": "Leer mi correo (Gmail, solo lectura)"},
     "ia": {"obligatoria": False, "titulo": "Procesar mis datos con inteligencia artificial"},
     "notificaciones": {"obligatoria": False, "titulo": "Recibir notificaciones"},
+    "estadisticas_anonimas": {"obligatoria": False, "titulo": "Compartir estadísticas anónimas de lectura"},
 }
 
 MENSAJES_REQUERIDO = {

@@ -29,7 +29,7 @@ import app.routers as paquete_routers  # noqa: E402
 from app.auth import UsuarioActual, get_current_user  # noqa: E402
 from app.database import Base, SessionLocal  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import CorreoGasto, ExtractoCorreo, HistorialExtracto, PushSubscription  # noqa: E402
+from app.models import CorreoGasto, ExtractoCorreo, HistorialExtracto, PushSubscription, ReglaCorreo  # noqa: E402
 
 client = TestClient(app)
 A = UsuarioActual(id="aisl-a", email="a-aisl@test.com", nombre="Dueña A")
@@ -154,9 +154,11 @@ def _sembrar():
                                                        "fecha": "2026-01-01", "monto": 1, "tipo": "expense",
                                                        "fingerprint": "zz"}]))
         p = PushSubscription(usuario_id=A.id, endpoint=f"https://push.example/{MARCA}", p256dh="k", auth="a")
-        db.add_all([c, ex, h, p])
+        rg = ReglaCorreo(usuario_id=A.id, remitente_dominio="banco.com", esqueleto_asunto=f"{MARCA.lower()} compra",
+                         etiqueta_monto="la cantidad de:", tipo="expense")
+        db.add_all([c, ex, h, p, rg])
         db.commit()
-        I.update(correo=c.id, extracto=ex.id, historial=h.id)
+        I.update(correo=c.id, extracto=ex.id, historial=h.id, regla_correo=rg.id)
     finally:
         db.close()
 
@@ -346,6 +348,11 @@ ATAQUES = [
     ("PATCH", "/correos/{correo}", {"monto": 1}),
     ("POST", "/correos/{correo}/aprobar", {"cuenta_id": "{cuenta}", "monto": 5}),
     ("POST", "/correos/{correo}/descartar", None),
+    # «Enséñale a leer este correo»: reglas personales de lectura de A
+    ("DELETE", "/reglas-correo/{regla_correo}", None),
+    ("POST", "/reglas-correo/{regla_correo}/aplicar-anteriores", None),
+    ("POST", "/reglas-correo/vista", {"correo_id": "{correo}"}),
+    ("POST", "/reglas-correo", {"correo_id": "{correo}", "monto_texto": "1", "tipo": "expense"}),
     ("POST", "/correos/{correo}/recuperar", None),  # recuperar un correo descartado ajeno
     ("POST", "/correos/{correo}/no-es-duplicado", None),  # «Mostrar de todos modos» de un correo ajeno
     # buscar y unir duplicados: B no puede unir, ni marcar «no es duplicado», movimientos de A
@@ -508,6 +515,7 @@ SIN_SESION = {
     "/inversiones/cron/resumen-semanal", "/push/vapid-public-key", "/push/cron/revisar-presupuestos",
     "/push/cron/aportes-automaticos", "/push/cron/premiar-presupuestos-mes", "/push/cron/resumen-semanal",
     "/push/cron/recordar-registro", "/push/cron/recordar-recurrentes", "/resumen/cron/semanal",
+    "/formas-asunto/cron/mas-frecuentes",  # lista interna anónima: exige X-Cron-Secret
 }
 
 

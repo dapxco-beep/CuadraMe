@@ -73,6 +73,8 @@ Textos de los pasos (fijos): «Conecta tu Gmail», «¿Desde cuándo leo tu corr
 - Hojas de un paso: clave del PDF, poner categorías, revisar un extracto o archivo.
 - Automático al abrir (sin botón): leer el correo (si no se leyó hace menos de 15 min), probar la clave guardada y releer saldos. En escritorio, la columna derecha lo dice en «Lo que hago solo».
 
+**Enseñarle a leer un correo** (cuando el lector no entiende un correo del banco, la billetera o un comercio): botón «Enseñarle a leer este correo» en un correo de «Por revisar» sin monto o «Gasto sin detalle», y en cada resultado de «Buscar un movimiento por su asunto». La hoja «Enseñar a leer» son tres toques, uno por paso: «¿Cuál es el monto?» (toca el número), «¿A quién o dónde fue?» (toca la primera y la última palabra del nombre) y «¿Fue un gasto o un ingreso?». Siempre se dice que es privado: «Guardo solo dónde está cada dato en este tipo de correo, no el correo. Es solo para ti.» Si hay correos parecidos que se habían dejado de lado se pregunta antes: «Encontré 3 correos parecidos que había dejado de lado. ¿Los paso a «Por revisar» con lo que me enseñaste?» → «Pasar a Por revisar» / «Ahora no». Cierre: «Listo. Cuando llegue un correo así, lo leo solo.» En «Conexiones y claves» la lista se llama «Mis reglas de correo» (borrar pide confirmar: «Sí, borrar» / «Conservar»). No se dice «regla» en los pasos ni «entrenar»: es enseñar. Nada de lo que se aprende sale de la cuenta de la persona.
+
 Lo que sigue describe los nombres de las secciones antes del asistente; hoy esos contenidos viven en «Ver todo» y «Conexiones y claves».
 
 ### El correo tiene DOS usos y la pantalla «Traer movimientos» tiene TRES secciones (nombres fijos)

@@ -617,6 +617,12 @@ export const api = {
   // modo 'movimiento': sin exigir PDF adjunto (una notificación del banco); por defecto 'extracto'.
   buscarExtractosPorAsunto: (asunto, modo = 'extracto') => request('/correos/extractos/buscar-asunto', { method: 'POST', body: { asunto, modo } }),
   procesarExtractosPorAsunto: (ids, modo = 'extracto') => request('/correos/extractos/buscar-asunto/procesar', { method: 'POST', body: { ids, modo } }),
+  // «Enséñale a leer este correo»: reglas PERSONALES de lectura. `vista` baja el texto del correo (solo para esta persona).
+  reglasCorreo: () => request('/reglas-correo', { sinCache: true }),
+  vistaReglaCorreo: (datos) => request('/reglas-correo/vista', { method: 'POST', body: datos }),
+  crearReglaCorreo: (datos) => request('/reglas-correo', { method: 'POST', body: datos }),
+  aplicarReglaCorreoAnteriores: (id) => request(`/reglas-correo/${id}/aplicar-anteriores`, { method: 'POST' }),
+  borrarReglaCorreo: (id) => request(`/reglas-correo/${id}`, { method: 'DELETE' }),
   descartarExtractoCorreo: (id) => request(`/correos/extractos/${id}/descartar`, { method: 'POST' }),
   // «Intentar de nuevo»: vuelve a bajar y abrir el PDF (no importa movimientos).
   reintentarExtractoCorreo: (id) => request(`/correos/extractos/${id}/reintentar`, { method: 'POST' }),
