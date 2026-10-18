@@ -1,12 +1,13 @@
 import { FileClock } from 'lucide-react'
 import { textoFaltan, tituloAMedias } from '../lib/retomar'
+import BotonReleer from './BotonReleer'
 
 /**
  * «Tienes N extractos a medio conciliar»: cada extracto que quedó con movimientos por importar,
  * con su cuenta, su mes y un botón «Seguir» que abre EXACTAMENTE esa revisión.
  * `compacto` = el aviso discreto de Inicio (una línea con un solo botón).
  */
-export default function ExtractosAMedias({ lista = [], onSeguir, onCambiarCuenta, compacto = false, className = '' }) {
+export default function ExtractosAMedias({ lista = [], onSeguir, onCambiarCuenta, onReleer, releyendo, resultadosReleer, compacto = false, className = '' }) {
   if (!lista.length) return null
   if (compacto) {
     return (
@@ -43,6 +44,11 @@ export default function ExtractosAMedias({ lista = [], onSeguir, onCambiarCuenta
             >
               Seguir
             </button>
+            {onReleer && (
+              <div className="basis-full">
+                <BotonReleer onReleer={() => onReleer(x)} ocupado={Boolean(releyendo?.has(x.historialId))} resultado={resultadosReleer?.[x.historialId]} nombre={x.titulo || x.cuenta} />
+              </div>
+            )}
             {x.sugerencia && onCambiarCuenta && (
               <div className="basis-full rounded-xl bg-paper px-3 py-2" data-testid="sugerencia-cuenta">
                 <p className="text-xs leading-snug">Parece de tu tarjeta de crédito. ¿Pasarlo a {x.sugerencia.nombre}?</p>

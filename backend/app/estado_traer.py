@@ -499,7 +499,8 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
 def _acciones(vista: str, c: dict) -> list[str]:
     """Qué botones lleva la fila (la pantalla los pinta; aquí se decide y se prueba)."""
     if vista in (ev.SIN_PROCESAR, ev.POR_REVISAR):
-        return ["revisar"]
+        # «Releer»: solo si ya hay una lectura guardada que viene de un correo (los subidos a mano no se pueden releer).
+        return ["revisar"] + (["releer"] if vista == ev.POR_REVISAR and c["extracto_id"] and c["historial_id"] else [])
     if vista == ev.NECESITA_CLAVE:
         return ["poner_clave", "probar_clave"]
     if vista == ev.NO_SE_PUDO_LEER:
@@ -514,7 +515,8 @@ def _acciones(vista: str, c: dict) -> list[str]:
             return poner + (["reintentar"] if c.get("reintentable") else ["subir_de_nuevo"]) + ["quitar_de_la_lista"] + banco
         return poner + ["subir_de_nuevo"] + banco
     if vista == ev.REVISADO:
-        return ["ver"] + (["revisar_de_nuevo"] if c["extracto_id"] and c["cuenta_id"] else [])
+        return (["ver"] + (["revisar_de_nuevo"] if c["extracto_id"] and c["cuenta_id"] else [])
+                + (["releer"] if c["extracto_id"] and c["historial_id"] else []))
     return []
 
 
