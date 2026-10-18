@@ -100,3 +100,32 @@ export function gruposDeTareas(tareas) {
   }
   return grupos
 }
+
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+const fechaCorta = (iso) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '')
+  return m ? `${Number(m[3])} ${MESES_CORTOS[Number(m[2]) - 1]}` : ''
+}
+
+export const SIN_CORREOS_NUEVOS = 'No vimos correos nuevos de tus bancos. Revisa que sigan llegando a este Gmail o busca uno por asunto.'
+
+/**
+ * Resumen de la última lectura de movimientos (carriles.movimientos.ultima_lectura de la API):
+ * «12 correos desde el 15 oct → 2 nuevos, 9 ya registrados, 1 aviso descartado». Solo cifras: la API no
+ * manda contenido de correos. Si leyó 0 dos veces seguidas avisa claro. null si aún no hay lectura.
+ */
+export function textoUltimaLectura(u) {
+  if (!u || typeof u.leidos !== 'number') return null
+  if (u.leidos === 0) {
+    return (u.ceros_seguidos || 0) >= 2
+      ? SIN_CORREOS_NUEVOS
+      : `Última lectura de movimientos: Gmail no devolvió correos${u.desde ? ` desde el ${fechaCorta(u.desde)}` : ''}.`
+  }
+  const partes = []
+  if (u.nuevos) partes.push(plural(u.nuevos, 'nuevo', 'nuevos'))
+  if (u.ya_registrados) partes.push(`${u.ya_registrados} ya registrado${u.ya_registrados === 1 ? '' : 's'}`)
+  if (u.ignorados) partes.push(plural(u.ignorados, 'ignorado', 'ignorados') + (u.motivo_frecuente && !u.avisos_descartados ? ` (${u.motivo_frecuente})` : ''))
+  if (u.avisos_descartados) partes.push(plural(u.avisos_descartados, 'aviso descartado', 'avisos descartados'))
+  const desde = u.desde ? ` desde el ${fechaCorta(u.desde)}` : ''
+  return `Última lectura de movimientos: ${plural(u.leidos, 'correo', 'correos')}${desde} → ${partes.join(', ') || 'nada nuevo'}`
+}

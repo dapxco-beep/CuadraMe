@@ -159,7 +159,7 @@ def construir_query_notificaciones(dias: int = 14, desde: datetime | None = None
     # Además de los remitentes conocidos, el ASUNTO de las notificaciones que los bancos digitales mandan desde
     # dominios que cambian («Pagaste con tu Cuenta de ahorros Nu»): así no depende de acertar el dominio.
     asuntos = " OR ".join(f'"{f}"' for f in FRASES_ASUNTO_TRANSACCION)
-    return f"(from:({_grupo_remitentes(pais)}) OR subject:({asuntos})) {_ventana(dias, desde)} -has:attachment"
+    return f"(from:({_grupo_remitentes(pais)}) OR subject:({asuntos})) {_ventana(dias, desde)} -filename:pdf"
 
 
 # ── Remitente / clasificación de correos ────────────────────────────
@@ -460,8 +460,10 @@ def asunto_para_gmail(texto: str, maximo: int = 80) -> str | None:
     return t if len(t) >= 3 else None
 
 
-def construir_query_asunto(asunto: str, dias: int = 365) -> str:
-    return f'has:attachment filename:pdf newer_than:{dias}d subject:"{asunto}"'
+def construir_query_asunto(asunto: str, dias: int = 365, con_pdf: bool = True) -> str:
+    """`con_pdf=False` (búsqueda de un MOVIMIENTO): sin exigir adjunto. El asunto va siempre entre comillas."""
+    adjunto = "has:attachment filename:pdf " if con_pdf else ""
+    return f'{adjunto}newer_than:{dias}d subject:"{asunto}"'
 
 
 def sugerir_cuenta(banco: str, ultimos4: str, cuentas: list, texto: str = "") -> str | None:

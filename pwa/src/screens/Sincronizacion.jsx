@@ -10,7 +10,7 @@ import { useBloqueo } from '../lib/BloqueoContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useCuentas } from '../lib/CuentasContext'
 import { haceCuanto, marcarSincronizado, resumenSync, sincronizarCarriles, sincronizarTodo, tocaSincronizar } from '../lib/sincronizarGmail'
-import { NOMBRE_CARRIL, resumenLectura } from '../lib/carriles'
+import { NOMBRE_CARRIL, resumenLectura, textoUltimaLectura } from '../lib/carriles'
 import {
   BANCO_SIN_IDENTIFICAR, agruparPorBanco, conciliarExtracto, estadoCelda, ESTADOS_CELDA, nombreMes,
   moverMes, nombresDesambiguados, separarExtractos, textoEstadoExtracto,
@@ -107,6 +107,7 @@ export default function Sincronizacion() {
   const [progreso, setProgreso] = useState(null)
   const [resumen, setResumen] = useState('')
   const [errorSync, setErrorSync] = useState('')
+  const [errorReleer, setErrorReleer] = useState('')
   // Cada uso del correo tiene su propia lectura, resultado y error (si falla uno, el otro sigue).
   const [leyendo, setLeyendo] = useState({})
   const [resultadosCarril, setResultadosCarril] = useState({})
@@ -376,6 +377,26 @@ export default function Sincronizacion() {
       if (montado.current) setErroresCarril((e) => ({ ...e, [tipo]: err.message || 'No pudimos leerlo. Intenta de nuevo.' }))
     } finally {
       if (montado.current) setLeyendo((l) => ({ ...l, [tipo]: undefined }))
+    }
+  }
+
+  // «Releer los últimos 60 días»: lectura de movimientos con ventana larga (el servidor la limita a una por hora).
+  async function releerMovimientos() {
+    if (progreso || leyendo.movimientos) return
+    setErrorReleer('')
+    setLeyendo((l) => ({ ...l, movimientos: { leidos: 0, total_estimado: 0 } }))
+    try {
+      const r = await sincronizarTodo({ completa: true, tipo: 'movimientos', dias: 60, releer: true })
+      if (!montado.current) return
+      if (!r?.ok) setErrorReleer(mensajeAmable(r?.error, { porDefecto: 'No pudimos releer. Intenta de nuevo.' }))
+      else {
+        setResultadosCarril((x) => ({ ...x, movimientos: resumenLectura('movimientos', r) }))
+        await cargar()
+      }
+    } catch (err) {
+      if (montado.current) setErrorReleer(err.message || 'No pudimos releer. Intenta de nuevo.')
+    } finally {
+      if (montado.current) setLeyendo((l) => ({ ...l, movimientos: undefined }))
     }
   }
 
@@ -1147,6 +1168,9 @@ export default function Sincronizacion() {
                     <li data-testid="conexion-ultima">
                       {ultima ? `Última vez que leí tu correo: ${ultima}` : 'Aún no he leído tu correo'}
                     </li>
+                    {textoUltimaLectura(estado?.carriles?.movimientos?.ultima_lectura) && (
+                      <li data-testid="conexion-ultima-lectura">{textoUltimaLectura(estado.carriles.movimientos.ultima_lectura)}</li>
+                    )}
                     {Object.keys(erroresCarril).filter((k) => erroresCarril[k]).map((k) => (
                       <li key={k} className="text-danger">{NOMBRE_CARRIL[k]}: {erroresCarril[k]}</li>
                     ))}
@@ -1157,6 +1181,18 @@ export default function Sincronizacion() {
                       </li>
                     )}
                   </ul>
+                  {activos.movimientos !== false && (
+                    <button
+                      type="button"
+                      onClick={releerMovimientos}
+                      disabled={Boolean(progreso || leyendo.movimientos || leyendo.extractos)}
+                      className="mt-3 w-full flex items-center justify-center gap-2 bg-paper shadow-sm font-semibold rounded-xl min-h-[44px] text-sm disabled:opacity-60"
+                      data-testid="releer-60"
+                    >
+                      {leyendo.movimientos ? 'Releyendo…' : 'Releer los últimos 60 días'}
+                    </button>
+                  )}
+                  {errorReleer && <p className="text-xs text-danger mt-2" role="alert">{errorReleer}</p>}
                   <div className="mt-5" id="sinc-clave">{claveEl}</div>
                 </>
               )}
@@ -1165,6 +1201,7 @@ export default function Sincronizacion() {
               <ul className="mt-2 flex flex-col">
                 <FilaMenu icono={FileText} texto="Subir un archivo (PDF, Excel o CSV)" onClick={() => { setSubir({ n: Date.now() }); setHoja('subir') }} testid="menu-subir" />
                 {conectado && <FilaMenu icono={Mail} texto="Buscar un extracto por su asunto" onClick={() => setHoja('asunto')} testid="menu-asunto" />}
+                {conectado && <FilaMenu icono={Mail} texto="Buscar un movimiento por su asunto" onClick={() => setHoja('asunto-mov')} testid="menu-asunto-mov" />}
                 <FilaMenu icono={Pencil} texto="Agregar uno a mano" onClick={() => navigate('/agregar')} testid="menu-agregar" />
                 <FilaMenu icono={CalendarDays} texto="Fecha desde la que leo tu correo" onClick={() => setHoja('punto')} testid="menu-punto" />
                 <FilaMenu icono={Plug} texto="Estado de todas tus conexiones" onClick={() => { setHoja(null); setVerEstado(true) }} testid="menu-estado" />
@@ -1262,6 +1299,17 @@ export default function Sincronizacion() {
             <>
               <h2 className="text-lg font-bold">Buscar por asunto</h2>
               <BuscarExtractoPorAsunto onAgregado={cargar} />
+            </>
+          )}
+        </Hoja>
+      )}
+
+      {hoja === 'asunto-mov' && (
+        <Hoja onCerrar={cerrarHoja} titulo="Buscar un movimiento por su asunto">
+          {() => (
+            <>
+              <h2 className="text-lg font-bold">Buscar un movimiento</h2>
+              <BuscarExtractoPorAsunto modo="movimiento" onAgregado={cargar} />
             </>
           )}
         </Hoja>

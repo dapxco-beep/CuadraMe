@@ -141,6 +141,15 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'CREATE INDEX IF NOT EXISTS ix_tasas_manuales_usuario ON tasas_manuales (usuario_id)',
         ],
     ),
+    (
+        # Resumen de la última lectura de movimientos del correo (visible en «Conexiones y claves»).
+        "0006_resumen_lectura_mov",
+        [
+            'ALTER TABLE sync_gmail ADD COLUMN IF NOT EXISTS resumen_mov_curso VARCHAR NULL',
+            'ALTER TABLE sync_gmail ADD COLUMN IF NOT EXISTS ultimo_resumen_mov VARCHAR NULL',
+            'ALTER TABLE sync_gmail ADD COLUMN IF NOT EXISTS ceros_seguidos_mov INTEGER DEFAULT 0',
+        ],
+    ),
 ]
 
 

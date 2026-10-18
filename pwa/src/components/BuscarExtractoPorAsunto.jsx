@@ -3,10 +3,19 @@ import { Loader2, Search } from 'lucide-react'
 import { api } from '../lib/api'
 import { mensajeDeError } from '../lib/mensajes'
 
+// Modo «movimiento»: igual pero sin exigir PDF (una notificación del banco); al agregar, queda en «Por revisar».
 // «¿No ves un extracto?»: la persona escribe el asunto (o parte) del correo; se busca en SU Gmail (solo
 // lectura, 365 días, solo con PDF adjunto) y elige cuáles pasar a la lista de extractos. No guarda nada
 // hasta que pulsa «Agregar».
-export default function BuscarExtractoPorAsunto({ onAgregado }) {
+export function textoAgregadoMov(r) {
+  const n = r?.movimientos_nuevos || 0
+  if (n) return `Listo: ${n} movimiento${n === 1 ? '' : 's'} en «Por revisar».`
+  if (r?.descartados) return 'Ese correo no parece un movimiento (sin monto o es un aviso), no lo agregué.'
+  return 'Ese correo ya estaba registrado.'
+}
+
+export default function BuscarExtractoPorAsunto({ onAgregado, modo = 'extracto' }) {
+  const mov = modo === 'movimiento'
   const [asunto, setAsunto] = useState('')
   const [buscando, setBuscando] = useState(false)
   const [agregando, setAgregando] = useState(false)
@@ -22,7 +31,7 @@ export default function BuscarExtractoPorAsunto({ onAgregado }) {
     setError('')
     setListo('')
     try {
-      const r = await api.buscarExtractosPorAsunto(asunto.trim())
+      const r = await api.buscarExtractosPorAsunto(asunto.trim(), modo)
       const lista = Array.isArray(r) ? r : []
       setHallados(lista)
       setElegidos(Object.fromEntries(lista.filter((x) => !x.ya_en_lista).map((x) => [x.gmail_msg_id, true])))
@@ -40,8 +49,8 @@ export default function BuscarExtractoPorAsunto({ onAgregado }) {
     setAgregando(true)
     setError('')
     try {
-      const r = await api.procesarExtractosPorAsunto(ids)
-      setListo(r?.extractos_nuevos ? `Listo: ${r.extractos_nuevos} extracto${r.extractos_nuevos === 1 ? '' : 's'} agregado${r.extractos_nuevos === 1 ? '' : 's'} a tu lista.` : 'Esos correos ya estaban en tu lista.')
+      const r = await api.procesarExtractosPorAsunto(ids, modo)
+      setListo(mov ? textoAgregadoMov(r) : r?.extractos_nuevos ? `Listo: ${r.extractos_nuevos} extracto${r.extractos_nuevos === 1 ? '' : 's'} agregado${r.extractos_nuevos === 1 ? '' : 's'} a tu lista.` : 'Esos correos ya estaban en tu lista.')
       setHallados(null)
       onAgregado?.()
     } catch (err) {
@@ -55,9 +64,9 @@ export default function BuscarExtractoPorAsunto({ onAgregado }) {
   const nElegidos = Object.values(elegidos).filter(Boolean).length
 
   return (
-    <section className="mt-4 rounded-2xl border border-line p-3.5" aria-label="Buscar un extracto por asunto" data-testid="buscar-asunto">
+    <section className="mt-4 rounded-2xl border border-line p-3.5" aria-label={mov ? 'Buscar un movimiento por asunto' : 'Buscar un extracto por asunto'} data-testid="buscar-asunto">
       <form onSubmit={buscar}>
-        <label htmlFor="buscar-asunto-input" className="text-sm font-semibold">¿No ves un extracto?</label>
+        <label htmlFor="buscar-asunto-input" className="text-sm font-semibold">{mov ? '¿Falta un movimiento?' : '¿No ves un extracto?'}</label>
         <p className="text-xs text-ink-soft mt-0.5">Escribe el asunto del correo (o parte de él) y lo busco en tu Gmail.</p>
         <div className="flex gap-2 mt-2">
           <input
@@ -65,7 +74,7 @@ export default function BuscarExtractoPorAsunto({ onAgregado }) {
             value={asunto}
             onChange={(e) => setAsunto(e.target.value)}
             maxLength={80}
-            placeholder="Ej.: Llegó el extracto de tu tarjeta de crédito"
+            placeholder={mov ? 'Ej.: Pagaste con tu Cuenta de ahorros' : 'Ej.: Llegó el extracto de tu tarjeta de crédito'}
             className="flex-1 min-w-0 bg-paper rounded-xl px-3 min-h-[44px] text-sm"
           />
           <button
@@ -83,7 +92,7 @@ export default function BuscarExtractoPorAsunto({ onAgregado }) {
       {listo && <p className="text-xs text-cuadra mt-2" role="status">{listo}</p>}
 
       {hallados && hallados.length === 0 && (
-        <p className="text-xs text-ink-soft mt-2">No encontré correos con PDF adjunto y ese asunto en el último año.</p>
+        <p className="text-xs text-ink-soft mt-2">{mov ? 'No encontré correos con ese asunto en el último año.' : 'No encontré correos con PDF adjunto y ese asunto en el último año.'}</p>
       )}
       {hallados && hallados.length > 0 && (
         <div className="mt-3">
@@ -112,7 +121,7 @@ export default function BuscarExtractoPorAsunto({ onAgregado }) {
             disabled={!nElegidos || agregando}
             className="mt-2 w-full bg-accent text-paper-raised font-semibold rounded-xl min-h-[44px] text-sm disabled:opacity-50"
           >
-            {agregando ? 'Agregando…' : `Agregar ${nElegidos || ''} a mis extractos`.replace('  ', ' ')}
+            {agregando ? 'Agregando…' : `Agregar ${nElegidos || ''} ${mov ? 'a Por revisar' : 'a mis extractos'}`.replace('  ', ' ')}
           </button>
         </div>
       )}
