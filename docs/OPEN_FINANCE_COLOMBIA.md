@@ -109,3 +109,72 @@ Riesgos transversales: cambio de reglas, costo mínimo del agregador, responsabi
 - Agregadores en Colombia (Open Banking Tracker): https://openbankingtracker.com/country/co/aggregators
 - Google, verificación de alcances restringidos: https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification
 - GMass, costo de la evaluación de seguridad (tercero): https://www.gmass.co/blog/google-oauth-verification-security-assessment/
+
+## 8. Actualización del 18-oct-2026: qué dice Nequi y qué cambió
+
+Es investigación, no asesoría legal. Lo no verificado está marcado "no confirmado".
+
+- **Portal de APIs de Nequi:** es para **comercios** (cobros por QR, notificaciones push, suscripciones, consulta de pagos). No ofrece el historial de movimientos de una persona a una app de finanzas. Para usarlo hay que registrarse como comercio o aliado. Fuente: nequi.com.co/negocios/apis.
+- **Acuerdo Nequi–Belvo (Open Finance):** existió un anuncio de un acuerdo bilateral (≈2 años atrás, bajo la Circular 004 de 2024). Pero un agregador de terceros (Fintable) lista la conexión de Nequi en Belvo como **inactiva o sin soporte**. **No confirmado** que hoy funcione. Esto matiza la fila de Belvo de la sección 5: antes de contar con Nequi vía Belvo hay que pedir confirmación escrita.
+- **Comunidad Nequi:** un usuario dice que Nequi no dará su API a terceros. Es anecdótico, pero coincide con que no hay acceso público.
+- **Decreto 0368 de 2026 y cronograma:** sin cambios respecto a las secciones 2 y 3. La Circular 001 de 2026 amplía a 30 meses los plazos de los estándares (hasta ~ago-2028) y hay un proyecto de decreto que sumaría 6 meses; **no confirmado** si ya se expidió. Las guías privadas difieren en fechas: usar siempre la norma y las circulares oficiales.
+- **Conclusión:** la recomendación de la sección 1 se mantiene. Seguir con correo y extractos (que ya funcionan y no tocan claves bancarias), y **preguntar por escrito** a Belvo, Finerio y Nequi Negocios antes de invertir. Dejar la app lista para sumar una fuente más: el origen de cada movimiento (correo, extracto, manual, y mañana API) ya es intercambiable y el anti-duplicados ya los empareja.
+
+### Qué necesitamos tener listo para cualquier integración (checklist)
+1. Política de tratamiento de datos actualizada y registro de bases de datos (Ley 1581) si corresponde.
+2. Pantalla de consentimiento propia: previo, expreso e informado, **por entidad y por finalidad**, revocable, con registro de cada autorización.
+3. Cifrado de tokens, plan de respuesta a incidentes y borrado de datos al revocar (ya existe `derechos_titular.py`).
+4. No guardar nunca usuario y clave del banco (nada de scraping).
+5. Revisión legal (ya pendiente en `docs/salida/CHECKLIST_LANZAMIENTO.md`).
+
+## 9. Borradores de correo (para enviar Daniel; no se envió nada)
+
+Antes de enviar: completar los datos entre corchetes. Pedir siempre respuesta por escrito.
+
+### 9.1 A Belvo (ventas / partnerships)
+**Asunto:** Consulta de cobertura y condiciones para app de finanzas personales en Colombia (CuadraMe)
+
+Hola equipo de Belvo,
+
+Soy [nombre], de [empresa/proyecto] (DAPX). Estamos construyendo CuadraMe, una app web de finanzas personales para Colombia (con planes de expandirnos a México, Chile y Perú). Hoy leemos movimientos desde correos y extractos que el cliente autoriza; queremos evaluar una conexión estructurada con sus bancos.
+
+Nos ayudaría que nos confirmen por escrito:
+1. ¿Siguen activas hoy las conexiones de **Nequi, Bancolombia, Davivienda y Daviplata**? ¿Y Nu, Lulo y BBVA Colombia?
+2. Si hay sandbox y cuánto tarda un piloto con pocas personas.
+3. Modelo de precios (mínimo mensual, costo por usuario o por enlace activo).
+4. Requisitos para una app como la nuestra: ¿registro como receptor de datos no vigilado, certificaciones (ISO 27001 u otras), política de datos, auditorías?
+5. Qué datos de cada cuenta entregan (saldos, movimientos, histórico máximo) y con qué frecuencia de actualización.
+6. Condiciones de consentimiento y revocación que debemos implementar de nuestro lado.
+
+Gracias de antemano. Quedo atento para una llamada corta.
+
+[Nombre] · [teléfono] · [correo]
+
+### 9.2 A Nequi Negocios / alianzas
+**Asunto:** Consulta sobre acceso a datos del cliente (con su autorización) para app de finanzas personales
+
+Hola,
+
+Soy [nombre], de [empresa/proyecto]. Desarrollamos CuadraMe, una app de finanzas personales. Vimos que el portal de APIs de Nequi está orientado a comercios (cobros y suscripciones).
+
+Quisiéramos saber, por escrito:
+1. Si Nequi ofrece, o planea ofrecer, acceso a **movimientos y saldo de un cliente a terceros con su consentimiento** (Open Finance / Decreto 0368 de 2026), y por qué canal (directo, agregador o alianza).
+2. Si el acuerdo con Belvo sigue vigente y qué otros agregadores están habilitados.
+3. Requisitos que exigen a un tercero no vigilado (seguridad, política de datos, registro de bases de datos, pruebas).
+4. A quién contactamos para iniciar el proceso.
+
+Mientras tanto seguiremos leyendo los correos de movimientos y los extractos que el propio cliente autoriza.
+
+[Nombre] · [teléfono] · [correo]
+
+### 9.3 A Finerio Connect
+Mismo texto que 9.1, cambiando el saludo, y preguntando además por su alianza con Bancolombia y la cobertura de Nequi.
+
+## 10. Fuentes de esta actualización
+- Nequi, APIs para negocios: https://www.nequi.com.co/negocios/apis
+- Belvo y Nequi, primer acuerdo de Open Finance: https://belvo.com/es/blog/belvo-nequi-lideran-camino-primer-acuerdo-open-finance/
+- Fintable, estado de la conexión Nequi/Belvo: https://fintable.io/coverage/banks/Colombia/1243227_nequi
+- Comunidad Nequi (foro): https://comunidad.nequi.co/foros/discusion/verificacion-pagos-via-api/
+- Holland & Knight, Decreto 0368: https://www.hklaw.com/en/insights/publications/2026/04/nuevo-decreto-incorpora-el-sistema-de-finanzas-abiertas-en-colombia
+- URF: https://www.urf.gov.co/w/colombia-consolida-el-sistema-de-finanzas-abiertas-obligatorio
+- AFIC, ajuste de plazos (Circular 001 de 2026): https://afic.com.co/sfc-ajusta-el-cronograma-de-finanzas-abiertas-en-colombia-conoce-las-nuevas-fechas-limite/
