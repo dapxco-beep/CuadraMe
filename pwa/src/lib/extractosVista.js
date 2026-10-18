@@ -96,6 +96,7 @@ export const TEXTO_ACCION = {
   reintentar: 'Reintentar',
   quitar_de_la_lista: 'Quitar de la lista',
   mi_banco_no_esta: 'Mi banco no está',
+  cambiar_cuenta: 'Cambiar de cuenta',
 }
 
 // 'AAAA-MM' de «hoy» menos n meses (para el tope del selector de mes).

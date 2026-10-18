@@ -4,6 +4,7 @@ import Icono from './Icono'
 import {
   ESTADOS_VISTA, TEXTO_ACCION, agruparPorMes, estadoVista, filtrar, opcionesCuenta, textoContadores,
 } from '../lib/extractosVista'
+import { textoSugerencia } from '../lib/cambiarCuenta'
 
 const ICONO_ESTADO = {
   revisado: CheckCircle2,
@@ -110,9 +111,23 @@ function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado }) {
         <p className="text-xs text-ink-soft mt-1">No encontramos de qué mes es. Si lo subes de nuevo, lo deducimos de sus movimientos.</p>
       )}
       {((it.mes_por_confirmar && it.puede_fijar_mes) || cambiandoMes) && <SelectorMes it={it} onFijarMes={onFijarMes} ocupado={ocupado} />}
-      {it.acciones?.length > 0 && (
+      {textoSugerencia(it) && (
+        <div className="mt-2 rounded-xl bg-accent-soft px-3 py-2.5" data-testid="sugerencia-cuenta">
+          <p className="text-sm leading-snug">{textoSugerencia(it)}</p>
+          <button
+            type="button"
+            disabled={ocupado}
+            onClick={() => onAccion('cambiar_cuenta', it, it.sugerencia_cuenta.cuenta_id)}
+            aria-label={`Pasar a ${it.sugerencia_cuenta.nombre}: ${it.titulo}`}
+            className="min-h-11 text-xs font-semibold text-accent"
+          >
+            Pasarlo a {it.sugerencia_cuenta.nombre}
+          </button>
+        </div>
+      )}
+      {(it.acciones?.length > 0 || it.puede_cambiar_cuenta) && (
         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-          {it.acciones.map((a, i) => (
+          {(it.acciones || []).map((a, i) => (
             <button
               key={a}
               type="button"
@@ -124,6 +139,17 @@ function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado }) {
               {ocupado && (a === 'revisar_de_nuevo' || a === 'intentar_de_nuevo' || a === 'revisar' || a === 'reintentar') ? 'Un momento...' : TEXTO_ACCION[a]}
             </button>
           ))}
+          {it.puede_cambiar_cuenta && (
+            <button
+              type="button"
+              disabled={ocupado}
+              onClick={() => onAccion('cambiar_cuenta', it)}
+              aria-label={`${TEXTO_ACCION.cambiar_cuenta}: ${it.titulo}`}
+              className="min-h-11 text-xs font-semibold text-ink-soft disabled:opacity-50"
+            >
+              {TEXTO_ACCION.cambiar_cuenta}
+            </button>
+          )}
         </div>
       )}
     </li>
