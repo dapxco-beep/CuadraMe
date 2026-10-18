@@ -366,6 +366,8 @@ class MoverMasivoRequest(BaseModel):
 
 
 class EliminarMasivoRequest(BaseModel):
+    # Por qué se borra (ver app/duplicados.registrar_borrado): duplicado | error | no_va
+    motivo: str = Field(default="duplicado", pattern="^(duplicado|error|no_va)$")
     movimiento_ids: list[str] = Field(min_length=1, max_length=500)
 
 

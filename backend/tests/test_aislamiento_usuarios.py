@@ -472,6 +472,7 @@ def test_b_no_acumula_filas_con_ids_de_a():
 # Prefijos cubiertos por ATAQUES o LISTAS (se calcula) + rutas que por diseño no llevan id de recurso.
 SIN_ID_DE_RECURSO = {
     # escrituras que solo afectan al propio usuario (no reciben ids ajenos)
+    "/salud/crear-tarjeta",  # crea/lee solo filas PROPIAS por nombre de banco (probado en test_salud_autocuracion)
     "/ahorcado/nueva-partida", "/asistente/mensaje", "/categorias/orden", "/cierre-mes/preferencias",
     "/consentimientos", "/correos/gmail/desconectar", "/correos/gmail/etiqueta", "/correos/gmail/lectura", "/correos/sincronizar",
     "/correos/clave-pdf", "/conciliacion/reintentar-errores", "/perfil/punto-de-partida", "/facturas/escanear", "/impuestos/ajustes",

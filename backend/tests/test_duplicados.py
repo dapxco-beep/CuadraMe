@@ -411,6 +411,62 @@ def test_borrar_lo_del_atajo_y_que_llegue_el_extracto_no_lo_resucita(e):
     assert r["borrados_antes"] == 1 and e.movs() == []
 
 
+# ═══ 6b. Política honesta de borrado: ¿qué pasó? (duplicado | error | no_va) ════════════════════
+
+def test_borrar_por_error_no_deja_fantasma_y_el_correo_vuelve_a_por_revisar(e):
+    e.atajo()
+    e.llega_correo()
+    (m,) = e.movs()
+    assert client.delete(f"/movimientos/{m['id']}?motivo=error").status_code == 200
+    assert e.movs() == [] and e.saldo() == e.saldo0
+    assert len(e.pendientes()) == 1, "el correo vuelve a Por revisar"
+    assert [c["estado"] for c in e.correos("todos")] == ["pendiente"]
+    e.sincronizar(), e.sincronizar()
+    assert len(e.pendientes()) == 1, "y sigue ahí después de re-sincronizar"
+
+
+def test_borrar_por_error_algo_a_mano_deja_pasar_el_correo_que_llegue_despues(e):
+    m = e.manual().json()
+    client.delete(f"/movimientos/{m['id']}?motivo=error")
+    e.llega_correo()
+    assert len(e.pendientes()) == 1
+
+
+@pytest.mark.parametrize("motivo", ["duplicado", "no_va"])
+def test_borrar_como_duplicado_o_no_va_deja_el_fantasma(e, motivo):
+    e.atajo()
+    e.llega_correo()
+    (m,) = e.movs()
+    client.delete(f"/movimientos/{m['id']}?motivo={motivo}")
+    e.sincronizar()
+    assert e.pendientes() == []
+    assert [c["estado"] for c in e.correos("todos")] == ["descartado"]
+
+
+def test_borrar_por_error_un_extracto_permite_volver_a_importarlo(e):
+    e.extracto()
+    (m,) = e.movs()
+    client.delete(f"/movimientos/{m['id']}?motivo=error")
+    r2 = e.extracto()
+    assert r2["borrados_antes"] == 0 and r2["faltantes"] == 1, "la línea vuelve a ofrecerse (no queda como borrada antes)"
+
+
+def test_motivo_de_borrado_invalido_es_422(e):
+    m = e.manual().json()
+    assert client.delete(f"/movimientos/{m['id']}?motivo=porque_si").status_code == 422
+    assert len(e.movs()) == 1
+
+
+def test_borrado_masivo_respeta_el_motivo(e):
+    e.atajo()
+    e.llega_correo()
+    (m,) = e.movs()
+    r = client.post("/movimientos/eliminar-masivo", json={"movimiento_ids": [m["id"]], "motivo": "error"})
+    assert r.status_code == 200 and r.json()["actualizados"] == 1
+    assert len(e.pendientes()) == 1
+    assert client.post("/movimientos/eliminar-masivo", json={"movimiento_ids": ["x"], "motivo": "zzz"}).status_code == 422
+
+
 def test_deshacer_lo_importado_solo_si_permite_que_vuelva(e):
     e.extracto(importar=False)
     client.put("/perfil/autoimportar-extractos", json={"activo": True})

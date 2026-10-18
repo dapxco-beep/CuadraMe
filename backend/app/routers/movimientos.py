@@ -666,7 +666,7 @@ def eliminar_masivo(
     borrables = sorted((m for m in movs if m.fuente != FUENTE_TRANSFERENCIA), key=lambda m: m.cuenta_id)
     try:
         for mov in borrables:
-            dup.descartar_movimiento(db, mov)
+            dup.registrar_borrado(db, mov, data.motivo)
             _borrar_normal(db, usuario, mov)
     except HTTPException:
         db.rollback()
@@ -704,6 +704,7 @@ def conteo_similares(
 @router.delete("/{movimiento_id}")
 def eliminar_movimiento(
     movimiento_id: str,
+    motivo: str = Query("duplicado", pattern="^(duplicado|error|no_va)$", description="Por qué se borra: duplicado | error | no_va"),
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
@@ -720,7 +721,7 @@ def eliminar_movimiento(
         _eliminar_transferencia(db, usuario, mov)
         return {"ok": True}
 
-    dup.descartar_movimiento(db, mov)  # el correo/extracto equivalente no lo resucita
+    dup.registrar_borrado(db, mov, motivo)  # duplicado y no_va dejan el fantasma; error no
     _borrar_normal(db, usuario, mov)
     db.commit()
     return {"ok": True}

@@ -25,6 +25,7 @@ from app.limites_diarios import consumir_cupo_diario
 from app.database import get_db
 from app import titulo as tit
 from app import extractos_error
+from app import salud_autocuracion
 from app.compartidos import reclamar_estado
 from app import punto_partida
 from app.extractos_vista import clasificar_motivo, frase_error
@@ -1071,6 +1072,9 @@ def cron_sincronizar(db: Session = Depends(get_db), x_cron_secret: str = Header(
                 db.commit()
                 desconectados += 1
                 continue
+            # Autocuración (una vez al día por persona): si hay clave del PDF, los extractos que fallaron por
+            # clave se reintentan solos. Nunca lanza ni frena la lectura.
+            salud_autocuracion.reintento_diario(db, uid, perfil.gmail_email or "")
             if movs or exts:
                 nuevos += movs + exts
                 try:
