@@ -196,8 +196,8 @@ export default function Sincronizacion() {
     }
   }, [])
 
-  // Una vez al abrir: si una cuenta tiene extracto con su saldo inicial y nadie registró con cuánto empezó, la app lo
-  // registra sola (idempotente en el servidor) y lo avisa con «Deshacer».
+  // Una vez al abrir: la app registra o RECALCULA con cuánto empezó cada cuenta según su extracto más antiguo
+  // (idempotente en el servidor, solo informa lo que cambió) y lo avisa con «Deshacer» si quedó un movimiento.
   useEffect(() => {
     Promise.resolve(api.cuadreSaldoInicialAuto?.())
       .then((r) => {
@@ -205,12 +205,12 @@ export default function Sincronizacion() {
         if (!hechos.length) return
         recargarCuentas?.()
         cargar()
-        hechos.forEach((h) => avisar?.(h.texto, 'info', {
+        hechos.forEach((h) => avisar?.(h.texto, 'info', h.movimiento_id && h.cambio !== 'eliminado' ? {
           accion: {
             texto: 'Deshacer',
             onClick: () => Promise.resolve(api.cuadreDeshacer(h.movimiento_id)).then(() => { recargarCuentas?.(); cargar() }).catch(() => {}),
           },
-        }))
+        } : undefined))
       })
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps

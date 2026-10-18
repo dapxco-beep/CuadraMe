@@ -8,6 +8,7 @@ import { CLASE_OTRO, conSigno, estadoCuenta, origenEmpece, textoBanco, textoPeri
 import { Accion, EnlaceInterno } from './CuadreEncadenado'
 import CambiarCuentaExtracto from './CambiarCuentaExtracto'
 import AvisoSinTasa from './AvisoSinTasa'
+import SaldoInicialAutomatico from './SaldoInicialAutomatico'
 
 // «Cierre de mes» contra el extracto: por banco y por cuenta, con cuánto empecé, ingresos, gastos, otros movimientos,
 // con cuánto terminé y lo que dice el extracto (cuadra o no, y por cuánto). Los números vienen del servidor
@@ -116,6 +117,15 @@ function BloqueCuenta({ c, mostrarNombre, onCambio }) {
         </div>
       )}
       {periodo && <p className="text-[11px] text-ink-soft mb-1">{periodo}</p>}
+      {c.cuadre_desde?.texto && (
+        <p className={`text-xs font-semibold mb-1 flex items-start gap-2 ${c.cuadre_desde.estado === 'cuadra' ? 'text-cuadra' : 'text-danger'}`}
+          data-testid="cuadra-desde">
+          {c.cuadre_desde.estado === 'cuadra'
+            ? <CheckCircle2 size={16} aria-hidden="true" className="shrink-0" />
+            : <AlertTriangle size={16} aria-hidden="true" className="shrink-0" />}
+          <span>{c.cuadre_desde.texto}</span>
+        </p>
+      )}
       <div className="divide-y divide-line">
         <Fila etiqueta="Empecé con" valor={fmt(c.empece, m)} nota={`Saldo ${origenEmpece(c)}`} />
         <Fila etiqueta="Ingresos" valor={conSigno(c.ingresos, fmt, m)} tono="text-cuadra" />
@@ -154,6 +164,9 @@ function BloqueCuenta({ c, mostrarNombre, onCambio }) {
         )}
       </div>
 
+      {!c.tarjeta && c.ajuste_inicial && (
+        <SaldoInicialAutomatico cuentaId={c.cuenta_id} moneda={m} info={c.ajuste_inicial} onCambio={() => onCambio?.()} />
+      )}
       {c.tarjeta && <p className="text-[11px] text-ink-soft mt-1">En una tarjeta, un saldo negativo es lo que debes.</p>}
       {c.estado === 'sin_extracto' && (
         <p className="text-[11px] text-ink-soft mt-1">
