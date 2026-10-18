@@ -215,7 +215,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
         clasif = modelo.clasificar(item["descripcion"])
 
         tipo_dir, notas_auto = _tipo_y_notas(item, f"Auto-importado desde extracto {banco} (confianza {clasif['confianza'] if clasif else 0})")
-        if autoimportar and not via_ia and clasif and clasif["confianza"] >= umbral and tipo_dir and not item.get("lectura_dudosa"):
+        if autoimportar and not via_ia and clasif and clasif["confianza"] >= umbral and tipo_dir and not item.get("lectura_dudosa") and not item.get("resumen_factura"):
             fecha_dt = parse_bank_date(item["fecha"])
             movimiento = Movimiento(
                 usuario_id=usuario.id,
@@ -251,7 +251,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
             item["categoria_sugerida"] = clasif["categoria"] if clasif else "Otros"
             item["razon_categoria"] = clasif.get("razon") if clasif else None
             item["confianza_categoria"] = clasif.get("confianza") if clasif else None
-            if item.get("pago_tarjeta") and item["categoria_sugerida"] == "Otros":
+            if item.get("pago_tarjeta") and (item["categoria_sugerida"] == "Otros" or item.get("resumen_factura")):
                 # La línea «Pago ...» de un extracto de tarjeta: se sugiere como pago de la tarjeta (traslado
                 # entre tus cuentas), no como un gasto «Sin categoría». La persona puede cambiarla.
                 item["categoria_sugerida"] = CATEGORIA_PAGO_TARJETA
@@ -260,6 +260,8 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
 
     if auto_importados:
         resultado["faltantes"] -= auto_importados
+
+    _confirmar_pagos_de_factura(db, usuario.id, cuenta, banco, resultado["review"])
 
     historial = HistorialExtracto(
         usuario_id=usuario.id,
@@ -347,6 +349,31 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
         conteo=estado_traer.contar_review(resultado["review"]),
         **_periodo(resultado["review"]),
     )
+
+
+def _confirmar_pagos_de_factura(db: Session, usuario_id: str, cuenta, banco: str, review: list[dict]) -> None:
+    """El pago de la «factura anterior» solo viene marcado si hay certeza: hay una salida del MISMO monto (±$1) en
+    otra cuenta del mismo banco (ahorros, no crédito) con fecha a ±3 días. Si no, queda apagado con el aviso."""
+    pagos = [i for i in review if i.get("resumen_factura") and i.get("estado") == "faltante"]
+    if not pagos:
+        return
+    propias = [c for c in db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id, Cuenta.id != cuenta.id).all()
+               if c.tipo != "credito" and (banco or "") in normalize_texto(c.nombre).split()]
+    for item in pagos:
+        item["marcar_por_defecto"] = False
+        fecha = parse_bank_date(item["fecha"])
+        if not propias or not fecha:
+            continue
+        salida = (
+            db.query(Movimiento.id)
+            .filter(Movimiento.usuario_id == usuario_id, Movimiento.cuenta_id.in_([c.id for c in propias]),
+                    Movimiento.tipo == "expense", Movimiento.monto.between(item["monto"] - 1, item["monto"] + 1),
+                    Movimiento.fecha >= fecha - timedelta(days=3), Movimiento.fecha < fecha + timedelta(days=4))
+            .first()
+        )
+        if salida:
+            item["marcar_por_defecto"] = True
+            item["aviso_linea"] = None
 
 
 def _huella_linea(db: Session, usuario_id: str, item: dict) -> str:

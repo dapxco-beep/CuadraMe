@@ -1,6 +1,6 @@
 """Líneas del extracto con DOS montos («Pago $697.534,97 -$474.542,00»): el lector no adivina.
 
-Datos inventados. Antes la línea salía como un gasto de -$222.993 «Sin categoría» y se importaba sin avisar.
+Datos inventados. (Si el tercer importe SÍ es A−B es el resumen de la factura anterior: ver test_resumen_factura_anterior.py.) Antes la línea salía como un gasto de -$222.993 «Sin categoría» y se importaba sin avisar.
 Ahora: se marca `lectura_dudosa` (con los montos que aparecen escritos), no se importa sin que la persona elija
 el monto, y un «Pago ...» de un extracto de TARJETA se sugiere como traslado (pago de la tarjeta).
 """
@@ -34,7 +34,7 @@ def _ambiente():
 TARJETA = """Extracto de tu tarjeta de crédito Nu
 Período 01 - 31 OCT 2026
 Pago mínimo $98.000
-05 oct Pago $697.534,97 -$474.542,00 -$222.993,00
+05 oct Pago $697.534,97 -$474.542,00 -$150.000,00
 06 oct Tienda de prueba -$45.000,00
 """
 AHORROS = """Extracto de tu cuenta de ahorros Nu
@@ -53,7 +53,7 @@ def test_linea_con_dos_montos_se_marca_dudosa_y_ofrece_los_dos():
     assert pago["lectura_dudosa"] is True
     assert pago["montos_alternativos"] == [697534.97, 474542.0]
     # lo que el lector entendió se conserva, pero no se da por bueno
-    assert pago["monto"] == 222993.0
+    assert pago["monto"] == 150000.0
 
 
 def test_linea_normal_no_se_marca():
