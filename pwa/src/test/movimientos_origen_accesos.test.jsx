@@ -66,7 +66,7 @@ describe('Movimientos: origen y accesos al correo', () => {
   it('muestra «Correos descartados (M)» y lleva a Ver todo → Correos → Descartados', async () => {
     api.correosLista.mockResolvedValue([{ id: 'k1' }, { id: 'k2' }])
     montar()
-    await userEvent.click(await screen.findByRole('button', { name: 'Correos descartados (2)' }))
+    await userEvent.click(await screen.findByRole('button', { name: /^Correos descartados \(2\)/ }))
     expect(screen.getByTestId('ruta').textContent).toContain('/sincronizacion')
     expect(screen.getByTestId('ruta').textContent).toContain('correos-descartados')
   })
@@ -74,7 +74,7 @@ describe('Movimientos: origen y accesos al correo', () => {
   it('muestra «Correos por revisar (N)» cuando hay pendientes', async () => {
     api.correosPendientes.mockResolvedValue([{ id: 'p1', comercio: 'Cámara de Comercio', monto: 390500, estado: 'pendiente' }])
     montar()
-    expect(await screen.findByRole('button', { name: 'Correos por revisar (1)' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Correos por revisar \(1\)/ })).toBeInTheDocument()
   })
 
   it('el filtro Origen pide al servidor solo esos movimientos', async () => {

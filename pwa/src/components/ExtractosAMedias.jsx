@@ -31,8 +31,9 @@ export default function ExtractosAMedias({ lista = [], onSeguir, onCambiarCuenta
         {lista.map((x) => (
           <li key={x.historialId} className="flex flex-wrap items-center gap-3 py-2">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate">{x.cuenta}{x.mes ? ` · ${x.mes}` : ''}</p>
-              <p className="text-xs text-ink-soft">{textoFaltan(x.faltan)}</p>
+              <p className="text-sm font-medium break-words">{x.titulo || `${x.cuenta}${x.mes ? ` · ${x.mes}` : ''}`}</p>
+              <p className="text-xs text-ink-soft">{x.titulo ? `En la cuenta ${x.cuenta} · ` : ''}{textoFaltan(x.faltan)}</p>
+              {x.origen && <p className="text-xs text-ink-soft break-words" data-testid="origen-a-medias">{x.origen}</p>}
             </div>
             <button
               type="button"

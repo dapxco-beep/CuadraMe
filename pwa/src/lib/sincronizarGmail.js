@@ -72,7 +72,7 @@ export function haceCuanto(iso, ahora = Date.now()) {
 export function resumenSync(r) {
   const nuevos = r?.nuevos || 0
   const ext = r?.extractos_encontrados ?? r?.extractos_nuevos ?? 0
-  if (!nuevos && !ext) return 'Todo al día: no hay nada nuevo en tu correo.'
+  if (!nuevos && !ext) return 'No hay nada nuevo en tu correo.'
   const partes = []
   if (nuevos) partes.push(`${nuevos} movimiento${nuevos === 1 ? '' : 's'} nuevo${nuevos === 1 ? '' : 's'}`)
   if (ext) partes.push(`${ext} extracto${ext === 1 ? '' : 's'}`)
@@ -88,7 +88,7 @@ export const CINCO_MIN = 5 * 60 * 1000
 // Frase corta para el aviso: «Traje 2 movimientos nuevos» / «Todo al día».
 export function resumenActualizacion(r) {
   const n = r?.nuevos || 0
-  if (!n) return 'Todo al día: no hay nada nuevo en tu correo.'
+  if (!n) return 'No hay nada nuevo en tu correo.'
   return `Traje ${n} movimiento${n === 1 ? '' : 's'} nuevo${n === 1 ? '' : 's'}`
 }
 

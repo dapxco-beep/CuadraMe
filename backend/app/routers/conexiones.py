@@ -65,7 +65,7 @@ def _gmail(db: Session, usuario_id: str, perfil: Perfil | None) -> dict:
     if datos["extractos_falta_clave"]:
         n = datos["extractos_falta_clave"]
         return _semaforo("ambar", f"{n} extracto{'s' if n != 1 else ''} esperan la clave del PDF (normalmente tu cédula).", **datos)
-    return _semaforo("verde", "Todo al día: tus correos se están leyendo bien.", **datos)
+    return _semaforo("verde", "Tus correos se están leyendo bien.", **datos)
 
 
 def _atajo(db: Session, usuario_id: str, perfil: Perfil | None) -> dict:

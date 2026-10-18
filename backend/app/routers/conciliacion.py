@@ -489,6 +489,7 @@ def obtener_review(
         faltantes=historial.faltantes,
         descartados=historial.descartados or 0,
         saldos_extracto=cuadre_extracto.saldos_de_historial(historial),
+        origen=estado_traer.origen_de_historial(db, usuario.id, historial),
         review=review,
         completados=completados,
         sobrantes=sobrantes,

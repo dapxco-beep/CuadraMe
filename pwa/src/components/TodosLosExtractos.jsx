@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { AlertTriangle, CalendarX2, CheckCircle2, ChevronDown, FileSearch, Inbox, KeyRound, Paperclip, Scale, Search } from 'lucide-react'
 import Icono from './Icono'
 import {
-  ESTADOS_VISTA, TEXTO_ACCION, agruparPorMes, estadoVista, filtrar, opcionesCuenta, textoContadores,
+  ESTADOS_VISTA, TEXTO_ACCION, agruparPorMes, estadoVista, filtrar, opcionesCuenta, textoAccion, textoContadores,
 } from '../lib/extractosVista'
 import { textoSugerencia } from '../lib/cambiarCuenta'
 
@@ -95,7 +95,23 @@ function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado }) {
           </span>
         )}
       </p>
+      {/* Nada sin nombre ni origen: de dónde salió y a qué cuenta quedó. */}
+      {(it.origen_texto || it.cuenta_asignada) && (
+        <p className="text-xs text-ink-soft mt-1.5 break-words" data-testid="origen-extracto">
+          {it.origen_texto}{it.origen_texto && it.cuenta_asignada ? ' · ' : ''}{it.cuenta_asignada ? `En la cuenta ${it.cuenta_asignada}` : ''}
+        </p>
+      )}
+      {esError && it.ejemplos?.length > 0 && (it.copias > 1 || it.banco_sin_identificar) && (
+        <p className="text-xs text-ink-soft mt-1 break-words" data-testid="ejemplos-extracto">
+          {it.copias > 1 ? 'Por ejemplo: ' : 'Archivo: '}{it.ejemplos.map((x) => x.nombre).join(' · ')}
+        </p>
+      )}
       {it.estado_corto && <p className={`text-sm font-semibold mt-1.5 ${esError ? 'text-danger' : ''}`} data-testid="estado-corto">{it.estado_corto}</p>}
+      {it.lectura_dudosa > 0 && (
+        <p className="text-sm mt-1.5 text-accent font-semibold" data-testid="aviso-lectura-dudosa">
+          {it.lectura_dudosa === 1 ? '1 línea trae dos montos: elige el correcto al revisarla.' : `${it.lectura_dudosa} líneas traen dos montos: elige el correcto al revisarlas.`}
+        </p>
+      )}
       <p className={`text-sm mt-1.5 leading-snug ${esError ? 'text-danger' : 'text-ink-soft'}`} role={esError ? 'alert' : undefined}>{it.resultado}</p>
       {it.mes_deducido && !it.mes_por_confirmar && (
         <p className="text-xs text-ink-soft mt-1">
@@ -133,10 +149,12 @@ function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado }) {
               type="button"
               disabled={ocupado && a !== 'mi_banco_no_esta'}
               onClick={() => onAccion(a, it)}
-              aria-label={`${TEXTO_ACCION[a]}: ${it.titulo}`}
+              aria-label={`${textoAccion(a, it)}: ${it.titulo}`}
               className={`min-h-11 text-xs font-semibold disabled:opacity-50 ${i === 0 && a !== 'ver' ? 'text-accent' : 'text-ink-soft'}`}
             >
-              {ocupado && (a === 'revisar_de_nuevo' || a === 'intentar_de_nuevo' || a === 'revisar' || a === 'reintentar') ? 'Un momento...' : TEXTO_ACCION[a]}
+              {ocupado && (a === 'revisar_de_nuevo' || a === 'intentar_de_nuevo' || a === 'revisar' || a === 'reintentar')
+                ? 'Un momento...'
+                : textoAccion(a, it)}
             </button>
           ))}
           {it.puede_cambiar_cuenta && (

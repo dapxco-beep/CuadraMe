@@ -16,6 +16,9 @@ export function extractosAMedias(estado) {
       mes: x.mes_etiqueta || '',
       faltan: Number(x.por_revisar),
       sugerencia: x.puede_cambiar_cuenta ? x.sugerencia_cuenta || null : null,
+      // Qué extracto es de verdad («Tarjeta Nu · corte 15 oct 2026») y de dónde salió: nada sin nombre ni origen.
+      titulo: x.titulo || '',
+      origen: x.origen_texto || '',
     }))
 }
 
@@ -50,10 +53,10 @@ export function resumenLote(archivos) {
 // ── Borrador de la revisión (sobrevive a salir y volver; vive solo en esta pestaña) ──────────
 const clave = (historialId) => `cuadrame:borrador-revision:${historialId}`
 
-export function guardarBorrador(historialId, { seleccion, categorias, aprender, titulos = {}, recordarTitulo = {} }) {
+export function guardarBorrador(historialId, { seleccion, categorias, aprender, titulos = {}, recordarTitulo = {}, montos = {} }) {
   if (!historialId) return
   try {
-    sessionStorage.setItem(clave(historialId), JSON.stringify({ seleccion: [...seleccion], categorias, aprender, titulos, recordarTitulo }))
+    sessionStorage.setItem(clave(historialId), JSON.stringify({ seleccion: [...seleccion], categorias, aprender, titulos, recordarTitulo, montos }))
   } catch { /* sin almacenamiento: se sigue sin borrador */ }
 }
 
@@ -61,7 +64,7 @@ export function leerBorrador(historialId) {
   if (!historialId) return null
   try {
     const b = JSON.parse(sessionStorage.getItem(clave(historialId)) || 'null')
-    return b && typeof b === 'object' ? { seleccion: new Set(b.seleccion || []), categorias: b.categorias || {}, aprender: b.aprender || {}, titulos: b.titulos || {}, recordarTitulo: b.recordarTitulo || {} } : null
+    return b && typeof b === 'object' ? { seleccion: new Set(b.seleccion || []), categorias: b.categorias || {}, aprender: b.aprender || {}, titulos: b.titulos || {}, recordarTitulo: b.recordarTitulo || {}, montos: b.montos || {} } : null
   } catch {
     return null
   }

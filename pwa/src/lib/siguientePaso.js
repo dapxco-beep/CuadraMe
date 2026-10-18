@@ -1,14 +1,17 @@
 // «Traer movimientos» como asistente: de todo lo que está pendiente se escoge UNA cosa a la vez.
 // Puro (sin React) y probado en test/siguiente_paso.test.js. Orden de prioridad:
-//   conectar (solo en el primer uso) → clave faltante → crear cuenta de tarjeta/banco → extractos a medias →
-//   importar faltantes (conciliar) → correos por revisar → lo demás → categorizar repetidos (opcional) → cuadre.
+//   conectar (solo en el primer uso) → clave faltante → crear cuenta de tarjeta/banco → extracto en otra cuenta →
+//   extractos a medias → importar faltantes (conciliar) → correos por revisar → lo demás → categorizar repetidos y
+//   correos descartados (opcionales) → cuadre.
+// «Todo al día» es una promesa: solo se dice si NO queda nada, ni siquiera opcional (ver estadoGeneral).
 // Cada paso trae el texto (sin jerga) y el nombre del botón; qué hace el botón lo decide la pantalla por `id`.
 
 export const ORDEN_PASOS = [
-  'conectar', 'punto_partida', 'falta_clave', 'sin_cuenta', 'a_medias', 'extractos_por_conciliar', 'correos_por_revisar',
-  'movimientos_por_confirmar', 'extractos_sin_leer', 'posibles_duplicados', 'cuadre_no_cuadra', 'movimientos_por_categorizar',
+  'conectar', 'punto_partida', 'falta_clave', 'sin_cuenta', 'extracto_cuenta_dudosa', 'a_medias', 'extractos_por_conciliar',
+  'correos_por_revisar', 'movimientos_por_confirmar', 'extractos_sin_leer', 'posibles_duplicados', 'cuadre_no_cuadra',
+  'movimientos_por_categorizar', 'correos_descartados',
 ]
-const FIJOS = ['conectar', 'punto_partida', 'falta_clave', 'sin_cuenta', 'a_medias']
+const FIJOS = ['conectar', 'punto_partida', 'falta_clave', 'sin_cuenta', 'extracto_cuenta_dudosa', 'a_medias']
 
 const n = (x) => Number(x) || 0
 const plural = (c, uno, varios) => `${c} ${c === 1 ? uno : varios}`
@@ -58,7 +61,23 @@ function textoDe(id, { cantidad = 0, claveConfigurada = false, banco = '', aMedi
     case 'movimientos_por_confirmar':
       return { titulo: 'Confirma si son tuyos', detalle: `${plural(cantidad, 'movimiento', 'movimientos')} del extracto por confirmar.`, boton: 'Confirmar' }
     case 'extractos_sin_leer':
-      return { titulo: 'Un extracto no se pudo leer', detalle: 'Súbelo de nuevo o ábrelo para ver qué pasó.', boton: 'Ver cuál' }
+      return {
+        titulo: cantidad === 1 ? 'Hay extractos que no se pudieron leer' : `Hay ${cantidad} grupos de extractos que no se pudieron leer`,
+        detalle: 'Te digo de dónde vino cada uno y qué hacer: reintentar, subirlo de nuevo o quitarlo.',
+        boton: 'Ver cuáles',
+      }
+    case 'extracto_cuenta_dudosa':
+      return {
+        titulo: cantidad === 1 ? 'Un extracto está en otra cuenta' : `${cantidad} extractos están en otra cuenta`,
+        detalle: 'Parece de tu tarjeta de crédito y quedó en una cuenta de ahorros. Pásalo a la cuenta correcta.',
+        boton: 'Ver y pasarlo',
+      }
+    case 'correos_descartados':
+      return {
+        titulo: cantidad === 1 ? 'Hay 1 correo descartado' : `Hay ${cantidad} correos descartados`,
+        detalle: 'Los descartaste al borrar un movimiento parecido. Mira si alguno sí era tuyo.',
+        boton: 'Verlos',
+      }
     case 'posibles_duplicados':
       return { titulo: 'Puede haber movimientos repetidos', detalle: 'Mira cuáles se parecen y deja solo uno.', boton: 'Ver los repetidos' }
     case 'movimientos_por_categorizar':
@@ -91,6 +110,7 @@ export function construirPasos({ tareas = [], aMedias = [], conectado = true, pr
   if (puntoPendiente) poner('punto_partida', 1, null, !primerUso)
   if (por.has('falta_clave')) poner('falta_clave', n(por.get('falta_clave').cantidad), por.get('falta_clave'))
   if (por.has('sin_cuenta')) poner('sin_cuenta', n(por.get('sin_cuenta').cantidad), por.get('sin_cuenta'), false, { banco: sinCuenta.length === 1 ? sinCuenta[0].banco : '' })
+  if (por.has('extracto_cuenta_dudosa')) poner('extracto_cuenta_dudosa', n(por.get('extracto_cuenta_dudosa').cantidad), por.get('extracto_cuenta_dudosa'))
   if (aMedias.length) poner('a_medias', aMedias.length)
   for (const id of ORDEN_PASOS) {
     if (FIJOS.includes(id)) continue
@@ -106,11 +126,33 @@ export function construirPasos({ tareas = [], aMedias = [], conectado = true, pr
 /** Lo que de verdad hay que hacer (sin lo opcional). */
 export const obligatorios = (pasos) => (pasos || []).filter((p) => !p.opcional)
 
-/** { alDia, titulo } del estado grande de arriba. */
+// Cómo se nombra cada pendiente OPCIONAL cuando es lo único que queda («Casi todo al día · solo queda…»).
+function nombrePendienteOpcional(p) {
+  const c = p.cantidad || 0
+  switch (p.id) {
+    case 'correos_descartados':
+      return c === 1 ? '1 correo descartado por mirar' : `${c} correos descartados por mirar`
+    case 'movimientos_por_categorizar':
+      return c === 1 ? '1 comercio sin categoría' : `${c} comercios sin categoría`
+    case 'punto_partida':
+      return 'elegir desde cuándo leo tu correo'
+    default:
+      return (p.titulo || 'algo opcional').replace(/^./, (ch) => ch.toLowerCase())
+  }
+}
+
+/**
+ * { alDia, casi, titulo, pendiente } del estado grande de arriba.
+ *  · «Todo al día» solo si NO queda nada (ni obligatorio ni opcional).
+ *  · «Casi todo al día» si solo quedan cosas opcionales: se nombran en `pendiente`.
+ *  · si no, «Tienes N cosas por hacer».
+ */
 export function estadoGeneral(pasos) {
   const k = obligatorios(pasos).length
-  if (k === 0) return { alDia: true, titulo: 'Todo al día' }
-  return { alDia: false, titulo: k === 1 ? 'Tienes 1 cosa por hacer' : `Tienes ${k} cosas por hacer` }
+  if (k > 0) return { alDia: false, titulo: k === 1 ? 'Tienes 1 cosa por hacer' : `Tienes ${k} cosas por hacer` }
+  const opcionales = (pasos || []).filter((p) => p.opcional)
+  if (opcionales.length === 0) return { alDia: true, titulo: 'Todo al día' }
+  return { alDia: false, casi: true, titulo: 'Casi todo al día', pendiente: opcionales.map(nombrePendienteOpcional).join(' y ') }
 }
 
 /**

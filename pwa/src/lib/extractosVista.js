@@ -99,6 +99,14 @@ export const TEXTO_ACCION = {
   cambiar_cuenta: 'Cambiar de cuenta',
 }
 
+// El texto de un botón según la fila: un grupo de errores por clave dice «Poner la clave» (una sola vez para todos) y
+// un extracto sin banco identificado dice «Decirme de qué banco es» (no «Mi banco no está», que no explica nada).
+export function textoAccion(accion, it = {}) {
+  if (accion === 'poner_clave' && (it.copias || 1) > 1) return 'Poner la clave'
+  if (accion === 'mi_banco_no_esta' && it.banco_sin_identificar) return 'Decirme de qué banco es'
+  return TEXTO_ACCION[accion] || accion
+}
+
 // 'AAAA-MM' de «hoy» menos n meses (para el tope del selector de mes).
 export function mesActual(hoy = new Date()) {
   return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`

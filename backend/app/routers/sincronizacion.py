@@ -272,7 +272,7 @@ def estado(
         sug = x.get("sugerencia_cuenta")
         if sug and x.get("mes") and x.get("historial_id"):
             en_otra_cuenta.setdefault((sug["cuenta_id"], x["mes"]), []).append(
-                {"historial_id": x["historial_id"], "desde": x["cuenta"], "titulo": x["titulo"]})
+                {"historial_id": x["historial_id"], "desde": x["cuenta"], "desde_id": x["cuenta_id"], "titulo": x["titulo"]})
     filas_cuentas = []
     for c in cuentas:
         celdas = []

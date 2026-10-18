@@ -73,10 +73,10 @@ export function resumenLectura(carril, r) {
   if (r.aviso) return r.aviso
   if (carril === 'movimientos') {
     const n = r.nuevos || 0
-    return n ? `Encontré ${plural(n, 'movimiento nuevo', 'movimientos nuevos')}.` : 'Todo al día: no hay movimientos nuevos.'
+    return n ? `Encontré ${plural(n, 'movimiento nuevo', 'movimientos nuevos')}.` : 'No hay movimientos nuevos en tu correo.'
   }
   const e = r.extractos_encontrados ?? r.extractos_nuevos ?? 0
-  return e ? `Encontré ${plural(e, 'extracto', 'extractos')}.` : 'Todo al día: no hay extractos nuevos.'
+  return e ? `Encontré ${plural(e, 'extracto', 'extractos')}.` : 'No hay extractos nuevos en tu correo.'
 }
 
 /**

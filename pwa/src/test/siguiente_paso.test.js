@@ -18,7 +18,8 @@ describe('construirPasos: prioridad', () => {
     const pasos = construirPasos({ tareas: [t('movimientos_por_categorizar', 3, { opcional: true }), t('correos_por_revisar')] })
     expect(pasos.map((p) => p.id)).toEqual(['correos_por_revisar', 'movimientos_por_categorizar'])
     expect(obligatorios(pasos)).toHaveLength(1)
-    expect(estadoGeneral(construirPasos({ tareas: [t('movimientos_por_categorizar', 3, { opcional: true })] })).alDia).toBe(true)
+    // Solo queda algo opcional: no es «Todo al día» sino «Casi todo al día».
+    expect(estadoGeneral(construirPasos({ tareas: [t('movimientos_por_categorizar', 3, { opcional: true })] })).casi).toBe(true)
   })
 
   it('conectar solo aparece en el primer uso', () => {
@@ -71,5 +72,40 @@ describe('estado y progreso', () => {
   it('texto de búsqueda en línea', () => {
     expect(textoBusqueda({ fase: 'extractos', leidos: 3, total: 6 })).toBe('Leyendo tus extractos… 3 de 6')
     expect(textoBusqueda({})).toBe('Leyendo tu correo…')
+  })
+})
+
+describe('«Todo al día» es honesto', () => {
+  it('con algo opcional pendiente dice «Casi todo al día» y lo nombra', () => {
+    const e = estadoGeneral(construirPasos({ tareas: [t('correos_descartados', 16, { opcional: true })] }))
+    expect(e).toMatchObject({ alDia: false, casi: true, titulo: 'Casi todo al día', pendiente: '16 correos descartados por mirar' })
+    const dos = estadoGeneral(construirPasos({ tareas: [t('correos_descartados', 1, { opcional: true }), t('movimientos_por_categorizar', 4, { opcional: true })] }))
+    expect(dos.pendiente).toBe('4 comercios sin categoría y 1 correo descartado por mirar')
+  })
+
+  it('cada cosa de la lista impide el «Todo al día»', () => {
+    const obligatorias = ['falta_clave', 'extractos_por_conciliar', 'extractos_sin_leer', 'correos_por_revisar', 'extracto_cuenta_dudosa', 'posibles_duplicados', 'cuadre_no_cuadra']
+    for (const id of obligatorias) {
+      const e = estadoGeneral(construirPasos({ tareas: [t(id)] }))
+      expect(e.alDia, id).toBe(false)
+      expect(e.titulo, id).toBe('Tienes 1 cosa por hacer')
+    }
+    expect(estadoGeneral(construirPasos({ aMedias: [{ historialId: 'h', cuenta: 'Nu', mes: 'Octubre 2026', faltan: 1 }] })).alDia).toBe(false)
+    expect(estadoGeneral(construirPasos({ tareas: [] }))).toEqual({ alDia: true, titulo: 'Todo al día' })
+  })
+
+  it('un extracto en otra cuenta va antes de seguir con él', () => {
+    const aMedias = [{ historialId: 'h', cuenta: 'Nu', mes: 'Octubre 2026', faltan: 1 }]
+    const ids = construirPasos({ tareas: [t('extractos_por_conciliar'), t('extracto_cuenta_dudosa', 2)], aMedias }).map((p) => p.id)
+    expect(ids).toEqual(['extracto_cuenta_dudosa', 'a_medias', 'extractos_por_conciliar'])
+    const [p] = construirPasos({ tareas: [t('extracto_cuenta_dudosa', 4)] })
+    expect(p.titulo).toBe('4 extractos están en otra cuenta')
+  })
+
+  it('«no hay nada nuevo en tu correo» habla solo del correo, nunca de todo', async () => {
+    const { resumenSync, resumenActualizacion } = await import('../lib/sincronizarGmail')
+    expect(resumenSync({ nuevos: 0, extractos_nuevos: 0 })).toBe('No hay nada nuevo en tu correo.')
+    expect(resumenActualizacion({ nuevos: 0 })).toBe('No hay nada nuevo en tu correo.')
+    expect(resumenSync({ nuevos: 0 })).not.toMatch(/Todo al día/)
   })
 })

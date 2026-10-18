@@ -569,3 +569,27 @@ def vista_completa(db: Session, usuario_id: str, inicio_pp=None, lista: list[dic
         "sin_adjunto": sin_adjunto,
         "razon_sin_adjunto": ev.RAZON_SIN_ADJUNTO,
     }
+
+
+def origen_de_historial(db: Session, usuario_id: str, h) -> dict:
+    """De dónde salió un extracto ya procesado y a qué cuenta quedó, para el encabezado de su revisión
+    («Tarjeta Nu · corte 15 oct 2026» / «Correo «…» · archivo X» / «En la cuenta Nu Colombia»). Nada sin origen."""
+    from app.models import Cuenta, ExtractoCorreo
+
+    e = (db.query(ExtractoCorreo).filter(ExtractoCorreo.usuario_id == usuario_id, ExtractoCorreo.historial_id == h.id)
+         .order_by(ExtractoCorreo.recibido_en.desc()).first())
+    cuenta = db.query(Cuenta).filter(Cuenta.id == h.cuenta_id, Cuenta.usuario_id == usuario_id).first()
+    mes = mes_de_correo(e, h)["mes"] if e is not None else _mes_de_historial(h)
+    tipo = ev.tipo_de_extracto(cuenta.tipo if cuenta else None)
+    tipo_texto = ev.tipo_de_extracto(None, e.asunto or "", e.archivo or "") if e is not None else ""
+    tipo_titulo = tipo_texto if tipo_texto and tipo and tipo_texto != tipo else tipo
+    banco = ev.banco_para_titulo((_banco_de(e) if e is not None else (h.banco_detectado or "").replace("archivo: ", "")), cuenta.nombre if cuenta else "")
+    corte = h.fecha_corte or (ev.corte_del_periodo(e.periodo or "") if e is not None else "")
+    fecha = (e.recibido_en or e.creado_en) if e is not None else h.creado_en
+    return {
+        "titulo": ev.titulo_extracto(banco=banco, tipo=tipo_titulo, mes=mes, corte=corte or ""),
+        "origen_texto": ev.origen_texto("correo" if e is not None else "archivo", asunto=(e.asunto if e is not None else ""),
+                                        archivo=(e.archivo if e is not None else ""), fecha_iso=fecha.isoformat() if fecha else None),
+        "asunto": e.asunto if e is not None else "", "archivo": e.archivo if e is not None else "",
+        "cuenta_id": h.cuenta_id, "cuenta_nombre": cuenta.nombre if cuenta else "", "mes_etiqueta": ev.etiqueta_mes(mes),
+    }

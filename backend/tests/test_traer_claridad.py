@@ -162,3 +162,21 @@ def test_la_celda_dice_por_que_no_se_pudo_leer():
     _correo_extracto(uid, "Tu extracto de octubre", "oct.pdf", nu, h, estado="error", periodo="Octubre 2026")
     c = next(m for m in _estado()["cuentas"][0]["meses"] if m["mes"] == "2026-10")
     assert c["estado"] == "no_se_pudo_leer" and c["motivo_corto"] == "formato no reconocido"
+
+
+def test_la_revision_de_un_extracto_dice_su_origen_y_la_cuenta():
+    uid = "clar-5"
+    ahorros = _cuenta(uid, "Nu Colombia", "ahorro")
+    h = _historial(uid, ahorros, estado="pendiente_revision", lineas=[_linea("faltante")], corte="2026-10-15")
+    _correo_extracto(uid, "Llegó el extracto de tu tarjeta de crédito Nu", "tarjeta_oct.pdf", ahorros, h)
+    o = client.get(f"/conciliacion/historial/{h}").json()["origen"]
+    assert o["titulo"] == "Tarjeta Nu · corte 15 oct 2026" and o["cuenta_nombre"] == "Nu Colombia"
+    assert o["asunto"] == "Llegó el extracto de tu tarjeta de crédito Nu" and o["archivo"] == "tarjeta_oct.pdf"
+
+
+def test_un_extracto_subido_a_mano_dice_que_es_a_mano():
+    uid = "clar-6"
+    nequi = _cuenta(uid, "Nequi", "ahorro")
+    h = _historial(uid, nequi, estado="pendiente_revision", banco="nequi", lineas=[_linea("faltante")])
+    o = client.get(f"/conciliacion/historial/{h}").json()["origen"]
+    assert o["origen_texto"].startswith("Subido a mano") and o["cuenta_nombre"] == "Nequi"

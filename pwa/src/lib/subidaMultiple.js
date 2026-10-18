@@ -101,6 +101,11 @@ export function normalizarPdf(r) {
       registrado: m.estado === 'aproximado' && m.descripcion_registrada
         ? { descripcion: m.descripcion_registrada, monto: m.monto_registrado, fecha: m.fecha_registrada } : null,
       matchId: m.match_id || null,
+      // Línea con varios montos: no se marca ni se importa hasta que la persona elige el monto (ver textoLineaDudosa).
+      dudosa: Boolean(m.lectura_dudosa),
+      montosAlt: Array.isArray(m.montos_alternativos) ? m.montos_alternativos : [],
+      // «Pago ...» de un extracto de tarjeta: se sugiere como traslado entre tus cuentas, no como un gasto.
+      pagoTarjeta: Boolean(m.pago_tarjeta),
     }))
   const filaInfo = (m) => ({
     descripcion: m.descripcion,
@@ -125,6 +130,7 @@ export function normalizarPdf(r) {
     propuestaTarjeta: r.propuesta_tarjeta || null,
     saldosExtracto: r.saldos_extracto || null, // saldos que imprime el extracto (para cuadrar con el banco)
     avisoCuenta: r.aviso_cuenta || null, // el PDF parece de otro producto del mismo banco (tarjeta vs ahorros)
+    origen: r.origen || null, // de dónde salió el extracto y a qué cuenta quedó (al reabrir una revisión)
   }
 }
 
@@ -134,6 +140,33 @@ export function textoDescartados(n) {
   return n === 1
     ? '1 línea no se pudo leer con certeza y no aparece aquí. Revisa tu extracto.'
     : `${n} líneas no se pudieron leer con certeza y no aparecen aquí. Revisa tu extracto.`
+}
+
+export const AVISO_LINEA_DOS_MONTOS = 'Esta línea trae dos montos. Elige el correcto'
+
+/** Monto que se va a importar de una línea: el elegido por la persona si lo hay; si no, el que se leyó. */
+export const montoDeLinea = (it, elegido) => (it?.dudosa && elegido != null ? Number(elegido) : it?.monto)
+
+/** Una línea de lectura dudosa solo se puede importar con un monto elegido (>= 1). */
+export const montoValido = (v) => Number.isFinite(Number(v)) && Number(v) >= 1
+
+/** «Pago de tarjeta» / «Traslado entre tus cuentas»: lo que se sugiere de una línea «Pago ...». */
+export const TEXTO_PAGO_TARJETA = 'Parece el pago de tu tarjeta desde otra cuenta tuya: se cuenta como traslado, no como gasto.'
+
+/** Interpreta lo que se escribe en el campo del monto: «697.534,97», «474542», «$ 474.542,00». null si no sirve. */
+export function leerMontoEscrito(texto) {
+  const limpio = String(texto ?? '').replace(/[^\d.,]/g, '')
+  if (!limpio) return null
+  const ultimoPunto = limpio.lastIndexOf('.')
+  const ultimaComa = limpio.lastIndexOf(',')
+  const decimal = Math.max(ultimoPunto, ultimaComa)
+  let n
+  if (decimal >= 0 && limpio.length - decimal - 1 <= 2 && limpio.length - decimal - 1 > 0) {
+    n = Number(`${limpio.slice(0, decimal).replace(/[.,]/g, '')}.${limpio.slice(decimal + 1)}`)
+  } else {
+    n = Number(limpio.replace(/[.,]/g, ''))
+  }
+  return Number.isFinite(n) && n > 0 ? n : null
 }
 
 /** Claves únicas para React: dos filas idénticas el mismo día comparten huella (se importan juntas). */
@@ -238,7 +271,8 @@ export function clavesFaltantes(archivos) {
   const claves = []
   for (const a of archivos) {
     if (a.estado !== 'listo') continue
-    for (const it of a.items) if (it.estado === 'nuevo') claves.push(`${a.id}:${it.k}`)
+    // Una línea de lectura dudosa nunca viene marcada de entrada: primero se elige su monto.
+    for (const it of a.items) if (it.estado === 'nuevo' && !it.dudosa) claves.push(`${a.id}:${it.k}`)
   }
   return claves
 }

@@ -1014,6 +1014,9 @@ class ProcesarExtractoResponse(BaseModel):
     # Lo que el extracto dice de saldos (para cuadrar): {saldo_inicial, saldo_final, fecha_corte,
     # periodo_inicio, moneda, origen, cadena_ok, pago_minimo}; None si el extracto no trae saldos legibles.
     saldos_extracto: Optional[dict] = None
+    # Solo al reabrir una revisión: de dónde salió el extracto y a qué cuenta quedó
+    # {titulo, origen_texto, asunto, archivo, cuenta_id, cuenta_nombre, mes_etiqueta}.
+    origen: Optional[dict] = None
 
 
 class ResolverDudososRequest(BaseModel):
