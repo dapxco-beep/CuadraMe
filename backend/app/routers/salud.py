@@ -1,12 +1,12 @@
 """Salud de datos (ver app/salud_datos.py y docs/SALUD_DE_DATOS.md).
 
 GET /salud   los hallazgos de LA PERSONA que pregunta (nunca de otra). Solo lectura."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app import salud_autocuracion, salud_datos
-from app.auth import UsuarioActual, get_current_user
+from app import salud_autocuracion, salud_datos, salud_monitor
+from app.auth import UsuarioActual, cron_autorizado, get_current_user
 from app.database import get_db
 
 router = APIRouter(prefix="/salud", tags=["salud"])
@@ -30,3 +30,13 @@ def crear_tarjeta(data: CrearTarjeta, db: Session = Depends(get_db), usuario: Us
     if r is None:
         raise HTTPException(status_code=404, detail="No encontramos extractos de tarjeta de ese banco.")
     return {"ok": True, **r}
+
+
+@router.post("/cron/resumen")
+def cron_resumen(x_cron_secret: str = Header(default=""), db: Session = Depends(get_db)):
+    """Monitor para el dueño (cron diario ~7:30 Colombia, header X-Cron-Secret). Devuelve SOLO contadores
+    agregados y anónimos y, si alguno supera su umbral, deja UN aviso por día en «Actividad reciente»
+    (push + correo al administrador). Idempotente por día. Ver docs/SALUD_DE_DATOS.md."""
+    if not cron_autorizado(x_cron_secret):
+        raise HTTPException(status_code=401, detail="No autorizado")
+    return {**salud_monitor.revisar(db), "procesados": 1, "fallidos": 0}

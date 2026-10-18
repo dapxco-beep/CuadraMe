@@ -57,6 +57,7 @@ TIPOS: dict[str, tuple[str, bool, bool]] = {
     "limite_alcanzado": ("Tope diario alcanzado", False, False),
     "umbral_capacidad": ("Capacidad cerca del límite", True, True),
     "errores_5xx_picos": ("Pico de errores del servidor", True, True),
+    "salud_datos_alerta": ("Alerta de salud de datos", True, True),
     "respaldo_sin_cifrar": ("Respaldo diario sin enviar (falta frase)", True, True),
 }
 
