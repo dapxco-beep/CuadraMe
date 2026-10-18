@@ -39,7 +39,7 @@ from app.conciliacion import (
     fijar_nombre_titular,
     parse_texto_con_regex,
 )
-from app.contabilidad import con_marca_traslado, delta_saldo, tipo_con_direccion
+from app.contabilidad import CATEGORIA_PAGO_TARJETA, con_marca_traslado, delta_saldo, tipo_con_direccion
 from app.cuentas_banco import aviso_cuenta_distinta
 from app.database import get_db
 from app.extractos_conciliados import evidencia_conciliado
@@ -215,7 +215,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
         clasif = modelo.clasificar(item["descripcion"])
 
         tipo_dir, notas_auto = _tipo_y_notas(item, f"Auto-importado desde extracto {banco} (confianza {clasif['confianza'] if clasif else 0})")
-        if autoimportar and not via_ia and clasif and clasif["confianza"] >= umbral and tipo_dir:
+        if autoimportar and not via_ia and clasif and clasif["confianza"] >= umbral and tipo_dir and not item.get("lectura_dudosa"):
             fecha_dt = parse_bank_date(item["fecha"])
             movimiento = Movimiento(
                 usuario_id=usuario.id,
@@ -251,6 +251,12 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
             item["categoria_sugerida"] = clasif["categoria"] if clasif else "Otros"
             item["razon_categoria"] = clasif.get("razon") if clasif else None
             item["confianza_categoria"] = clasif.get("confianza") if clasif else None
+            if item.get("pago_tarjeta") and item["categoria_sugerida"] == "Otros":
+                # La línea «Pago ...» de un extracto de tarjeta: se sugiere como pago de la tarjeta (traslado
+                # entre tus cuentas), no como un gasto «Sin categoría». La persona puede cambiarla.
+                item["categoria_sugerida"] = CATEGORIA_PAGO_TARJETA
+                item["razon_categoria"] = "parece el pago de tu tarjeta desde otra cuenta tuya"
+                item["confianza_categoria"] = 0.6
 
     if auto_importados:
         resultado["faltantes"] -= auto_importados
@@ -604,6 +610,8 @@ def importar_faltantes(
     categorizados_auto = 0
     recordar, anteriores = set(data.recordar), set(data.aplicar_anteriores)
     titulos_elegidos = data.titulos or {}
+    montos_elegidos = data.montos or {}
+    dudosas_omitidas = 0
     recordar_titulo = set(data.recordar_titulo)
     reglas_guardadas = anteriores_actualizados = 0
     reglas_omitidas: list[dict] = []
@@ -635,6 +643,15 @@ def importar_faltantes(
         fp = item.get("fingerprint")
         if fp not in fingerprints or item.get("estado") != "faltante":
             continue
+        # Línea con varios montos: sin el monto que la persona eligió NO se importa (no se adivina).
+        if item.get("lectura_dudosa"):
+            elegido = montos_elegidos.get(fp)
+            if elegido is None or not (elegido >= 1):
+                dudosas_omitidas += 1
+                continue
+            item["monto_leido"] = item["monto"]
+            item["monto"] = round(float(elegido), 2)
+            item["lectura_dudosa"] = False
         # Nombre propio elegido en la revisión (el texto del banco, `descripcion`, no se toca).
         if fp in titulos_elegidos:
             nombre = tit.limpiar(titulos_elegidos[fp])
@@ -726,7 +743,7 @@ def importar_faltantes(
         "categorizados_auto": categorizados_auto, "reglas_guardadas": reglas_guardadas,
         "anteriores_actualizados": anteriores_actualizados, "reglas_omitidas": reglas_omitidas,
         "duplicados_omitidos": duplicados_omitidos, "sin_direccion": sin_direccion,
-        "anteriores_omitidas": anteriores_omitidas,
+        "anteriores_omitidas": anteriores_omitidas, "dudosas_omitidas": dudosas_omitidas,
     }
 
 

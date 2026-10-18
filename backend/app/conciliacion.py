@@ -420,15 +420,55 @@ _RE_LINEA_NU = re.compile(
 _RE_INICIA_FECHA_NU = re.compile(r"^\s*\d{1,2}\s+" + _MES_RE + r"\.?\s+\S", re.IGNORECASE)
 
 
+# ── Líneas con más de un monto («Pago $697.534,97 -$474.542,00») ────────────────────────────────
+_RE_MONTO_EN_TEXTO = re.compile(r"[+\-]?\s*\$\s*(\d[\d.,]*\d|\d)")
+_RE_PAGO_AL_INICIO = re.compile(r"^\s*pago\b", re.IGNORECASE)
+
+
+def montos_en_texto(texto: str) -> list[float]:
+    """Montos escritos con $ DENTRO de un texto, en el orden en que aparecen, sin repetir."""
+    vistos: list[float] = []
+    for m in _RE_MONTO_EN_TEXTO.finditer(texto or ""):
+        v = parse_monto_cop(m.group(1))
+        if v == v and v >= 1 and v not in vistos:
+            vistos.append(v)
+    return vistos
+
+
+def _marcas_lectura_nu(desc: str, tarjeta: bool = False) -> dict:
+    """Marcas de una línea del extracto de Nu que no se debe leer a ciegas:
+      · `lectura_dudosa`: la descripción trae montos con $ (la línea tenía varios montos y el lector se
+        quedó con uno). No se inventa cuál es el correcto: la persona elige entre los montos que aparecen
+        en la línea (`montos_alternativos`) o escribe el suyo.
+      · pista de traslado: una línea que empieza por «Pago» es el pago de la tarjeta, que sale de una
+        cuenta propia. Se sugiere como traslado entre tus cuentas (la regla que lo decide es la de
+        contabilidad.py; aquí solo se pone la marca que esa regla ya entiende). Solo en extractos de TARJETA:
+        en una cuenta de ahorros «Pago ...» es una compra o un servicio de verdad."""
+    marcas: dict = {}
+    en_texto = montos_en_texto(desc)
+    if en_texto:
+        marcas["lectura_dudosa"] = True
+        marcas["montos_alternativos"] = en_texto
+    if tarjeta and _RE_PAGO_AL_INICIO.search(desc):
+        marcas["pista"] = MARCA_TRASLADO_PROPIO
+        marcas["pago_tarjeta"] = True
+    return marcas
+
+
 def _anio_del_periodo(texto: str) -> str | None:
     m = _RE_PERIODO_NU.search(texto)
     return m.group(2) if m else None
+
+
+def _es_extracto_de_tarjeta(texto: str) -> bool:
+    return bool(re.search(r"tarjeta\s+de\s+cr[eé]dito|cupo\s+(?:total|disponible)|pago\s+m[ií]nimo", texto or "", re.IGNORECASE))
 
 
 def _parse_nu_por_lineas(texto: str, anio: str) -> list[dict]:
     """Lector estricto por líneas del extracto de Nu. Si la descripción de un movimiento
     se parte en dos líneas, se une con las siguientes hasta encontrar el monto."""
     lineas = texto.split("\n")
+    tarjeta = _es_extracto_de_tarjeta(texto)
     movimientos = []
     i = 0
     while i < len(lineas):
@@ -462,7 +502,7 @@ def _parse_nu_por_lineas(texto: str, anio: str) -> list[dict]:
             "fecha": f"{anio}-{mes:02d}-{int(m.group(1)):02d}",
             "descripcion": desc, "monto": monto,
             "tipo": "income" if positivo else "expense",
-            "referencia": "", "saldo": None, **_pista(desc),
+            "referencia": "", "saldo": None, **_pista(desc), **_marcas_lectura_nu(desc, tarjeta),
         })
     return movimientos
 
@@ -509,7 +549,7 @@ def _parse_nu(texto: str, anio: str) -> tuple[list[dict], int]:
         movimientos.append({
             "fecha": f"{anio}-{mes:02d}-{int(m.group(1)):02d}",
             "descripcion": desc, "monto": abs(monto), "tipo": tipo,
-            "referencia": "", "saldo": None, **_pista(desc),
+            "referencia": "", "saldo": None, **_pista(desc), **_marcas_lectura_nu(desc, _es_extracto_de_tarjeta(texto)),
         })
     return movimientos, descartados
 
