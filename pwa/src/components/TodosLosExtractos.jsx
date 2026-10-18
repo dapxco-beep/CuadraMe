@@ -110,6 +110,11 @@ function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado, releyendo = fals
         </p>
       )}
       {it.estado_corto && !(esError && it.mes_por_confirmar && it.copias > 1) && <p className={`text-sm font-semibold mt-1.5 ${esError ? 'text-danger' : ''}`} data-testid="estado-corto">{it.estado_corto}</p>}
+      {it.mensaje_lectura && (
+        <p className={`text-sm mt-1.5 font-semibold ${it.lectura_completa === false ? 'text-danger' : 'text-cuadra'}`} role={it.lectura_completa === false ? 'alert' : 'status'} data-testid="mensaje-lectura">
+          {it.mensaje_lectura}
+        </p>
+      )}
       {it.lectura_dudosa > 0 && (
         <p className="text-sm mt-1.5 text-accent font-semibold" data-testid="aviso-lectura-dudosa">
           {it.lectura_dudosa === 1 ? '1 línea trae dos montos: elige el correcto al revisarla.' : `${it.lectura_dudosa} líneas traen dos montos: elige el correcto al revisarlas.`}
