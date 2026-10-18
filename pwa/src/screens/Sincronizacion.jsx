@@ -21,6 +21,7 @@ import { construirPasos, estadoGeneral, obligatorios, progresoPasos, textoBusque
 import PasoGuiado from '../components/PasoGuiado'
 import AvisoSalud from '../components/AvisoSalud'
 import EstadoPorCuenta from '../components/EstadoPorCuenta'
+import ArreglarTarjetas from '../components/ArreglarTarjetas'
 import BancoNoEsta, { EnlaceBancoNoEsta } from '../components/BancoNoEsta'
 import { InterruptoresLectura } from '../components/CarrilesCorreo'
 import ConexionGmail from '../components/ConexionGmail'
@@ -975,7 +976,13 @@ export default function Sincronizacion() {
               onVerTodo={() => abrirTodo(tab)}
             />
           </div>
-          <EstadoPorCuenta cuentas={filasCuentas} meses={meses} onMes={accionMes} className="mx-6 mt-5 mb-2" />
+          <EstadoPorCuenta
+            cuentas={filasCuentas}
+            meses={meses}
+            onMes={accionMes}
+            pieCredito={<ArreglarTarjetas onListo={cargar} onRevisar={() => abrirGrupoExtractos(FILTRO_DE_TAREA.extractos_por_conciliar)} />}
+            className="mx-6 mt-5 mb-2"
+          />
         </div>
 
         {/* Escritorio: lo que sigue y lo que hago solo. En el celular no se ve: una pregunta a la vez. */}

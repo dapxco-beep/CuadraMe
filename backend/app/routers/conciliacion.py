@@ -16,6 +16,7 @@ from app.autocat import (
 )
 from app import duplicados as dup
 from app import cuadre_extracto
+from app import arreglar_tarjetas
 from app import reasignar_extracto
 from app import estado_traer
 from app.extractos_vista import clasificar_motivo
@@ -981,13 +982,46 @@ def releer_extracto_guardado(
         raise HTTPException(status_code=e.estado, detail=e.mensaje)
 
 
+class ArreglarTarjetasIn(BaseModel):
+    confirmar: bool = False
+    maximo: int = 12  # la app arregla de a uno para mostrar el avance («3 de 6»)
+    excluir: list[str] = []  # historiales que esta tanda ya intentó
+    continuar: bool = False  # sigue una tanda ya iniciada: no cuenta como llamada nueva frente al límite por hora
+
+
+@router.get("/tarjetas/arreglar/previa")
+def arreglar_tarjetas_previa(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«Arreglar mis extractos de la tarjeta», vista previa SIN cambios ni Gmail: qué extractos, a qué cuenta pasan,
+    cuántos movimientos se mueven y cómo quedan los saldos."""
+    return arreglar_tarjetas.previa(db, usuario)
+
+
+@router.post("/tarjetas/arreglar")
+def arreglar_tarjetas_ahora(
+    data: ArreglarTarjetasIn,
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Mueve los extractos de tarjeta a su tarjeta y los relee con el lector de hoy, en un solo paso (máx. 12 por
+    llamada, del más viejo al más nuevo). Pide confirmar. La llamada cuenta como UNA relectura por hora."""
+    if not data.confirmar:
+        raise HTTPException(status_code=400, detail="Confirma el arreglo para continuar.")
+    if data.continuar:  # los pasos de una tanda ya iniciada tienen su propio tope (cada uno relee como mucho 1 PDF)
+        verificar_limite(f"arreglar-tarjetas-sigue:{usuario.id}", 40, 3600, "Arreglaste tus extractos muchas veces seguidas. Podrás seguir en {espera}.")
+    else:
+        verificar_limite(f"arreglar-tarjetas:{usuario.id}", 6, 3600, "Arreglaste tus extractos muchas veces seguidas. Podrás seguir en {espera}.")
+    return arreglar_tarjetas.arreglar(db, usuario, maximo=data.maximo, excluir=data.excluir[:50])
+
+
 @router.post("/releer-pendientes")
 def releer_pendientes_al_abrir(
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
     """Al abrir «Traer movimientos»: relee una vez (por versión del lector) los extractos por revisar que
-    vinieron de un correo (máx. 3). Nunca falla; los conciliados no se tocan."""
+    vinieron de un correo y los conciliados de tarjeta ya en su cuenta de crédito, en modo «solo agregar»
+    (máx. 3 en total). Nunca falla."""
     return releer_extracto.releer_pendientes(db, usuario)
 
 

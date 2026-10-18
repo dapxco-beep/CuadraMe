@@ -499,6 +499,11 @@ export const api = {
     request(`/conciliacion/historial/${id}/cambiar-cuenta/previa?cuenta_id=${encodeURIComponent(cuentaId)}`),
   cambiarCuentaExtracto: (id, cuentaId) =>
     request(`/conciliacion/historial/${id}/cambiar-cuenta`, { method: 'POST', body: { cuenta_id: cuentaId, confirmar: true } }),
+  // «Arreglar mis extractos de la tarjeta»: la previa no cambia nada ni toca Gmail; arreglar pide confirmar.
+  // Se arregla de a uno (`maximo: 1`) para mostrar el avance; `excluir` = los que esta tanda ya intentó.
+  previaArreglarTarjetas: () => request('/conciliacion/tarjetas/arreglar/previa'),
+  arreglarTarjetas: ({ maximo = 12, excluir = [], continuar = false } = {}) =>
+    request('/conciliacion/tarjetas/arreglar', { method: 'POST', body: { confirmar: true, maximo, excluir, continuar } }),
   obtenerReviewExtracto: (id) => request(`/conciliacion/historial/${id}`),
   resolverDudosos: (id, mismos, distintos) =>
     request(`/conciliacion/historial/${id}/resolver-dudosos`, { method: 'POST', body: { mismos, distintos } }),

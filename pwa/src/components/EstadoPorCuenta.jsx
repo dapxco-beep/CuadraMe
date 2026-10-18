@@ -43,9 +43,10 @@ function ChipMes({ cuenta, mes, celda, etiqueta, onMes }) {
   )
 }
 
-export default function EstadoPorCuenta({ cuentas = [], meses = [], onMes, className = '' }) {
+export default function EstadoPorCuenta({ cuentas = [], meses = [], onMes, pieCredito = null, className = '' }) {
   const lista = cuentasConExtracto(cuentas)
   if (!lista.length || !meses.length) return null
+  const primeraTarjeta = lista.find((c) => c.tipo === 'credito')?.id // «Arreglar mis extractos de la tarjeta» va en la primera tarjeta
   return (
     <section aria-label="Estado por cuenta y mes" className={className} data-testid="estado-por-cuenta">
       <h2 className="text-sm font-semibold px-1">Tus cuentas, mes a mes</h2>
@@ -84,6 +85,7 @@ export default function EstadoPorCuenta({ cuentas = [], meses = [], onMes, class
                   </div>
                 ))}
               </div>
+              {pieCredito && c.id === primeraTarjeta && <div className="mt-3">{pieCredito}</div>}
             </article>
           )
         })}

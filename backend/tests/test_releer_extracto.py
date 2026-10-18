@@ -189,9 +189,36 @@ def test_automatico_relee_una_vez_por_version_y_no_toca_conciliados(monkeypatch)
     monkeypatch.setattr(rx, "VERSION_LECTOR", "otra-version")  # el lector mejoró: vuelve a leer
     assert client.post("/conciliacion/releer-pendientes").json()["releidos"] == 1
 
+    # Un conciliado que NO es de tarjeta (cuenta de ahorros, sin pistas de tarjeta) no se toca solo.
     gmail2 = GmailFalso()
-    _montar("rx-11", monkeypatch, gmail=gmail2, estado="conciliado")
+    hid2, cid2 = _montar("rx-11", monkeypatch, gmail=gmail2, estado="conciliado")
+    db = SessionLocal()
+    db.get(Cuenta, cid2).tipo = "ahorro"
+    db.commit()
+    db.close()
     assert client.post("/conciliacion/releer-pendientes").json()["releidos"] == 0 and gmail2.llamadas == 0
+
+
+def test_automatico_conciliado_de_tarjeta_solo_agrega(monkeypatch):
+    """Un conciliado de TARJETA (ya en su cuenta de crédito) se relee una vez por versión en modo «solo agregar»:
+    lo importado queda intacto, la línea nueva entra como faltante y el extracto vuelve a «por revisar»."""
+    gmail = GmailFalso()
+    hid, _ = _montar("rx-13", monkeypatch, gmail=gmail, estado="conciliado")
+    db = SessionLocal()
+    h = db.get(HistorialExtracto, hid)
+    r = json.loads(h.review_json)
+    r[1]["estado"] = "exacto"  # la línea mal leída ya estaba resuelta: nada que reemplazar ni quitar
+    h.review_json = json.dumps(r)
+    db.commit()
+    db.close()
+    antes = _estado(hid)[6]
+    j = client.post("/conciliacion/releer-pendientes").json()
+    assert j["releidos"] == 1 and j["cambiados"] == 1
+    estado, faltantes, _, _, _, _, review = _estado(hid)
+    assert estado == "pendiente_revision" and faltantes == 2
+    assert review[:2] == antes[:2]  # lo que había, intacto
+    assert {i["descripcion"] for i in review if i["estado"] == "faltante"} == {"Pago de la factura anterior", "Compra en tienda dos"}
+    assert client.post("/conciliacion/releer-pendientes").json()["releidos"] == 0  # una sola vez por versión
 
 
 def test_automatico_con_gmail_caido_reintenta_despues(monkeypatch):
