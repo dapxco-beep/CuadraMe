@@ -100,7 +100,9 @@ def diagnosticar(db: Session, usuario_id: str) -> list[dict]:
             + ("este extracto es de una tarjeta pero está en una cuenta de ahorros (o al revés). "
                if n == 1 else "estos extractos están en una cuenta que no es la suya. ")
             + "Mira la vista previa y cámbialo de cuenta si es lo correcto.",
-            {"tipo": "cambiar_cuenta_extracto", "etiqueta": "Revisar", "historial_id": (con_hist[0].historial_id if con_hist else None)},
+            {"tipo": "cambiar_cuenta_extracto", "etiqueta": "Revisar",
+             "historial_id": (con_hist[0].historial_id if con_hist else None),
+             "cuenta_id": (hist[con_hist[0].historial_id].cuenta_id if con_hist and con_hist[0].historial_id in hist else None)},
             {"cantidad": n, "extracto_ids": [e.id for e in mal][:MAX_IDS],
              "historial_ids": [e.historial_id for e in con_hist][:MAX_IDS]},
         ))
@@ -197,7 +199,7 @@ def diagnosticar(db: Session, usuario_id: str) -> list[dict]:
                 f"{len(incoherentes)} {_plural(len(incoherentes), 'extracto tiene', 'extractos tienen')} movimientos en otra cuenta",
                 "Hay movimientos que salieron de un extracto pero están en una cuenta distinta a la del extracto. "
                 "Revisa la vista previa antes de moverlos.",
-                {"tipo": "cambiar_cuenta_extracto", "etiqueta": "Revisar", "historial_id": primero},
+                {"tipo": "cambiar_cuenta_extracto", "etiqueta": "Revisar", "historial_id": primero, "cuenta_id": hist[primero].cuenta_id},
                 {"cantidad": sum(incoherentes.values()), "historial_ids": list(incoherentes)[:MAX_IDS]},
             ))
 

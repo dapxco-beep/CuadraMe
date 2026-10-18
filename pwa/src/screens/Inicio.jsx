@@ -43,6 +43,7 @@ import { resumenCarriles } from '../lib/carriles'
 import ExtractosAMedias from '../components/ExtractosAMedias'
 import { extractosAMedias } from '../lib/retomar'
 import { nombreDe } from '../lib/tituloMovimiento'
+import AvisoSalud from '../components/AvisoSalud'
 
 const DIAS_CUENTA_NUEVA = 14
 
@@ -420,6 +421,8 @@ export default function Inicio() {
               )}
             </Boton>
           </div>
+
+          <AvisoSalud className="mx-6 mt-2" />
 
           {lineaCorreo && (
             <p className="mx-6 mt-2 text-xs text-ink-soft" data-testid="linea-correo">{lineaCorreo}</p>
