@@ -210,7 +210,8 @@ def extraer_concepto(asunto: str, cuerpo: str = "") -> str:
             m = patron.search(texto)
             if m:
                 nombre = _bonito(m.group(1))
-                if nombre:
+                # «Compraste en:» vacío arrastraba la línea siguiente («La cantidad de: $...») como comercio.
+                if nombre and not re.match(r"(?i)(la\s+)?cantidad\b", nombre):
                     return f"{prefijo}{nombre}"
         m = _ASTERISCO.search(texto)  # 'BOLD*CAFE LUNA' / '*RAPPI*'
         if m:
