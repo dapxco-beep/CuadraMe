@@ -613,3 +613,23 @@ def test_preferencias_de_lectura_del_correo_son_por_usuario():
     assert carriles["extractos"]["activo"] is True
     como(B)
     assert client.get("/correos/carriles").json()["extractos"]["activo"] is False
+
+
+# ── 6. /salud: B solo ve SUS hallazgos, nunca los de A ──────────────────────────────
+def test_salud_es_aislada_por_usuario():
+    from app.models import ExtractoCorreo as _E
+
+    db = SessionLocal()
+    try:
+        db.add(_E(usuario_id=C.id, gmail_msg_id="salud-a", archivo="a.pdf", banco="Nu", asunto="Extracto ZZA",
+                  estado="falta_clave"))
+        db.commit()
+    finally:
+        db.close()
+    como(C)
+    ra = client.get("/salud").json()
+    como(B)
+    rb = client.get("/salud").json()
+    assert "clave_pdf_faltante" in {h["codigo"] for h in ra["hallazgos"]}  # control: C sí ve el suyo
+    assert "clave_pdf_faltante" not in {h["codigo"] for h in rb["hallazgos"]}
+    assert "salud-a" not in client.get("/salud").text
