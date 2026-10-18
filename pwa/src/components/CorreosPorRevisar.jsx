@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { CalendarDays, Check, CheckCheck, Mail, Pencil, X } from 'lucide-react'
+import { CalendarDays, Check, CheckCheck, GraduationCap, Mail, Pencil, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
 import { parsearMontoEscrito } from '../lib/centro'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import CrearCuentaBanco from './CrearCuentaBanco'
+import HojaEnsenarCorreo from './HojaEnsenarCorreo'
 import InputMonto from './InputMonto'
 import SelectorCuentaBanco from './SelectorCuentaBanco'
 import { cuentaRecordada } from '../lib/cuentasBanco'
@@ -19,7 +20,7 @@ import { agruparPorDia, etiquetaFechaHora, fechaParaEnviar, fechasDistintas, val
  * Un correo sin monto legible no se puede aprobar: la tarjeta pide el monto.
  *   correos: GET /correos/pendientes   ·   onResuelto(correo): ya se aprobó o descartó
  */
-export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada }) {
+export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada, onRecargar }) {
   const { cuentas } = useCuentas()
   const { nombres = [], iconoDe = () => '' } = useCategorias() || {}
   const [categoriaPorCorreo, setCategoriaPorCorreo] = useState({}) // id -> categoría elegida
@@ -33,6 +34,8 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
   const [editandoNombre, setEditandoNombre] = useState(null) // id del correo cuyo nombre se edita
   const [procesando, setProcesando] = useState(new Set())
   const [crearCuenta, setCrearCuenta] = useState(null) // { banco }
+  const [ensenandoId, setEnsenandoId] = useState(null) // id del correo al que se le enseña a leer
+  const [lecturaPorCorreo, setLecturaPorCorreo] = useState({}) // id -> { monto, comercio, tipo_sugerido } que enseñó la persona
   const [error, setError] = useState('')
 
   // Solo vale una cuenta que exista: la elegida a mano o la que el servidor dedujo del banco.
@@ -160,7 +163,8 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
       <div key={g.clave} className="mb-3" data-testid={`dia-${g.clave}`}>
       <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-soft mb-1.5 px-1">{g.etiqueta}</h4>
       <ul className="flex flex-col gap-3">
-        {g.items.map((c) => {
+        {g.items.map((c0) => {
+          const c = { ...c0, ...(lecturaPorCorreo[c0.id] || {}) }
           const falta = sinMonto(c)
           const monto = montoDe(c)
           const cuentaId = cuentaElegida(c)
@@ -229,6 +233,17 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
                     className="w-full mt-1 rounded-xl border border-line bg-paper-raised px-3 py-2 text-sm outline-none focus:border-accent"
                   />
                 </label>
+              )}
+
+              {(falta || /sin detalle$/i.test(c.comercio || '')) && (
+                <button
+                  type="button"
+                  onClick={() => setEnsenandoId(c.id)}
+                  className="mt-2 min-h-[44px] px-3 rounded-xl border border-line text-xs font-medium text-ink-soft flex items-center gap-1.5"
+                  data-testid={`ensenar-${c.id}`}
+                >
+                  <GraduationCap size={16} aria-hidden="true" /> Enseñarle a leer este correo
+                </button>
               )}
 
               <p className="text-xs text-ink-soft mt-1">
@@ -347,6 +362,19 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada 
       </ul>
       </div>
       ))}
+
+      {ensenandoId && (
+        <HojaEnsenarCorreo
+          correoId={ensenandoId}
+          onCerrar={() => setEnsenandoId(null)}
+          onListo={({ correo, recuperados }) => {
+            if (correo) {
+              setLecturaPorCorreo((p) => ({ ...p, [ensenandoId]: { monto: correo.monto, comercio: correo.comercio, tipo_sugerido: correo.tipo } }))
+            }
+            if (recuperados > 0 || correo) onRecargar?.()
+          }}
+        />
+      )}
 
       {crearCuenta && (
         <CrearCuentaBanco
