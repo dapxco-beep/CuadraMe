@@ -90,7 +90,7 @@ export function DialogosProvider({ children }) {
           onCerrar={() => responder(false)}
         >
           {confirmacion.titulo && <p className="text-base font-bold mb-1">{confirmacion.titulo}</p>}
-          <p className="text-sm text-ink-soft">{confirmacion.mensaje}</p>
+          <p className="text-sm text-ink-soft whitespace-pre-line">{confirmacion.mensaje}</p>
           <div className="flex gap-3 mt-5">
             <button
               autoFocus

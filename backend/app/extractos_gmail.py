@@ -107,6 +107,10 @@ PALABRAS_TRANSACCION = (
     "enviaste", "abono", "débito", "debito", "crédito", "credito",
     "transacci", "te enviaron", "movimiento", "avance",
     "pagaste", "te pagaron", "retiraste", "cobro", "cobramos", "devoluci", "reembolso", "rendimiento",
+    # Verbos y avisos frecuentes de bancos y billeteras (Nu, Nequi, Daviplata, Davivienda...), siempre de una operación hecha.
+    "te llego", "llego plata", "plata recibida", "dinero recibido", "giro recibido", "recargaste", "recarga exitosa",
+    "deposito recibido", "deposito exitoso", "te depositaron", "depositaste", "te consignaron", "te transfirieron",
+    "transferiste", "gastaste", "sacaste", "operacion exitosa", "nomina recibida",
 )
 
 # Frases de asunto de notificaciones de transacción (Nu y similares); se buscan sin importar el remitente.

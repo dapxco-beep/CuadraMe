@@ -307,6 +307,11 @@ def estado(
         .filter(CorreoGasto.usuario_id == usuario.id, CorreoGasto.estado == "ya_registrado")
         .scalar() or 0
     )
+    n_descartados = (
+        db.query(func.count(CorreoGasto.id))
+        .filter(CorreoGasto.usuario_id == usuario.id, CorreoGasto.estado == "descartado", CorreoGasto.monto > 0)
+        .scalar() or 0
+    )
     n_correos = (
         db.query(func.count(CorreoGasto.id))
         .filter(CorreoGasto.usuario_id == usuario.id, CorreoGasto.estado == "pendiente", CorreoGasto.monto > 0,
@@ -355,6 +360,7 @@ def estado(
         "sin_cuenta": sin_cuenta,
         "tareas": tareas,
         "correos_ya_registrados": n_ya_registrados,
+        "correos_descartados": n_descartados,
         # Un renglón por extracto real, con lo que pasó con cada línea (ver app/estado_traer.py).
         "extractos": lista_ext,
         # «Todos los extractos»: la misma lista, completa y ordenada por mes, con contadores y correos sin PDF.

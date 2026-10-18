@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { Boton } from '../components/ui'
-import { Link, useLocation, useNavigationType, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router-dom'
 import { ArrowLeftRight, Check, RefreshCw, ChevronDown, ChevronRight, Download, ListChecks, PieChart, Search, Shuffle, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
 import Icono from '../components/Icono'
 import { formatCOP, formatMoneda } from '../lib/format'
@@ -20,6 +20,7 @@ import {
   categoriasRecientes,
   coincideFiltros,
   consultaServidor,
+  ORIGENES_FILTRO,
   hayFiltros,
   huellaDe,
   leerFiltros,
@@ -35,6 +36,7 @@ import PorRevisarCorreo from '../components/PorRevisarCorreo'
 import { BotonLapiz, EditorNombre, PistaBanco } from '../components/NombreEditable'
 import { limpiarNombre, MIN_REPETICIONES_NOMBRE, nombreDe, tieneNombrePropio } from '../lib/tituloMovimiento'
 import { usePorRevisarCorreo } from '../lib/usePorRevisarCorreo'
+import { conAvisoDeBorrado } from '../lib/canales'
 import { actualizarDesdeCorreo, resumenActualizacion } from '../lib/sincronizarGmail'
 
 const TAMANO_PAGINA = 200
@@ -235,6 +237,18 @@ export default function Movimientos() {
   // Lo que llegó por el correo y espera aprobación: sección propia arriba de la lista (filtro «Del correo»).
   const porCorreo = usePorRevisarCorreo()
   const soloCorreo = params.get('filtro') === 'por-revisar'
+  const navigate = useNavigate()
+  // Cuántos correos descartados se pueden recuperar (una consulta corta; el tope es 100).
+  const [descartados, setDescartados] = useState(0)
+  useEffect(() => {
+    let vivo = true
+    Promise.resolve(api.correosLista?.('descartados', 0, 100))
+      .then((l) => vivo && setDescartados(Array.isArray(l) ? l.length : 0))
+      .catch(() => {})
+    return () => {
+      vivo = false
+    }
+  }, [porCorreo.correos.length])
 
   // Movimientos «en vivo»: al abrir, al volver a la app (máx. 1 vez cada 5 min) y con el botón de refresco
   // se leen las notificaciones del banco. Lo nuevo cae en «Por revisar» (arriba); la lista no se mueve.
@@ -265,7 +279,7 @@ export default function Movimientos() {
       if (r.omitido) return
       if (r.error) setAvisoCorreo(manual ? r.error : '')
       else {
-        if (r.nuevos) porCorreo.recargar()
+        if (r.nuevos || manual) porCorreo.recargar() // tras el refresco, «Por revisar» siempre al día
         if (r.nuevos || manual) setAvisoCorreo(resumenActualizacion(r))
       }
     },
@@ -443,7 +457,7 @@ export default function Movimientos() {
   )
   const recientes = useMemo(() => categoriasRecientes(movimientos, CATEGORIAS), [movimientos, CATEGORIAS])
   const vistaActiva = f.comercio ? 'comercio' : lateral && f.tabla ? 'tabla' : 'lista'
-  const filtrosVisibles = mostrarFiltros || lateral || !!(f.cuenta || f.desde || f.hasta || f.tipo)
+  const filtrosVisibles = mostrarFiltros || lateral || !!(f.cuenta || f.desde || f.hasta || f.tipo || f.origen)
 
   // --- Ventana (virtualización por días) ---
   // Con 1.500+ movimientos solo se pintan los días que se ven más un margen; lo de arriba y abajo
@@ -781,7 +795,10 @@ export default function Movimientos() {
   async function eliminarSeleccion() {
     const ids = [...seleccionados]
     const ok = await confirmar(
-      'El saldo de las cuentas se ajustará como si estos movimientos nunca hubieran existido. Esto no se puede deshacer.',
+      conAvisoDeBorrado(
+        'El saldo de las cuentas se ajustará como si estos movimientos nunca hubieran existido. Esto no se puede deshacer.',
+        movimientos.filter((m) => ids.includes(m.id))
+      ),
       {
         titulo: `¿Eliminar ${ids.length} ${ids.length === 1 ? 'movimiento' : 'movimientos'}?`,
         confirmarTexto: 'Eliminar',
@@ -850,6 +867,7 @@ export default function Movimientos() {
     f.cuenta && { k: 'cuenta', texto: nombreCuenta(f.cuenta) },
     f.cat && f.cat !== 'Otros' && { k: 'cat', texto: f.cat },
     f.tipo && { k: 'tipo', texto: { income: 'Ingresos', expense: 'Gastos', transfer: 'Transferencias' }[f.tipo] || f.tipo },
+    f.origen && { k: 'origen', texto: ORIGENES_FILTRO.find((o) => o.id === f.origen)?.texto || f.origen },
     f.desde && { k: 'desde', texto: `Desde ${f.desde}` },
     f.hasta && { k: 'hasta', texto: `Hasta ${f.hasta}` },
   ].filter(Boolean)
@@ -957,6 +975,27 @@ export default function Movimientos() {
                 </Link>
               </div>
 
+              {(porCorreo.correos.length > 0 || descartados > 0) && (
+                <div className="px-5 mb-3 flex flex-wrap items-center gap-x-4 gap-y-1" data-testid="accesos-correo">
+                  {porCorreo.correos.length > 0 && (
+                    <button
+                      onClick={() => cambiarParams({ filtro: 'por-revisar' })}
+                      className="text-xs font-semibold text-accent underline min-h-[32px]"
+                    >
+                      Correos por revisar ({porCorreo.correos.length})
+                    </button>
+                  )}
+                  {descartados > 0 && (
+                    <button
+                      onClick={() => navigate('/sincronizacion', { state: { abrir: 'correos-descartados' } })}
+                      className="text-xs font-medium text-ink-soft underline min-h-[32px]"
+                    >
+                      Correos descartados ({descartados >= 100 ? '99+' : descartados})
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className="px-5 mb-3 flex gap-2 overflow-x-auto no-scrollbar lg:flex-wrap lg:overflow-visible">
                 {(porCorreo.correos.length > 0 || soloCorreo) && (
                   <button onClick={() => cambiarParams({ filtro: soloCorreo ? '' : 'por-revisar' })} aria-pressed={soloCorreo} className={botonChip(soloCorreo)}>
@@ -1051,6 +1090,17 @@ export default function Movimientos() {
                     <option value="income">Solo ingresos</option>
                     <option value="transfer">Transferencias</option>
                   </select>
+                  <select
+                    aria-label="Filtrar por origen"
+                    value={f.origen}
+                    onChange={(e) => cambiarParams({ origen: e.target.value })}
+                    className={campo}
+                  >
+                    <option value="">Todos los orígenes</option>
+                    {ORIGENES_FILTRO.map((o) => (
+                      <option key={o.id} value={o.id}>{o.texto}</option>
+                    ))}
+                  </select>
                   <button onClick={() => exportar('xlsx')} className="text-xs text-accent font-medium px-2 text-left" aria-label="Exportar a Excel">
                     Exportar .xlsx
                   </button>
@@ -1072,7 +1122,7 @@ export default function Movimientos() {
                   <button
                     onClick={() => {
                       setTexto('')
-                      cambiarParams({ q: '', cuenta: '', cat: '', tipo: '', desde: '', hasta: '', revisar: false, conf: false })
+                      cambiarParams({ q: '', cuenta: '', cat: '', tipo: '', origen: '', desde: '', hasta: '', revisar: false, conf: false })
                     }}
                     className="text-xs font-semibold text-accent underline px-1 min-h-[32px]"
                   >

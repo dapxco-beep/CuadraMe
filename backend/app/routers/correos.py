@@ -149,6 +149,11 @@ def _con_cuenta(db: Session, usuario_id: str, correos: list[CorreoGasto]) -> lis
         o.recibido_en_co = utc_a_co(c.recibido_en or c.creado_en)
         if c.estado == "ya_registrado":
             o.registrado_como = registrados.get(c.movimiento_id)
+        elif c.estado == "descartado":
+            o.motivo_descarte = ("Se parecía a un movimiento que borraste" if c.movimiento_id
+                                 else "Lo descartaste")
+        elif c.estado == "ignorado":
+            o.motivo_descarte = "No parecía una compra"
         o.banco_detectado, o.cuenta_sugerida_id, o.falta_cuenta = inferir_cuenta_por_remitente(c.remitente, cuentas, f"{c.asunto} {c.snippet}")
         o.falta_monto = (c.monto or 0) <= 0
         if o.banco_detectado and not o.falta_cuenta and not o.cuenta_sugerida_id:
@@ -1110,6 +1115,8 @@ def listar_correos(
     q = db.query(CorreoGasto).filter(CorreoGasto.usuario_id == usuario.id)
     if filtro != "todos":
         q = q.filter(CorreoGasto.estado == estados[filtro])
+    if filtro == "descartados":
+        q = q.filter(CorreoGasto.monto > 0)  # lo recuperable: sin monto no hay nada que registrar
     inicio_pp = punto_partida.fecha_inicio(db, usuario.id)
     if inicio_pp and filtro == "nuevos":
         q = q.filter(or_(CorreoGasto.recibido_en.is_(None), CorreoGasto.recibido_en >= inicio_pp - timedelta(days=60)))
@@ -1903,6 +1910,31 @@ def descartar_correo(
     db.commit()
     db.refresh(correo)
     return correo
+
+
+@router.post("/{correo_id}/recuperar", response_model=CorreoGastoOut)
+def recuperar_correo(
+    correo_id: str,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«Recuperar»: un correo descartado (al borrar un movimiento parecido, o a mano) o ignorado con
+    monto vuelve a «Por revisar». Si ya existe un movimiento equivalente, queda como ya registrado."""
+    correo = (
+        db.query(CorreoGasto)
+        .filter(CorreoGasto.id == correo_id, CorreoGasto.usuario_id == usuario.id)
+        .first()
+    )
+    if not correo:
+        raise HTTPException(status_code=404, detail="Correo no encontrado")
+    if correo.estado in ("pendiente", "ya_registrado"):
+        return _con_cuenta(db, usuario.id, [correo])[0]  # doble toque: ya está recuperado
+    if not (correo.estado == "descartado" or (correo.estado == "ignorado" and (correo.monto or 0) > 0)):
+        raise HTTPException(status_code=400, detail="Este correo no se puede recuperar")
+    dup.recuperar_correo(db, usuario.id, correo)
+    db.commit()
+    db.refresh(correo)
+    return _con_cuenta(db, usuario.id, [correo])[0]
 
 
 @router.post("/{correo_id}/no-es-duplicado", response_model=CorreoGastoOut)

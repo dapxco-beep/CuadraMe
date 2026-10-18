@@ -8,6 +8,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import Hoja from './Hoja'
 import RecordarRegla, { RECORDAR_INICIAL } from './RecordarRegla'
+import { conAvisoDeBorrado } from '../lib/canales'
 import {
   debeMostrarBandeja,
   estadoBandejaGuardado,
@@ -114,7 +115,7 @@ export default function BandejaPorConfirmar() {
   }
 
   async function descartarUno(m) {
-    const ok = await confirmar('Lo eliminamos y el saldo de tu cuenta vuelve a como estaba.', {
+    const ok = await confirmar(conAvisoDeBorrado('Lo eliminamos y el saldo de tu cuenta vuelve a como estaba.', m), {
       titulo: `¿Descartar "${m.descripcion}"?`,
       confirmarTexto: 'Descartar',
       peligro: true,

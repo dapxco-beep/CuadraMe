@@ -99,6 +99,25 @@ def origen_de_fuente(fuente: str | None, cat_origen: str | None = None) -> str:
     return ORIGEN_MANUAL
 
 
+def filtro_origen(origen: str):
+    """Condición SQL «el movimiento nació por este canal» (la columna `origen`, o la deducida de la fuente
+    para los movimientos viejos sin ella: igual que `origen_de_movimiento`)."""
+    from sqlalchemy import and_, func, not_, or_
+
+    from app.models import Movimiento as M
+
+    fuente, cat = func.coalesce(M.fuente, ""), func.coalesce(M.cat_origen, "")
+    atajo = or_(fuente.in_(_FUENTES_ATAJO), cat.in_(("wallet", "atajo", "cierre_app", "voz")))
+    viejo = {
+        ORIGEN_ATAJO: atajo,
+        ORIGEN_CORREO: and_(fuente == "email", not_(atajo)),
+        ORIGEN_EXTRACTO: and_(fuente.in_(_FUENTES_EXTRACTO), not_(atajo)),
+        ORIGEN_IMPORTACION: and_(fuente.in_(_FUENTES_IMPORTACION), not_(atajo)),
+    }
+    viejo[ORIGEN_MANUAL] = not_(or_(*viejo.values()))
+    return or_(M.origen == origen, and_(or_(M.origen.is_(None), M.origen == ""), viejo[origen]))
+
+
 def origen_de_movimiento(m) -> str:
     o = getattr(m, "origen", None)
     return o if o in ORIGENES else origen_de_fuente(getattr(m, "fuente", None), getattr(m, "cat_origen", None))
@@ -615,6 +634,35 @@ def mostrar_de_todos_modos(db: Session, usuario_id: str, correo) -> None:
     correo.movimiento_id = None
     if not buscar_huella(db, usuario_id, huella, (ESTADO_NO_DUPLICADO,)):
         db.add(HuellaOrigen(usuario_id=usuario_id, huella=huella, origen=ORIGEN_CORREO, estado=ESTADO_NO_DUPLICADO))
+
+
+def recuperar_correo(db: Session, usuario_id: str, correo, cuentas: list | None = None) -> str:
+    """El usuario quiere de vuelta un correo 'descartado' (o 'ignorado' con monto): vuelve a «Por revisar».
+    Se quita la huella fantasma de ESE correo y se anota la excepción «no es duplicado» solo para él, así
+    `absorber_correos` no lo vuelve a descartar contra el movimiento que se borró. Los anti-duplicados reales
+    siguen: si hoy existe un movimiento vigente equivalente, queda 'ya_registrado'. Devuelve el estado final.
+    Sin commit."""
+    from app.models import Cuenta, HuellaOrigen
+
+    huella = huella_correo(correo.gmail_msg_id)
+    db.query(HuellaOrigen).filter(
+        HuellaOrigen.usuario_id == usuario_id, HuellaOrigen.huella == huella,
+        HuellaOrigen.estado == ESTADO_DESCARTADO,
+    ).delete(synchronize_session=False)
+    correo.estado = "pendiente"
+    correo.movimiento_id = None
+    if not buscar_huella(db, usuario_id, huella, (ESTADO_NO_DUPLICADO,)):
+        db.add(HuellaOrigen(usuario_id=usuario_id, huella=huella, origen=ORIGEN_CORREO, estado=ESTADO_NO_DUPLICADO))
+    db.flush()
+    cuentas = cuentas if cuentas is not None else db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).all()
+    ent = _candidato_de_correo(correo, cuentas)
+    pareja = buscar_pareja(db, usuario_id, ent, fantasmas=False) if ent else None
+    if pareja:
+        correo.estado = "ya_registrado"
+        correo.movimiento_id = pareja.ref.id
+        confirmar_por_canal(db, pareja.ref, ORIGEN_CORREO, huella, descripcion=correo.comercio, fecha=ent.fecha,
+                            categoria=correo.categoria_sugerida, hora_real=True)
+    return correo.estado
 
 
 # ── Datos que ya existen: «Buscar duplicados» ─────────────────────────────────────────────

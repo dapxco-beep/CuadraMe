@@ -116,11 +116,14 @@ def listar_movimientos(
     monto_min: float | None = None,
     monto_max: float | None = None,
     por_revisar: bool = False,
+    origen: str | None = Query(None, pattern="^(manual|atajo|correo|extracto|importacion)$"),
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user),
 ):
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
     query = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids_accesibles))
+    if origen:
+        query = query.filter(dup.filtro_origen(origen))  # por dónde llegó: a mano, atajo, correo, extracto o archivo
 
     if q:
         # Se escapan % y _ para que el texto buscado se trate como literal.

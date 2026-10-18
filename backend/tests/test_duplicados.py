@@ -661,3 +661,87 @@ def test_origen_de_fuente_cubre_las_fuentes_conocidas():
     assert dup.origen_de_fuente("conciliacion_extracto") == dup.origen_de_fuente("conciliacion_auto") == "extracto"
     assert dup.origen_de_fuente("importacion_archivo") == "importacion"
     assert dup.origen_de_fuente("manual") == dup.origen_de_fuente("ai") == dup.origen_de_fuente(None) == "manual"
+
+
+# ═══ 9. Recuperar un correo descartado ═════════════════════════════════════════════════════════
+
+def _descartado_por_fantasma(e):
+    """Atajo borrado y luego llega el correo: queda 'descartado' sin que la persona lo sepa."""
+    a = e.atajo().json()
+    client.delete(f"/movimientos/{a['id']}")
+    e.llega_correo()
+    (c,) = e.correos("descartados")
+    assert e.pendientes() == [] and e.movs() == []
+    return c
+
+
+def test_recuperar_un_correo_descartado_por_fantasma_lo_devuelve_a_por_revisar_y_se_puede_aprobar(e):
+    c = _descartado_por_fantasma(e)
+    e.como()
+    r = client.post(f"/correos/{c['id']}/recuperar")
+    assert r.status_code == 200 and r.json()["estado"] == "pendiente"
+    assert [x["id"] for x in e.pendientes()] == [c["id"]]
+    e.sincronizar(), e.sincronizar()  # absorber_correos corre al listar y al sincronizar: no lo re-descarta
+    assert [x["id"] for x in e.pendientes()] == [c["id"]]
+    r = client.post(f"/correos/{c['id']}/aprobar", json={"cuenta_id": e.cuenta["id"]})
+    assert r.status_code == 200 and r.json()["estado"] == "aprobado"
+    assert len(e.movs()) == 1 and e.pendientes() == []
+    e.sincronizar()
+    assert len(e.movs()) == 1 and e.correos("descartados") == []
+
+
+def test_recuperar_dos_veces_es_inocuo(e):
+    c = _descartado_por_fantasma(e)
+    assert client.post(f"/correos/{c['id']}/recuperar").status_code == 200
+    r = client.post(f"/correos/{c['id']}/recuperar")
+    assert r.status_code == 200 and r.json()["estado"] == "pendiente"
+
+
+def test_recuperar_respeta_el_anti_duplicado_si_hoy_existe_un_movimiento_equivalente(e):
+    c = _descartado_por_fantasma(e)
+    e.manual()  # la persona ya lo registró a mano después de borrar el del atajo
+    e.como()
+    r = client.post(f"/correos/{c['id']}/recuperar")
+    assert r.status_code == 200 and r.json()["estado"] == "ya_registrado"
+    assert e.pendientes() == [] and len(e.movs()) == 1
+
+
+def test_recuperar_solo_descartados_o_ignorados_con_monto(e):
+    e.llega_correo()
+    (p,) = e.pendientes()
+    assert client.post(f"/correos/{p['id']}/recuperar").json()["estado"] == "pendiente"  # ya estaba así
+    client.post(f"/correos/{p['id']}/aprobar", json={"cuenta_id": e.cuenta["id"]})
+    assert client.post(f"/correos/{p['id']}/recuperar").status_code == 400  # aprobado: no se recupera
+    assert client.post("/correos/no-existe/recuperar").status_code == 404
+
+
+def test_recuperar_no_toca_correos_de_otra_persona(e):
+    ca = _descartado_por_fantasma(e)
+    app.dependency_overrides[get_current_user] = lambda: UsuarioActual(id="otra-persona", email="o@test.com", nombre="Otra")
+    assert client.post(f"/correos/{ca['id']}/recuperar").status_code == 404
+    assert [x["estado"] for x in e.correos("todos")] == ["descartado"]
+
+
+# ═══ 10. Filtro «Origen» en la lista de movimientos ════════════════════════════════════════════
+
+def test_filtrar_movimientos_por_origen(e):
+    e.manual(monto=10_000, desc="A mano")
+    e.atajo(monto=20_000, comercio="DEL ATAJO", minutos=-300)
+    e.llega_correo(monto=30_000, comercio="Rappi", minutos=-600)
+    (c,) = e.pendientes()
+    client.post(f"/correos/{c['id']}/aprobar", json={"cuenta_id": e.cuenta["id"]})
+    # un movimiento viejo, sin la columna `origen`: se deduce de la fuente
+    db = SessionLocal()
+    m = db.query(Movimiento).filter(Movimiento.descripcion == "A mano").first()
+    m.origen = None
+    db.commit()
+    db.close()
+
+    def montos(origen):
+        r = client.get("/movimientos", params={"origen": origen}).json()
+        return sorted(x["monto"] for x in (r["items"] if isinstance(r, dict) else r))
+
+    e.como()
+    assert montos("manual") == [10_000] and montos("atajo") == [20_000] and montos("correo") == [30_000]
+    assert montos("extracto") == []
+    assert client.get("/movimientos", params={"origen": "raro"}).status_code == 422

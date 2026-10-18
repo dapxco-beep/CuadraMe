@@ -58,3 +58,17 @@ export function textoConfirmado(origen, canales) {
 // «falta confirmar con el extracto». Solo se dice si el servidor mandó los canales (si no, no se afirma nada).
 export const faltaConfirmarExtracto = (origen, canales) =>
   origen === 'correo' && Array.isArray(canales) && !canales.includes('extracto')
+
+// ── Borrar algo que vino del correo o de un extracto ──────────────────────────────────────
+// Lo borrado no se vuelve a traer solo; se avisa en la misma confirmación (sin un toque extra).
+export const AVISO_NO_VUELVE =
+  'Si lo borras, no lo volveremos a traer del correo. Podrás recuperarlo en Ver todo → Correos → Descartados.'
+
+export const vinoDeCorreoOExtracto = (m) =>
+  !!m && (['correo', 'extracto'].includes(m.origen) || (m.canales || []).some((c) => c === 'correo' || c === 'extracto'))
+
+// Agrega el aviso al mensaje de confirmación solo si alguno de los movimientos vino del correo o de un extracto.
+export const conAvisoDeBorrado = (mensaje, movs) =>
+  (Array.isArray(movs) ? movs : [movs]).some(vinoDeCorreoOExtracto) ? `${mensaje}
+
+${AVISO_NO_VUELVE}` : mensaje
