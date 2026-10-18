@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app import cuadre_encadenado
 from app import cuadre_extracto as cx
-from app import punto_partida
+from app import punto_partida, saldo_inicial_auto
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import bloquear_cuenta, cuenta_accesible, puede_editar_cuenta
 from app.database import get_db
@@ -365,6 +365,17 @@ def crear_saldo_inicial(
     db.commit()
     return {"ok": True, "creado": True, "movimiento_id": mov.id, "monto": monto, "saldo_antes": antes, "saldo_cuenta": cuenta.saldo,
             "texto": f"Listo: saldo inicial de {cx.pesos(monto)} al {cx.fecha_texto(fecha)}. No cuenta como gasto ni ingreso."}
+
+
+@router.post("/saldo-inicial-auto")
+def registrar_saldo_inicial_automatico(
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Registra solo, una vez por cuenta, con cuánto empezó cada cuenta propia cuando su extracto más antiguo lo dice
+    y la cuenta no tiene historia anterior (ver app/saldo_inicial_auto.py). No recibe ids: solo toca cuentas del
+    usuario. Idempotente. Devuelve lo registrado para avisar «Registré con cuánto empezó tu cuenta… [Deshacer]»."""
+    return {"registrados": saldo_inicial_auto.registrar_todas(db, usuario.id, _inicio_pp(db, usuario))}
 
 
 @router.post("/deshacer")

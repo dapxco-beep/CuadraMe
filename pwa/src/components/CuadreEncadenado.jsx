@@ -8,7 +8,7 @@ import { ESTADO_MES, aFilas, firmado } from '../lib/cuadreEncadenado'
 
 const ICONO = { cuadra: CheckCircle2, diferencia: AlertTriangle, falta_extracto: CircleDashed, cadena_rota: Link2Off, arrastra: TrendingUp, solo_saldo_inicial: AlertTriangle }
 
-function EnlaceInterno({ to, children, className }) {
+export function EnlaceInterno({ to, children, className }) {
   const enRouter = useInRouterContext()
   return enRouter ? <Link to={to} className={className}>{children}</Link> : <a href={to} className={className}>{children}</a>
 }
@@ -58,7 +58,7 @@ function SaldoAMano({ item, moneda, onGuardado }) {
 }
 
 // Una acción de reparación: SIEMPRE pide confirmación explícita antes de tocar nada.
-function Accion({ accion, onHecho, moneda, ocupado, setOcupado }) {
+export function Accion({ accion, onHecho, moneda, ocupado, setOcupado }) {
   const [pidiendo, setPidiendo] = useState(false)
   const [entiendo, setEntiendo] = useState(false)
   const [error, setError] = useState('')
