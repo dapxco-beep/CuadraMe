@@ -127,13 +127,16 @@ def test_tarjeta_no_recibe_saldo_inicial_automatico():
         db.close()
 
 
-def test_con_movimientos_anteriores_al_extracto_no_hace_nada():
+def test_con_movimientos_anteriores_al_extracto_el_ajuste_se_recalcula():
+    """Antes («una sola vez») no hacía nada; ahora A = S0 - M: 500.000 - 80.000 = 420.000, y el saldo cierra en 800.000."""
     como("sia-6")
     cuenta = client.post("/cuentas", json={"nombre": "Banco", "tipo": "ahorro", "saldo": 0}).json()["id"]
     _mov(cuenta, "income", 80_000, "2026-04-15T10:00:00", "Anterior")
     _mov(cuenta, "income", 300_000, "2026-05-05T10:00:00", "Pago")
     _hist("sia-6", cuenta, ini=500_000, fin=800_000, inicio="2026-05-01", corte="2026-05-31")
-    assert _registrar() == []
+    reg = _registrar()
+    assert len(reg) == 1 and reg[0]["monto"] == 420_000 and reg[0]["fecha"] == "2026-04-14"
+    assert _saldo(cuenta) == 800_000
 
 
 def test_saldo_fijado_a_mano_en_la_cuenta_se_respeta():

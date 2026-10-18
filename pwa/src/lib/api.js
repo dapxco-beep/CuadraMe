@@ -525,6 +525,10 @@ export const api = {
   cuadreAjuste: (body) => request('/conciliacion/cuadre/ajuste', { method: 'POST', body }),
   cuadreSaldoInicial: (body) => request('/conciliacion/cuadre/saldo-inicial', { method: 'POST', body }),
   cuadreSaldoInicialAuto: () => request('/conciliacion/cuadre/saldo-inicial-auto', { method: 'POST' }),
+  cuadreSaldoInicialAutoEstado: (cuentaId) =>
+    request(`/conciliacion/cuadre/saldo-inicial-auto/${encodeURIComponent(cuentaId)}`, { sinCache: true }),
+  cuadreSaldoInicialAutoRecalcular: (cuentaId) =>
+    request('/conciliacion/cuadre/saldo-inicial-auto/recalcular', { method: 'POST', body: { cuenta_id: cuentaId } }),
   cuadreDeshacer: (movimientoId) =>
     request('/conciliacion/cuadre/deshacer', { method: 'POST', body: { movimiento_id: movimientoId, confirmar: true } }),
   eliminarHistorialExtracto: (id) => request(`/conciliacion/historial/${id}`, { method: 'DELETE' }),

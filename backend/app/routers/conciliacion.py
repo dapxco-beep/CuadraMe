@@ -782,6 +782,7 @@ def importar_faltantes(
     saldo_inicial = None
     try:  # con el primer extracto conciliado se sabe con cuánto empezó la cuenta; si algo falla, no estorba la importación
         if cuenta.usuario_id == usuario.id:
+            # Recalcula (no solo crea): un extracto nuevo puede ser más antiguo que el que dio el ajuste actual.
             saldo_inicial = saldo_inicial_auto.registrar(db, cuenta, punto_partida.fecha_inicio(db, usuario.id))
     except Exception:  # noqa: BLE001
         db.rollback()
@@ -887,7 +888,7 @@ def cambiar_cuenta(
     """Pasa el extracto (y lo que importó) a otra cuenta y recalcula los saldos de las dos. Pide confirmar."""
     if not data.confirmar:
         raise HTTPException(status_code=400, detail="Confirma el cambio para continuar.")
-    return reasignar_extracto.cambiar(db, usuario.id, historial_id, data.cuenta_id)
+    return reasignar_extracto.cambiar(db, usuario.id, historial_id, data.cuenta_id)  # recalcula el ajuste de ambas cuentas
 
 
 @router.delete("/historial/{historial_id}")
@@ -908,9 +909,12 @@ def eliminar_historial(
     for ec in db.query(ExtractoCorreo).filter(ExtractoCorreo.usuario_id == usuario.id,
                                               ExtractoCorreo.historial_id == historial.id).all():
         ec.estado, ec.historial_id = "nuevo", None
+    cuenta_id = historial.cuenta_id
     db.delete(historial)
     db.commit()
-    return {"ok": True}
+    # Sin ese extracto, el más antiguo puede ser otro (o ninguno): el ajuste inicial se recalcula.
+    nuevo = saldo_inicial_auto.refrescar_de_usuario(db, usuario.id, [cuenta_id])
+    return {"ok": True, "saldo_inicial_auto": nuevo[0] if nuevo else None}
 
 
 def _historial_en_error(db: Session, usuario: UsuarioActual, historial_id: str) -> HistorialExtracto:

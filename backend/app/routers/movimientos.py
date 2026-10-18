@@ -12,6 +12,7 @@ from sqlalchemy import and_, or_
 
 from app import duplicados as dup
 from app import pendientes
+from app import saldo_inicial_auto
 from app import subcategorias as subcat
 from app import titulo as tit
 from app.clave_comercio import clave_comercio, huella_en_descripcion
@@ -370,6 +371,7 @@ def crear_movimiento(
         dup.nuevo_movimiento(db, movimiento, dup.ORIGEN_MANUAL)
 
     db.commit()
+    _reajustar_saldo_inicial(db, usuario, cuenta.id)  # un movimiento anterior al primer extracto mueve el ajuste inicial
     db.refresh(movimiento)
     registrar_actividad_hoy(db, usuario.id)
     if data.tipo in ("income", "expense"):
@@ -560,6 +562,7 @@ def editar_movimiento(
         mov.cat_origen = origen_tras_edicion(origen_previo, categoria_previa, mov.categoria)
 
     db.commit()
+    _reajustar_saldo_inicial(db, usuario, cuenta_actual.id, cuenta_nueva.id)  # fecha, monto o cuenta pudieron mover el ajuste
     db.refresh(mov)
     return mov
 
@@ -644,6 +647,8 @@ def mover_masivo(
         mov.cuenta_id = destino.id
         actualizados += 1
     db.commit()
+    if actualizados:
+        _reajustar_saldo_inicial(db, usuario, destino.id, *cuentas.keys())
     return MasivoResponse(ok=True, actualizados=actualizados, omitidos=len(pedidos) - actualizados)
 
 
@@ -664,14 +669,17 @@ def eliminar_masivo(
         .all()
     )
     borrables = sorted((m for m in movs if m.fuente != FUENTE_TRANSFERENCIA), key=lambda m: m.cuenta_id)
+    cuentas_tocadas = {m.cuenta_id for m in borrables}
     try:
         for mov in borrables:
+            _si_es_ajuste_automatico_desactivar(db, mov)
             dup.registrar_borrado(db, mov, data.motivo)
             _borrar_normal(db, usuario, mov)
     except HTTPException:
         db.rollback()
         raise
     db.commit()
+    _reajustar_saldo_inicial(db, usuario, *cuentas_tocadas)
     return MasivoResponse(ok=True, actualizados=len(borrables), omitidos=len(pedidos) - len(borrables))
 
 
@@ -721,10 +729,26 @@ def eliminar_movimiento(
         _eliminar_transferencia(db, usuario, mov)
         return {"ok": True}
 
+    cuenta_id = mov.cuenta_id
+    _si_es_ajuste_automatico_desactivar(db, mov)
     dup.registrar_borrado(db, mov, motivo)  # duplicado y no_va dejan el fantasma; error no
     _borrar_normal(db, usuario, mov)
     db.commit()
+    _reajustar_saldo_inicial(db, usuario, cuenta_id)
     return {"ok": True}
+
+
+def _reajustar_saldo_inicial(db: Session, usuario: UsuarioActual, *cuenta_ids: str) -> None:
+    """Recalcula el ajuste inicial automático de las cuentas tocadas (tras el commit; nunca estorba al movimiento)."""
+    saldo_inicial_auto.refrescar_de_usuario(db, usuario.id, cuenta_ids)
+
+
+def _si_es_ajuste_automatico_desactivar(db: Session, mov: Movimiento) -> None:
+    """Borrar a mano el «Saldo inicial automático» equivale a deshacerlo: no se vuelve a crear solo."""
+    if saldo_inicial_auto.es_automatico(mov):
+        cuenta = db.get(Cuenta, mov.cuenta_id)
+        if cuenta:
+            saldo_inicial_auto.desactivar(db, cuenta)
 
 
 def _borrar_normal(db: Session, usuario: UsuarioActual, mov: Movimiento) -> None:

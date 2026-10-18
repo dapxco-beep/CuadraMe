@@ -13,6 +13,7 @@ import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
 import { TarjetaCuadreBanco } from './CuadreMes'
 import InputMonto from './InputMonto'
 import { nombreDe } from '../lib/tituloMovimiento'
+import SaldoInicialAutomatico from './SaldoInicialAutomatico'
 
 // Detalle de UNA cuenta: saldo actual sin ambigüedad, cómo va el mes, últimos
 // movimientos y las dos acciones para que el saldo coincida con el banco:
@@ -25,6 +26,7 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
   const [det, setDet] = useState(null)
   const [error, setError] = useState('')
   const [ajustando, setAjustando] = useState(false)
+  const [inicial, setInicial] = useState(null)
 
   async function cargar() {
     try {
@@ -34,8 +36,17 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
     }
   }
 
+  async function cargarInicial() {
+    try {
+      setInicial(await api.cuadreSaldoInicialAutoEstado?.(cuentaId))
+    } catch {
+      setInicial(null) // es un extra: si falla, el detalle sigue igual
+    }
+  }
+
   useEffect(() => {
     cargar()
+    cargarInicial()
   }, [cuentaId])
 
   const c = det?.cuenta
@@ -91,6 +102,14 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
 
           {c.tipo !== 'efectivo' && <TarjetaCuadreBanco cuentaId={c.id} moneda={c.moneda} onCambio={cargar} />}
 
+          {!credito && inicial && (inicial.automatico || inicial.desactivado) && (
+            <SaldoInicialAutomatico
+              cuentaId={c.id} moneda={c.moneda} desactivado={inicial.desactivado && !inicial.automatico}
+              info={inicial.automatico ? { monto: inicial.monto, fecha: inicial.fecha, explicacion: inicial.explicacion } : null}
+              onCambio={() => { cargar(); cargarInicial(); onCambio?.() }}
+            />
+          )}
+
           <div className="grid grid-cols-1 gap-2 mt-4">
             <button
               onClick={() => setAjustando((v) => !v)}
@@ -130,7 +149,7 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
               {det.movimientos.map((m) => (
                 <Link key={m.id} to={`/movimientos/${m.id}`} className="flex items-start gap-3 px-4 py-3 min-h-[56px]">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold break-words line-clamp-3">{nombreDe(m)}</p>
+                    <p className="text-sm font-semibold break-words line-clamp-3">{m.fuente === 'ajuste_saldo' && (m.notas || '').endsWith('· automático') ? 'Saldo inicial automático' : nombreDe(m)}</p>
                     <p className="text-xs text-ink-soft mt-0.5 break-words">{fechaHoraMovimiento(fechaDeMovimiento(m))}</p>
                     <p className="text-xs text-ink-soft break-words">
                       {m.fuente === 'ajuste_saldo' ? 'No cuenta como gasto ni ingreso' : m.categoria}

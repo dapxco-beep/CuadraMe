@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 
 from app import cuadre_encadenado as ce
 from app import cuadre_extracto as cx
-from app import punto_partida
+from app import punto_partida, saldo_inicial_auto
 from app.compartidos import cuentas_ids_accesibles
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_AJUSTE, ConvertidorBase, delta_saldo
 from app.cuentas_banco import palabras_marca, sin_acentos
@@ -187,6 +187,8 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
         "termine": termine, "segun_extracto": round(segun, 2) if segun is not None else None,
         "diferencia": dif, "historial_id": fila["historial_id"] if fila else None,
         "cadena_rota": bool(fila and fila.get("cadena_rota")),
+        "cuadre_desde": r.get("desde"),  # «Tu cuenta cuadra desde…» / «Primer mes que no cuadra…»
+        "ajuste_inicial": _ajuste_inicial(filas) if fila else None,
         "aviso": fila.get("texto") if fila and fila.get("cadena_rota") and estado == "cuadra" else None,
         "motivo": None, "causas": [], "acciones": [], "sin_tasa": not ok,
         # En moneda base, para sumar entre cuentas.
@@ -200,6 +202,16 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
         out["causas"] = [dict(x) for x in fila.get("causas", [])]
         out["acciones"] = [dict(x) for x in fila.get("acciones", [])]
     return out
+
+
+def _ajuste_inicial(filas: list[dict]) -> dict | None:
+    """El «Saldo inicial automático» de la cuenta (si lo hay): se muestra aparte, nunca como ingreso ni gasto."""
+    f = next((x for x in filas if saldo_inicial_auto.es_automatico(x)), None)
+    if not f:
+        return None
+    return {"movimiento_id": f["id"], "monto": round(delta_saldo(f), 2),
+            "fecha": f["fecha"].date().isoformat() if f["fecha"] else None,
+            "etiqueta": "Saldo inicial automático", "explicacion": saldo_inicial_auto.EXPLICACION}
 
 
 def _diagnosticar(cuentas: list[dict]) -> None:

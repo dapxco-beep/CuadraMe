@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app import importar_respaldo as respaldo
 from app import punto_partida
+from app import saldo_inicial_auto
 from app.routers.cuentas import ajustar_saldo as ajustar_saldo_cuenta
 from app.schemas import AjusteSaldoRequest
 
@@ -391,6 +392,9 @@ def guardar_punto_de_partida(
         # posterior (ese sí cuenta al reconstruir el saldo).
         ajustados = _ajustar_a_declarados(
             db, usuario, [k for k, v in saldos.items() if v.get("actual") is not None], punto_partida.NOTA_SALDO_INICIAL)
+    # El punto de partida manda sobre el pasado: el ajuste inicial automático se recalcula (o se respeta si ya fijó el saldo).
+    ids = [c.id for c in db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()]
+    saldo_inicial_auto.refrescar_de_usuario(db, usuario.id, ids)
     return {**punto_partida.resumen(db, usuario.id), "retrocedio": efecto["retrocedio"], "ajustados": ajustados}
 
 
