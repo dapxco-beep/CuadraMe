@@ -22,6 +22,7 @@ import { CategoriaEnBloque, ChipCategoria, ResumenCategorias } from './RevisionC
 import HojaNuevaCategoria, { OPCION_NUEVA_CATEGORIA, TEXTO_NUEVA_CATEGORIA } from './HojaNuevaCategoria'
 import { borrarBorrador, guardarBorrador, leerBorrador, resumenLote } from '../lib/retomar'
 import LineaDosMontos from './LineaDosMontos'
+import ResumenFacturaAnterior from './ResumenFacturaAnterior'
 import { BotonLapiz, EditorNombre, PistaBanco } from './NombreEditable'
 import { limpiarNombre, MIN_REPETICIONES_NOMBRE } from '../lib/tituloMovimiento'
 import {
@@ -655,7 +656,10 @@ export default function SubidaMultiple({
                             {it.dudosa && !repetido && (
                               <LineaDosMontos className="ml-8 mt-2" it={it} valor={montos[clave]} onElegir={(v) => elegirMonto(clave, v)} />
                             )}
-                            {it.pagoTarjeta && !repetido && (
+                            {it.resumen && !repetido && (
+                              <ResumenFacturaAnterior className="ml-8 mt-2" resumen={it.resumen} aviso={it.apagada ? it.avisoLinea : null} />
+                            )}
+                            {it.pagoTarjeta && !it.resumen && !repetido && (
                               <p className="ml-8 mt-1.5 text-xs text-ink-soft" data-testid="pista-pago-tarjeta">{TEXTO_PAGO_TARJETA}</p>
                             )}
                             {editandoNombre === clave && !repetido && (

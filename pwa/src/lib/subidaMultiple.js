@@ -3,6 +3,7 @@
 // normalización de lo que devuelve cada endpoint y deduplicación entre archivos.
 import { claveComercio } from './comercio'
 import { cuentaRecordada, esCredito, marcaDe, productoDeTexto } from './cuentasBanco'
+import { formatCOP } from './format'
 
 export const MAX_ARCHIVOS = 10
 export const MAX_BYTES_PDF = 15 * 1024 * 1024 // igual que el servidor (~15 MB decodificado)
@@ -106,6 +107,10 @@ export function normalizarPdf(r) {
       montosAlt: Array.isArray(m.montos_alternativos) ? m.montos_alternativos : [],
       // «Pago ...» de un extracto de tarjeta: se sugiere como traslado entre tus cuentas, no como un gasto.
       pagoTarjeta: Boolean(m.pago_tarjeta),
+      // Fila «resumen de la factura anterior»: el pago de lo abonado es la fila importable; los tres importes se muestran.
+      resumen: m.resumen_factura || null,
+      avisoLinea: m.aviso_linea || null,
+      apagada: m.marcar_por_defecto === false, // sin certeza: la casilla queda apagada hasta que la persona confirme
     }))
   const filaInfo = (m) => ({
     descripcion: m.descripcion,
@@ -152,6 +157,12 @@ export const montoValido = (v) => Number.isFinite(Number(v)) && Number(v) >= 1
 
 /** «Pago de tarjeta» / «Traslado entre tus cuentas»: lo que se sugiere de una línea «Pago ...». */
 export const TEXTO_PAGO_TARJETA = 'Parece el pago de tu tarjeta desde otra cuenta tuya: se cuenta como traslado, no como gasto.'
+
+/** «Factura anterior: $A · Pagaste: $B · Quedó pendiente: $C» ('' si la línea no es un resumen de factura). */
+export function textoResumenFactura(r) {
+  if (!r) return ''
+  return `Factura anterior: ${formatCOP(r.factura_anterior)} · Pagaste: ${formatCOP(r.pagado)} · Quedó pendiente: ${formatCOP(r.saldo_pendiente)}`
+}
 
 /** Interpreta lo que se escribe en el campo del monto: «697.534,97», «474542», «$ 474.542,00». null si no sirve. */
 export function leerMontoEscrito(texto) {
@@ -272,7 +283,7 @@ export function clavesFaltantes(archivos) {
   for (const a of archivos) {
     if (a.estado !== 'listo') continue
     // Una línea de lectura dudosa nunca viene marcada de entrada: primero se elige su monto.
-    for (const it of a.items) if (it.estado === 'nuevo' && !it.dudosa) claves.push(`${a.id}:${it.k}`)
+    for (const it of a.items) if (it.estado === 'nuevo' && !it.dudosa && !it.apagada) claves.push(`${a.id}:${it.k}`)
   }
   return claves
 }
