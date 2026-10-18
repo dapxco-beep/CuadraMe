@@ -749,6 +749,8 @@ export const api = {
 
   // Cierre de mes
   cierresMes: () => request('/cierre-mes'),
+  // El cierre del mes contra los extractos, por banco y cuenta (sin `mes`: el mes anterior).
+  cierreExtractos: (mes) => request(`/cierre-mes/extractos${mes ? `?mes=${encodeURIComponent(mes)}` : ''}`, { sinCache: true }),
   // 404 = aún no hay cierre de ese mes (estado normal): se devuelve null en vez de lanzar.
   cierreMes: (mes) =>
     request(`/cierre-mes/${mes}`).catch((e) => {

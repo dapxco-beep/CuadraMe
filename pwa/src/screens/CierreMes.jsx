@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Lightbulb, TrendingUp } from 'lucide-react'
 import { api } from '../lib/api'
 import { formatCOP, formatPorcentaje } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
 import CelebracionCuadri from '../brand/CelebracionCuadri'
+import CierreExtractos from '../components/CierreExtractos'
 import { FRASES } from '../lib/cuadri'
 
 function mesAnterior() {
@@ -33,6 +34,8 @@ export default function CierreMes() {
   const [correo, setCorreo] = useState(false)
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [ext, setExt] = useState(null) // cierre contra los extractos: null = cargando, false = no se pudo
+  const [mesesExt, setMesesExt] = useState([]) // selector de 12 meses que manda el servidor
 
   useEffect(() => {
     api.cierrePreferencias().then((p) => setCorreo(!!p.correo)).catch(() => {})
@@ -61,6 +64,23 @@ export default function CierreMes() {
     api.cierreMes(mes).then((r) => setInforme(r || false)).catch(() => setInforme(false))
   }, [mes])
 
+  const cargarExtractos = useCallback((m) => {
+    if (!m) return Promise.resolve()
+    return Promise.resolve(api.cierreExtractos?.(m))
+      .then((r) => {
+        if (r && Array.isArray(r.bancos)) {
+          setExt(r)
+          setMesesExt(Array.isArray(r.meses) ? r.meses : [])
+        } else setExt(false)
+      })
+      .catch(() => setExt(false))
+  }, [])
+
+  useEffect(() => {
+    setExt(null)
+    cargarExtractos(mes)
+  }, [mes, cargarExtractos])
+
   async function generar() {
     setCargando(true)
     try {
@@ -85,7 +105,11 @@ export default function CierreMes() {
     }
   }
 
-  const meses = [...new Set([...(lista || []).map((l) => l.mes), mesAnterior()])].sort().reverse()
+  const meses = [...new Set([...(lista || []).map((l) => l.mes), ...mesesExt.map((x) => x.mes), mesAnterior()])].sort().reverse()
+  const etiquetaMes = (m) => {
+    const x = mesesExt.find((y) => y.mes === m)
+    return x ? `${x.etiqueta}${x.con_extracto ? ' · con extracto' : ''}` : m
+  }
 
   return (
     <div className="flex-1 overflow-y-auto pb-8 screen-enter">
@@ -96,13 +120,17 @@ export default function CierreMes() {
         <h1 className="text-xl font-semibold flex-1">Cierre de mes</h1>
         {mes && (
           <select aria-label="Mes" value={mes} onChange={(e) => setMes(e.target.value)} className="rounded-xl border border-line bg-paper-raised px-3 py-2 text-sm">
-            {meses.map((m) => <option key={m} value={m}>{m}</option>)}
+            {meses.map((m) => <option key={m} value={m}>{etiquetaMes(m)}</option>)}
           </select>
         )}
       </header>
 
       <div className="px-5 mt-3">
         {error && <p className="text-sm text-danger mb-3">{error}</p>}
+
+        {ext === null && <p className="text-sm text-ink-soft mb-3" role="status">Mirando tus extractos...</p>}
+        {ext && <CierreExtractos datos={ext} onCambio={() => cargarExtractos(mes)} />}
+        {ext && informe !== null && <h2 className="text-base font-semibold mt-6 mb-2">Tu resumen del mes</h2>}
 
         {informe === false && (
           <div className="rounded-2xl bg-paper-raised border border-line p-5 text-center">
