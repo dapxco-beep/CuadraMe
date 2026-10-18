@@ -431,6 +431,10 @@ LOTE_PDFS = 5
 PAGINA_GMAIL = 100
 DIAS_PRIMERA_SYNC = 90
 SOLAPE_DIAS = 1
+# El carril de movimientos mira SIEMPRE como mínimo los últimos 3 días, sin importar cuándo fue la última
+# sincronización: `after:` de Gmail es por fecha (zona del buzón, no UTC), un correo puede llegar tarde o la
+# corrida anterior pudo avanzar sin haberlo visto. Lo ya registrado se salta sin costo (gmail_msg_id).
+VENTANA_MIN_MOVIMIENTOS_DIAS = 3
 # Los extractos llegan una vez al mes y lo ya visto se salta sin costo: su fase mira un año atrás (no solo los
 # 90 días de los gastos), si no, los meses viejos y los que se atrasaron nunca aparecen. Respeta el punto de partida.
 DIAS_EXTRACTOS = 365
@@ -552,6 +556,8 @@ def _iniciar_corrida(gmail, sync: SyncGmail, label_id: str | None, completa: boo
             desde = inicio
     else:
         desde = ultima - timedelta(days=SOLAPE_DIAS)
+        if tipo in ("todo", "movimientos"):
+            desde = min(desde, ahora - timedelta(days=VENTANA_MIN_MOVIMIENTOS_DIAS))
     if inicio and desde < inicio:
         desde = inicio
     sync.en_curso = True
