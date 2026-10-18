@@ -455,6 +455,71 @@ def _marcas_lectura_nu(desc: str, tarjeta: bool = False) -> dict:
     return marcas
 
 
+# ── Resumen de la factura anterior y cobros con el monto repetido (extracto de TARJETA de Nu) ───
+# «Pago $A -$B» + un tercer importe C = A − B no es un movimiento: es la fila de resumen de la factura anterior
+# (A = total de la factura anterior, B = lo que pagaste, C = lo que quedó pendiente). Lo real que contiene es UN
+# pago de B (un traslado hacia la tarjeta). El gasto de C no existe: se leía mal y inflaba los gastos.
+_RE_IMPORTE_CON_PESO = re.compile(r"[+\-]?\s*\$\s*(\d[\d.,]*\d|\d)")
+_RE_IMPORTE_SUELTO = re.compile(r"[+\-]?\s*\$\s*\d[\d.,]*")
+DESCRIPCION_PAGO_FACTURA_ANTERIOR = "Pago de tu tarjeta (factura anterior)"
+AVISO_PAGO_FACTURA_ANTERIOR = "Parece el pago de tu tarjeta. Confirma el monto."
+
+
+def resumen_factura_anterior(desc: str, monto: float) -> dict | None:
+    """{'factura_anterior': A, 'pagado': B, 'saldo_pendiente': C} si la línea es «Pago $A -$B» con tercer
+    importe C = |A − B| (tolerancia de centavos); None en cualquier otro caso (p. ej. dos montos que NO cumplen
+    la resta siguen yendo a «elige el correcto»)."""
+    if not _RE_PAGO_AL_INICIO.search(desc or ""):
+        return None
+    importes = [parse_monto_cop(m.group(1)) for m in _RE_IMPORTE_CON_PESO.finditer(desc or "")]
+    if len(importes) != 2 or any(v != v or v < 1 for v in importes):
+        return None
+    a, b = importes
+    if abs(abs(a - b) - abs(monto)) > 1.0:
+        return None
+    return {"factura_anterior": round(a, 2), "pagado": round(b, 2), "saldo_pendiente": round(abs(monto), 2)}
+
+
+def limpiar_descripcion_cobro(desc: str, monto: float) -> str | None:
+    """«Cobro por cuota $12.000,00 - $12.000,00 -» -> «Cobro por cuota». Solo cuando TODOS los importes escritos
+    en la descripción son el mismo monto de la línea (valor y valor de cuota repetidos); si no, None (no se toca).
+    También quita un año suelto al inicio («2026 Cobro por cuota ...»)."""
+    importes = [parse_monto_cop(m.group(1)) for m in _RE_IMPORTE_CON_PESO.finditer(desc or "")]
+    if not importes or any(abs(v - abs(monto)) > 1.0 for v in importes):
+        return None
+    limpia = _RE_IMPORTE_SUELTO.sub(" ", desc)
+    limpia = re.sub(r"^\s*20\d{2}\s+", "", limpia)
+    limpia = re.sub(r"\s+", " ", limpia).strip(" -")
+    return limpia if len(limpia) >= 3 and re.search(r"[A-Za-zÁÉÍÓÚáéíóúñÑ]{3}", limpia) else None
+
+
+def _linea_nu(fecha: str, desc: str, monto: float, tipo: str, tarjeta: bool) -> dict:
+    """Arma el movimiento leído de una línea de Nu. En extractos de tarjeta convierte el resumen de la factura
+    anterior en el pago real y limpia los cobros con el monto repetido, conservando la huella anterior de la
+    línea (`huella_anterior`) para que lo ya importado antes se siga reconociendo."""
+    if tarjeta:
+        res = resumen_factura_anterior(desc, monto)
+        if res:
+            return {
+                "fecha": fecha, "descripcion": DESCRIPCION_PAGO_FACTURA_ANTERIOR, "monto": res["pagado"],
+                "tipo": "income",  # un pago ABONA a la tarjeta (baja la deuda): entra a la cuenta de crédito
+                "referencia": "", "saldo": None, "pista": MARCA_TRASLADO_PROPIO, "pago_tarjeta": True,
+                "resumen_factura": res, "aviso_linea": AVISO_PAGO_FACTURA_ANTERIOR,
+                "huella_anterior": {"fecha": fecha, "monto": monto, "descripcion": desc, "tipo": tipo},
+            }
+        limpia = limpiar_descripcion_cobro(desc, monto)
+        if limpia:
+            return {
+                "fecha": fecha, "descripcion": limpia, "monto": monto, "tipo": tipo, "referencia": "", "saldo": None,
+                **_pista(limpia), **_marcas_lectura_nu(limpia, tarjeta),
+                "huella_anterior": {"fecha": fecha, "monto": monto, "descripcion": desc, "tipo": tipo},
+            }
+    return {
+        "fecha": fecha, "descripcion": desc, "monto": monto, "tipo": tipo,
+        "referencia": "", "saldo": None, **_pista(desc), **_marcas_lectura_nu(desc, tarjeta),
+    }
+
+
 def _anio_del_periodo(texto: str) -> str | None:
     m = _RE_PERIODO_NU.search(texto)
     return m.group(2) if m else None
@@ -498,12 +563,8 @@ def _parse_nu_por_lineas(texto: str, anio: str) -> list[dict]:
             continue
         mes = MESES[m.group(2).lower()]
         positivo = m.group(4) == "+"
-        movimientos.append({
-            "fecha": f"{anio}-{mes:02d}-{int(m.group(1)):02d}",
-            "descripcion": desc, "monto": monto,
-            "tipo": "income" if positivo else "expense",
-            "referencia": "", "saldo": None, **_pista(desc), **_marcas_lectura_nu(desc, tarjeta),
-        })
+        movimientos.append(_linea_nu(
+            f"{anio}-{mes:02d}-{int(m.group(1)):02d}", desc, monto, "income" if positivo else "expense", tarjeta))
     return movimientos
 
 
@@ -546,11 +607,8 @@ def _parse_nu(texto: str, anio: str) -> tuple[list[dict], int]:
             continue
         signo = -1 if m.group(4) == "-" else 1
         tipo = "income" if signo > 0 else "expense"
-        movimientos.append({
-            "fecha": f"{anio}-{mes:02d}-{int(m.group(1)):02d}",
-            "descripcion": desc, "monto": abs(monto), "tipo": tipo,
-            "referencia": "", "saldo": None, **_pista(desc), **_marcas_lectura_nu(desc, _es_extracto_de_tarjeta(texto)),
-        })
+        movimientos.append(_linea_nu(
+            f"{anio}-{mes:02d}-{int(m.group(1)):02d}", desc, abs(monto), tipo, _es_extracto_de_tarjeta(texto)))
     return movimientos, descartados
 
 
@@ -653,6 +711,20 @@ def compute_fingerprint(fecha, monto: float, cuenta: str, descripcion: str, tipo
     desc_key = normalize_texto(descripcion)
     raw = "|".join([date_key, amount_key, account_key, desc_key, tipo])
     return hashlib.md5(raw.encode()).hexdigest()
+
+
+def huella_de_linea(mov: dict, huellas_en_libro: set) -> str:
+    """Huella (anti-duplicados) de una línea del extracto. Si la lectura de la línea cambió (descripción limpiada,
+    resumen de factura convertido en pago) y lo que ya está registrado se importó con la lectura anterior, se
+    conserva la clave anterior: así lo importado antes se sigue reconociendo y no se duplica."""
+    fecha_dt = parse_bank_date(mov.get("fecha"))
+    fp = compute_fingerprint(fecha_dt, mov["monto"], mov.get("cuenta", ""), mov["descripcion"], mov["tipo"])
+    previa = mov.get("huella_anterior")
+    if previa and fp not in huellas_en_libro:
+        fp_previa = compute_fingerprint(previa["fecha"], previa["monto"], mov.get("cuenta", ""), previa["descripcion"], previa["tipo"])
+        if fp_previa in huellas_en_libro:
+            return fp_previa
+    return fp
 
 
 def find_approx_match(ledger: list[dict], movimiento: dict) -> dict | None:
@@ -770,10 +842,8 @@ def _auditar_con_cruce_rapido(movimientos_extracto: list[dict], ledger: list[dic
     extracto que el banco no muestra (error de monto o aún no reflejado).
 
     `descartados` = {"fingerprints": Counter, "fantasmas": [Cand]} con lo que el usuario borró."""
-    fingerprints = []
-    for mov in movimientos_extracto:
-        fecha_dt = parse_bank_date(mov.get("fecha"))
-        fingerprints.append(compute_fingerprint(fecha_dt, mov["monto"], mov.get("cuenta", ""), mov["descripcion"], mov["tipo"]))
+    en_libro_fps = {r["fingerprint"] for r in ledger if r.get("fingerprint")}
+    fingerprints = [huella_de_linea(mov, en_libro_fps) for mov in movimientos_extracto]
 
     estados: dict[int, str] = {}
     usados: set = set()
@@ -895,7 +965,7 @@ def auditar_movimientos(movimientos_extracto: list[dict], ledger: list[dict], cr
 
     for mov in movimientos_extracto:
         fecha_dt = parse_bank_date(mov.get("fecha"))
-        fp = compute_fingerprint(fecha_dt, mov["monto"], mov.get("cuenta", ""), mov["descripcion"], mov["tipo"])
+        fp = huella_de_linea(mov, set(ledger_por_fingerprint))
 
         if fp in ledger_por_fingerprint:
             review.append({**mov, "fingerprint": fp, "estado": "exacto"})

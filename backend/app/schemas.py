@@ -974,6 +974,10 @@ class MovimientoReview(BaseModel):
     lectura_dudosa: bool = False
     montos_alternativos: Optional[list[float]] = None  # los montos que aparecen escritos en la línea
     pago_tarjeta: bool = False  # «Pago ...» de un extracto de tarjeta: se sugiere como traslado entre tus cuentas
+    # Fila «resumen de la factura anterior» del extracto de tarjeta: lo real es el pago de `pagado`; el resto es información.
+    resumen_factura: Optional[dict] = None  # {factura_anterior, pagado, saldo_pendiente}
+    aviso_linea: Optional[str] = None  # texto para la persona cuando el lector no tiene certeza
+    marcar_por_defecto: Optional[bool] = None  # False = la casilla queda apagada hasta que la persona confirme
 
 
 class ProcesarExtractoResponse(BaseModel):

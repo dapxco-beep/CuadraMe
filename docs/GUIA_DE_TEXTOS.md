@@ -61,6 +61,8 @@ La pantalla principal solo muestra (1) un estado calmado y (2) UN paso con su bo
 
 **Nada sin nombre ni origen:** una fila de extracto o de error nunca dice solo «desconocido» ni «banco». Dice de qué banco o cuenta es, de dónde salió («Correo «Llegó el extracto…» · archivo X.pdf» o «Subido a mano el 14 oct») y a qué cuenta quedó. Los errores iguales se agrupan («10 extractos de Nu esperan la clave del PDF» con un solo botón «Poner la clave»). Sin banco identificado el botón dice «Decirme de qué banco es».
 
+**Resumen de la factura anterior (extracto de tarjeta):** tarjeta informativa «Factura anterior: $A · Pagaste: $B · Quedó pendiente: $C»; la fila importable es el pago de lo que pagaste, «Pago de tu tarjeta (factura anterior)», que se cuenta como traslado, no como gasto. Si no coincide con una salida de tu cuenta de ahorros del mismo banco queda sin marcar, con el aviso «Parece el pago de tu tarjeta. Confirma el monto.»
+
 **Línea con dos montos:** «Esta línea trae dos montos. Elige el correcto»; la línea queda apagada y no se importa hasta elegir un monto (botones con los montos de la línea o un campo para escribirlo). Un «Pago» de la tarjeta se sugiere como traslado: «Parece el pago de tu tarjeta desde otra cuenta tuya: se cuenta como traslado, no como gasto.»
 
 Textos de los pasos (fijos): «Conecta tu Gmail», «¿Desde cuándo leo tu correo?», «Falta la clave de tu PDF», «Crea tu cuenta de <banco>», «Sigue con tu extracto de <mes>», «Revisa tu extracto» / «Revisa tus N extractos», «Revisa N movimientos», «Confirma si son tuyos», «Hay extractos que no se pudieron leer», «Un extracto está en otra cuenta», «Hay N correos descartados» (opcional), «Puede haber movimientos repetidos», «Un mes no cuadra con tu extracto», «Pon categoría a N comercios».
