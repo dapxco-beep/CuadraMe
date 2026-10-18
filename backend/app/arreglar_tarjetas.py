@@ -189,10 +189,13 @@ def _arreglar_uno(db: Session, usuario, f: dict) -> dict:
     return out
 
 
-def arreglar(db: Session, usuario, maximo: int = MAXIMO_POR_LLAMADA) -> dict:
-    """Aplica el arreglo a hasta `maximo` extractos (del más viejo al más nuevo). Un fallo no detiene al resto."""
+def arreglar(db: Session, usuario, maximo: int = MAXIMO_POR_LLAMADA, excluir=()) -> dict:
+    """Aplica el arreglo a hasta `maximo` extractos (del más viejo al más nuevo). Un fallo no detiene al resto.
+    `excluir` = historiales que esta tanda ya intentó (la app arregla de a uno para mostrar «3 de 6» y no repite
+    los que se saltaron)."""
     plan = _plan(db, usuario)
-    filas = plan["filas"]
+    filas = [f for f in plan["filas"] if f["historial_id"] not in set(excluir)]
+    maximo = max(1, min(int(maximo or MAXIMO_POR_LLAMADA), MAXIMO_POR_LLAMADA))
     lote, restantes = filas[:maximo], max(0, len(filas) - maximo)
     resultados = []
     for f in lote:

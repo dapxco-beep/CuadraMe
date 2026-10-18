@@ -984,6 +984,9 @@ def releer_extracto_guardado(
 
 class ArreglarTarjetasIn(BaseModel):
     confirmar: bool = False
+    maximo: int = 12  # la app arregla de a uno para mostrar el avance («3 de 6»)
+    excluir: list[str] = []  # historiales que esta tanda ya intentó
+    continuar: bool = False  # sigue una tanda ya iniciada: no cuenta como llamada nueva frente al límite por hora
 
 
 @router.get("/tarjetas/arreglar/previa")
@@ -1004,8 +1007,11 @@ def arreglar_tarjetas_ahora(
     llamada, del más viejo al más nuevo). Pide confirmar. La llamada cuenta como UNA relectura por hora."""
     if not data.confirmar:
         raise HTTPException(status_code=400, detail="Confirma el arreglo para continuar.")
-    verificar_limite(f"arreglar-tarjetas:{usuario.id}", 6, 3600, "Arreglaste tus extractos muchas veces seguidas. Podrás seguir en {espera}.")
-    return arreglar_tarjetas.arreglar(db, usuario)
+    if data.continuar:  # los pasos de una tanda ya iniciada tienen su propio tope (cada uno relee como mucho 1 PDF)
+        verificar_limite(f"arreglar-tarjetas-sigue:{usuario.id}", 40, 3600, "Arreglaste tus extractos muchas veces seguidas. Podrás seguir en {espera}.")
+    else:
+        verificar_limite(f"arreglar-tarjetas:{usuario.id}", 6, 3600, "Arreglaste tus extractos muchas veces seguidas. Podrás seguir en {espera}.")
+    return arreglar_tarjetas.arreglar(db, usuario, maximo=data.maximo, excluir=data.excluir[:50])
 
 
 @router.post("/releer-pendientes")

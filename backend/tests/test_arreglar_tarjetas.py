@@ -329,3 +329,21 @@ def test_reconciliar_solo_agregar_no_toca_lo_existente():
     # Segunda vez con la huella alterna anotada: nada cambia.
     review2, res2 = rx.reconciliar(review, nuevas, solo_agregar=True)
     assert (res2["agregadas"], res2["por_importar"], res2["reconocidas"]) == (0, 0, 0) and review2 is review
+
+
+def test_de_a_uno_con_excluir_para_mostrar_el_avance(monkeypatch):
+    """La app arregla de a uno («Arreglando 3 de 6…») y no repite los que ya intentó, aunque se hayan saltado."""
+    uid = "at-14"
+    gmail = GmailFalso(caidos={f"m-{uid}-5"})
+    _mundo(uid, monkeypatch, gmail=gmail)
+    limites._eventos.clear()
+    intentados, resultados = [], []
+    for paso in range(8):
+        r = client.post("/conciliacion/tarjetas/arreglar",
+                        json={"confirmar": True, "maximo": 1, "excluir": intentados, "continuar": paso > 0}).json()
+        if not r["resultados"]:
+            break
+        resultados += r["resultados"]
+        intentados += [x["historial_id"] for x in r["resultados"]]
+    assert [x["mes"] for x in resultados] == ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"]
+    assert [x["estado"] for x in resultados].count("saltado") == 1 and sum(x["movidos"] for x in resultados) == 36

@@ -4,6 +4,7 @@ import { ChevronRight, ShieldCheck } from 'lucide-react'
 import Hoja from './Hoja'
 import Icono from './Icono'
 import CambiarCuentaExtracto from './CambiarCuentaExtracto'
+import ArreglarTarjetas from './ArreglarTarjetas'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
 import { useDialogos } from '../lib/DialogosContext'
@@ -109,6 +110,8 @@ export default function AvisoSalud({ className = '' }) {
                     >
                       {h.accion?.etiqueta || 'Revisar'}
                     </button>
+                    {/* «Extracto de tarjeta en cuenta de ahorros»: un solo paso para arreglarlos todos (se oculta si no hay nada). */}
+                    {h.codigo === 'extracto_producto_distinto' && <ArreglarTarjetas className="mt-2" onListo={cargar} />}
                   </li>
                 ))}
               </ul>
