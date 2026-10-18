@@ -478,6 +478,27 @@ class HistorialExtracto(Base):
     cuadre_en = Column(DateTime, nullable=True)
     # Solo si estado = 'error': por qué no se pudo leer (ver app/extractos_vista.MOTIVOS). Opcional.
     motivo_error = Column(String, nullable=True)
+    # Extracto de la TARJETA de Nu: resumen de la página 1 + comprobaciones de la lectura (JSON, ver extractos_tarjeta_nu).
+    lectura_json = Column(String, nullable=True)
+
+    @property
+    def lectura(self) -> dict | None:
+        import json
+        try:
+            d = json.loads(self.lectura_json) if self.lectura_json else None
+        except ValueError:
+            return None
+        return d if isinstance(d, dict) else None
+
+    @property
+    def lectura_completa(self) -> bool | None:
+        d = self.lectura
+        return d.get("lectura_completa") if d else None
+
+    @property
+    def mensaje_lectura(self) -> str | None:
+        d = self.lectura
+        return d.get("mensaje_lectura") if d else None
 
 
 class Consentimiento(Base):

@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session
 from app import cuadre_extracto
 from app import estado_traer
 from app import punto_partida
+from app.extractos_tarjeta_nu import datos_de_lectura, es_extracto_tarjeta_nu, leer_extracto_tarjeta_nu
 from app.conciliacion import parse_bank_date, parse_texto_con_regex, fijar_nombre_titular, huella_de_linea
 from app.crons import liberar_marca, reclamar_marca
 from app.extractos_gmail import abrir_pdf, claves_candidatas, descargar_adjunto, listar_adjuntos_pdf
@@ -38,7 +39,7 @@ from app.models import ExtractoCorreo, HistorialExtracto, Cuenta
 
 logger = logging.getLogger(__name__)
 
-VERSION_LECTOR = "2026-10-v1-resumen-factura"  # súbela cuando el lector de extractos mejore y valga la pena releer
+VERSION_LECTOR = "2026-10-v2-tarjeta-nu"  # súbela cuando el lector de extractos mejore y valga la pena releer
 PREFIJO = "releer_extracto:"
 MAXIMO_AUTOMATICO = 3  # PDFs por apertura de «Traer movimientos»
 
@@ -159,7 +160,7 @@ def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None) -> 
     from app.contabilidad import CATEGORIA_PAGO_TARJETA
     from app.routers import correos as rc
     from app.routers.conciliacion import (
-        _confirmar_pagos_de_factura, _descartados, _enriquecer_dudosas, _saldos_del_extracto,
+        _confirmar_pagos_de_tarjeta, _descartados, _enriquecer_dudosas, _saldos_del_extracto,
     )
 
     if h.estado == "error":
@@ -212,17 +213,19 @@ def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None) -> 
                 item["categoria_sugerida"] = clasif["categoria"] if clasif else "Otros"
                 item["razon_categoria"] = clasif.get("razon") if clasif else None
                 item["confianza_categoria"] = clasif.get("confianza") if clasif else None
-                if item.get("pago_tarjeta") and (item["categoria_sugerida"] == "Otros" or item.get("resumen_factura")):
+                if item.get("pago_tarjeta") and (item["categoria_sugerida"] == "Otros" or item.get("pago_detalle")):
                     item["categoria_sugerida"] = CATEGORIA_PAGO_TARJETA
                     item["razon_categoria"] = "parece el pago de tu tarjeta desde otra cuenta tuya"
                     item["confianza_categoria"] = 0.6
-            _confirmar_pagos_de_factura(db, usuario.id, cuenta, h.banco_detectado or "", pendientes)
+            _confirmar_pagos_de_tarjeta(db, usuario.id, cuenta, h.banco_detectado or "", pendientes)
             _enriquecer_dudosas(db, usuario.id, pendientes)
 
         if nuevo_review is not review:
             h.review_json = json.dumps(nuevo_review, default=str)
             h.total_movimientos = len([i for i in nuevo_review if i.get("estado") != "sobrante"])
             estado_traer.sincronizar_contadores(h, nuevo_review)
+        if es_extracto_tarjeta_nu(texto):  # el resumen y las comprobaciones se actualizan con el lector de hoy
+            h.lectura_json = json.dumps(datos_de_lectura(leer_extracto_tarjeta_nu(texto)), default=str)
         if h.saldos_origen != "manual":
             saldos = _saldos_del_extracto(cuenta, texto, nuevas)
             if saldos and (saldos.get("saldo_final") is not None or saldos.get("saldo_inicial") is not None):
@@ -237,7 +240,8 @@ def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None) -> 
         raise ReleerError(502, MSG_FALLA) from e
 
     reclamar_marca(db, usuario.id, PREFIJO + h.id, VERSION_LECTOR)  # ya está al día con este lector
-    res = {**res, "estado": h.estado, "historial_id": h.id, "mensaje": frase_resultado(res)}
+    res = {**res, "estado": h.estado, "historial_id": h.id, "mensaje": frase_resultado(res),
+           "mensaje_lectura": h.mensaje_lectura}
     return res
 
 

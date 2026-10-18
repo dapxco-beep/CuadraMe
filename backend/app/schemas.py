@@ -974,14 +974,23 @@ class MovimientoReview(BaseModel):
     lectura_dudosa: bool = False
     montos_alternativos: Optional[list[float]] = None  # los montos que aparecen escritos en la línea
     pago_tarjeta: bool = False  # «Pago ...» de un extracto de tarjeta: se sugiere como traslado entre tus cuentas
-    # Fila «resumen de la factura anterior» del extracto de tarjeta: lo real es el pago de `pagado`; el resto es información.
-    resumen_factura: Optional[dict] = None  # {factura_anterior, pagado, saldo_pendiente}
+    # Pago de la tarjeta: monto A y cómo se aplicó (capital / intereses / cargos y los dos montos B y C del extracto).
+    pago_detalle: Optional[dict] = None  # {capital, intereses, cargos, aplicado: [B, C]}
+    linea_tipo: Optional[str] = None  # compra | compra_en_cuotas | cuota_manejo | pago | comision (extracto de tarjeta)
+    cuotas: Optional[str] = None  # «N de M»
+    restante: Optional[float] = None  # lo que falta por pagar de una compra en cuotas
     aviso_linea: Optional[str] = None  # texto para la persona cuando el lector no tiene certeza
     marcar_por_defecto: Optional[bool] = None  # False = la casilla queda apagada hasta que la persona confirme
 
 
 class ProcesarExtractoResponse(BaseModel):
     ok: bool
+    # Extracto de la tarjeta de Nu: resumen de la página 1 y si lo leído suma lo que dice el extracto.
+    resumen_tarjeta: Optional[dict] = None
+    verificacion: Optional[list[dict]] = None
+    lectura_completa: Optional[bool] = None
+    lineas_leidas: Optional[int] = None
+    mensaje_lectura: Optional[str] = None
     historial_id: Optional[str] = None
     cuenta_id: Optional[str] = None  # cuenta del extracto (al reabrir una revisión desde el historial)
     banco_detectado: Optional[str] = None
@@ -1056,6 +1065,8 @@ class HistorialExtractoOut(BaseModel):
     moneda: Optional[str] = None
     cuadre_estado: Optional[str] = None
     cuadre_diferencia: Optional[float] = None
+    lectura_completa: Optional[bool] = None  # tarjeta de Nu: ¿lo leído suma lo que dice el extracto?
+    mensaje_lectura: Optional[str] = None  # «Leí 17 líneas y suman lo que dice tu extracto ✓»
 
     class Config:
         from_attributes = True
