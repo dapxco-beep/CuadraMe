@@ -61,7 +61,7 @@ def _n(cantidad: int, uno: str, varios: str) -> str:
 def contar_review(review: list[dict]) -> dict:
     """Cuenta qué pasó con cada línea leída de un extracto. Pura: solo mira los estados."""
     c = {"leidas": 0, "ya_estaban": 0, "nuevas_agregadas": 0, "por_revisar": 0, "descartadas": 0,
-         "anteriores": 0, "duplicadas_detectadas": 0, "dudosas": 0}
+         "anteriores": 0, "duplicadas_detectadas": 0, "dudosas": 0, "lectura_dudosa": 0}
     for i in review or []:
         est = i.get("estado")
         if est == "sobrante":
@@ -77,6 +77,8 @@ def contar_review(review: list[dict]) -> dict:
             c["nuevas_agregadas"] += 1
         elif est == "faltante":
             c["por_revisar"] += 1
+            if i.get("lectura_dudosa"):
+                c["lectura_dudosa"] += 1  # trae varios montos: no se importa hasta que la persona elige
         elif est == "borrado_antes":
             c["descartadas"] += 1
             if i.get("duplicado_evitado"):
@@ -103,7 +105,7 @@ def conteo_de_historial(h) -> dict:
     por_revisar = int(h.faltantes or 0) if h.estado == "pendiente_revision" else 0
     return {"leidas": total, "ya_estaban": ya, "nuevas_agregadas": nuevas, "por_revisar": por_revisar,
             "descartadas": 0, "anteriores": max(0, total - ya - nuevas - por_revisar),
-            "duplicadas_detectadas": int(h.exactos or 0), "dudosas": 0}
+            "duplicadas_detectadas": int(h.exactos or 0), "dudosas": 0, "lectura_dudosa": 0}
 
 
 def estado_de_conteo(conteo: dict, historial_estado: str | None = None) -> str:
@@ -259,7 +261,7 @@ def _item(*, clave, extracto_id, historial_id, cuenta_id, cuenta, banco, periodo
 
 
 _VACIO = {"leidas": 0, "ya_estaban": 0, "nuevas_agregadas": 0, "por_revisar": 0, "descartadas": 0,
-          "anteriores": 0, "duplicadas_detectadas": 0, "dudosas": 0}
+          "anteriores": 0, "duplicadas_detectadas": 0, "dudosas": 0, "lectura_dudosa": 0}
 
 
 def _banco_de(e) -> str:
@@ -363,6 +365,9 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             reciente=e.recibido_en or e.creado_en, sin_revisar=(e.estado == "nuevo"),
             sin_cuenta=cuenta_id is None, historial=h, mes_fuente=ded["fuente"], mes_deducido=ded["deducido"],
             tipo=ev.tipo_de_extracto(cuenta.tipo if cuenta else None, e.asunto or "", e.archivo or ""),
+            # Lo que DICE el correo (tarjeta o cuenta): si no coincide con la cuenta a la que quedó, el título
+            # dice la verdad del correo, no la de la cuenta equivocada.
+            tipo_texto=ev.tipo_de_extracto(None, e.asunto or "", e.archivo or ""),
             corte=corte, motivo_error=motivo_err, asunto=e.asunto or "", archivo=e.archivo or "",
             recibido_en=e.recibido_en or e.creado_en,
             sugerencia_cuenta=sugerir_cuenta_credito(h, cuenta, list(cuentas.values()), f"{e.asunto or ''} {e.archivo or ''}"),
@@ -382,7 +387,7 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             banco=(h.banco_detectado or "").replace("archivo: ", ""), periodo="", mes=mes_h,
             estado=estado, conteo=conteo, origen="archivo", clave_estado=None, reciente=h.creado_en,
             sin_revisar=False, sin_cuenta=False, historial=h, mes_fuente=ev.FUENTE_LINEAS if mes_h else None,
-            mes_deducido=not mes_h, tipo=ev.tipo_de_extracto(cuenta.tipo), corte=h.fecha_corte or "",
+            mes_deducido=not mes_h, tipo=ev.tipo_de_extracto(cuenta.tipo), tipo_texto="", corte=h.fecha_corte or "",
             motivo_error=h.motivo_error, asunto="", archivo="", recibido_en=h.creado_en,
             historial_error=(h.estado == "error"),
             reintentable=(h.estado == "error" and extractos_error.reintentable(db, h, correos)),
@@ -400,7 +405,9 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
         if c["mes"] and c["banco"]:
             return ("b", _norm(c["banco"]), c["tipo"], c["mes"])
         if c["estado"] == NO_SE_PUDO_LEER and c["origen"] == "archivo" and c["cuenta_id"]:
-            return ("e", c["cuenta_id"])  # varios intentos fallidos sin mes: es el mismo archivo reintentado
+            # Varios intentos fallidos sin mes: se juntan por cuenta y por familia de motivo: los que esperan la
+            # clave («10 extractos de Nu esperan la clave») y los demás («5 no se pudieron leer»).
+            return ("e", c["cuenta_id"], c["motivo_error"] in extractos_error.MOTIVOS_CLAVE)
         return None
 
     grupos: dict[tuple, list[dict]] = {}
@@ -438,11 +445,31 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
                 f"x{copias} correos" if origenes == {"correo"} else f"x{copias} copias")
         else:
             copias_texto = ""
+        nombre_banco = ev.banco_para_titulo(mejor["banco"], mejor["cuenta"])
+        tipo_titulo = mejor["tipo_texto"] if mejor["tipo_texto"] and mejor["tipo"] and mejor["tipo_texto"] != mejor["tipo"] else mejor["tipo"]
+        motivo_codigo = (motivo_err or extractos_error.MOTIVO_POR_DEFECTO) if estado == NO_SE_PUDO_LEER else None
+        if motivo_codigo:
+            distintos = {c["motivo_error"] or extractos_error.MOTIVO_POR_DEFECTO for c in lista if c["estado"] == NO_SE_PUDO_LEER}
+            if len(distintos) > 1:  # intentos con motivos distintos: si todos piden clave, es la clave; si no, «no se pudieron leer»
+                motivo_codigo = "clave_faltante" if distintos <= set(extractos_error.MOTIVOS_CLAVE) else extractos_error.MOTIVO_POR_DEFECTO
+        if estado == NO_SE_PUDO_LEER and not mejor["mes"]:
+            # Sin mes no hay «Mes por confirmar»: la fila dice cuántos hay, de qué banco y qué les pasa.
+            titulo = ev.titulo_grupo_error(motivo_codigo, copias, nombre_banco)
+        else:
+            titulo = ev.titulo_extracto(banco=nombre_banco, tipo=tipo_titulo, mes=mejor["mes"], corte=mejor["corte"])
+        ejemplos = [{"nombre": c["archivo"] or c["asunto"] or "Subido a mano", "fecha": c["recibido_en"].isoformat() if c["recibido_en"] else None}
+                    for c in sorted(lista, key=lambda c: c["recibido_en"] or datetime.min, reverse=True)[:3]]
         extra = {
             "tipo": mejor["tipo"], "mes_fuente": mejor["mes_fuente"], "mes_deducido": bool(mejor["mes_deducido"]),
             "mes_por_confirmar": not mejor["mes"], "mes_etiqueta": ev.etiqueta_mes(mejor["mes"]),
-            "titulo": ev.titulo_extracto(banco=ev.banco_para_titulo(mejor["banco"], mejor["cuenta"]), tipo=mejor["tipo"], mes=mejor["mes"],
-                                         corte=mejor["corte"]),
+            "titulo": titulo,
+            # De dónde salió y a qué cuenta quedó (nada sin nombre ni origen).
+            "banco_nombre": nombre_banco, "cuenta_asignada": mejor["cuenta"], "tipo_titulo": tipo_titulo,
+            "origen_texto": ev.origen_texto(mejor["origen"], asunto=mejor["asunto"], archivo=mejor["archivo"],
+                                            fecha_iso=mejor["recibido_en"].isoformat() if mejor["recibido_en"] else None),
+            "ejemplos": ejemplos, "motivo_codigo": motivo_codigo,
+            "motivo_corto": ev.motivo_corto(motivo_codigo) if motivo_codigo else None,
+            "banco_sin_identificar": (mejor["banco"] or "").lower() in ev.BANCOS_SIN_NOMBRE,
             "estado_vista": vista, "estado_etiqueta": ev.ETIQUETA_ESTADO[vista],
             "estado_corto": ev.estado_corto(vista, mejor["conteo"], clave_estado=mejor["clave_estado"]),
             "resultado": ev.frase_resultado(vista, mejor["conteo"], clave_estado=mejor["clave_estado"],
@@ -476,12 +503,16 @@ def _acciones(vista: str, c: dict) -> list[str]:
     if vista == ev.NECESITA_CLAVE:
         return ["poner_clave", "probar_clave"]
     if vista == ev.NO_SE_PUDO_LEER:
+        # Un error por clave se arregla con la clave: un solo botón «Poner la clave» para todo el grupo.
+        clave = c.get("motivo_error") in extractos_error.MOTIVOS_CLAVE
+        poner = ["poner_clave"] if clave else []
+        banco = [] if clave else ["mi_banco_no_esta"]
         if c["extracto_id"]:
-            return ["intentar_de_nuevo", "mi_banco_no_esta"]
+            return poner + ["intentar_de_nuevo"] + banco
         if c.get("historial_error"):
             # Subido a mano o sin correo: «Reintentar» solo si hay un correo del que volver a traer el PDF.
-            return (["reintentar"] if c.get("reintentable") else ["subir_de_nuevo"]) + ["quitar_de_la_lista", "mi_banco_no_esta"]
-        return ["subir_de_nuevo", "mi_banco_no_esta"]
+            return poner + (["reintentar"] if c.get("reintentable") else ["subir_de_nuevo"]) + ["quitar_de_la_lista"] + banco
+        return poner + ["subir_de_nuevo"] + banco
     if vista == ev.REVISADO:
         return ["ver"] + (["revisar_de_nuevo"] if c["extracto_id"] and c["cuenta_id"] else [])
     return []
@@ -494,13 +525,15 @@ def resumen_por_celda(extractos: list[dict]) -> dict[tuple[str, str], dict]:
         if not x["cuenta_id"] or not x["mes"]:
             continue
         c = celdas.setdefault((x["cuenta_id"], x["mes"]), {
-            "leidas": 0, "ya_estaban": 0, "nuevas_agregadas": 0, "por_revisar": 0, "estados": [], "lista": []})
-        for k in ("leidas", "ya_estaban", "nuevas_agregadas", "por_revisar"):
-            c[k] += x[k]
+            "leidas": 0, "ya_estaban": 0, "nuevas_agregadas": 0, "por_revisar": 0, "lectura_dudosa": 0, "estados": [], "lista": []})
+        for k in ("leidas", "ya_estaban", "nuevas_agregadas", "por_revisar", "lectura_dudosa"):
+            c[k] += x.get(k, 0)
         c["estados"].append(x["estado"])
         # Lo mismo que dice la lista (título, estado): la cobertura y «Todos los extractos» no se contradicen.
         c["lista"].append({"id": x["id"], "titulo": x["titulo"], "estado_vista": x["estado_vista"],
-                           "estado_etiqueta": x["estado_etiqueta"]})
+                           "estado_etiqueta": x["estado_etiqueta"], "motivo_corto": x.get("motivo_corto"),
+                           "historial_id": x.get("historial_id"), "extracto_id": x.get("extracto_id"),
+                           "acciones": x.get("acciones") or []})
     return celdas
 
 

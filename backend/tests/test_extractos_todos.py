@@ -220,7 +220,9 @@ def test_la_fila_de_error_muestra_el_motivo_o_dice_que_no_se_guardo(limpio):
     assert len(err) == 1 and err[0]["copias"] == 3 and err[0]["copias_texto"] == "x3 intentos"
     assert err[0]["resultado"].startswith("No se pudo leer (motivo no guardado)")
     assert err[0]["acciones"] == ["subir_de_nuevo", "quitar_de_la_lista", "mi_banco_no_esta"]
-    assert err[0]["mes_por_confirmar"] and "Mes por confirmar" in err[0]["titulo"]
+    # Sin mes la fila no dice «Mes por confirmar»: dice cuántos hay, de qué banco y qué les pasa.
+    assert err[0]["mes_por_confirmar"] and err[0]["titulo"] == "3 extractos de Nu Colombia no se pudieron leer"
+    assert err[0]["cuenta_asignada"] == "Nu Colombia" and err[0]["origen_texto"].startswith("Subido a mano")
     # Con motivo guardado en un correo: frase concreta y siguiente paso.
     _correo(90, "error", archivo="Nu_2026-11-04.pdf", cuenta=nu, motivo="pdf_escaneado", recibido=datetime(2026, 11, 4))
     d = client.get("/sincronizacion/extractos").json()

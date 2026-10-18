@@ -22,6 +22,7 @@ from app.compartidos import cuentas_ids_accesibles
 from app.database import get_db
 from app.duplicados import absorber_correos, grupos_posibles_duplicados
 from app import estado_traer
+from app import extractos_error
 from app import extractos_vista
 from app.extractos_conciliados import (  # noqa: F401
     ESTADO_YA_CONCILIADO, FUENTES_CONCILIACION, depurar_conciliados, mes_del_extracto,
@@ -258,9 +259,20 @@ def estado(
 
     # Extractos que no se pudieron leer, por celda (la lista los muestra; la cobertura también).
     errores_celda: dict[tuple[str, str], int] = {}
+    motivo_celda: dict[tuple[str, str], str] = {}  # por qué no se pudo leer (frase corta) en esa celda
     for x in lista_ext:
         if x["estado"] == estado_traer.NO_SE_PUDO_LEER and x["cuenta_id"] and x["mes"]:
             errores_celda[(x["cuenta_id"], x["mes"])] = errores_celda.get((x["cuenta_id"], x["mes"]), 0) + 1
+            motivo_celda[(x["cuenta_id"], x["mes"])] = x.get("motivo_corto") or extractos_vista.motivo_corto(None)
+        elif x["estado"] == estado_traer.NECESITA_CLAVE and x["cuenta_id"] and x["mes"]:
+            motivo_celda.setdefault((x["cuenta_id"], x["mes"]), extractos_vista.motivo_corto("clave_faltante"))
+    # Extractos de una tarjeta que quedaron en OTRA cuenta (p. ej. la de ahorros): la tarjeta debe decirlo.
+    en_otra_cuenta: dict[tuple[str, str], list[dict]] = {}
+    for x in lista_ext:
+        sug = x.get("sugerencia_cuenta")
+        if sug and x.get("mes") and x.get("historial_id"):
+            en_otra_cuenta.setdefault((sug["cuenta_id"], x["mes"]), []).append(
+                {"historial_id": x["historial_id"], "desde": x["cuenta"], "titulo": x["titulo"]})
     filas_cuentas = []
     for c in cuentas:
         celdas = []
@@ -285,18 +297,24 @@ def estado(
                 "ya_estaban": res["ya_estaban"] if res else 0,
                 "nuevas_agregadas": res["nuevas_agregadas"] if res else 0,
                 "por_revisar": res["por_revisar"] if res else 0,
+                "lectura_dudosa": res["lectura_dudosa"] if res else 0,
+                "motivo_corto": motivo_celda.get((c.id, clave)),
+                "en_otra_cuenta": en_otra_cuenta.get((c.id, clave), []),
                 # Los extractos de esta celda, con el mismo título y estado que en «Todos los extractos».
                 "lista": res["lista"] if res else [],
             })
-        filas_cuentas.append({"id": c.id, "nombre": c.nombre, "icono": c.icono, "meses": celdas})
+        filas_cuentas.append({"id": c.id, "nombre": c.nombre, "icono": c.icono, "tipo": c.tipo or "ahorro", "meses": celdas})
 
     sin_cuenta = _sin_cuenta(db, usuario.id, cuentas, extractos, inicio_pp)
 
     # ── Tareas, en el orden en que conviene resolverlas.
     # Un extracto real es UNO aunque haya llegado en dos correos o se haya subido a mano también.
-    n_falta_clave = sum(1 for x in lista_ext if x["estado"] == estado_traer.NECESITA_CLAVE)
+    # Un error por clave se arregla poniendo la clave: cuenta como «falta la clave», no como «no se pudo leer».
+    es_error_clave = lambda x: x["estado"] == estado_traer.NO_SE_PUDO_LEER and x.get("motivo_codigo") in extractos_error.MOTIVOS_CLAVE  # noqa: E731
+    n_falta_clave = sum(1 for x in lista_ext if x["estado"] == estado_traer.NECESITA_CLAVE or es_error_clave(x))
     n_por_conciliar = sum(1 for x in lista_ext if x["estado"] == estado_traer.POR_REVISAR)
-    n_no_leyo = sum(1 for x in lista_ext if x["estado"] == estado_traer.NO_SE_PUDO_LEER)
+    n_no_leyo = sum(1 for x in lista_ext if x["estado"] == estado_traer.NO_SE_PUDO_LEER and not es_error_clave(x))
+    n_cuenta_dudosa = sum(1 for x in lista_ext if x.get("sugerencia_cuenta") and x.get("historial_id"))
     n_duplicados = len(grupos_posibles_duplicados(db, usuario.id))
     desde_bandeja = hoy - timedelta(days=DIAS_BANDEJA)
     n_categorizar = _cola_categorizar(db, usuario.id, ids_accesibles, desde_bandeja).count()
@@ -338,18 +356,25 @@ def estado(
          "Sube el archivo de nuevo o agrega esos movimientos a mano.", n_no_leyo, "/sincronizacion#extractos"),
         ("posibles_duplicados", "Posibles movimientos repetidos",
          "Parecen el mismo gasto: dime si es el mismo o es otro.", n_duplicados, "/buscar-duplicados"),
+        ("extracto_cuenta_dudosa", "Un extracto está en otra cuenta",
+         "Parece de tu tarjeta de crédito pero quedó en una cuenta de ahorros. Pásalo a la cuenta correcta.",
+         n_cuenta_dudosa, "/sincronizacion#extractos"),
+        # Opcional: no es una obligación, pero «Todo al día» no puede esconder que hay correos por recuperar.
+        ("correos_descartados", "Correos descartados que puedes recuperar",
+         "Los descartaste al borrar un movimiento parecido. Mira si alguno sí era tuyo.", n_descartados, "/sincronizacion#descartados"),
     ]
     # Cada tarea dice a qué «carril» del correo pertenece (o ninguno): así la pantalla no mezcla
     # los movimientos del día a día con los extractos para conciliar.
     carril_de = {
         "falta_clave": "extractos", "extractos_por_conciliar": "extractos", "extractos_sin_leer": "extractos",
+        "extracto_cuenta_dudosa": "extractos",
         "correos_por_revisar": "movimientos", "cuadre_no_cuadra": "extractos",
     }
     tareas = [
         {"id": i, "titulo": t, "detalle": d, "cantidad": int(n), "ruta": r,
          "carril": carril_de.get(i), "carril_nombre": carriles_correo.NOMBRE_CARRIL.get(carril_de.get(i), ""),
          # Categorizar es una invitación, no una obligación: no cuenta como «cosa por resolver».
-         "opcional": i == "movimientos_por_categorizar"}
+         "opcional": i in ("movimientos_por_categorizar", "correos_descartados")}
         for i, t, d, n, r in candidatas if n > 0
     ]
 
