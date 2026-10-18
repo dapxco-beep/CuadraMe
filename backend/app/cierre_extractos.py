@@ -187,6 +187,7 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
         "termine": termine, "segun_extracto": round(segun, 2) if segun is not None else None,
         "diferencia": dif, "historial_id": fila["historial_id"] if fila else None,
         "cadena_rota": bool(fila and fila.get("cadena_rota")),
+        "aviso": fila.get("texto") if fila and fila.get("cadena_rota") and estado == "cuadra" else None,
         "motivo": None, "causas": [], "acciones": [], "sin_tasa": not ok,
         # En moneda base, para sumar entre cuentas.
         "base": {"empece": base(empece), "ingresos": round(ing_base, 2), "gastos": round(gas_base, 2),

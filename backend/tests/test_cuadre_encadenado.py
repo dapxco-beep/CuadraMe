@@ -108,21 +108,21 @@ def test_mes_culpable_es_junio_por_la_linea_que_falta_y_julio_solo_arrastra():
     assert r["saldo_corregido"]["queda_diferencia"] == 0 and r["saldo_corregido"]["saldo_app_corregido"] == 1_700_000
 
 
-def test_reparar_importando_la_linea_y_el_saldo_inicial_cuadra_todo_el_historial():
+def test_reparar_importando_la_linea_registra_solo_el_saldo_inicial_y_cuadra_todo_el_historial():
     cuenta, h = _escenario("ce-2")
     r = client.post(f"/conciliacion/historial/{h['junio']}/importar", json={"fingerprints": ["fp-800"]})
     assert r.status_code == 200, r.text
-    m = _por_mes(_enc(cuenta))
-    # recalculado, no guardado al subir: junio ya no tiene diferencia propia; solo arrastra el saldo inicial de mayo
-    assert m["2026-06"]["diferencia"] == 0 and m["2026-06"]["estado"] == "arrastra" and "mayo" in m["2026-06"]["texto"]
-    assert m["2026-05"]["estado"] == "solo_saldo_inicial"
-    r = client.post("/conciliacion/cuadre/saldo-inicial", json={
-        "cuenta_id": cuenta, "modo": "extracto", "historial_id": h["mayo"], "saldo_inicial": 500_000,
-        "periodo_inicio": "2026-05-01", "confirmar": True})
-    assert r.status_code == 200, r.text
+    # al conciliar el extracto, la app registra sola con cuánto empezó la cuenta (y lo avisa para poder deshacerlo)
+    auto = r.json()["saldo_inicial_auto"]
+    assert auto and auto["monto"] == 500_000 and auto["movimiento_id"]
     r = _enc(cuenta)
     assert [f["estado"] for f in r["meses"]] == ["cuadra", "cuadra", "cuadra"]
     assert r["cuadra"] is True and r["culpables"] == []
+    # pedirlo a mano otra vez no duplica: ya hay saldo inicial
+    r2 = client.post("/conciliacion/cuadre/saldo-inicial", json={
+        "cuenta_id": cuenta, "modo": "extracto", "historial_id": h["mayo"], "saldo_inicial": 500_000,
+        "periodo_inicio": "2026-05-01", "confirmar": True})
+    assert r2.status_code == 409
     db = SessionLocal()
     try:
         hh = db.get(HistorialExtracto, h["junio"])

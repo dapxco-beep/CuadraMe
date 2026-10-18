@@ -105,7 +105,8 @@ export default function CierreMes() {
     }
   }
 
-  const meses = [...new Set([...(lista || []).map((l) => l.mes), ...mesesExt.map((x) => x.mes), mesAnterior()])].sort().reverse()
+  // Últimos 12 meses (los manda el servidor); mientras llegan, los del historial de cierres.
+  const meses = [...new Set(mesesExt.length ? [...mesesExt.map((x) => x.mes), mes] : [...(lista || []).map((l) => l.mes), mesAnterior()])].filter(Boolean).sort().reverse()
   const etiquetaMes = (m) => {
     const x = mesesExt.find((y) => y.mes === m)
     return x ? `${x.etiqueta}${x.con_extracto ? ' · con extracto' : ''}` : m
@@ -118,12 +119,15 @@ export default function CierreMes() {
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-semibold flex-1">Cierre de mes</h1>
-        {mes && (
-          <select aria-label="Mes" value={mes} onChange={(e) => setMes(e.target.value)} className="rounded-xl border border-line bg-paper-raised px-3 py-2 text-sm">
+      </header>
+
+      {mes && (
+        <div className="px-5 mt-1">
+          <select aria-label="Mes" value={mes} onChange={(e) => setMes(e.target.value)} className="w-full min-h-11 rounded-xl border border-line bg-paper-raised px-3 py-2 text-sm">
             {meses.map((m) => <option key={m} value={m}>{etiquetaMes(m)}</option>)}
           </select>
-        )}
-      </header>
+        </div>
+      )}
 
       <div className="px-5 mt-3">
         {error && <p className="text-sm text-danger mb-3">{error}</p>}

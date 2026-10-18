@@ -20,11 +20,11 @@ const PILDORA = {
 }
 const ICONO_ESTADO = { cuadra: CheckCircle2, no_cuadra: XCircle, sin_extracto: CircleDashed }
 
-function Pildora({ estado, children }) {
+function Pildora({ estado, children, sinIcono = false }) {
   const I = ICONO_ESTADO[estado] || CircleDashed
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${PILDORA[estado] || PILDORA.sin_extracto}`}>
-      <I size={16} aria-hidden="true" /> {children}
+      {!sinIcono && <I size={16} aria-hidden="true" />} {children}
     </span>
   )
 }
@@ -185,9 +185,7 @@ function BloqueCuenta({ c, mostrarNombre, onCambio }) {
           </div>
         </div>
       )}
-      {cuadra && c.cadena_rota && (
-        <p className="text-[11px] text-ink-soft mt-1">El saldo con el que abre este extracto no es el que cerró el anterior.</p>
-      )}
+      {cuadra && c.aviso && <p className="text-[11px] text-ink-soft mt-1">{c.aviso}</p>}
       {cambiando && (
         <CambiarCuentaExtracto historialId={c.historial_id} titulo={`Extracto de ${c.nombre}`} cuentaActualId={c.cuenta_id}
           cuentas={cuentas} destinoInicial={cambiando.destino_id} onCerrar={() => setCambiando(null)} onListo={() => onCambio?.()} />
@@ -203,7 +201,7 @@ function ResumenBancos({ datos, fmt }) {
     <ul className="flex flex-wrap gap-2" aria-label="Resumen por banco" data-testid="resumen-bancos">
       {lista.map((b) => (
         <li key={b.banco}>
-          <Pildora estado={b.estado}>{textoBanco(b, (v) => fmt(v, datos.moneda_base))}</Pildora>
+          <Pildora estado={b.estado} sinIcono>{textoBanco(b, (v) => fmt(v, datos.moneda_base))}</Pildora>
         </li>
       ))}
     </ul>
