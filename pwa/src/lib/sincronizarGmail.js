@@ -4,10 +4,10 @@ import { api } from './api'
 // devuelve el progreso. Aquí se repite hasta que `completado` sea true. Si se
 // corta (cierras la app, se cae la red), la siguiente llamada sigue donde quedó.
 // Una respuesta sin `completado` (servidor viejo) cuenta como terminada.
-export async function sincronizarTodo({ completa = false, tipo = 'todo', onProgreso, maxLlamadas = 80 } = {}) {
+export async function sincronizarTodo({ completa = false, tipo = 'todo', dias, releer = false, onProgreso, maxLlamadas = 80 } = {}) {
   let r = null
   for (let i = 0; i < maxLlamadas; i++) {
-    const params = { ...(completa && i === 0 ? { completa: true } : {}), ...(tipo !== 'todo' ? { tipo } : {}) }
+    const params = { ...(completa && i === 0 ? { completa: true, ...(dias ? { dias } : {}), ...(releer ? { releer: true } : {}) } : {}), ...(tipo !== 'todo' ? { tipo } : {}) }
     r = await api.sincronizarCorreos(Object.keys(params).length ? params : undefined)
     if (!r?.ok) return r
     onProgreso?.(r)

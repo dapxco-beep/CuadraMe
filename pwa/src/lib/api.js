@@ -567,6 +567,8 @@ export const api = {
   sincronizarCorreos: (params) => {
     const q = []
     if (params?.completa) q.push('completa=true')
+    if (params?.dias) q.push(`dias=${params.dias}`)
+    if (params?.releer) q.push('releer=true')
     if (params?.tipo && params.tipo !== 'todo') q.push(`tipo=${params.tipo}`)
     return request(`/correos/sincronizar${q.length ? `?${q.join('&')}` : ''}`, { method: 'POST' })
   },
@@ -598,8 +600,9 @@ export const api = {
   conciliarExtractoCorreo: (id, cuentaId) =>
     request(`/correos/extractos/${id}/conciliar`, { method: 'POST', body: { cuenta_id: cuentaId } }),
   // «¿No ves un extracto?»: busca por asunto en tu Gmail (solo lectura) y luego procesa los elegidos.
-  buscarExtractosPorAsunto: (asunto) => request('/correos/extractos/buscar-asunto', { method: 'POST', body: { asunto } }),
-  procesarExtractosPorAsunto: (ids) => request('/correos/extractos/buscar-asunto/procesar', { method: 'POST', body: { ids } }),
+  // modo 'movimiento': sin exigir PDF adjunto (una notificación del banco); por defecto 'extracto'.
+  buscarExtractosPorAsunto: (asunto, modo = 'extracto') => request('/correos/extractos/buscar-asunto', { method: 'POST', body: { asunto, modo } }),
+  procesarExtractosPorAsunto: (ids, modo = 'extracto') => request('/correos/extractos/buscar-asunto/procesar', { method: 'POST', body: { ids, modo } }),
   descartarExtractoCorreo: (id) => request(`/correos/extractos/${id}/descartar`, { method: 'POST' }),
   // «Intentar de nuevo»: vuelve a bajar y abrir el PDF (no importa movimientos).
   reintentarExtractoCorreo: (id) => request(`/correos/extractos/${id}/reintentar`, { method: 'POST' }),
