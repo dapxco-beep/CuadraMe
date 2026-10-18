@@ -10,6 +10,8 @@ defecto), su «última vez» y sus contadores. Esta función solo LEE; no toca G
 """
 from __future__ import annotations
 
+import json
+
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -24,6 +26,18 @@ NOMBRE_CARRIL = {
 
 def _iso(d):
     return d.isoformat() if d else None
+
+
+def _ultima_lectura(sync) -> dict | None:
+    """Resumen de la última lectura de movimientos (cifras y fechas, sin contenido de correos)."""
+    if not sync or not sync.ultimo_resumen_mov:
+        return None
+    try:
+        d = json.loads(sync.ultimo_resumen_mov)
+    except ValueError:
+        return None
+    d["ceros_seguidos"] = int(sync.ceros_seguidos_mov or 0)
+    return d
 
 
 def movimientos_sin_extracto(db: Session, usuario_id: str) -> int:
@@ -81,6 +95,7 @@ def resumen(db: Session, usuario_id: str, lista_ext: list[dict] | None = None) -
             "ya_registrados": ya_registrados,
             "provisionales": movimientos_sin_extracto(db, usuario_id),
             "ultimo_error": sync.ultimo_error if sync else None,
+            "ultima_lectura": _ultima_lectura(sync),
         },
         "extractos": {
             "nombre": NOMBRE_CARRIL["extractos"],

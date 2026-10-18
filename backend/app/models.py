@@ -421,6 +421,10 @@ class SyncGmail(Base):
     ultimo_leidos_mov = Column(Integer, default=0)
     ultimo_leidos_ext = Column(Integer, default=0)
     ultimo_ya_registrados = Column(Integer, default=0)
+    # Resumen de la última lectura de MOVIMIENTOS (solo cifras y fechas; nunca contenido de correos).
+    resumen_mov_curso = Column(String, nullable=True)  # JSON con lo descartado mientras corre la lectura
+    ultimo_resumen_mov = Column(String, nullable=True)  # JSON del resumen de la última lectura completa
+    ceros_seguidos_mov = Column(Integer, default=0)  # lecturas completas seguidas de movimientos con 0 correos
 
 
 class ClavePdf(Base):

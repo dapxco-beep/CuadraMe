@@ -42,6 +42,7 @@ from app.extractos_gmail import (
     MAX_PDF_BYTES,
     abrir_pdf,
     asunto_para_gmail,
+    es_aviso_no_transaccion,
     construir_query_asunto,
     datos_cuerpo_tarjeta,
     texto_cuerpo,
@@ -572,6 +573,7 @@ def _iniciar_corrida(gmail, sync: SyncGmail, label_id: str | None, completa: boo
     sync.reintento_clave_hecho = False
     sync.leidos = sync.nuevos = sync.omitidos = sync.extractos_nuevos = 0
     sync.leidos_mov = sync.leidos_ext = sync.omitidos_mov = 0
+    sync.resumen_mov_curso = None
     # Estimación del total (una llamada barata por fase) para la barra de progreso.
     total = 0
     for fase in fases:
@@ -612,8 +614,10 @@ def _reintentar_claves(gmail, db: Session, usuario_id: str, cuentas: list, clave
                 fila.creado_en = datetime.utcnow()
 
 
-def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, existentes: set) -> bool:
-    """Lee un correo y lo guarda. True si quedó como candidato (no ignorado)."""
+def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, existentes: set,
+                          resultado: dict | None = None) -> bool:
+    """Lee un correo y lo guarda. True si quedó como candidato (no ignorado). Si se pasa `resultado`,
+    deja en `motivo` por qué se descartó (aviso | sin_monto | no_parece_transaccion)."""
     msg = gmail.users().messages().get(userId="me", id=ref_id, format="full").execute()
     correo = _crear_correo(msg, usuario_id, modelo)
     con_etiqueta = bool(label_id) and label_id in (msg.get("labelIds") or [])
@@ -629,6 +633,11 @@ def _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, exist
     candidato = tiene_monto and (con_etiqueta or es_notificacion_transaccion(correo.asunto, correo.snippet))
     if not candidato:
         correo.estado = "ignorado"
+        if resultado is not None:
+            resultado["motivo"] = (
+                "aviso" if es_aviso_no_transaccion(correo.asunto, correo.snippet)
+                else "sin_monto" if not tiene_monto else "no_parece_transaccion"
+            )
     db.add(correo)
     existentes.add(ref_id)
     return candidato
@@ -690,6 +699,47 @@ def _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos: se
             nuevos += fila.estado != ESTADO_YA_CONCILIADO
         db.add(fila)
     return descargados, nuevos
+
+
+def _anotar_descarte(sync: SyncGmail, motivo: str) -> None:
+    """Cuenta un correo descartado de la lectura de movimientos en curso (solo contadores por motivo)."""
+    try:
+        d = json.loads(sync.resumen_mov_curso or "{}")
+    except ValueError:
+        d = {}
+    d[motivo] = int(d.get(motivo, 0)) + 1
+    sync.resumen_mov_curso = json.dumps(d)
+
+
+MOTIVOS_DESCARTE = {
+    "aviso": "avisos que no son un movimiento",
+    "sin_monto": "correos sin monto",
+    "no_parece_transaccion": "correos que no parecen una transacción",
+}
+
+
+def _guardar_resumen_mov(sync: SyncGmail) -> None:
+    """Al terminar una lectura de movimientos: guarda cuántos correos devolvió Gmail, desde qué fecha y qué pasó con
+    cada uno (nuevos, ya registrados, descartados y el motivo más frecuente). Sin contenido de correos."""
+    try:
+        d = json.loads(sync.resumen_mov_curso or "{}")
+    except ValueError:
+        d = {}
+    avisos = int(d.get("aviso", 0))
+    otros = {k: int(v) for k, v in d.items() if k != "aviso"}
+    motivo = max(d, key=lambda k: d[k]) if d else None
+    leidos = sync.ultimo_leidos_mov or 0
+    sync.ultimo_resumen_mov = json.dumps({
+        "leidos": leidos,
+        "desde": sync.desde.date().isoformat() if sync.desde else None,
+        "nuevos": sync.ultimo_nuevos or 0,
+        "ya_registrados": sync.ultimo_ya_registrados or 0,
+        "ignorados": sum(otros.values()),
+        "avisos_descartados": avisos,
+        "motivo_frecuente": MOTIVOS_DESCARTE.get(motivo) if motivo else None,
+        "en": sync.ultima_sync_mov.isoformat() if sync.ultima_sync_mov else None,
+    })
+    sync.ceros_seguidos_mov = ((sync.ceros_seguidos_mov or 0) + 1) if leidos == 0 else 0
 
 
 def _cerrar_corrida(sync: SyncGmail) -> None:
@@ -762,8 +812,12 @@ def _correr_lote(gmail, db: Session, usuario_id: str, sync: SyncGmail, label_id:
                 descargados, n_nuevos = _procesar_extracto(gmail, db, usuario_id, ref_id, cuentas, clave, vistos_ext)
                 pdfs -= descargados
                 sync.extractos_nuevos += n_nuevos
-            elif _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, existentes):
-                sync.nuevos += 1
+            else:
+                res: dict = {}
+                if _procesar_transaccion(gmail, db, usuario_id, ref_id, modelo, label_id, existentes, res):
+                    sync.nuevos += 1
+                else:
+                    _anotar_descarte(sync, res.get("motivo") or "no_parece_transaccion")
         else:
             sync.omitidos += 1
             if sync.fase != "extractos":
@@ -855,6 +909,8 @@ def _lote_de_sincronizacion(db: Session, usuario_id: str, perfil: Perfil, comple
         else:
             sync.ultimo_nuevos = max(0, (sync.ultimo_nuevos or 0) - quitar)
             sync.ultimo_ya_registrados = (sync.ultimo_ya_registrados or 0) + absorbidos["ya_registrados"]
+    if not sync.en_curso and tipo in ("todo", "movimientos"):
+        _guardar_resumen_mov(sync)  # ya con lo absorbido descontado de «nuevos»
     if sync.en_curso:
         despues_n, despues_e = (sync.nuevos or 0), (sync.extractos_nuevos or 0)
     else:

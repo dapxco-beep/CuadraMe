@@ -142,3 +142,26 @@ def test_punto_de_partida_hoy_no_lee_antes_de_su_fecha(monkeypatch):
     _correr()
     assert _ids(uid) == set()
     assert all(f"after:{datetime.utcnow():%Y/%m/%d}" in q for q in g.consultas if "after:" in q)
+
+
+def test_resumen_de_la_ultima_lectura_con_descartes_y_ceros_seguidos(monkeypatch):
+    uid = "u-vent-5"
+    ya = correo("r1", 5)
+    publicidad = correo("r2", 6, asunto="Tu extracto está listo")
+    nuevo = correo("r3", 7, asunto="Compraste con tu tarjeta Nu")
+    g = GmailPorFecha([ya, publicidad, nuevo])
+    conectar_usuario(uid, g, monkeypatch)
+    _sync_mov(uid, datetime.utcnow() - timedelta(hours=1))
+    _correr()
+    lectura = client.get("/correos/carriles").json()["movimientos"]["ultima_lectura"]
+    assert lectura["leidos"] == 3 and lectura["nuevos"] == 2
+    assert lectura["avisos_descartados"] == 1 and lectura["ya_registrados"] == 0
+    assert lectura["desde"] and lectura["ceros_seguidos"] == 0
+    # Sin contenido de correos: solo cifras, fechas y el nombre genérico del motivo.
+    assert "Nu" not in str(lectura) and "EXITO" not in str(lectura)
+    g.mensajes.clear()
+    _correr()
+    assert client.get("/correos/carriles").json()["movimientos"]["ultima_lectura"]["ceros_seguidos"] == 1
+    _correr()
+    ult = client.get("/correos/carriles").json()["movimientos"]["ultima_lectura"]
+    assert ult["leidos"] == 0 and ult["ceros_seguidos"] == 2
