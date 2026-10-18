@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, cron_autorizado, get_current_user
+from app import cierre_extractos
 from app.cierre_mensual import generar_cierre
 from app.compartidos import cuentas_ids_accesibles
 from app.config import settings
@@ -235,6 +236,15 @@ def guardar_preferencias(
     aj.email_cierre = usuario.email if data.correo else None
     db.commit()
     return {"ok": True, "correo": aj.cierre_correo}
+
+
+@router.get("/extractos")
+def cierre_con_extractos(mes: str | None = None, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """El cierre del mes contra los extractos, por banco y cuenta: con cuánto empecé, ingresos, gastos, otros movimientos,
+    con cuánto terminé y lo que dice el extracto (cuadra o no, y por cuánto). Sin `mes`, el mes anterior. Solo lee y
+    solo mira las cuentas del usuario. Ingresos y gastos salen del mismo cálculo del informe."""
+    mes = _mes_valido(mes) if mes else mes_anterior(ahora_co().strftime("%Y-%m"))
+    return cierre_extractos.construir(db, usuario.id, mes)
 
 
 @router.get("/{mes}")
