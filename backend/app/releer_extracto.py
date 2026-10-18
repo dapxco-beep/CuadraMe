@@ -17,8 +17,9 @@ Cómo se reconcilia con lo guardado, sin duplicar ni deshacer trabajo:
 
 Versión del lector SIN columna nueva: la marca `releer_extracto:<id>` (tabla marcas_cron) guarda la
 VERSION_LECTOR con la que se releyó cada historial. Al abrir «Traer movimientos» se releen UNA vez, con esta
-versión, los `pendiente_revision` con correo (máx. 3 por apertura); los `conciliado` no se tocan solos.
-Al mejorar el lector, sube VERSION_LECTOR. (Costo aceptado: un extracto nuevo también se relee una vez; es
+versión, los `pendiente_revision` con correo y, en modo «solo agregar lo que faltaba», los `conciliado` de
+TARJETA que ya están en una cuenta de crédito (máx. 3 por apertura en total). Los conciliados de otro tipo no se
+tocan solos. Ver docs/RELECTURA_DE_TARJETAS.md. Al mejorar el lector, sube VERSION_LECTOR. (Costo aceptado: un extracto nuevo también se relee una vez; es
 idempotente y no cuesta nada visible.)"""
 from __future__ import annotations
 
@@ -35,6 +36,8 @@ from app.extractos_tarjeta_nu import datos_de_lectura, es_extracto_tarjeta_nu, l
 from app.conciliacion import parse_bank_date, parse_texto_con_regex, fijar_nombre_titular, huella_de_linea
 from app.crons import liberar_marca, reclamar_marca
 from app.extractos_gmail import abrir_pdf, claves_candidatas, descargar_adjunto, listar_adjuntos_pdf
+from app import duplicados as dup
+from app.cuentas_banco import CREDITO, producto_de_texto
 from app.models import ExtractoCorreo, HistorialExtracto, Cuenta
 
 logger = logging.getLogger(__name__)
@@ -66,6 +69,17 @@ def correo_de(db: Session, h: HistorialExtracto) -> ExtractoCorreo | None:
             .order_by(ExtractoCorreo.recibido_en.desc()).first())
 
 
+def es_de_tarjeta(h: HistorialExtracto, cuenta, fila: ExtractoCorreo | None) -> bool:
+    """¿Es el extracto de una TARJETA de crédito? Por la cuenta, por la lectura de tarjeta guardada o porque el
+    asunto/archivo del correo hablan de tarjeta de crédito (los extractos viejos no traen `lectura_json`)."""
+    if cuenta is not None and (getattr(cuenta, "tipo", "") or "").lower() == "credito":
+        return True
+    if (h.lectura or {}).get("resumen_tarjeta") is not None:
+        return True
+    texto = f"{getattr(fila, 'asunto', '') or ''} {getattr(fila, 'archivo', '') or ''}"
+    return producto_de_texto(texto) == CREDITO
+
+
 def _leer_lineas(texto: str) -> list[dict]:
     """Líneas del extracto con el lector de hoy (solo lectores de banco; nunca IA externa al releer)."""
     lineas, _descartadas = parse_texto_con_regex(texto) if texto else ([], 0)
@@ -76,11 +90,33 @@ def _clave(items: list[dict]) -> Counter:
     return Counter(i.get("fingerprint") for i in items)
 
 
+ESTADOS_CON_MOVIMIENTO = ("importado", "exacto", "aproximado", "completado")
+
+
+def _huerfana_igual(item: dict, huerfanas: list[dict]) -> dict | None:
+    """Una línea conservada que no tiene pareja por huella pero ES esta (mismo día, tipo, monto y comercio parecido):
+    la leyó el lector anterior con otro texto. Sirve para no volver a ofrecerla como «por importar»."""
+    f = parse_bank_date(item.get("fecha"))
+    for h in huerfanas:
+        g = parse_bank_date(h.get("fecha"))
+        if not f or not g or f.date() != g.date() or h.get("tipo") != item.get("tipo"):
+            continue
+        if abs(abs(float(h.get("monto") or 0)) - abs(float(item.get("monto") or 0))) > 0.5:
+            continue
+        sim = dup.similitud_comercio(h.get("descripcion"), item.get("descripcion"))
+        if sim is None or sim >= 0.75:
+            return h
+    return None
+
+
 def reconciliar(review_viejo: list[dict], nuevas: list[dict], *, descartados: dict | None = None,
-                inicio=None) -> tuple[list[dict], dict]:
+                inicio=None, solo_agregar: bool = False) -> tuple[list[dict], dict]:
     """Función pura (sin base de datos): devuelve (review nuevo, {cambiadas, agregadas, quitadas, conservadas}).
     `nuevas` = líneas leídas hoy, ya con `cuenta` puesta. Las líneas nuevas salen sin sugerencia de categoría
-    (la pone quien llama)."""
+    (la pone quien llama). Con `solo_agregar` nunca se quita ni se cambia nada de lo que ya había: solo se
+    suman líneas. Una línea nueva que equivale 1:1 a una conservada sin pareja por huella (el lector anterior la
+    leyó con otro texto, o el extracto cambió de cuenta y la huella lleva el id de la cuenta) NO se ofrece de
+    nuevo: la conservada anota la huella nueva en `huellas_alt` y así la próxima relectura también la reconoce."""
     conservadas = [i for i in review_viejo if i.get("estado") not in REEMPLAZABLES]
     pool_viejo = [i for i in review_viejo if i.get("estado") in REEMPLAZABLES]
 
@@ -92,12 +128,22 @@ def reconciliar(review_viejo: list[dict], nuevas: list[dict], *, descartados: di
         if i.get("estado") == "borrado_antes" and por_fp.get(i.get("fingerprint"), 0) > 0:
             por_fp[i["fingerprint"]] -= 1
 
+    alias: dict[str, list[str]] = {}  # huella alterna -> huellas de las conservadas que la reconocen
+    for i in conservadas:
+        for a in i.get("huellas_alt") or []:
+            alias.setdefault(a, []).append(i.get("fingerprint"))
+
     resto = []  # lo que hoy se lee y NO estaba resuelto
     for mov in nuevas:
         fp = huella_de_linea(mov, huellas_libro)
         if libres.get(fp, 0) > 0:
             libres[fp] -= 1  # ya estaba resuelta: se conserva la que hay (una sola vez por línea)
             continue
+        if alias.get(fp):
+            dueno = alias[fp].pop(0)
+            if libres.get(dueno, 0) > 0:
+                libres[dueno] -= 1  # la reconoce por una huella alterna anotada antes
+                continue
         item = {**mov, "fingerprint": fp, "estado": "faltante"}
         if por_fp.get(fp, 0) > 0:
             por_fp[fp] -= 1
@@ -125,15 +171,37 @@ def reconciliar(review_viejo: list[dict], nuevas: list[dict], *, descartados: di
         else:
             quitadas.append(v)
 
+    if solo_agregar:
+        mantenidas, quitadas = mantenidas + quitadas, []
+
+    # Conservadas que ninguna línea de hoy reclamó por huella (el lector anterior las leyó distinto).
+    huerfanas, restantes = [], Counter(libres)
+    for i in conservadas:
+        if i.get("estado") in ESTADOS_CON_MOVIMIENTO and restantes.get(i.get("fingerprint"), 0) > 0:
+            restantes[i["fingerprint"]] -= 1
+            huerfanas.append(i)
+    reconocidas, nuevas_reales = 0, []
+    for item in agregadas:
+        igual = _huerfana_igual(item, huerfanas) if item["estado"] == "faltante" else None
+        if igual is None:
+            nuevas_reales.append(item)
+            continue
+        huerfanas = [h for h in huerfanas if h is not igual]
+        igual.setdefault("huellas_alt", []).append(item["fingerprint"])
+        reconocidas += 1
+    agregadas = nuevas_reales
+    por_importar = sum(1 for i in agregadas if i["estado"] == "faltante")
+
     cambiadas = min(len(quitadas), len(agregadas))
     res = {
+        "por_importar": por_importar, "reconocidas": reconocidas,
         "cambiadas": cambiadas,
         "agregadas": len(agregadas) - cambiadas,
         "quitadas": len(quitadas) - cambiadas,
         "conservadas": len([i for i in conservadas if i.get("estado") != "sobrante"]) + len(mantenidas),
     }
     if not quitadas and not agregadas:
-        return review_viejo, res
+        return (list(review_viejo) if reconocidas else review_viejo), res
 
     ids_quitadas = {id(q) for q in quitadas}
     final = [i for i in review_viejo if id(i) not in ids_quitadas] + agregadas
@@ -154,8 +222,11 @@ def frase_resultado(res: dict) -> str:
     return ", ".join(partes)
 
 
-def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None) -> dict:
-    """Relee UN historial. Lanza ReleerError (sin escribir nada) si no se puede. Devuelve el resultado."""
+def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None, solo_agregar: bool = False) -> dict:
+    """Relee UN historial. Lanza ReleerError (sin escribir nada) si no se puede. Devuelve el resultado.
+
+    `solo_agregar` (extractos ya conciliados): jamás modifica ni quita lo que había; si la lectura de tarjeta
+    no suma lo que dice el extracto, no se agrega nada (solo se guarda la lectura para poder avisarlo)."""
     from app.autocat import ClasificadorUsuario
     from app.contabilidad import CATEGORIA_PAGO_TARJETA
     from app.routers import correos as rc
@@ -199,9 +270,13 @@ def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None) -> 
         for m in nuevas:
             m["cuenta"] = cuenta.id
 
+        lectura_hoy = datos_de_lectura(leer_extracto_tarjeta_nu(texto)) if es_extracto_tarjeta_nu(texto) else None
+        no_cuadra = bool(solo_agregar and lectura_hoy is not None and not lectura_hoy["lectura_completa"])
         nuevo_review, res = reconciliar(
-            review, nuevas, descartados=_descartados(db, usuario.id, cuenta.id, nuevas),
-            inicio=punto_partida.fecha_inicio(db, usuario.id))
+            review, [] if no_cuadra else nuevas, descartados=_descartados(db, usuario.id, cuenta.id, nuevas),
+            inicio=punto_partida.fecha_inicio(db, usuario.id), solo_agregar=solo_agregar)
+        if no_cuadra:  # nada se agrega si lo leído no cuadra con el extracto; la lectura queda para avisarlo
+            nuevo_review, res = review, {**res, "cambiadas": 0, "agregadas": 0, "quitadas": 0, "por_importar": 0}
 
         # Las líneas nuevas llevan la misma ayuda que al procesar: categoría sugerida, pago de tarjeta, resumen.
         viejos = {id(i) for i in review}
@@ -224,9 +299,9 @@ def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None) -> 
             h.review_json = json.dumps(nuevo_review, default=str)
             h.total_movimientos = len([i for i in nuevo_review if i.get("estado") != "sobrante"])
             estado_traer.sincronizar_contadores(h, nuevo_review)
-        if es_extracto_tarjeta_nu(texto):  # el resumen y las comprobaciones se actualizan con el lector de hoy
-            h.lectura_json = json.dumps(datos_de_lectura(leer_extracto_tarjeta_nu(texto)), default=str)
-        if h.saldos_origen != "manual":
+        if lectura_hoy is not None:  # el resumen y las comprobaciones se actualizan con el lector de hoy
+            h.lectura_json = json.dumps(lectura_hoy, default=str)
+        if h.saldos_origen != "manual" and not (solo_agregar and h.saldo_final_extracto is not None):
             saldos = _saldos_del_extracto(cuenta, texto, nuevas)
             if saldos and (saldos.get("saldo_final") is not None or saldos.get("saldo_inicial") is not None):
                 cuadre_extracto.guardar_saldos(h, saldos)
@@ -241,19 +316,44 @@ def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None) -> 
 
     reclamar_marca(db, usuario.id, PREFIJO + h.id, VERSION_LECTOR)  # ya está al día con este lector
     res = {**res, "estado": h.estado, "historial_id": h.id, "mensaje": frase_resultado(res),
-           "mensaje_lectura": h.mensaje_lectura}
+           "mensaje_lectura": h.mensaje_lectura, "lectura_completa": h.lectura_completa,
+           "lineas_leidas": (h.lectura or {}).get("lineas_leidas", len(nuevas)), "no_cuadra": no_cuadra}
     return res
 
 
+def _conciliados_de_tarjeta(db: Session, usuario) -> list[HistorialExtracto]:
+    """Conciliados de TARJETA con correo que ya están en una cuenta de crédito (los que están en otra cuenta los
+    arregla «Arreglar mis extractos de la tarjeta», que primero los mueve: releerlos allí traería líneas a la
+    cuenta equivocada)."""
+    hist = (db.query(HistorialExtracto)
+            .filter(HistorialExtracto.usuario_id == usuario.id, HistorialExtracto.estado == "conciliado")
+            .order_by(HistorialExtracto.creado_en.desc()).all())
+    if not hist:
+        return []
+    cuentas = {c.id: c for c in db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()}
+    salida = []
+    for h in hist:
+        cuenta = cuentas.get(h.cuenta_id)
+        if cuenta is None or (cuenta.tipo or "").lower() != "credito":
+            continue
+        fila = correo_de(db, h)
+        if fila is not None and es_de_tarjeta(h, cuenta, fila):
+            salida.append(h)
+    return salida
+
+
 def releer_pendientes(db: Session, usuario, maximo: int = MAXIMO_AUTOMATICO) -> dict:
-    """Al abrir «Traer movimientos»: relee UNA vez (por versión del lector) los `pendiente_revision` con correo.
-    Los `conciliado` no se tocan solos. Nunca lanza; si falla, libera la marca para reintentar."""
+    """Al abrir «Traer movimientos»: relee UNA vez (por versión del lector) los `pendiente_revision` con correo y,
+    después, los `conciliado` de TARJETA ya en su cuenta de crédito en modo «solo agregar lo que faltaba»
+    (jamás toca lo importado; si hay líneas nuevas el extracto vuelve a «por revisar»). Máximo `maximo` en total.
+    Nunca lanza; si falla, libera la marca para reintentar."""
     out = {"releidos": 0, "cambiados": 0, "pendientes": 0}
     try:
         hist = (db.query(HistorialExtracto)
                 .filter(HistorialExtracto.usuario_id == usuario.id, HistorialExtracto.estado == "pendiente_revision")
                 .order_by(HistorialExtracto.creado_en.desc()).all())
-        if not hist:
+        tarjetas = _conciliados_de_tarjeta(db, usuario)
+        if not hist and not tarjetas:
             return out
         from app.crons import MarcaCron
         hechas = {m.clave for m in db.query(MarcaCron).filter(
@@ -261,15 +361,16 @@ def releer_pendientes(db: Session, usuario, maximo: int = MAXIMO_AUTOMATICO) -> 
             MarcaCron.clave.like(PREFIJO + "%")).all()}
         con_correo = {c.historial_id for c in db.query(ExtractoCorreo.historial_id).filter(
             ExtractoCorreo.usuario_id == usuario.id, ExtractoCorreo.historial_id.in_([h.id for h in hist]),
-            ExtractoCorreo.archivo != "").all()}
-        cola = [h for h in hist if h.id in con_correo and (PREFIJO + h.id) not in hechas]
+            ExtractoCorreo.archivo != "").all()} if hist else set()
+        cola = [(h, False) for h in hist if h.id in con_correo and (PREFIJO + h.id) not in hechas]
+        cola += [(h, True) for h in tarjetas if (PREFIJO + h.id) not in hechas]
         out["pendientes"] = max(0, len(cola) - maximo)
-        for h in cola[:maximo]:
+        for h, solo_agregar in cola[:maximo]:
             clave = PREFIJO + h.id
             if not reclamar_marca(db, usuario.id, clave, VERSION_LECTOR):
                 continue
             try:
-                r = releer_historial(db, usuario, h)
+                r = releer_historial(db, usuario, h, solo_agregar=solo_agregar)
                 out["releidos"] += 1
                 out["cambiados"] += 1 if (r["cambiadas"] or r["agregadas"] or r["quitadas"]) else 0
             except ReleerError as e:
