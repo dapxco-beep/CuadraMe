@@ -131,9 +131,9 @@ function nombrePendienteOpcional(p) {
   const c = p.cantidad || 0
   switch (p.id) {
     case 'correos_descartados':
-      return c === 1 ? '1 correo descartado por mirar' : `${c} correos descartados por mirar`
+      return c === 1 ? 'mirar 1 correo descartado' : `mirar ${c} correos descartados`
     case 'movimientos_por_categorizar':
-      return c === 1 ? '1 comercio sin categoría' : `${c} comercios sin categoría`
+      return c === 1 ? 'ponerle categoría a 1 comercio' : `ponerle categoría a ${c} comercios`
     case 'punto_partida':
       return 'elegir desde cuándo leo tu correo'
     default:

@@ -75,6 +75,8 @@ function SelectorMes({ it, onFijarMes, ocupado }) {
 function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado }) {
   const [cambiandoMes, setCambiandoMes] = useState(false)
   const esError = it.estado_vista === 'no_se_pudo_leer'
+  // Los subidos a mano sin nombre guardado no aportan («Subido a mano» ya sale en el origen): solo se listan nombres reales.
+  const nombresEjemplo = [...new Set((it.ejemplos || []).map((x) => x.nombre).filter((n) => n && n !== 'Subido a mano'))]
   return (
     <li className="px-4 py-3.5" data-testid={`ext-${it.id}`} data-estado={it.estado_vista}>
       <div className="flex items-start justify-between gap-2">
@@ -101,12 +103,12 @@ function FilaExtractoVista({ it, onAccion, onFijarMes, ocupado }) {
           {it.origen_texto}{it.origen_texto && it.cuenta_asignada ? ' · ' : ''}{it.cuenta_asignada ? `En la cuenta ${it.cuenta_asignada}` : ''}
         </p>
       )}
-      {esError && it.ejemplos?.length > 0 && (it.copias > 1 || it.banco_sin_identificar) && (
+      {esError && nombresEjemplo.length > 0 && (it.copias > 1 || it.banco_sin_identificar) && (
         <p className="text-xs text-ink-soft mt-1 break-words" data-testid="ejemplos-extracto">
-          {it.copias > 1 ? 'Por ejemplo: ' : 'Archivo: '}{it.ejemplos.map((x) => x.nombre).join(' · ')}
+          {it.copias > 1 ? 'Por ejemplo: ' : 'Archivo: '}{nombresEjemplo.join(' · ')}
         </p>
       )}
-      {it.estado_corto && <p className={`text-sm font-semibold mt-1.5 ${esError ? 'text-danger' : ''}`} data-testid="estado-corto">{it.estado_corto}</p>}
+      {it.estado_corto && !(esError && it.mes_por_confirmar && it.copias > 1) && <p className={`text-sm font-semibold mt-1.5 ${esError ? 'text-danger' : ''}`} data-testid="estado-corto">{it.estado_corto}</p>}
       {it.lectura_dudosa > 0 && (
         <p className="text-sm mt-1.5 text-accent font-semibold" data-testid="aviso-lectura-dudosa">
           {it.lectura_dudosa === 1 ? '1 línea trae dos montos: elige el correcto al revisarla.' : `${it.lectura_dudosa} líneas traen dos montos: elige el correcto al revisarlas.`}

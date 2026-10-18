@@ -78,9 +78,9 @@ describe('estado y progreso', () => {
 describe('«Todo al día» es honesto', () => {
   it('con algo opcional pendiente dice «Casi todo al día» y lo nombra', () => {
     const e = estadoGeneral(construirPasos({ tareas: [t('correos_descartados', 16, { opcional: true })] }))
-    expect(e).toMatchObject({ alDia: false, casi: true, titulo: 'Casi todo al día', pendiente: '16 correos descartados por mirar' })
+    expect(e).toMatchObject({ alDia: false, casi: true, titulo: 'Casi todo al día', pendiente: 'mirar 16 correos descartados' })
     const dos = estadoGeneral(construirPasos({ tareas: [t('correos_descartados', 1, { opcional: true }), t('movimientos_por_categorizar', 4, { opcional: true })] }))
-    expect(dos.pendiente).toBe('4 comercios sin categoría y 1 correo descartado por mirar')
+    expect(dos.pendiente).toBe('ponerle categoría a 4 comercios y mirar 1 correo descartado')
   })
 
   it('cada cosa de la lista impide el «Todo al día»', () => {

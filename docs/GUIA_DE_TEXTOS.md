@@ -50,14 +50,20 @@ La pantalla principal solo muestra (1) un estado calmado y (2) UN paso con su bo
 
 | Parte | Texto |
 |---|---|
-| Estado | «Todo al día» (con «Miré tu correo hace 2 h») o «Tienes 3 cosas por hacer». Las tareas opcionales (categorizar) no cuentan. |
+| Estado | «Todo al día» (con «Miré tu correo hace 2 h») SOLO si no queda nada: ni extractos a medias, ni errores o claves pendientes, ni correos por revisar, ni un extracto en otra cuenta. Si solo quedan cosas opcionales (categorizar, correos descartados): «Casi todo al día» + «Solo queda: mirar 16 correos descartados». Si no: «Tienes 3 cosas por hacer». «No hay nada nuevo en tu correo» habla solo del correo, nunca del estado general. |
 | Avance | «Paso 1 de 3» con una barra fina; solo si hay más de un paso. Al resolver uno avanza («Paso 2 de 3»). |
 | Paso principal | Título corto en imperativo + una frase + un botón con verbo. Orden: conectar (solo primer uso) → fecha de inicio (solo primer uso) → clave del PDF → crear cuenta → extractos a medias → importar faltantes → correos por revisar → lo demás → cuadre → categorizar (opcional). |
 | Al terminar un paso | «Listo ✓ — siguiente:» y el nuevo paso. Sin nada más: «Listo ✓» y «Todo al día». |
 | Búsqueda | Un solo botón secundario «Buscar ahora» (sin Gmail: «Conectar Gmail»). El progreso va en línea: «Leyendo tus extractos… 3 de 6», «Leyendo tus avisos del banco… 120 de 340», «Probando tu clave en los PDF…». |
 | Errores y esperas | Una frase con su acción: «Falta la clave de tu PDF → Ponerla ahora»; «La clave de tu PDF no abrió tus extractos → Cambiar la clave». Nunca «carril» ni jerga. |
 
-Textos de los pasos (fijos): «Conecta tu Gmail», «¿Desde cuándo leo tu correo?», «Falta la clave de tu PDF», «Crea tu cuenta de <banco>», «Sigue con tu extracto de <mes>», «Revisa tu extracto» / «Revisa tus N extractos», «Revisa N movimientos», «Confirma si son tuyos», «Un extracto no se pudo leer», «Puede haber movimientos repetidos», «Un mes no cuadra con tu extracto», «Pon categoría a N comercios».
+**Estado por cuenta y mes** (debajo del paso): una tarjeta por cuenta con su nombre completo y tipo («Nu Colombia · Ahorros», «Nu Colombia Crédito · Tarjeta») y «3 de 6 meses completos». Cada mes dice UN estado, con ícono y palabras: «Conciliado · 14 mov.», «Falta importar 2», «No se pudo leer · falta la clave», «Falta el extracto», «En otra cuenta · Está en Nu Colombia», «Mes en curso» (el mes que aún no termina no es «falta»).
+
+**Nada sin nombre ni origen:** una fila de extracto o de error nunca dice solo «desconocido» ni «banco». Dice de qué banco o cuenta es, de dónde salió («Correo «Llegó el extracto…» · archivo X.pdf» o «Subido a mano el 14 oct») y a qué cuenta quedó. Los errores iguales se agrupan («10 extractos de Nu esperan la clave del PDF» con un solo botón «Poner la clave»). Sin banco identificado el botón dice «Decirme de qué banco es».
+
+**Línea con dos montos:** «Esta línea trae dos montos. Elige el correcto»; la línea queda apagada y no se importa hasta elegir un monto (botones con los montos de la línea o un campo para escribirlo). Un «Pago» de la tarjeta se sugiere como traslado: «Parece el pago de tu tarjeta desde otra cuenta tuya: se cuenta como traslado, no como gasto.»
+
+Textos de los pasos (fijos): «Conecta tu Gmail», «¿Desde cuándo leo tu correo?», «Falta la clave de tu PDF», «Crea tu cuenta de <banco>», «Sigue con tu extracto de <mes>», «Revisa tu extracto» / «Revisa tus N extractos», «Revisa N movimientos», «Confirma si son tuyos», «Hay extractos que no se pudieron leer», «Un extracto está en otra cuenta», «Hay N correos descartados» (opcional), «Puede haber movimientos repetidos», «Un mes no cuadra con tu extracto», «Pon categoría a N comercios».
 
 **Detrás (hojas):**
 - **Ver todo** (pestañas **Extractos** · **Correos** · **Por mes**): extractos a medias («Seguir»), extractos para conciliar, todos los extractos por mes con su estado, ignorados; correos ya registrados e ignorados; cobertura por mes y cuadre.
