@@ -13,7 +13,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import { cuentaEfectivoPara, ofertaEfectivo, sugerenciaEfectivo } from '../lib/efectivo'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
-import { conAvisoDeBorrado } from '../lib/canales'
+import { OPCIONES_BORRADO, vinoDeCorreoOExtracto } from '../lib/canales'
 import { esAuto } from '../lib/comercio'
 import { HojaCambiarCategoria, InsigniaAuto } from '../components/CategorizacionAuto'
 import InsigniaCanales from '../components/InsigniaCanales'
@@ -45,7 +45,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
   const volver = useVolver('/movimientos')
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const { nombres: categorias, iconoDe, subsDe } = useCategorias()
-  const { confirmar, avisar } = useDialogos()
+  const { confirmar, elegir, avisar } = useDialogos()
   const [movimiento, setMovimiento] = useState(null)
   const [noEncontrado, setNoEncontrado] = useState(false)
   const [eliminando, setEliminando] = useState(false)
@@ -215,20 +215,28 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
   }
 
   async function eliminar() {
-    const ok = await confirmar(
-      conAvisoDeBorrado(
+    // Si vino del correo o de un extracto, la misma hoja de confirmación pregunta «¿Qué pasó?» (sin un paso extra):
+    // solo «duplicado» y «no va» impiden que el correo lo vuelva a traer; «error» lo devuelve a Por revisar.
+    let motivo
+    if (!esTransferencia && vinoDeCorreoOExtracto(movimiento)) {
+      motivo = await elegir('El saldo de la cuenta se ajustará como si este movimiento nunca hubiera existido.', {
+        titulo: '¿Qué pasó?',
+        opciones: OPCIONES_BORRADO,
+      })
+      if (!motivo) return
+    } else {
+      const ok = await confirmar(
         esTransferencia
           ? 'Se eliminarán las dos partes de la transferencia y el dinero volverá a la cuenta de origen.'
           : 'El saldo de la cuenta se ajustará como si este movimiento nunca hubiera existido.',
-        movimiento
-      ),
-      { titulo: '¿Eliminar este movimiento?', confirmarTexto: 'Eliminar', peligro: true }
-    )
-    if (!ok) return
+        { titulo: '¿Eliminar este movimiento?', confirmarTexto: 'Eliminar', peligro: true }
+      )
+      if (!ok) return
+    }
 
     setEliminando(true)
     try {
-      await api.eliminarMovimiento(id)
+      await (motivo ? api.eliminarMovimiento(id, motivo) : api.eliminarMovimiento(id))
       quitarDeCaches(id)
       onCambio?.(null, id)
       await recargarCuentas()

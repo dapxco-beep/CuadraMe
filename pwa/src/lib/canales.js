@@ -67,6 +67,19 @@ export const AVISO_NO_VUELVE =
 export const vinoDeCorreoOExtracto = (m) =>
   !!m && (['correo', 'extracto'].includes(m.origen) || (m.canales || []).some((c) => c === 'correo' || c === 'extracto'))
 
+// Qué pasó al borrar algo que vino del correo o de un extracto. Solo «duplicado» y «no va» dejan el rastro que
+// impide que el correo vuelva; «error» no deja rastro y el correo regresa a Por revisar.
+export const OPCIONES_BORRADO = [
+  { valor: 'duplicado', texto: 'Era duplicado' },
+  { valor: 'error', texto: 'Lo borré por error' },
+  { valor: 'no_va', texto: 'No va en mi cuenta' },
+]
+export const OPCIONES_BORRADO_VARIOS = [
+  { valor: 'duplicado', texto: 'Eran duplicados' },
+  { valor: 'error', texto: 'Los borré por error' },
+  { valor: 'no_va', texto: 'No van en mi cuenta' },
+]
+
 // Agrega el aviso al mensaje de confirmación solo si alguno de los movimientos vino del correo o de un extracto.
 export const conAvisoDeBorrado = (mensaje, movs) =>
   (Array.isArray(movs) ? movs : [movs]).some(vinoDeCorreoOExtracto) ? `${mensaje}
