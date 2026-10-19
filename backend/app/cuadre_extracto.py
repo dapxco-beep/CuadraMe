@@ -165,6 +165,12 @@ _ETQ_CORTE = [r"fecha\s+de\s+corte", r"fecha\s+corte", r"fecha\s+de\s+cierre", r
               r"hasta\s+el"]
 
 
+# Etiquetas (texto sin tildes) del resumen de Nu: «Impuesto del 4x1000 $23.800» y «Costos por retiro $1.000».
+_ETQ_4X1000 = [r"impuesto\s+del\s+4\s*x\s*1000", r"impuesto\s+4\s*x\s*1000", r"impuesto\s+del\s+4\s*(?:x|por)\s*mil",
+               r"impuesto\s+del\s+4\s*por\s*1000"]
+_ETQ_COSTOS_RETIRO = [r"costos?\s+por\s+retiros?"]
+
+
 def _resumen_nu(t: str, ini: float | None, fin: float | None) -> dict:
     """Extras del «Resumen de tus movimientos» de la cuenta Nu (texto ya sin tildes). En Nu el «saldo» del
     extracto es el TOTAL (cuenta + cajitas), y en CuadraMe las cajitas son parte del saldo de la cuenta
@@ -183,11 +189,18 @@ def _resumen_nu(t: str, ini: float | None, fin: float | None) -> dict:
         out["saldo_cajitas"] = en_cajitas
     if en_cuenta is not None and en_cajitas is not None and fin is not None:
         out["desglose_cuadra"] = abs(en_cuenta + en_cajitas - fin) < TOLERANCIA
+    # Otros dos conceptos que el resumen trae y que NO son líneas de movimientos: son gastos reales que bajan el saldo.
+    gmf = _valor_tras(t, _ETQ_4X1000)
+    retiro = _valor_tras(t, _ETQ_COSTOS_RETIRO)
     if None not in (ini, fin, entro, salio):
         out["entradas"], out["salidas"] = abs(entro), abs(salio)
         if rend is not None:
             out["rendimiento"] = rend
-        out["resumen_cuadra"] = abs(ini + abs(entro) - abs(salio) + (rend or 0) - fin) < TOLERANCIA
+        if gmf is not None:
+            out["impuesto_4x1000"] = abs(gmf)
+        if retiro is not None:
+            out["costos_retiro"] = abs(retiro)
+        out["resumen_cuadra"] = abs(ini + abs(entro) - abs(salio) - abs(gmf or 0) - abs(retiro or 0) + (rend or 0) - fin) < TOLERANCIA
     return out
 
 

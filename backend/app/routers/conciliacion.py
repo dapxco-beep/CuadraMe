@@ -264,9 +264,9 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
             item["categoria_sugerida"] = clasif["categoria"] if clasif else "Otros"
             item["razon_categoria"] = clasif.get("razon") if clasif else None
             item["confianza_categoria"] = clasif.get("confianza") if clasif else None
-            if item.get("categoria_fija"):  # p. ej. los rendimientos de la cuenta: categoría de sistema, no se adivina
+            if item.get("categoria_fija"):  # p. ej. rendimientos, 4x1000 o costos por retiro de la cuenta: categoría de sistema, no se adivina
                 item["categoria_sugerida"] = item["categoria_fija"]
-                item["razon_categoria"], item["confianza_categoria"] = "rendimiento que trae tu extracto", 1.0
+                item["razon_categoria"], item["confianza_categoria"] = rendimientos_extracto.razon_de(item), 1.0
             if item.get("pago_tarjeta") and (item["categoria_sugerida"] == "Otros" or item.get("pago_detalle")):
                 # La línea «Pago ...» de un extracto de tarjeta: se sugiere como pago de la tarjeta (traslado
                 # entre tus cuentas), no como un gasto «Sin categoría». La persona puede cambiarla.
@@ -1028,31 +1028,34 @@ def arreglar_tarjetas_ahora(
     return arreglar_tarjetas.arreglar(db, usuario, maximo=data.maximo, excluir=data.excluir[:50])
 
 
-@router.get("/rendimientos/previa")
-def registrar_rendimientos_previa(
+@router.get("/ajustes-extracto/previa")
+@router.get("/rendimientos/previa")  # nombre anterior del botón: sigue respondiendo para las pantallas ya abiertas
+def completar_extractos_previa(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user),
 ):
-    """«Registrar los rendimientos de mis extractos», vista previa SIN cambios ni Gmail: qué extractos, de cuánto
-    (exacto o estimado) y el total."""
-    from app import registrar_rendimientos
-    return registrar_rendimientos.previa(db, usuario)
+    """«Completar mis extractos: rendimientos e impuestos», vista previa SIN cambios ni Gmail: qué extractos, de cuánto
+    (exacto o estimado), el total y el total por concepto (rendimientos, 4x1000, costos por retiro)."""
+    from app import registrar_ajustes_extracto
+    return registrar_ajustes_extracto.previa(db, usuario)
 
 
-@router.post("/rendimientos/registrar")
-def registrar_rendimientos_ahora(
+@router.post("/ajustes-extracto/registrar")
+@router.post("/rendimientos/registrar")  # nombre anterior del botón
+def completar_extractos_ahora(
     data: ArreglarTarjetasIn,
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user),
 ):
-    """Registra los rendimientos de los extractos de cuentas de ahorro que no los tienen (máx. 12 por llamada, del más
-    viejo al más nuevo). Pide confirmar. Mismo límite por hora que «Arreglar mis extractos de la tarjeta»."""
-    from app import registrar_rendimientos
+    """Registra los rendimientos, el 4x1000 y los costos por retiro que el resumen de los extractos de cuentas de ahorro
+    trae y la app no tenía (máx. 12 por llamada, del más viejo al más nuevo). Pide confirmar. Mismo límite por hora que
+    «Arreglar mis extractos de la tarjeta»."""
+    from app import registrar_ajustes_extracto
     if not data.confirmar:
         raise HTTPException(status_code=400, detail="Confirma el registro para continuar.")
     if data.continuar:
-        verificar_limite(f"registrar-rendimientos-sigue:{usuario.id}", 40, 3600, "Registraste rendimientos muchas veces seguidas. Podrás seguir en {espera}.")
+        verificar_limite(f"registrar-rendimientos-sigue:{usuario.id}", 40, 3600, "Completaste tus extractos muchas veces seguidas. Podrás seguir en {espera}.")
     else:
-        verificar_limite(f"registrar-rendimientos:{usuario.id}", 6, 3600, "Registraste rendimientos muchas veces seguidas. Podrás seguir en {espera}.")
-    return registrar_rendimientos.registrar(db, usuario, maximo=data.maximo, excluir=data.excluir[:50])
+        verificar_limite(f"registrar-rendimientos:{usuario.id}", 6, 3600, "Completaste tus extractos muchas veces seguidas. Podrás seguir en {espera}.")
+    return registrar_ajustes_extracto.registrar(db, usuario, maximo=data.maximo, excluir=data.excluir[:50])
 
 
 @router.post("/releer-pendientes")
