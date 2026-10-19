@@ -350,4 +350,4 @@ def test_la_relectura_automatica_incluye_los_de_ahorro_con_rendimientos(monkeypa
     review = client.get(f"/conciliacion/historial/{h1}").json()["review"]
     assert _linea_rend(review)["estado"] == "faltante"
     assert client.post("/conciliacion/releer-pendientes").json()["releidos"] == 0  # una vez por versión del lector
-    assert rx.VERSION_LECTOR == "2026-10-v4-4x1000-costos"
+    assert rx.VERSION_LECTOR.startswith("2026-10-")  # no se fija la versión exacta: sube con cada mejora del lector

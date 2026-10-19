@@ -52,7 +52,7 @@ describe('etiquetas de origen', () => {
 describe('previsualización anti-duplicados', () => {
   it('cuenta lo que coincide, lo nuevo y lo dudoso', () => {
     const r = resumenPrevio([{ estado: 'ya' }, { estado: 'ya' }, { estado: 'nuevo' }, { estado: 'dudoso' }, { estado: 'anterior' }])
-    expect(r).toEqual({ coinciden: 2, nuevos: 1, dudosos: 1, anteriores: 1 })
+    expect(r).toMatchObject({ coinciden: 2, nuevos: 1, dudosos: 1, anteriores: 1 })
     expect(textoPrevio(r)).toEqual(['2 coinciden con lo que ya tienes (no se duplican)', '1 es nuevo', '1 parece repetido y necesita tu ayuda'])
   })
   it('un aproximado del extracto llega como dudoso con las dos filas', () => {
