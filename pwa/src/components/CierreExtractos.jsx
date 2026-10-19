@@ -4,7 +4,7 @@ import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useCuentas } from '../lib/CuentasContext'
 import { mensajeAmable } from '../lib/mensajes'
-import { CLASE_OTRO, conSigno, estadoCuenta, origenEmpece, textoBanco, textoPeriodo } from '../lib/cierreExtractos'
+import { CLASE_OTRO, CONCEPTO_RESUMEN, conSigno, estadoCuenta, notaIncluye, origenEmpece, textoBanco, textoPeriodo } from '../lib/cierreExtractos'
 import { Accion, EnlaceInterno } from './CuadreEncadenado'
 import CambiarCuentaExtracto from './CambiarCuentaExtracto'
 import AvisoSinTasa from './AvisoSinTasa'
@@ -40,6 +40,34 @@ function Fila({ etiqueta, valor, nota, fuerte, tono = '', children }) {
       {nota && <p className="text-[11px] text-ink-soft mt-0.5">{nota}</p>}
       {children}
     </div>
+  )
+}
+
+/** Lo que el resumen de tu extracto trae y no es una línea de movimientos (rendimientos, 4x1000, costos por retiro). */
+function DetalleResumen({ items, fmt, moneda }) {
+  const [abierto, setAbierto] = useState(false)
+  if (!items?.length) return null
+  return (
+    <>
+      <button type="button" onClick={() => setAbierto(!abierto)} aria-expanded={abierto} data-testid="detalle-resumen-boton"
+        className="min-h-11 inline-flex items-center gap-1 text-xs font-semibold text-accent">
+        {abierto ? 'Ocultar lo que trae tu extracto' : 'Ver lo que trae tu extracto'}
+        <ChevronDown size={16} aria-hidden="true" className={abierto ? 'rotate-180' : ''} />
+      </button>
+      {abierto && (
+        <ul className="rounded-xl bg-paper p-3 text-xs space-y-1.5" data-testid="detalle-resumen">
+          {items.map((d, i) => (
+            <li key={`${d.fecha}-${d.concepto}-${i}`} className="flex justify-between gap-3">
+              <span className="min-w-0">
+                <span className="block truncate">{d.descripcion}</span>
+                <span className="block text-[11px] text-ink-soft">{CONCEPTO_RESUMEN[d.concepto] || 'Resumen'} · {d.fecha.slice(5)}</span>
+              </span>
+              <span className="tabular-nums shrink-0">{conSigno(d.concepto === 'rendimientos' ? d.monto : -d.monto, fmt, moneda)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   )
 }
 
@@ -129,8 +157,11 @@ function BloqueCuenta({ c, mostrarNombre, onCambio }) {
       <div className="divide-y divide-line">
         <Fila etiqueta="Empecé con" valor={fmt(c.empece, m)} nota={`Saldo ${origenEmpece(c)}`} />
         <Fila etiqueta="Ingresos" valor={conSigno(c.ingresos, fmt, m)} tono="text-cuadra"
-          nota={c.rendimientos >= 0.5 ? `Incluye ${fmt(c.rendimientos, m)} de rendimientos` : undefined} />
-        <Fila etiqueta="Gastos" valor={conSigno(-c.gastos, fmt, m)} />
+          nota={notaIncluye([[c.rendimientos, 'rendimientos']], fmt, m)} />
+        <Fila etiqueta="Gastos" valor={conSigno(-c.gastos, fmt, m)}
+          nota={notaIncluye([[c.impuesto_4x1000, 'impuesto 4x1000'], [c.costos_retiro, 'costos por retiro']], fmt, m)}>
+          <DetalleResumen items={c.detalle_resumen} fmt={fmt} moneda={m} />
+        </Fila>
         {hayOtros && (
           <Fila etiqueta="Otros movimientos" valor={conSigno(c.otros, fmt, m)}
             nota="Plata que se movió sin ser ingreso ni gasto">
@@ -277,8 +308,9 @@ export default function CierreExtractos({ datos, onCambio }) {
         <div className="divide-y divide-line/60 mt-1">
           <Fila etiqueta="Empecé con" valor={fmt(t.empece, base)} />
           <Fila etiqueta="Ingresos" valor={conSigno(t.ingresos, fmt, base)} tono="text-cuadra"
-            nota={t.rendimientos >= 0.5 ? `Incluye ${fmt(t.rendimientos, base)} de rendimientos` : undefined} />
-          <Fila etiqueta="Gastos" valor={conSigno(-t.gastos, fmt, base)} />
+            nota={notaIncluye([[t.rendimientos, 'rendimientos']], fmt, base)} />
+          <Fila etiqueta="Gastos" valor={conSigno(-t.gastos, fmt, base)}
+            nota={notaIncluye([[t.impuesto_4x1000, 'impuesto 4x1000']], fmt, base)} />
           {Math.abs(t.otros || 0) >= 0.5 && <Fila etiqueta="Otros movimientos" valor={conSigno(t.otros, fmt, base)} />}
           <Fila etiqueta="Terminé con" valor={fmt(t.termine, base)} fuerte />
         </div>

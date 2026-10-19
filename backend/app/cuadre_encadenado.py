@@ -110,6 +110,12 @@ def _extractos_con_saldo(db: Session, cuenta_id: str) -> tuple[list[HistorialExt
     return sorted(con.values(), key=lambda h: cx.a_fecha(h.fecha_corte)), sin
 
 
+def _lineas_del_resumen(h: HistorialExtracto) -> set[str]:
+    """Qué líneas del resumen del extracto ya están en la revisión: {'rendimientos', 'impuesto_4x1000', 'costos_retiro'}."""
+    marcas = (("rendimiento", "rendimientos"), ("impuesto_4x1000", "impuesto_4x1000"), ("costos_retiro", "costos_retiro"))
+    return {nombre for i in _review(h) for marca, nombre in marcas if i.get(marca)}
+
+
 def _causas_de_linea(h: HistorialExtracto, d: float, cuenta_moneda: str) -> list[dict]:
     """Líneas del extracto sin importar cuya suma explica la diferencia `d` del mes."""
     pend = [i for i in _review(h) if i.get("estado") in ESTADOS_QUE_FALTAN and i.get("tipo") in ("income", "expense")]
@@ -258,13 +264,18 @@ def calcular(db: Session, cuenta: Cuenta, inicio_pp: datetime | None = None, *, 
             sobrantes = {i.get("match_id"): i for i in _review(h) if i.get("estado") == "sobrante"}
             fila["causas"] += _causas_de_linea(h, dif, moneda)
             fila["causas"] += _causas_de_movimientos(filas, dif, inicio, corte, sobrantes)
-            # Diferencia chica a favor del banco en una cuenta de ahorros sin la línea de rendimiento: lo más común es que el
-            # banco le sumó rendimientos que el extracto resume pero no lista (no es una causa segura: solo orienta).
-            if (cuenta.tipo != "credito" and 0 < dif <= 0.05 * max(abs(banco_fin), abs(banco_ini))
-                    and not any(i.get("rendimiento") for i in _review(h))):
-                fila["causas"].append({"codigo": "rendimientos", "probable": False, "efecto": 0.0, "texto": (
-                    f"Puede ser el rendimiento que tu banco le sumó a la cuenta ({cx.pesos(dif)}) y que el extracto no lista como "
-                    "movimiento. Toca «Registrar los rendimientos de mis extractos».")})
+            # Diferencia chica con el banco en una cuenta de ahorros: lo más común es que el extracto resuma, sin listarlos como
+            # movimientos, rendimientos que el banco SUMÓ y el 4x1000 o los costos por retiro que RESTÓ (no es una causa segura: solo orienta).
+            if cuenta.tipo != "credito" and 0 < abs(dif) <= 0.05 * max(abs(banco_fin), abs(banco_ini)):
+                lineas = _lineas_del_resumen(h)
+                if dif > 0 and "rendimientos" not in lineas:
+                    fila["causas"].append({"codigo": "rendimientos", "probable": False, "efecto": 0.0, "texto": (
+                        f"Puede ser el rendimiento que tu banco le sumó a la cuenta ({cx.pesos(dif)}) y que el extracto no lista como "
+                        "movimiento. Toca «Completar mis extractos».")})
+                elif not {"impuesto_4x1000", "costos_retiro"} <= lineas:
+                    fila["causas"].append({"codigo": "impuesto_4x1000", "probable": False, "efecto": 0.0, "texto": (
+                        f"Puede ser el 4x1000 o los costos por retiro del extracto ({cx.pesos(dif)}): el banco los descontó y el extracto "
+                        "los resume sin listarlos. Toca «Completar mis extractos».")})
         antes = any(m["fecha"] is not None and m["fecha"] < d_ini for m in mov)
         hay_apertura = any(m["apertura"] for m in mov)
         if (prev is None and not antes and not hay_apertura and not sin_ini and abs(banco_ini) >= TOL

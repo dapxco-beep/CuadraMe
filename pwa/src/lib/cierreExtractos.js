@@ -48,3 +48,18 @@ export function textoPeriodo(p) {
 export function origenEmpece(c) {
   return c?.empece_origen === 'extracto' ? 'según tu extracto' : 'lo que calculó la app'
 }
+
+/** «Incluye $9.000 de rendimientos y $4.000 de impuesto 4x1000». undefined si no hay nada que decir.
+ * `partes`: [[monto, 'rendimientos'], ...]; lo que no llega a medio peso no se menciona. */
+export function notaIncluye(partes, fmt, moneda) {
+  const dichas = partes.filter(([monto]) => (monto || 0) >= 0.5).map(([monto, nombre]) => `${fmt(monto, moneda)} de ${nombre}`)
+  if (!dichas.length) return undefined
+  return `Incluye ${dichas.length === 1 ? dichas[0] : `${dichas.slice(0, -1).join(', ')} y ${dichas[dichas.length - 1]}`}`
+}
+
+/** Lo que el resumen del extracto trae y no es una línea de movimientos: cómo se llama cada concepto en el detalle. */
+export const CONCEPTO_RESUMEN = {
+  rendimientos: 'Rendimientos',
+  impuesto_4x1000: 'Impuesto 4x1000',
+  costos_retiro: 'Costos por retiro',
+}

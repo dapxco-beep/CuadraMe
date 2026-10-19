@@ -29,11 +29,12 @@ from app import cuadre_encadenado as ce
 from app import cuadre_extracto as cx
 from app import punto_partida, saldo_inicial_auto
 from app.compartidos import cuentas_ids_accesibles
-from app.costos_financieros import CAT_RENDIMIENTOS
+from app.costos_financieros import CAT_GMF, CAT_RENDIMIENTOS
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_AJUSTE, ConvertidorBase, delta_saldo
 from app.cuentas_banco import palabras_marca, sin_acentos
 from app.informe_datos import cargar_movs_efectivos
 from app.models import Cuenta, HistorialExtracto
+from app.rendimientos_extracto import PREFIJO_RETIRO
 from app.utiles import ahora_co
 
 TOL = cx.TOLERANCIA
@@ -119,6 +120,12 @@ def _repetidos(filas_ventana: list[dict]) -> list[dict]:
     return [f for g in grupos.values() if len(g) > 1 for f in g[1:]]
 
 
+def _fila_resumen(f: dict, concepto: str, contrib: float) -> dict:
+    """Una línea del detalle expandible: «Impuesto 4x1000 (GMF) · agosto de 2026 · $4.000»."""
+    return {"concepto": concepto, "fecha": f["fecha"].date().isoformat(), "descripcion": (f.get("descripcion") or "")[:60],
+            "monto": round(abs(contrib), 2)}
+
+
 def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict[str, dict], conv: ConvertidorBase,
                  inicio_pp: datetime | None) -> dict | None:
     r = ce.calcular(db, c, inicio_pp)
@@ -133,8 +140,9 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
         return None  # esta cuenta no tuvo nada en este mes
 
     moneda = c.moneda or "COP"
-    ingresos = gastos = delta_mes = rendimientos = 0.0
-    ing_base = gas_base = 0.0
+    ingresos = gastos = delta_mes = rendimientos = impuesto_4x1000 = costos_retiro = 0.0
+    ing_base = gas_base = gmf_base = 0.0
+    detalle_resumen: list[dict] = []  # rendimientos, 4x1000 y costos por retiro que trae el resumen del extracto
     otros: list[dict] = []
     for f in en_ventana:
         if es_apertura(f):
@@ -148,9 +156,17 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
             ing_base += ef["monto"]
             if (f.get("categoria") or "").lower() == CAT_RENDIMIENTOS.lower():
                 rendimientos += contrib  # parte de los ingresos que es plata que rindió tu cuenta
+                detalle_resumen.append(_fila_resumen(f, "rendimientos", contrib))
         elif ef and ef["tipo"] == "expense":
             gastos += -contrib
             gas_base += ef["monto"]
+            if (f.get("categoria") or "").lower() == CAT_GMF.lower():
+                impuesto_4x1000 += -contrib  # parte de los gastos que es el impuesto del 4x1000 (GASTO real, no traslado)
+                gmf_base += ef["monto"]
+                detalle_resumen.append(_fila_resumen(f, "impuesto_4x1000", contrib))
+            elif (f.get("descripcion") or "").startswith(PREFIJO_RETIRO):
+                costos_retiro += -contrib
+                detalle_resumen.append(_fila_resumen(f, "costos_retiro", contrib))
         resto = round(d - contrib, 2)
         if abs(resto) >= TOL:
             otros.append({"fecha": f["fecha"].date().isoformat(), "descripcion": (f.get("descripcion") or "")[:60],
@@ -185,6 +201,8 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
         "periodo": {"desde": ini.isoformat(), "hasta": fin.isoformat(), "mes_completo": mes_calendario},
         "empece": round(empece, 2), "empece_origen": origen,
         "ingresos": round(ingresos, 2), "gastos": round(gastos, 2), "rendimientos": round(rendimientos, 2),
+        "impuesto_4x1000": round(impuesto_4x1000, 2), "costos_retiro": round(costos_retiro, 2),
+        "detalle_resumen": sorted(detalle_resumen, key=lambda d: (d["fecha"], d["concepto"]))[:MAX_DETALLE_OTROS],
         "otros": otros_total, "otros_detalle": sorted(otros, key=lambda o: o["fecha"])[:MAX_DETALLE_OTROS],
         "otros_total_movimientos": len(otros),
         "termine": termine, "segun_extracto": round(segun, 2) if segun is not None else None,
@@ -196,6 +214,7 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
         "motivo": None, "causas": [], "acciones": [], "sin_tasa": not ok,
         # En moneda base, para sumar entre cuentas.
         "base": {"empece": base(empece), "ingresos": round(ing_base, 2), "gastos": round(gas_base, 2), "rendimientos": base(rendimientos),
+                 "impuesto_4x1000": round(gmf_base, 2),
                  "otros": base(otros_total), "termine": base(termine), "diferencia": base(dif) if dif is not None else None},
         "_cambio_app": round(delta_mes, 2), "_banco_cambio": fila.get("banco_cambio") if fila else None,
         "_repetidos": _repetidos([f for f in en_ventana if not es_apertura(f)]) if estado == "no_cuadra" else [],
@@ -297,6 +316,7 @@ def construir(db: Session, usuario_id: str, mes: str) -> dict:
         bancos.append({"banco": nombres[k], "cuentas": lista, **r,
                        "total": {"empece": _suma(lista, "empece"), "ingresos": _suma(lista, "ingresos"),
                                  "gastos": _suma(lista, "gastos"), "rendimientos": _suma(lista, "rendimientos"),
+                                 "impuesto_4x1000": _suma(lista, "impuesto_4x1000"),
                                  "otros": _suma(lista, "otros"), "termine": _suma(lista, "termine")}})
     for c in cuentas:
         for k in ("_cambio_app", "_banco_cambio", "_repetidos"):
@@ -310,7 +330,7 @@ def construir(db: Session, usuario_id: str, mes: str) -> dict:
         "resumen_bancos": [{"banco": b["banco"], "estado": b["estado"], "diferencia": b["diferencia"]} for b in bancos],
         "bancos": bancos,
         "total": {"empece": _suma(cuentas, "empece"), "ingresos": _suma(cuentas, "ingresos"), "gastos": _suma(cuentas, "gastos"),
-                  "rendimientos": _suma(cuentas, "rendimientos"),
+                  "rendimientos": _suma(cuentas, "rendimientos"), "impuesto_4x1000": _suma(cuentas, "impuesto_4x1000"),
                   "otros": _suma(cuentas, "otros"), "termine": _suma(cuentas, "termine"), "cuentas": len(cuentas),
                   "cuadran": sum(1 for c in cuentas if c["estado"] == "cuadra"),
                   "no_cuadran": sum(1 for c in cuentas if c["estado"] == "no_cuadra"),

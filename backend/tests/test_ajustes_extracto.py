@@ -411,3 +411,32 @@ def test_el_lote_esta_aislado_por_usuario(monkeypatch, gmail):
     assert client.post("/conciliacion/ajustes-extracto/registrar", json={"confirmar": True}).json()["sin_cambios"] is True
     como("ae-9")
     assert client.get("/conciliacion/ajustes-extracto/previa").json()["total"] == 1
+
+
+# ── 4. Cierre de mes y causa orientativa del cuadre ───────────────────────────────────────
+def test_el_cierre_de_mes_muestra_rendimientos_4x1000_y_costos_con_su_detalle(monkeypatch):
+    como("ae-11")
+    cuenta = _cuenta()
+    _importar_todo(_procesar(cuenta, AGO, monkeypatch))
+    cierre = client.get("/cierre-mes/extractos?mes=2026-08").json()
+    c = cierre["bancos"][0]["cuentas"][0]
+    assert c["estado"] == "cuadra" and c["diferencia"] == 0
+    assert c["ingresos"] == 1_509_000.0 and c["rendimientos"] == 9000.0
+    assert c["gastos"] == 1_010_500.0 and c["impuesto_4x1000"] == 4000.0 and c["costos_retiro"] == 6500.0
+    detalle = {d["concepto"]: d["monto"] for d in c["detalle_resumen"]}
+    assert detalle == {"rendimientos": 9000.0, "impuesto_4x1000": 4000.0, "costos_retiro": 6500.0}
+    assert cierre["total"]["impuesto_4x1000"] == 4000.0 and cierre["bancos"][0]["total"]["impuesto_4x1000"] == 4000.0
+
+
+def test_el_cuadre_encadenado_orienta_hacia_completar_mis_extractos(monkeypatch, gmail):
+    cuenta, _ = _importado_con_lector_viejo("ae-12", [AGO, SEP], monkeypatch)
+    meses = {f["mes"]: f for f in _cuadre(cuenta)["meses"]}
+    # agosto descuadra EN CONTRA (el 4x1000 y los costos pesan más que los rendimientos): no es un rendimiento de menos
+    ago = [c for c in meses["2026-08"]["causas"] if c["codigo"] == "impuesto_4x1000"]
+    assert len(ago) == 1 and ago[0]["probable"] is False
+    assert "Puede ser el 4x1000 o los costos por retiro del extracto ($1.500)" in ago[0]["texto"] and "Completar mis extractos" in ago[0]["texto"]
+    # septiembre sobra a favor del banco: lo más probable son los rendimientos
+    sep = [c for c in meses["2026-09"]["causas"] if c["codigo"] == "rendimientos"]
+    assert len(sep) == 1 and "Completar mis extractos" in sep[0]["texto"]
+    client.post("/conciliacion/ajustes-extracto/registrar", json={"confirmar": True})
+    assert all(not f["causas"] for f in _cuadre(cuenta)["meses"])

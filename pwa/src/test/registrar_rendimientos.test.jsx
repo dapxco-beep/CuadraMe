@@ -151,6 +151,19 @@ describe('Cierre de mes con rendimientos', () => {
     expect(screen.getAllByText('Cuadra').length).toBeGreaterThan(0)
   })
 
+  it('los gastos incluyen el 4x1000 y los costos por retiro, con detalle que se abre', async () => {
+    const detalle = [
+      { concepto: 'rendimientos', fecha: '2026-09-30', descripcion: 'Rendimientos de tu cuenta Nu · septiembre de 2026', monto: 9000 },
+      { concepto: 'impuesto_4x1000', fecha: '2026-09-30', descripcion: 'Impuesto 4x1000 (GMF) · septiembre de 2026', monto: 4000 },
+    ]
+    render(<MemoryRouter><CierreExtractos datos={datos(cuenta({ impuesto_4x1000: 4000, costos_retiro: 6500, detalle_resumen: detalle }))} /></MemoryRouter>)
+    const c = screen.getByTestId('cierre-cuenta')
+    expect(c).toHaveTextContent(`Incluye ${fmtM(4000, 'COP')} de impuesto 4x1000 y ${fmtM(6500, 'COP')} de costos por retiro`)
+    expect(screen.queryByTestId('detalle-resumen')).toBeNull()
+    await userEvent.click(screen.getByTestId('detalle-resumen-boton'))
+    expect(screen.getByTestId('detalle-resumen')).toHaveTextContent('Impuesto 4x1000 (GMF) · septiembre de 2026')
+  })
+
   it('sin rendimientos no aparece la nota', () => {
     render(<MemoryRouter><CierreExtractos datos={datos(cuenta({ rendimientos: 0 }))} /></MemoryRouter>)
     expect(screen.getByTestId('cierre-cuenta')).not.toHaveTextContent('de rendimientos')
