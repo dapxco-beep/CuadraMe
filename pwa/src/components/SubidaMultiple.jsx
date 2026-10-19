@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, ArrowRightLeft, Check, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react'
+import { AlertTriangle, ArrowRightLeft, Check, FileSpreadsheet, FileText, Loader2, Pencil, X } from 'lucide-react'
 import { productoDeTexto, recordarCuenta, textoOpcionCuenta } from '../lib/cuentasBanco'
 import { api } from '../lib/api'
 import { formatCOP } from '../lib/format'
@@ -34,6 +34,7 @@ import {
   montoValido,
   agruparPorCuenta,
   clavesFaltantes,
+  textoCorreccion,
   clavesUnicas,
   consolidar,
   gemelasNuevas,
@@ -637,7 +638,7 @@ export default function SubidaMultiple({
                                 {titulos[clave] && <PistaBanco original={it.descripcion} />}
                                 <p className="text-xs text-danger">
                                   {it.fecha} ·{' '}
-                                  {repetido ? `Ya está en ${it.repetidoDe}` : it.estado === 'posible' ? 'Posible duplicado' : it.dudosa ? 'Monto por elegir' : 'Falta registrar'}
+                                  {repetido ? `Ya está en ${it.repetidoDe}` : it.estado === 'posible' ? 'Posible duplicado' : it.dudosa ? 'Monto por elegir' : it.correccion ? (it.correccion.tipo === 'quitar' ? 'Pago repetido' : 'Corrección') : 'Falta registrar'}
                                   {it.estado === 'nuevo' && gemelas > 1 ? ` · idéntico a otros ${gemelas - 1} (se importan juntos)` : ''}
                                 </p>
                                 {!repetido && (
@@ -658,7 +659,16 @@ export default function SubidaMultiple({
                             {it.dudosa && !repetido && (
                               <LineaDosMontos className="ml-8 mt-2" it={it} valor={montos[clave]} onElegir={(v) => elegirMonto(clave, v)} />
                             )}
-                            {it.pagoDetalle && !repetido && (
+                            {it.correccion && !repetido && (
+                              <div className="ml-8 mt-2 rounded-xl bg-accent-soft px-3 py-2.5" data-testid="linea-correccion">
+                                <p className="flex items-start gap-1.5 text-xs font-semibold text-accent">
+                                  <Pencil size={16} className="shrink-0" aria-hidden="true" />
+                                  <span>{textoCorreccion(it).titulo}</span>
+                                </p>
+                                {textoCorreccion(it).detalle && <p className="mt-1 text-[11px] leading-snug text-ink-soft">{textoCorreccion(it).detalle}</p>}
+                              </div>
+                            )}
+                            {it.pagoDetalle && !repetido && !it.correccion && (
                               <PagoAplicado className="ml-8 mt-2" detalle={it.pagoDetalle} aviso={it.apagada ? it.avisoLinea : null} />
                             )}
                             {it.restante != null && !repetido && (

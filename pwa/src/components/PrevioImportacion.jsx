@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { AlertTriangle, CheckCircle2, Plus } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Pencil, Plus } from 'lucide-react'
 import { formatCOP } from '../lib/format'
-import { resumenPrevio, textoPrevio } from '../lib/subidaMultiple'
+import { resumenPrevio, textoCorrecciones, textoPrevio } from '../lib/subidaMultiple'
 
 // «Esto es lo que va a pasar»: antes de traer nada, cuántas líneas ya las tienes, cuántas son nuevas y
 // cuáles parecen repetidas. Las dudosas se muestran en dos filas lado a lado: «¿es el mismo gasto?».
@@ -25,6 +25,9 @@ export default function PrevioImportacion({ items, onDecidir, className = '' }) 
       <ul className="mt-2 space-y-1.5 text-xs">
         <li className="flex items-start gap-1.5"><CheckCircle2 size={16} className="text-cuadra shrink-0" aria-hidden="true" /> {coincide}</li>
         <li className="flex items-start gap-1.5"><Plus size={16} className="text-accent shrink-0" aria-hidden="true" /> {nuevo}</li>
+        {r.correcciones > 0 && (
+          <li className="flex items-start gap-1.5" data-testid="previo-correcciones"><Pencil size={16} className="text-accent shrink-0" aria-hidden="true" /> {textoCorrecciones(r.correcciones)}</li>
+        )}
         {r.dudosos > 0 && (
           <li className="flex items-start gap-1.5 font-medium"><AlertTriangle size={16} className="text-accent shrink-0" aria-hidden="true" /> {dudoso}</li>
         )}

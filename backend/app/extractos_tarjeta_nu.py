@@ -388,8 +388,9 @@ def _movimiento(l: dict) -> dict | None:
                                      "aplicado": l["aplicado"]}})
         ap = l["aplicado"]
         if len(ap) == 2 and abs(abs(l["monto"] - ap[0]) - ap[1]) <= TOLERANCIA:
-            # El lector anterior leyó «Pago $A -$B -$C» (C = A−B) como un pago de B: si ya se importó así, se reconoce.
-            mov["huella_anterior"] = {"fecha": l["fecha"], "monto": ap[0], "descripcion": _DESC_ANTERIOR_PAGO, "tipo": "income"}
+            # El lector anterior leyó «Pago $A -$B -$C» (C = A−B) como un pago de B. Regla EXPLÍCITA (corregir_pago):
+            # si ya se importó así, no se ofrece un segundo pago: se corrige el monto del que ya existe.
+            mov["corrige_lectura"] = {"descripcion": _DESC_ANTERIOR_PAGO, "tipo": "income", "montos": list(ap)}
     return mov
 
 

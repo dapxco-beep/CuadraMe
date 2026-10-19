@@ -61,7 +61,7 @@ def _n(cantidad: int, uno: str, varios: str) -> str:
 def contar_review(review: list[dict]) -> dict:
     """Cuenta qué pasó con cada línea leída de un extracto. Pura: solo mira los estados."""
     c = {"leidas": 0, "ya_estaban": 0, "nuevas_agregadas": 0, "por_revisar": 0, "descartadas": 0,
-         "anteriores": 0, "duplicadas_detectadas": 0, "dudosas": 0, "lectura_dudosa": 0}
+         "anteriores": 0, "duplicadas_detectadas": 0, "dudosas": 0, "lectura_dudosa": 0, "correcciones": 0}
     for i in review or []:
         est = i.get("estado")
         if est == "sobrante":
@@ -79,6 +79,9 @@ def contar_review(review: list[dict]) -> dict:
             c["por_revisar"] += 1
             if i.get("lectura_dudosa"):
                 c["lectura_dudosa"] += 1  # trae varios montos: no se importa hasta que la persona elige
+        elif est in ("corregir_monto", "quitar_repetido"):
+            c["por_revisar"] += 1  # corrige un movimiento ya importado con la lectura vieja (corregir_pago.py)
+            c["correcciones"] += 1
         elif est == "borrado_antes":
             c["descartadas"] += 1
             if i.get("duplicado_evitado"):
@@ -105,7 +108,7 @@ def conteo_de_historial(h) -> dict:
     por_revisar = int(h.faltantes or 0) if h.estado == "pendiente_revision" else 0
     return {"leidas": total, "ya_estaban": ya, "nuevas_agregadas": nuevas, "por_revisar": por_revisar,
             "descartadas": 0, "anteriores": max(0, total - ya - nuevas - por_revisar),
-            "duplicadas_detectadas": int(h.exactos or 0), "dudosas": 0, "lectura_dudosa": 0}
+            "duplicadas_detectadas": int(h.exactos or 0), "dudosas": 0, "lectura_dudosa": 0, "correcciones": 0}
 
 
 def estado_de_conteo(conteo: dict, historial_estado: str | None = None) -> str:
@@ -137,7 +140,9 @@ def frase(estado: str, conteo: dict, *, mes: str | None, cuenta: str, banco: str
     if estado == POR_REVISAR:
         if leidas == 0 and falta == 0:
             return cab + "nuevo, listo para revisar"
-        return cab + f"{_n(leidas, 'movimiento leído', 'movimientos leídos')}, {ya} ya estaban y {_n(falta, 'falta registrar', 'faltan por registrar')}"
+        corr = conteo.get("correcciones") or 0
+        extra = f" (incluye {_n(corr, 'corrección', 'correcciones')})" if corr else ""
+        return cab + f"{_n(leidas, 'movimiento leído', 'movimientos leídos')}, {ya} ya estaban y {_n(falta, 'falta registrar', 'faltan por registrar')}{extra}"
     if nuevas == 0:
         base = f"{_n(leidas, 'movimiento leído', 'movimientos leídos')}, "
         base += f"{ya} ya estaban registrados, 0 nuevos" if ya != 1 else "1 ya estaba registrado, 0 nuevos"
@@ -261,7 +266,7 @@ def _item(*, clave, extracto_id, historial_id, cuenta_id, cuenta, banco, periodo
 
 
 _VACIO = {"leidas": 0, "ya_estaban": 0, "nuevas_agregadas": 0, "por_revisar": 0, "descartadas": 0,
-          "anteriores": 0, "duplicadas_detectadas": 0, "dudosas": 0, "lectura_dudosa": 0}
+          "anteriores": 0, "duplicadas_detectadas": 0, "dudosas": 0, "lectura_dudosa": 0, "correcciones": 0}
 
 
 def _banco_de(e) -> str:

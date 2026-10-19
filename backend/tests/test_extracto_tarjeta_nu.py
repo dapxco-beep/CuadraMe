@@ -340,18 +340,18 @@ def test_releer_un_extracto_guardado_con_la_lectura_vieja_lo_corrige_sin_duplica
 
 
 def test_la_version_del_lector_cambio_para_que_se_relean_los_pendientes():
-    assert rx.VERSION_LECTOR == "2026-10-v4-4x1000-costos"
+    assert rx.VERSION_LECTOR == "2026-10-v5-corregir-pago"
 
 
-def test_huella_anterior_del_pago_leido_por_b():
-    """Si el lector viejo ya importó «Pago de tu tarjeta (factura anterior)» por B (cuando C = A − B), el pago nuevo
-    por A se reconoce con esa huella y no se duplica."""
+def test_regla_explicita_de_correccion_del_pago_leido_por_b():
+    """Si el lector viejo ya importó «Pago de tu tarjeta (factura anterior)» por B (cuando C = A − B), el lector declara la
+    regla: el pago por A CORRIGE ese movimiento (corregir_pago.py), no lo reconoce por huella ni lo duplica."""
     pago = next(m for m in _lineas()["movimientos"] if m["linea_tipo"] == nu.PAGO and m["fecha"] == "2026-10-05")
-    assert pago["huella_anterior"] == {"fecha": "2026-10-05", "monto": 400000.0,
-                                       "descripcion": "Pago de tu tarjeta (factura anterior)", "tipo": "income"}
+    assert pago["corrige_lectura"] == {"descripcion": "Pago de tu tarjeta (factura anterior)", "tipo": "income",
+                                       "montos": [400000.0, 200000.0]}
+    assert "huella_anterior" not in pago
     otro = next(m for m in _lineas()["movimientos"] if m["linea_tipo"] == nu.PAGO and m["fecha"] == "2026-09-18")
-    assert "huella_anterior" not in otro  # 400.000 ≠ 27.000 + 0: el lector viejo nunca lo leyó como pago
-
+    assert "corrige_lectura" not in otro  # 400.000 ≠ 27.000 + 0: el lector viejo nunca lo leyó como pago
 
 # ── 5) Producto y cuenta ──────────────────────────────────────────────────────────────────────
 def _c(i, nombre, tipo):

@@ -97,7 +97,7 @@ export function normalizarPdf(r) {
       confianza: typeof m.confianza_categoria === 'number' ? m.confianza_categoria : null,
       // 'anterior': antes de la fecha de inicio (punto de partida): no se ofrece ni se importa.
       // 'dudoso': parece algo que ya tienes pero no es idéntico; la persona decide (dos filas lado a lado).
-      estado: m.estado === 'faltante' ? 'nuevo' : m.estado === 'anterior' ? 'anterior'
+      estado: m.estado === 'faltante' || m.estado === 'corregir_monto' || m.estado === 'quitar_repetido' ? 'nuevo' : m.estado === 'anterior' ? 'anterior'
         : m.estado === 'aproximado' && m.descripcion_registrada ? 'dudoso' : 'ya',
       registrado: m.estado === 'aproximado' && m.descripcion_registrada
         ? { descripcion: m.descripcion_registrada, monto: m.monto_registrado, fecha: m.fecha_registrada } : null,
@@ -113,6 +113,10 @@ export function normalizarPdf(r) {
       restante: typeof m.restante === 'number' && m.restante > 0 ? m.restante : null,
       cuotas: m.cuotas || null,
       avisoLinea: m.aviso_linea || null,
+      // Corrige un movimiento ya importado con la lectura vieja (el lector lo declara): no crea otro movimiento.
+      correccion: m.estado === 'corregir_monto'
+        ? { tipo: 'corregir', anterior: m.monto_anterior ?? null }
+        : m.estado === 'quitar_repetido' ? { tipo: 'quitar', correcto: m.monto_correcto ?? null } : null,
       apagada: m.marcar_por_defecto === false, // sin certeza: la casilla queda apagada hasta que la persona confirme
     }))
   const filaInfo = (m) => ({
@@ -358,11 +362,41 @@ export function resumenPrevio(items) {
   const n = (...estados) => lista.filter((i) => estados.includes(i.estado)).length
   return {
     coinciden: n('ya', 'repetido'),
-    nuevos: n('nuevo', 'posible'),
+    nuevos: lista.filter((i) => ['nuevo', 'posible'].includes(i.estado) && !i.correccion).length,
+    correcciones: lista.filter((i) => i.estado === 'nuevo' && i.correccion).length,
     dudosos: n('dudoso'),
     anteriores: n('anterior'),
   }
 }
+
+const pesos = (v) => `$${new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(v)}`
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+const diaMes = (iso) => {
+  const [, m, d] = fechaISO(iso).split('-')
+  return `${Number(d)} ${MESES_CORTOS[Number(m) - 1] || ''}`.trim()
+}
+
+/**
+ * Texto de una línea de corrección (null si la línea no corrige nada):
+ *  corregir: «Corrige tu pago del 5 oct: pasa de $B a $A (es lo que pagaste; $B y $C son cómo se aplicó)»
+ *  quitar:   «Quitar el pago repetido de $B» (+ detalle: «Tienes dos pagos del 5 oct ($B y $A)»).
+ */
+export function textoCorreccion(it) {
+  const c = it?.correccion
+  if (!c) return null
+  const dia = diaMes(it.fecha)
+  if (c.tipo === 'quitar') {
+    return {
+      titulo: `Quitar el pago repetido de ${pesos(it.monto)}`,
+      detalle: c.correcto != null ? `Tienes dos pagos del ${dia} (${pesos(it.monto)} y ${pesos(c.correcto)}). Queda el de ${pesos(c.correcto)}.` : null,
+    }
+  }
+  const aplicado = Array.isArray(it.pagoDetalle?.aplicado) ? it.pagoDetalle.aplicado.filter((v) => typeof v === 'number') : []
+  const como = aplicado.length ? ` (es lo que pagaste; ${aplicado.map(pesos).join(' y ')} son cómo se aplicó)` : ''
+  return { titulo: `Corrige tu pago del ${dia}: pasa de ${pesos(c.anterior)} a ${pesos(it.monto)}${como}`, detalle: null }
+}
+
+export const textoCorrecciones = (n) => (n === 1 ? '1 corrección' : `${n} correcciones`)
 
 /** Texto de una línea del resumen previo, sin jerga. */
 export function textoPrevio({ coinciden, nuevos, dudosos }) {

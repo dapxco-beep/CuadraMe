@@ -36,3 +36,19 @@ La huella de una línea (`compute_fingerprint`) incluye el id de la cuenta, así
 guardada ya no coincide con la que sale al releer. `releer_extracto.reconciliar` reconoce esas líneas conservadas
 (mismo día, tipo, monto y comercio parecido, 1:1) y anota la huella nueva en `huellas_alt` de la línea conservada:
 no se ofrece como «por importar» ni ahora ni en relecturas futuras. Sin columnas ni migraciones nuevas.
+
+## Corregir el monto de una línea ya importada (`app/corregir_pago.py`)
+Cuando un lector nuevo lee distinto el MONTO de algo que el lector viejo ya importó, no se ofrece una segunda línea:
+- **Solo con regla explícita del lector.** La línea nueva trae `corrige_lectura` = {descripción que dejaba el lector
+  anterior, tipo, montos con que la leía}. Hoy hay una: el pago de la tarjeta Nu («Pago $A -$B -$C», C = A−B, se
+  importó como «Pago de tu tarjeta (factura anterior)» por B). **Nunca** por parecido de monto, día o comercio.
+- **Corregir:** movimiento de la misma cuenta, ±3 días, descripción vieja y monto B o C -> la línea pasa a
+  `corregir_monto` (encendida por defecto). Al importar se actualiza ese movimiento (mismo id, fecha, vínculos,
+  categoría y marca de traslado propio), el saldo de la cuenta cambia en A−B (cuenta bloqueada) y nunca se crea otro.
+  Su descripción pasa a la de hoy y las huellas toman el monto nuevo, así la misma línea no se vuelve a ofrecer.
+- **Ya duplicado** (el viejo por B y el nuevo por A): la línea vieja pasa a `quitar_repetido`; al importar se borra con
+  motivo «error» (sin fantasma que bloquee), se revierte su saldo y se recalcula el ajuste inicial.
+- Se marca al procesar y al releer (también en «solo agregar»: solo propone, no cambia nada hasta importar). Si el
+  movimiento ya no existe al importar, la línea se importa como pago normal. Idempotente. Sin columnas ni migraciones.
+- El pago de tarjeta sigue sin contar como ingreso ni gasto (regla única `contabilidad.py`, `MARCA_TRASLADO_PROPIO`).
+- Para sumar otra corrección: que el lector declare `corrige_lectura` en esa línea y añadir su prueba sintética.
