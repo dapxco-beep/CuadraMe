@@ -29,6 +29,7 @@ from app import cuadre_encadenado as ce
 from app import cuadre_extracto as cx
 from app import punto_partida, saldo_inicial_auto
 from app.compartidos import cuentas_ids_accesibles
+from app.costos_financieros import CAT_RENDIMIENTOS
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, FUENTE_AJUSTE, ConvertidorBase, delta_saldo
 from app.cuentas_banco import palabras_marca, sin_acentos
 from app.informe_datos import cargar_movs_efectivos
@@ -132,7 +133,7 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
         return None  # esta cuenta no tuvo nada en este mes
 
     moneda = c.moneda or "COP"
-    ingresos = gastos = delta_mes = 0.0
+    ingresos = gastos = delta_mes = rendimientos = 0.0
     ing_base = gas_base = 0.0
     otros: list[dict] = []
     for f in en_ventana:
@@ -145,6 +146,8 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
         if ef and ef["tipo"] == "income":
             ingresos += contrib
             ing_base += ef["monto"]
+            if (f.get("categoria") or "").lower() == CAT_RENDIMIENTOS.lower():
+                rendimientos += contrib  # parte de los ingresos que es plata que rindió tu cuenta
         elif ef and ef["tipo"] == "expense":
             gastos += -contrib
             gas_base += ef["monto"]
@@ -181,7 +184,7 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
         "motivo_sin_extracto": (sin_saldo or {}).get("texto") if sin_saldo else None,
         "periodo": {"desde": ini.isoformat(), "hasta": fin.isoformat(), "mes_completo": mes_calendario},
         "empece": round(empece, 2), "empece_origen": origen,
-        "ingresos": round(ingresos, 2), "gastos": round(gastos, 2),
+        "ingresos": round(ingresos, 2), "gastos": round(gastos, 2), "rendimientos": round(rendimientos, 2),
         "otros": otros_total, "otros_detalle": sorted(otros, key=lambda o: o["fecha"])[:MAX_DETALLE_OTROS],
         "otros_total_movimientos": len(otros),
         "termine": termine, "segun_extracto": round(segun, 2) if segun is not None else None,
@@ -192,7 +195,7 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
         "aviso": fila.get("texto") if fila and fila.get("cadena_rota") and estado == "cuadra" else None,
         "motivo": None, "causas": [], "acciones": [], "sin_tasa": not ok,
         # En moneda base, para sumar entre cuentas.
-        "base": {"empece": base(empece), "ingresos": round(ing_base, 2), "gastos": round(gas_base, 2),
+        "base": {"empece": base(empece), "ingresos": round(ing_base, 2), "gastos": round(gas_base, 2), "rendimientos": base(rendimientos),
                  "otros": base(otros_total), "termine": base(termine), "diferencia": base(dif) if dif is not None else None},
         "_cambio_app": round(delta_mes, 2), "_banco_cambio": fila.get("banco_cambio") if fila else None,
         "_repetidos": _repetidos([f for f in en_ventana if not es_apertura(f)]) if estado == "no_cuadra" else [],
@@ -293,8 +296,8 @@ def construir(db: Session, usuario_id: str, mes: str) -> dict:
         r = _resumen_banco(lista)
         bancos.append({"banco": nombres[k], "cuentas": lista, **r,
                        "total": {"empece": _suma(lista, "empece"), "ingresos": _suma(lista, "ingresos"),
-                                 "gastos": _suma(lista, "gastos"), "otros": _suma(lista, "otros"),
-                                 "termine": _suma(lista, "termine")}})
+                                 "gastos": _suma(lista, "gastos"), "rendimientos": _suma(lista, "rendimientos"),
+                                 "otros": _suma(lista, "otros"), "termine": _suma(lista, "termine")}})
     for c in cuentas:
         for k in ("_cambio_app", "_banco_cambio", "_repetidos"):
             c.pop(k, None)
@@ -307,6 +310,7 @@ def construir(db: Session, usuario_id: str, mes: str) -> dict:
         "resumen_bancos": [{"banco": b["banco"], "estado": b["estado"], "diferencia": b["diferencia"]} for b in bancos],
         "bancos": bancos,
         "total": {"empece": _suma(cuentas, "empece"), "ingresos": _suma(cuentas, "ingresos"), "gastos": _suma(cuentas, "gastos"),
+                  "rendimientos": _suma(cuentas, "rendimientos"),
                   "otros": _suma(cuentas, "otros"), "termine": _suma(cuentas, "termine"), "cuentas": len(cuentas),
                   "cuadran": sum(1 for c in cuentas if c["estado"] == "cuadra"),
                   "no_cuadran": sum(1 for c in cuentas if c["estado"] == "no_cuadra"),
