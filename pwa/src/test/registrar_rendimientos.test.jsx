@@ -1,4 +1,4 @@
-// «Registrar los rendimientos de mis extractos»: textos, botón único, vista previa con el total, avance y resultado;
+// «Completar mis extractos: rendimientos e impuestos»: textos, botón único, vista previa con el total, avance y resultado;
 // y el Cierre de mes que muestra los rendimientos dentro de los ingresos. Números inventados.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
@@ -34,7 +34,7 @@ beforeEach(() => {
 
 describe('textos', () => {
   it('botón, línea por extracto, total y avisos', () => {
-    expect(textoBoton(2)).toBe('Registrar los rendimientos de mis extractos (2)')
+    expect(textoBoton(2)).toBe('Completar mis extractos: rendimientos e impuestos (2)')
     expect(lineaExtracto(EXT('2026-09', 9000), fmt)).toBe('Septiembre 2026 · Nu Colombia · unos $9000')
     expect(lineaExtracto(EXT('2026-09', 9000, { estimado: false }), fmt)).toBe('Septiembre 2026 · Nu Colombia · $9000')
     expect(textoTotal(PREVIA, fmt)).toBe('En total, unos $17000. El valor exacto sale de leer cada extracto otra vez.')
@@ -44,14 +44,26 @@ describe('textos', () => {
     expect(avisoExtracto(EXT('2026-09', 1, { releera: false }))).toBe('')
   })
 
+  it('la previa exacta dice cuánto de cada concepto; lo estimado, aparte', () => {
+    const e = EXT('2026-08', 19500, { estimado: false, conceptos: { rendimientos: 9000, impuesto_4x1000: 4000, costos_retiro: 6500 } })
+    expect(lineaExtracto(e, fmt)).toBe('Agosto 2026 · Nu Colombia · $9000 de rendimientos, $4000 de 4x1000 y $6500 de costos por retiro')
+    const p = { total: 2, total_pesos: 28600, aproximado: true, por_concepto: { rendimientos: 9000, impuesto_4x1000: 4000, costos_retiro: 6500 }, por_determinar: 9100 }
+    expect(textoTotal(p, fmt)).toBe('En total, $9000 de rendimientos, $4000 de 4x1000 y $6500 de costos por retiro. Además, unos $9100 que salen de leer cada extracto otra vez.')
+    expect(textoTotal({ ...p, por_determinar: 0, aproximado: false }, fmt)).toBe('En total, $9000 de rendimientos, $4000 de 4x1000 y $6500 de costos por retiro.')
+  })
+
   it('progreso, resumen y resultados', () => {
-    expect(textoProgreso(1, 2)).toBe('Registrando 1 de 2…')
-    expect(resumenFinal({ registrados: 2, total: 17000 }, fmt)).toBe('Registré los rendimientos de 2 extractos: $17000 en total.')
-    expect(resumenFinal({}, fmt)).toBe('Tus extractos ya tienen sus rendimientos. No cambié nada.')
+    expect(textoProgreso(1, 2)).toBe('Completando 1 de 2…')
+    expect(resumenFinal({ registrados: 2, total: 17000 }, fmt)).toBe('Completé 2 extractos: $17000.')
+    expect(resumenFinal({ registrados: 2, porConcepto: { rendimientos: 17000, impuesto_4x1000: 4400, costos_retiro: 6500 } }, fmt))
+      .toBe('Completé 2 extractos: $17000 de rendimientos, $4400 de 4x1000 y $6500 de costos por retiro.')
+    expect(resumenFinal({}, fmt)).toBe('Tus extractos ya están completos. No cambié nada.')
     const j = juntarResultados([PASO('2026-09', 9000), PASO('2026-10', 0, { estado: 'saltado', motivo: 'No pudimos abrir el PDF.' })], 0, fmt)
     expect(j).toMatchObject({ registrados: 1, saltados: 1, total: 9000 })
-    expect(j.resumen).toBe('Registré los rendimientos de 1 extracto: $9000 en total. 1 extracto quedó para después.')
+    expect(j.resumen).toBe('Completé 1 extracto: $9000 de rendimientos. 1 extracto quedó para después.')
     expect(lineaResultado(j.resultados[0], fmt)).toBe('Septiembre 2026: $9000 de rendimientos registrados')
+    const c = { rendimientos: 9000, impuesto_4x1000: 4000, costos_retiro: 6500 }
+    expect(lineaResultado({ ...j.resultados[0], conceptos: c }, fmt)).toBe('Septiembre 2026: $9000 de rendimientos, $4000 de 4x1000 y $6500 de costos por retiro registrados')
     expect(lineaResultado(j.resultados[1], fmt)).toBe('Octubre 2026: para después. No pudimos abrir el PDF.')
   })
 })
@@ -73,7 +85,7 @@ describe('<RegistrarRendimientos>', () => {
 
   it('la previa muestra la lista y el total; nada cambia hasta confirmar', async () => {
     montar()
-    await userEvent.click(await screen.findByRole('button', { name: /Registrar los rendimientos de mis extractos \(2\)/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /Completar mis extractos: rendimientos e impuestos \(2\)/ }))
     expect(screen.getByText(/Septiembre 2026 · Nu Colombia · unos \$\s?9\.000/)).toBeInTheDocument()
     expect(screen.getByTestId('total-rendimientos')).toHaveTextContent(/En total, unos \$\s?17\.000/)
     expect(api.registrarRendimientos).not.toHaveBeenCalled()
@@ -87,10 +99,10 @@ describe('<RegistrarRendimientos>', () => {
       .mockResolvedValueOnce(PASO('2026-10', 8000))
     montar({ onListo })
     await userEvent.click(await screen.findByTestId('registrar-rendimientos'))
-    await userEvent.click(screen.getByRole('button', { name: 'Sí, registrar' }))
-    expect(await screen.findByTestId('progreso-rendimientos')).toHaveTextContent('Registrando 1 de 2…')
+    await userEvent.click(screen.getByRole('button', { name: 'Sí, completar' }))
+    expect(await screen.findByTestId('progreso-rendimientos')).toHaveTextContent('Completando 1 de 2…')
     liberar()
-    expect(await screen.findByTestId('resumen-rendimientos')).toHaveTextContent(/Registré los rendimientos de 2 extractos: \$\s?17\.000 en total\./)
+    expect(await screen.findByTestId('resumen-rendimientos')).toHaveTextContent(/Completé 2 extractos: \$\s?17\.000 de rendimientos\./)
     expect(api.registrarRendimientos).toHaveBeenNthCalledWith(1, { maximo: 1, excluir: [], continuar: false })
     expect(api.registrarRendimientos).toHaveBeenNthCalledWith(2, { maximo: 1, excluir: ['h-2026-09'], continuar: true })
     expect(onListo).toHaveBeenCalled()
@@ -102,7 +114,7 @@ describe('<RegistrarRendimientos>', () => {
       .mockResolvedValueOnce(PASO('2026-10', 0, { estado: 'saltado', motivo: 'No pudimos abrir el PDF. No cambié nada.' }))
     montar()
     await userEvent.click(await screen.findByTestId('registrar-rendimientos'))
-    await userEvent.click(screen.getByRole('button', { name: 'Sí, registrar' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Sí, completar' }))
     expect(await screen.findByTestId('resumen-rendimientos')).toHaveTextContent('1 extracto quedó para después')
     expect(screen.getByText(/Octubre 2026: para después\. No pudimos abrir el PDF/)).toBeInTheDocument()
     cleanup()
@@ -110,8 +122,8 @@ describe('<RegistrarRendimientos>', () => {
     api.registrarRendimientos.mockResolvedValueOnce(PASO('2026-09', 9000)).mockRejectedValueOnce(new Error('Failed to fetch'))
     montar()
     await userEvent.click(await screen.findByTestId('registrar-rendimientos'))
-    await userEvent.click(screen.getByRole('button', { name: 'Sí, registrar' }))
-    expect(await screen.findByTestId('resumen-rendimientos')).toHaveTextContent('Registré los rendimientos de 1 extracto')
+    await userEvent.click(screen.getByRole('button', { name: 'Sí, completar' }))
+    expect(await screen.findByTestId('resumen-rendimientos')).toHaveTextContent('Completé 1 extracto')
     expect(screen.getByRole('alert')).toBeInTheDocument()
   })
 })

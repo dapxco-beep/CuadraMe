@@ -12,10 +12,11 @@ import {
 } from '../lib/registrarRendimientos'
 
 /**
- * «Registrar los rendimientos de mis extractos (N)»: UN botón y una hoja. Los extractos de tu cuenta de ahorros suman
- * los rendimientos a tu saldo pero no los listan como movimientos, y por eso esos meses no cuadran al peso. La hoja
- * muestra la vista previa (qué extractos, de cuánto y el total) y un solo «Sí, registrar». Se registra de a uno
- * («Registrando 3 de 6…»); un extracto que no se puede leer se salta y se dice por qué. Se oculta solo cuando no hay nada.
+ * «Completar mis extractos: rendimientos e impuestos (N)»: UN botón y una hoja. Los extractos de tu cuenta de ahorros suman
+ * los rendimientos a tu saldo y le restan el impuesto del 4x1000 y los costos por retiro, pero no los listan como
+ * movimientos, y por eso esos meses no cuadran al peso. La hoja muestra la vista previa (qué extractos, de cuánto, el total
+ * por concepto) y un solo «Sí, completar». Se completa de a uno («Completando 3 de 6…»); un extracto que no se puede leer
+ * se salta y se dice por qué. Se oculta solo cuando no hay nada.
  */
 export default function RegistrarRendimientos({ className = '', onListo }) {
   const bloqueo = useBloqueo() || {}
@@ -89,16 +90,17 @@ export default function RegistrarRendimientos({ className = '', onListo }) {
       )}
 
       {abierta && (
-        <Hoja onCerrar={() => { if (!trabajando) setAbierta(false) }} titulo="Registrar los rendimientos de mis extractos">
+        <Hoja onCerrar={() => { if (!trabajando) setAbierta(false) }} titulo="Completar mis extractos: rendimientos e impuestos">
           {({ cerrar }) => (
             <div data-testid="hoja-registrar-rendimientos">
-              <h2 className="text-lg font-bold">Registrar los rendimientos de mis extractos</h2>
+              <h2 className="text-lg font-bold">Completar mis extractos: rendimientos e impuestos</h2>
 
               {!final && (
                 <>
                   <p className="text-sm text-ink-soft mt-1">
-                    Tu banco le suma rendimientos a tu cuenta, pero el extracto no los lista como movimientos. Por eso esos meses no cuadran al peso.
-                    Los leo de cada extracto y los registro como ingreso en «Rendimientos». No toco lo que ya tienes.
+                    Tu banco le suma rendimientos a tu cuenta y le resta el impuesto del 4x1000 y los costos por retiro, pero el extracto no los lista
+                    como movimientos. Por eso esos meses no cuadran al peso. Los leo de cada extracto: los rendimientos quedan como ingreso y lo demás
+                    como gasto. No toco lo que ya tienes.
                   </p>
                   <ul className="mt-3 flex flex-col gap-2" data-testid="lista-rendimientos">
                     {(previa?.extractos || []).map((e) => (
@@ -117,7 +119,7 @@ export default function RegistrarRendimientos({ className = '', onListo }) {
                     onClick={registrarTodo}
                     className="mt-4 w-full min-h-11 rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-60"
                   >
-                    {trabajando ? 'Un momento...' : 'Sí, registrar'}
+                    {trabajando ? 'Un momento...' : 'Sí, completar'}
                   </button>
                   <button type="button" disabled={trabajando} onClick={cerrar} className="mt-1 w-full min-h-11 text-sm font-semibold text-ink-soft disabled:opacity-50">Dejarlo así</button>
                 </>
