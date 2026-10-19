@@ -17,6 +17,7 @@ from app.autocat import (
 from app import duplicados as dup
 from app import cuadre_extracto
 from app import arreglar_tarjetas
+from app import corregir_pago
 from app import reasignar_extracto
 from app import estado_traer
 from app.extractos_vista import clasificar_motivo
@@ -278,6 +279,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
         resultado["faltantes"] -= auto_importados
 
     _confirmar_pagos_de_tarjeta(db, usuario.id, cuenta, banco, resultado["review"])
+    corregir_pago.marcar(db, usuario.id, cuenta.id, resultado["review"])  # pago ya importado con la lectura vieja: se corrige, no se duplica
 
     historial = HistorialExtracto(
         usuario_id=usuario.id,
@@ -645,7 +647,7 @@ def importar_faltantes(
     db.refresh(historial)  # la revisión que dejó la petición anterior (si la hubo), no la que se leyó antes del candado
     review = json.loads(historial.review_json or "[]")
     fingerprints = set(data.fingerprints)
-    if not any(i.get("fingerprint") in fingerprints and i.get("estado") == "faltante" for i in review):
+    if not any(i.get("fingerprint") in fingerprints and i.get("estado") in ("faltante", *corregir_pago.ESTADOS_CORRECCION) for i in review):
         historial.estado = estado_previo  # nada por importar (ya se hizo): se suelta el candado sin tocar nada
         db.commit()
         return _resultado_ya_importado(historial)
@@ -687,8 +689,32 @@ def importar_faltantes(
     absorbidas = _absorbidas_por_otro_canal(
         db, usuario.id, cuenta, [i for i in review if i.get("fingerprint") in fingerprints and i.get("estado") == "faltante"])
 
+    corregidos = repetidos_quitados = 0
+    fuera_de_la_revision: list[dict] = []  # líneas viejas que una corrección reemplaza o borra
     for item in review:
         fp = item.get("fingerprint")
+        # Pago que el lector viejo leyó con otro monto (corregir_pago.py): se corrige el movimiento que ya existe.
+        if fp in fingerprints and item.get("estado") == corregir_pago.CORREGIR:
+            hecho = corregir_pago.corregir(db, usuario.id, cuenta, historial.id, item, _huella_linea(db, usuario.id, item))
+            if hecho is not None:
+                item.update({"estado": "importado", "movimiento_id": hecho["movimiento_id"],
+                             "monto_anterior": hecho["monto_anterior"], "corregido": True})
+                for k in ("marcar_por_defecto", "aviso_linea"):
+                    item.pop(k, None)
+                fuera_de_la_revision += [v for v in review if v is not item and v.get("movimiento_id") == hecho["movimiento_id"]
+                                         and v.get("estado") in ("importado", corregir_pago.QUITAR)]
+                corregidos += 1
+                continue
+            for k in ("corrige_movimiento_id", "monto_anterior"):  # el movimiento ya no está: es un pago normal
+                item.pop(k, None)
+            item["estado"] = "faltante"
+        elif fp in fingerprints and item.get("estado") == corregir_pago.QUITAR:
+            if corregir_pago.quitar(db, usuario.id, cuenta, item):
+                fuera_de_la_revision.append(item)
+                repetidos_quitados += 1
+            else:
+                item["estado"] = "importado"
+            continue
         if fp not in fingerprints or item.get("estado") != "faltante":
             continue
         # Línea con varios montos: sin el monto que la persona eligió NO se importa (no se adivina).
@@ -780,11 +806,14 @@ def importar_faltantes(
             else:
                 reglas_omitidas.append({"huella": r["huella"], "motivo": r["motivo"], "descripcion": item["descripcion"], "categoria": categoria})
 
+    if fuera_de_la_revision:  # la línea vieja ya no existe: la nueva (o el movimiento bueno) la reemplaza
+        quitar_ids = {id(v) for v in fuera_de_la_revision}
+        review[:] = [v for v in review if id(v) not in quitar_ids]
     historial.review_json = json.dumps(review, default=str)
     historial.importados = (historial.importados or 0) + importados
-    historial.estado = "conciliado" if all(i["estado"] != "faltante" for i in review) else estado_previo
+    historial.estado = "conciliado" if all(i["estado"] not in ("faltante", *corregir_pago.ESTADOS_CORRECCION) for i in review) else estado_previo
     estado_traer.sincronizar_contadores(historial, review)  # los contadores del historial ya no se quedan viejos
-    if not any(i.get("estado") in ("faltante", "dudoso") for i in review):
+    if not any(i.get("estado") in ("faltante", "dudoso", *corregir_pago.ESTADOS_CORRECCION) for i in review):
         cuadre_extracto.registrar_cuadre(db, cuenta, historial)  # recuerda si este mes cuadra (para avisar si deja de cuadrar)
 
     db.commit()
@@ -803,6 +832,7 @@ def importar_faltantes(
         "anteriores_actualizados": anteriores_actualizados, "reglas_omitidas": reglas_omitidas,
         "duplicados_omitidos": duplicados_omitidos, "sin_direccion": sin_direccion,
         "anteriores_omitidas": anteriores_omitidas, "dudosas_omitidas": dudosas_omitidas,
+        "corregidos": corregidos, "repetidos_quitados": repetidos_quitados,
     }
 
 

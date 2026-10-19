@@ -38,18 +38,19 @@ from app.extractos_tarjeta_nu import datos_de_lectura, es_extracto_tarjeta_nu, l
 from app.conciliacion import parse_bank_date, parse_texto_con_regex, fijar_nombre_titular, huella_de_linea
 from app.crons import liberar_marca, reclamar_marca
 from app.extractos_gmail import abrir_pdf, claves_candidatas, descargar_adjunto, listar_adjuntos_pdf
+from app import corregir_pago
 from app import duplicados as dup
 from app.cuentas_banco import CREDITO, producto_de_texto
 from app.models import ExtractoCorreo, HistorialExtracto, Cuenta
 
 logger = logging.getLogger(__name__)
 
-VERSION_LECTOR = "2026-10-v4-4x1000-costos"  # súbela cuando el lector de extractos mejore y valga la pena releer
+VERSION_LECTOR = "2026-10-v5-corregir-pago"  # súbela cuando el lector de extractos mejore y valga la pena releer
 PREFIJO = "releer_extracto:"
 MAXIMO_AUTOMATICO = 3  # PDFs por apertura de «Traer movimientos»
 
 # Estados que la persona (o la app) ya resolvió: se conservan tal cual.
-REEMPLAZABLES = ("faltante", "anterior")
+REEMPLAZABLES = ("faltante", "anterior", "corregir_monto")
 
 MSG_MANUAL = "Este extracto lo subiste a mano; súbelo de nuevo para leerlo otra vez."
 MSG_FALLA = "No pudimos releerlo ahora. Prueba de nuevo en un rato; no cambié nada."
@@ -215,7 +216,10 @@ def reconciliar(review_viejo: list[dict], nuevas: list[dict], *, descartados: di
 def frase_resultado(res: dict) -> str:
     def n(c, uno, varios):
         return f"{c} {uno if c == 1 else varios}"
+    corr = res.get("correcciones") or 0
     if not (res["cambiadas"] or res["agregadas"] or res["quitadas"]):
+        if corr:
+            return f"Encontré {n(corr, 'corrección', 'correcciones')} en lo que ya importaste. Revísala antes de importar."
         return "Ya estaba bien leído: no cambié nada."
     partes = [f"Cambié {n(res['cambiadas'], 'línea', 'líneas')}", f"agregué {res['agregadas']}"]
     if res["quitadas"]:
@@ -301,6 +305,12 @@ def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None, sol
                     item["confianza_categoria"] = 0.6
             _confirmar_pagos_de_tarjeta(db, usuario.id, cuenta, h.banco_detectado or "", pendientes)
             _enriquecer_dudosas(db, usuario.id, pendientes)
+
+        # Un pago que el lector viejo leyó con otro monto y ya está importado: se CORRIGE ese movimiento (no se duplica).
+        corregidas = 0 if no_cuadra else corregir_pago.marcar(db, usuario.id, cuenta.id, nuevo_review)
+        res["correcciones"] = sum(1 for i in nuevo_review if i.get("estado") in corregir_pago.ESTADOS_CORRECCION)
+        if corregidas:
+            nuevo_review = list(nuevo_review)  # copia: así se guarda aunque la reconciliación no cambiara nada
 
         if nuevo_review is not review:
             h.review_json = json.dumps(nuevo_review, default=str)

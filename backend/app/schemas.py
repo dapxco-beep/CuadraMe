@@ -987,6 +987,11 @@ class MovimientoReview(BaseModel):
     impuesto_4x1000: bool = False  # «Impuesto 4x1000 (GMF) · mes»: gasto real que el resumen del extracto trae pero no lista
     costos_retiro: bool = False  # «Costos por retiro · mes»: gasto real que el resumen del extracto trae pero no lista
     categoria_fija: Optional[str] = None  # categoría de sistema que la línea ya trae (p. ej. «Rendimientos»)
+    # Corrección de un movimiento ya importado con la lectura vieja (corregir_pago.py): la regla la declara el lector.
+    corrige_lectura: Optional[dict] = None  # {descripcion, tipo, montos}: cómo lo leía el lector anterior
+    corrige_movimiento_id: Optional[str] = None  # corregir_monto: el movimiento que se actualiza
+    monto_anterior: Optional[float] = None  # corregir_monto: el monto con que quedó importado
+    monto_correcto: Optional[float] = None  # quitar_repetido: el monto del pago bueno que ya está
 
 
 class ProcesarExtractoResponse(BaseModel):
