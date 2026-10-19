@@ -11,7 +11,7 @@ vi.mock('../lib/CuentasContext', () => ({
 }))
 
 import SubidaMultiple from '../components/SubidaMultiple'
-import { clavesFaltantes, filasResumenTarjeta, normalizarPdf, textoPagoAplicado } from '../lib/subidaMultiple'
+import { clavesFaltantes, filasResumenTarjeta, normalizarPdf, resumenPrevio, textoCorreccion, textoCorrecciones, textoPagoAplicado } from '../lib/subidaMultiple'
 
 const render = (ui) => renderBase(<MemoryRouter>{ui}</MemoryRouter>)
 const DETALLE = { capital: 590000, intereses: 0, cargos: 10000, aplicado: [400000, 200000] }
@@ -78,5 +78,30 @@ describe('pago de la tarjeta de Nu', () => {
     const aviso = await screen.findByTestId('mensaje-lectura')
     expect(aviso).toHaveTextContent('faltan $5.000')
     expect(aviso).toHaveAttribute('role', 'alert')
+  })
+
+  it('corregir_monto viene encendido y dice cómo se corrige; quitar_repetido ofrece quitar el pago repetido', () => {
+    const det = { capital: 697534.97, intereses: 0, cargos: 0, aplicado: [474542, 222992.97] }
+    const corr = normalizarPdf(respuesta([pago({ monto: 697534.97, pago_detalle: det, estado: 'corregir_monto', monto_anterior: 474542, marcar_por_defecto: true })]))
+    const it = corr.items[0]
+    expect(it).toMatchObject({ estado: 'nuevo', apagada: false, correccion: { tipo: 'corregir', anterior: 474542 } })
+    expect(clavesFaltantes([{ id: 'a', estado: 'listo', ...corr }])).toEqual(['a:fp-pago'])
+    expect(textoCorreccion(it).titulo.replace(/\s/g, ' ')).toBe(
+      'Corrige tu pago del 5 oct: pasa de $474.542 a $697.534,97 (es lo que pagaste; $474.542 y $222.992,97 son cómo se aplicó)')
+    const rep = normalizarPdf(respuesta([pago({ monto: 474542, estado: 'quitar_repetido', monto_correcto: 697534.97, marcar_por_defecto: true })])).items[0]
+    expect(textoCorreccion(rep).titulo.replace(/\s/g, ' ')).toBe('Quitar el pago repetido de $474.542')
+    expect(textoCorreccion(rep).detalle).toMatch(/dos pagos del 5 oct/)
+    expect(textoCorreccion(pago({}))).toBeNull()
+    const r = resumenPrevio([it, rep])
+    expect(r).toMatchObject({ correcciones: 2, nuevos: 0 })
+    expect(textoCorrecciones(1)).toBe('1 corrección')
+  })
+
+  it('la hoja muestra la línea de corrección y «1 corrección» en el resumen', async () => {
+    api.obtenerReviewExtracto = vi.fn().mockResolvedValue(respuesta([pago({
+      estado: 'corregir_monto', monto_anterior: 400000, marcar_por_defecto: true })]))
+    render(<SubidaMultiple revisionInicial={{ historialId: 'h1' }} onCancelar={() => {}} />)
+    expect(await screen.findByTestId('linea-correccion')).toHaveTextContent(/Corrige tu pago del 5 oct: pasa de \$ ?400\.000 a \$ ?600\.000/)
+    expect(screen.getByTestId('previo-correcciones')).toHaveTextContent('1 corrección')
   })
 })
