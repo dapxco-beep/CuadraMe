@@ -44,7 +44,7 @@ from app.models import ExtractoCorreo, HistorialExtracto, Cuenta
 
 logger = logging.getLogger(__name__)
 
-VERSION_LECTOR = "2026-10-v3-rendimientos"  # súbela cuando el lector de extractos mejore y valga la pena releer
+VERSION_LECTOR = "2026-10-v4-4x1000-costos"  # súbela cuando el lector de extractos mejore y valga la pena releer
 PREFIJO = "releer_extracto:"
 MAXIMO_AUTOMATICO = 3  # PDFs por apertura de «Traer movimientos»
 
@@ -366,8 +366,8 @@ def releer_pendientes(db: Session, usuario, maximo: int = MAXIMO_AUTOMATICO) -> 
                 .filter(HistorialExtracto.usuario_id == usuario.id, HistorialExtracto.estado == "pendiente_revision")
                 .order_by(HistorialExtracto.creado_en.desc()).all())
         tarjetas = _conciliados_de_tarjeta(db, usuario)
-        from app import registrar_rendimientos  # también los de ahorro que probablemente traen rendimientos sin registrar
-        tarjetas += [h for h, _est, _c in registrar_rendimientos.candidatos_sin_linea(db, usuario)]
+        from app import registrar_ajustes_extracto  # también los de ahorro que probablemente traen rendimientos o 4x1000 sin registrar
+        tarjetas += [h for h, _est, _c in registrar_ajustes_extracto.candidatos_a_completar(db, usuario)]
         if not hist and not tarjetas:
             return out
         from app.crons import MarcaCron

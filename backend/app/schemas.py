@@ -984,6 +984,8 @@ class MovimientoReview(BaseModel):
     aviso_linea: Optional[str] = None  # texto para la persona cuando el lector no tiene certeza
     marcar_por_defecto: Optional[bool] = None  # False = la casilla queda apagada hasta que la persona confirme
     rendimiento: bool = False  # «Rendimientos de tu cuenta ...»: ingreso real que el extracto resume pero no lista
+    impuesto_4x1000: bool = False  # «Impuesto 4x1000 (GMF) · mes»: gasto real que el resumen del extracto trae pero no lista
+    costos_retiro: bool = False  # «Costos por retiro · mes»: gasto real que el resumen del extracto trae pero no lista
     categoria_fija: Optional[str] = None  # categoría de sistema que la línea ya trae (p. ej. «Rendimientos»)
 
 

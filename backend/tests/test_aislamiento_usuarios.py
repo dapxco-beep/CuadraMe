@@ -502,6 +502,7 @@ SIN_ID_DE_RECURSO = {
     "/correos/extractos/buscar-asunto", "/correos/extractos/buscar-asunto/procesar",  # leen el Gmail PROPIO; ids de mensaje de su buzón
     "/conciliacion/tarjetas/arreglar",  # POST: solo recorre extractos y cuentas del propio usuario (no recibe ids)
     "/conciliacion/rendimientos/registrar",  # POST: solo recorre extractos y cuentas del propio usuario (no recibe ids)
+    "/conciliacion/ajustes-extracto/registrar",  # POST (nombre nuevo del anterior): solo recorre extractos y cuentas propias (no recibe ids)
     "/conciliacion/releer-pendientes",  # solo relee historiales del propio usuario (no recibe ids)
     "/conciliacion/cuadre/releer-saldos",  # solo toca los historiales del propio usuario (no recibe ids)
     "/conciliacion/cuadre/saldo-inicial-auto",  # solo recorre las cuentas propias del usuario (no recibe ids)

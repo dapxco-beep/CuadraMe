@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app import cuadre_encadenado as ce  # noqa: E402
 from app import cuadre_extracto as cx  # noqa: E402
 from app import limites  # noqa: E402
-from app import registrar_rendimientos as rr  # noqa: E402
+from app import registrar_ajustes_extracto as rr  # noqa: E402
 from app import releer_extracto as rx  # noqa: E402
 from app import rendimientos_extracto as rend  # noqa: E402
 from app.auth import UsuarioActual, get_current_user  # noqa: E402
@@ -280,7 +280,7 @@ def test_el_lote_registra_los_rendimientos_faltantes_y_es_idempotente(monkeypatc
     assert r.status_code == 200, r.text
     j = r.json()
     assert j["registrados"] == 2 and j["saltados"] == 0 and j["total_pesos"] == 17_000.0
-    assert j["resumen"] == "Registré los rendimientos de 2 extractos: $17.000 en total."
+    assert j["resumen"] == "Completé 2 extractos: $17.000 de rendimientos."
     despues = _movs("re-4")
     assert len(despues) == len(antes) + 2
     assert sorted(m[2] for m in despues if m[4] == "Rendimientos") == [8000.0, 9000.0]
@@ -300,7 +300,7 @@ def test_el_lote_registra_los_rendimientos_faltantes_y_es_idempotente(monkeypatc
     assert client.get("/conciliacion/rendimientos/previa").json()["total"] == 0
     limites._eventos.clear()
     j2 = client.post("/conciliacion/rendimientos/registrar", json={"confirmar": True}).json()
-    assert j2["sin_cambios"] is True and "ya tienen sus rendimientos" in j2["resumen"]
+    assert j2["sin_cambios"] is True and "ya están completos" in j2["resumen"]
     assert _movs("re-4") == despues and gmail.llamadas == llamadas
 
 
@@ -350,4 +350,4 @@ def test_la_relectura_automatica_incluye_los_de_ahorro_con_rendimientos(monkeypa
     review = client.get(f"/conciliacion/historial/{h1}").json()["review"]
     assert _linea_rend(review)["estado"] == "faltante"
     assert client.post("/conciliacion/releer-pendientes").json()["releidos"] == 0  # una vez por versión del lector
-    assert rx.VERSION_LECTOR == "2026-10-v3-rendimientos"
+    assert rx.VERSION_LECTOR == "2026-10-v4-4x1000-costos"
