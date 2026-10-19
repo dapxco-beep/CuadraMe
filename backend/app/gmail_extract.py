@@ -119,7 +119,7 @@ _INGRESO_RE = re.compile(
 _EGRESO_RE = re.compile(r"enviaste|transferiste|pagaste|pago|compra|retiro|retiraste|d[eé]bito|cargo|cobro|cobramos|avance", re.IGNORECASE)
 _TRANSFER_RE = re.compile(
     r"transferencia\s+entre|transferiste a tu|traslado entre cuentas|entre\s+(?:tus|sus)\s+cuentas|cuentas\s+propias|"
-    r"(?:pag[óo]|pagaste)\s+.{0,40}?\s+a\s+(?:tu|su)\s+tarjeta",
+    r"(?:pag[óo]|pagaste)\s+.{0,40}?\s+a\s+(?:tu|su)\s+tarjeta|\bpago\s+de\s+tarjeta\b",
     re.IGNORECASE,
 )
 
@@ -202,6 +202,28 @@ def _bonito(nombre: str) -> str:
     return n.title() if n.isupper() else n
 
 
+# «Pagaste en: <línea de pago de tarjeta>»: cuando Nu paga la tarjeta desde la cuenta de ahorros, el aviso no dice «tarjeta» sino
+# el nombre interno de la línea de crédito («línea ... Costo de transacción»). Eso NO es un comercio: es el pago de tu propia
+# tarjeta (un traslado entre tus productos, no un gasto). Palabras que lo delatan en el nombre que sigue a «Pagaste en:».
+_NOMBRE_DE_PAGO_DE_TARJETA = re.compile(
+    r"tarjeta|\bt(?:c|dc)\b|\bl[ií]nea\b.*(?:costo\s+de\s+transacci[oó]n|cr[eé]dito|pago)", re.IGNORECASE)  # «Línea Directa» (seguros) NO; un préstamo tampoco
+_IMPUESTO_4XMIL = re.compile(r"impuesto\s+(?:del\s+)?4\s*x\s*(?:mil|1000)\s*(?:de)?\s*[:\s]*\$?\s*([\d.,]+)", re.IGNORECASE)
+
+
+def _pago_de_tarjeta(nombre: str, contexto: str) -> str:
+    """'Pago de tarjeta Nu' (el banco sale del aviso). La frase abre con «Pago de tarjeta» para que la regla única
+    (contabilidad.es_pago_tarjeta) la trate como pago de tarjeta: traslado, no gasto."""
+    banco = " Nu" if re.search(r"\bnu\b", f"{nombre} {contexto}", re.IGNORECASE) else ""
+    return f"Pago de tarjeta{banco}"
+
+
+def extraer_impuesto_4xmil(texto: str) -> float:
+    """El «impuesto del 4xmil de: $X» que Nu suma a un pago (0.0 si no lo trae). SOLO informa: ese valor no se registra como un
+    movimiento aparte, porque el «Impuesto del 4x1000» del extracto del mes ya lo incluye (se contaría dos veces)."""
+    m = _IMPUESTO_4XMIL.search(texto or "")
+    return _parse_num(m.group(1)) if m else 0.0
+
+
 def extraer_concepto(asunto: str, cuerpo: str = "") -> str:
     """'Compra en Juan Valdez', 'Envío a Ana', 'Pago de servicios'... leído del asunto
     (primero) o del cuerpo. '' si no hay nada que se entienda."""
@@ -212,6 +234,8 @@ def extraer_concepto(asunto: str, cuerpo: str = "") -> str:
                 nombre = _bonito(m.group(1))
                 # «Compraste en:» vacío arrastraba la línea siguiente («La cantidad de: $...») como comercio.
                 if nombre and not re.match(r"(?i)(la\s+)?cantidad\b", nombre):
+                    if prefijo == "Pago a " and _NOMBRE_DE_PAGO_DE_TARJETA.search(nombre):
+                        return _pago_de_tarjeta(nombre, f"{asunto or ''} {cuerpo or ''}")
                     return f"{prefijo}{nombre}"
         m = _ASTERISCO.search(texto)  # 'BOLD*CAFE LUNA' / '*RAPPI*'
         if m:

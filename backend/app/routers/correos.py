@@ -1895,7 +1895,7 @@ def aprobar_correo(
     tipo = correo.tipo_sugerido
     if tipo not in ("income", "expense"):
         tipo = detectar_tipo(f"{correo.asunto} {correo.snippet}")
-    notas = con_marca_traslado("") if es_posible_traslado_propio(f"{correo.asunto} {correo.snippet}") else ""
+    notas = con_marca_traslado("") if es_posible_traslado_propio(f"{correo.asunto} {correo.snippet} {correo.comercio}") else ""
 
     movimiento = Movimiento(
         usuario_id=usuario.id,
