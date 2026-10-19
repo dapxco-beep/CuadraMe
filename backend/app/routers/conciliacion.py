@@ -264,9 +264,9 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
             item["categoria_sugerida"] = clasif["categoria"] if clasif else "Otros"
             item["razon_categoria"] = clasif.get("razon") if clasif else None
             item["confianza_categoria"] = clasif.get("confianza") if clasif else None
-            if item.get("categoria_fija"):  # p. ej. los rendimientos de la cuenta: categoría de sistema, no se adivina
+            if item.get("categoria_fija"):  # p. ej. rendimientos, 4x1000 o costos por retiro de la cuenta: categoría de sistema, no se adivina
                 item["categoria_sugerida"] = item["categoria_fija"]
-                item["razon_categoria"], item["confianza_categoria"] = "rendimiento que trae tu extracto", 1.0
+                item["razon_categoria"], item["confianza_categoria"] = rendimientos_extracto.razon_de(item), 1.0
             if item.get("pago_tarjeta") and (item["categoria_sugerida"] == "Otros" or item.get("pago_detalle")):
                 # La línea «Pago ...» de un extracto de tarjeta: se sugiere como pago de la tarjeta (traslado
                 # entre tus cuentas), no como un gasto «Sin categoría». La persona puede cambiarla.

@@ -294,7 +294,7 @@ def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None, sol
                 item["confianza_categoria"] = clasif.get("confianza") if clasif else None
                 if item.get("categoria_fija"):
                     item["categoria_sugerida"] = item["categoria_fija"]
-                    item["razon_categoria"], item["confianza_categoria"] = "rendimiento que trae tu extracto", 1.0
+                    item["razon_categoria"], item["confianza_categoria"] = rendimientos_extracto.razon_de(item), 1.0
                 if item.get("pago_tarjeta") and (item["categoria_sugerida"] == "Otros" or item.get("pago_detalle")):
                     item["categoria_sugerida"] = CATEGORIA_PAGO_TARJETA
                     item["razon_categoria"] = "parece el pago de tu tarjeta desde otra cuenta tuya"
