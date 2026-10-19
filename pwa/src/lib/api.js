@@ -504,6 +504,10 @@ export const api = {
   previaArreglarTarjetas: () => request('/conciliacion/tarjetas/arreglar/previa'),
   arreglarTarjetas: ({ maximo = 12, excluir = [], continuar = false } = {}) =>
     request('/conciliacion/tarjetas/arreglar', { method: 'POST', body: { confirmar: true, maximo, excluir, continuar } }),
+  // «Registrar los rendimientos de mis extractos»: la previa no cambia nada ni toca Gmail; registrar pide confirmar.
+  previaRendimientos: () => request('/conciliacion/rendimientos/previa'),
+  registrarRendimientos: ({ maximo = 12, excluir = [], continuar = false } = {}) =>
+    request('/conciliacion/rendimientos/registrar', { method: 'POST', body: { confirmar: true, maximo, excluir, continuar } }),
   obtenerReviewExtracto: (id) => request(`/conciliacion/historial/${id}`),
   resolverDudosos: (id, mismos, distintos) =>
     request(`/conciliacion/historial/${id}/resolver-dudosos`, { method: 'POST', body: { mismos, distintos } }),

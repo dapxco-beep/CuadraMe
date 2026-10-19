@@ -22,6 +22,7 @@ import PasoGuiado from '../components/PasoGuiado'
 import AvisoSalud from '../components/AvisoSalud'
 import EstadoPorCuenta from '../components/EstadoPorCuenta'
 import ArreglarTarjetas from '../components/ArreglarTarjetas'
+import RegistrarRendimientos from '../components/RegistrarRendimientos'
 import BancoNoEsta, { EnlaceBancoNoEsta } from '../components/BancoNoEsta'
 import { InterruptoresLectura } from '../components/CarrilesCorreo'
 import ConexionGmail from '../components/ConexionGmail'
@@ -983,6 +984,7 @@ export default function Sincronizacion() {
             pieCredito={<ArreglarTarjetas onListo={cargar} onRevisar={() => abrirGrupoExtractos(FILTRO_DE_TAREA.extractos_por_conciliar)} />}
             className="mx-6 mt-5 mb-2"
           />
+          <RegistrarRendimientos className="mx-6 mb-2 !w-auto" onListo={cargar} />
         </div>
 
         {/* Escritorio: lo que sigue y lo que hago solo. En el celular no se ve: una pregunta a la vez. */}
