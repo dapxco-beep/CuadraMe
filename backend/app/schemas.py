@@ -983,6 +983,8 @@ class MovimientoReview(BaseModel):
     restante: Optional[float] = None  # lo que falta por pagar de una compra en cuotas
     aviso_linea: Optional[str] = None  # texto para la persona cuando el lector no tiene certeza
     marcar_por_defecto: Optional[bool] = None  # False = la casilla queda apagada hasta que la persona confirme
+    rendimiento: bool = False  # «Rendimientos de tu cuenta ...»: ingreso real que el extracto resume pero no lista
+    categoria_fija: Optional[str] = None  # categoría de sistema que la línea ya trae (p. ej. «Rendimientos»)
 
 
 class ProcesarExtractoResponse(BaseModel):

@@ -30,6 +30,7 @@ from collections import Counter
 from sqlalchemy.orm import Session
 
 from app import cuadre_extracto
+from app import rendimientos_extracto
 from app import saldo_inicial_auto
 from app import estado_traer
 from app import punto_partida
@@ -43,7 +44,7 @@ from app.models import ExtractoCorreo, HistorialExtracto, Cuenta
 
 logger = logging.getLogger(__name__)
 
-VERSION_LECTOR = "2026-10-v2-tarjeta-nu"  # súbela cuando el lector de extractos mejore y valga la pena releer
+VERSION_LECTOR = "2026-10-v3-rendimientos"  # súbela cuando el lector de extractos mejore y valga la pena releer
 PREFIJO = "releer_extracto:"
 MAXIMO_AUTOMATICO = 3  # PDFs por apertura de «Traer movimientos»
 
@@ -268,6 +269,8 @@ def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None, sol
         nuevas = _leer_lineas(texto)
         if not nuevas:
             raise ReleerError(409, "No pude leer movimientos en este PDF. No cambié nada.")
+        # Extracto de cuenta con «Rendimiento total»: esa plata suma al saldo pero no es una línea; se agrega UNA línea.
+        nuevas, lectura_rend = rendimientos_extracto.con_rendimiento(nuevas, texto, cuenta)
         for m in nuevas:
             m["cuenta"] = cuenta.id
 
@@ -289,6 +292,9 @@ def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None, sol
                 item["categoria_sugerida"] = clasif["categoria"] if clasif else "Otros"
                 item["razon_categoria"] = clasif.get("razon") if clasif else None
                 item["confianza_categoria"] = clasif.get("confianza") if clasif else None
+                if item.get("categoria_fija"):
+                    item["categoria_sugerida"] = item["categoria_fija"]
+                    item["razon_categoria"], item["confianza_categoria"] = "rendimiento que trae tu extracto", 1.0
                 if item.get("pago_tarjeta") and (item["categoria_sugerida"] == "Otros" or item.get("pago_detalle")):
                     item["categoria_sugerida"] = CATEGORIA_PAGO_TARJETA
                     item["razon_categoria"] = "parece el pago de tu tarjeta desde otra cuenta tuya"
@@ -302,6 +308,8 @@ def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None, sol
             estado_traer.sincronizar_contadores(h, nuevo_review)
         if lectura_hoy is not None:  # el resumen y las comprobaciones se actualizan con el lector de hoy
             h.lectura_json = json.dumps(lectura_hoy, default=str)
+        elif lectura_rend is not None:  # cuenta con rendimientos: «Leí N líneas, incluidos tus rendimientos...»
+            h.lectura_json = json.dumps(lectura_rend, default=str)
         if h.saldos_origen != "manual" and not (solo_agregar and h.saldo_final_extracto is not None):
             saldos = _saldos_del_extracto(cuenta, texto, nuevas)
             if saldos and (saldos.get("saldo_final") is not None or saldos.get("saldo_inicial") is not None):
@@ -358,6 +366,8 @@ def releer_pendientes(db: Session, usuario, maximo: int = MAXIMO_AUTOMATICO) -> 
                 .filter(HistorialExtracto.usuario_id == usuario.id, HistorialExtracto.estado == "pendiente_revision")
                 .order_by(HistorialExtracto.creado_en.desc()).all())
         tarjetas = _conciliados_de_tarjeta(db, usuario)
+        from app import registrar_rendimientos  # también los de ahorro que probablemente traen rendimientos sin registrar
+        tarjetas += [h for h, _est, _c in registrar_rendimientos.candidatos_sin_linea(db, usuario)]
         if not hist and not tarjetas:
             return out
         from app.crons import MarcaCron

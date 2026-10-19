@@ -128,7 +128,8 @@ function BloqueCuenta({ c, mostrarNombre, onCambio }) {
       )}
       <div className="divide-y divide-line">
         <Fila etiqueta="Empecé con" valor={fmt(c.empece, m)} nota={`Saldo ${origenEmpece(c)}`} />
-        <Fila etiqueta="Ingresos" valor={conSigno(c.ingresos, fmt, m)} tono="text-cuadra" />
+        <Fila etiqueta="Ingresos" valor={conSigno(c.ingresos, fmt, m)} tono="text-cuadra"
+          nota={c.rendimientos >= 0.5 ? `Incluye ${fmt(c.rendimientos, m)} de rendimientos` : undefined} />
         <Fila etiqueta="Gastos" valor={conSigno(-c.gastos, fmt, m)} />
         {hayOtros && (
           <Fila etiqueta="Otros movimientos" valor={conSigno(c.otros, fmt, m)}
@@ -275,7 +276,8 @@ export default function CierreExtractos({ datos, onCambio }) {
         <h3 className="text-base font-semibold">Todas tus cuentas</h3>
         <div className="divide-y divide-line/60 mt-1">
           <Fila etiqueta="Empecé con" valor={fmt(t.empece, base)} />
-          <Fila etiqueta="Ingresos" valor={conSigno(t.ingresos, fmt, base)} tono="text-cuadra" />
+          <Fila etiqueta="Ingresos" valor={conSigno(t.ingresos, fmt, base)} tono="text-cuadra"
+            nota={t.rendimientos >= 0.5 ? `Incluye ${fmt(t.rendimientos, base)} de rendimientos` : undefined} />
           <Fila etiqueta="Gastos" valor={conSigno(-t.gastos, fmt, base)} />
           {Math.abs(t.otros || 0) >= 0.5 && <Fila etiqueta="Otros movimientos" valor={conSigno(t.otros, fmt, base)} />}
           <Fila etiqueta="Terminé con" valor={fmt(t.termine, base)} fuerte />

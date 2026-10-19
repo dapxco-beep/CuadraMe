@@ -26,6 +26,7 @@ from app.conciliacion import _CUENTA_UNICA
 from app.wallet import ORIGENES_RAPIDOS
 from app import extractos_error
 from app import releer_extracto
+from app import rendimientos_extracto
 from app.extractos_tarjeta_nu import datos_de_lectura, es_extracto_tarjeta_nu, leer_extracto_tarjeta_nu
 from app.compartidos import cuenta_accesible, puede_editar_cuenta, reclamar_estado
 from app.conciliacion import (
@@ -141,6 +142,9 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
     lectura = None
     if movimientos and not via_ia and texto_plano and es_extracto_tarjeta_nu(texto_plano):
         lectura = datos_de_lectura(leer_extracto_tarjeta_nu(texto_plano))
+    elif movimientos and not via_ia and texto_plano:
+        # Extracto de cuenta con «Rendimiento total»: una línea más (ingreso real) que se verifica con el resumen.
+        movimientos, lectura = rendimientos_extracto.con_rendimiento(movimientos, texto_plano, cuenta)
     lectura_dudosa_total = bool(lectura) and not lectura["lectura_completa"]  # no cuadra: nada se importa solo
 
     if movimientos:
@@ -231,7 +235,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
                 cuenta_id=cuenta.id,
                 descripcion=item["descripcion"],
                 titulo=tit.recordado(db, usuario.id, item["descripcion"]),
-                categoria=clasif["categoria"],
+                categoria=item.get("categoria_fija") or clasif["categoria"],
                 tipo=tipo_dir,
                 monto=item["monto"],
                 fecha=fecha_dt or ahora_co(),
@@ -260,6 +264,9 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
             item["categoria_sugerida"] = clasif["categoria"] if clasif else "Otros"
             item["razon_categoria"] = clasif.get("razon") if clasif else None
             item["confianza_categoria"] = clasif.get("confianza") if clasif else None
+            if item.get("categoria_fija"):  # p. ej. los rendimientos de la cuenta: categoría de sistema, no se adivina
+                item["categoria_sugerida"] = item["categoria_fija"]
+                item["razon_categoria"], item["confianza_categoria"] = "rendimiento que trae tu extracto", 1.0
             if item.get("pago_tarjeta") and (item["categoria_sugerida"] == "Otros" or item.get("pago_detalle")):
                 # La línea «Pago ...» de un extracto de tarjeta: se sugiere como pago de la tarjeta (traslado
                 # entre tus cuentas), no como un gasto «Sin categoría». La persona puede cambiarla.
@@ -728,6 +735,9 @@ def importar_faltantes(
         if fp in categorias_elegidas and categorias_elegidas[fp]:
             categoria = categorias_elegidas[fp]
             auto = datos_auto(None)  # la eligió el usuario
+        elif item.get("categoria_fija"):  # los rendimientos de la cuenta van a su categoría de sistema
+            categoria = item["categoria_fija"]
+            auto = datos_auto(None)
         else:
             clasif = modelo.clasificar(item["descripcion"])
             categoria = clasif["categoria"] if clasif else "Otros"
@@ -1016,6 +1026,33 @@ def arreglar_tarjetas_ahora(
     else:
         verificar_limite(f"arreglar-tarjetas:{usuario.id}", 6, 3600, "Arreglaste tus extractos muchas veces seguidas. Podrás seguir en {espera}.")
     return arreglar_tarjetas.arreglar(db, usuario, maximo=data.maximo, excluir=data.excluir[:50])
+
+
+@router.get("/rendimientos/previa")
+def registrar_rendimientos_previa(
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user),
+):
+    """«Registrar los rendimientos de mis extractos», vista previa SIN cambios ni Gmail: qué extractos, de cuánto
+    (exacto o estimado) y el total."""
+    from app import registrar_rendimientos
+    return registrar_rendimientos.previa(db, usuario)
+
+
+@router.post("/rendimientos/registrar")
+def registrar_rendimientos_ahora(
+    data: ArreglarTarjetasIn,
+    db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Registra los rendimientos de los extractos de cuentas de ahorro que no los tienen (máx. 12 por llamada, del más
+    viejo al más nuevo). Pide confirmar. Mismo límite por hora que «Arreglar mis extractos de la tarjeta»."""
+    from app import registrar_rendimientos
+    if not data.confirmar:
+        raise HTTPException(status_code=400, detail="Confirma el registro para continuar.")
+    if data.continuar:
+        verificar_limite(f"registrar-rendimientos-sigue:{usuario.id}", 40, 3600, "Registraste rendimientos muchas veces seguidas. Podrás seguir en {espera}.")
+    else:
+        verificar_limite(f"registrar-rendimientos:{usuario.id}", 6, 3600, "Registraste rendimientos muchas veces seguidas. Podrás seguir en {espera}.")
+    return registrar_rendimientos.registrar(db, usuario, maximo=data.maximo, excluir=data.excluir[:50])
 
 
 @router.post("/releer-pendientes")
