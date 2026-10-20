@@ -32,6 +32,7 @@ LISTA_BLANCA = {
     "routers/planificacion.py": "pagos fijos (recurrentes)",
     "costos_bancarios.py": "pagos que ENTRAN a la tarjeta de crédito: son el pago de la tarjeta, no un ingreso",
     "rendimientos.py": "rendimientos: se identifican por su categoría de sistema, no por traslado",
+    "corregir_tipo.py": "corrige la DIRECCION guardada de una compra que se importó como ingreso (saldo), no suma gastos ni ingresos",
     "consejos.py": "abono a tarjeta ya clasificado como neutral por tipos_efectivos; solo recuerda el último pago",
     "metas_plan.py": "recurrentes/metas (usa cargar_movs_efectivos para los movimientos)",
 }
