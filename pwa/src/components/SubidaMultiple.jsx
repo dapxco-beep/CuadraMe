@@ -638,7 +638,7 @@ export default function SubidaMultiple({
                                 {titulos[clave] && <PistaBanco original={it.descripcion} />}
                                 <p className="text-xs text-danger">
                                   {it.fecha} ·{' '}
-                                  {repetido ? `Ya está en ${it.repetidoDe}` : it.estado === 'posible' ? 'Posible duplicado' : it.dudosa ? 'Monto por elegir' : it.correccion ? (it.correccion.tipo === 'quitar' ? 'Pago repetido' : 'Corrección') : 'Falta registrar'}
+                                  {repetido ? `Ya está en ${it.repetidoDe}` : it.estado === 'posible' ? 'Posible duplicado' : it.dudosa ? 'Monto por elegir' : it.correccion ? (it.correccion.tipo === 'quitar' ? (it.correccion.por === 'tipo' ? 'Ingreso repetido' : 'Pago repetido') : 'Corrección') : 'Falta registrar'}
                                   {it.estado === 'nuevo' && gemelas > 1 ? ` · idéntico a otros ${gemelas - 1} (se importan juntos)` : ''}
                                 </p>
                                 {!repetido && (

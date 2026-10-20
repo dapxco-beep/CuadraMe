@@ -10,7 +10,7 @@ vi.mock('../lib/CuentasContext', () => ({ useCuentas: () => ({ cuentas: [], reca
 
 import ArreglarTarjetas from '../components/ArreglarTarjetas'
 import {
-  avisoExtracto, juntarResultados, lineaExtracto, lineaResultado, resumenFinal, textoBoton, textoProgreso, textoSaldo,
+  avisoExtracto, juntarResultados, lineaExtracto, lineaResultado, resumenFinal, textoBoton, textoCorreccionesTarjeta, textoProgreso, textoSaldo,
 } from '../lib/arreglarTarjetas'
 
 const fmt = (n) => `$${n}`
@@ -141,5 +141,31 @@ describe('<ArreglarTarjetas>', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sí, arreglar todo' }))
     expect(await screen.findByTestId('resumen-arreglar')).toHaveTextContent('Arreglé 1 extracto')
     expect(screen.getByRole('alert')).toBeInTheDocument()
+  })
+})
+
+describe('corregir compras que estaban como ingresos', () => {
+  const PREVIA_TIPO = {
+    ...PREVIA,
+    correcciones: { total: 31, por_cuenta: [{ id: 'tj', nombre: 'Nu Colombia Crédito', n: 31, saldo_antes: 3087043, saldo_despues: -2000000 }] },
+  }
+  it('textos de la vista previa y del resultado', () => {
+    const f = (n) => `$${n.toLocaleString('es-CO')}`
+    expect(textoCorreccionesTarjeta(PREVIA_TIPO, f)).toBe(
+      'Corregiré 31 compras que estaban como ingresos. Tu tarjeta pasará de +$3.087.043 a −$2.000.000 (lo que debes).')
+    expect(textoCorreccionesTarjeta(PREVIA, f)).toBe('')
+    expect(lineaExtracto(EXT('2026-07', { corregira: 4 }))).toContain('corrijo 4 compras que estaban como ingresos')
+    expect(resumenFinal({ arreglados: 1, movidos: 0, corregidos: 31 })).toBe('Arreglé 1 extracto: corregí 31 compras que estaban como ingresos.')
+    const j = juntarResultados([PASO('2026-07', { corregidos: 3, nuevas: 0, movidos: 0 })])
+    expect(j.corregidos).toBe(3)
+    expect(lineaResultado(j.resultados[0])).toContain('Corregí 3 compras que estaban como ingresos')
+  })
+
+  it('la hoja muestra cuántas compras corrige y cómo queda la tarjeta', async () => {
+    api.previaArreglarTarjetas.mockResolvedValue(PREVIA_TIPO)
+    montar()
+    await userEvent.click(await screen.findByTestId('arreglar-tarjetas'))
+    expect(screen.getByTestId('correcciones-arreglar')).toHaveTextContent('Corregiré 31 compras que estaban como ingresos.')
+    expect(screen.getByTestId('correcciones-arreglar')).toHaveTextContent('lo que debes')
   })
 })

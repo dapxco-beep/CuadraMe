@@ -97,7 +97,7 @@ export function normalizarPdf(r) {
       confianza: typeof m.confianza_categoria === 'number' ? m.confianza_categoria : null,
       // 'anterior': antes de la fecha de inicio (punto de partida): no se ofrece ni se importa.
       // 'dudoso': parece algo que ya tienes pero no es idéntico; la persona decide (dos filas lado a lado).
-      estado: m.estado === 'faltante' || m.estado === 'corregir_monto' || m.estado === 'quitar_repetido' ? 'nuevo' : m.estado === 'anterior' ? 'anterior'
+      estado: m.estado === 'faltante' || m.estado === 'corregir_monto' || m.estado === 'corregir_tipo' || m.estado === 'quitar_repetido' ? 'nuevo' : m.estado === 'anterior' ? 'anterior'
         : m.estado === 'aproximado' && m.descripcion_registrada ? 'dudoso' : 'ya',
       registrado: m.estado === 'aproximado' && m.descripcion_registrada
         ? { descripcion: m.descripcion_registrada, monto: m.monto_registrado, fecha: m.fecha_registrada } : null,
@@ -116,7 +116,8 @@ export function normalizarPdf(r) {
       // Corrige un movimiento ya importado con la lectura vieja (el lector lo declara): no crea otro movimiento.
       correccion: m.estado === 'corregir_monto'
         ? { tipo: 'corregir', anterior: m.monto_anterior ?? null }
-        : m.estado === 'quitar_repetido' ? { tipo: 'quitar', correcto: m.monto_correcto ?? null } : null,
+        : m.estado === 'corregir_tipo' ? { tipo: 'tipo', anterior: m.monto_anterior ?? null }
+        : m.estado === 'quitar_repetido' ? { tipo: 'quitar', correcto: m.monto_correcto ?? null, por: m.quita_por || null } : null,
       apagada: m.marcar_por_defecto === false, // sin certeza: la casilla queda apagada hasta que la persona confirme
     }))
   const filaInfo = (m) => ({
@@ -380,11 +381,22 @@ const diaMes = (iso) => {
  * Texto de una línea de corrección (null si la línea no corrige nada):
  *  corregir: «Corrige tu pago del 5 oct: pasa de $B a $A (es lo que pagaste; $B y $C son cómo se aplicó)»
  *  quitar:   «Quitar el pago repetido de $B» (+ detalle: «Tienes dos pagos del 5 oct ($B y $A)»).
+ *  tipo:     «Corrige: esta línea (Mercadopago, $439.900, 12 jun) estaba como ingreso y es una compra»
+ *  quitar por tipo: «Quitar el ingreso repetido de $X» (la compra ya está como gasto).
  */
 export function textoCorreccion(it) {
   const c = it?.correccion
   if (!c) return null
   const dia = diaMes(it.fecha)
+  if (c.tipo === 'tipo') {
+    return { titulo: `Corrige: esta línea (${it.descripcion}, ${pesos(it.monto)}, ${dia}) estaba como ingreso y es una compra`, detalle: null }
+  }
+  if (c.tipo === 'quitar' && c.por === 'tipo') {
+    return {
+      titulo: `Quitar el ingreso repetido de ${pesos(it.monto)}`,
+      detalle: `Esta compra del ${dia} ya está como gasto. Quito el ingreso repetido y queda solo la compra.`,
+    }
+  }
   if (c.tipo === 'quitar') {
     return {
       titulo: `Quitar el pago repetido de ${pesos(it.monto)}`,
