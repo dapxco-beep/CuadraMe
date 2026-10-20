@@ -45,6 +45,7 @@ TABLAS_NO_RESPALDADAS = {
     "sync_gmail",           # estado/cursores de la lectura de Gmail
     "reglas_correo",        # dominio del remitente y forma del asunto (salen de Gmail)
     "formas_asunto_fallidas",  # contador global anónimo de formas de asunto
+    "arreglos_auto",        # antes/después del autoarreglo; trae la revisión de extractos (salió de correos)
     "claves_pdf",           # claves de PDF (cifradas, pero nunca viajan)
     "push_subscriptions",   # endpoint y llaves de notificaciones push
 }

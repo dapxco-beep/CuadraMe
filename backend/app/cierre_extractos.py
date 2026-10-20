@@ -338,3 +338,37 @@ def construir(db: Session, usuario_id: str, mes: str) -> dict:
         "ruta_cuadre": RUTA_CUADRE,
         "hay_datos": bool(cuentas),
     }
+
+
+def cuadre_por_cuenta(db: Session, usuario_id: str) -> list[dict]:
+    """Tras el autoarreglo: por cada cuenta de banco o tarjeta con extractos, «Cuadra todos los meses» o el PRIMER mes que
+    no cuadra con su causa más probable (reutiliza `cuadre_encadenado.calcular`; solo lee). Aislado por usuario."""
+    inicio_pp = punto_partida.fecha_inicio(db, usuario_id)
+    cuentas = (db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id, Cuenta.tipo.in_(("ahorro", "credito")))
+               .order_by(Cuenta.nombre).all())
+    salida = []
+    for c in cuentas:
+        try:
+            r = ce.calcular(db, c, inicio_pp)
+        except Exception:  # noqa: BLE001 - una cuenta rara no frena a las demás
+            continue
+        con = [f for f in r.get("meses", []) if f.get("historial_id")]
+        base = {"cuenta_id": c.id, "cuenta": c.nombre, "meses": len(con), "ruta": RUTA_CUADRE}
+        if not con:
+            continue
+        malos = [f for f in con if f["estado"] in ce._MALOS]
+        faltan = [f["mes"] for f in r["meses"] if f["estado"] == "falta_extracto"]
+        if not malos:
+            texto = "Cuadra todos los meses"
+            if faltan:
+                texto += f"; solo falta el extracto de {ce._mes_nombre(faltan[0])}"
+            salida.append({**base, "estado": "cuadra", "texto": texto, "primer_mes_malo": None, "diferencia": 0.0,
+                           "causa": None, "faltan_extractos": faltan})
+            continue
+        f = malos[0]
+        dif = f["diferencia"] if abs(f["diferencia"]) >= TOL else f["acumulada"]
+        causa = next((x["texto"] for x in f.get("causas", []) if x.get("probable")), None) or f.get("texto")
+        salida.append({**base, "estado": "no_cuadra", "primer_mes_malo": f["mes"], "diferencia": round(dif, 2),
+                       "causa": causa, "faltan_extractos": faltan,
+                       "texto": f"Primer mes que no cuadra: {ce._mes_nombre(f['mes'])} por {cx.pesos(abs(dif))}"})
+    return salida
