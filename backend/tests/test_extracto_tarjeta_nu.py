@@ -340,7 +340,7 @@ def test_releer_un_extracto_guardado_con_la_lectura_vieja_lo_corrige_sin_duplica
 
 
 def test_la_version_del_lector_cambio_para_que_se_relean_los_pendientes():
-    assert rx.VERSION_LECTOR == "2026-10-v6-corregir-tipo"
+    assert rx.VERSION_LECTOR == "2026-10-v7-fechas-de-tarjeta"
 
 
 def test_regla_explicita_de_correccion_del_pago_leido_por_b():

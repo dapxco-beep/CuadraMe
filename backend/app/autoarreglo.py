@@ -38,6 +38,7 @@ from sqlalchemy.orm import Session
 from app import cierre_extractos, corregir_pago, corregir_tipo, extractos_error, punto_partida, reasignar_extracto, saldo_inicial_auto
 from app import arreglar_tarjetas as at
 from app import cuadre_extracto as cx
+from app import fechas_extracto as fe
 from app import registrar_ajustes_extracto as rae
 from app import releer_extracto as rx
 from app.compartidos import bloquear_cuenta
@@ -243,7 +244,10 @@ def _traz(m: dict) -> dict:
 
 
 def _huella_hist(h: dict) -> str:
-    return sha1(f"{h.get('cuenta_id')}|{h.get('estado')}|{h.get('review_json')}".encode()).hexdigest()
+    """Lo que se vigila de un extracto: cuenta, estado, revisión y (nuevo) sus fechas y la marca de duplicado."""
+    dup = (_cargar(h.get("lectura_json")) or {}).get(fe.CLAVE_DUPLICADO)
+    return sha1(f"{h.get('cuenta_id')}|{h.get('estado')}|{h.get('review_json')}"
+                f"|{h.get('fecha_corte')}|{h.get('periodo_inicio')}|{dup}".encode()).hexdigest()
 
 
 def _diferencias(a: dict, b: dict, paso: str) -> list[dict]:
@@ -279,7 +283,9 @@ def _diferencias(a: dict, b: dict, paso: str) -> list[dict]:
     for hid, nuevo in b["hist"].items():
         viejo = a["hist"].get(hid)
         if viejo is not None and _huella_hist(viejo) != _huella_hist(nuevo):
-            fila("historial", hid, viejo, {"cuenta_id": nuevo["cuenta_id"], "estado": nuevo["estado"], "huella": _huella_hist(nuevo)})
+            fila("historial", hid, viejo, {"cuenta_id": nuevo["cuenta_id"], "estado": nuevo["estado"], "huella": _huella_hist(nuevo),
+                                           "fecha_corte": nuevo["fecha_corte"], "periodo_inicio": nuevo["periodo_inicio"],
+                                           "lectura_json": nuevo["lectura_json"]})
     for cid, saldo in b["cuentas"].items():
         if cid in a["cuentas"] and abs(a["cuentas"][cid] - saldo) >= 0.005:
             fila("saldo", cid, {"saldo": a["cuentas"][cid]}, {"saldo": saldo})
@@ -485,8 +491,24 @@ def _tarjeta_uno(ctx: _Ctx, f: dict, verificada: bool | None) -> dict:
     return out
 
 
+def _reparar_fechas(ctx: _Ctx) -> dict:
+    """Fechas de los extractos (docs/FECHAS_DE_EXTRACTOS.md): completa/corrige corte y periodo de las tarjetas con lo que ya
+    se leyó (o, si no hay lectura, con la fecha del correo marcada como estimada) y aparta los extractos subidos dos veces.
+    No descarga nada, no toca movimientos ni saldos. Lo dudoso de verdad (corte en el futuro, periodos cruzados) no se toca:
+    queda como decisión de la persona."""
+    db = ctx.db
+    r = fe.reparar(db, ctx.uid, excluir=ctx.excluidos)  # un extracto que la persona deshizo no se vuelve a tocar solo
+    if r["fechas"] or r["duplicados"]:
+        db.commit()
+        ctx.cerrar_fase("tarjetas")
+    dudosas = fe.revisar_fechas(db, ctx.uid)
+    ctx.decidir("fechas_dudosas", len(set(dudosas["futuras"]) | set(dudosas["traslapados"]) | set(dudosas["sin_fechas"])))
+    return {"fechas": len(r["fechas"]), "duplicados": len(r["duplicados"])}
+
+
 def _paso_tarjetas(ctx: _Ctx) -> dict:
     db = ctx.db
+    reparadas = _reparar_fechas(ctx)
     ambiguas = _tarjetas_ambiguas(db, ctx.uid)
     if ambiguas:
         ctx.decidir("varias_tarjetas", ambiguas)
@@ -525,7 +547,7 @@ def _paso_tarjetas(ctx: _Ctx) -> dict:
             continue
         ctx.unidades += 1
         hechos.append(_tarjeta_uno(ctx, f, verificada))
-    return {"hecho": len(hechos), "quedan": quedan, "saltados": saltados, "extractos": hechos}
+    return {"hecho": len(hechos), "quedan": quedan, "saltados": saltados, "extractos": hechos, "fechas": reparadas}
 
 
 # ── Paso 3: rendimientos, 4x1000 y costos por retiro ───────────────────────────────────────────────────
@@ -640,6 +662,8 @@ DECISIONES = {
     "dudosas": ("Hay movimientos de tus extractos que no importé porque no estoy seguro.", "Revisarlos", "/sincronizacion"),
     "varias_tarjetas": ("Tienes varias tarjetas del mismo banco y no sé a cuál va cada extracto.", "Elegir la tarjeta", "/sincronizacion"),
     "clave_pdf": ("Me falta la clave de tus extractos en PDF para leerlos.", "Poner la clave", "/correos"),
+    "fechas_dudosas": ("Hay extractos con fechas que no cuadran (un corte que aún no llega, periodos que se cruzan o sin fecha); no las cambié.",
+                       "Revisarlos", "/sincronizacion"),
     "tarjeta_sin_verificar": ("Hay extractos de tarjeta que no pude comprobar contra el resumen del banco; no los toqué.",
                               "Verlos", "/sincronizacion"),
 }
@@ -664,14 +688,20 @@ def resumen_lote(db: Session, uid: str, lote: str) -> dict:
     filas = _filas_del_lote(db, uid, lote)
     c = {"extractos_movidos": 0, "compras_corregidas": 0, "pagos_corregidos": 0, "repetidos_quitados": 0,
          "rendimientos_registrados": 0, "monto_rendimientos": 0.0, "lineas_importadas": 0, "ajustes_iniciales": 0,
-         "extractos_releidos": 0}
+         "extractos_releidos": 0, "fechas_arregladas": 0, "duplicados_marcados": 0}
     saldos: dict[str, dict] = {}
     detalle = []
     for f in filas:
         antes, despues = _cargar(f.antes) or {}, _cargar(f.despues) or {}
         if f.tipo == "historial":
+            marca_antes = (_cargar(antes.get("lectura_json")) or {}).get(fe.CLAVE_DUPLICADO)
+            marca_despues = (_cargar(despues.get("lectura_json")) or {}).get(fe.CLAVE_DUPLICADO)
             if antes.get("cuenta_id") != despues.get("cuenta_id"):
                 c["extractos_movidos"] += 1
+            elif marca_despues and not marca_antes:
+                c["duplicados_marcados"] += 1
+            elif (antes.get("fecha_corte"), antes.get("periodo_inicio")) != (despues.get("fecha_corte"), despues.get("periodo_inicio")):
+                c["fechas_arregladas"] += 1
             else:
                 c["extractos_releidos"] += 1
         elif f.tipo == "corregir_tipo":
@@ -725,6 +755,10 @@ def texto_resumen(c: dict) -> str:
         partes.append(f"registré {_n(c['rendimientos_registrados'], 'rendimiento o impuesto', 'rendimientos e impuestos')}")
     if c["lineas_importadas"]:
         partes.append(f"importé {_n(c['lineas_importadas'], 'movimiento verificado', 'movimientos verificados')}")
+    if c["fechas_arregladas"]:
+        partes.append(f"corregí las fechas de {_n(c['fechas_arregladas'], 'extracto', 'extractos')}")
+    if c["duplicados_marcados"]:
+        partes.append(f"aparté {_n(c['duplicados_marcados'], 'extracto repetido', 'extractos repetidos')} (no toqué tus movimientos)")
     if c["ajustes_iniciales"] and not partes:
         partes.append("actualicé el saldo con el que empezaron tus cuentas")
     return ("Listo, ordené tus cuentas: " + ", ".join(partes) + ".") if partes else "Tus cuentas ya estaban ordenadas."
@@ -856,7 +890,8 @@ def _revertir_historial(db: Session, f: ArregloAuto) -> None:
     h = db.query(HistorialExtracto).filter(HistorialExtracto.id == f.entidad_id, HistorialExtracto.usuario_id == f.usuario_id).first()
     if h is None:
         return
-    actual = {"cuenta_id": h.cuenta_id, "estado": h.estado, "review_json": h.review_json}
+    actual = {"cuenta_id": h.cuenta_id, "estado": h.estado, "review_json": h.review_json, "fecha_corte": h.fecha_corte,
+              "periodo_inicio": h.periodo_inicio, "lectura_json": h.lectura_json}
     if _huella_hist(actual) != despues.get("huella"):
         raise Inconsistente("Un extracto que ordené cambió después")
     for k in HIST_CAMPOS:

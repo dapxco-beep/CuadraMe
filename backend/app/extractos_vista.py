@@ -35,8 +35,9 @@ _MES_CORTO = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oc
 
 FUENTE_PERIODO, FUENTE_ASUNTO, FUENTE_ARCHIVO = "periodo", "asunto", "archivo"
 FUENTE_LINEAS, FUENTE_RECEPCION = "lineas", "recepcion"
+FUENTE_CORTE = "corte"  # tarjeta: el mes de la fecha de corte del extracto (ver fechas_extracto.py)
 # Las que se pueden guardar en ExtractoCorreo.periodo sin miedo (la recepción es solo una suposición).
-FUENTES_SEGURAS = (FUENTE_PERIODO, FUENTE_ASUNTO, FUENTE_ARCHIVO, FUENTE_LINEAS)
+FUENTES_SEGURAS = (FUENTE_PERIODO, FUENTE_ASUNTO, FUENTE_ARCHIVO, FUENTE_LINEAS, FUENTE_CORTE)
 
 _FECHA_ARCHIVO = re.compile(r"(?<!\d)(20\d{2})[-_.](\d{1,2})[-_.](\d{1,2})(?!\d)|(?<!\d)(\d{1,2})[-_.](\d{1,2})[-_.](20\d{2})(?!\d)")
 _CLAVE_MES = re.compile(r"^(20\d{2})-(0[1-9]|1[0-2])$")

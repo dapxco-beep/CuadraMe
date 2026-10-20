@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app import fechas_extracto
 from app.cuentas_banco import CREDITO, producto_de_cuenta, producto_de_texto
 from app.extractos_error import MOTIVOS_CLAVE, correo_de_error
 from app.extractos_gmail import cuentas_del_banco
@@ -38,6 +39,7 @@ CODIGOS = (
     "clave_pdf_faltante",
     "movimientos_en_cuenta_incoherente",
     "sin_sincronizar",
+    "fechas_extracto_dudosas",
 )
 ORDEN_SEVERIDAD = {"importante": 0, "aviso": 1, "info": 2}
 CEROS_PARA_AVISAR = 3        # corridas completas seguidas sin leer ni un correo
@@ -214,6 +216,33 @@ def diagnosticar(db: Session, usuario_id: str) -> list[dict]:
                 {"tipo": "sincronizar", "etiqueta": "Traer ahora"},
                 {"horas": int((datetime.utcnow() - ultima).total_seconds() // 3600)},
             ))
+
+    # 9) Fechas de extractos conciliados que no cuadran: sin fecha, repetidos, con corte futuro o periodos cruzados.
+    #    Las dos primeras causas las repara solo el autoarreglo; las otras dos las decide la persona.
+    f = fechas_extracto.revisar_fechas(db, usuario_id)
+    n_solas, n_decidir = len(f["sin_fechas"]) + len(f["duplicados"]), len(f["futuras"]) + len(f["traslapados"])
+    if n_solas or n_decidir:
+        n = n_solas + n_decidir
+        partes = []
+        if f["sin_fechas"]:
+            partes.append("falta la fecha de corte en " + str(len(f["sin_fechas"])))
+        if f["duplicados"]:
+            partes.append(f"{len(f['duplicados'])} {_plural(len(f['duplicados']), 'está repetido', 'están repetidos')}")
+        if f["futuras"]:
+            partes.append(f"{len(f['futuras'])} {_plural(len(f['futuras']), 'tiene un corte que aún no llega', 'tienen un corte que aún no llega')}")
+        if f["traslapados"]:
+            partes.append(f"{len(f['traslapados'])} {_plural(len(f['traslapados']), 'se cruza', 'se cruzan')} con otro periodo")
+        solas = ("Lo de la fecha faltante y los repetidos se ordena solo al abrir «Traer movimientos». " if n_solas else "")
+        decidir = ("Lo demás conviene revisarlo: abre el extracto y confirma las fechas que dice tu banco." if n_decidir else "")
+        out.append(_h(
+            "fechas_extracto_dudosas", "aviso" if n_decidir else "info",
+            f"{n} {_plural(n, 'extracto tiene', 'extractos tienen')} fechas por revisar",
+            "Entre tus extractos: " + "; ".join(partes) + ". " + solas + decidir,
+            {"tipo": "ver_extractos", "etiqueta": "Ver extractos"},
+            {"cantidad": n, "sin_fechas": len(f["sin_fechas"]), "repetidos": len(f["duplicados"]), "cortes_futuros": len(f["futuras"]),
+             "periodos_cruzados": len(f["traslapados"]),
+             "historial_ids": (f["futuras"] + f["traslapados"] + f["sin_fechas"] + f["duplicados"])[:MAX_IDS]},
+        ))
 
     out.sort(key=lambda x: ORDEN_SEVERIDAD.get(x["severidad"], 9))
     return out
