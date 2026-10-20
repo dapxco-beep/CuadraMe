@@ -191,7 +191,7 @@ def detalle_cuadre(fila: dict, filas: list[dict], es_apertura) -> dict:
 def causas_orientativas(h: HistorialExtracto | None, fila: dict, filas: list[dict]) -> list[dict]:
     """Por qué no cuadra una tarjeta (solo orienta; nada se cambia solo): líneas sin importar, lectura incompleta y un pago o
     una compra con el tipo cambiado."""
-    dif = fila["tarjeta"]["diferencia"]
+    dif = fila["diferencia"]  # la del mes, en la convención de la cuenta (>0: el banco registró MÁS saldo que tu app)
     out: list[dict] = []
     if h is not None:
         pend = [i for i in _review(h) if i.get("estado") in ESTADOS_QUE_FALTAN]

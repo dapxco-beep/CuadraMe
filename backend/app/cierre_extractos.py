@@ -208,6 +208,7 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
         "termine": termine, "segun_extracto": round(segun, 2) if segun is not None else None,
         "diferencia": dif, "historial_id": fila["historial_id"] if fila else None,
         "cadena_rota": bool(fila and fila.get("cadena_rota")),
+        "tarjeta_cuadre": fila.get("tarjeta") if fila else None,  # deuda: debía, compras, intereses, pagos, debo, según extracto
         "tarjeta_fechas": fila.get("tarjeta_fechas") if fila else None,  # {corte, limite_pago, periodo_fin, estimado} de la tarjeta
         "cuadre_desde": r.get("desde"),  # «Tu cuenta cuadra desde…» / «Primer mes que no cuadra…»
         "ajuste_inicial": _ajuste_inicial(filas) if fila else None,
