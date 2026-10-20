@@ -156,9 +156,14 @@ def _sembrar():
         p = PushSubscription(usuario_id=A.id, endpoint=f"https://push.example/{MARCA}", p256dh="k", auth="a")
         rg = ReglaCorreo(usuario_id=A.id, remitente_dominio="banco.com", esqueleto_asunto=f"{MARCA.lower()} compra",
                          etiqueta_monto="la cantidad de:", tipo="expense")
-        db.add_all([c, ex, h, p, rg])
+        from app.models_autoarreglo import ArregloAuto
+
+        lote = ArregloAuto(usuario_id=A.id, lote_id="lote-aisl-a", tipo="crear_linea", entidad_id="mov-aisl-a",
+                           despues=json.dumps({"cuenta_id": banco["id"], "descripcion": f"{MARCA} compra auto", "monto": 5,
+                                               "tipo": "expense", "fecha": "2026-01-01T00:00:00", "_paso": "importar"}))
+        db.add_all([c, ex, h, p, rg, lote])
         db.commit()
-        I.update(correo=c.id, extracto=ex.id, historial=h.id, regla_correo=rg.id)
+        I.update(correo=c.id, extracto=ex.id, historial=h.id, regla_correo=rg.id, lote_auto="lote-aisl-a")
     finally:
         db.close()
 
@@ -232,7 +237,7 @@ def test_lecturas_de_a_si_ven_sus_datos():
     como(A)
     for ruta in ("/cuentas", "/movimientos", "/metas", "/gastos-compartidos/contactos", "/patrimonio/activos", "/inversiones",
                  "/inversiones/brokers", "/subcategorias", "/correos/lista", "/correos/extractos", "/conciliacion/historial", "/reglas-categoria",
-                 "/sincronizacion/extractos"):  # «Todos los extractos»: la lista completa de A
+                 "/sincronizacion/extractos", "/autoarreglo/lotes"):  # «Todos los extractos»: la lista completa de A
         assert MARCA.lower() in client.get(ruta).text.lower(), ruta
 
 
@@ -370,6 +375,8 @@ ATAQUES = [
     # punto de partida: B no puede fijar saldos de cuentas de A ni ajustarlas
     ("PUT", "/perfil/punto-de-partida", {"modo": "hoy", "saldos": {"{cuenta}": {"actual": 1}}, "ajustar_saldos": True}),
     ("POST", "/perfil/punto-de-partida/ajustar-saldos", {"cuenta_ids": ["{cuenta}"]}),
+    # autoarreglo: B no deshace un lote de A
+    ("POST", "/autoarreglo/lotes/{lote_auto}/deshacer", None),
     # conciliación (historial de extractos)
     ("GET", "/conciliacion/historial/{historial}", None),
     ("POST", "/conciliacion/historial/{historial}/deshacer-auto", None),
@@ -500,6 +507,7 @@ SIN_ID_DE_RECURSO = {
     "/correos/{correo_id}/aprobar", "/movimientos/rapido-voz", "/resumen/preferencias",
     "/comentarios",  # POST: crea un comentario propio (no recibe ids)
     "/correos/extractos/buscar-asunto", "/correos/extractos/buscar-asunto/procesar",  # leen el Gmail PROPIO; ids de mensaje de su buzón
+    "/autoarreglo/correr",  # POST: solo ordena las cuentas y extractos del propio usuario (no recibe ids)
     "/conciliacion/tarjetas/arreglar",  # POST: solo recorre extractos y cuentas del propio usuario (no recibe ids)
     "/conciliacion/rendimientos/registrar",  # POST: solo recorre extractos y cuentas del propio usuario (no recibe ids)
     "/conciliacion/ajustes-extracto/registrar",  # POST (nombre nuevo del anterior): solo recorre extractos y cuentas propias (no recibe ids)
