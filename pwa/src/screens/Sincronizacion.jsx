@@ -20,6 +20,7 @@ import { cantidadDe, sinDatos } from '../lib/centro'
 import { construirPasos, estadoGeneral, obligatorios, progresoPasos, textoBusqueda } from '../lib/siguientePaso'
 import PasoGuiado from '../components/PasoGuiado'
 import AvisoSalud from '../components/AvisoSalud'
+import AvisoAutoarreglo from '../components/AvisoAutoarreglo'
 import EstadoPorCuenta from '../components/EstadoPorCuenta'
 import ArreglarTarjetas from '../components/ArreglarTarjetas'
 import RegistrarRendimientos from '../components/RegistrarRendimientos'
@@ -955,6 +956,7 @@ export default function Sincronizacion() {
 
       <div className="dos-col dos-col-6-5">
         <div className="col">
+          <AvisoAutoarreglo className="mt-3" />
           <AvisoSalud className="mx-6 mt-3" />
           <div className="mx-6 mt-3">
             <PasoGuiado
