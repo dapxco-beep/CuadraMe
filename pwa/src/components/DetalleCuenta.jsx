@@ -14,6 +14,7 @@ import { TarjetaCuadreBanco } from './CuadreMes'
 import InputMonto from './InputMonto'
 import { nombreDe } from '../lib/tituloMovimiento'
 import SaldoInicialAutomatico from './SaldoInicialAutomatico'
+import DeudaTarjeta from './DeudaTarjeta'
 
 // Detalle de UNA cuenta: saldo actual sin ambigüedad, cómo va el mes, últimos
 // movimientos y las dos acciones para que el saldo coincida con el banco:
@@ -70,13 +71,14 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
             <p className="text-[11px] font-semibold text-accent" data-testid="tipo-cuenta">{etiquetaCuenta(c).etiqueta}</p>
             <p className="t-kicker text-ink-soft mt-1">{credito ? 'Debes' : 'Saldo actual'}</p>
             <p className="text-3xl t-display mt-1" data-testid="saldo-detalle">
-              {fmt(credito ? deudaTarjeta(c) : det.saldo_actual, c.moneda)}
+              {fmt(credito ? (det.deuda_tarjeta?.con_extracto ? det.deuda_tarjeta.deuda : deudaTarjeta(c)) : det.saldo_actual, c.moneda)}
             </p>
             <p className="text-xs text-ink-soft mt-1">{textoActualizado(det.ultimo_movimiento)}</p>
             <p className="text-xs text-ink-soft mt-2" data-testid="significado-saldo">
               {etiquetaCuenta(c).significado} <Ayudita termino={etiquetaCuenta(c).termino} />
             </p>
-            {credito && cupoDisponible(c) != null && (
+            {credito && det.deuda_tarjeta && <DeudaTarjeta vista={det.deuda_tarjeta} moneda={c.moneda} compacta className="mt-3 border-t border-line pt-3" />}
+            {credito && !det.deuda_tarjeta?.cupo && cupoDisponible(c) != null && (
               <p className="text-sm mt-2">
                 <span className="text-ink-soft">Disponible del cupo: </span>
                 <span className="font-semibold">{fmt(cupoDisponible(c), c.moneda)}</span>
@@ -84,7 +86,12 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mt-3">
+          {credito && (
+            <p className="text-[11px] text-ink-soft mt-2" data-testid="nota-tarjeta-deuda">
+              Una tarjeta no tiene ingresos: tus compras suben lo que debes y tus pagos lo bajan. Pagarla no es un gasto nuevo.
+            </p>
+          )}
+          {!credito && <div className="grid grid-cols-2 gap-3 mt-3">
             <div className="rounded-2xl bg-paper-raised border border-line p-3">
               <p className="text-xs text-ink-soft">Ingresos del mes</p>
               <p className="text-sm font-bold text-accent mt-0.5">{fmt(det.ingresos_mes, c.moneda)}</p>
@@ -93,16 +100,16 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
               <p className="text-xs text-ink-soft">Gastos del mes</p>
               <p className="text-sm font-bold mt-0.5">{fmt(det.gastos_mes, c.moneda)}</p>
             </div>
-          </div>
-          <p className="text-[11px] text-ink-soft mt-1.5">
+          </div>}
+          {!credito && <p className="text-[11px] text-ink-soft mt-1.5">
             No incluyen pagos de tarjeta, la plata que pasaste entre tus cuentas ni ajustes de saldo.
-          </p>
+          </p>}
 
           {c.tipo === 'ahorro' && <CajitasDeCuenta cuentaId={c.id} />}
 
           {c.tipo !== 'efectivo' && <TarjetaCuadreBanco cuentaId={c.id} moneda={c.moneda} onCambio={cargar} />}
 
-          {!credito && inicial && (inicial.automatico || inicial.desactivado) && (
+          {inicial && (inicial.automatico || inicial.desactivado) && (
             <SaldoInicialAutomatico
               cuentaId={c.id} moneda={c.moneda} desactivado={inicial.desactivado && !inicial.automatico}
               info={inicial.automatico ? { monto: inicial.monto, fecha: inicial.fecha, explicacion: inicial.explicacion } : null}
@@ -149,7 +156,7 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
               {det.movimientos.map((m) => (
                 <Link key={m.id} to={`/movimientos/${m.id}`} className="flex items-start gap-3 px-4 py-3 min-h-[56px]">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold break-words line-clamp-3">{m.fuente === 'ajuste_saldo' && (m.notas || '').endsWith('· automático') ? 'Saldo inicial automático' : nombreDe(m)}</p>
+                    <p className="text-sm font-semibold break-words line-clamp-3">{m.fuente === 'ajuste_saldo' && (m.notas || '').endsWith('· automático') ? (credito ? 'Deuda inicial automática' : 'Saldo inicial automático') : nombreDe(m)}</p>
                     <p className="text-xs text-ink-soft mt-0.5 break-words">{fechaHoraMovimiento(fechaDeMovimiento(m))}</p>
                     <p className="text-xs text-ink-soft break-words">
                       {m.fuente === 'ajuste_saldo' ? 'No cuenta como gasto ni ingreso' : m.categoria}

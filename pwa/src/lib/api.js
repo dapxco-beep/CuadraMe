@@ -282,6 +282,7 @@ export const api = {
   tasasManuales: () => request('/perfil/tasas', { sinCache: true }),
   fijarTasaManual: (moneda, tasa) => request(`/perfil/tasas/${encodeURIComponent(moneda)}`, { method: 'PUT', body: { tasa } }),
   detalleCuenta: (id) => request(`/cuentas/${id}/detalle`),
+  tarjetasVista: () => request('/cuentas/tarjetas/vista', { sinCache: true }),
   cuotasTarjeta: (cuentaId) => request(`/cuotas-tarjeta${cuentaId ? `?cuenta_id=${encodeURIComponent(cuentaId)}` : ''}`),
   crearCuotaTarjeta: (data) => request('/cuotas-tarjeta', { method: 'POST', body: data }),
   pagarCuotaTarjeta: (id) => request(`/cuotas-tarjeta/${id}/pagar-cuota`, { method: 'POST' }),

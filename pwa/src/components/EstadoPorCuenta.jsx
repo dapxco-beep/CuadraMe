@@ -3,6 +3,7 @@ import Icono from './Icono'
 import { cuentasConExtracto, mesDeHoy, nombreCompleto, resumenMeses, tipoDeCuenta, vistaCelda } from '../lib/estadoPorCuenta'
 import { nombreMes } from '../lib/sincronizacion'
 import { textoCorte, textoFechasTarjeta } from '../lib/fechasTarjeta'
+import DeudaTarjeta from './DeudaTarjeta'
 
 // «Estado por cuenta y mes»: una tarjeta por cuenta con su nombre completo, qué tipo de cuenta es, cuántos meses
 // están completos y una fila de meses (los últimos 6, con scroll hacia los anteriores). Cada mes dice su estado con
@@ -46,7 +47,7 @@ function ChipMes({ cuenta, mes, celda, etiqueta, onMes }) {
   )
 }
 
-export default function EstadoPorCuenta({ cuentas = [], meses = [], onMes, pieCredito = null, className = '' }) {
+export default function EstadoPorCuenta({ cuentas = [], meses = [], onMes, pieCredito = null, deudas = null, className = '' }) {
   const lista = cuentasConExtracto(cuentas)
   if (!lista.length || !meses.length) return null
   const primeraTarjeta = lista.find((c) => c.tipo === 'credito')?.id // «Arreglar mis extractos de la tarjeta» va en la primera tarjeta
@@ -90,7 +91,10 @@ export default function EstadoPorCuenta({ cuentas = [], meses = [], onMes, pieCr
                   </div>
                 ))}
               </div>
-              {ultimaConFechas && (
+              {c.tipo === 'credito' && deudas?.[c.id] && (
+                <DeudaTarjeta vista={deudas[c.id]} moneda={c.moneda} className="mt-3 rounded-xl bg-paper p-3" />
+              )}
+              {ultimaConFechas && !deudas?.[c.id]?.corte && (
                 <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-soft" data-testid={`fechas-tarjeta-${c.id}`}>
                   <Icono icono={CalendarClock} tam="sm" />
                   <span>{textoFechasTarjeta(ultimaConFechas.tarjeta_fechas)}</span>

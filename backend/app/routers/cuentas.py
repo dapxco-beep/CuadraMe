@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app import deuda_tarjeta
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import bloquear_cuenta, cuenta_accesible, cuentas_ids_accesibles, puede_editar_cuenta
 from app.contabilidad import CATEGORIA_AJUSTE, FUENTE_AJUSTE, ConvertidorBase, tipos_cuenta_de, tipos_efectivos
@@ -14,6 +15,15 @@ from app.utiles import ahora_co
 from app.tarjetas import calc_tarjeta, extractos_guardados, movimientos_tras_corte, sin_historial_al_corte
 
 router = APIRouter(prefix="/cuentas", tags=["cuentas"])
+
+
+@router.get("/tarjetas/vista")
+def vista_de_tarjetas(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """«Debes · Cupo · Disponible · Corte · Pago hasta · Pago mínimo» en vivo de cada tarjeta de crédito accesible
+    ({cuenta_id: vista}). La tarjeta es DEUDA (app/deuda_tarjeta.py). Solo lee."""
+    ids = cuentas_ids_accesibles(db, usuario.id)
+    cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids), Cuenta.tipo == "credito").all() if ids else []
+    return {c.id: deuda_tarjeta.vista(db, c) for c in cuentas}
 
 
 def _serializar(cuenta: Cuenta, db: Session | None = None) -> dict:
@@ -208,6 +218,7 @@ def detalle_cuenta(
         "ingresos_mes": round(ingresos, 2),
         "gastos_mes": round(gastos, 2),
         "ultimo_movimiento": ultimos[0].fecha.isoformat() if ultimos else None,
+        "deuda_tarjeta": deuda_tarjeta.vista(db, cuenta),  # solo tarjetas: debes, cupo, disponible, corte, pago mínimo
         "movimientos": [
             {
                 "id": m.id, "fecha": m.fecha.isoformat(), "descripcion": m.titulo or m.descripcion, "titulo": m.titulo,

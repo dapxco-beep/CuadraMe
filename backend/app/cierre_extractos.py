@@ -211,7 +211,7 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
         "tarjeta_cuadre": fila.get("tarjeta") if fila else None,  # deuda: debía, compras, intereses, pagos, debo, según extracto
         "tarjeta_fechas": fila.get("tarjeta_fechas") if fila else None,  # {corte, limite_pago, periodo_fin, estimado} de la tarjeta
         "cuadre_desde": r.get("desde"),  # «Tu cuenta cuadra desde…» / «Primer mes que no cuadra…»
-        "ajuste_inicial": _ajuste_inicial(filas) if fila else None,
+        "ajuste_inicial": _ajuste_inicial(filas, c.tipo == "credito") if fila else None,
         "aviso": fila.get("texto") if fila and fila.get("cadena_rota") and estado == "cuadra" else None,
         "motivo": None, "causas": [], "acciones": [], "sin_tasa": not ok,
         # En moneda base, para sumar entre cuentas.
@@ -228,14 +228,15 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
     return out
 
 
-def _ajuste_inicial(filas: list[dict]) -> dict | None:
+def _ajuste_inicial(filas: list[dict], tarjeta: bool = False) -> dict | None:
     """El «Saldo inicial automático» de la cuenta (si lo hay): se muestra aparte, nunca como ingreso ni gasto."""
     f = next((x for x in filas if saldo_inicial_auto.es_automatico(x)), None)
     if not f:
         return None
     return {"movimiento_id": f["id"], "monto": round(delta_saldo(f), 2),
             "fecha": f["fecha"].date().isoformat() if f["fecha"] else None,
-            "etiqueta": "Saldo inicial automático", "explicacion": saldo_inicial_auto.EXPLICACION}
+            "etiqueta": "Deuda inicial automática" if tarjeta else "Saldo inicial automático",
+            "explicacion": saldo_inicial_auto.EXPLICACION_TARJETA if tarjeta else saldo_inicial_auto.EXPLICACION}
 
 
 def _diagnosticar(cuentas: list[dict]) -> None:
