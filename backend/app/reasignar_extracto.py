@@ -183,7 +183,7 @@ def cambiar(db: Session, usuario_id: str, historial_id: str, cuenta_id: str) -> 
         estado_traer.sincronizar_contadores(historial, review)
     # El cuadre se mide contra la cuenta nueva (lo anterior era de la otra cuenta).
     historial.cuadre_estado = historial.cuadre_diferencia = historial.cuadre_en = None
-    if not any(i.get("estado") in ("faltante", "dudoso", "corregir_monto", "quitar_repetido") for i in review):
+    if not any(i.get("estado") in ("faltante", "dudoso", "corregir_monto", "quitar_repetido", "corregir_tipo") for i in review):
         cuadre_extracto.registrar_cuadre(db, destino, historial)
     db.commit()
     # El extracto salió de una cuenta y entró en otra: el más antiguo de AMBAS pudo cambiar → se recalculan las dos.

@@ -52,3 +52,37 @@ Cuando un lector nuevo lee distinto el MONTO de algo que el lector viejo ya impo
   movimiento ya no existe al importar, la línea se importa como pago normal. Idempotente. Sin columnas ni migraciones.
 - El pago de tarjeta sigue sin contar como ingreso ni gasto (regla única `contabilidad.py`, `MARCA_TRASLADO_PROPIO`).
 - Para sumar otra corrección: que el lector declare `corrige_lectura` en esa línea y añadir su prueba sintética.
+
+## Corregir el tipo: compras que se importaron como ingreso (`app/corregir_tipo.py`)
+El lector viejo no veía el signo de la línea y guardó muchas COMPRAS de la tarjeta como `income`. Efecto: la tarjeta
+sale con saldo positivo (a favor) en vez de una deuda, y los «ingresos» se inflan. El lector de hoy tipa bien:
+compra, compra en cuotas, cuota de manejo y comisión = `expense`; solo el pago es `income` (traslado). Signos de la
+cuenta de crédito (regla única `delta_saldo`): compra = `expense`, resta del saldo (la deuda es negativa); pago =
+`income`, la reduce. Ni la regla única ni la paridad Python/JS cambian.
+
+Regla de seguridad: solo cuando el lector de tarjeta lo DECLARA en la línea (`corrige_tipo: {de: income, a: expense}`
+y `linea_tipo` de compra). Nunca por simple parecido; nunca toca movimientos hechos a mano, por atajo o por correo
+(solo los que ese extracto importó: fuente `conciliacion_extracto/auto`, vinculados por `movimiento_id` o huella);
+nunca toca pagos de tarjeta (categoría «Pago de tarjeta», marca de traslado o «Pago ...»).
+
+Tres casos al releer (`marcar`, junto a `corregir_pago.marcar`):
+1. Compra nueva (`faltante`) + ingreso ya importado que es la misma (misma cuenta, ±1 día, monto ±$1, comercio
+   parecido, emparejamiento 1:1) -> la línea pasa a `corregir_tipo`. Al importar se ACTUALIZA el mismo movimiento a gasto
+   (id, fecha, vínculos y huella se conservan; el saldo cambia en −2·monto; el ajuste inicial se recalcula). La
+   categoría solo cambia si era de ingreso, «Otros» o la había puesto la app; una elegida por la persona no se pisa.
+2. Ya están las dos (el ingreso viejo y la compra nueva importada como gasto) -> el ingreso viejo pasa a
+   `quitar_repetido` con `quita_por = "tipo"`: se borra con motivo «error» (sin fantasma), se revierte su saldo, y solo si
+   la compra buena sigue ahí.
+3. Extractos ya releídos donde esas compras quedaron como `faltante`: la siguiente relectura las convierte a
+   `corregir_tipo` (ya no se ofrecen como compras nuevas), porque `corregir_tipo` es reemplazable.
+Idempotente: un movimiento corregido ya no es ingreso. Sin columnas nuevas (todo vive en la revisión guardada).
+
+Dónde se aplica:
+- «Arreglar mis extractos de la tarjeta»: la vista previa suma `movimientos_a_corregir` y `correcciones` (por tarjeta:
+  cuántas y saldo antes/después, ya con lo que se mueve); es una estimación (ingresos importados por ese extracto que no
+  son pagos). El POST, tras mover y releer, aplica las correcciones en el mismo paso (`aplicar_en_historial`) y las
+  cuenta en `corregidos` / `repetidos_quitados`. También aplica las que una relectura automática ya había propuesto.
+- «Releer este extracto» y la relectura automática (modo «solo agregar»): solo PROPONEN (`corregir_tipo` cuenta como
+  corrección); la persona confirma en la hoja con «Revisar e importar». Si la lectura no suma el extracto, no se marca nada.
+- Importar (`POST /conciliacion/historial/{id}/importar`): `corregidos` incluye estas; `tipos_corregidos` las separa.
+Sube `VERSION_LECTOR` (v6) para que todos los extractos de tarjeta se relean una vez.

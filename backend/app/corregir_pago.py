@@ -29,7 +29,8 @@ from app.utiles import ahora_co
 
 CORREGIR = "corregir_monto"
 QUITAR = "quitar_repetido"
-ESTADOS_CORRECCION = (CORREGIR, QUITAR)
+CORREGIR_TIPO = "corregir_tipo"  # ingreso importado que era una compra (corregir_tipo.py)
+ESTADOS_CORRECCION = (CORREGIR, QUITAR, CORREGIR_TIPO)
 VENTANA_DIAS = 3
 TOL_MONTO = 0.5
 _CON_MOVIMIENTO = ("importado", "exacto", "aproximado", "completado")
@@ -118,7 +119,7 @@ def marcar(db: Session, usuario_id: str, cuenta_id: str, review: list[dict]) -> 
         f_nuevo = parse_bank_date(nuevo.get("fecha"))
         clave = normalize_texto(regla["descripcion"])
         for viejo in review:
-            if (viejo is nuevo or id(viejo) in confirmados or viejo.get("estado") not in ("importado", QUITAR)
+            if (viejo is nuevo or id(viejo) in confirmados or viejo.get("estado") not in ("importado", QUITAR) or viejo.get("quita_por") == "tipo"
                     or normalize_texto(viejo.get("descripcion") or "") != clave or viejo.get("tipo") != regla["tipo"]
                     or not _en(viejo.get("monto"), regla["montos"]) or _igual(viejo.get("monto"), nuevo.get("monto"))
                     or not _cerca(parse_bank_date(viejo.get("fecha")), f_nuevo)):
@@ -137,7 +138,7 @@ def marcar(db: Session, usuario_id: str, cuenta_id: str, review: list[dict]) -> 
                           "marcar_por_defecto": True, "corrige_lectura": regla})
             break
     for viejo in review:
-        if viejo.get("estado") == QUITAR and id(viejo) not in confirmados:
+        if viejo.get("estado") == QUITAR and viejo.get("quita_por") != "tipo" and id(viejo) not in confirmados:
             for k in ("monto_correcto", "corrige_lectura"):
                 viejo.pop(k, None)
             viejo["estado"] = "importado"

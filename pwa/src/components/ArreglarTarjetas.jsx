@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CreditCard } from 'lucide-react'
+import { CreditCard, Pencil } from 'lucide-react'
 import Hoja from './Hoja'
 import Icono from './Icono'
 import { api } from '../lib/api'
@@ -9,7 +9,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import { formatCOP } from '../lib/format'
 import { mensajeAmable } from '../lib/mensajes'
 import {
-  avisoExtracto, juntarResultados, lineaExtracto, lineaResultado, textoBoton, textoProgreso, textoSaldo,
+  avisoExtracto, juntarResultados, lineaExtracto, lineaResultado, textoBoton, textoCorreccionesTarjeta, textoProgreso, textoSaldo,
 } from '../lib/arreglarTarjetas'
 
 /**
@@ -105,7 +105,7 @@ export default function ArreglarTarjetas({ className = '', onListo, onRevisar })
               {!final && (
                 <>
                   <p className="text-sm text-ink-soft mt-1">
-                    Paso cada extracto a su tarjeta (si estaba en otra cuenta) y lo leo otra vez con el lector de hoy. No importo nada solo.
+                    Paso cada extracto a su tarjeta (si estaba en otra cuenta), lo leo otra vez con el lector de hoy y dejo como compras las que se guardaron como ingresos. No importo compras nuevas solo.
                   </p>
                   <ul className="mt-3 flex flex-col gap-2" data-testid="lista-arreglar">
                     {(previa?.extractos || []).map((e) => (
@@ -115,6 +115,12 @@ export default function ArreglarTarjetas({ className = '', onListo, onRevisar })
                       </li>
                     ))}
                   </ul>
+                  {textoCorreccionesTarjeta(previa, fmt) && (
+                    <p className="mt-3 flex items-start gap-2 rounded-2xl bg-accent-soft p-3 text-sm font-semibold text-accent" data-testid="correcciones-arreglar">
+                      <Icono icono={Pencil} tam="sm" className="mt-0.5" />
+                      <span>{textoCorreccionesTarjeta(previa, fmt)}</span>
+                    </p>
+                  )}
                   {(previa?.saldos?.por_cuenta || []).length > 0 && (
                     <div className="mt-3 rounded-2xl bg-paper p-3 text-sm" data-testid="saldos-arreglar">
                       <p className="font-semibold">Así quedan tus saldos</p>

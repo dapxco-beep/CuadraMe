@@ -373,6 +373,10 @@ def _movimiento(l: dict) -> dict | None:
         return None
     mov = {"fecha": l["fecha"], "descripcion": l["descripcion"], "monto": l["monto"], "referencia": "", "saldo": None,
            "tipo": "income" if t == PAGO else "expense", "linea_tipo": t}
+    if t != PAGO:
+        # El lector anterior no veía el signo y guardó estas líneas como ingreso. Regla EXPLÍCITA (corregir_tipo):
+        # si ya se importaron así, no se ofrecen como compra nueva: se corrige el tipo del movimiento que ya existe.
+        mov["corrige_tipo"] = {"de": "income", "a": "expense"}
     if t == COMPRA_EN_CUOTAS:
         mov["restante"] = l.get("restante")
         mov["valor_mes"] = l.get("valor_mes")

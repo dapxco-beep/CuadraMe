@@ -105,3 +105,14 @@ describe('pago de la tarjeta de Nu', () => {
     expect(screen.getByTestId('previo-correcciones')).toHaveTextContent('1 corrección')
   })
 })
+
+describe('corregir_tipo: compra que estaba como ingreso', () => {
+  it('se ofrece como corrección y el ingreso repetido se puede quitar', () => {
+    const base = { fecha: '2026-06-12', descripcion: 'Mercadopago', monto: 439900, tipo: 'expense', fingerprint: 'f1', marcar_por_defecto: true }
+    const it = normalizarPdf({ review: [{ ...base, estado: 'corregir_tipo', monto_anterior: 439900 }] }).items[0]
+    expect(it.estado).toBe('nuevo')
+    expect(textoCorreccion(it).titulo.replace(/\s/g, ' ')).toBe('Corrige: esta línea (Mercadopago, $439.900, 12 jun) estaba como ingreso y es una compra')
+    const rep = normalizarPdf({ review: [{ ...base, tipo: 'income', estado: 'quitar_repetido', quita_por: 'tipo', monto_correcto: 439900 }] }).items[0]
+    expect(textoCorreccion(rep).titulo.replace(/\s/g, ' ')).toBe('Quitar el ingreso repetido de $439.900')
+  })
+})

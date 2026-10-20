@@ -17,7 +17,7 @@ from app.autocat import (
 from app import duplicados as dup
 from app import cuadre_extracto
 from app import arreglar_tarjetas
-from app import corregir_pago
+from app import corregir_pago, corregir_tipo
 from app import reasignar_extracto
 from app import estado_traer
 from app.extractos_vista import clasificar_motivo
@@ -280,6 +280,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
 
     _confirmar_pagos_de_tarjeta(db, usuario.id, cuenta, banco, resultado["review"])
     corregir_pago.marcar(db, usuario.id, cuenta.id, resultado["review"])  # pago ya importado con la lectura vieja: se corrige, no se duplica
+    corregir_tipo.marcar(db, usuario.id, cuenta.id, resultado["review"])  # compra ya importada como ingreso: se corrige el tipo, no se duplica
 
     historial = HistorialExtracto(
         usuario_id=usuario.id,
@@ -689,7 +690,7 @@ def importar_faltantes(
     absorbidas = _absorbidas_por_otro_canal(
         db, usuario.id, cuenta, [i for i in review if i.get("fingerprint") in fingerprints and i.get("estado") == "faltante"])
 
-    corregidos = repetidos_quitados = 0
+    corregidos = repetidos_quitados = tipos_corregidos = 0
     fuera_de_la_revision: list[dict] = []  # líneas viejas que una corrección reemplaza o borra
     for item in review:
         fp = item.get("fingerprint")
@@ -708,6 +709,21 @@ def importar_faltantes(
             for k in ("corrige_movimiento_id", "monto_anterior"):  # el movimiento ya no está: es un pago normal
                 item.pop(k, None)
             item["estado"] = "faltante"
+        elif fp in fingerprints and item.get("estado") == corregir_pago.CORREGIR_TIPO:
+            # Compra que se importó como ingreso (corregir_tipo.py): el mismo movimiento pasa a gasto.
+            clase, quitar_de_aqui = corregir_tipo.aplicar_item(
+                db, usuario.id, cuenta, historial.id, item, review, _huella_linea(db, usuario.id, item), categorias_elegidas.get(fp))
+            if clase == "corregido":
+                fuera_de_la_revision += quitar_de_aqui
+                tipos_corregidos += 1
+                continue
+            # no se pudo (el movimiento cambió): sigue como compra nueva
+        elif fp in fingerprints and item.get("estado") == corregir_pago.QUITAR and item.get("quita_por") == "tipo":
+            clase, quitar_de_aqui = corregir_tipo.aplicar_item(db, usuario.id, cuenta, historial.id, item, review, None)
+            if clase == "quitado":
+                fuera_de_la_revision += quitar_de_aqui
+                repetidos_quitados += 1
+            continue
         elif fp in fingerprints and item.get("estado") == corregir_pago.QUITAR:
             if corregir_pago.quitar(db, usuario.id, cuenta, item):
                 fuera_de_la_revision.append(item)
@@ -832,7 +848,7 @@ def importar_faltantes(
         "anteriores_actualizados": anteriores_actualizados, "reglas_omitidas": reglas_omitidas,
         "duplicados_omitidos": duplicados_omitidos, "sin_direccion": sin_direccion,
         "anteriores_omitidas": anteriores_omitidas, "dudosas_omitidas": dudosas_omitidas,
-        "corregidos": corregidos, "repetidos_quitados": repetidos_quitados,
+        "corregidos": corregidos + tipos_corregidos, "tipos_corregidos": tipos_corregidos, "repetidos_quitados": repetidos_quitados,
     }
 
 
