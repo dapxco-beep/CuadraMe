@@ -498,6 +498,8 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             # Tarjeta de Nu: «Leí 17 líneas y suman lo que dice tu extracto ✓» (o lo que falta). None en los demás extractos.
             "mensaje_lectura": mejor["historial"].mensaje_lectura if mejor.get("historial") is not None else None,
             "lectura_completa": mejor["historial"].lectura_completa if mejor.get("historial") is not None else None,
+            # Tarjeta: «Corte 15 oct · Pago hasta 4 nov» (del resumen leído). None en los demás extractos.
+            "tarjeta_fechas": fe.detalle_tarjeta(mejor["historial"]) if mejor.get("historial") is not None and mejor["tipo"] == "tarjeta" else None,
             "acciones": _acciones(vista, mejor),
         }
         salida.append(_item(
@@ -550,6 +552,7 @@ def resumen_por_celda(extractos: list[dict]) -> dict[tuple[str, str], dict]:
         c["lista"].append({"id": x["id"], "titulo": x["titulo"], "estado_vista": x["estado_vista"],
                            "estado_etiqueta": x["estado_etiqueta"], "motivo_corto": x.get("motivo_corto"),
                            "historial_id": x.get("historial_id"), "extracto_id": x.get("extracto_id"),
+                           "tarjeta_fechas": x.get("tarjeta_fechas"),
                            "acciones": x.get("acciones") or []})
     return celdas
 

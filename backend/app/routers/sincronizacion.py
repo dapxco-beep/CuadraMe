@@ -302,6 +302,8 @@ def estado(
                 "en_otra_cuenta": en_otra_cuenta.get((c.id, clave), []),
                 # Los extractos de esta celda, con el mismo título y estado que en «Todos los extractos».
                 "lista": res["lista"] if res else [],
+                # Tarjeta: fechas del extracto de este mes («Corte 15 oct · Pago hasta 4 nov»); None si no hay.
+                "tarjeta_fechas": next((i["tarjeta_fechas"] for i in res["lista"] if i.get("tarjeta_fechas")), None) if res else None,
             })
         filas_cuentas.append({"id": c.id, "nombre": c.nombre, "icono": c.icono, "tipo": c.tipo or "ahorro", "meses": celdas})
 

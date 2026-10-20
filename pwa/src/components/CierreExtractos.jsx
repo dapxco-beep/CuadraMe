@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { AlertTriangle, CheckCircle2, ChevronDown, CircleDashed, Landmark, Scale, XCircle } from 'lucide-react'
+import { AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, CircleDashed, Landmark, Scale, XCircle } from 'lucide-react'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useCuentas } from '../lib/CuentasContext'
 import { mensajeAmable } from '../lib/mensajes'
+import { textoFechasTarjeta } from '../lib/fechasTarjeta'
 import { CLASE_OTRO, CONCEPTO_RESUMEN, conSigno, estadoCuenta, notaIncluye, origenEmpece, textoBanco, textoPeriodo } from '../lib/cierreExtractos'
 import { Accion, EnlaceInterno } from './CuadreEncadenado'
 import CambiarCuentaExtracto from './CambiarCuentaExtracto'
@@ -145,6 +146,12 @@ function BloqueCuenta({ c, mostrarNombre, onCambio }) {
         </div>
       )}
       {periodo && <p className="text-[11px] text-ink-soft mb-1">{periodo}</p>}
+      {c.tarjeta && c.tarjeta_fechas && textoFechasTarjeta(c.tarjeta_fechas) && (
+        <p className="text-xs text-ink-soft mb-1 flex items-center gap-1.5" data-testid="fechas-tarjeta">
+          <CalendarClock size={16} aria-hidden="true" className="shrink-0" />
+          <span>{textoFechasTarjeta(c.tarjeta_fechas)}</span>
+        </p>
+      )}
       {c.cuadre_desde?.texto && (
         <p className={`text-xs font-semibold mb-1 flex items-start gap-2 ${c.cuadre_desde.estado === 'cuadra' ? 'text-cuadra' : 'text-danger'}`}
           data-testid="cuadra-desde">

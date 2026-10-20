@@ -337,3 +337,14 @@ def test_reparar_fechas_de_una_persona_no_toca_a_otra(db):
     db.commit()
     assert recargar(db, ha).fecha_corte == "2026-10-15" and recargar(db, hb).fecha_corte == "2026-11-04"
     assert fe.revisar_fechas(db, b, hoy=HOY)["sin_fechas"] == []
+
+
+def test_la_lista_trae_el_corte_y_el_limite_de_pago_de_la_tarjeta(db):
+    u = uid()
+    t = cuenta(db, u)
+    h = historial(db, u, t, corte="2026-10-15", inicio="2026-09-14", resumen=RESUMEN, ini=-200000.0, fin=-408000.0)
+    correo(db, u, h, datetime(2026, 10, 15, 14, 0))
+    db.commit()
+    fila = next(f for f in estado_traer.lista_extractos(db, u) if f["historial_id"] == h.id)
+    assert fila["mes"] == "2026-10"
+    assert fila["tarjeta_fechas"] == {"corte": "2026-10-15", "limite_pago": "2026-11-04", "periodo_fin": "2026-10-14", "estimado": False}

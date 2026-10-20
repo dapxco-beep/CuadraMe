@@ -2,6 +2,7 @@ import { AlertTriangle, ArrowRightLeft, CalendarClock, Check, CircleDashed, Cred
 import Icono from './Icono'
 import { cuentasConExtracto, mesDeHoy, nombreCompleto, resumenMeses, tipoDeCuenta, vistaCelda } from '../lib/estadoPorCuenta'
 import { nombreMes } from '../lib/sincronizacion'
+import { textoCorte, textoFechasTarjeta } from '../lib/fechasTarjeta'
 
 // «Estado por cuenta y mes»: una tarjeta por cuenta con su nombre completo, qué tipo de cuenta es, cuántos meses
 // están completos y una fila de meses (los últimos 6, con scroll hacia los anteriores). Cada mes dice su estado con
@@ -24,11 +25,12 @@ function ChipMes({ cuenta, mes, celda, etiqueta, onMes }) {
   const v = vistaCelda(celda, { esMesActual: mes === mesDeHoy() })
   const e = ESTILO[v.clave] || ESTILO.falta_extracto
   const interactivo = v.accion !== 'ninguna'
+  const corte = textoCorte(celda?.tarjeta_fechas)
   const Etiqueta = interactivo ? 'button' : 'div'
   return (
     <Etiqueta
       {...(interactivo ? { type: 'button', onClick: () => onMes?.(cuenta, celda, v) } : {})}
-      aria-label={`${nombreCompleto(cuenta)}, ${nombreMes(mes)}: ${v.texto}${v.detalle ? `, ${v.detalle}` : ''}`}
+      aria-label={`${nombreCompleto(cuenta)}, ${nombreMes(mes)}: ${v.texto}${v.detalle ? `, ${v.detalle}` : ''}${corte ? `, ${corte}` : ''}`}
       data-testid={`mes-${cuenta.id}-${mes}`}
       data-estado={v.clave}
       className={`snap-start shrink-0 w-[104px] min-h-[76px] rounded-xl border px-2.5 py-2 text-left flex flex-col gap-0.5 ${e.caja}`}
@@ -39,6 +41,7 @@ function ChipMes({ cuenta, mes, celda, etiqueta, onMes }) {
         <span>{v.texto}</span>
       </span>
       {v.detalle && <span className="text-[11px] leading-tight text-ink-soft">{v.detalle}</span>}
+      {corte && <span className="text-[11px] leading-tight text-ink-soft">{corte}</span>}
     </Etiqueta>
   )
 }
@@ -54,6 +57,8 @@ export default function EstadoPorCuenta({ cuentas = [], meses = [], onMes, pieCr
         {lista.map((c) => {
           const vistas = (c.meses || []).map((celda) => vistaCelda(celda, { esMesActual: celda.mes === mesDeHoy() }))
           const Cuenta = ICONO_CUENTA[c.tipo] || Landmark
+          // Tarjeta: el corte y el límite de pago del extracto más reciente, bajo sus meses.
+          const ultimaConFechas = c.tipo === 'credito' ? [...(c.meses || [])].reverse().find((x) => x.tarjeta_fechas) : null
           return (
             <article key={c.id} className="rounded-2xl bg-paper-raised ring-1 ring-line/60 p-3.5" aria-label={nombreCompleto(c)} data-testid={`cuenta-${c.id}`}>
               <header className="flex items-start gap-2.5">
@@ -85,6 +90,12 @@ export default function EstadoPorCuenta({ cuentas = [], meses = [], onMes, pieCr
                   </div>
                 ))}
               </div>
+              {ultimaConFechas && (
+                <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-soft" data-testid={`fechas-tarjeta-${c.id}`}>
+                  <Icono icono={CalendarClock} tam="sm" />
+                  <span>{textoFechasTarjeta(ultimaConFechas.tarjeta_fechas)}</span>
+                </p>
+              )}
               {pieCredito && c.id === primeraTarjeta && <div className="mt-3">{pieCredito}</div>}
             </article>
           )
