@@ -17,6 +17,7 @@ from app.autocat import (
 from app import duplicados as dup
 from app import cuadre_extracto
 from app import arreglar_tarjetas
+from app import autoarreglo
 from app import corregir_pago, corregir_tipo
 from app import reasignar_extracto
 from app import estado_traer
@@ -103,7 +104,9 @@ def procesar_extracto(
     usuario: UsuarioActual = Depends(get_current_user),
 ):
     """Extracto que el usuario sube a mano desde su dispositivo."""
-    return _procesar_extracto(data, db, usuario, ORIGEN_MANUAL)
+    resultado = _procesar_extracto(data, db, usuario, ORIGEN_MANUAL)
+    autoarreglo.pedir(db, usuario.id)  # un extracto nuevo: la próxima apertura ordena las cuentas
+    return resultado
 
 
 def procesar_extracto_de_gmail(data: ProcesarExtractoRequest, db: Session, usuario: UsuarioActual):
@@ -1037,9 +1040,11 @@ def releer_extracto_guardado(
     verificar_limite(f"releer-extracto:{historial_id}", 1, 60, "Acabas de releer este extracto. Podrás hacerlo otra vez en {espera}.")
     verificar_limite(f"releer-extracto-usuario:{usuario.id}", 6, 3600, "Releíste muchos extractos seguidos. Podrás seguir en {espera}.")
     try:
-        return releer_extracto.releer_historial(db, usuario, h)
+        resultado = releer_extracto.releer_historial(db, usuario, h)
     except releer_extracto.ReleerError as e:
         raise HTTPException(status_code=e.estado, detail=e.mensaje)
+    autoarreglo.pedir(db, usuario.id)  # algo cambió: la próxima apertura ordena las cuentas sin esperar el intervalo
+    return resultado
 
 
 class ArreglarTarjetasIn(BaseModel):

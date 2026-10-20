@@ -24,6 +24,7 @@ from app.limites import verificar_limite
 from app.limites_diarios import consumir_cupo_diario
 from app.database import get_db
 from app import titulo as tit
+from app import autoarreglo
 from app import extractos_error
 from app import salud_autocuracion
 from app.compartidos import reclamar_estado
@@ -1038,6 +1039,7 @@ def sincronizar(
 
 PRESUPUESTO_CRON_SEGUNDOS = 45  # tiempo total por llamada; lo que falte sigue en la próxima (cursor)
 MAX_USUARIOS_POR_CRON = 40  # tope de usuarios por llamada (con 100+ usuarios se reparte en varias)
+MAX_AUTOARREGLO_POR_CRON = 10  # usuarios a los que el cron les ordena las cuentas (autoarreglo) por llamada
 CLAVE_INTENTO_CRON = "gmail_cron_intento"  # marca por usuario con el último intento del cron
 _reloj = time.monotonic  # se puede sustituir en pruebas
 
@@ -1081,7 +1083,7 @@ def cron_sincronizar(db: Session = Depends(get_db), x_cron_secret: str = Header(
     perfiles.sort(key=lambda p: (intentos.get(p.usuario_id, ""), ultimas.get(p.usuario_id) or datetime.min, p.usuario_id))
 
     corrida = Corrida(db)
-    nuevos = sin_consentimiento = desconectados = avisados = apagados = 0
+    nuevos = sin_consentimiento = desconectados = avisados = apagados = ordenados = 0
     pendientes_por_tiempo = 0
     for i, perfil in enumerate(perfiles):
         # Dos topes: tiempo total y usuarios por llamada. Lo que falte sigue en la próxima
@@ -1113,6 +1115,11 @@ def cron_sincronizar(db: Session = Depends(get_db), x_cron_secret: str = Header(
             # Autocuración (una vez al día por persona): si hay clave del PDF, los extractos que fallaron por
             # clave se reintentan solos. Nunca lanza ni frena la lectura.
             salud_autocuracion.reintento_diario(db, uid, perfil.gmail_email or "")
+            # Autoarreglo (docs/AUTOARREGLO.md): con la lectura de extractos activada, un tramo acotado del orden
+            # automático. Tiene su candado por usuario, sus límites de relectura y nunca lanza.
+            if ordenados < MAX_AUTOARREGLO_POR_CRON and perfil.gmail_leer_extractos is not False:
+                ordenados += 1
+                autoarreglo.correr_seguro(db, uid, origen="cron")
             if movs or exts:
                 nuevos += movs + exts
                 try:
@@ -1124,7 +1131,7 @@ def cron_sincronizar(db: Session = Depends(get_db), x_cron_secret: str = Header(
     return {
         "ok": True, **corrida.resumen(), "nuevos": nuevos, "avisados": avisados,
         "sin_consentimiento": sin_consentimiento, "desconectados": desconectados, "apagados": apagados,
-        "pendientes_por_tiempo": pendientes_por_tiempo,
+        "ordenados": ordenados, "pendientes_por_tiempo": pendientes_por_tiempo,
     }
 
 

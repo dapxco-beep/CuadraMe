@@ -645,6 +645,11 @@ export const api = {
   quitarHistorialError: (id) => request(`/conciliacion/historial/${id}/error`, { method: 'DELETE' }),
   releerExtracto: (historialId) => request(`/conciliacion/historial/${historialId}/releer`, { method: 'POST' }),
   releerPendientes: () => request('/conciliacion/releer-pendientes', { method: 'POST' }),
+  // Autoarreglo (docs/AUTOARREGLO.md): la app ordena sola las cuentas. `correr` hace un tramo y dice si queda más
+  // ('trabajando'); `lotes` es lo que hizo; `deshacer` revierte un lote completo.
+  correrAutoarreglo: () => request('/autoarreglo/correr', { method: 'POST', sinCache: true }),
+  lotesAutoarreglo: () => request('/autoarreglo/lotes', { sinCache: true }),
+  deshacerLoteAutoarreglo: (lote) => request(`/autoarreglo/lotes/${encodeURIComponent(lote)}/deshacer`, { method: 'POST' }),
   // Salud de datos (ver docs/SALUD_DE_DATOS.md): hallazgos de la persona y «Crear tu cuenta de tarjeta».
   salud: () => request('/salud'),
   saludCrearTarjeta: (banco) => request('/salud/crear-tarjeta', { method: 'POST', body: { banco } }),

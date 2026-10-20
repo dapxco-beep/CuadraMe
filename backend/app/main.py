@@ -18,6 +18,7 @@ from app import models_pendientes  # noqa: F401  (registra comercios_silenciados
 from app import models_comentarios  # noqa: F401  (registra la tabla comentarios para create_all)
 from app import models_rendimientos  # noqa: F401  (registra cajitas y tasas_referencia para create_all)
 from app import models_avisos  # noqa: F401  (registra eventos_actividad y ajustes_avisos para create_all)
+from app import models_autoarreglo  # noqa: F401  (registra arreglos_auto para create_all)
 from app import avisos as avisos_servicio  # noqa: F401  (registra la tabla eventos_actividad y los ganchos de activación)
 from app.routers import (
     ahorcado,
@@ -197,6 +198,9 @@ app.include_router(reglas_correo_router.router)
 from app.routers import formas_asunto as formas_asunto_router  # noqa: E402
 
 app.include_router(formas_asunto_router.router)
+from app.routers import autoarreglo as autoarreglo_router  # noqa: E402
+
+app.include_router(autoarreglo_router.router)
 
 
 @app.get("/health")

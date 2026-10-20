@@ -81,6 +81,20 @@ Antes de un despliegue que cambie la base de datos o variables nuevas, revisa `d
   ruta: `git worktree add ..\wt-x -b rama main` y una *junction* de `pwa\node_modules` hacia el repo principal.
   Antes de desplegar mira `git log`: otras sesiones también commitean en `main`.
 - **Pruebas de rendimiento** pueden fallar por carga si corren dos suites a la vez: repite solas.
+- **El autoarreglo no avanza o hizo algo raro** (`docs/AUTOARREGLO.md`). Qué mirar, en orden:
+  1. `POST /autoarreglo/correr` responde `ocupado: true` siempre: hay un candado colgado. Fila `autoarreglo_candado` en
+     `marcas_cron` del usuario; se reemplaza solo a los 10 minutos, o bórrala si el proceso murió.
+  2. Responde `pausado: true`: la persona deshizo un lote hace menos de 24 h (`autoarreglo_pausa`). Es a propósito.
+  3. `limite_alcanzado: true` o 429: se gastó el cupo por hora (24 lecturas / 60 llamadas); sigue solo en una hora.
+  4. Un paso con `estado: 'fallo'` en `pasos`: mira en los logs `Autoarreglo: falló el paso <x> (usuario <id8>)`; los
+     demás pasos sí corrieron. Un extracto de tarjeta que no se toca sale en `decisiones` como `tarjeta_sin_verificar`
+     (lectura que no cuadra con el resumen) o `varias_tarjetas` (más de una candidata): no es un fallo.
+  5. Para ver qué cambió: `GET /autoarreglo/lotes` (o la tabla `arreglos_auto` por `usuario_id` y `lote_id`).
+     Deshacer: `POST /autoarreglo/lotes/{lote}/deshacer`; un 409 significa que algo posterior tocó lo mismo (se explica
+     solo en el mensaje) y no se cambió nada.
+  6. El cron de correos devuelve `ordenados` (usuarios a los que corrió el autoarreglo en esa llamada, máx. 10).
+  7. Al desplegar la migración `0010_arreglos_auto`, sumarla a `DESPLEGADAS` de
+     `tests/casos_reales/test_caso_10_11_12_operacion.py` (ver «Migraciones inmutables»).
 
 ## 5. Crons de cron-job.org (los crea el dueño)
 

@@ -179,6 +179,18 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'ALTER TABLE historial_extractos ADD COLUMN IF NOT EXISTS lectura_json VARCHAR NULL',
         ],
     ),
+    (
+        # Registro del autoarreglo (docs/AUTOARREGLO.md): qué cambió solo, por lote, para mostrarlo y deshacerlo.
+        "0010_arreglos_auto",
+        [
+            'CREATE TABLE IF NOT EXISTS arreglos_auto ('
+            'id VARCHAR PRIMARY KEY, usuario_id VARCHAR NOT NULL, lote_id VARCHAR NOT NULL, tipo VARCHAR NOT NULL, '
+            'entidad_id VARCHAR NULL, antes TEXT NULL, despues TEXT NULL, creado_en TIMESTAMP NOT NULL, '
+            'revertido_en TIMESTAMP NULL)',
+            'CREATE INDEX IF NOT EXISTS ix_arreglos_auto_usuario ON arreglos_auto (usuario_id)',
+            'CREATE INDEX IF NOT EXISTS ix_arreglos_auto_usuario_lote ON arreglos_auto (usuario_id, lote_id)',
+        ],
+    ),
 ]
 
 
