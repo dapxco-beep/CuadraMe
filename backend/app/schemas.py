@@ -992,6 +992,12 @@ class MovimientoReview(BaseModel):
     corrige_movimiento_id: Optional[str] = None  # corregir_monto: el movimiento que se actualiza
     monto_anterior: Optional[float] = None  # corregir_monto: el monto con que quedó importado
     monto_correcto: Optional[float] = None  # quitar_repetido: el monto del pago bueno que ya está
+    # Corrección de tipo (corregir_tipo.py): una compra de tarjeta que se importó como ingreso.
+    corrige_tipo: Optional[dict] = None  # {de: income, a: expense}: lo declara el lector de tarjeta
+    tipo_anterior: Optional[str] = None  # corregir_tipo: cómo quedó importado el movimiento
+    quita_por: Optional[str] = None  # quitar_repetido: "tipo" = es el ingreso repetido de una compra
+    nuevo_movimiento_id: Optional[str] = None  # quitar_repetido por tipo: la compra buena que ya está
+    corregido: bool = False
 
 
 class ProcesarExtractoResponse(BaseModel):

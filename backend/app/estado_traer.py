@@ -79,7 +79,7 @@ def contar_review(review: list[dict]) -> dict:
             c["por_revisar"] += 1
             if i.get("lectura_dudosa"):
                 c["lectura_dudosa"] += 1  # trae varios montos: no se importa hasta que la persona elige
-        elif est in ("corregir_monto", "quitar_repetido"):
+        elif est in ("corregir_monto", "quitar_repetido", "corregir_tipo"):
             c["por_revisar"] += 1  # corrige un movimiento ya importado con la lectura vieja (corregir_pago.py)
             c["correcciones"] += 1
         elif est == "borrado_antes":
