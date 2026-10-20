@@ -30,6 +30,7 @@ from app import extractos_error
 from app import releer_extracto
 from app import rendimientos_extracto
 from app.extractos_tarjeta_nu import datos_de_lectura, es_extracto_tarjeta_nu, leer_extracto_tarjeta_nu
+from app.fechas_extracto import fechas_del_resumen
 from app.compartidos import cuenta_accesible, puede_editar_cuenta, reclamar_estado
 from app.conciliacion import (
     es_transferencia_propia,
@@ -469,6 +470,12 @@ def _saldos_del_extracto(cuenta, texto: str, movimientos: list[dict]) -> dict | 
                                                       datos_tarjeta=leer_datos_tarjeta(texto) if credito else None)
         if saldos:
             saldos["cadena_ok"] = cuadre_extracto.cadena_coincide(saldos, movimientos)
+            if credito and es_extracto_tarjeta_nu(texto):  # el corte y el periodo salen del resumen (NUNCA la fecha límite de pago)
+                f = fechas_del_resumen(leer_extracto_tarjeta_nu(texto)["resumen_tarjeta"])
+                if f:
+                    saldos["fecha_corte"] = f["fecha_corte"]
+                    if f["periodo_inicio"]:
+                        saldos["periodo_inicio"] = f["periodo_inicio"]
             if not saldos.get("periodo_inicio") or not saldos.get("fecha_corte"):
                 fechas = [d for d in (parse_bank_date(m.get("fecha")) for m in movimientos) if d]
                 if fechas:

@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session
 
 from app import extractos_error
 from app import extractos_vista as ev
+from app import fechas_extracto as fe
 
 AL_DIA = "al_dia"
 POR_REVISAR = "por_revisar"
@@ -278,6 +279,12 @@ def _banco_de(e) -> str:
 def mes_de_correo(e, h=None) -> dict:
     """Mes deducido de un extracto de Gmail (ver app/extractos_vista.py: periodo, asunto, archivo, líneas,
     recepción). `h` = su historial, si ya se leyó. Lo usan la lista y la cobertura: así dicen el mismo mes."""
+    if h is not None:  # tarjeta: el extracto es del mes de su fecha de corte (no del mes del límite de pago)
+        tarjeta = fe.es_de_tarjeta_h(h, None) or ev.tipo_de_extracto(None, e.asunto or "", e.archivo or "") == "tarjeta"
+        mes = fe.mes_de_corte(h) if tarjeta else None
+        if mes:
+            est = fe.es_estimada(h)  # corte estimado con la fecha del correo: es una suposición, no se guarda como periodo
+            return {"mes": mes, "fuente": ev.FUENTE_RECEPCION if est else ev.FUENTE_CORTE, "deducido": est}
     return ev.deducir_periodo(
         periodo=e.periodo or "", asunto=e.asunto or "", archivo=e.archivo or "", recibido_en=e.recibido_en,
         mes_lineas=_mes_de_historial(h) if h is not None else None, banco=_banco_de(e), remitente=e.remitente or "")
@@ -379,14 +386,14 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
         ))
     # Subidas a mano (sin extracto de correo detrás).
     for h in historiales.values():
-        if h.id in usados or h.estado not in ("conciliado", "pendiente_revision", "error"):
+        if h.id in usados or h.estado not in ("conciliado", "pendiente_revision", "error") or fe.es_duplicado(h):
             continue
         cuenta = cuentas.get(h.cuenta_id)
         if cuenta is None:
             continue
         conteo = conteo_de_historial(h)
         estado = estado_de_conteo(conteo, h.estado)
-        mes_h = _mes_de_historial(h)
+        mes_h = fe.mes_de_extracto(h, cuenta) or _mes_de_historial(h)
         crudos.append(dict(
             clave=f"h:{h.id}", extracto_id=None, historial_id=h.id, cuenta_id=h.cuenta_id, cuenta=cuenta.nombre,
             banco=(h.banco_detectado or "").replace("archivo: ", ""), periodo="", mes=mes_h,
@@ -491,6 +498,8 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             # Tarjeta de Nu: «Leí 17 líneas y suman lo que dice tu extracto ✓» (o lo que falta). None en los demás extractos.
             "mensaje_lectura": mejor["historial"].mensaje_lectura if mejor.get("historial") is not None else None,
             "lectura_completa": mejor["historial"].lectura_completa if mejor.get("historial") is not None else None,
+            # Tarjeta: «Corte 15 oct · Pago hasta 4 nov» (del resumen leído). None en los demás extractos.
+            "tarjeta_fechas": fe.detalle_tarjeta(mejor["historial"]) if mejor.get("historial") is not None and mejor["tipo"] == "tarjeta" else None,
             "acciones": _acciones(vista, mejor),
         }
         salida.append(_item(
@@ -543,6 +552,7 @@ def resumen_por_celda(extractos: list[dict]) -> dict[tuple[str, str], dict]:
         c["lista"].append({"id": x["id"], "titulo": x["titulo"], "estado_vista": x["estado_vista"],
                            "estado_etiqueta": x["estado_etiqueta"], "motivo_corto": x.get("motivo_corto"),
                            "historial_id": x.get("historial_id"), "extracto_id": x.get("extracto_id"),
+                           "tarjeta_fechas": x.get("tarjeta_fechas"),
                            "acciones": x.get("acciones") or []})
     return celdas
 
@@ -589,7 +599,7 @@ def origen_de_historial(db: Session, usuario_id: str, h) -> dict:
     e = (db.query(ExtractoCorreo).filter(ExtractoCorreo.usuario_id == usuario_id, ExtractoCorreo.historial_id == h.id)
          .order_by(ExtractoCorreo.recibido_en.desc()).first())
     cuenta = db.query(Cuenta).filter(Cuenta.id == h.cuenta_id, Cuenta.usuario_id == usuario_id).first()
-    mes = mes_de_correo(e, h)["mes"] if e is not None else _mes_de_historial(h)
+    mes = mes_de_correo(e, h)["mes"] if e is not None else (fe.mes_de_extracto(h, cuenta) or _mes_de_historial(h))
     tipo = ev.tipo_de_extracto(cuenta.tipo if cuenta else None)
     tipo_texto = ev.tipo_de_extracto(None, e.asunto or "", e.archivo or "") if e is not None else ""
     tipo_titulo = tipo_texto if tipo_texto and tipo and tipo_texto != tipo else tipo

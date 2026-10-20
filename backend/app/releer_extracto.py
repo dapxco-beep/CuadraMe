@@ -38,14 +38,14 @@ from app.extractos_tarjeta_nu import datos_de_lectura, es_extracto_tarjeta_nu, l
 from app.conciliacion import parse_bank_date, parse_texto_con_regex, fijar_nombre_titular, huella_de_linea
 from app.crons import liberar_marca, reclamar_marca
 from app.extractos_gmail import abrir_pdf, claves_candidatas, descargar_adjunto, listar_adjuntos_pdf
-from app import corregir_pago, corregir_tipo
+from app import corregir_pago, corregir_tipo, fechas_extracto
 from app import duplicados as dup
 from app.cuentas_banco import CREDITO, producto_de_texto
 from app.models import ExtractoCorreo, HistorialExtracto, Cuenta
 
 logger = logging.getLogger(__name__)
 
-VERSION_LECTOR = "2026-10-v6-corregir-tipo"  # súbela cuando el lector de extractos mejore y valga la pena releer
+VERSION_LECTOR = "2026-10-v7-fechas-de-tarjeta"  # súbela cuando el lector de extractos mejore y valga la pena releer
 PREFIJO = "releer_extracto:"
 MAXIMO_AUTOMATICO = 3  # PDFs por apertura de «Traer movimientos»
 
@@ -327,6 +327,8 @@ def releer_historial(db: Session, usuario, h: HistorialExtracto, gmail=None, sol
             saldos = _saldos_del_extracto(cuenta, texto, nuevas)
             if saldos and (saldos.get("saldo_final") is not None or saldos.get("saldo_inicial") is not None):
                 cuadre_extracto.guardar_saldos(h, saldos)
+        if lectura_hoy is not None:  # las fechas del extracto salen del resumen del PDF (corte, no límite de pago)
+            fechas_extracto.aplicar_resumen(h, lectura_hoy.get("resumen_tarjeta"))
         db.commit()
         try:  # releer puede traer un saldo inicial distinto: el ajuste inicial se recalcula
             saldo_inicial_auto.refrescar_de_usuario(db, usuario.id, [h.cuenta_id])
@@ -375,6 +377,11 @@ def releer_pendientes(db: Session, usuario, maximo: int = MAXIMO_AUTOMATICO) -> 
     Nunca lanza; si falla, libera la marca para reintentar."""
     out = {"releidos": 0, "cambiados": 0, "pendientes": 0}
     try:
+        try:  # fechas de tarjeta que ya se pueden arreglar con lo guardado (sin Gmail)
+            if fechas_extracto.completar_fechas(db, usuario.id):
+                db.commit()
+        except Exception:  # noqa: BLE001 - un extra: no estorba a la relectura
+            db.rollback()
         hist = (db.query(HistorialExtracto)
                 .filter(HistorialExtracto.usuario_id == usuario.id, HistorialExtracto.estado == "pendiente_revision")
                 .order_by(HistorialExtracto.creado_en.desc()).all())

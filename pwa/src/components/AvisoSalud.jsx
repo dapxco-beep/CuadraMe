@@ -23,6 +23,7 @@ const RUTA_DE_ACCION = {
   ver_descartados: '/correos',
   revisar_conexion: '/conexiones',
   sincronizar: '/sincronizacion',
+  ver_extractos: '/sincronizacion',
   guardar_clave: '/conexiones',
 }
 

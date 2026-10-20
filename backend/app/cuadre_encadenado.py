@@ -27,6 +27,7 @@ from itertools import combinations
 from sqlalchemy.orm import Session
 
 from app import cuadre_extracto as cx
+from app import fechas_extracto as fe
 from app.contabilidad import delta_saldo
 from app.models import Cuenta, HistorialExtracto
 from app.utiles import ahora_co
@@ -102,6 +103,8 @@ def _extractos_con_saldo(db: Session, cuenta_id: str) -> tuple[list[HistorialExt
     con: dict[str, HistorialExtracto] = {}
     sin: list[HistorialExtracto] = []
     for h in hist:
+        if fe.es_duplicado(h):
+            continue  # subido dos veces: el repetido no cuenta (no se toca nada de lo importado)
         f = cx.a_fecha(h.fecha_corte)
         if h.saldo_final_extracto is not None and f:
             con[_clave(f)] = h
@@ -186,7 +189,7 @@ def calcular(db: Session, cuenta: Cuenta, inicio_pp: datetime | None = None, *, 
 
     por_leer = releer_saldos.pendientes_por_historial(db, cuenta.usuario_id) if sin else set()
     for h in sin:
-        mes = estado_traer._mes_de_historial(h)
+        mes = fe.mes_de_extracto(h, cuenta) or estado_traer._mes_de_historial(h)
         lineas = [cx.a_fecha(i.get("fecha")) for i in _review(h) if i.get("estado") != "sobrante"]
         ultima = max((x for x in lineas if x), default=None)
         base["sin_saldo"].append({
@@ -257,7 +260,7 @@ def calcular(db: Session, cuenta: Cuenta, inicio_pp: datetime | None = None, *, 
             "app_inicial": round(app_ini, 2), "app_final": round(app_fin, 2), "app_cambio": round(app_cambio, 2),
             "diferencia": dif, "arrastre": arrastre, "acumulada": round(arrastre + dif, 2),
             "cadena_rota": cadena_rota, "sin_saldo_inicial": sin_ini, "causas": [], "acciones": [],
-            "saldos_origen": h.saldos_origen,
+            "saldos_origen": h.saldos_origen, "tarjeta_fechas": fe.detalle_tarjeta(h) if cuenta.tipo == "credito" else None,
         }
         # Causas del mes.
         if abs(dif) >= TOL:
