@@ -35,7 +35,7 @@ from app.utiles import ahora_co
 
 CORREGIR_TIPO = corregir_pago.CORREGIR_TIPO
 QUITAR = corregir_pago.QUITAR
-TIPOS_DE_COMPRA = ("compra", "compra_en_cuotas", "cuota_manejo", "comision")
+TIPOS_DE_COMPRA = ("compra", "compra_en_cuotas", "cuota_manejo", "comision", "avance", "comision_servicio")
 TOL_MONTO = 1.0
 VENTANA_DIAS = 1
 SIMILITUD_MINIMA = 0.75

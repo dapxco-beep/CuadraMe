@@ -179,11 +179,14 @@ def test_una_linea_borrada_no_cuadra_y_dice_cuanto_falta():
     assert c.parse_texto_con_regex(texto)[1] == 1
 
 
-def test_una_cuota_de_manejo_borrada_tambien_se_nota():
+def test_una_cuota_de_manejo_sin_linea_se_completa_desde_el_resumen():
+    """Formato viejo (julio): el resumen trae la cuota de manejo y la tabla no la lista. Se agrega UNA línea por la diferencia."""
     texto = FIXTURE.replace("15 SEP 2026 Cobro por cuota $10.000,00 - $10.000,00 - - $10.000,00\nde manejo\n", "")
     r = _lineas(texto)
-    assert not r["lectura_completa"]
-    assert not next(v for v in r["verificacion"] if v["clave"] == "cuota_manejo")["cuadra"]
+    extra = [l for l in r["lineas"] if l.get("desde_resumen")]
+    assert len(extra) == 1 and extra[0]["tipo_linea"] == nu.CUOTA_MANEJO and extra[0]["monto"] == 10_000.0
+    assert extra[0]["fecha"] == "2026-10-15"  # el día del corte
+    assert next(v for v in r["verificacion"] if v["clave"] == "cuota_manejo")["cuadra"]
 
 
 def test_un_pago_cuyas_partes_no_suman_a_no_cuadra():
