@@ -357,6 +357,11 @@ def cuadre_por_cuenta(db: Session, usuario_id: str) -> list[dict]:
             continue
         con = [f for f in r.get("meses", []) if f.get("historial_id")]
         base = {"cuenta_id": c.id, "cuenta": c.nombre, "meses": len(con), "ruta": RUTA_CUADRE}
+        if c.tipo == "credito":
+            # Cada corte: ¿«debo al corte» (calculado) = «usado» del extracto?, y desde qué mes cuadra todo.
+            base["cortes"] = [{"mes": f["mes"], "cuadra": bool(f.get("tarjeta", {}).get("cuadra")),
+                               "diferencia": f.get("tarjeta", {}).get("diferencia")} for f in con if f.get("tarjeta")]
+            base["desde"] = r.get("desde")
         if not con:
             continue
         malos = [f for f in con if f["estado"] in ce._MALOS]

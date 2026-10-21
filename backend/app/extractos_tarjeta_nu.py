@@ -43,10 +43,15 @@ PAGO = "pago"
 COMISION = "comision"
 CUOTA_DE_COMPRA_ANTERIOR = "cuota_de_compra_anterior"
 INTERESES = "intereses"
+AVANCE = "avance"  # «Cuota por avance a cuenta»: el dinero llegó a TU cuenta de ahorros (traslado propio)
+COMISION_SERVICIO = "comision_servicio"
 
 DESCRIPCION_PAGO = "Pago de tu tarjeta"
 DESCRIPCION_CUOTA_MANEJO = "Cobro por cuota de manejo"
 DESCRIPCION_INTERESES = "Intereses de tu tarjeta"
+DESCRIPCION_COMISION_SERVICIO = "Comisión por servicio de avance"
+DESCRIPCION_AVANCE = "Cuota por avance a cuenta"  # igual que la guardó el lector anterior (compra): así se reconoce lo ya importado
+DESCRIPCION_GRACIAS = "Gracias por tu pago"  # como la guardó el lector anterior
 AVISO_PAGO = "Parece el pago de tu tarjeta. Confirma el monto."
 # Descripciones con las que el lector ANTERIOR guardó lo que ya se importó (para no duplicarlo al releer).
 _DESC_ANTERIOR_MANEJO = "Cobro por cuota"
@@ -62,7 +67,9 @@ _RE_CUOTAS = re.compile(r"\b(\d+)\s+de\s+(\d+)\b", re.IGNORECASE)
 _RE_FLECHA = re.compile(r"[↪↳⮡]")
 # Formatos viejos (may-ago): lo que se reconoce SIN adivinar. Una línea que empieza por «Pago»/«Abono» es un pago; la cuota de
 # manejo viene como «Cobro por cuota» (+ «de manejo» en la línea siguiente o no), «Cuota de manejo» o «Cargo por cuota».
-_RE_PAGO = re.compile(r"^(?:pago|abono)s?\b", re.IGNORECASE)
+_RE_PAGO = re.compile(r"^(?:(?:pago|abono)s?\b|gracias\s+por\s+tu\s+pago\b)", re.IGNORECASE)
+_RE_GRACIAS = re.compile(r"^gracias\s+por\s+tu\s+pago\b", re.IGNORECASE)
+_RE_AVANCE = re.compile(r"^cuota\s+por\s+avance\b", re.IGNORECASE)
 _RE_MANEJO = re.compile(r"^(?:(?:cobro|cargo)\s+(?:por\s+|de\s+)?(?:cuota|manejo)\b|cuota\s+(?:de\s+)?manejo\b)", re.IGNORECASE)
 _RE_INTERES = re.compile(r"^inter[eé]s(?:es)?\b", re.IGNORECASE)
 _RE_SECCION_ABONOS = re.compile(r"^\s*(?:abonos?|pagos?\s+y\s+abonos?|pagos?\s+recibidos?|abonos?\s+y\s+pagos?)\s*:?\s*$", re.IGNORECASE)
@@ -271,6 +278,9 @@ def _linea_de_fila(f: dict, corte: date | None, inicio_periodo: date | None) -> 
     cola = f["cola"]
     nmontos = _montos(cola)
     base = {"fecha": fecha.isoformat() if fecha else None, "descripcion": desc, "orden": f["orden"]}
+    if fecha and not desc and len(nmontos) >= 5 and nmontos[2] >= 1:
+        # «15 JUL 2026 $0,00 $0,00 2.07% $I $I $0,00»: sin descripción, solo las columnas de interés = el cobro de intereses
+        return [{**base, "descripcion": DESCRIPCION_INTERESES, "tipo_linea": INTERESES, "monto": nmontos[2], "valor": nmontos[2]}]
     if not fecha or not desc or not nmontos:
         return []
     salida: list[dict] = []
@@ -284,7 +294,23 @@ def _linea_de_fila(f: dict, corte: date | None, inicio_periodo: date | None) -> 
         cargos = _sub(f["subs"], r"\bcargos\b")
         salida.append({**base, "tipo_linea": PAGO, "descripcion": DESCRIPCION_PAGO, "monto": a, "valor": a,
                        "aplicado": [v for v in (b, c) if v is not None],
-                       "detalle": {"capital": capital, "intereses": intereses, "cargos": cargos}})
+                       "detalle": {"capital": capital, "intereses": intereses, "cargos": cargos},
+                       **({"descripcion_leida": DESCRIPCION_GRACIAS} if _RE_GRACIAS.match(desc) else {})})
+        return salida
+
+    if _RE_AVANCE.match(desc):
+        # Cuota por avance a cuenta  V  1 de 1  V  2.07%  I  T  0  (+ «↪ Comisión por servicio C»), con T = V + C + I.
+        v = nmontos[0]
+        ci = nmontos[2] if len(nmontos) >= 5 else 0.0
+        total = nmontos[3] if len(nmontos) >= 5 else (nmontos[-2] if len(nmontos) >= 3 else None)
+        com = _sub(f["subs"], r"comision por servicio") or 0.0
+        salida.append({**base, "tipo_linea": AVANCE, "descripcion": DESCRIPCION_AVANCE, "monto": v, "valor": v, "total_mes": total,
+                       "total_sin_extras": v, "interes": ci, "comision": com, "restante": nmontos[4] if len(nmontos) >= 5 else 0.0})
+        if com >= 1:
+            salida.append({**base, "tipo_linea": COMISION_SERVICIO, "descripcion": DESCRIPCION_COMISION_SERVICIO, "monto": com, "valor": com})
+        if ci >= 1:
+            salida.append({**base, "fecha": corte.isoformat() if corte else base["fecha"], "tipo_linea": INTERESES,
+                           "descripcion": DESCRIPCION_INTERESES, "monto": ci, "valor": ci})
         return salida
 
     if _RE_INTERES.match(desc):
@@ -332,12 +358,23 @@ def verificar(lineas: list[dict], resumen: dict) -> list[dict]:
     """Comprobaciones entre lo leído y lo que dice el resumen del propio extracto."""
     out: list[dict | None] = []
     filas_total = [l for l in lineas if l["tipo_linea"] in (COMPRA, COMPRA_EN_CUOTAS, CUOTA_DE_COMPRA_ANTERIOR)]
-    sin_total = [l for l in filas_total if l.get("total_mes") is None]
+    avances = [l for l in lineas if l["tipo_linea"] == AVANCE]
+    sin_total = [l for l in filas_total + avances if l.get("total_mes") is None]
     suma_total = sum(l["total_mes"] for l in filas_total if l.get("total_mes") is not None)
-    c = _comprobacion("total_a_pagar", "Total a pagar este mes", suma_total, resumen.get("deuda_a_pagar"))
+    # El «total a pagar» de un avance trae su comisión y sus intereses (T = V + C + I); el resumen puede contarlos aparte (V)
+    # o dentro (T). Se acepta cualquiera de las dos lecturas, solo si la suma cuadra EXACTO con una.
+    suma_con_t = suma_total + sum(l["total_mes"] for l in avances if l.get("total_mes") is not None)
+    suma_con_v = suma_total + sum(l["monto"] for l in avances)
+    esperado = resumen.get("deuda_a_pagar")
+    suma_total = suma_con_t if esperado is not None and abs(suma_con_t - esperado) < abs(suma_con_v - esperado) else suma_con_v
+    c = _comprobacion("total_a_pagar", "Total a pagar este mes", suma_total, esperado)
     if c and sin_total:  # una fila no se pudo leer completa: no se puede dar por buena la suma
         c["cuadra"] = False
     out.append(c)
+    # Fórmula maestra (observada en los extractos reales): usado = a pagar + restante + manejo + conversión + intereses
+    # + comisiones de servicio y de avance − abonaste. Solo se usa si el propio RESUMEN la cumple (si no, esa relación no
+    # vale para este formato). Entonces cada término se rearma desde las LÍNEAS y se compara con `usado`.
+    out.append(_formula_maestra(lineas, resumen, suma_total))
     manejo = [l for l in lineas if l["tipo_linea"] == CUOTA_MANEJO]
     out.append(_comprobacion("cuota_manejo", "Cuota de manejo", sum(l["monto"] for l in manejo), resumen.get("cuota_manejo")))
     out.append(_comprobacion("deuda_restante", "Restante por pagar", sum(l.get("restante") or 0 for l in filas_total),
@@ -356,6 +393,24 @@ def verificar(lineas: list[dict], resumen: dict) -> list[dict]:
     com = sum(l["monto"] for l in lineas if l["tipo_linea"] == COMISION)
     out.append(_comprobacion("cargos_conversion", "Cargos por conversión", com, resumen.get("cargos_conversion"), critica=False))
     return [c for c in out if c]
+
+
+def _formula_maestra(lineas: list[dict], resumen: dict, suma_total: float) -> dict | None:
+    usado = resumen.get("usado")
+    a_pagar, restante = resumen.get("deuda_a_pagar"), resumen.get("deuda_restante")
+    if usado is None or a_pagar is None or restante is None:
+        return None
+    n = lambda k: resumen.get(k) or 0.0  # noqa: E731
+    abonaste = n("abonaste")
+    del_resumen = (a_pagar + restante + n("cuota_manejo") + n("cargos_conversion") + n("intereses") + n("comisiones_servicio")
+                   + n("comisiones_avances") - abonaste)
+    if abs(del_resumen - usado) > TOLERANCIA:
+        return None  # el resumen no cumple la relación: no se exige
+    def suma(tipo):  # noqa: E306
+        return sum(l["monto"] for l in lineas if l["tipo_linea"] == tipo)
+    por_lineas = (suma_total + sum(l.get("restante") or 0 for l in lineas if l["tipo_linea"] in (COMPRA, COMPRA_EN_CUOTAS, CUOTA_DE_COMPRA_ANTERIOR))
+                  + suma(CUOTA_MANEJO) + suma(COMISION) + suma(INTERESES) + suma(COMISION_SERVICIO) + n("comisiones_avances") - abonaste)
+    return _comprobacion("formula_usado", "Deuda total al corte (fórmula del resumen)", por_lineas, usado)
 
 
 def lectura_completa(verificacion: list[dict]) -> bool:
@@ -394,6 +449,12 @@ def _movimiento(l: dict) -> dict | None:
         return None
     mov = {"fecha": l["fecha"], "descripcion": l["descripcion"], "monto": l["monto"], "referencia": "", "saldo": None,
            "tipo": "income" if t == PAGO else "expense", "linea_tipo": t}
+    if t == AVANCE:
+        # El dinero del avance llegó a TU cuenta de ahorros: en la tarjeta es un gasto (deuda) y se marca como posible
+        # traslado propio (neutral si aparece su otra pata en la cuenta de ahorros).
+        mov["pista"] = MARCA_TRASLADO_PROPIO
+    if l.get("descripcion_leida"):  # «Gracias por tu pago»: así lo guardó el lector anterior; se reconoce para no duplicar
+        mov["huella_anterior"] = {"fecha": l["fecha"], "monto": l["monto"], "descripcion": l["descripcion_leida"], "tipo": "income"}
     if t not in (PAGO, INTERESES):
         # El lector anterior no veía el signo y guardó estas líneas como ingreso. Regla EXPLÍCITA (corregir_tipo):
         # si ya se importaron así, no se ofrecen como compra nueva: se corrige el tipo del movimiento que ya existe.
@@ -412,7 +473,7 @@ def _movimiento(l: dict) -> dict | None:
                     "pago_detalle": {"capital": d["capital"], "intereses": d["intereses"], "cargos": d["cargos"],
                                      "aplicado": l["aplicado"]}})
         ap = l["aplicado"]
-        if len(ap) == 2 and abs(abs(l["monto"] - ap[0]) - ap[1]) <= TOLERANCIA:
+        if len(ap) == 2 and not l.get("descripcion_leida") and abs(abs(l["monto"] - ap[0]) - ap[1]) <= TOLERANCIA:
             # El lector anterior leyó «Pago $A -$B -$C» (C = A−B) como un pago de B. Regla EXPLÍCITA (corregir_pago):
             # si ya se importó así, no se ofrece un segundo pago: se corrige el monto del que ya existe.
             mov["corrige_lectura"] = {"descripcion": _DESC_ANTERIOR_PAGO, "tipo": "income", "montos": list(ap)}
@@ -420,6 +481,26 @@ def _movimiento(l: dict) -> dict | None:
 
 
 # ── Entrada principal ─────────────────────────────────────────────────────────────────────────────
+def _completar_desde_resumen(lineas: list[dict], resumen: dict, corte: date | None) -> None:
+    """Lo que el RESUMEN trae y la tabla no lista como línea (a veces la cuota de manejo, los intereses o la comisión por
+    servicio): se agrega UNA línea por la diferencia, fechada el día del corte y marcada `desde_resumen`. Solo agrega
+    (si las líneas ya suman más que el resumen, la verificación lo delata; nunca se quita ni se inventa de más)."""
+    if not corte:
+        return
+    pendientes = ((CUOTA_MANEJO, "cuota_manejo", DESCRIPCION_CUOTA_MANEJO), (INTERESES, "intereses", DESCRIPCION_INTERESES),
+                  (COMISION_SERVICIO, "comisiones_servicio", DESCRIPCION_COMISION_SERVICIO))
+    for tipo, clave, descripcion in pendientes:
+        esperado = resumen.get(clave)
+        if not esperado or esperado < 1:
+            continue
+        leido = sum(l["monto"] for l in lineas if l["tipo_linea"] == tipo)
+        falta = round(esperado - leido, 2)
+        if falta >= 1:
+            extra = {"total_mes": falta, "restante": 0.0} if tipo == CUOTA_MANEJO else {}
+            lineas.append({"fecha": corte.isoformat(), "descripcion": descripcion, "orden": len(lineas), "tipo_linea": tipo,
+                           "monto": falta, "valor": falta, "desde_resumen": True, **extra})
+
+
 def _leer(texto: str) -> dict:
     resumen = leer_resumen(texto)
     corte = date.fromisoformat(resumen["corte"]) if resumen["corte"] else None
@@ -427,11 +508,7 @@ def _leer(texto: str) -> dict:
     lineas: list[dict] = []
     for f in _extraer_filas(texto):
         lineas.extend(_linea_de_fila(f, corte, inicio))
-    # Intereses del mes que el resumen trae y que no son línea de la tabla: se agregan como gasto «Intereses de tu tarjeta».
-    interes = resumen.get("intereses")
-    if corte and interes and interes >= 1 and not any(l["tipo_linea"] == INTERESES for l in lineas):
-        lineas.append({"fecha": corte.isoformat(), "descripcion": DESCRIPCION_INTERESES, "orden": len(lineas), "tipo_linea": INTERESES,
-                       "monto": interes, "valor": interes})
+    _completar_desde_resumen(lineas, resumen, corte)
     movimientos = [m for m in (_movimiento(l) for l in lineas) if m]
     verificacion = verificar(lineas, resumen)
     completa = lectura_completa(verificacion)

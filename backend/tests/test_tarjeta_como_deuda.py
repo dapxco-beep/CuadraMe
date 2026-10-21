@@ -282,3 +282,17 @@ def test_funciones_puras_de_las_anclas():
     assert dt.usado_de_resumen({"deuda_a_pagar": 40_000, "deuda_restante": 20_000, "cuota_manejo": 10_000, "cargos_conversion": 300,
                                 "intereses": 700}) == (71_000.0, "estimado")
     assert dt.usado_de_resumen({"cupo": 1}) == (None, None) and dt.usado_de_resumen(None) == (None, None)
+
+
+def test_el_cuadre_por_cuenta_de_la_tarjeta_dice_si_cada_corte_cuadra_y_desde_cuando():
+    from app import cierre_extractos
+
+    cuenta, _, _ = _escenario("td-15")
+    _registrar()
+    db = SessionLocal()
+    try:
+        fila = next(x for x in cierre_extractos.cuadre_por_cuenta(db, "td-15") if x["cuenta_id"] == cuenta)
+    finally:
+        db.close()
+    assert fila["estado"] == "cuadra" and [c["mes"] for c in fila["cortes"]] == ["2026-05", "2026-06", "2026-07"]
+    assert all(c["cuadra"] and c["diferencia"] == 0 for c in fila["cortes"]) and fila["desde"] is not None

@@ -68,6 +68,11 @@ CLAVE_PEDIDO = "autoarreglo_pedido"
 CLAVE_ULTIMA = "autoarreglo_ultima"
 PREFIJO_NO = "autoarreglo_no:"  # extracto que la persona deshizo: no se vuelve a tocar solo
 PREFIJO_SV = "autoarreglo_sv:"  # extracto de tarjeta cuya lectura no se pudo verificar con ESTA versión del lector
+# Valor de la marca: «<VERSION_LECTOR>|falso|<iso>» (el lector de hoy ya midió que NO suma: no se vuelve a descargar) o
+# «<VERSION_LECTOR>|nulo|<iso>» (no se pudo medir: sin Gmail o falla pasajera; se reintenta tras ESPERA_NULO). Una marca
+# «<VERSION_LECTOR>» sola (versiones anteriores de este código) cuenta como falso.
+ESPERA_NULO = timedelta(hours=6)
+RESERVA_PARA_AJUSTES = 1  # de las lecturas de Gmail de una llamada, las tarjetas dejan esta cantidad a los ajustes de ahorros
 
 PASOS = (("errores", "Reintento extractos con error"), ("tarjetas", "Ordeno las tarjetas"),
          ("ajustes", "Registro rendimientos e impuestos"), ("importar", "Importo lo verificado"),
@@ -114,6 +119,21 @@ def _review(h: HistorialExtracto) -> list[dict]:
     except ValueError:
         return []
     return r if isinstance(r, list) else []
+
+
+def _marca_sv_vigente(valor: str | None) -> bool:
+    """¿La marca de «no se pudo verificar» vale para el lector de hoy y todavía no toca reintentar?"""
+    partes = (valor or "").split("|")
+    if partes[0] != rx.VERSION_LECTOR:
+        return False
+    if len(partes) >= 3 and partes[1] == "nulo":
+        desde = _instante(partes[2])
+        return bool(desde and _ahora() - desde < ESPERA_NULO)
+    return True
+
+
+def _valor_sv(verificada: bool | None) -> str:
+    return f"{rx.VERSION_LECTOR}|{'falso' if verificada is False else 'nulo'}|{_ahora().isoformat()}"
 
 
 def _usuario_de(db: Session, uid: str):
@@ -307,7 +327,8 @@ class _Ctx:
         self.excluidos = excluidos(db, usuario.id)
         # Lo que no se pudo verificar no se vuelve a descargar hasta que el lector mejore (si no, gastaría cada vez la relectura).
         self.sin_verificar = {m.clave[len(PREFIJO_SV):] for m in db.query(MarcaCron).filter(
-            MarcaCron.usuario_id == usuario.id, MarcaCron.clave.like(PREFIJO_SV + "%"), MarcaCron.valor == rx.VERSION_LECTOR).all()}
+            MarcaCron.usuario_id == usuario.id, MarcaCron.clave.like(PREFIJO_SV + "%"),
+            MarcaCron.valor.like(rx.VERSION_LECTOR + "%")).all() if _marca_sv_vigente(m.valor)}
         self.foto = _foto(db, usuario.id)
         self.reloj = _ahora()
         self.cambios = 0
@@ -317,10 +338,11 @@ class _Ctx:
     def sin_tiempo(self) -> bool:
         return time.monotonic() - self.inicio > PRESUPUESTO_SEGUNDOS
 
-    def reservar(self, n: int = 1) -> int:
-        """Pide `n` relecturas de Gmail: respeta lo que queda de esta llamada y el tope por hora. Devuelve cuántas dio."""
+    def reservar(self, n: int = 1, *, dejar: int = 0) -> int:
+        """Pide `n` relecturas de Gmail: respeta lo que queda de esta llamada y el tope por hora. `dejar`: cuántas dejar a los
+        pasos que vienen (así un paso con muchas lecturas no deja sin nada a los demás). Devuelve cuántas dio."""
         dadas = 0
-        while dadas < min(n, self.presupuesto) and not self.sin_tiempo():
+        while dadas < min(n, self.presupuesto - dejar) and not self.sin_tiempo():
             try:
                 verificar_limite(f"autoarreglo-relectura:{self.uid}", LIMITE_RELECTURAS_HORA, 3600)
             except HTTPException:
@@ -519,6 +541,7 @@ def _paso_tarjetas(ctx: _Ctx) -> dict:
     plan = at._plan(db, ctx.usuario)
     filas = [f for f in plan["filas"] if f["historial_id"] not in ctx.excluidos]
     hechos, quedan, saltados = [], 0, 0
+    dejar = RESERVA_PARA_AJUSTES if ctx.presupuesto > RESERVA_PARA_AJUSTES else 0  # fijo para todo el paso
     for k, f in enumerate(filas):
         h = f["_h"]
         sin_trabajo = f["_destino_obj"] is None and not f["releera"] and not f.get("propuestas_tipo")
@@ -534,19 +557,24 @@ def _paso_tarjetas(ctx: _Ctx) -> dict:
             quedan = len(filas) - k
             break
         verificada = h.lectura_completa
+        if verificada is False and f["releera"]:
+            verificada = None  # lo midió un lector anterior: se vuelve a medir UNA vez con el de hoy (luego queda en caché)
         necesita_gmail = f["releera"] or verificada is None
+        gasto = False
         if necesita_gmail:
             if not f["puede_releerse"]:
                 continue
-            if not ctx.reservar(1):
-                quedan = len(filas) - k
-                break
+            if not ctx.reservar(1, dejar=dejar):
+                quedan += 1  # sin lecturas por ahora (se guardan para los ajustes): sigue con los que no las necesitan
+                continue
+            gasto = True
             if verificada is None:
                 verificada = _lectura_del_pdf(db, ctx.usuario, h)
         if verificada is not True:
-            ctx.decidir("tarjeta_sin_verificar")  # nunca se toca una tarjeta sin lector verificado
-            _poner(db, ctx.uid, PREFIJO_SV + h.id, rx.VERSION_LECTOR)
-            ctx.unidades += 1  # gastó una lectura: la llamada sí avanzó
+            ctx.decidir("tarjeta_sin_verificar")  # nunca se toca una tarjeta sin lector verificado; NO frena a las demás
+            _poner(db, ctx.uid, PREFIJO_SV + h.id, _valor_sv(verificada))
+            if gasto:
+                ctx.unidades += 1  # gastó una lectura: la llamada sí avanzó
             saltados += 1
             continue
         ctx.unidades += 1
