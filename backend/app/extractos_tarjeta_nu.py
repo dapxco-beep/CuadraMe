@@ -42,9 +42,11 @@ CUOTA_MANEJO = "cuota_manejo"
 PAGO = "pago"
 COMISION = "comision"
 CUOTA_DE_COMPRA_ANTERIOR = "cuota_de_compra_anterior"
+INTERESES = "intereses"
 
 DESCRIPCION_PAGO = "Pago de tu tarjeta"
 DESCRIPCION_CUOTA_MANEJO = "Cobro por cuota de manejo"
+DESCRIPCION_INTERESES = "Intereses de tu tarjeta"
 AVISO_PAGO = "Parece el pago de tu tarjeta. Confirma el monto."
 # Descripciones con las que el lector ANTERIOR guardó lo que ya se importó (para no duplicarlo al releer).
 _DESC_ANTERIOR_MANEJO = "Cobro por cuota"
@@ -58,6 +60,13 @@ _RE_MONTO = re.compile(r"(-?)\s*\$\s*(\d[\d.,]*)")
 _RE_MONTO_PEGADO = re.compile(r"(-?)\$\s*(\d[\d.,]*)")  # el signo va PEGADO al $: «-$400.000» (un « - $X» suelto es una columna vacía)
 _RE_CUOTAS = re.compile(r"\b(\d+)\s+de\s+(\d+)\b", re.IGNORECASE)
 _RE_FLECHA = re.compile(r"[↪↳⮡]")
+# Formatos viejos (may-ago): lo que se reconoce SIN adivinar. Una línea que empieza por «Pago»/«Abono» es un pago; la cuota de
+# manejo viene como «Cobro por cuota» (+ «de manejo» en la línea siguiente o no), «Cuota de manejo» o «Cargo por cuota».
+_RE_PAGO = re.compile(r"^(?:pago|abono)s?\b", re.IGNORECASE)
+_RE_MANEJO = re.compile(r"^(?:(?:cobro|cargo)\s+(?:por\s+|de\s+)?(?:cuota|manejo)\b|cuota\s+(?:de\s+)?manejo\b)", re.IGNORECASE)
+_RE_INTERES = re.compile(r"^inter[eé]s(?:es)?\b", re.IGNORECASE)
+_RE_SECCION_ABONOS = re.compile(r"^\s*(?:abonos?|pagos?\s+y\s+abonos?|pagos?\s+recibidos?|abonos?\s+y\s+pagos?)\s*:?\s*$", re.IGNORECASE)
+_RE_SECCION_COMPRAS = re.compile(r"^\s*(?:compras?|movimientos?|cargos?|compras?\s+y\s+cargos?)\s*:?\s*$", re.IGNORECASE)
 MAX_CONTINUACIONES = 4
 
 
@@ -201,7 +210,14 @@ def _extraer_filas(texto: str) -> list[dict]:
     filas: list[dict] = []
     abierta: dict | None = None
     cont = 0
+    seccion_abonos = False
     for linea in lineas[inicio:]:
+        if _RE_SECCION_ABONOS.match(linea):
+            seccion_abonos, abierta = True, None
+            continue
+        if _RE_SECCION_COMPRAS.match(linea):
+            seccion_abonos, abierta = False, None
+            continue
         if _RE_ENCABEZADO.match(linea) or _RE_PIE.match(linea):
             abierta = None
             continue
@@ -212,7 +228,8 @@ def _extraer_filas(texto: str) -> list[dict]:
             idx = principal.find("$")
             desc, cola = (principal, "") if idx < 0 else (principal[:idx], principal[idx:])
             abierta = {"dia": int(m.group(1)), "mes": m.group(2), "anio": int(m.group(3)) if m.group(3) else None,
-                       "desc": _limpia(desc), "cola": cola, "subs": subs, "orden": len(filas)}
+                       "desc": _limpia(desc), "cola": cola, "subs": subs, "orden": len(filas),
+                       "abono": seccion_abonos}
             filas.append(abierta)
             cont = 0
             continue
@@ -258,7 +275,7 @@ def _linea_de_fila(f: dict, corte: date | None, inicio_periodo: date | None) -> 
         return []
     salida: list[dict] = []
 
-    if re.fullmatch(r"pago", desc, re.IGNORECASE):
+    if _RE_PAGO.match(desc) or f.get("abono"):  # un pago o abono NUNCA se tipa como compra
         a = nmontos[0]
         b = nmontos[1] if len(nmontos) > 1 else None
         c = nmontos[2] if len(nmontos) > 2 else None
@@ -270,7 +287,11 @@ def _linea_de_fila(f: dict, corte: date | None, inicio_periodo: date | None) -> 
                        "detalle": {"capital": capital, "intereses": intereses, "cargos": cargos}})
         return salida
 
-    if re.match(r"cobro\s+por\s+cuota\b", desc, re.IGNORECASE):
+    if _RE_INTERES.match(desc):
+        salida.append({**base, "tipo_linea": INTERESES, "descripcion": DESCRIPCION_INTERESES, "monto": nmontos[0], "valor": nmontos[0]})
+        return salida
+
+    if _RE_MANEJO.match(desc):
         total = nmontos[-1]
         salida.append({**base, "tipo_linea": CUOTA_MANEJO, "descripcion": DESCRIPCION_CUOTA_MANEJO, "monto": nmontos[0],
                        "valor": nmontos[0], "total_mes": total, "restante": 0.0})
@@ -373,7 +394,7 @@ def _movimiento(l: dict) -> dict | None:
         return None
     mov = {"fecha": l["fecha"], "descripcion": l["descripcion"], "monto": l["monto"], "referencia": "", "saldo": None,
            "tipo": "income" if t == PAGO else "expense", "linea_tipo": t}
-    if t != PAGO:
+    if t not in (PAGO, INTERESES):
         # El lector anterior no veía el signo y guardó estas líneas como ingreso. Regla EXPLÍCITA (corregir_tipo):
         # si ya se importaron así, no se ofrecen como compra nueva: se corrige el tipo del movimiento que ya existe.
         mov["corrige_tipo"] = {"de": "income", "a": "expense"}
@@ -406,6 +427,11 @@ def _leer(texto: str) -> dict:
     lineas: list[dict] = []
     for f in _extraer_filas(texto):
         lineas.extend(_linea_de_fila(f, corte, inicio))
+    # Intereses del mes que el resumen trae y que no son línea de la tabla: se agregan como gasto «Intereses de tu tarjeta».
+    interes = resumen.get("intereses")
+    if corte and interes and interes >= 1 and not any(l["tipo_linea"] == INTERESES for l in lineas):
+        lineas.append({"fecha": corte.isoformat(), "descripcion": DESCRIPCION_INTERESES, "orden": len(lineas), "tipo_linea": INTERESES,
+                       "monto": interes, "valor": interes})
     movimientos = [m for m in (_movimiento(l) for l in lineas) if m]
     verificacion = verificar(lineas, resumen)
     completa = lectura_completa(verificacion)
