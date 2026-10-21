@@ -107,3 +107,31 @@ manejo + comisiones + intereses − pagos.
 La app lo avisa en la salud de datos («extracto de tarjeta con formato no reconocido») con la acción «Mándame este extracto (sin datos
 personales) para aprender su formato». No se envía nada solo. Para la muestra: tapa nombre, cédula, dirección y los últimos dígitos de la
 tarjeta (los importes y las fechas sí sirven), y pásala al equipo; con ella se agrega el formato y una prueba con cifras inventadas.
+
+## Formatos viejos de la tarjeta Nu (may–ago) y la fórmula del resumen
+
+Además de lo anterior, el lector reconoce (probado con 4 extractos sintéticos en `backend/tests/fixtures/extracto_tarjeta_nu_viejo_*.txt`):
+
+| Línea | Qué es |
+|---|---|
+| «Gracias por tu pago $A -$A $0,00» (o «$A $0,00 $0,00») + sub-líneas capital / intereses / cargos | Un PAGO por A (primer importe), igual que «Pago». Lo que el lector anterior guardó como «Gracias por tu pago» se reconoce por su huella y no se duplica. |
+| «Cuota por avance a cuenta $V 1 de 1 $V 2.07% $I $T $0» + «↪ Comisión por servicio $C» (T = V + C + I) | Tres gastos en la tarjeta: el avance por V (marcado como posible traslado propio: el dinero llegó a tu cuenta de ahorros), la «Comisión por servicio de avance» C y «Intereses de tu tarjeta» I. |
+| Fila sin descripción «15 JUL 2026 $0,00 $0,00 2.07% $I $I $0,00» | El cobro de intereses del periodo (gasto «Intereses de tu tarjeta», fecha del corte). |
+| Cuota de manejo, intereses o comisión por servicio que el RESUMEN trae y la tabla no lista | Se agrega UNA línea por la diferencia, fechada el corte y marcada `desde_resumen`. Solo agrega; si las líneas ya suman más que el resumen, la lectura queda incompleta. |
+| Compra en cuotas «2 de 6», «3 de 6»… con fecha anterior al periodo | Cuota de compra anterior: no es un movimiento nuevo, solo cuenta en la verificación. La compra cuenta completa el día de la compra. |
+
+### Verificación (lectura completa)
+
+1. `deuda_a_pagar` = suma del «total a pagar» de las líneas que NO son cuota de manejo, intereses ni comisiones (un avance cuenta por V; también se acepta por T, si cuadra exacto).
+2. Restante, cuota de manejo y pagos (capital + intereses + cargos = A), como antes.
+3. Fórmula maestra: `usado = deuda a pagar + deuda restante + cuota de manejo + cargos por conversión + intereses + comisiones de servicio y de avance − abonaste`. Se exige solo cuando el propio resumen la cumple; entonces cada término se rearma desde las líneas.
+4. Cadena entre extractos: `usado(k) = usado(k−1) + compras completas + avances + comisiones + intereses + manejo − pagos`.
+
+Si algo no cuadra, la lectura queda NO completa, no se importa nada solo y salud de datos ofrece «Mándame este extracto (sin datos personales)…».
+
+### Autoarreglo y lecturas de Gmail
+
+- La verificación de cada extracto se guarda por (extracto, versión del lector) en `marcas_cron` (`autoarreglo_sv:<id>` = `<versión>|falso|<fecha>` o `|nulo|`): «no suma» no se vuelve a descargar con la misma versión; «no pude medirlo» se reintenta tras 6 horas.
+- Una lectura marcada incompleta por un lector anterior se vuelve a medir UNA vez con el de hoy.
+- Las tarjetas dejan siempre una lectura de cada llamada a los ajustes de ahorros (4x1000, rendimientos, costos por retiro), y un extracto que no verifica no frena a los demás: queda como decisión «extractos de tarjeta que no pude comprobar».
+- El cuadre por cuenta de tarjeta trae `cortes` (cada corte: «debo al corte» = `usado` o no, y por cuánto) y `desde`.
