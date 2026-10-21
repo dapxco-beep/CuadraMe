@@ -24,6 +24,7 @@ const RUTA_DE_ACCION = {
   revisar_conexion: '/conexiones',
   sincronizar: '/sincronizacion',
   ver_extractos: '/sincronizacion',
+  pedir_muestra_extracto: '/sincronizacion',
   guardar_clave: '/conexiones',
 }
 
