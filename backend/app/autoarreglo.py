@@ -35,6 +35,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app import ingresos_sueltos
 from app import cierre_extractos, corregir_pago, deuda_tarjeta, corregir_tipo, extractos_error, punto_partida, reasignar_extracto, saldo_inicial_auto
 from app import arreglar_tarjetas as at
 from app import cuadre_extracto as cx
@@ -580,7 +581,17 @@ def _paso_tarjetas(ctx: _Ctx) -> dict:
             continue
         ctx.unidades += 1
         hechos.append(_tarjeta_uno(ctx, f, verificada))
-    return {"hecho": len(hechos), "quedan": quedan, "saltados": saltados, "extractos": hechos, "fechas": reparadas}
+    barrido = {}
+    if not quedan:  # con todas las tarjetas ya releídas: lo suelto que tiene su compra buena o su pago gemelo se quita
+        for c in db.query(Cuenta).filter(Cuenta.usuario_id == ctx.uid, Cuenta.tipo == "credito").all():
+            r = ingresos_sueltos.barrer(db, ctx.uid, c)
+            if r["ingresos_falsos"] or r["pagos_repetidos"]:
+                ctx.unidades += 1
+                barrido[c.id] = r
+        if barrido:
+            db.commit()
+            ctx.cerrar_fase("tarjetas")
+    return {"hecho": len(hechos), "quedan": quedan, "saltados": saltados, "extractos": hechos, "fechas": reparadas, "barrido": barrido}
 
 
 # ── Paso 3: rendimientos, 4x1000 y costos por retiro ───────────────────────────────────────────────────

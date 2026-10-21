@@ -199,3 +199,37 @@ def test_el_pago_de_tarjeta_con_desglose_es_elegible_y_otra_cosa_con_desglose_no
     assert aa._elegible(pago, None) is True
     assert aa._elegible({**pago, "pago_tarjeta": False}, None) is False
     assert aa._elegible({**pago, "aviso_linea": "revisa"}, None) is False
+
+
+def test_el_barrido_quita_el_ingreso_falso_con_su_compra_buena_y_el_pago_repetido_pero_deja_lo_demas(monkeypatch):
+    from app import ingresos_sueltos
+    from tests.test_autoarreglo import _mov
+
+    uid = "ai-barrido"
+    ids = mundo(uid, monkeypatch)
+    db = SessionLocal()
+    try:
+        c = db.get(Cuenta, ids["credito"])
+        for m in db.query(Movimiento).filter(Movimiento.cuenta_id == c.id).all():
+            db.delete(m)
+        c.saldo = 0.0
+        db.commit()
+        falso = _mov(db, uid, c, 8, 10, "Comercio Alfa", 40_000.0, "income", "Comida")
+        buena = _mov(db, uid, c, 8, 10, "Comercio Alfa", 40_000.0, "expense", "Comida")
+        sola = _mov(db, uid, c, 8, 12, "Comercio Beta", 15_000.0, "income", "Comida")  # sin compra buena: se queda
+        pago = _mov(db, uid, c, 8, 20, "Pago de tu tarjeta", 90_000.0, "income", "Pago de tarjeta")
+        repetido = _mov(db, uid, c, 8, 20, "2026 Pago", 90_000.0, "income", "Otros")
+        for m in (falso, buena, sola, pago, repetido):
+            m.fuente = "conciliacion_extracto"
+        db.flush()
+        ids_ = {n: m.id for n, m in dict(falso=falso, buena=buena, sola=sola, pago=pago, repetido=repetido).items()}
+        db.commit()
+        r = ingresos_sueltos.barrer(db, uid, c)
+        db.commit()
+        vivos = {n for n, i in ids_.items() if db.get(Movimiento, i) is not None}
+        assert r == {"ingresos_falsos": 1, "pagos_repetidos": 1}
+        assert vivos == {"buena", "sola", "pago"}
+        # la segunda pasada no cambia nada
+        assert ingresos_sueltos.barrer(db, uid, c) == {"ingresos_falsos": 0, "pagos_repetidos": 0}
+    finally:
+        db.close()
