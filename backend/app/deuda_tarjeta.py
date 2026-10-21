@@ -108,9 +108,15 @@ def extractos_de_tarjeta(db: Session, cuenta_id: str) -> list[HistorialExtracto]
 
 
 def _poner(h: HistorialExtracto, campo: str, valor) -> bool:
+    """Asigna solo si cambia (números con tolerancia de centavos). True si cambió."""
     actual = getattr(h, campo)
-    if (actual is None and valor is None) or (actual is not None and valor is not None and abs(float(actual) - float(valor)) < 0.005) \
-            or (isinstance(valor, str) and actual == valor):
+    if actual is None and valor is None:
+        return False
+    if isinstance(valor, str) or isinstance(actual, str):
+        igual = actual == valor
+    else:
+        igual = actual is not None and valor is not None and abs(float(actual) - float(valor)) < 0.005
+    if igual:
         return False
     setattr(h, campo, valor)
     return True
