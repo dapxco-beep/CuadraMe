@@ -141,3 +141,37 @@ def test_lo_que_midio_un_lector_anterior_como_no_cuadra_se_vuelve_a_medir_una_ve
     finally:
         db.close()
     assert r["estado"] == "listo"
+
+
+def test_el_paso_de_errores_devuelve_las_lecturas_que_no_uso(monkeypatch):
+    """Si reintentó menos de las que reservó, el resto vuelve al presupuesto: antes reservaba las 3 de la llamada aunque no
+    leyera ninguna y las tarjetas se quedaban sin lecturas (en la cuenta real no se movía nada)."""
+    from types import SimpleNamespace
+
+    from app import autoarreglo as aa
+
+    class _Q:
+        def filter(self, *a, **k):
+            return self
+
+        def count(self):
+            return 4
+
+        def first(self):
+            return ("hay clave",)
+
+    ctx = SimpleNamespace(db=SimpleNamespace(query=lambda *a, **k: _Q()), uid="u", usuario=SimpleNamespace(id="u"), unidades=0,
+                          presupuesto=3, decisiones={}, cerrar_fase=lambda paso: 0, sin_tiempo=lambda: False,
+                          limite_alcanzado=False)
+
+    def reservar(n=1, *, dejar=0):
+        dadas = min(n, ctx.presupuesto - dejar)
+        ctx.presupuesto -= dadas
+        return dadas
+
+    ctx.reservar = reservar
+    monkeypatch.setattr("app.extractos_error.reintentar_errores_clave",
+                        lambda db, usuario, maximo: {"reintentados": 1, "leidos": 1, "pendientes": 3})
+    r = aa._paso_errores(ctx)
+    assert r["reintentados"] == 1
+    assert ctx.presupuesto == 2  # usó 1 de 3: quedan 2 para las tarjetas y los ajustes

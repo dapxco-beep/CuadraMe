@@ -442,6 +442,7 @@ def _paso_errores(ctx: _Ctx) -> dict:
     if not dadas:
         return {"hecho": 0, "quedan": errores}
     r = extractos_error.reintentar_errores_clave(db, ctx.usuario, maximo=dadas)
+    ctx.presupuesto += max(0, dadas - r["reintentados"])  # lo que no usó se devuelve: si no, deja sin lecturas a las tarjetas
     ctx.unidades += r["reintentados"]
     ctx.cerrar_fase("errores")
     return {"hecho": r["leidos"], "reintentados": r["reintentados"], "quedan": r["pendientes"]}
