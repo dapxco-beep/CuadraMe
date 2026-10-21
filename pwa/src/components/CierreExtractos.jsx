@@ -125,6 +125,26 @@ function QueFalta({ cuenta, fmt }) {
   )
 }
 
+/** Tarjeta = deuda: «Debía al inicio · Compras y cargos · Intereses · Pagos · Debo al corte · Según tu extracto ✓/✕». */
+function FilasTarjeta({ c, fmt }) {
+  const t = c.tarjeta_cuadre
+  const m = c.moneda
+  return (
+    <div className="divide-y divide-line" data-testid="cierre-tarjeta-deuda">
+      <Fila etiqueta="Debía al inicio" valor={fmt(t.debia_inicio, m)} />
+      <Fila etiqueta="Compras y cargos" valor={fmt(t.compras_cargos, m)} nota="Las compras en cuotas cuentan completas el día de la compra" />
+      <Fila etiqueta="Intereses" valor={fmt(t.intereses, m)} />
+      <Fila etiqueta="Pagos" valor={fmt(t.pagos, m)} nota="Pagar la tarjeta no es un gasto ni un ingreso" />
+      <Fila etiqueta="Debo al corte (calculado)" valor={fmt(t.debo_calculado, m)} fuerte />
+      <Fila etiqueta="Según tu extracto" valor={fmt(t.segun_extracto, m)}>
+        <div className="mt-1.5">
+          <Pildora estado={t.cuadra ? 'cuadra' : 'no_cuadra'}>{t.cuadra ? 'Cuadra ✓' : `No cuadra ✕ por ${fmt(Math.abs(t.diferencia), m)}`}</Pildora>
+        </div>
+      </Fila>
+    </div>
+  )
+}
+
 function BloqueCuenta({ c, mostrarNombre, onCambio }) {
   const { fmt } = useBloqueo()
   const { cuentas = [] } = useCuentas() || {}
@@ -161,7 +181,7 @@ function BloqueCuenta({ c, mostrarNombre, onCambio }) {
           <span>{c.cuadre_desde.texto}</span>
         </p>
       )}
-      <div className="divide-y divide-line">
+      {c.tarjeta && c.tarjeta_cuadre ? <FilasTarjeta c={c} fmt={fmt} /> : <div className="divide-y divide-line">
         <Fila etiqueta="Empecé con" valor={fmt(c.empece, m)} nota={`Saldo ${origenEmpece(c)}`} />
         <Fila etiqueta="Ingresos" valor={conSigno(c.ingresos, fmt, m)} tono="text-cuadra"
           nota={notaIncluye([[c.rendimientos, 'rendimientos']], fmt, m)} />
@@ -201,12 +221,12 @@ function BloqueCuenta({ c, mostrarNombre, onCambio }) {
             <div className="mt-1.5"><Pildora estado={c.estado}>{estadoCuenta(c, fmt)}</Pildora></div>
           </Fila>
         )}
-      </div>
+      </div>}
 
-      {!c.tarjeta && c.ajuste_inicial && (
+      {c.ajuste_inicial && (
         <SaldoInicialAutomatico cuentaId={c.cuenta_id} moneda={m} info={c.ajuste_inicial} onCambio={() => onCambio?.()} />
       )}
-      {c.tarjeta && <p className="text-[11px] text-ink-soft mt-1">En una tarjeta, un saldo negativo es lo que debes.</p>}
+      {c.tarjeta && <p className="text-[11px] text-ink-soft mt-1">En una tarjeta, lo que ves es lo que debes.</p>}
       {c.estado === 'sin_extracto' && (
         <p className="text-[11px] text-ink-soft mt-1">
           {c.motivo_sin_extracto || 'Sin el extracto de este mes no puedo comprobar el saldo; te muestro lo que calculé.'}

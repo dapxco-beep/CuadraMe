@@ -165,18 +165,21 @@ export default function Sincronizacion() {
   // servidor no soporta `hasta` (devuelve siempre la misma ventana) se esconden los botones.
   const [hasta, setHasta] = useState(null)
   const [ventanaFija, setVentanaFija] = useState(false)
+  const [deudasTarjeta, setDeudasTarjeta] = useState({})
   const hastaRef = useRef(null)
 
   const cargar = useCallback(async () => {
     try {
-      const [est, gm, ex, clave, porCat] = await Promise.all([
+      const [est, gm, ex, clave, porCat, deudas] = await Promise.all([
         api.sincronizacionEstado(hastaRef.current),
         api.gmailEstado().catch(() => null),
         api.extractosCorreo().catch(() => []),
         api.clavePdfEstado().catch(() => ({})),
         api.sincronizacionPorCategorizar(0).catch(() => ({ items: [], total: 0 })),
+        Promise.resolve(api.tarjetasVista?.()).catch(() => ({})), // «Debes · Cupo · Disponible» de cada tarjeta (extra)
       ])
       if (!montado.current) return
+      setDeudasTarjeta(deudas && typeof deudas === 'object' ? deudas : {})
       const ultimoMes = est?.meses?.[est.meses.length - 1]?.clave
       if (hastaRef.current && ultimoMes && ultimoMes !== hastaRef.current) {
         // el servidor ignoró la ventana pedida: no se puede desplazar
@@ -983,6 +986,7 @@ export default function Sincronizacion() {
             cuentas={filasCuentas}
             meses={meses}
             onMes={accionMes}
+            deudas={deudasTarjeta}
             pieCredito={<ArreglarTarjetas onListo={cargar} onRevisar={() => abrirGrupoExtractos(FILTRO_DE_TAREA.extractos_por_conciliar)} />}
             className="mx-6 mt-5 mb-2"
           />

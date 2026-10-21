@@ -169,7 +169,8 @@ def test_releer_un_extracto_conciliado_de_tarjeta_arregla_sus_fechas(monkeypatch
     rx.releer_historial(db, SimpleNamespace(id=u, nombre="Ana Pérez Gómez"), h, solo_agregar=True)  # modo de los ya conciliados
     h = recargar(db, h)
     assert (h.fecha_corte, h.periodo_inicio) == ("2026-10-15", "2026-09-14")
-    assert h.saldo_final_extracto == -408000.0  # los saldos ya conciliados no se tocan en ese modo
+    # La tarjeta es DEUDA: el saldo del extracto es −usado (deuda total al corte), no el «total a pagar» de antes (deuda_tarjeta.py).
+    assert h.saldo_final_extracto == -65000.0
 
 
 def test_el_respaldo_por_la_fecha_del_correo_se_marca_estimado(db):

@@ -186,12 +186,14 @@ def test_saldo_fijado_a_mano_no_se_toca_y_se_avisa():
     assert _autos(c) == []
 
 
-def test_tarjeta_no_recibe_ajuste_y_recalcular_responde_409():
+def test_tarjeta_sin_resumen_no_recibe_ajuste_ni_se_inventa():
     como("aj-7")
     c = _cuenta(nombre="Visa de prueba", tipo="credito")
     _hist("aj-7", c, 100_000, 150_000, "2026-03-01", "2026-03-31")
     assert _auto() == [] and _autos(c) == []
-    assert client.post("/conciliacion/cuadre/saldo-inicial-auto/recalcular", json={"cuenta_id": c}).status_code == 409
+    # La tarjeta ya no responde 409: tiene su «Deuda inicial» (deuda_tarjeta.py), pero sin resumen leído no se inventa nada.
+    r = client.post("/conciliacion/cuadre/saldo-inicial-auto/recalcular", json={"cuenta_id": c})
+    assert r.status_code == 200 and r.json()["estado"] == "sin_extracto" and _autos(c) == []
 
 
 def test_modo_hoy_no_inventa_el_pasado():

@@ -391,14 +391,13 @@ def volver_a_calcular_saldo_inicial(
 ):
     """«Volver a calcular el ajuste inicial» de una cuenta: levanta el «desactivado» y lo recalcula ahora."""
     cuenta = _cuenta(db, usuario, data.cuenta_id, editar=True)
-    if (cuenta.tipo or "") == "credito":
-        raise HTTPException(status_code=409, detail={"codigo": "tarjeta", "mensaje": "Las tarjetas de crédito no llevan saldo inicial automático."})
     r = saldo_inicial_auto.recalcular(db, cuenta, _inicio_pp(db, usuario), forzar=True)
     db.commit()
     if not r.get("texto"):
         r["texto"] = {"manual": "Registraste tu saldo inicial a mano: ese manda.",
                       "punto_partida": "Tu primer extracto es anterior a tu punto de partida: no invento ese pasado.",
-                      "sin_extracto": "Aún no hay un extracto con el saldo con el que abrió la cuenta."}.get(
+                      "sin_extracto": "Aún no hay un extracto con el saldo con el que abrió la cuenta.",
+                      "saldo_fijado": "Tu saldo está fijado a mano: no lo cambio solo."}.get(
             r["estado"], "El saldo inicial ya estaba al día.")
     return r
 

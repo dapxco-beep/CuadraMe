@@ -86,3 +86,24 @@ Dónde se aplica:
   corrección); la persona confirma en la hoja con «Revisar e importar». Si la lectura no suma el extracto, no se marca nada.
 - Importar (`POST /conciliacion/historial/{id}/importar`): `corregidos` incluye estas; `tipos_corregidos` las separa.
 Sube `VERSION_LECTOR` (v6) para que todos los extractos de tarjeta se relean una vez.
+
+## Formatos que el lector reconoce (tarjeta Nu) y cómo pedir una muestra
+
+El lector (`backend/app/extractos_tarjeta_nu.py`) no adivina: solo reconoce lo siguiente y, si aun así la suma no cuadra con el
+resumen del extracto, deja la lectura como NO completa y no importa nada solo.
+
+| Qué | Cómo lo reconoce |
+|---|---|
+| Pago o abono | La descripción empieza por «Pago» o «Abono», o la fila está bajo un título «Abonos». Nunca se tipa como compra; entra como pago (traslado propio, jamás ingreso). |
+| Cuota de manejo | «Cobro por cuota» (con o sin «de manejo» en la línea siguiente), «Cuota de manejo», «Cargo por cuota», con uno o varios importes en columnas distintas. |
+| Intereses del mes | Si el resumen trae «Intereses» y no hay una fila de intereses, se agrega una línea de gasto «Intereses de tu tarjeta» fechada el día del corte. |
+| Deuda al corte | `usado` del resumen (cupo − disponible). Si no se lee, se estima con deuda a pagar + deuda restante + cuota de manejo + cargos por conversión + intereses y queda marcada «estimado». |
+
+Cadena que debe cuadrar: deuda al corte = deuda del corte anterior + compras (por su valor completo el día de la compra) + cuotas de
+manejo + comisiones + intereses − pagos.
+
+### Si un extracto no se reconoce
+
+La app lo avisa en la salud de datos («extracto de tarjeta con formato no reconocido») con la acción «Mándame este extracto (sin datos
+personales) para aprender su formato». No se envía nada solo. Para la muestra: tapa nombre, cédula, dirección y los últimos dígitos de la
+tarjeta (los importes y las fechas sí sirven), y pásala al equipo; con ella se agrega el formato y una prueba con cifras inventadas.

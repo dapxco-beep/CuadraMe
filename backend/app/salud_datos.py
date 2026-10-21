@@ -40,6 +40,7 @@ CODIGOS = (
     "movimientos_en_cuenta_incoherente",
     "sin_sincronizar",
     "fechas_extracto_dudosas",
+    "tarjeta_formato_no_reconocido",
 )
 ORDEN_SEVERIDAD = {"importante": 0, "aviso": 1, "info": 2}
 CEROS_PARA_AVISAR = 3        # corridas completas seguidas sin leer ni un correo
@@ -242,6 +243,26 @@ def diagnosticar(db: Session, usuario_id: str) -> list[dict]:
             {"cantidad": n, "sin_fechas": len(f["sin_fechas"]), "repetidos": len(f["duplicados"]), "cortes_futuros": len(f["futuras"]),
              "periodos_cruzados": len(f["traslapados"]),
              "historial_ids": (f["futuras"] + f["traslapados"] + f["sin_fechas"] + f["duplicados"])[:MAX_IDS]},
+        ))
+
+    # 10) Extracto de tarjeta cuya lectura NO suma lo que dice su resumen (formato que el lector aún no conoce). Nada se
+    #     envía solo: la persona decide si manda una muestra sin datos personales (docs/RELECTURA_DE_TARJETAS.md).
+    malos = []
+    for h in db.query(HistorialExtracto).filter(HistorialExtracto.usuario_id == usuario_id, HistorialExtracto.estado != "error").all():
+        if fechas_extracto.es_duplicado(h):
+            continue
+        lect = h.lectura or {}
+        if isinstance(lect.get("resumen_tarjeta"), dict) and lect.get("lectura_completa") is False:
+            malos.append(h.id)
+    if malos:
+        n = len(malos)
+        out.append(_h(
+            "tarjeta_formato_no_reconocido", "aviso",
+            f"{n} {_plural(n, 'extracto de tarjeta tiene', 'extractos de tarjeta tienen')} un formato que no reconozco",
+            f"Lo que leí {_plural(n, 'de este extracto', 'de estos extractos')} no suma lo que dice el resumen de tu banco, así que no lo importé a ciegas. "
+            "Si quieres, mándame el extracto sin datos personales (tapa tu nombre, cédula y número de tarjeta) y aprendo su formato.",
+            {"tipo": "pedir_muestra_extracto", "etiqueta": "Mándame este extracto (sin datos personales) para aprender su formato"},
+            {"cantidad": n, "historial_ids": malos[:MAX_IDS]},
         ))
 
     out.sort(key=lambda x: ORDEN_SEVERIDAD.get(x["severidad"], 9))

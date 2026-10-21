@@ -208,9 +208,10 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
         "termine": termine, "segun_extracto": round(segun, 2) if segun is not None else None,
         "diferencia": dif, "historial_id": fila["historial_id"] if fila else None,
         "cadena_rota": bool(fila and fila.get("cadena_rota")),
+        "tarjeta_cuadre": fila.get("tarjeta") if fila else None,  # deuda: debía, compras, intereses, pagos, debo, según extracto
         "tarjeta_fechas": fila.get("tarjeta_fechas") if fila else None,  # {corte, limite_pago, periodo_fin, estimado} de la tarjeta
         "cuadre_desde": r.get("desde"),  # «Tu cuenta cuadra desde…» / «Primer mes que no cuadra…»
-        "ajuste_inicial": _ajuste_inicial(filas) if fila else None,
+        "ajuste_inicial": _ajuste_inicial(filas, c.tipo == "credito") if fila else None,
         "aviso": fila.get("texto") if fila and fila.get("cadena_rota") and estado == "cuadra" else None,
         "motivo": None, "causas": [], "acciones": [], "sin_tasa": not ok,
         # En moneda base, para sumar entre cuentas.
@@ -227,14 +228,15 @@ def _cuenta_dict(db: Session, c: Cuenta, mes: str, a: int, m: int, movs_ef: dict
     return out
 
 
-def _ajuste_inicial(filas: list[dict]) -> dict | None:
+def _ajuste_inicial(filas: list[dict], tarjeta: bool = False) -> dict | None:
     """El «Saldo inicial automático» de la cuenta (si lo hay): se muestra aparte, nunca como ingreso ni gasto."""
     f = next((x for x in filas if saldo_inicial_auto.es_automatico(x)), None)
     if not f:
         return None
     return {"movimiento_id": f["id"], "monto": round(delta_saldo(f), 2),
             "fecha": f["fecha"].date().isoformat() if f["fecha"] else None,
-            "etiqueta": "Saldo inicial automático", "explicacion": saldo_inicial_auto.EXPLICACION}
+            "etiqueta": "Deuda inicial automática" if tarjeta else "Saldo inicial automático",
+            "explicacion": saldo_inicial_auto.EXPLICACION_TARJETA if tarjeta else saldo_inicial_auto.EXPLICACION}
 
 
 def _diagnosticar(cuentas: list[dict]) -> None:
@@ -369,6 +371,8 @@ def cuadre_por_cuenta(db: Session, usuario_id: str) -> list[dict]:
         f = malos[0]
         dif = f["diferencia"] if abs(f["diferencia"]) >= TOL else f["acumulada"]
         causa = next((x["texto"] for x in f.get("causas", []) if x.get("probable")), None) or f.get("texto")
+        if c.tipo == "credito" and f.get("tarjeta"):
+            causa = f["tarjeta"]["texto"] + (f" {causa}" if causa else "")
         salida.append({**base, "estado": "no_cuadra", "primer_mes_malo": f["mes"], "diferencia": round(dif, 2),
                        "causa": causa, "faltan_extractos": faltan,
                        "texto": f"Primer mes que no cuadra: {ce._mes_nombre(f['mes'])} por {cx.pesos(abs(dif))}"})

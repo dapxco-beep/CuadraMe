@@ -179,7 +179,7 @@ def test_sin_sincronizar_mas_de_48_horas(db):
 
 
 def test_los_hallazgos_no_llevan_montos_ni_descripciones(db):
-    assert len(CODIGOS) == 9
+    assert len(CODIGOS) == 10
     u = uid()
     a = cuenta(db, u, "Nu Colombia")
     extracto(db, u, "Nu", "Extracto de tu tarjeta de crédito Nu", cuenta_id=a.id, estado="falta_clave")

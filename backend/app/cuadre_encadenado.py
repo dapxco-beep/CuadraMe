@@ -27,6 +27,7 @@ from itertools import combinations
 from sqlalchemy.orm import Session
 
 from app import cuadre_extracto as cx
+from app import deuda_tarjeta as dt
 from app import fechas_extracto as fe
 from app.contabilidad import delta_saldo
 from app.models import Cuenta, HistorialExtracto
@@ -262,11 +263,15 @@ def calcular(db: Session, cuenta: Cuenta, inicio_pp: datetime | None = None, *, 
             "cadena_rota": cadena_rota, "sin_saldo_inicial": sin_ini, "causas": [], "acciones": [],
             "saldos_origen": h.saldos_origen, "tarjeta_fechas": fe.detalle_tarjeta(h) if cuenta.tipo == "credito" else None,
         }
+        if cuenta.tipo == "credito":  # deuda: «Debía al inicio · Compras y cargos · Intereses · Pagos · Debo al corte · Según tu extracto»
+            fila["tarjeta"] = dt.detalle_cuadre(fila, filas, _es_apertura)
         # Causas del mes.
         if abs(dif) >= TOL:
             sobrantes = {i.get("match_id"): i for i in _review(h) if i.get("estado") == "sobrante"}
             fila["causas"] += _causas_de_linea(h, dif, moneda)
             fila["causas"] += _causas_de_movimientos(filas, dif, inicio, corte, sobrantes)
+            if cuenta.tipo == "credito":
+                fila["causas"] += dt.causas_orientativas(h, fila, filas)
             # Diferencia chica con el banco en una cuenta de ahorros: lo más común es que el extracto resuma, sin listarlos como
             # movimientos, rendimientos que el banco SUMÓ y el 4x1000 o los costos por retiro que RESTÓ (no es una causa segura: solo orienta).
             if cuenta.tipo != "credito" and 0 < abs(dif) <= 0.05 * max(abs(banco_fin), abs(banco_ini)):
@@ -420,6 +425,12 @@ def _acciones(filas_mes: list[dict], cuenta: Cuenta) -> None:
                             "monto": c["efecto"], "periodo_inicio": f["periodo_inicio"], "saldo_inicial": f["banco_inicial"],
                             "texto": f"Registrar el saldo inicial de {cx.pesos(c['efecto'])} al {cx.fecha_texto(f['periodo_inicio'])}",
                             "confirmacion": "No cuenta como gasto ni ingreso y puedes deshacerlo."})
+            elif cod in ("pago_como_compra", "compra_como_pago"):
+                acc.append({"tipo": "revisar_tipo", "movimiento_id": c.get("movimiento_id"), "ruta": "/movimientos",
+                            "texto": "Corregir el tipo del movimiento", "confirmacion": None})
+            elif cod == "lectura_incompleta":
+                acc.append({"tipo": "pedir_extracto", "historial_id": f["historial_id"], "ruta": "/sincronizacion",
+                            "texto": "Mándame este extracto (sin datos personales) para aprender su formato", "confirmacion": None})
             elif cod == "movimiento_de_mas":
                 acc.append({"tipo": "revisar_duplicado", "movimiento_id": c.get("movimiento_id"), "ruta": "/buscar-duplicados",
                             "texto": "Es un duplicado: revisar", "confirmacion": None})
