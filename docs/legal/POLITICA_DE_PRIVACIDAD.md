@@ -67,6 +67,8 @@ Como titular puedes: conocer, actualizar y rectificar tus datos; pedir prueba de
 ## 9. Conservación
 Mientras tu cuenta esté activa. Si la eliminas, borramos tus datos personales de la base de datos, salvo lo que debamos conservar por obligación legal. Los registros de autorizaciones pueden conservarse como prueba. Ver lo dicho de las copias de seguridad en la sección 5.
 
+Del contenido de los correos de Gmail que lees con tu autorización (remitente, asunto y fragmento) borramos el de los correos que descartas o ignoras a los 30 días, y el de los que se convierten en movimiento a los 12 meses. Conservamos solo lo mínimo para no volver a leer el mismo correo (identificador, fecha, monto y estado). Si desconectas Gmail, revocamos el permiso en Google y borramos el token de inmediato.
+
 ## 10. Cookies y almacenamiento local
 La app usa almacenamiento del navegador para mantener tu sesión, tus preferencias (tema, secciones abiertas) y avisos descartados. No usamos cookies de publicidad. [Confirmar con el abogado si se añaden analíticas.]
 
