@@ -175,3 +175,17 @@ def test_el_paso_de_errores_devuelve_las_lecturas_que_no_uso(monkeypatch):
     r = aa._paso_errores(ctx)
     assert r["reintentados"] == 1
     assert ctx.presupuesto == 2  # usó 1 de 3: quedan 2 para las tarjetas y los ajustes
+
+
+def test_una_linea_no_se_traga_un_movimiento_que_ya_vino_de_otro_extracto_con_otro_comercio():
+    from datetime import datetime
+
+    from app import conciliacion as cc
+
+    ledger = [{"id": "uber", "fecha": datetime(2025, 10, 30), "monto": 24934.0, "tipo": "expense", "descripcion": "Compra en UBER RIDES con tarjeta débito",
+               "fingerprint": "otra", "rapido": False, "conciliado": False, "extracto_id": "oct", "origen": None, "canales": set(), "emparejable": True}]
+    linea = {"fecha": "2025-11-01", "monto": 23800.0, "tipo": "expense", "descripcion": "Compra en TJV ZONA T con tarjeta débito"}
+    r = cc._auditar_con_cruce_rapido([linea], ledger)
+    assert r["review"][0]["estado"] == "faltante"
+    ledger[0]["descripcion"] = "Compra en TJV ZONA T con tarjeta débito"  # mismo comercio: sí se reconoce
+    assert cc._auditar_con_cruce_rapido([linea], ledger)["review"][0]["estado"] in ("aproximado", "completado")

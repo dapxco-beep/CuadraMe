@@ -811,6 +811,16 @@ def _cand_ledger(r: dict) -> Cand:
                 con_hora=True, ref=r)
 
 
+def _comparten_comercio(a: str | None, b: str | None) -> bool:
+    """¿Dos descripciones comparten alguna palabra de 4+ letras (ignorando «compra en», «con tarjeta»...)?"""
+    ruido = {"compra", "tarjeta", "debito", "credito", "pago", "transferencia", "desde", "para", "pse", "nequi"}
+
+    def palabras(t):
+        return {w for w in re.findall(r"[a-z0-9]{4,}", unicodedata.normalize("NFKD", (t or "").lower()).encode("ascii", "ignore").decode()) if w not in ruido}
+
+    return bool(palabras(a) & palabras(b))
+
+
 def _auditar_con_cruce_rapido(movimientos_extracto: list[dict], ledger: list[dict], descartados: dict | None = None) -> dict:
     """Variante con cruce 1:1 contra TODO lo ya registrado (regla central, app/duplicados.py).
     Orden de prioridad: 1) exactos por huella, 2) 'completado': el movimiento que ya tenías por
@@ -878,7 +888,10 @@ def _auditar_con_cruce_rapido(movimientos_extracto: list[dict], ledger: list[dic
     for i, mov in enumerate(movimientos_extracto):
         if i in estados:
             continue
-        aprox = find_approx_match(resto, {**mov, "fecha": parse_bank_date(mov.get("fecha"))})
+        # Un movimiento que ya nació de OTRA línea de extracto es una transacción real distinta: solo se parece a esta si
+        # comparte comercio (si no, «Compra en TJV» de $23.800 se tragaba un «Uber» de $24.934 y la línea quedaba sin registrar).
+        posibles = [r for r in resto if not r.get("extracto_id") or _comparten_comercio(r.get("descripcion"), mov.get("descripcion"))]
+        aprox = find_approx_match(posibles, {**mov, "fecha": parse_bank_date(mov.get("fecha"))})
         if aprox:
             estados[i] = "aproximado"
             match_ids[i] = aprox.get("id")
