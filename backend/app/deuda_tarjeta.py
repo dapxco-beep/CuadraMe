@@ -116,6 +116,14 @@ def _poner(h: HistorialExtracto, campo: str, valor) -> bool:
     return True
 
 
+def _excluidos(db: Session, usuario_id: str) -> set[str]:
+    """Extractos que la persona deshizo en el autoarreglo (`autoarreglo_no:<id>`): no se vuelven a tocar solos."""
+    from app.crons import MarcaCron
+
+    pref = "autoarreglo_no:"
+    return {m.clave[len(pref):] for m in db.query(MarcaCron).filter(MarcaCron.usuario_id == usuario_id, MarcaCron.clave.like(pref + "%")).all()}
+
+
 def anclar_cuenta(db: Session, cuenta: Cuenta) -> list[str]:
     """Pone en cada extracto de la tarjeta su deuda al corte (negativa) y su deuda inicial (la del extracto anterior).
     Respeta lo escrito a mano (`saldos_origen == 'manual'`). Idempotente. Sin commit. Devuelve los ids cambiados."""
@@ -123,8 +131,9 @@ def anclar_cuenta(db: Session, cuenta: Cuenta) -> list[str]:
         return []
     cambiados: list[str] = []
     anterior: HistorialExtracto | None = None
+    excluidos = _excluidos(db, cuenta.usuario_id)
     for h in extractos_de_tarjeta(db, cuenta.id):
-        if h.saldos_origen == "manual":
+        if h.saldos_origen == "manual" or h.id in excluidos:
             anterior = h
             continue
         usado, origen = usado_de_resumen(_resumen(h))

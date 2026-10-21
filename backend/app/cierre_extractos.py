@@ -371,6 +371,8 @@ def cuadre_por_cuenta(db: Session, usuario_id: str) -> list[dict]:
         f = malos[0]
         dif = f["diferencia"] if abs(f["diferencia"]) >= TOL else f["acumulada"]
         causa = next((x["texto"] for x in f.get("causas", []) if x.get("probable")), None) or f.get("texto")
+        if c.tipo == "credito" and f.get("tarjeta"):
+            causa = f["tarjeta"]["texto"] + (f" {causa}" if causa else "")
         salida.append({**base, "estado": "no_cuadra", "primer_mes_malo": f["mes"], "diferencia": round(dif, 2),
                        "causa": causa, "faltan_extractos": faltan,
                        "texto": f"Primer mes que no cuadra: {ce._mes_nombre(f['mes'])} por {cx.pesos(abs(dif))}"})

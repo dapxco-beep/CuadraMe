@@ -35,7 +35,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import cierre_extractos, corregir_pago, corregir_tipo, extractos_error, punto_partida, reasignar_extracto, saldo_inicial_auto
+from app import cierre_extractos, corregir_pago, deuda_tarjeta, corregir_tipo, extractos_error, punto_partida, reasignar_extracto, saldo_inicial_auto
 from app import arreglar_tarjetas as at
 from app import cuadre_extracto as cx
 from app import fechas_extracto as fe
@@ -71,7 +71,7 @@ PREFIJO_SV = "autoarreglo_sv:"  # extracto de tarjeta cuya lectura no se pudo ve
 
 PASOS = (("errores", "Reintento extractos con error"), ("tarjetas", "Ordeno las tarjetas"),
          ("ajustes", "Registro rendimientos e impuestos"), ("importar", "Importo lo verificado"),
-         ("inicial", "Recalculo el saldo inicial"), ("cuadre", "Reviso que cuadre"))
+         ("inicial", "Recalculo el saldo inicial y la deuda de tus tarjetas"), ("cuadre", "Reviso que cuadre"))
 
 # Campos del movimiento que se vigilan (antes/después) y se restauran al deshacer.
 TRAZADOS = ("cuenta_id", "tipo", "monto", "fecha", "descripcion", "fuente", "categoria", "notas", "subcategoria", "titulo")
@@ -243,11 +243,15 @@ def _traz(m: dict) -> dict:
     return {k: m.get(k) for k in TRAZADOS}
 
 
-def _huella_hist(h: dict) -> str:
+def _huella_hist(h: dict, con_saldos: bool = True) -> str:
     """Lo que se vigila de un extracto: cuenta, estado, revisión y (nuevo) sus fechas y la marca de duplicado."""
     dup = (_cargar(h.get("lectura_json")) or {}).get(fe.CLAVE_DUPLICADO)
+    # Las anclas de deuda (saldos del extracto de una TARJETA) también se vigilan, para poder deshacerlas. `con_saldos=False`
+    # es la fórmula de los lotes anteriores (sus huellas no las llevan).
+    saldos = (f"|{h.get('saldo_inicial_extracto')}|{h.get('saldo_final_extracto')}"
+              if con_saldos and "resumen_tarjeta" in (h.get("lectura_json") or "") else "")
     return sha1(f"{h.get('cuenta_id')}|{h.get('estado')}|{h.get('review_json')}"
-                f"|{h.get('fecha_corte')}|{h.get('periodo_inicio')}|{dup}".encode()).hexdigest()
+                f"|{h.get('fecha_corte')}|{h.get('periodo_inicio')}|{dup}{saldos}".encode()).hexdigest()
 
 
 def _diferencias(a: dict, b: dict, paso: str) -> list[dict]:
@@ -645,9 +649,27 @@ def _cerrar_importar(ctx: _Ctx, hechos: int, importadas: int, quedan: int, por_d
 
 # ── Paso 5 y 6: ajuste inicial y cuadre ──────────────────────────────────────────────────────────────────────
 def _paso_inicial(ctx: _Ctx) -> dict:
-    r = saldo_inicial_auto.registrar_todas(ctx.db, ctx.uid, punto_partida.fecha_inicio(ctx.db, ctx.uid))
+    """Ajuste inicial de cada cuenta. En las TARJETAS (deuda, no saldo): 1) las anclas de deuda de cada extracto (lo que se
+    debía al corte, leído del resumen) y 2) la «Deuda inicial» derivada del extracto más antiguo, solo con lectura verificada."""
+    db = ctx.db
+    tarjetas = db.query(Cuenta).filter(Cuenta.usuario_id == ctx.uid, Cuenta.tipo == "credito").all()
+    ancladas = 0
+    for c in tarjetas:
+        ancladas += len(deuda_tarjeta.anclar_cuenta(db, c))
+    if ancladas:
+        db.commit()
+        ctx.cerrar_fase("inicial")
+    r = saldo_inicial_auto.registrar_todas(db, ctx.uid, punto_partida.fecha_inicio(db, ctx.uid))
     ctx.cerrar_fase("inicial")
-    return {"hecho": len(r), "quedan": 0}
+    inicio_pp = punto_partida.fecha_inicio(db, ctx.uid)
+    for c in tarjetas:  # sin el primer extracto leído completo no se inventa: se dice qué falta
+        db.refresh(c)
+        _, _, filas = cx._serie(db, c.id)
+        o = deuda_tarjeta.objetivo_deuda_inicial(db, c, filas, saldo_inicial_auto.es_automatico)
+        if o["estado"] == "incompleto" and not any(saldo_inicial_auto.es_automatico(f) for f in filas) \
+                and not punto_partida.es_anterior(o["inicio"], inicio_pp):
+            ctx.decidir("deuda_inicial_sin_lectura")
+    return {"hecho": len(r) + ancladas, "anclas": ancladas, "quedan": 0}
 
 
 def _paso_cuadre(ctx: _Ctx) -> dict:
@@ -664,6 +686,8 @@ DECISIONES = {
     "clave_pdf": ("Me falta la clave de tus extractos en PDF para leerlos.", "Poner la clave", "/correos"),
     "fechas_dudosas": ("Hay extractos con fechas que no cuadran (un corte que aún no llega, periodos que se cruzan o sin fecha); no las cambié.",
                        "Revisarlos", "/sincronizacion"),
+    "deuda_inicial_sin_lectura": ("Aún no puedo calcular con cuánto empezó tu tarjeta: faltan líneas de tu primer extracto.",
+                                  "Verlos", "/sincronizacion"),
     "tarjeta_sin_verificar": ("Hay extractos de tarjeta que no pude comprobar contra el resumen del banco; no los toqué.",
                               "Verlos", "/sincronizacion"),
 }
@@ -891,8 +915,9 @@ def _revertir_historial(db: Session, f: ArregloAuto) -> None:
     if h is None:
         return
     actual = {"cuenta_id": h.cuenta_id, "estado": h.estado, "review_json": h.review_json, "fecha_corte": h.fecha_corte,
-              "periodo_inicio": h.periodo_inicio, "lectura_json": h.lectura_json}
-    if _huella_hist(actual) != despues.get("huella"):
+              "periodo_inicio": h.periodo_inicio, "lectura_json": h.lectura_json,
+              "saldo_inicial_extracto": h.saldo_inicial_extracto, "saldo_final_extracto": h.saldo_final_extracto}
+    if despues.get("huella") not in (_huella_hist(actual), _huella_hist(actual, False)):
         raise Inconsistente("Un extracto que ordené cambió después")
     for k in HIST_CAMPOS:
         if k in antes:
