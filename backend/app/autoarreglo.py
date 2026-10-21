@@ -541,6 +541,7 @@ def _paso_tarjetas(ctx: _Ctx) -> dict:
     plan = at._plan(db, ctx.usuario)
     filas = [f for f in plan["filas"] if f["historial_id"] not in ctx.excluidos]
     hechos, quedan, saltados = [], 0, 0
+    dejar = RESERVA_PARA_AJUSTES if ctx.presupuesto > RESERVA_PARA_AJUSTES else 0  # fijo para todo el paso
     for k, f in enumerate(filas):
         h = f["_h"]
         sin_trabajo = f["_destino_obj"] is None and not f["releera"] and not f.get("propuestas_tipo")
@@ -563,7 +564,7 @@ def _paso_tarjetas(ctx: _Ctx) -> dict:
         if necesita_gmail:
             if not f["puede_releerse"]:
                 continue
-            if not ctx.reservar(1, dejar=RESERVA_PARA_AJUSTES if ctx.presupuesto > RESERVA_PARA_AJUSTES else 0):
+            if not ctx.reservar(1, dejar=dejar):
                 quedan += 1  # sin lecturas por ahora (se guardan para los ajustes): sigue con los que no las necesitan
                 continue
             gasto = True
