@@ -189,3 +189,13 @@ def test_una_linea_no_se_traga_un_movimiento_que_ya_vino_de_otro_extracto_con_ot
     assert r["review"][0]["estado"] == "faltante"
     ledger[0]["descripcion"] = "Compra en TJV ZONA T con tarjeta débito"  # mismo comercio: sí se reconoce
     assert cc._auditar_con_cruce_rapido([linea], ledger)["review"][0]["estado"] in ("aproximado", "completado")
+
+
+def test_el_pago_de_tarjeta_con_desglose_es_elegible_y_otra_cosa_con_desglose_no():
+    from app import autoarreglo as aa
+
+    pago = {"estado": "faltante", "tipo": "income", "monto": 170000.0, "fingerprint": "f", "fecha": "2026-04-20", "pago_tarjeta": True,
+            "pago_detalle": {"capital": 170000.0, "intereses": 0.0, "cargos": 0.0}}
+    assert aa._elegible(pago, None) is True
+    assert aa._elegible({**pago, "pago_tarjeta": False}, None) is False
+    assert aa._elegible({**pago, "aviso_linea": "revisa"}, None) is False

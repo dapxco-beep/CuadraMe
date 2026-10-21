@@ -620,7 +620,9 @@ def _elegible(item: dict, inicio) -> bool:
 
     if item.get("estado") != "faltante" or item.get("lectura_dudosa") or item.get("marcar_por_defecto") is False:
         return False
-    if item.get("pago_detalle") or item.get("aviso_linea") or item.get("tipo") not in ("income", "expense"):
+    # El pago a una tarjeta con su desglose (capital/intereses/cargos) sí entra: la lectura de la tarjeta ya está verificada
+    # (_verificada) y el pago es el que sale de otra cuenta tuya; sin él la deuda del corte no cuadra.
+    if (item.get("pago_detalle") and not item.get("pago_tarjeta")) or item.get("aviso_linea") or item.get("tipo") not in ("income", "expense"):
         return False
     if not (float(item.get("monto") or 0) >= 1) or not item.get("fingerprint"):
         return False
