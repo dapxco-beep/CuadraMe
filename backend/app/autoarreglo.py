@@ -35,7 +35,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import ingresos_sueltos
+from app import guardia_coherencia, ingresos_sueltos
 from app import cierre_extractos, corregir_pago, deuda_tarjeta, corregir_tipo, extractos_error, punto_partida, reasignar_extracto, saldo_inicial_auto
 from app import arreglar_tarjetas as at
 from app import cuadre_extracto as cx
@@ -836,13 +836,23 @@ def texto_resumen(c: dict) -> str:
 
 
 # ── Orquestador ──────────────────────────────────────────────────────────────────────────────────────────
+def _coherencia(db: Session, uid: str) -> list[dict]:
+    """Lo que la guardia de coherencia (solo lectura) ve incoherente DESPUÉS de los pasos. Nunca lanza ni cambia nada."""
+    try:
+        return guardia_coherencia.revisar_usuario(db, uid)
+    except Exception:  # noqa: BLE001
+        db.rollback()
+        logger.warning("Autoarreglo: la guardia de coherencia falló (usuario %s)", uid[:8], exc_info=True)
+        return []
+
+
 def correr(db: Session, usuario_id: str, max_pasos: int = MAX_PASOS_POR_LLAMADA, *, usuario=None,
            respetar_intervalo: bool = False, origen: str = "app") -> dict:
     """Una llamada acotada. Devuelve `{estado: 'trabajando'|'listo', progreso: {hecho, total, paso}, lote_id, cambios, resumen,
     pasos, decisiones, cuadre, ...}`. 'trabajando' = queda trabajo y esta llamada avanzó: vuelve a llamar. Nunca lanza."""
     uid = usuario_id
     base = {"estado": "listo", "progreso": {"hecho": len(PASOS), "total": len(PASOS), "paso": None}, "lote_id": None, "cambios": 0,
-            "resumen": None, "pasos": [], "decisiones": [], "cuadre": [], "origen": origen}
+            "resumen": None, "pasos": [], "decisiones": [], "cuadre": [], "coherencia": [], "origen": origen}
     token = None
     try:
         if pausado(db, uid):
@@ -873,6 +883,7 @@ def correr(db: Session, usuario_id: str, max_pasos: int = MAX_PASOS_POR_LLAMADA,
                 pendiente = True
             elif r["estado"] == "ok" and not pendiente:
                 hecho += 1
+        coherencia = _coherencia(db, uid)
         _poner(db, uid, CLAVE_ULTIMA, _ahora().isoformat())
         _quitar(db, uid, CLAVE_PEDIDO)
         sigue = pendiente and ctx.unidades > 0 and not ctx.limite_alcanzado
@@ -883,7 +894,7 @@ def correr(db: Session, usuario_id: str, max_pasos: int = MAX_PASOS_POR_LLAMADA,
         return {
             **base, "estado": "trabajando" if sigue else "listo", "lote_id": lote if resumen else None, "cambios": resumen["cambios"] if resumen else 0,
             "progreso": {"hecho": hecho if sigue else len(PASOS), "total": len(PASOS), "paso": actual},
-            "resumen": resumen, "pasos": pasos, "decisiones": _decisiones(ctx.decisiones), "cuadre": ctx.cuadre,
+            "resumen": resumen, "pasos": pasos, "decisiones": _decisiones(ctx.decisiones), "cuadre": ctx.cuadre, "coherencia": coherencia,
             "limite_alcanzado": ctx.limite_alcanzado, "quedan_por_hacer": pendiente and not sigue, "notas": ctx.notas}
     except Exception:  # noqa: BLE001 - jamás hacia la persona
         db.rollback()
