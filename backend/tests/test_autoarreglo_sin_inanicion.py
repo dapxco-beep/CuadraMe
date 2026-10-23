@@ -222,6 +222,7 @@ def test_el_barrido_quita_el_ingreso_falso_con_su_compra_buena_y_el_pago_repetid
         pago = _mov(db, uid, c, 8, 20, "Pago de tu tarjeta", 90_000.0, "income", "Pago de tarjeta")
         repetido = _mov(db, uid, c, 8, 20, "2026 Pago", 90_000.0, "income", "Otros")
         residuo = _mov(db, uid, c, 8, 14, "2026", 14.0, "expense", "Otros")
+        mal_pago = _mov(db, uid, c, 7, 2, "Pago", 70_000.0, "expense", "Pago de tarjeta")
         for m in (falso, buena, falso2, buena2, sola, pago, repetido, residuo):
             m.fuente = "conciliacion_extracto"
         db.flush()
@@ -230,9 +231,9 @@ def test_el_barrido_quita_el_ingreso_falso_con_su_compra_buena_y_el_pago_repetid
         r = ingresos_sueltos.barrer(db, uid, c)
         db.commit()
         vivos = {n for n, i in ids_.items() if db.get(Movimiento, i) is not None}
-        assert r == {"ingresos_falsos": 2, "pagos_repetidos": 1, "residuos": 1}
-        assert vivos == {"buena", "buena2", "sola", "pago"} and db.get(Movimiento, residuo.id) is None
+        assert r == {"ingresos_falsos": 2, "pagos_repetidos": 1, "residuos": 1, "retipados": 0, "pagos_corregidos": 1}
+        assert vivos == {"buena", "buena2", "sola", "pago"} and db.get(Movimiento, residuo.id) is None and db.get(Movimiento, mal_pago.id).tipo == "income"
         # la segunda pasada no cambia nada
-        assert ingresos_sueltos.barrer(db, uid, c) == {"ingresos_falsos": 0, "pagos_repetidos": 0, "residuos": 0}
+        assert ingresos_sueltos.barrer(db, uid, c) == {"ingresos_falsos": 0, "pagos_repetidos": 0, "residuos": 0, "retipados": 0, "pagos_corregidos": 0}
     finally:
         db.close()

@@ -585,7 +585,7 @@ def _paso_tarjetas(ctx: _Ctx) -> dict:
     if not quedan:  # con todas las tarjetas ya releídas: lo suelto que tiene su compra buena o su pago gemelo se quita
         for c in db.query(Cuenta).filter(Cuenta.usuario_id == ctx.uid, Cuenta.tipo == "credito").all():
             r = ingresos_sueltos.barrer(db, ctx.uid, c)
-            if r["ingresos_falsos"] or r["pagos_repetidos"] or r["residuos"]:
+            if r["ingresos_falsos"] or r["pagos_repetidos"] or r["residuos"] or r["retipados"] or r["pagos_corregidos"]:
                 ctx.unidades += 1
                 barrido[c.id] = r
         if barrido:

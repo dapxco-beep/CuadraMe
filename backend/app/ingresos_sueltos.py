@@ -10,6 +10,7 @@ quita). 1:1: cada gasto respalda UN ingreso. Sin commit; quien llama lo deshace 
 from __future__ import annotations
 
 import re
+import json
 from datetime import timedelta
 
 from sqlalchemy.orm import Session
@@ -17,9 +18,10 @@ from sqlalchemy.orm import Session
 from app import duplicados as dup
 from app.compartidos import bloquear_cuenta
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, MARCA_TRASLADO_PROPIO, delta_saldo
-from app.models import Movimiento
+from app.models import HistorialExtracto, Movimiento
 from app.reasignar_extracto import FUENTES_IMPORTADAS
 
+TIPOS_DE_COMPRA = ("compra", "compra_en_cuotas", "cuota_manejo", "comision", "avance", "comision_servicio")
 TOL = 1.0
 VENTANA = timedelta(days=1, hours=23)
 
@@ -39,6 +41,24 @@ def _quitar(db: Session, cuenta, mov: Movimiento) -> None:
     dup.registrar_borrado(db, mov, dup.MOTIVO_ERROR)
     db.flush()
     db.delete(mov)
+
+
+def _cambiar_tipo(db: Session, cuenta, mov: Movimiento, nuevo: str) -> None:
+    cuenta = bloquear_cuenta(db, cuenta.id) or cuenta
+    antes = delta_saldo(mov)
+    mov.tipo = nuevo
+    cuenta.saldo = round((cuenta.saldo or 0) + delta_saldo(mov) - antes, 2)
+
+
+def _lineas_de_compra(db: Session, cuenta_id: str):
+    for h in db.query(HistorialExtracto).filter(HistorialExtracto.cuenta_id == cuenta_id).all():
+        try:
+            review = json.loads(h.review_json or "[]")
+        except ValueError:
+            continue
+        for i in review if isinstance(review, list) else []:
+            if i.get("tipo") == "expense" and i.get("linea_tipo") in TIPOS_DE_COMPRA and (i.get("movimiento_id") or i.get("match_id")):
+                yield i
 
 
 def barrer(db: Session, usuario_id: str, cuenta) -> dict:
@@ -70,4 +90,18 @@ def barrer(db: Session, usuario_id: str, cuenta) -> dict:
         if gemelo is not None:
             _quitar(db, cuenta, m)
             quitados_pago += 1
-    return {"ingresos_falsos": quitados_compra, "pagos_repetidos": quitados_pago, "residuos": len(basura)}
+    # El extracto dice «compra» y el movimiento enlazado quedó como ingreso (otra fecha de por medio): pasa a gasto.
+    retipados = 0
+    for i in _lineas_de_compra(db, cuenta.id):
+        m = db.get(Movimiento, i.get("movimiento_id") or i.get("match_id"))
+        if (m is not None and m.cuenta_id == cuenta.id and m.usuario_id == usuario_id and m.tipo == "income" and not _parecen_pago(m)
+                and abs(float(m.monto) - float(i.get("monto") or 0)) <= TOL):
+            _cambiar_tipo(db, cuenta, m, "expense")
+            retipados += 1
+    # Un «Pago de tarjeta» guardado como gasto dentro de la propia tarjeta es un pago: reduce la deuda (ingreso).
+    pagos_corregidos = 0
+    for m in db.query(Movimiento).filter(Movimiento.usuario_id == usuario_id, Movimiento.cuenta_id == cuenta.id, Movimiento.tipo == "expense",
+                                         Movimiento.categoria == CATEGORIA_PAGO_TARJETA).all():
+        _cambiar_tipo(db, cuenta, m, "income")
+        pagos_corregidos += 1
+    return {"ingresos_falsos": quitados_compra, "pagos_repetidos": quitados_pago, "residuos": len(basura), "retipados": retipados, "pagos_corregidos": pagos_corregidos}
