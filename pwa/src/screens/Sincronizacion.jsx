@@ -22,6 +22,7 @@ import PasoGuiado from '../components/PasoGuiado'
 import AvisoSalud from '../components/AvisoSalud'
 import AvisoAutoarreglo from '../components/AvisoAutoarreglo'
 import EstadoPorCuenta from '../components/EstadoPorCuenta'
+import EstadoGmail from '../components/EstadoGmail'
 import ArreglarTarjetas from '../components/ArreglarTarjetas'
 import RegistrarRendimientos from '../components/RegistrarRendimientos'
 import BancoNoEsta, { EnlaceBancoNoEsta } from '../components/BancoNoEsta'
@@ -961,6 +962,7 @@ export default function Sincronizacion() {
         <div className="col">
           <AvisoAutoarreglo className="mt-3" />
           <AvisoSalud className="mx-6 mt-3" />
+          <EstadoGmail gmail={gmail} cuentas={filasCuentas} className="mx-6 mt-3" />
           <div className="mx-6 mt-3">
             <PasoGuiado
               estado={estadoG}
