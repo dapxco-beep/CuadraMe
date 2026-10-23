@@ -323,3 +323,34 @@ def test_reabre_la_linea_aproximada_con_un_movimiento_de_otro_extracto_y_otro_co
         assert [i["estado"] for i in json.loads(h.review_json)] == ["faltante", "aproximado"] and h.estado == "pendiente_revision"
     finally:
         db.close()
+
+
+def test_reabre_la_linea_completada_cuya_pareja_ya_no_existe_o_es_de_otra_cuenta(monkeypatch):
+    from datetime import datetime
+
+    from app import ingresos_sueltos
+
+    uid = "ai-compl"
+    ids = mundo(uid, monkeypatch)
+    db = SessionLocal()
+    try:
+        c, tarjeta = db.get(Cuenta, ids["ahorro"]), db.get(Cuenta, ids["credito"])
+        en_tarjeta = Movimiento(usuario_id=uid, cuenta_id=tarjeta.id, descripcion="Pago", categoria="Pago de tarjeta", tipo="income", monto=90_000.0,
+                                fecha=datetime(2026, 8, 17), fuente="conciliacion_extracto")
+        propio = Movimiento(usuario_id=uid, cuenta_id=c.id, descripcion="Envio", categoria="Otros", tipo="expense", monto=5_000.0,
+                            fecha=datetime(2026, 8, 18), fuente="conciliacion_extracto")
+        db.add_all([en_tarjeta, propio])
+        db.flush()
+        review = [{"fecha": "2026-08-17", "descripcion": "Pagaste tu tarjeta", "monto": 90_000.0, "tipo": "expense", "estado": "completado", "match_id": en_tarjeta.id},
+                  {"fecha": "2026-08-23", "descripcion": "Enviaste", "monto": 37_000.0, "tipo": "expense", "estado": "completado", "match_id": "ya-no-existe"},
+                  {"fecha": "2026-08-18", "descripcion": "Envio", "monto": 5_000.0, "tipo": "expense", "estado": "completado", "match_id": propio.id}]
+        h = HistorialExtracto(usuario_id=uid, cuenta_id=c.id, banco_detectado="nu", estado="conciliado", total_movimientos=3, importados=3,
+                              review_json=json.dumps(review))
+        db.add(h)
+        db.commit()
+        assert ingresos_sueltos.reabrir_aproximados_ajenos(db, uid, c) == 2
+        db.commit()
+        db.refresh(h)
+        assert [i["estado"] for i in json.loads(h.review_json)] == ["faltante", "faltante", "completado"]
+    finally:
+        db.close()

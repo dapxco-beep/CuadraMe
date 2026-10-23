@@ -158,6 +158,16 @@ def reabrir_aproximados_ajenos(db: Session, usuario_id: str, cuenta) -> int:
             continue
         cambio = False
         for i in review if isinstance(review, list) else []:
+            if i.get("estado") == "completado" and i.get("match_id"):
+                m = db.get(Movimiento, i["match_id"])
+                if m is not None and m.cuenta_id == cuenta.id:
+                    continue  # bien emparejada
+                # su pareja ya no existe o es de OTRA cuenta (p. ej. el pago de la tarjeta, que vive en la tarjeta): en esta cuenta falta
+                i.pop("match_id", None)
+                i["estado"] = "faltante"
+                cambio = True
+                reabiertas += 1
+                continue
             if i.get("estado") != "aproximado" or not i.get("match_id"):
                 continue
             m = db.get(Movimiento, i["match_id"])
