@@ -149,7 +149,7 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
               </div>
               <div className="flex justify-between text-[11px] text-ink-soft mt-1.5">
                 <span>Debes {formatMoneda(t.cupo_usado, cuenta.moneda)}</span>
-                <span>Disponible del cupo: {formatMoneda(t.cupo_disponible, cuenta.moneda)}</span>
+                <span>Cupo disponible {formatMoneda(t.cupo_disponible, cuenta.moneda)}</span>
               </div>
               {nivel.aviso && <p className={`text-xs mt-2 ${nivel.texto}`}>{nivel.aviso}</p>}
             </>

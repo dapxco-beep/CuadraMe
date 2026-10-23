@@ -77,10 +77,10 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
             <p className="text-xs text-ink-soft mt-2" data-testid="significado-saldo">
               {etiquetaCuenta(c).significado} <Ayudita termino={etiquetaCuenta(c).termino} />
             </p>
-            {credito && det.deuda_tarjeta && <DeudaTarjeta vista={det.deuda_tarjeta} moneda={c.moneda} compacta className="mt-3 border-t border-line pt-3" />}
+            {credito && det.deuda_tarjeta && <DeudaTarjeta vista={det.deuda_tarjeta} moneda={c.moneda} compacta saldoAFavor={Math.max(0, c.saldo || 0)} className="mt-3 border-t border-line pt-3" />}
             {credito && !det.deuda_tarjeta?.cupo && cupoDisponible(c) != null && (
               <p className="text-sm mt-2">
-                <span className="text-ink-soft">Disponible del cupo: </span>
+                <span className="text-ink-soft">Cupo disponible </span>
                 <span className="font-semibold">{fmt(cupoDisponible(c), c.moneda)}</span>
               </p>
             )}

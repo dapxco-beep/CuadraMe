@@ -21,3 +21,38 @@ export function datosDeuda(v, fmt, moneda = 'COP') {
     aFavor: !!v.a_favor,
   }
 }
+
+/**
+ * Cómo se DICE una tarjeta de crédito a partir de su saldo contable (saldo = −deuda). Puro: no cambia la contabilidad,
+ * solo la presenta. Nunca devuelve un número con signo: la deuda se dice «Debes $X» y el saldo positivo «Saldo a favor $X».
+ * `cupo` y `disponible` solo salen si hay cupo definido (> 0); si no, no se inventan. Cupo excedido: disponible 0 y
+ * `excedido` = cuánto te pasaste.
+ * @returns {{estado:'deuda'|'a_favor'|'al_dia', etiqueta:string, monto:string, cupo:string|null, disponible:string|null,
+ *   usoPct:number|null, excedido:string|null, linea:string}}
+ */
+export function resumenDeuda(entrada = {}, fmt, moneda = 'COP') {
+  const { saldo = 0, disponible = null } = entrada
+  let { cupo = null } = entrada
+  const s = Number(saldo) || 0
+  const estado = s < -0.5 ? 'deuda' : s > 0.5 ? 'a_favor' : 'al_dia'
+  const deuda = estado === 'deuda' ? -s : 0
+  // El backend siempre entrega el disponible; si no llegó el cupo, se deduce (cupo = deuda + disponible)
+  if ((cupo == null || Number(cupo) <= 0) && disponible != null) cupo = deuda + Number(disponible)
+  const hayCupo = cupo != null && Number(cupo) > 0
+  const libre = hayCupo ? Math.max(0, disponible != null ? Number(disponible) : Number(cupo) - deuda) : null
+  const pasado = hayCupo && deuda > Number(cupo) + 0.5 ? deuda - Number(cupo) : 0
+  const etiqueta = estado === 'a_favor' ? 'Saldo a favor' : 'Debes'
+  const monto = fmt(estado === 'a_favor' ? s : deuda, moneda)
+  const cupoTxt = hayCupo ? fmt(Number(cupo), moneda) : null
+  const dispTxt = hayCupo ? fmt(libre, moneda) : null
+  return {
+    estado,
+    etiqueta,
+    monto,
+    cupo: cupoTxt,
+    disponible: dispTxt,
+    usoPct: hayCupo ? Math.max(0, Math.min(100, (deuda / Number(cupo)) * 100)) : null,
+    excedido: pasado > 0 ? fmt(pasado, moneda) : null,
+    linea: [`${etiqueta} ${monto}`, dispTxt != null && estado !== 'a_favor' ? `Cupo disponible ${dispTxt}` : null].filter(Boolean).join(' · '),
+  }
+}

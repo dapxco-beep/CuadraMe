@@ -42,7 +42,7 @@ describe('<DeudaTarjeta>', () => {
     const { container } = render(<DeudaTarjeta vista={VISTA} />)
     expect(screen.getByTestId('deuda-resumen')).toHaveTextContent('Debes')
     expect(screen.getByTestId('deuda-resumen')).toHaveTextContent('Cupo')
-    expect(screen.getByTestId('deuda-resumen')).toHaveTextContent('Disponible')
+    expect(screen.getByTestId('deuda-resumen')).toHaveTextContent('Cupo disponible')
     expect(screen.getByRole('progressbar', { name: 'Uso del cupo' })).toHaveAttribute('aria-valuenow', '35')
     expect(screen.getByTestId('corte-pago')).toHaveTextContent('Corte 15 oct · Pago hasta 4 nov')
     expect(screen.getByTestId('pago-minimo')).toHaveTextContent('Pago mínimo')

@@ -78,6 +78,6 @@ describe('Panel de tarjeta con el extracto real', () => {
     expect(screen.getByTestId('aviso-dias-pago')).toHaveTextContent(/Pago mínimo de tu extracto: \$\s?187\.950/)
     expect(screen.getByText(/Total tomado de tu extracto del banco/)).toBeInTheDocument()
     expect(screen.getByText(/Debes/)).toBeInTheDocument()
-    expect(screen.getByText(/Disponible del cupo:/)).toBeInTheDocument()
+    expect(screen.getByText(/Cupo disponible/)).toBeInTheDocument()
   })
 })

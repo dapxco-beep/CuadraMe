@@ -227,7 +227,7 @@ function TarjetaNeto({ datos }) {
           <p className="font-semibold tabular-nums">{formatCOP(datos.total_cuentas)}</p>
           {datos.deudas_tarjeta > 0 && (
             <p className="opacity-80 text-[10px]" data-testid="nota-tarjetas">
-              incluye -{formatCOP(datos.deudas_tarjeta)} de tarjetas
+              incluye {formatCOP(datos.deudas_tarjeta)} que debes en tarjetas
             </p>
           )}
         </div>

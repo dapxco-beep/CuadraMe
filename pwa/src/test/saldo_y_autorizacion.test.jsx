@@ -62,7 +62,22 @@ describe('Saldo actual claro', () => {
     expect(screen.queryByText('Saldo actual')).toBeNull()
     expect(screen.getByText(/800\.000/)).toBeInTheDocument()
     expect(screen.queryByText(/-\s?\$?\s?800/)).toBeNull()
-    expect(screen.getByText(/Disponible del cupo: .*2\.200\.000/)).toBeInTheDocument()
+    expect(screen.getByText(/Cupo disponible .*2\.200\.000/)).toBeInTheDocument()
+  })
+
+  it('tarjeta con saldo positivo dice "Saldo a favor", sin "+" ni cupo disponible', () => {
+    envolver(<TarjetaCuenta cuenta={{ ...TC, saldo: 50000, tarjeta: { cupo_disponible: 3000000 } }} />)
+    expect(screen.getByText('Saldo a favor')).toBeInTheDocument()
+    expect(screen.queryByText('Debes')).toBeNull()
+    expect(screen.getByText(/50.000/)).toBeInTheDocument()
+    expect(screen.queryByText(/Cupo disponible/)).toBeNull()
+    expect(screen.queryByText(/+/)).toBeNull()
+  })
+
+  it('tarjeta sin cupo definido no inventa cupo disponible', () => {
+    envolver(<TarjetaCuenta cuenta={{ id: 't2', nombre: 'Visa', tipo: 'credito', saldo: -100000, moneda: 'COP' }} />)
+    expect(screen.getByText('Debes')).toBeInTheDocument()
+    expect(screen.queryByText(/Cupo disponible/)).toBeNull()
   })
 
   it('textoActualizado distingue hoy, ayer, fecha y sin movimientos', () => {
