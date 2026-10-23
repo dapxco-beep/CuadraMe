@@ -1,6 +1,6 @@
 import {
   Activity, ArrowLeftRight, Bot, BookOpen, CalendarCheck, CreditCard, Database, Gift, GraduationCap, Home, Landmark, Lightbulb, List, PieChart, PiggyBank,
-  LifeBuoy, Receipt, RefreshCw, Repeat, Settings, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Sprout, Tag,
+  LifeBuoy, Receipt, RefreshCw, Repeat, Scale, Settings, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Sprout, Tag,
   TrendingUp, User, Users, Wallet,
 } from 'lucide-react'
 
@@ -49,6 +49,7 @@ export const GRUPOS = [
     icon: Lightbulb,
     items: [
       { to: '/informe', icon: PieChart, label: 'En qué gasto mi plata', palabras: 'informe en que gasto mi plata categoria comercios reporte' },
+      { to: '/mi-cuenta-cuadra', icon: Scale, label: 'Mi cuenta cuadra', palabras: 'cuadre cuadra extracto banco tarjeta semaforo diferencia' },
       { to: '/traslados', icon: ArrowLeftRight, label: 'Revisar posibles traslados', palabras: 'traslado entre mis cuentas nequi nu bancolombia no cuenta' },
       { to: '/insights', icon: Sparkles, label: 'Hallazgos', palabras: 'insights consejos descubrimientos' },
       { to: '/asistente', icon: Bot, label: 'Asistente', palabras: 'cuadrame ai ia pregunta chat' },
@@ -115,6 +116,7 @@ export const EXPLICACION = {
   '/cierre-mes': 'Un balance de cómo te fue en el mes.',
   '/resumen': 'Tu mes contado en diapositivas para compartir.',
   '/informe': 'Cuánto entra y cuánto sale, y en qué gastas más.',
+  '/mi-cuenta-cuadra': 'Si cada banco y tarjeta cuadra con sus extractos, mes a mes.',
   '/traslados': 'Pasos de plata entre tus cuentas que no deben contar como gasto ni ingreso.',
   '/insights': 'Cosas curiosas que encontramos en tus gastos.',
   '/asistente': 'Pregúntale a CuadraMe cosas sobre tu plata.',

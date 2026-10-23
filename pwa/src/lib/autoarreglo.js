@@ -2,6 +2,7 @@
 // el corredor (una sola vez por sesión y por hora, sin bloquear nada) y los textos, que siguen docs/GUIA_DE_TEXTOS.md.
 import { useSyncExternalStore } from 'react'
 import { api } from './api'
+import { decisionVisible } from './decisionesAutoarreglo'
 
 export const INTERVALO_MS = 60 * 60 * 1000 // una vez por hora (y una vez por sesión)
 export const MAX_RONDAS = 12 // llamadas seguidas como mucho; lo que falte sigue en la próxima apertura
@@ -23,14 +24,22 @@ function guardar(clave, valor) {
 export function textoProgreso(progreso) {
   const total = progreso?.total || 6
   const actual = Math.min((progreso?.hecho || 0) + 1, total)
-  return `Estoy ordenando tus cuentas… (${actual} de ${total})`
+  return `Ordenando tus cuentas: paso ${actual} de ${total}`
+}
+
+/** Qué paso hace ahora, en las palabras del servidor («Reviso que cuadre»), o ''. */
+export const textoPaso = (progreso) => (typeof progreso?.paso === 'string' ? progreso.paso.trim() : '')
+
+/** Aviso al terminar: «Ordené tus cuentas: moví 4 extractos…» (sin repetir el «Listo, ordené tus cuentas:» del servidor). */
+export function textoAviso(resumen) {
+  const resto = (resumen?.texto || '').replace(/^\s*listo,?\s*ordené tus cuentas:?\s*/i, '').trim()
+  return resto ? `Ordené tus cuentas: ${resto}` : 'Ordené tus cuentas.'
 }
 
 /** La frase del servidor ya viene lista («Listo, ordené tus cuentas: moví 4 extractos…»). */
 export const textoListo = (resumen) => resumen?.texto || 'Listo, ordené tus cuentas.'
 
-/** Una decisión del servidor lista para pintar como acción de un toque: { clave, texto, accion, ruta, cantidad }. */
-export const decisionVisible = (d) => ({ clave: d.tipo, texto: d.texto, accion: d.accion, ruta: d.ruta, cantidad: d.cantidad })
+export { decisionVisible }
 
 /** «Nu Colombia: de $2.700.000 a $2.706.100». */
 export const textoSaldoCuenta = (c, fmt) => `${c.cuenta}: de ${fmt(c.saldo_antes)} a ${fmt(c.saldo_despues)}`

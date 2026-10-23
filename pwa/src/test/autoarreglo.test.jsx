@@ -10,7 +10,7 @@ vi.mock('../lib/CuentasContext', () => ({ useCuentas: () => ({ cuentas: [], reca
 
 import AvisoAutoarreglo from '../components/AvisoAutoarreglo'
 import {
-  INTERVALO_MS, iniciar, lineasConteo, reiniciarParaPruebas, textoListo, textoProgreso, tocaCorrer,
+  INTERVALO_MS, iniciar, lineasConteo, reiniciarParaPruebas, textoAviso, textoListo, textoPaso, textoProgreso, tocaCorrer,
 } from '../lib/autoarreglo'
 
 const fmt = (n) => `$${n}`
@@ -36,9 +36,13 @@ beforeEach(() => {
 
 describe('textos', () => {
   it('progreso y resultado', () => {
-    expect(textoProgreso({ hecho: 1, total: 6 })).toBe('Estoy ordenando tus cuentas… (2 de 6)')
-    expect(textoProgreso(null)).toBe('Estoy ordenando tus cuentas… (1 de 6)')
-    expect(textoProgreso({ hecho: 9, total: 6 })).toBe('Estoy ordenando tus cuentas… (6 de 6)')
+    expect(textoProgreso({ hecho: 1, total: 6 })).toBe('Ordenando tus cuentas: paso 2 de 6')
+    expect(textoProgreso(null)).toBe('Ordenando tus cuentas: paso 1 de 6')
+    expect(textoProgreso({ hecho: 9, total: 6 })).toBe('Ordenando tus cuentas: paso 6 de 6')
+    expect(textoAviso(LOTE)).toMatch(/^Ordené tus cuentas: moví 4 extractos/)
+    expect(textoAviso({})).toBe('Ordené tus cuentas.')
+    expect(textoPaso({ paso: ' Reviso que cuadre ' })).toBe('Reviso que cuadre')
+    expect(textoPaso(null)).toBe('')
     expect(textoListo(LOTE)).toMatch(/^Listo, ordené tus cuentas: moví 4 extractos/)
   })
 
@@ -87,7 +91,7 @@ describe('aviso', () => {
       .mockResolvedValueOnce({ estado: 'trabajando', progreso: { hecho: 1, total: 6 } })
       .mockImplementationOnce(() => new Promise((r) => { soltar = r }))
     montar()
-    expect(await screen.findByRole('status')).toHaveTextContent('Estoy ordenando tus cuentas… (2 de 6)')
+    expect(await screen.findByRole('status')).toHaveTextContent('Ordenando tus cuentas: paso 2 de 6')
     await waitFor(() => expect(typeof soltar).toBe('function'), { timeout: 4000 }) // la segunda llamada llega tras la pausa corta
     await act(async () => { soltar({ ...LISTO, resumen: null }) })
     await waitFor(() => expect(screen.queryByTestId('autoarreglo-trabajando')).toBeNull())
@@ -97,7 +101,7 @@ describe('aviso', () => {
     api.correrAutoarreglo.mockResolvedValue(LISTO)
     montar()
     const caja = await screen.findByTestId('autoarreglo-listo')
-    expect(caja).toHaveTextContent('Listo, ordené tus cuentas: moví 4 extractos a tu tarjeta, corregí 31 compras, registré 12 rendimientos e impuestos.')
+    expect(caja).toHaveTextContent('Ordené tus cuentas: moví 4 extractos a tu tarjeta, corregí 31 compras, registré 12 rendimientos e impuestos.')
     expect(within(caja).getByRole('button', { name: 'Deshacer' })).toBeInTheDocument()
     await userEvent.click(within(caja).getByRole('button', { name: 'Ver qué hice' }))
     const hoja = await screen.findByTestId('hoja-autoarreglo')
@@ -111,6 +115,7 @@ describe('aviso', () => {
     montar()
     await userEvent.click(within(await screen.findByTestId('autoarreglo-listo')).getByRole('button', { name: 'Deshacer' }))
     expect(await screen.findByTestId('autoarreglo-confirmar')).toHaveTextContent('¿Deshacer todo lo que ordené?')
+    expect(screen.getByTestId('autoarreglo-se-deshara')).toHaveTextContent('Pasé 4 extractos a tu tarjeta')
     expect(api.deshacerLoteAutoarreglo).not.toHaveBeenCalled()
     await userEvent.click(screen.getByRole('button', { name: 'Sí, deshacer' }))
     await waitFor(() => expect(api.deshacerLoteAutoarreglo).toHaveBeenCalledWith('L1'))
@@ -136,7 +141,9 @@ describe('aviso', () => {
       ],
     })
     montar()
-    expect(await screen.findByTestId('autoarreglo-decision-dudosas')).toHaveTextContent('Revisarlos')
+    expect(await screen.findByTestId('autoarreglo-decision-dudosas')).toHaveTextContent('Tengo una duda con 7 movimientos. ¿Los revisamos?')
+    expect(screen.getByTestId('autoarreglo-decision-dudosas')).toHaveTextContent('Revisar')
+    expect(screen.queryByText(/dudosa/i)).toBeNull()
     expect(screen.getByTestId('autoarreglo-decision-clave_pdf')).toHaveTextContent('Poner la clave')
     expect(screen.queryByTestId('autoarreglo-listo')).toBeNull()
   })

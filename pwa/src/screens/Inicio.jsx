@@ -45,6 +45,7 @@ import { extractosAMedias } from '../lib/retomar'
 import { nombreDe } from '../lib/tituloMovimiento'
 import AvisoSalud from '../components/AvisoSalud'
 import AvisoAutoarreglo from '../components/AvisoAutoarreglo'
+import AccesoCuadre from '../components/AccesoCuadre'
 
 const DIAS_CUENTA_NUEVA = 14
 
@@ -424,6 +425,7 @@ export default function Inicio() {
           </div>
 
           <AvisoAutoarreglo className="mt-2" />
+          <AccesoCuadre className="mt-2" />
           <AvisoSalud className="mx-6 mt-2" />
 
           {lineaCorreo && (
