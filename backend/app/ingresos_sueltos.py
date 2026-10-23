@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -119,7 +119,12 @@ def quitar_pagos_fuera_de_extracto(db: Session, usuario_id: str, cuenta) -> int:
     from app.conciliacion import parse_bank_date
 
     hists = []
+    recientes: dict = {}  # de varias lecturas del MISMO corte manda la más nueva (las viejas traen líneas dudosas que ya no existen)
     for h in db.query(HistorialExtracto).filter(HistorialExtracto.usuario_id == usuario_id, HistorialExtracto.cuenta_id == cuenta.id).all():
+        k = str(h.fecha_corte)[:10]
+        if k not in recientes or (h.creado_en or datetime.min) > (recientes[k].creado_en or datetime.min):
+            recientes[k] = h
+    for h in recientes.values():
         if h.lectura_completa is not True or not h.fecha_corte or not h.periodo_inicio:
             continue
         ini, fin = parse_bank_date(h.periodo_inicio), parse_bank_date(h.fecha_corte)
