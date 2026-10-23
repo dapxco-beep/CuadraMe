@@ -1053,3 +1053,58 @@ def lotes(db: Session, usuario_id: str, limite: int = 20) -> list[dict]:
     resumenes = [r for r in resumenes if r["cambios"]]
     resumenes.sort(key=lambda r: r["creado_en"] or "", reverse=True)
     return resumenes[:limite]
+
+
+# ── Registro por movimiento ────────────────────────────────────────────────────────────────────────────────
+_MESES_LARGOS = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
+
+
+def _dia_largo(d: datetime) -> str:
+    return f"{d.day} de {_MESES_LARGOS[d.month - 1]}"
+
+
+def _sentido(tipo: str | None) -> str:
+    return {"income": "ingreso", "expense": "gasto"}.get(tipo or "", "movimiento")
+
+
+def _frase_de_arreglo(f: ArregloAuto, nombres: dict[str, str]) -> str:
+    """Una frase en primera persona («quité este movimiento porque...»), sin jerga ni datos de otras personas."""
+    antes, despues = _cargar(f.antes) or {}, _cargar(f.despues) or {}
+    if f.tipo == "quitar_repetido":
+        return "quité este movimiento porque era repetido de otro"
+    if f.tipo == "mover_cuenta":
+        de, a = nombres.get(antes.get("cuenta_id"), "otra cuenta"), nombres.get(despues.get("cuenta_id"), "otra cuenta")
+        return f"pasé este movimiento de «{de}» a «{a}», que es donde está en tu extracto"
+    if f.tipo == "corregir_tipo":
+        return (f"cambié este movimiento de {_sentido(antes.get('tipo'))} a {_sentido(despues.get('tipo'))} "
+                "porque tu extracto lo trae así")
+    if f.tipo == "corregir_monto":
+        if antes.get("monto") != despues.get("monto"):
+            return f"corregí su valor de {_pesos(float(antes.get('monto') or 0))} a {_pesos(float(despues.get('monto') or 0))} según tu extracto"
+        return "corregí su descripción según tu extracto"
+    if f.tipo == "crear_linea":
+        if despues.get("_paso") == "ajustes":
+            return "registré este movimiento a partir del resumen de tu extracto (rendimientos, impuestos o costos)"
+        return "registré este movimiento porque estaba en tu extracto y faltaba"
+    if f.tipo == "ajuste_inicial":
+        return "actualicé este saldo inicial para que tu cuenta cuadre con el primer extracto"
+    return "hice un cambio en este movimiento"
+
+
+def historia_de_movimiento(db: Session, usuario_id: str, movimiento_id: str) -> dict:
+    """Línea de tiempo (de lo más viejo a lo más nuevo) de lo que el autoarreglo le hizo a UN movimiento, leída de `arreglos_auto`.
+    Aislada por usuario: un movimiento ajeno (o que no existe y nunca tuvo arreglos propios) responde 404. Solo lee."""
+    filas = (db.query(ArregloAuto).filter(ArregloAuto.usuario_id == usuario_id, ArregloAuto.entidad_id == movimiento_id,
+                                          ArregloAuto.tipo.in_(TIPOS_MOV)).order_by(ArregloAuto.creado_en, ArregloAuto.id).all())
+    mov = db.query(Movimiento.id).filter(Movimiento.id == movimiento_id, Movimiento.usuario_id == usuario_id).first()
+    if not filas and mov is None:
+        raise HTTPException(status_code=404, detail="No encontré ese movimiento.")
+    nombres = {c.id: c.nombre for c in db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).all()}
+    historia = []
+    for f in filas:
+        historia.append({"fecha": f.creado_en.isoformat(), "lote_id": f.lote_id, "tipo": f.tipo, "deshecho": f.revertido_en is not None,
+                         "texto": f"El {_dia_largo(f.creado_en)} {_frase_de_arreglo(f, nombres)}."})
+        if f.revertido_en is not None:
+            historia.append({"fecha": f.revertido_en.isoformat(), "lote_id": f.lote_id, "tipo": "deshacer", "deshecho": False,
+                             "texto": f"El {_dia_largo(f.revertido_en)} deshiciste ese arreglo y el movimiento volvió a como estaba."})
+    return {"movimiento_id": movimiento_id, "existe": mov is not None, "historia": historia}

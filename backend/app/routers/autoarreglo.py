@@ -3,6 +3,7 @@
   POST /autoarreglo/correr                  un tramo acotado del orden automático (la PWA lo llama al abrir, sin bloquear)
   GET  /autoarreglo/lotes                   lo hecho por lote: cuántos cambios, saldos antes y después por cuenta
   POST /autoarreglo/lotes/{lote}/deshacer   revierte el lote completo (409 si algo posterior lo hizo inconsistente)
+  GET  /autoarreglo/movimientos/{id}/historia  línea de tiempo de lo que se le hizo a un movimiento (404 si no es tuyo)
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -34,3 +35,9 @@ def lotes(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_cu
 def deshacer(lote: str, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
     """Deshace el lote completo, en orden inverso. Idempotente."""
     return autoarreglo.deshacer_lote(db, usuario.id, lote)
+
+
+@router.get("/movimientos/{movimiento_id}/historia")
+def historia(movimiento_id: str, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """Qué le hizo el orden automático a UN movimiento (línea de tiempo en español, con fecha y lote). 404 si no es tuyo."""
+    return autoarreglo.historia_de_movimiento(db, usuario.id, movimiento_id)
