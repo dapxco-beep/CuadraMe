@@ -719,9 +719,37 @@ def _paso_inicial(ctx: _Ctx) -> dict:
     return {"hecho": len(r) + ancladas, "anclas": ancladas, "quedan": 0}
 
 
+PREFIJO_CUADRE = "cuadre_estado:"  # marca por cuenta: «cuadra» o «no_cuadra|<mes>» (lo último que se vio)
+
+
+def avisar_cuadre_roto(db: Session, uid: str, cuadre: list[dict]) -> int:
+    """Una cuenta que CUADRABA y ahora no cuadra deja un evento interno de actividad (sin push ni correo nuevos, sin montos).
+    La marca por cuenta guarda lo último visto; la primera vez solo se anota (no hay «antes» con qué comparar). El evento lleva
+    una clave única por cuenta y mes: aunque vuelva a cuadrar y a romperse, ese mes no se avisa dos veces. Devuelve cuántos avisos."""
+    from app import avisos
+
+    avisados = 0
+    for c in cuadre:
+        if c.get("estado") not in ("cuadra", "no_cuadra") or not c.get("cuenta_id"):
+            continue
+        clave = PREFIJO_CUADRE + c["cuenta_id"]
+        ahora = "cuadra" if c["estado"] == "cuadra" else f"no_cuadra|{c.get('primer_mes_malo')}"
+        previa = _marca(db, uid, clave)
+        antes = previa.valor if previa is not None else None
+        if antes != ahora:
+            _poner(db, uid, clave, ahora)
+        if antes == "cuadra" and c["estado"] == "no_cuadra":
+            mes = c.get("primer_mes_malo")
+            avisos.registrar_evento("cuadre_dejo_de_cuadrar", usuario_id=uid, meta={"cuenta_id": c["cuenta_id"], "mes": mes},
+                                    clave_unica=f"cuadre_roto:{uid}:{c['cuenta_id']}:{mes}", sin_correo=True, sin_push=True,
+                                    texto="Un mes que cuadraba con el extracto dejó de cuadrar")
+            avisados += 1
+    return avisados
+
+
 def _paso_cuadre(ctx: _Ctx) -> dict:
     ctx.cuadre = cierre_extractos.cuadre_por_cuenta(ctx.db, ctx.uid)
-    return {"hecho": 0, "quedan": 0}
+    return {"hecho": 0, "quedan": 0, "alertas": avisar_cuadre_roto(ctx.db, ctx.uid, ctx.cuadre)}
 
 
 _EJECUTORES = {"errores": _paso_errores, "tarjetas": _paso_tarjetas, "ajustes": _paso_ajustes,

@@ -59,6 +59,8 @@ TIPOS: dict[str, tuple[str, bool, bool]] = {
     "errores_5xx_picos": ("Pico de errores del servidor", True, True),
     "salud_datos_alerta": ("Alerta de salud de datos", True, True),
     "respaldo_sin_cifrar": ("Respaldo diario sin enviar (falta frase)", True, True),
+    # Solo queda en «Actividad reciente»: sin push ni correo por defecto (el administrador puede activarlos si quiere).
+    "cuadre_dejo_de_cuadrar": ("Un mes dejó de cuadrar", False, False),
 }
 
 _FRASE = {
