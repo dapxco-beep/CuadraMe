@@ -31,8 +31,16 @@ def _parecen_pago(m: Movimiento) -> bool:
             or re.search(r"(?<![a-z])pago(?![a-z])", (m.descripcion or "").lower()) is not None)  # Mercpago no es un pago
 
 
+def _palabras(t: str | None) -> set[str]:
+    return {w for w in re.findall(r"[a-z0-9]{4,}", (t or "").lower()) if w not in {"compra", "tarjeta", "debito", "credito"}}
+
+
 def _cerca(a: Movimiento, b: Movimiento) -> bool:
-    return abs(float(a.monto) - float(b.monto)) <= TOL and abs(a.fecha - b.fecha) <= VENTANA
+    if abs(float(a.monto) - float(b.monto)) > TOL:
+        return False
+    dias = abs(a.fecha - b.fecha)
+    # mismo valor y comercio en común: la fecha del banco puede correrse unos días (compra vs. aplicación)
+    return dias <= VENTANA or (dias <= timedelta(days=4) and bool(_palabras(a.descripcion) & _palabras(b.descripcion)))
 
 
 def _quitar(db: Session, cuenta, mov: Movimiento) -> None:
@@ -59,6 +67,50 @@ def _lineas_de_compra(db: Session, cuenta_id: str):
         for i in review if isinstance(review, list) else []:
             if i.get("tipo") == "expense" and i.get("linea_tipo") in TIPOS_DE_COMPRA and (i.get("movimiento_id") or i.get("match_id")):
                 yield i
+
+
+def _es_linea_de_pago(i: dict) -> bool:
+    return bool(i.get("pago_tarjeta") or i.get("linea_tipo") == "pago" or re.search(r"(?<![a-z])pago(?![a-z])", (i.get("descripcion") or "").lower()))
+
+
+def reabrir_pagos_huerfanos(db: Session, usuario_id: str, cuenta) -> int:
+    """Una línea de PAGO del extracto de la tarjeta que quedó «completada/exacta» contra un movimiento que no está en esta tarjeta
+    (de otra cuenta, o borrado) y sin otro ingreso igual en ella: el pago de la tarjeta falta. Vuelve a «faltante» (y el extracto a
+    «por revisar») para que el autoarreglo la importe con el resto de lo verificado."""
+    ingresos = db.query(Movimiento).filter(Movimiento.usuario_id == usuario_id, Movimiento.cuenta_id == cuenta.id, Movimiento.tipo == "income").all()
+    reabiertas = 0
+    for h in db.query(HistorialExtracto).filter(HistorialExtracto.usuario_id == usuario_id, HistorialExtracto.cuenta_id == cuenta.id).all():
+        try:
+            review = json.loads(h.review_json or "[]")
+        except ValueError:
+            continue
+        cambio = False
+        for i in review if isinstance(review, list) else []:
+            if i.get("tipo") != "income" or i.get("estado") not in ("completado", "exacto", "importado") or not _es_linea_de_pago(i):
+                continue
+            mid = i.get("movimiento_id") or i.get("match_id")
+            m = db.get(Movimiento, mid) if mid else None
+            if m is not None and m.cuenta_id == cuenta.id:
+                continue
+            monto = float(i.get("monto") or 0)
+            if any(abs(float(g.monto) - monto) <= TOL and _pago_cerca(g, i) for g in ingresos):
+                continue
+            for k in ("movimiento_id", "match_id"):
+                i.pop(k, None)
+            i["estado"] = "faltante"
+            cambio = True
+            reabiertas += 1
+        if cambio:
+            h.review_json = json.dumps(review, ensure_ascii=False)
+            h.estado = "pendiente_revision"
+    return reabiertas
+
+
+def _pago_cerca(g: Movimiento, i: dict) -> bool:
+    from app.conciliacion import parse_bank_date
+
+    f = parse_bank_date(i.get("fecha"))
+    return f is not None and abs(g.fecha - f) <= timedelta(days=4)
 
 
 def barrer(db: Session, usuario_id: str, cuenta) -> dict:
@@ -104,4 +156,4 @@ def barrer(db: Session, usuario_id: str, cuenta) -> dict:
                                          Movimiento.categoria == CATEGORIA_PAGO_TARJETA).all():
         _cambiar_tipo(db, cuenta, m, "income")
         pagos_corregidos += 1
-    return {"ingresos_falsos": quitados_compra, "pagos_repetidos": quitados_pago, "residuos": len(basura), "retipados": retipados, "pagos_corregidos": pagos_corregidos}
+    return {"ingresos_falsos": quitados_compra, "pagos_repetidos": quitados_pago, "residuos": len(basura), "retipados": retipados, "reabiertos": reabrir_pagos_huerfanos(db, usuario_id, cuenta), "pagos_corregidos": pagos_corregidos}

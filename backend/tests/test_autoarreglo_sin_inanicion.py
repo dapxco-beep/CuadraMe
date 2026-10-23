@@ -231,9 +231,37 @@ def test_el_barrido_quita_el_ingreso_falso_con_su_compra_buena_y_el_pago_repetid
         r = ingresos_sueltos.barrer(db, uid, c)
         db.commit()
         vivos = {n for n, i in ids_.items() if db.get(Movimiento, i) is not None}
-        assert r == {"ingresos_falsos": 2, "pagos_repetidos": 1, "residuos": 1, "retipados": 0, "pagos_corregidos": 1}
+        assert r == {"ingresos_falsos": 2, "pagos_repetidos": 1, "residuos": 1, "retipados": 0, "pagos_corregidos": 1, "reabiertos": 0}
         assert vivos == {"buena", "buena2", "sola", "pago"} and db.get(Movimiento, residuo.id) is None and db.get(Movimiento, mal_pago.id).tipo == "income"
         # la segunda pasada no cambia nada
-        assert ingresos_sueltos.barrer(db, uid, c) == {"ingresos_falsos": 0, "pagos_repetidos": 0, "residuos": 0, "retipados": 0, "pagos_corregidos": 0}
+        assert ingresos_sueltos.barrer(db, uid, c) == {"ingresos_falsos": 0, "pagos_repetidos": 0, "residuos": 0, "retipados": 0, "pagos_corregidos": 0, "reabiertos": 0}
+    finally:
+        db.close()
+
+
+def test_reabrir_pago_huerfano_solo_si_no_hay_otro_igual_en_la_tarjeta(monkeypatch):
+    from app import ingresos_sueltos
+
+    uid = "ai-reabrir"
+    ids = mundo(uid, monkeypatch)
+    db = SessionLocal()
+    try:
+        c = db.get(Cuenta, ids["credito"])
+        review = [
+            {"fecha": "2026-07-02", "descripcion": "Pago", "monto": 501_713.13, "tipo": "income", "estado": "completado", "match_id": "otra-cuenta", "fingerprint": "a"},
+            {"fecha": "2026-07-20", "descripcion": "Pago", "monto": 90_000.0, "tipo": "income", "estado": "importado", "movimiento_id": "borrado", "fingerprint": "b"},
+            {"fecha": "2026-07-10", "descripcion": "Mercpago*Pando", "monto": 5_000.0, "tipo": "income", "estado": "exacto", "fingerprint": "c"},
+        ]
+        h = HistorialExtracto(usuario_id=uid, cuenta_id=c.id, banco_detectado="nu", estado="conciliado", total_movimientos=3, importados=3,
+                              review_json=json.dumps(review))
+        db.add(h)
+        db.add(Movimiento(usuario_id=uid, cuenta_id=c.id, descripcion="Pago de tu tarjeta", categoria="Pago de tarjeta", tipo="income", monto=90_000.0,
+                          fecha=__import__("datetime").datetime(2026, 7, 20), fuente="conciliacion_extracto"))
+        db.commit()
+        assert ingresos_sueltos.reabrir_pagos_huerfanos(db, uid, c) == 1  # solo el de $501.713 (el de $90.000 ya está; Mercpago no es pago)
+        db.commit()
+        db.refresh(h)
+        estados = [i["estado"] for i in json.loads(h.review_json)]
+        assert estados == ["faltante", "importado", "exacto"] and h.estado == "pendiente_revision"
     finally:
         db.close()
