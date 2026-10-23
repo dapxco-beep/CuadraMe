@@ -136,7 +136,9 @@ describe('aviso', () => {
       ],
     })
     montar()
-    expect(await screen.findByTestId('autoarreglo-decision-dudosas')).toHaveTextContent('Revisarlos')
+    expect(await screen.findByTestId('autoarreglo-decision-dudosas')).toHaveTextContent('Tengo una duda con 7 movimientos. ¿Los revisamos?')
+    expect(screen.getByTestId('autoarreglo-decision-dudosas')).toHaveTextContent('Revisar')
+    expect(screen.queryByText(/dudosa/i)).toBeNull()
     expect(screen.getByTestId('autoarreglo-decision-clave_pdf')).toHaveTextContent('Poner la clave')
     expect(screen.queryByTestId('autoarreglo-listo')).toBeNull()
   })
