@@ -8,7 +8,7 @@ import { useBloqueo } from '../lib/BloqueoContext'
 import { useCuentas } from '../lib/CuentasContext'
 import { mensajeAmable } from '../lib/mensajes'
 import {
-  descartarAviso, etiquetaDetalle, iniciar, lineasConteo, textoListo, textoProgreso, textoSaldoCuenta, useAutoarreglo,
+  descartarAviso, etiquetaDetalle, iniciar, lineasConteo, textoAviso, textoListo, textoPaso, textoProgreso, textoSaldoCuenta, useAutoarreglo,
 } from '../lib/autoarreglo'
 
 /**
@@ -29,9 +29,12 @@ export default function AvisoAutoarreglo({ className = '' }) {
   const decisiones = a.decisiones || []
   if (a.fase === 'trabajando') {
     return (
-      <p className={`mx-6 flex items-center gap-2 text-sm text-ink-soft ${className}`} role="status" data-testid="autoarreglo-trabajando">
-        <Icono icono={Loader2} tam="sm" className="animate-spin" />
-        <span>{textoProgreso(a.progreso)}</span>
+      <p className={`mx-6 flex items-center gap-2 text-sm text-ink-soft ${className}`} role="status" aria-live="polite" aria-busy="true" data-testid="autoarreglo-trabajando">
+        <Icono icono={Loader2} tam="sm" className="shrink-0 animate-spin" />
+        <span className="min-w-0">
+          {textoProgreso(a.progreso)}
+          {textoPaso(a.progreso) && <span className="block truncate text-xs">{textoPaso(a.progreso)}</span>}
+        </span>
       </p>
     )
   }
@@ -49,10 +52,10 @@ export default function AvisoAutoarreglo({ className = '' }) {
       {hayAviso && (
       <div className={`mx-6 flex flex-col gap-2 ${className}`} data-testid="autoarreglo">
         {a.resultado && (
-          <div className="rounded-2xl bg-accent-soft p-3 text-sm" data-testid="autoarreglo-listo">
+          <div className="rounded-2xl bg-accent-soft p-3 text-sm" role="status" aria-live="polite" data-testid="autoarreglo-listo">
             <div className="flex items-start gap-2">
               <Icono icono={ShieldCheck} tam="md" className="mt-0.5 text-accent" />
-              <p className="flex-1 font-semibold leading-snug text-accent">{textoListo(a.resultado)}</p>
+              <p className="flex-1 font-semibold leading-snug text-accent">{textoAviso(a.resultado)}</p>
               <button
                 type="button" onClick={descartarAviso} aria-label="Cerrar aviso"
                 className="-mr-1 -mt-1 flex min-h-11 min-w-11 items-center justify-center rounded-xl text-ink-soft"
@@ -69,7 +72,7 @@ export default function AvisoAutoarreglo({ className = '' }) {
               </button>
               <button
                 type="button" onClick={() => setHoja({ modo: 'deshacer', lote: a.resultado })}
-                className="flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-ink-soft ring-1 ring-line/60"
+                className="flex min-h-11 items-center gap-1.5 rounded-xl bg-paper-raised px-4 text-sm font-semibold text-ink ring-1 ring-ink-soft/40"
               >
                 <Icono icono={Undo2} tam="sm" />
                 Deshacer
@@ -174,6 +177,12 @@ export function DetalleAutoarreglo({ lote: inicial, confirmando: pideConfirmar =
             <div className="mt-4 rounded-2xl bg-paper p-3 text-sm" data-testid="autoarreglo-confirmar">
               <p className="font-semibold">¿Deshacer todo lo que ordené?</p>
               <p className="mt-1 text-ink-soft">Tus cuentas quedan como estaban antes. Si ya cambiaste algo a mano, no toco nada y te lo digo.</p>
+              {lineas.length > 0 && (
+                <div className="mt-2 text-ink-soft" data-testid="autoarreglo-se-deshara">
+                  <p className="font-semibold text-ink">Se va a deshacer:</p>
+                  <ul className="list-disc pl-5">{lineas.map((t) => <li key={t}>{t}</li>)}</ul>
+                </div>
+              )}
               <button
                 type="button" disabled={ocupado} onClick={deshacer}
                 className="mt-3 min-h-11 w-full rounded-xl bg-accent text-sm font-semibold text-paper-raised disabled:opacity-60"

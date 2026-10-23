@@ -24,7 +24,16 @@ function guardar(clave, valor) {
 export function textoProgreso(progreso) {
   const total = progreso?.total || 6
   const actual = Math.min((progreso?.hecho || 0) + 1, total)
-  return `Estoy ordenando tus cuentas… (${actual} de ${total})`
+  return `Ordenando tus cuentas: paso ${actual} de ${total}`
+}
+
+/** Qué paso hace ahora, en las palabras del servidor («Reviso que cuadre»), o ''. */
+export const textoPaso = (progreso) => (typeof progreso?.paso === 'string' ? progreso.paso.trim() : '')
+
+/** Aviso al terminar: «Ordené tus cuentas: moví 4 extractos…» (sin repetir el «Listo, ordené tus cuentas:» del servidor). */
+export function textoAviso(resumen) {
+  const resto = (resumen?.texto || '').replace(/^\s*listo,?\s*ordené tus cuentas:?\s*/i, '').trim()
+  return resto ? `Ordené tus cuentas: ${resto}` : 'Ordené tus cuentas.'
 }
 
 /** La frase del servidor ya viene lista («Listo, ordené tus cuentas: moví 4 extractos…»). */
