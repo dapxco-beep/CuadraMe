@@ -890,7 +890,7 @@ def _auditar_con_cruce_rapido(movimientos_extracto: list[dict], ledger: list[dic
             continue
         # Un movimiento que ya nació de OTRA línea de extracto es una transacción real distinta: solo se parece a esta si
         # comparte comercio (si no, «Compra en TJV» de $23.800 se tragaba un «Uber» de $24.934 y la línea quedaba sin registrar).
-        posibles = [r for r in resto if not r.get("extracto_id") or _comparten_comercio(r.get("descripcion"), mov.get("descripcion"))]
+        posibles = [r for r in resto if not (r.get("extracto_id") or r.get("de_extracto")) or _comparten_comercio(r.get("descripcion"), mov.get("descripcion"))]
         aprox = find_approx_match(posibles, {**mov, "fecha": parse_bank_date(mov.get("fecha"))})
         if aprox:
             estados[i] = "aproximado"

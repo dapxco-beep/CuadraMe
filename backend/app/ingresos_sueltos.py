@@ -161,7 +161,7 @@ def reabrir_aproximados_ajenos(db: Session, usuario_id: str, cuenta) -> int:
             if i.get("estado") != "aproximado" or not i.get("match_id"):
                 continue
             m = db.get(Movimiento, i["match_id"])
-            if m is None or not m.extracto_id or m.extracto_id == h.id or _comparten_comercio(m.descripcion, i.get("descripcion")):
+            if m is None or not (m.extracto_id or m.fuente in FUENTES_IMPORTADAS) or m.extracto_id == h.id or _comparten_comercio(m.descripcion, i.get("descripcion")):
                 continue
             i.pop("match_id", None)
             i["estado"] = "faltante"

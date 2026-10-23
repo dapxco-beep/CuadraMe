@@ -1167,6 +1167,7 @@ def _cargar_ledger(db: Session, usuario_id: str, cuenta_id: str) -> list[dict]:
             "rapido": es_movimiento_rapido(m),
             "conciliado": m.conciliado_en is not None,
             "extracto_id": m.extracto_id,
+            "de_extracto": bool(m.extracto_id) or (m.fuente or "") in ("conciliacion_extracto", "conciliacion_auto"),
             # Canal de origen y canales que ya lo confirmaron (regla central, app/duplicados.py).
             # Lo que no es una compra de un canal (traslados, aportes a metas) no se empareja.
             "origen": dup.origen_de_movimiento(m),
