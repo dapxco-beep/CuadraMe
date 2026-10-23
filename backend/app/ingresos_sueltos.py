@@ -113,6 +113,32 @@ def _pago_cerca(g: Movimiento, i: dict) -> bool:
     return f is not None and abs(g.fecha - f) <= timedelta(days=4)
 
 
+def quitar_pagos_fuera_de_extracto(db: Session, usuario_id: str, cuenta) -> int:
+    """Un pago importado cuya fecha cae dentro del periodo de extractos de la tarjeta leídos COMPLETOS, y que NINGUNO de ellos trae
+    (mismo valor ±$1 en alguna línea de ingreso), es un residuo de una lectura vieja: se quita (motivo «error», se puede deshacer)."""
+    from app.conciliacion import parse_bank_date
+
+    hists = []
+    for h in db.query(HistorialExtracto).filter(HistorialExtracto.usuario_id == usuario_id, HistorialExtracto.cuenta_id == cuenta.id).all():
+        if h.lectura_completa is not True or not h.fecha_corte or not h.periodo_inicio:
+            continue
+        ini, fin = parse_bank_date(h.periodo_inicio), parse_bank_date(h.fecha_corte)
+        try:
+            review = json.loads(h.review_json or "[]")
+        except ValueError:
+            continue
+        if ini and fin and isinstance(review, list):
+            hists.append((ini, fin + timedelta(days=1), [float(i.get("monto") or 0) for i in review if i.get("tipo") == "income"]))
+    quitados = 0
+    for m in db.query(Movimiento).filter(Movimiento.usuario_id == usuario_id, Movimiento.cuenta_id == cuenta.id, Movimiento.tipo == "income",
+                                         Movimiento.fuente.in_(FUENTES_IMPORTADAS), Movimiento.categoria == CATEGORIA_PAGO_TARJETA).all():
+        cubren = [h for h in hists if h[0] <= m.fecha < h[1]]
+        if cubren and not any(abs(x - float(m.monto)) <= TOL for h in cubren for x in h[2]):
+            _quitar(db, cuenta, m)
+            quitados += 1
+    return quitados
+
+
 def barrer(db: Session, usuario_id: str, cuenta) -> dict:
     movs = db.query(Movimiento).filter(Movimiento.usuario_id == usuario_id, Movimiento.cuenta_id == cuenta.id,
                                        Movimiento.fuente.in_(FUENTES_IMPORTADAS)).order_by(Movimiento.fecha).all()
@@ -156,4 +182,4 @@ def barrer(db: Session, usuario_id: str, cuenta) -> dict:
                                          Movimiento.categoria == CATEGORIA_PAGO_TARJETA).all():
         _cambiar_tipo(db, cuenta, m, "income")
         pagos_corregidos += 1
-    return {"ingresos_falsos": quitados_compra, "pagos_repetidos": quitados_pago, "residuos": len(basura), "retipados": retipados, "reabiertos": reabrir_pagos_huerfanos(db, usuario_id, cuenta), "pagos_corregidos": pagos_corregidos}
+    return {"ingresos_falsos": quitados_compra, "pagos_repetidos": quitados_pago, "residuos": len(basura), "retipados": retipados, "reabiertos": reabrir_pagos_huerfanos(db, usuario_id, cuenta), "pagos_fuera": quitar_pagos_fuera_de_extracto(db, usuario_id, cuenta), "pagos_corregidos": pagos_corregidos}

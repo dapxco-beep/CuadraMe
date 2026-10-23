@@ -231,10 +231,10 @@ def test_el_barrido_quita_el_ingreso_falso_con_su_compra_buena_y_el_pago_repetid
         r = ingresos_sueltos.barrer(db, uid, c)
         db.commit()
         vivos = {n for n, i in ids_.items() if db.get(Movimiento, i) is not None}
-        assert r == {"ingresos_falsos": 2, "pagos_repetidos": 1, "residuos": 1, "retipados": 0, "pagos_corregidos": 1, "reabiertos": 0}
+        assert r == {"ingresos_falsos": 2, "pagos_repetidos": 1, "residuos": 1, "retipados": 0, "pagos_corregidos": 1, "reabiertos": 0, "pagos_fuera": 0}
         assert vivos == {"buena", "buena2", "sola", "pago"} and db.get(Movimiento, residuo.id) is None and db.get(Movimiento, mal_pago.id).tipo == "income"
         # la segunda pasada no cambia nada
-        assert ingresos_sueltos.barrer(db, uid, c) == {"ingresos_falsos": 0, "pagos_repetidos": 0, "residuos": 0, "retipados": 0, "pagos_corregidos": 0, "reabiertos": 0}
+        assert ingresos_sueltos.barrer(db, uid, c) == {"ingresos_falsos": 0, "pagos_repetidos": 0, "residuos": 0, "retipados": 0, "pagos_corregidos": 0, "reabiertos": 0, "pagos_fuera": 0}
     finally:
         db.close()
 
@@ -263,5 +263,35 @@ def test_reabrir_pago_huerfano_solo_si_no_hay_otro_igual_en_la_tarjeta(monkeypat
         db.refresh(h)
         estados = [i["estado"] for i in json.loads(h.review_json)]
         assert estados == ["faltante", "importado", "exacto"] and h.estado == "pendiente_revision"
+    finally:
+        db.close()
+
+
+def test_quita_el_pago_que_ningun_extracto_completo_trae_y_deja_el_que_si(monkeypatch):
+    from datetime import datetime
+
+    from app import ingresos_sueltos
+
+    uid = "ai-fuera"
+    ids = mundo(uid, monkeypatch)
+    db = SessionLocal()
+    try:
+        c = db.get(Cuenta, ids["credito"])
+        review = [{"fecha": "2026-10-05", "descripcion": "Pago", "monto": 90_000.0, "tipo": "income", "estado": "importado"}]
+        h = HistorialExtracto(usuario_id=uid, cuenta_id=c.id, banco_detectado="nu", estado="conciliado", total_movimientos=1, importados=1,
+                              review_json=json.dumps(review), periodo_inicio="2026-09-15", fecha_corte="2026-10-15", lectura_json=json.dumps({"lectura_completa": True}))
+        db.add(h)
+        bueno = Movimiento(usuario_id=uid, cuenta_id=c.id, descripcion="Pago de tu tarjeta", categoria="Pago de tarjeta", tipo="income", monto=90_000.0,
+                           fecha=datetime(2026, 10, 5), fuente="conciliacion_extracto")
+        sobra = Movimiento(usuario_id=uid, cuenta_id=c.id, descripcion="Pago de tu tarjeta (factura anterior)", categoria="Pago de tarjeta", tipo="income",
+                           monto=47_000.0, fecha=datetime(2026, 10, 5), fuente="conciliacion_extracto")
+        fuera = Movimiento(usuario_id=uid, cuenta_id=c.id, descripcion="Pago de tu tarjeta", categoria="Pago de tarjeta", tipo="income", monto=1_000.0,
+                           fecha=datetime(2026, 12, 5), fuente="conciliacion_extracto")  # ningún extracto cubre diciembre: no se toca
+        db.add_all([bueno, sobra, fuera])
+        db.commit()
+        ids_ = (bueno.id, sobra.id, fuera.id)
+        assert ingresos_sueltos.quitar_pagos_fuera_de_extracto(db, uid, c) == 1
+        db.commit()
+        assert [db.get(Movimiento, i) is not None for i in ids_] == [True, False, True]
     finally:
         db.close()
