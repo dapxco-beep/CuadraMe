@@ -71,7 +71,7 @@ describe('Saldo actual claro', () => {
     expect(screen.queryByText('Debes')).toBeNull()
     expect(screen.getByText(/50.000/)).toBeInTheDocument()
     expect(screen.queryByText(/Cupo disponible/)).toBeNull()
-    expect(screen.queryByText(/+/)).toBeNull()
+    expect(screen.queryByText(/[+]/)).toBeNull()
   })
 
   it('tarjeta sin cupo definido no inventa cupo disponible', () => {
