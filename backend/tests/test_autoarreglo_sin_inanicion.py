@@ -295,3 +295,31 @@ def test_quita_el_pago_que_ningun_extracto_completo_trae_y_deja_el_que_si(monkey
         assert [db.get(Movimiento, i) is not None for i in ids_] == [True, False, True]
     finally:
         db.close()
+
+
+def test_reabre_la_linea_aproximada_con_un_movimiento_de_otro_extracto_y_otro_comercio(monkeypatch):
+    from datetime import datetime
+
+    from app import ingresos_sueltos
+
+    uid = "ai-aprox"
+    ids = mundo(uid, monkeypatch)
+    db = SessionLocal()
+    try:
+        c = db.get(Cuenta, ids["ahorro"])
+        uber = Movimiento(usuario_id=uid, cuenta_id=c.id, descripcion="Compra en UBER RIDES", categoria="Transporte", tipo="expense", monto=24_934.0,
+                          fecha=datetime(2025, 10, 30), fuente="conciliacion_extracto", extracto_id="otro-extracto")
+        db.add(uber)
+        db.flush()
+        review = [{"fecha": "2025-11-01", "descripcion": "Compra en TJV ZONA T", "monto": 23_800.0, "tipo": "expense", "estado": "aproximado", "match_id": uber.id},
+                  {"fecha": "2025-11-02", "descripcion": "Compra en UBER RIDES", "monto": 24_900.0, "tipo": "expense", "estado": "aproximado", "match_id": uber.id}]
+        h = HistorialExtracto(usuario_id=uid, cuenta_id=c.id, banco_detectado="nu", estado="conciliado", total_movimientos=2, importados=2,
+                              review_json=json.dumps(review))
+        db.add(h)
+        db.commit()
+        assert ingresos_sueltos.reabrir_aproximados_ajenos(db, uid, c) == 1  # la de otro comercio; la del mismo comercio se queda
+        db.commit()
+        db.refresh(h)
+        assert [i["estado"] for i in json.loads(h.review_json)] == ["faltante", "aproximado"] and h.estado == "pendiente_revision"
+    finally:
+        db.close()

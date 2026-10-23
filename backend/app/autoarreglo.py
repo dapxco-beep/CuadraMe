@@ -588,6 +588,11 @@ def _paso_tarjetas(ctx: _Ctx) -> dict:
             if r["ingresos_falsos"] or r["pagos_repetidos"] or r["residuos"] or r["retipados"] or r["pagos_corregidos"] or r["reabiertos"] or r["pagos_fuera"]:
                 ctx.unidades += 1
                 barrido[c.id] = r
+        for c in db.query(Cuenta).filter(Cuenta.usuario_id == ctx.uid, Cuenta.tipo != "credito").all():
+            n = ingresos_sueltos.reabrir_aproximados_ajenos(db, ctx.uid, c)
+            if n:
+                ctx.unidades += 1
+                barrido[c.id] = {"aproximados_reabiertos": n}
         if barrido:
             db.commit()
             ctx.cerrar_fase("tarjetas")

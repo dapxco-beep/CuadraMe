@@ -144,6 +144,35 @@ def quitar_pagos_fuera_de_extracto(db: Session, usuario_id: str, cuenta) -> int:
     return quitados
 
 
+def reabrir_aproximados_ajenos(db: Session, usuario_id: str, cuenta) -> int:
+    """Línea «aproximada» del extracto emparejada con un movimiento que ya nació de OTRA línea de extracto y es de otro comercio
+    (misma regla que app/conciliacion.py aplica hoy al clasificar): la línea quedó sin registrar. Vuelve a «faltante» y el extracto
+    a «por revisar» para que se importe con lo verificado."""
+    from app.conciliacion import _comparten_comercio
+
+    reabiertas = 0
+    for h in db.query(HistorialExtracto).filter(HistorialExtracto.usuario_id == usuario_id, HistorialExtracto.cuenta_id == cuenta.id).all():
+        try:
+            review = json.loads(h.review_json or "[]")
+        except ValueError:
+            continue
+        cambio = False
+        for i in review if isinstance(review, list) else []:
+            if i.get("estado") != "aproximado" or not i.get("match_id"):
+                continue
+            m = db.get(Movimiento, i["match_id"])
+            if m is None or not m.extracto_id or m.extracto_id == h.id or _comparten_comercio(m.descripcion, i.get("descripcion")):
+                continue
+            i.pop("match_id", None)
+            i["estado"] = "faltante"
+            cambio = True
+            reabiertas += 1
+        if cambio:
+            h.review_json = json.dumps(review, ensure_ascii=False)
+            h.estado = "pendiente_revision"
+    return reabiertas
+
+
 def barrer(db: Session, usuario_id: str, cuenta) -> dict:
     movs = db.query(Movimiento).filter(Movimiento.usuario_id == usuario_id, Movimiento.cuenta_id == cuenta.id,
                                        Movimiento.fuente.in_(FUENTES_IMPORTADAS)).order_by(Movimiento.fecha).all()
