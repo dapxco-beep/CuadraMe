@@ -163,7 +163,7 @@ def _sembrar():
                                                "tipo": "expense", "fecha": "2026-01-01T00:00:00", "_paso": "importar"}))
         db.add_all([c, ex, h, p, rg, lote])
         db.commit()
-        I.update(correo=c.id, extracto=ex.id, historial=h.id, regla_correo=rg.id, lote_auto="lote-aisl-a")
+        I.update(correo=c.id, extracto=ex.id, historial=h.id, regla_correo=rg.id, lote_auto="lote-aisl-a", mov_auto="mov-aisl-a")
     finally:
         db.close()
 
@@ -377,6 +377,7 @@ ATAQUES = [
     ("POST", "/perfil/punto-de-partida/ajustar-saldos", {"cuenta_ids": ["{cuenta}"]}),
     # autoarreglo: B no deshace un lote de A
     ("POST", "/autoarreglo/lotes/{lote_auto}/deshacer", None),
+    ("GET", "/autoarreglo/movimientos/{mov_auto}/historia", None),  # la historia de un movimiento de A es 404 para B
     # conciliación (historial de extractos)
     ("GET", "/conciliacion/historial/{historial}", None),
     ("POST", "/conciliacion/historial/{historial}/deshacer-auto", None),
