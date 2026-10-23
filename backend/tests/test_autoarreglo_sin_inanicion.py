@@ -221,7 +221,8 @@ def test_el_barrido_quita_el_ingreso_falso_con_su_compra_buena_y_el_pago_repetid
         sola = _mov(db, uid, c, 8, 12, "Comercio Beta", 15_000.0, "income", "Comida")  # sin compra buena: se queda
         pago = _mov(db, uid, c, 8, 20, "Pago de tu tarjeta", 90_000.0, "income", "Pago de tarjeta")
         repetido = _mov(db, uid, c, 8, 20, "2026 Pago", 90_000.0, "income", "Otros")
-        for m in (falso, buena, falso2, buena2, sola, pago, repetido):
+        residuo = _mov(db, uid, c, 8, 14, "2026", 14.0, "expense", "Otros")
+        for m in (falso, buena, falso2, buena2, sola, pago, repetido, residuo):
             m.fuente = "conciliacion_extracto"
         db.flush()
         ids_ = {n: m.id for n, m in dict(falso=falso, buena=buena, falso2=falso2, buena2=buena2, sola=sola, pago=pago, repetido=repetido).items()}
@@ -229,9 +230,9 @@ def test_el_barrido_quita_el_ingreso_falso_con_su_compra_buena_y_el_pago_repetid
         r = ingresos_sueltos.barrer(db, uid, c)
         db.commit()
         vivos = {n for n, i in ids_.items() if db.get(Movimiento, i) is not None}
-        assert r == {"ingresos_falsos": 2, "pagos_repetidos": 1}
-        assert vivos == {"buena", "buena2", "sola", "pago"}
+        assert r == {"ingresos_falsos": 2, "pagos_repetidos": 1, "residuos": 1}
+        assert vivos == {"buena", "buena2", "sola", "pago"} and db.get(Movimiento, residuo.id) is None
         # la segunda pasada no cambia nada
-        assert ingresos_sueltos.barrer(db, uid, c) == {"ingresos_falsos": 0, "pagos_repetidos": 0}
+        assert ingresos_sueltos.barrer(db, uid, c) == {"ingresos_falsos": 0, "pagos_repetidos": 0, "residuos": 0}
     finally:
         db.close()

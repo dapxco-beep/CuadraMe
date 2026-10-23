@@ -44,6 +44,12 @@ def _quitar(db: Session, cuenta, mov: Movimiento) -> None:
 def barrer(db: Session, usuario_id: str, cuenta) -> dict:
     movs = db.query(Movimiento).filter(Movimiento.usuario_id == usuario_id, Movimiento.cuenta_id == cuenta.id,
                                        Movimiento.fuente.in_(FUENTES_IMPORTADAS)).order_by(Movimiento.fecha).all()
+    # Residuo del lector viejo: una «compra» de menos de $1.000 cuya descripción es solo un año («2026») es el pedazo de una fecha
+    # leído como movimiento; el extracto no la trae. Se quita (queda en el historial del lote y se puede deshacer).
+    basura = [m for m in movs if m.tipo == "expense" and float(m.monto) < 1000 and re.fullmatch(r"20\d\d", (m.descripcion or "").strip())]
+    for m in basura:
+        _quitar(db, cuenta, m)
+    movs = [m for m in movs if m not in basura]
     gastos = [m for m in movs if m.tipo == "expense"]
     ingresos = [m for m in movs if m.tipo == "income"]
     quitados_compra = quitados_pago = 0
@@ -64,4 +70,4 @@ def barrer(db: Session, usuario_id: str, cuenta) -> dict:
         if gemelo is not None:
             _quitar(db, cuenta, m)
             quitados_pago += 1
-    return {"ingresos_falsos": quitados_compra, "pagos_repetidos": quitados_pago}
+    return {"ingresos_falsos": quitados_compra, "pagos_repetidos": quitados_pago, "residuos": len(basura)}
