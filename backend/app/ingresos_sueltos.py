@@ -9,6 +9,7 @@ Nunca inventa: si no hay compra buena que lo respalde, el ingreso se queda (la l
 quita). 1:1: cada gasto respalda UN ingreso. Sin commit; quien llama lo deshace con el lote del autoarreglo."""
 from __future__ import annotations
 
+import re
 from datetime import timedelta
 
 from sqlalchemy.orm import Session
@@ -25,7 +26,7 @@ VENTANA = timedelta(days=1, hours=23)
 
 def _parecen_pago(m: Movimiento) -> bool:
     return ((m.categoria or "") == CATEGORIA_PAGO_TARJETA or MARCA_TRASLADO_PROPIO in (m.notas or "")
-            or "pago" in (m.descripcion or "").lower())
+            or re.search(r"(?<![a-z])pago(?![a-z])", (m.descripcion or "").lower()) is not None)  # Mercpago no es un pago
 
 
 def _cerca(a: Movimiento, b: Movimiento) -> bool:
