@@ -98,32 +98,36 @@ def test_ahorros_generico_con_saldo_inicial_y_final_cuadra(monkeypatch):
     assert resp["coherencia"] == [] and resp["aprendizaje"] is None  # nada incoherente, nada que aprender
 
 
-def test_banco_b_con_celdas_vacias_se_lee_dudoso_y_no_se_importa_solo(monkeypatch):
-    """Hallazgo: con columnas Débito/Crédito y la celda de una vacía, el lector de columnas hoy corre el valor a Débito (la
-    consignación sale como gasto). La red de seguridad lo frena: lo leído NO explica el saldo del extracto, así que el
-    autoarreglo no lo importa, lo deja como «por decidir» y no mueve el saldo."""
+def test_banco_b_con_celdas_vacias_se_lee_bien_y_cuadra(monkeypatch):
+    """Columnas Débito/Crédito con la celda de una vacía: la consignación es ingreso y el retiro, gasto (se decide por la
+    aritmética del saldo del banco o por la columna bajo la que cae el valor, nunca por el orden del texto)."""
     uid = "bg-2"
     cuenta = _persona(uid, "Banco Ejemplo B Ahorros")
     movs, _ = parse_texto_con_regex(EJEMPLO_B)
-    assert len(movs) == len(EJEMPLO_B_ESPERADO["movimientos"])  # las tres líneas se ven...
+    assert [(m["fecha"], m["tipo"], m["monto"]) for m in movs] == EJEMPLO_B_ESPERADO["movimientos"]
     saldos = cx.leer_saldos_extracto(EJEMPLO_B)
     neto = sum(m["monto"] * (1 if m["tipo"] == "income" else -1) for m in movs)
-    esperado = [m for m in EJEMPLO_B_ESPERADO["movimientos"]]
-    esperado_neto = sum(m[2] * (1 if m[1] == "income" else -1) for m in esperado)
-    assert saldos["saldo_inicial"] + esperado_neto == saldos["saldo_final"]  # el extracto SÍ suma con la lectura correcta
-    assert saldos["saldo_inicial"] + neto != saldos["saldo_final"]  # ...pero la lectura de hoy no: se detecta
+    assert saldos["saldo_inicial"] + neto == saldos["saldo_final"]
     r = _procesar(cuenta, EJEMPLO_B, monkeypatch)
     assert r.status_code == 200 and r.json()["ok"] is True, r.text
+    _importar_todo(r)
     resp = _correr(uid)
     db = SessionLocal()
     try:
-        propios = db.query(Movimiento).filter(Movimiento.cuenta_id == cuenta, Movimiento.fuente != "ajuste_saldo").count()
-        assert propios == 0  # solo queda el «Saldo inicial» que el autoarreglo calcula del extracto; ninguna línea mal leída
-        assert db.get(Cuenta, cuenta).saldo == 2_000_000.0
+        assert round(db.get(Cuenta, cuenta).saldo, 2) == saldos["saldo_final"]
     finally:
         db.close()
-    assert next(d for d in resp["decisiones"] if d["tipo"] == "dudosas")["cantidad"] == 3
-    assert next(c for c in resp["cuadre"] if c["cuenta_id"] == cuenta)["estado"] == "no_cuadra"  # y se dice, no se esconde
+    assert next(c for c in resp["cuadre"] if c["cuenta_id"] == cuenta)["estado"] == "cuadra"
+
+
+def test_columnas_debito_credito_sin_columna_de_saldo_se_leen_por_la_posicion():
+    texto = """Banco Ejemplo D
+Fecha        Descripcion                      Debito        Credito       Saldo
+04-09-2026   Consignacion Empresa Ficticia                  750.000,00    750.000,00
+09-09-2026   Compra Libreria Ficticia         60.000,00                   690.000,00
+"""
+    movs, _ = parse_texto_con_regex(texto)
+    assert [(m["tipo"], m["monto"]) for m in movs] == [("income", 750_000.0), ("expense", 60_000.0)]
 
 
 def test_banco_desconocido_no_se_toca_y_queda_aprendiendo(monkeypatch, _ambiente):
