@@ -87,3 +87,72 @@ y guarda las diferencias en la tabla **`arreglos_auto`** (migración `0010_arreg
 
 La respuesta de `correr` trae además `decisiones` y `cuadre` (por cuenta: `cuadra` / `no_cuadra`, con el primer mes
 y su causa).
+
+
+## Guardia de coherencia (`backend/app/guardia_coherencia.py`)
+
+Las reglas sueltas de `ingresos_sueltos.py` arreglan cada forma del problema; la **guardia** mira lo que QUEDA con una sola
+pregunta y **nunca escribe**: «¿todo lo importado de un extracto tiene respaldo en ese extracto?». Solo mira extractos leídos
+**completos** (el más reciente de cada corte; misma regla que `_verificada`).
+
+`revisar(db, usuario_id, cuenta)` devuelve hallazgos `{movimiento_id, motivo, texto, severidad}` (`revisar_usuario` los trae de
+todas las cuentas, con `cuenta_id` y `cuenta`). Motivos estables:
+
+| Motivo | Severidad | Qué significa |
+|---|---|---|
+| `sin_respaldo_en_extracto` | alta | Movimiento importado, dentro del periodo, que ninguna línea del extracto trae (residuos) |
+| `tipo_distinto_al_extracto` | alta | Hay una línea de ese valor pero con otra dirección (ingreso falso con su compra buena) |
+| `repetido_frente_al_extracto` | alta | El extracto trae un solo movimiento igual y aquí hay dos (pago repetido) |
+| `pareja_inexistente` | media | Línea «completada/aproximada» cuyo movimiento ya no existe (o no tiene) |
+| `pareja_en_otra_cuenta` | media | Su movimiento vive en otra cuenta |
+| `pareja_de_otro_comercio` | media | Línea aproximada emparejada con un movimiento de otro comercio con el mismo valor |
+
+Dónde sale: `autoarreglo.correr` → `coherencia: [...]` (al final, después de los pasos; vacío si todo está bien) y
+`GET /conciliacion/cuadre/encadenado?cuenta_id=…` → campo nuevo **opcional** `coherencia` (lista de la cuenta). Ambos son campos
+añadidos: el front que no los conoce no se rompe.
+
+## Registro por movimiento
+
+`autoarreglo.historia_de_movimiento(db, usuario_id, movimiento_id)` y `GET /autoarreglo/movimientos/{id}/historia` cuentan, con
+la tabla `arreglos_auto`, qué se le hizo a UN movimiento: `{movimiento_id, existe, historia: [{fecha, texto, lote_id, tipo,
+deshecho}]}` (de lo más viejo a lo más nuevo), con frases como «El 23 de octubre quité este movimiento porque era repetido de
+otro.» y, si se deshizo, «El 24 de octubre deshiciste ese arreglo…». Aislado por usuario: un movimiento ajeno responde 404; uno
+propio sin arreglos, `historia: []`. Un movimiento ya borrado conserva su historia (`existe: false`).
+
+## Alerta de mes que deja de cuadrar
+
+Tras `cierre_extractos.cuadre_por_cuenta` (paso `cuadre`), `avisar_cuadre_roto` compara con la marca `cuadre_estado:<cuenta_id>`
+de `marcas_cron` (`cuadra` o `no_cuadra|<mes>`). Si una cuenta que **cuadraba** pasa a no cuadrar, registra el evento interno
+`cuadre_dejo_de_cuadrar` en `eventos_actividad` (sin push ni correo, sin montos; `clave_unica = cuadre_roto:<usuario>:<cuenta>:<mes>`,
+así no se repite para el mismo mes aunque vuelva a cuadrar y a romperse). La primera lectura de una cuenta solo se anota. El
+paso informa `alertas: n`. El administrador ve el evento en «Actividad reciente» y puede activar push/correo para ese tipo.
+
+## Formato de banco desconocido: «aprendiendo»
+
+Aprender un formato es trabajo nuestro, no de la persona. Un extracto **no se pudo leer por formato**
+(`motivo_error == 'formato_no_reconocido'`) o su lector midió que lo leído **no suma** el resumen (`lectura_completa == false`)
+está en estado `aprendiendo` (`backend/app/estado_aprendizaje.py`). Nada se toca ni se pide.
+
+Campos nuevos (todos aditivos; `null` cuando no aplica):
+
+- `autoarreglo.correr` → `aprendizaje: {estado_aprendizaje: 'aprendiendo', texto_aprendizaje, cantidad, historial_ids}` o `null`.
+- Cada renglón de **estado de extractos** (`estado_traer`): `estado_aprendizaje` y `texto_aprendizaje`.
+- Acciones y causas del **cuadre encadenado** (`lectura_incompleta` / `pedir_extracto`) y hallazgo `tarjeta_formato_no_reconocido`
+  de **salud de datos** (`datos.estado_aprendizaje`).
+- Texto fijo: «Estamos aprendiendo el formato de tu banco; no tienes que hacer nada.»
+
+**Qué cambia en el front (para otro agente; `pwa/` NO se tocó):** hoy los textos «Mándame el extracto para aprender su formato»
+(`cuadre_encadenado.py`, `deuda_tarjeta.py`) y el botón `pedir_muestra_extracto` (`salud_datos.py`, ruta en `AvisoSalud.jsx`)
+siguen llegando sin cambio. El front debe: (1) si `estado_aprendizaje === 'aprendiendo'`, mostrar `texto_aprendizaje` como estado
+informativo **sin botón** y **ocultar** la acción `pedir_extracto` / `pedir_muestra_extracto`; (2) en `AvisoAutoarreglo.jsx`,
+mostrar `aprendizaje.texto_aprendizaje` (sin acción) cuando `aprendizaje` no sea `null`; (3) opcional: mostrar `coherencia` y la
+historia por movimiento («Ver qué hice» por movimiento).
+
+## Fixtures multi-banco
+
+`backend/tests/fixtures_bancos.py` trae extractos inventados de «Banco Ejemplo A» (una línea por movimiento con valor con signo),
+«B» (columnas Débito/Crédito/Saldo) y «C» (formato sin tabla que ningún lector conoce). `tests/test_bancos_genericos.py`
+comprueba que el flujo genérico no asume Nu: A se lee, se importa y cuadra; B se lee mal (con la celda de Débito/Crédito vacía el
+lector de columnas corre el valor a Débito) y la red de seguridad lo frena porque no suma el saldo; C queda `aprendiendo` y sin
+tocar. **Hallazgo abierto:** el lector de columnas (`_parse_bancolombia`, también usado por el genérico) confunde Débito y Crédito
+cuando una celda queda vacía; hoy no daña nada (no suma ⇒ no se importa solo) pero conviene un lector verificado para ese formato.
