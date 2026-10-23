@@ -35,7 +35,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import guardia_coherencia, ingresos_sueltos
+from app import estado_aprendizaje, guardia_coherencia, ingresos_sueltos
 from app import cierre_extractos, corregir_pago, deuda_tarjeta, corregir_tipo, extractos_error, punto_partida, reasignar_extracto, saldo_inicial_auto
 from app import arreglar_tarjetas as at
 from app import cuadre_extracto as cx
@@ -864,6 +864,15 @@ def texto_resumen(c: dict) -> str:
 
 
 # ── Orquestador ──────────────────────────────────────────────────────────────────────────────────────────
+def _aprendizaje(db: Session, uid: str) -> dict | None:
+    """Extractos de un formato aún sin lector verificado: estado claro y no accionable (app/estado_aprendizaje.py). Nunca lanza."""
+    try:
+        return estado_aprendizaje.resumen_usuario(db, uid)
+    except Exception:  # noqa: BLE001
+        db.rollback()
+        return None
+
+
 def _coherencia(db: Session, uid: str) -> list[dict]:
     """Lo que la guardia de coherencia (solo lectura) ve incoherente DESPUÉS de los pasos. Nunca lanza ni cambia nada."""
     try:
@@ -880,7 +889,7 @@ def correr(db: Session, usuario_id: str, max_pasos: int = MAX_PASOS_POR_LLAMADA,
     pasos, decisiones, cuadre, ...}`. 'trabajando' = queda trabajo y esta llamada avanzó: vuelve a llamar. Nunca lanza."""
     uid = usuario_id
     base = {"estado": "listo", "progreso": {"hecho": len(PASOS), "total": len(PASOS), "paso": None}, "lote_id": None, "cambios": 0,
-            "resumen": None, "pasos": [], "decisiones": [], "cuadre": [], "coherencia": [], "origen": origen}
+            "resumen": None, "pasos": [], "decisiones": [], "cuadre": [], "coherencia": [], "aprendizaje": None, "origen": origen}
     token = None
     try:
         if pausado(db, uid):
@@ -922,7 +931,7 @@ def correr(db: Session, usuario_id: str, max_pasos: int = MAX_PASOS_POR_LLAMADA,
         return {
             **base, "estado": "trabajando" if sigue else "listo", "lote_id": lote if resumen else None, "cambios": resumen["cambios"] if resumen else 0,
             "progreso": {"hecho": hecho if sigue else len(PASOS), "total": len(PASOS), "paso": actual},
-            "resumen": resumen, "pasos": pasos, "decisiones": _decisiones(ctx.decisiones), "cuadre": ctx.cuadre, "coherencia": coherencia,
+            "resumen": resumen, "pasos": pasos, "decisiones": _decisiones(ctx.decisiones), "cuadre": ctx.cuadre, "coherencia": coherencia, "aprendizaje": _aprendizaje(db, uid),
             "limite_alcanzado": ctx.limite_alcanzado, "quedan_por_hacer": pendiente and not sigue, "notas": ctx.notas}
     except Exception:  # noqa: BLE001 - jamás hacia la persona
         db.rollback()

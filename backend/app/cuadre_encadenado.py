@@ -26,6 +26,7 @@ from itertools import combinations
 
 from sqlalchemy.orm import Session
 
+from app import estado_aprendizaje
 from app import cuadre_extracto as cx
 from app import deuda_tarjeta as dt
 from app import fechas_extracto as fe
@@ -430,7 +431,8 @@ def _acciones(filas_mes: list[dict], cuenta: Cuenta) -> None:
                             "texto": "Corregir el tipo del movimiento", "confirmacion": None})
             elif cod == "lectura_incompleta":
                 acc.append({"tipo": "pedir_extracto", "historial_id": f["historial_id"], "ruta": "/sincronizacion",
-                            "texto": "Mándame este extracto (sin datos personales) para aprender su formato", "confirmacion": None})
+                            "texto": "Mándame este extracto (sin datos personales) para aprender su formato", "confirmacion": None,
+                            **estado_aprendizaje.campos(lectura_completa=False)})
             elif cod == "movimiento_de_mas":
                 acc.append({"tipo": "revisar_duplicado", "movimiento_id": c.get("movimiento_id"), "ruta": "/buscar-duplicados",
                             "texto": "Es un duplicado: revisar", "confirmacion": None})
