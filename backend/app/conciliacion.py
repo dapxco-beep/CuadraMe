@@ -592,23 +592,56 @@ def _parse_nu(texto: str, anio: str) -> tuple[list[dict], int]:
 
 
 def _parse_bancolombia(texto: str) -> list[dict]:
+    """Extractos con columnas Débito / Crédito / Saldo. Con la celda de una columna vacía el texto del PDF solo trae UN valor
+    antes del saldo: no se puede saber por el orden si era débito o crédito. Se decide, en este orden, por 1) la aritmética del
+    propio banco (saldo anterior ± valor = saldo de la línea), 2) la posición del valor bajo el encabezado «Débito» o «Crédito»,
+    3) el orden del texto (solo si no hay otra señal). Así una consignación nunca se lee como gasto."""
     movimientos = []
     patron = re.compile(
         r"(\d{2})[/\-](\d{2})[/\-](\d{2,4})\s{2,}(.+?)\s{2,}([\d.,]+)?\s{2,}([\d.,]+)?\s{2,}([\d.,]+)",
         re.MULTILINE,
     )
+    centros = None
+    enc = re.search(r"^.*d[eé]bito.*cr[eé]dito.*$", texto, re.IGNORECASE | re.MULTILINE)
+    if enc:
+        d, c = re.search(r"d[eé]bito", enc.group(0), re.IGNORECASE), re.search(r"cr[eé]dito", enc.group(0), re.IGNORECASE)
+        centros = ((d.start() + d.end()) / 2, (c.start() + c.end()) / 2)
+    previo = re.search(r"saldo\s+anterior\s+\$?\s*(-?[\d.,]+)", texto, re.IGNORECASE)
+    saldo_previo = parse_monto_cop(previo.group(1)) if previo else None
     for m in patron.finditer(texto):
         anio = "20" + m.group(3) if len(m.group(3)) == 2 else m.group(3)
         desc = m.group(4).strip()
-        debito = parse_monto_cop(m.group(5)) if m.group(5) else 0
-        credito = parse_monto_cop(m.group(6)) if m.group(6) else 0
-        if debito == 0 and credito == 0:
-            continue
-        monto = debito if debito > 0 else credito
-        tipo = "income" if credito > 0 else "expense"  # débito = sale, crédito = entra (nunca 'transfer')
+        saldo = parse_monto_cop(m.group(7))
+        valores = [(g, parse_monto_cop(m.group(g))) for g in (5, 6) if m.group(g)]
+        valores = [(g, v) for g, v in valores if v == v and v > 0]
+        if len(valores) != 1:
+            # Dos valores (débito y crédito a la vez, o ninguno): se conserva la lectura de siempre.
+            debito = parse_monto_cop(m.group(5)) if m.group(5) else 0
+            credito = parse_monto_cop(m.group(6)) if m.group(6) else 0
+            if debito == 0 and credito == 0:
+                saldo_previo = saldo if saldo == saldo else saldo_previo
+                continue
+            monto = debito if debito > 0 else credito
+            tipo = "income" if credito > 0 else "expense"
+        else:
+            g, monto = valores[0]
+            tipo = None
+            if saldo_previo is not None and saldo == saldo:
+                if abs(saldo_previo + monto - saldo) <= 0.5 and abs(saldo_previo - monto - saldo) > 0.5:
+                    tipo = "income"
+                elif abs(saldo_previo - monto - saldo) <= 0.5 and abs(saldo_previo + monto - saldo) > 0.5:
+                    tipo = "expense"
+            if tipo is None and centros is not None:
+                ini = texto.rfind(chr(10), 0, m.start()) + 1
+                centro = ((m.start(g) - ini) + (m.end(g) - ini)) / 2
+                tipo = "expense" if abs(centro - centros[0]) <= abs(centro - centros[1]) else "income"
+            if tipo is None:
+                tipo = "income" if g == 6 else "expense"
+        if saldo == saldo:
+            saldo_previo = saldo
         movimientos.append({
             "fecha": f"{anio}-{m.group(2)}-{m.group(1)}",
-            "descripcion": desc, "monto": abs(monto), "tipo": tipo,
+            "descripcion": desc, "monto": abs(monto), "tipo": tipo,  # débito = sale, crédito = entra (nunca 'transfer')
             "referencia": "", "saldo": None, **_pista(desc),
         })
     return movimientos
