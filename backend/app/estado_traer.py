@@ -26,6 +26,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app import estado_aprendizaje
 from app import extractos_error
 from app import extractos_vista as ev
 from app import fechas_extracto as fe
@@ -487,6 +488,8 @@ def lista_extractos(db: Session, usuario_id: str, inicio_pp=None) -> list[dict]:
             "resultado": ev.frase_resultado(vista, mejor["conteo"], clave_estado=mejor["clave_estado"],
                                             motivo=motivo_err, copias=copias),
             "motivo_error": motivo_err,
+            # Formato sin lector verificado: estado claro y NO accionable («Estamos aprendiendo el formato de tu banco»).
+            **estado_aprendizaje.campos(motivo_err, mejor["historial"].lectura_completa if mejor.get("historial") is not None else None),
             # Todas las filas de error de este renglón (varios intentos del mismo mes): «Quitar de la lista» las limpia.
             "historiales_error": [c["historial_id"] for c in lista if c.get("historial_error") and c["historial_id"]],
             "copias_texto": copias_texto, "asunto": mejor["asunto"], "archivo": mejor["archivo"],

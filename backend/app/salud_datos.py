@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app import estado_aprendizaje
 from app import fechas_extracto
 from app.cuentas_banco import CREDITO, producto_de_cuenta, producto_de_texto
 from app.extractos_error import MOTIVOS_CLAVE, correo_de_error
@@ -262,7 +263,7 @@ def diagnosticar(db: Session, usuario_id: str) -> list[dict]:
             f"Lo que leí {_plural(n, 'de este extracto', 'de estos extractos')} no suma lo que dice el resumen de tu banco, así que no lo importé a ciegas. "
             "Si quieres, mándame el extracto sin datos personales (tapa tu nombre, cédula y número de tarjeta) y aprendo su formato.",
             {"tipo": "pedir_muestra_extracto", "etiqueta": "Mándame este extracto (sin datos personales) para aprender su formato"},
-            {"cantidad": n, "historial_ids": malos[:MAX_IDS]},
+            {"cantidad": n, "historial_ids": malos[:MAX_IDS], **estado_aprendizaje.campos(lectura_completa=False)},
         ))
 
     out.sort(key=lambda x: ORDEN_SEVERIDAD.get(x["severidad"], 9))

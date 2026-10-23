@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app import cuadre_encadenado
+from app import cuadre_encadenado, guardia_coherencia
 from app import cuadre_extracto as cx
 from app import punto_partida, saldo_inicial_auto
 from app.auth import UsuarioActual, get_current_user
@@ -164,6 +164,10 @@ def cuadre_encadenado_de_la_cuenta(
         db.commit()
     except Exception:  # la caché es opcional: si no se puede guardar, la respuesta sigue valiendo
         db.rollback()
+    try:  # campo nuevo y opcional: lo que no tiene respaldo en el extracto (guardia de coherencia, solo lectura)
+        r["coherencia"] = guardia_coherencia.revisar(db, usuario.id, cuenta)
+    except Exception:  # noqa: BLE001
+        r["coherencia"] = []
     return r
 
 

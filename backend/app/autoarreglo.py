@@ -35,7 +35,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import ingresos_sueltos
+from app import estado_aprendizaje, guardia_coherencia, ingresos_sueltos
 from app import cierre_extractos, corregir_pago, deuda_tarjeta, corregir_tipo, extractos_error, punto_partida, reasignar_extracto, saldo_inicial_auto
 from app import arreglar_tarjetas as at
 from app import cuadre_extracto as cx
@@ -719,9 +719,37 @@ def _paso_inicial(ctx: _Ctx) -> dict:
     return {"hecho": len(r) + ancladas, "anclas": ancladas, "quedan": 0}
 
 
+PREFIJO_CUADRE = "cuadre_estado:"  # marca por cuenta: «cuadra» o «no_cuadra|<mes>» (lo último que se vio)
+
+
+def avisar_cuadre_roto(db: Session, uid: str, cuadre: list[dict]) -> int:
+    """Una cuenta que CUADRABA y ahora no cuadra deja un evento interno de actividad (sin push ni correo nuevos, sin montos).
+    La marca por cuenta guarda lo último visto; la primera vez solo se anota (no hay «antes» con qué comparar). El evento lleva
+    una clave única por cuenta y mes: aunque vuelva a cuadrar y a romperse, ese mes no se avisa dos veces. Devuelve cuántos avisos."""
+    from app import avisos
+
+    avisados = 0
+    for c in cuadre:
+        if c.get("estado") not in ("cuadra", "no_cuadra") or not c.get("cuenta_id"):
+            continue
+        clave = PREFIJO_CUADRE + c["cuenta_id"]
+        ahora = "cuadra" if c["estado"] == "cuadra" else f"no_cuadra|{c.get('primer_mes_malo')}"
+        previa = _marca(db, uid, clave)
+        antes = previa.valor if previa is not None else None
+        if antes != ahora:
+            _poner(db, uid, clave, ahora)
+        if antes == "cuadra" and c["estado"] == "no_cuadra":
+            mes = c.get("primer_mes_malo")
+            avisos.registrar_evento("cuadre_dejo_de_cuadrar", usuario_id=uid, meta={"cuenta_id": c["cuenta_id"], "mes": mes},
+                                    clave_unica=f"cuadre_roto:{uid}:{c['cuenta_id']}:{mes}", sin_correo=True, sin_push=True,
+                                    texto="Un mes que cuadraba con el extracto dejó de cuadrar")
+            avisados += 1
+    return avisados
+
+
 def _paso_cuadre(ctx: _Ctx) -> dict:
     ctx.cuadre = cierre_extractos.cuadre_por_cuenta(ctx.db, ctx.uid)
-    return {"hecho": 0, "quedan": 0}
+    return {"hecho": 0, "quedan": 0, "alertas": avisar_cuadre_roto(ctx.db, ctx.uid, ctx.cuadre)}
 
 
 _EJECUTORES = {"errores": _paso_errores, "tarjetas": _paso_tarjetas, "ajustes": _paso_ajustes,
@@ -836,13 +864,32 @@ def texto_resumen(c: dict) -> str:
 
 
 # ── Orquestador ──────────────────────────────────────────────────────────────────────────────────────────
+def _aprendizaje(db: Session, uid: str) -> dict | None:
+    """Extractos de un formato aún sin lector verificado: estado claro y no accionable (app/estado_aprendizaje.py). Nunca lanza."""
+    try:
+        return estado_aprendizaje.resumen_usuario(db, uid)
+    except Exception:  # noqa: BLE001
+        db.rollback()
+        return None
+
+
+def _coherencia(db: Session, uid: str) -> list[dict]:
+    """Lo que la guardia de coherencia (solo lectura) ve incoherente DESPUÉS de los pasos. Nunca lanza ni cambia nada."""
+    try:
+        return guardia_coherencia.revisar_usuario(db, uid)
+    except Exception:  # noqa: BLE001
+        db.rollback()
+        logger.warning("Autoarreglo: la guardia de coherencia falló (usuario %s)", uid[:8], exc_info=True)
+        return []
+
+
 def correr(db: Session, usuario_id: str, max_pasos: int = MAX_PASOS_POR_LLAMADA, *, usuario=None,
            respetar_intervalo: bool = False, origen: str = "app") -> dict:
     """Una llamada acotada. Devuelve `{estado: 'trabajando'|'listo', progreso: {hecho, total, paso}, lote_id, cambios, resumen,
     pasos, decisiones, cuadre, ...}`. 'trabajando' = queda trabajo y esta llamada avanzó: vuelve a llamar. Nunca lanza."""
     uid = usuario_id
     base = {"estado": "listo", "progreso": {"hecho": len(PASOS), "total": len(PASOS), "paso": None}, "lote_id": None, "cambios": 0,
-            "resumen": None, "pasos": [], "decisiones": [], "cuadre": [], "origen": origen}
+            "resumen": None, "pasos": [], "decisiones": [], "cuadre": [], "coherencia": [], "aprendizaje": None, "origen": origen}
     token = None
     try:
         if pausado(db, uid):
@@ -873,6 +920,7 @@ def correr(db: Session, usuario_id: str, max_pasos: int = MAX_PASOS_POR_LLAMADA,
                 pendiente = True
             elif r["estado"] == "ok" and not pendiente:
                 hecho += 1
+        coherencia = _coherencia(db, uid)
         _poner(db, uid, CLAVE_ULTIMA, _ahora().isoformat())
         _quitar(db, uid, CLAVE_PEDIDO)
         sigue = pendiente and ctx.unidades > 0 and not ctx.limite_alcanzado
@@ -883,7 +931,7 @@ def correr(db: Session, usuario_id: str, max_pasos: int = MAX_PASOS_POR_LLAMADA,
         return {
             **base, "estado": "trabajando" if sigue else "listo", "lote_id": lote if resumen else None, "cambios": resumen["cambios"] if resumen else 0,
             "progreso": {"hecho": hecho if sigue else len(PASOS), "total": len(PASOS), "paso": actual},
-            "resumen": resumen, "pasos": pasos, "decisiones": _decisiones(ctx.decisiones), "cuadre": ctx.cuadre,
+            "resumen": resumen, "pasos": pasos, "decisiones": _decisiones(ctx.decisiones), "cuadre": ctx.cuadre, "coherencia": coherencia, "aprendizaje": _aprendizaje(db, uid),
             "limite_alcanzado": ctx.limite_alcanzado, "quedan_por_hacer": pendiente and not sigue, "notas": ctx.notas}
     except Exception:  # noqa: BLE001 - jamás hacia la persona
         db.rollback()
@@ -1042,3 +1090,58 @@ def lotes(db: Session, usuario_id: str, limite: int = 20) -> list[dict]:
     resumenes = [r for r in resumenes if r["cambios"]]
     resumenes.sort(key=lambda r: r["creado_en"] or "", reverse=True)
     return resumenes[:limite]
+
+
+# ── Registro por movimiento ────────────────────────────────────────────────────────────────────────────────
+_MESES_LARGOS = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
+
+
+def _dia_largo(d: datetime) -> str:
+    return f"{d.day} de {_MESES_LARGOS[d.month - 1]}"
+
+
+def _sentido(tipo: str | None) -> str:
+    return {"income": "ingreso", "expense": "gasto"}.get(tipo or "", "movimiento")
+
+
+def _frase_de_arreglo(f: ArregloAuto, nombres: dict[str, str]) -> str:
+    """Una frase en primera persona («quité este movimiento porque...»), sin jerga ni datos de otras personas."""
+    antes, despues = _cargar(f.antes) or {}, _cargar(f.despues) or {}
+    if f.tipo == "quitar_repetido":
+        return "quité este movimiento porque era repetido de otro"
+    if f.tipo == "mover_cuenta":
+        de, a = nombres.get(antes.get("cuenta_id"), "otra cuenta"), nombres.get(despues.get("cuenta_id"), "otra cuenta")
+        return f"pasé este movimiento de «{de}» a «{a}», que es donde está en tu extracto"
+    if f.tipo == "corregir_tipo":
+        return (f"cambié este movimiento de {_sentido(antes.get('tipo'))} a {_sentido(despues.get('tipo'))} "
+                "porque tu extracto lo trae así")
+    if f.tipo == "corregir_monto":
+        if antes.get("monto") != despues.get("monto"):
+            return f"corregí su valor de {_pesos(float(antes.get('monto') or 0))} a {_pesos(float(despues.get('monto') or 0))} según tu extracto"
+        return "corregí su descripción según tu extracto"
+    if f.tipo == "crear_linea":
+        if despues.get("_paso") == "ajustes":
+            return "registré este movimiento a partir del resumen de tu extracto (rendimientos, impuestos o costos)"
+        return "registré este movimiento porque estaba en tu extracto y faltaba"
+    if f.tipo == "ajuste_inicial":
+        return "actualicé este saldo inicial para que tu cuenta cuadre con el primer extracto"
+    return "hice un cambio en este movimiento"
+
+
+def historia_de_movimiento(db: Session, usuario_id: str, movimiento_id: str) -> dict:
+    """Línea de tiempo (de lo más viejo a lo más nuevo) de lo que el autoarreglo le hizo a UN movimiento, leída de `arreglos_auto`.
+    Aislada por usuario: un movimiento ajeno (o que no existe y nunca tuvo arreglos propios) responde 404. Solo lee."""
+    filas = (db.query(ArregloAuto).filter(ArregloAuto.usuario_id == usuario_id, ArregloAuto.entidad_id == movimiento_id,
+                                          ArregloAuto.tipo.in_(TIPOS_MOV)).order_by(ArregloAuto.creado_en, ArregloAuto.id).all())
+    mov = db.query(Movimiento.id).filter(Movimiento.id == movimiento_id, Movimiento.usuario_id == usuario_id).first()
+    if not filas and mov is None:
+        raise HTTPException(status_code=404, detail="No encontré ese movimiento.")
+    nombres = {c.id: c.nombre for c in db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).all()}
+    historia = []
+    for f in filas:
+        historia.append({"fecha": f.creado_en.isoformat(), "lote_id": f.lote_id, "tipo": f.tipo, "deshecho": f.revertido_en is not None,
+                         "texto": f"El {_dia_largo(f.creado_en)} {_frase_de_arreglo(f, nombres)}."})
+        if f.revertido_en is not None:
+            historia.append({"fecha": f.revertido_en.isoformat(), "lote_id": f.lote_id, "tipo": "deshacer", "deshecho": False,
+                             "texto": f"El {_dia_largo(f.revertido_en)} deshiciste ese arreglo y el movimiento volvió a como estaba."})
+    return {"movimiento_id": movimiento_id, "existe": mov is not None, "historia": historia}

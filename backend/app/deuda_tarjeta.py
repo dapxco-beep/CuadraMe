@@ -28,6 +28,7 @@ from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
 
+from app import estado_aprendizaje
 from app import cuadre_extracto as cx
 from app import fechas_extracto as fe
 from app.contabilidad import FUENTE_AJUSTE, delta_saldo
@@ -215,7 +216,8 @@ def causas_orientativas(h: HistorialExtracto | None, fila: dict, filas: list[dic
                 f"Hay {len(pend)} {'línea' if len(pend) == 1 else 'líneas'} del extracto sin importar. Impórtalas y vuelve a mirar.")})
         if h.lectura_completa is False:
             out.append({"codigo": "lectura_incompleta", "probable": True, "efecto": 0.0, "texto": (
-                "No leí completo este extracto: lo que leí no suma lo que dice el resumen. Mándame el extracto para aprender su formato.")})
+                "No leí completo este extracto: lo que leí no suma lo que dice el resumen. Mándame el extracto para aprender su formato."),
+                        **estado_aprendizaje.campos(lectura_completa=False)})
     ini, fin = cx.a_fecha(fila.get("periodo_inicio")), cx.a_fecha(fila.get("fecha_corte"))
     a, b = datetime.combine(ini, time.min), datetime.combine(fin, time.max)
     for f in filas:
