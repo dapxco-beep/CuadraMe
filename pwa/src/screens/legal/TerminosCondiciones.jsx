@@ -14,7 +14,7 @@ export default function TerminosCondiciones() {
       </header>
 
       <div className="px-6 mt-4 text-sm leading-relaxed text-ink space-y-5">
-        <p className="text-xs text-ink-soft">Versión 1.1 (borrador) · Última actualización: 3 de octubre de 2026</p>
+        <p className="text-xs text-ink-soft">Versión 1.2 (borrador) · Última actualización: 3 de octubre de 2026</p>
 
         <section>
           <h2 className="font-semibold mb-1.5">1. Quiénes somos</h2>

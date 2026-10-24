@@ -178,7 +178,7 @@ describe('pantalla Cierre de mes', () => {
 describe('textos legales', () => {
   it('reflejan lo nuevo y conservan el aviso de borrador y la versión', () => {
     const { unmount: u1 } = montar(<PoliticaPrivacidad />)
-    expect(screen.getByText(/Versión 1.1 \(borrador\)/)).toBeTruthy()
+    expect(screen.getByText(/Versión 1.2 \(borrador\)/)).toBeTruthy()
     expect(screen.getByText(/Asistente de IA/)).toBeTruthy()
     expect(screen.getByText(/Clave del PDF/)).toBeTruthy()
     expect(screen.getByText(/borrador preparado/)).toBeTruthy()
