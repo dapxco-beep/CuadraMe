@@ -195,7 +195,9 @@ def reconciliar_pendientes(db: Session, usuario_id: str, limite: int = 12) -> in
     from app.autocat import ClasificadorUsuario
     from app.conciliacion import parse_bank_date
     from app.models import Cuenta, HistorialExtracto
-    from app.routers.conciliacion import _absorbidas_por_otro_canal, _completar_con_extracto, _huella_linea
+    from collections import Counter
+
+    from app.routers.conciliacion import _absorbidas_por_otro_canal, _cargar_ledger, _completar_con_extracto, _huella_linea
 
     hist = (db.query(HistorialExtracto)
             .filter(HistorialExtracto.usuario_id == usuario_id, HistorialExtracto.estado == "pendiente_revision")
@@ -235,6 +237,24 @@ def reconciliar_pendientes(db: Session, usuario_id: str, limite: int = 12) -> in
                 it["duplicado_evitado"] = True
                 resueltas += 1
                 cambio = True
+        # Misma línea ya importada desde OTRO archivo del mismo periodo (subir dos veces el mismo extracto deja
+        # la revisión vieja con «Falta registrar» para siempre): si el movimiento ya está en la cuenta con la
+        # misma huella, la línea queda «exacta». Cuenta uno por uno, igual que al importar: dos líneas idénticas
+        # con un solo movimiento registrado siguen siendo una por registrar.
+        pendientes = [i for i in review if i.get("estado") == "faltante"]
+        if pendientes and cuenta is not None:
+            completados = {i.get("match_id") for i in review if i.get("estado") == "completado"}
+            en_libro = Counter(r["fingerprint"] for r in _cargar_ledger(db, usuario_id, cuenta.id) if r["id"] not in completados)
+            explicados = Counter(i.get("fingerprint") for i in review if i.get("estado") in ("exacto", "importado"))
+            libres = {fp: n - explicados[fp] for fp, n in en_libro.items() if n > explicados[fp]}
+            for it in pendientes:
+                fp = it.get("fingerprint")
+                if libres.get(fp, 0) > 0:
+                    libres[fp] -= 1
+                    it["estado"] = "exacto"
+                    it["duplicado_evitado"] = True
+                    resueltas += 1
+                    cambio = True
         if cambio:
             h.review_json = json.dumps(review, default=str)
         sincronizar_contadores(h, review)
