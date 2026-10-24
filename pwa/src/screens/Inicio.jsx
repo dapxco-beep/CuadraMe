@@ -37,6 +37,7 @@ import InicioSimple from '../components/InicioSimple'
 import { useModoMenu } from '../lib/modoSimple'
 import { armarCamino, leerEstado } from '../lib/primerUso'
 import { estadoCuadre } from '../lib/cuadre'
+import { useJalarParaRefrescar } from '../lib/jalarRefrescar'
 import { contextoDeCuentas } from '../lib/contabilidad'
 import { fechaHace,gastosDeLaSemana, siguientePasoInicio } from '../lib/inicioSimple'
 import { resumenCarriles } from '../lib/carriles'
@@ -108,6 +109,9 @@ function EsqueletoInicio() {
   )
 }
 
+// Recordatorios que el Inicio simple muestra arriba (el saldo negativo ya lo explica su propia tarjeta).
+const TIPOS_URGENTES = ['tarjeta', 'gasto_grande']
+
 export default function Inicio() {
   const { usuario, session } = useAuth()
   const { completo } = useModoMenu()
@@ -144,6 +148,8 @@ export default function Inicio() {
   const [errorCarga, setErrorCarga] = useState('')
   const [intento, setIntento] = useState(0)
   const [verMas, setVerMas] = useState(false)
+  // Jalar hacia abajo estando arriba del todo vuelve a pedir los datos (con vibración corta)
+  const jalar = useJalarParaRefrescar(() => new Promise((ok) => { setIntento((n) => n + 1); setTimeout(ok, 900) }))
   const [movsSemana, setMovsSemana] = useState(() => (Array.isArray(previo.semana) ? previo.semana : null))
   // Regla única: la lista se empareja con las cuentas para que los traslados no cuenten como gasto.
   const semana = useMemo(
@@ -162,6 +168,7 @@ export default function Inicio() {
 
   useEffect(() => {
     let activo = true
+    const timers = []
     Promise.all([api.cuentas(), api.movimientos(4), api.reporteMensual()])
       .then(([c, m, r]) => {
         if (!activo) return
@@ -174,19 +181,22 @@ export default function Inicio() {
       .finally(() => activo && setCargando(false))
     // Gastos de la semana (opcional: sin dato, el bloque muestra un guion)
     Promise.resolve().then(() => api.movimientos(200, 0, { desde: fechaHace(6) })).then((l) => activo && Array.isArray(l) && setMovsSemana(l)).catch(() => {})
-    api.disponibleHoy().then((d) => activo && setDisponible(d)).catch(() => {})
+    // Lo secundario (solo se ve en «Ver más» o es un aviso raro) espera a que lo principal ya esté pintado.
+    const despues = (fn) => timers.push(setTimeout(() => activo && fn(), 1200))
+    despues(() => api.disponibleHoy().then((d) => activo && setDisponible(d)).catch(() => {}))
     api.enMiBolsillo().then((b) => activo && setBolsillo(b)).catch(() => {})
     // Desglose del saldo (disponible / tarjetas / por moneda y tipo). Si falla, el héroe sigue funcionando.
     Promise.resolve().then(() => api.resumenCuentas()).then((r) => activo && setResumen(r)).catch(() => {})
-    api.gmailEstado().then((e) => activo && setGmailConectado(!!e.conectado)).catch(() => {})
+    despues(() => api.gmailEstado().then((e) => activo && setGmailConectado(!!e.conectado)).catch(() => {}))
     // Aviso solo si algo se rompió (semáforo rojo); si el tablero falla, no se muestra nada.
-    Promise.resolve().then(() => api.conexionesEstado?.()).then((c) => activo && setConexionFalla(!!c?.hay_falla)).catch(() => {})
+    despues(() => Promise.resolve().then(() => api.conexionesEstado?.()).then((c) => activo && setConexionFalla(!!c?.hay_falla)).catch(() => {}))
     // Cuántas cosas esperan en «Traer movimientos» (si falla, el acceso se muestra sin número).
     Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && (setTareasSync(s?.tareas ? s.tareas.filter((t) => !t.opcional).length : null), setLineaCorreo(resumenCarriles(s?.tareas)), setAMedias(extractosAMedias(s)), setSinCategorizar((s?.tareas || []).find((t) => t.id === 'movimientos_por_categorizar')?.cantidad || 0))).catch(() => {})
     // Tendencia del gasto de los últimos meses para la mini gráfica (opcional: sin datos no se dibuja).
-    Promise.resolve().then(() => api.tendencias?.(6)).then((t) => activo && setTendencia(t?.meses ?? null)).catch(() => {})
+    despues(() => Promise.resolve().then(() => api.tendencias?.(6)).then((t) => activo && setTendencia(t?.meses ?? null)).catch(() => {}))
     return () => {
       activo = false
+      timers.forEach(clearTimeout)
     }
   }, [intento])
 
@@ -232,7 +242,8 @@ export default function Inicio() {
   const textoTendencia = hayTendencia ? resumenTendencia(gastosMensuales, fmt) : ''
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
+    <div ref={jalar.ref} className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
+      {jalar.indicador}
       <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Isotipo size={30} cuadra={cuadra !== false} />
@@ -318,6 +329,8 @@ export default function Inicio() {
             reporte={reporte}
             porDia={gastarHoy}
           />
+          {/* Lo urgente sale arriba aunque «Ver más» esté cerrado: pago de tarjeta cerca y gasto fuera de lo normal */}
+          <Recordatorios soloTipos={TIPOS_URGENTES} max={2} />
           <div className="mx-6 mt-3">
             <button
               type="button"
@@ -439,7 +452,7 @@ export default function Inicio() {
           <PreguntaMovimiento ultimaFecha={movimientos[0]?.fecha} />
 
           {/* Recordatorios útiles: pago de tarjeta, presupuesto al 80 % y extractos por revisar (descartables) */}
-          <Recordatorios omitirExtractos={tareasSync > 0} />
+          <Recordatorios omitirExtractos={tareasSync > 0} omitirTipos={completo ? [] : TIPOS_URGENTES} />
           <ConsejoParaTi />
           <TarjetaTuPlata />
           <TarjetaCostos />

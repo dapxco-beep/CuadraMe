@@ -38,6 +38,7 @@ import { limpiarNombre, MIN_REPETICIONES_NOMBRE, nombreDe, tieneNombrePropio } f
 import { usePorRevisarCorreo } from '../lib/usePorRevisarCorreo'
 import { OPCIONES_BORRADO_VARIOS, vinoDeCorreoOExtracto } from '../lib/canales'
 import { actualizarDesdeCorreo, resumenActualizacion } from '../lib/sincronizarGmail'
+import { useJalarParaRefrescar } from '../lib/jalarRefrescar'
 
 const TAMANO_PAGINA = 200
 const MAX_LOTES = 15 // tope de seguridad al re-pedir lo ya cargado (3.000 movimientos)
@@ -386,6 +387,27 @@ export default function Movimientos() {
       .then((c) => c && setConteo(c))
       .catch(() => {})
   }, [])
+
+  // Jalar hacia abajo arriba del todo: vuelve a pedir lo cargado, el conteo y lo que llegó por correo.
+  const jalar = useJalarParaRefrescar(async () => {
+    try {
+      const { items, hay } = await traerHasta(Math.max(TAMANO_PAGINA, movimientos.length))
+      setMovimientos(items)
+      setHayMas(hay)
+    } catch {
+      /* se queda lo que había */
+    }
+    recargarConteo()
+    porCorreo.recargar?.()
+    actualizarCorreo(false)
+  })
+  const asignarRaiz = useCallback(
+    (nodo) => {
+      raiz.current = nodo
+      jalar.ref(nodo)
+    },
+    [jalar.ref] // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   useEffect(() => {
     const cambioFiltro = ultimaConsulta.current !== null && ultimaConsulta.current !== consultaKey
@@ -893,7 +915,8 @@ export default function Movimientos() {
     }`
 
   return (
-    <div ref={raiz} className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
+    <div ref={asignarRaiz} className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
+      {jalar.indicador}
       <header className="px-5 pantalla-top pb-4 flex flex-wrap items-center justify-between gap-y-2">
         <h1 className="text-2xl font-semibold">Movimientos</h1>
         {modoSeleccion ? (

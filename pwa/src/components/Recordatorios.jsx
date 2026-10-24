@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BellRing, CreditCard, FileText, PieChart, X } from 'lucide-react'
+import { AlertTriangle, BellRing, CreditCard, FileText, PieChart, TrendingUp, X } from 'lucide-react'
 import { api } from '../lib/api'
 import Icono from './Icono'
 
 const LLAVE = 'cuadrame:recordatorios-descartados'
-const ICONOS = { tarjeta: CreditCard, presupuesto: PieChart, extractos: FileText }
+const ICONOS = { tarjeta: CreditCard, presupuesto: PieChart, extractos: FileText, saldo_negativo: AlertTriangle, gasto_grande: TrendingUp }
 
 // Descartados: se guardan en este dispositivo (solo claves de texto, sin datos del usuario).
 // Cada recordatorio trae una `clave` que incluye la fecha o el periodo, así que cuando hay una
@@ -32,7 +32,8 @@ function guardarDescartados(claves) {
  * extractos de Gmail por revisar. Todo se calcula en el servidor; si falla, no se muestra nada.
  */
 // omitirExtractos: Inicio ya muestra «N por resolver» en el botón Traer movimientos; decirlo dos veces confunde.
-export default function Recordatorios({ omitirExtractos = false }) {
+// soloTipos / omitirTipos: el Inicio simple muestra arriba los urgentes y «Ver más» el resto, sin repetirlos.
+export default function Recordatorios({ omitirExtractos = false, soloTipos = null, omitirTipos = [], max = null }) {
   const [lista, setLista] = useState([])
   const [descartados, setDescartados] = useState(leerDescartados)
 
@@ -53,7 +54,10 @@ export default function Recordatorios({ omitirExtractos = false }) {
     }
   }, [])
 
-  const visibles = lista.filter((r) => !descartados.includes(r.clave) && !(omitirExtractos && r.tipo === 'extractos'))
+  const visibles = lista
+    .filter((r) => !descartados.includes(r.clave) && !(omitirExtractos && r.tipo === 'extractos'))
+    .filter((r) => (soloTipos ? soloTipos.includes(r.tipo) : !omitirTipos.includes(r.tipo)))
+    .slice(0, max || undefined)
   if (!visibles.length) return null
 
   function descartar(clave) {

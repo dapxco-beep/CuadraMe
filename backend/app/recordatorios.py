@@ -3,7 +3,8 @@
 Los usan dos cosas: las tarjetas del Inicio (GET /recordatorios) y el resumen
 semanal por correo. Aquí vive la lógica una sola vez para que ambos digan lo mismo.
 No envía nada ni guarda estado: solo calcula."""
-from datetime import datetime
+from datetime import datetime, timedelta
+from statistics import median
 
 from sqlalchemy.orm import Session
 
@@ -14,6 +15,39 @@ from app.tarjetas import calc_tarjeta, extractos_guardados, movimientos_tras_cor
 
 DIAS_VENCIMIENTO = 5  # una tarjeta aparece en el Inicio cuando falta esto o menos para pagar
 UMBRAL_PRESUPUESTO = 80  # % usado desde el cual se avisa
+GASTO_GRANDE_MINIMO = 300_000  # un gasto por debajo de esto nunca se avisa como «fuera de lo normal»
+GASTO_GRANDE_VECES = 8  # ...ni si no es al menos tantas veces tu gasto típico (la mediana)
+GASTO_GRANDE_DIAS = 3  # solo gastos de los últimos días
+GASTO_GRANDE_HISTORIAL = 120  # días hacia atrás para saber qué es «típico»
+GASTO_GRANDE_MIN_MOVS = 8  # con menos gastos de historia no se adivina qué es normal
+
+
+def cuentas_en_negativo(db: Session, usuario_id: str) -> list[dict]:
+    """Cuentas propias que NO son tarjeta con saldo por debajo de cero (lo normal en una tarjeta de crédito
+    es deber, aquí no). Suelen ser un ingreso sin anotar, un saldo inicial que falta o un movimiento en la
+    cuenta equivocada."""
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id, Cuenta.tipo != "credito", Cuenta.saldo < 0).all()
+    return sorted(({"cuenta_id": c.id, "nombre": c.nombre, "saldo": round(c.saldo), "moneda": c.moneda or "COP"} for c in cuentas),
+                  key=lambda x: x["saldo"])
+
+
+def gastos_grandes(db: Session, usuario_id: str, hoy: datetime) -> list[dict]:
+    """Gastos reales (no traslados ni pagos de tarjeta) de los últimos días que pasan por mucho lo que
+    sueles gastar: al menos $300.000 y GASTO_GRANDE_VECES veces tu gasto típico. Sirve para avisar de un gasto
+    grande que quizá era de otra persona, estaba mal anotado o ni siquiera era tuyo."""
+    from app.informe_datos import cargar_movs_efectivos
+
+    movs = [m for m in cargar_movs_efectivos(db, usuario_id, hoy - timedelta(days=GASTO_GRANDE_HISTORIAL), hoy + timedelta(days=1))
+            if m["tipo"] == "expense" and not m.get("sin_tasa")]
+    corte = hoy - timedelta(days=GASTO_GRANDE_DIAS)
+    previos = [m["monto"] for m in movs if m["fecha"] < corte]
+    if len(previos) < GASTO_GRANDE_MIN_MOVS:
+        return []
+    tipico = median(previos)
+    umbral = max(GASTO_GRANDE_MINIMO, GASTO_GRANDE_VECES * tipico)
+    grandes = [m for m in movs if m["fecha"] >= corte and m["monto"] >= umbral]
+    return [{"id": m["id"], "descripcion": m["descripcion"], "monto": round(m["monto"]), "tipico": round(tipico)}
+            for m in sorted(grandes, key=lambda x: -x["monto"])[:2]]
 
 
 def tarjetas_por_vencer(db: Session, usuario_id: str, hoy: datetime, dias: int = DIAS_VENCIMIENTO) -> list[dict]:
@@ -92,6 +126,20 @@ def calcular(db: Session, usuario_id: str, hoy: datetime) -> list[dict]:
             "titulo": f"Pagas {t['nombre']} {cuando}",
             "texto": f"Para no pagar intereses faltan {_pesos(t['monto'])}.",
             "ruta": "/cuentas",
+        })
+    for c in cuentas_en_negativo(db, usuario_id):
+        out.append({
+            "clave": f"negativo:{c['cuenta_id']}:{hoy:%Y-%m}", "tipo": "saldo_negativo",
+            "titulo": f"{c['nombre']} está en negativo",
+            "texto": f"Su saldo es -{_pesos(abs(c['saldo']))}. Suele ser un ingreso sin anotar, un saldo inicial que falta o un movimiento en la cuenta equivocada.",
+            "ruta": "/cuentas",
+        })
+    for g in gastos_grandes(db, usuario_id, hoy):
+        out.append({
+            "clave": f"gasto_grande:{g['id']}", "tipo": "gasto_grande",
+            "titulo": f"Gasto grande: {_pesos(g['monto'])}",
+            "texto": f"«{g['descripcion'][:40]}» está muy por encima de lo que sueles gastar (lo típico es {_pesos(g['tipico'])}). Si no es tuyo o está mal anotado, corrígelo.",
+            "ruta": f"/movimientos/{g['id']}",
         })
     for p in presupuestos_altos(db, usuario_id, hoy):
         titulo = f"{p['categoria']}: ya usaste el {p['pct']} %" if p["pct"] < 100 else f"{p['categoria']}: te pasaste del presupuesto"
