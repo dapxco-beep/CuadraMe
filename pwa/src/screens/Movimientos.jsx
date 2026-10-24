@@ -913,10 +913,10 @@ export default function Movimientos() {
               <SlidersHorizontal size={16} />
             </button>
             <button
-              onClick={() => exportar('csv')}
+              onClick={() => exportar('xlsx')}
               disabled={exportando}
               className="w-11 h-11 rounded-full border border-line text-ink-soft flex items-center justify-center disabled:opacity-50"
-              aria-label="Exportar CSV"
+              aria-label="Exportar a Excel"
             >
               <Download size={16} />
             </button>
@@ -1109,8 +1109,8 @@ export default function Movimientos() {
                       <option key={o.id} value={o.id}>{o.texto}</option>
                     ))}
                   </select>
-                  <button onClick={() => exportar('xlsx')} className="text-xs text-accent font-medium px-2 text-left" aria-label="Exportar a Excel">
-                    Exportar .xlsx
+                  <button onClick={() => exportar('csv')} className="text-xs text-accent font-medium px-2 text-left" aria-label="Exportar CSV">
+                    Exportar .csv (datos crudos)
                   </button>
                 </div>
               )}

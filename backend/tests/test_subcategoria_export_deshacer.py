@@ -45,8 +45,9 @@ def test_csv_y_excel_traen_la_subcategoria_al_final():
     assert enc[-1] == "Subcategoría"
     fila = next(f for f in filas if "ALMUERZO" in f)
     assert fila[-1] == "Restaurantes" and fila[8] == "ALMUERZO"
-    ws = load_workbook(io.BytesIO(client.get("/exportar/movimientos.xlsx").content)).active
-    assert [c.value for c in ws[1]][-1] == "Subcategoría"
+    ws = load_workbook(io.BytesIO(client.get("/exportar/movimientos.xlsx").content))["Movimientos"]
+    encabezados = [c.value for c in ws[1]]
+    assert "Subcategoría" in encabezados and "Cuenta" in encabezados
     assert "Restaurantes" in [c.value for c in ws[2]]
 
 
