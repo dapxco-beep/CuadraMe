@@ -2,7 +2,7 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'rea
 import { Link } from 'react-router-dom'
 import { ArrowDown, ArrowUp, ArrowUpDown, Check, Columns3 } from 'lucide-react'
 import Icono from './Icono'
-import { formatMoneda } from '../lib/format'
+import { formatCOP, formatMoneda } from '../lib/format'
 import { direccionDe, signoDe } from '../lib/traslados'
 import { COLUMNAS_TABLA, ordenarMovimientos } from '../lib/movimientosLista'
 import EtiquetaOrigen from './EtiquetaOrigen'
@@ -89,7 +89,7 @@ const Fila = memo(function Fila({ m, columnas, icono, moneda, cuenta, esSel, act
 })
 
 export default function TablaMovimientos({
-  items, iconoDe, monedaDe, nombreCuenta, seleccionados, panelId, onToggle, onToggleTodos, onAbrir, onChip,
+  items, iconoDe, monedaDe, nombreCuenta, seleccionados, panelId, onToggle, onToggleTodos, onAbrir, onChip, totales = null, netoSeleccion = 0,
 }) {
   const [orden, setOrden] = useState({ col: 'fecha', dir: 'desc' })
   const [columnas, setColumnas] = useState(() => ({
@@ -163,9 +163,37 @@ export default function TablaMovimientos({
   return (
     <div className="mx-5" data-testid="tabla-movimientos">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs text-ink-soft" aria-live="polite">
-          {n} {n === 1 ? 'movimiento' : 'movimientos'}
-        </p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-soft min-w-0" aria-live="polite" data-testid="tabla-totales">
+          <span>
+            {n} {n === 1 ? 'movimiento' : 'movimientos'}
+          </span>
+          {totales && n > 0 && (
+            <>
+              <span>
+                Entró <b className="text-gold t-cifra">{formatCOP(totales.ingresos)}</b>
+              </span>
+              <span>
+                Salió <b className="text-ink t-cifra">{formatCOP(totales.gastos)}</b>
+              </span>
+              <span>
+                Neto{' '}
+                <b className={`t-cifra ${totales.neto < 0 ? 'text-danger' : 'text-gold'}`}>
+                  {totales.neto < 0 ? '-' : '+'}
+                  {formatCOP(Math.abs(totales.neto))}
+                </b>
+              </span>
+              {seleccionados.size > 0 && (
+                <span data-testid="tabla-total-seleccion">
+                  {seleccionados.size} {seleccionados.size === 1 ? 'seleccionado' : 'seleccionados'}:{' '}
+                  <b className="text-ink t-cifra">
+                    {netoSeleccion < 0 ? '-' : '+'}
+                    {formatCOP(Math.abs(netoSeleccion))}
+                  </b>
+                </span>
+              )}
+            </>
+          )}
+        </div>
         <div className="relative">
           <button
             type="button"

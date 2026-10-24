@@ -1348,6 +1348,8 @@ export default function Movimientos() {
               onToggleTodos={alternarTodos}
               onAbrir={abrirPanel}
               onChip={abrirChip}
+              totales={totales}
+              netoSeleccion={netoSeleccion}
             />
           ) : (
             <div className="mx-5 relative pl-5">
