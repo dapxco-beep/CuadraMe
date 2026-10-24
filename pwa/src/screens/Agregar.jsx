@@ -54,7 +54,9 @@ export default function Agregar() {
   const [cuentaDestinoId, setCuentaDestinoId] = useState('')
   const [monto, setMonto] = useState('')
   const [descripcion, setDescripcion] = useState('')
-  const [tipo, setTipo] = useState('expense')
+  const [params0] = useSearchParams()
+  // Acceso rápido de Inicio: /agregar?tipo=income abre directo en Ingreso (o transfer en Pasar plata)
+  const [tipo, setTipo] = useState(() => (['income', 'transfer'].includes(params0.get('tipo')) ? params0.get('tipo') : 'expense'))
   const [sugerirIngreso, setSugerirIngreso] = useState(null) // { monto, cuentaId } tras registrar un ingreso
   const [categoria, setCategoria] = useState('')
   const [categoriaAutoDetectada, setCategoriaAutoDetectada] = useState(false)

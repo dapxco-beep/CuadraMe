@@ -314,6 +314,9 @@ export default function Inicio() {
             fmt={fmt}
             iconoDe={iconoDe}
             cuadra={cuadra !== false}
+            cuentas={cuentas}
+            reporte={reporte}
+            porDia={gastarHoy}
           />
           <div className="mx-6 mt-3">
             <button

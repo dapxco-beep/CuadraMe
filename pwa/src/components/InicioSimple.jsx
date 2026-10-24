@@ -9,12 +9,13 @@ import SemanaMini from './SemanaMini'
 import { RenglonTuPlata } from './TuPlataTrabajando'
 import { Boton } from './ui'
 import { nombreDe } from '../lib/tituloMovimiento'
+import { AccionesRapidas, AvisoNegativo, EsteMes } from './InicioExtras'
 
 // Inicio para quien llega sin saber de finanzas: tres bloques y nada más.
 //   1. Cuánto tienes y qué pasó esta semana (saldo, gastos de la semana, 3 últimos movimientos)
 //   2. UN siguiente paso claro (si el camino de 3 pasos está en pantalla, él ya cumple ese papel)
 //   3. Un consejo para ti
-export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false }) {
+export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null }) {
   return (
     <div data-testid="inicio-simple">
       {/* BLOQUE 1 */}
@@ -30,6 +31,11 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
             <Monto texto={fmt(saldo)} />
           </p>
           <div className="mt-3 pt-3 border-t border-white/20">
+            {porDia > 0 && (
+              <p className="text-[11px] opacity-90 mb-2" data-testid="por-dia">
+                Puedes gastar unos <b>{fmt(porDia)}</b> al día lo que queda del mes
+              </p>
+            )}
             <p className="text-[11px] opacity-90">Gastaste esta semana</p>
             <p className="text-lg font-bold t-cifra mt-0.5" data-testid="gastos-semana">
               {gastosSemana === null ? '—' : fmt(gastosSemana)}
@@ -38,6 +44,10 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
           </div>
         </div>
       </section>
+
+      <AvisoNegativo saldo={saldo} cuentas={cuentas} fmt={fmt} />
+      <AccionesRapidas />
+      <EsteMes reporte={reporte} fmt={fmt} iconoDe={iconoDe} />
 
       {/* Cuenta nueva con el camino de 3 pasos a la vista: el paso 2 ya dice «trae tus movimientos»; no repetirlo en otra tarjeta vacía */}
       {!(enCamino && recientes.length === 0) && (

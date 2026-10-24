@@ -61,3 +61,10 @@ export function gastosDeLaSemana(movimientos, ahora = new Date(), ctx = {}) {
     .filter((m) => te[m.id] === 'expense' && String(m.fecha || '').slice(0, 10) >= desde)
     .reduce((s, m) => s + Math.abs(Number(m.monto) || 0), 0)
 }
+
+/** Cuentas propias (no tarjetas) en pesos con saldo por debajo de cero: explican un «disponible» negativo. */
+export function cuentasEnNegativo(cuentas = []) {
+  return (cuentas || [])
+    .filter((c) => c.tipo !== 'credito' && (c.moneda || 'COP') === 'COP' && Number(c.saldo) < 0)
+    .sort((a, b) => Number(a.saldo) - Number(b.saldo))
+}
