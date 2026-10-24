@@ -289,6 +289,25 @@ def cuentas_para_atajo(
     return [c.nombre for c in cuentas]
 
 
+@router.get("/cierre-pregunta")
+def cierre_pregunta(
+    horas: int = Query(3, ge=1, le=12),
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user_by_api_key),
+):
+    """¿Toca hacerle al usuario la pregunta «¿Hiciste algún movimiento?» al cerrar una app?
+    Para el atajo «CuadraMe Cierre»: iOS lo dispara en CADA cierre (quien salta de un banco a otro a mirar
+    saldos lo veía una y otra vez). Responde {"preguntar": "si"} como máximo UNA vez por ventana de `horas`
+    horas; el resto de cierres en esa ventana responde "no" y el atajo se detiene sin molestar.
+    Texto "si"/"no" (no booleano) porque Atajos lo compara directo con un Si."""
+    verificar_limite(f"cierre-pregunta:{usuario.id}", 120, 3600, "Demasiadas consultas seguidas. Intenta en un rato.")
+    from app.crons import reclamar_marca
+
+    ahora = ahora_co()
+    ventana = f"{ahora:%Y-%m-%d}:{ahora.hour // horas}:{horas}"
+    return {"preguntar": "si" if reclamar_marca(db, usuario.id, "cierre_pregunta", ventana) else "no"}
+
+
 @router.get("/{movimiento_id}", response_model=MovimientoOut)
 def obtener_movimiento(
     movimiento_id: str,

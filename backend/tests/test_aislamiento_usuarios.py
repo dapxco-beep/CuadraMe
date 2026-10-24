@@ -524,7 +524,7 @@ SIN_SESION = {
     "/backup/cron/enviar", "/cierre-mes/cron/cerrar-mes", "/correos/oauth/callback", "/correos/cron/sincronizar", "/correos/cron/purgar-retencion",
     "/metricas/uso", "/metricas/cron/revisar-uso-semanal", "/metricas/cron/avisos-crecimiento",
     "/salud/cron/resumen", "/avisos/cron/resumen-diario", "/impuestos/cron/avisar-renta", "/costos-bancarios/cron/avisar-cargos",
-    "/movimientos/cuentas-rapido", "/movimientos/rapido",
+    "/movimientos/cuentas-rapido", "/movimientos/cierre-pregunta", "/movimientos/rapido",
     "/movimientos/rapido-voz", "/pagos/webhook", "/patrimonio/cron/snapshot-mensual",
     "/patrimonio/cron/actualizar-precios", "/inversiones/cron/actualizar-precios",
     "/inversiones/cron/resumen-semanal", "/push/vapid-public-key", "/push/cron/revisar-presupuestos",

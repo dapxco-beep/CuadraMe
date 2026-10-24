@@ -51,6 +51,17 @@ URL del servidor: `https://backend-production-aeab.up.railway.app/movimientos/ra
 9  Mostrar notificación
 ```
 
+**Para que no pregunte en cada cierre (recomendado).** iOS dispara la automatización cada vez que se cierra la app, aunque solo hayas ido a mirar un saldo. Se arregla con cuatro pasos al INICIO del atajo, justo después del paso 1 (Texto con la clave):
+
+```
+1b  Obtener contenido de URL        GET …/movimientos/cierre-pregunta?horas=3
+                                    Encabezado  X-Api-Key = Texto (paso 1)
+1c  Obtener valor del diccionario   preguntar
+1d  Si  (Valor del diccionario)  no es  "si"   →   Detener este atajo
+```
+
+El servidor responde "si" como máximo una vez cada 3 horas (cambia `horas`, de 1 a 12) y "no" en los demás cierres. Quien salta de un banco a otro solo ve la pregunta en el primero. No requiere migración: usa la tabla `marcas_cron`.
+
 **Importante:** "Resultado del menú" no es el nombre de la opción tocada, sino lo que devuelve la última acción dentro de esa opción. Por eso Gasto e Ingreso llevan cada una un **Texto** (`gasto` / `ingreso`). Si quedan vacías, el atajo envía otro valor como `tipo` y el servidor responde "falta o no se entiende el tipo".
 
 `GET /movimientos/cuentas-rapido` (autenticado por `X-Api-Key`) responde una lista simple de nombres, por ejemplo `["Bancolombia","Nequi"]`, que Atajos entiende directo como lista. Así la cuenta ya no va fija ni depende de un texto en la automatización.
