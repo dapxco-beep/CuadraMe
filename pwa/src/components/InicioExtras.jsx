@@ -19,7 +19,7 @@ export function AccionesRapidas() {
         <Link
           key={a.texto}
           to={a.ruta}
-          className="tarjeta min-h-[68px] flex flex-col items-center justify-center gap-1 text-xs font-semibold text-ink active:scale-[0.97] transition-transform"
+          className="tarjeta min-h-[76px] flex flex-col items-center justify-start pt-2.5 gap-1 text-xs leading-tight text-center font-semibold text-ink active:scale-[0.97] transition-transform"
         >
           <span className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center">
             <Icono icono={a.icono} tam="md" />
@@ -69,7 +69,11 @@ export function EsteMes({ reporte, fmt, iconoDe }) {
   const gastos = Number(reporte.gastos) || 0
   if (!ingresos && !gastos) return null
   const neto = ingresos - gastos
-  const top = (reporte.top_categorias || []).slice(0, 3)
+  // El monto de cada categoría viene en `monto` (se acepta `total` por si otra versión de la API lo manda así)
+  const top = (reporte.top_categorias || [])
+    .map((c) => ({ ...c, monto: Number(c.monto ?? c.total) || 0 }))
+    .filter((c) => c.monto > 0)
+    .slice(0, 3)
   const mayor = Math.max(...top.map((c) => Number(c.monto) || 0), 1)
   return (
     <section className="mx-6 mt-3 tarjeta p-4" aria-label="Este mes" data-testid="este-mes">

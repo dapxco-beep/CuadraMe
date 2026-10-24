@@ -1177,16 +1177,16 @@ export default function Movimientos() {
               )}
 
               {filtrados.length > 0 && (
-                <div className="px-5 mb-3 flex gap-2" data-testid="resumen-lista">
-                  <div className="flex-1 rounded-2xl bg-paper-raised border border-line p-3">
+                <div className="px-5 mb-3 flex flex-wrap gap-2" data-testid="resumen-lista">
+                  <div className="flex-1 min-w-[104px] rounded-2xl bg-paper-raised border border-line p-3">
                     <p className="text-[11px] text-ink-soft uppercase tracking-wide">Ingresos</p>
                     <p className="text-sm font-bold text-gold mt-0.5">{formatCOP(totalIngresos)}</p>
                   </div>
-                  <div className="flex-1 rounded-2xl bg-paper-raised border border-line p-3">
+                  <div className="flex-1 min-w-[104px] rounded-2xl bg-paper-raised border border-line p-3">
                     <p className="text-[11px] text-ink-soft uppercase tracking-wide">Gastos</p>
                     <p className="text-sm font-bold text-ink mt-0.5">{formatCOP(totalGastos)}</p>
                   </div>
-                  <div className="flex-1 rounded-2xl bg-paper-raised border border-line p-3">
+                  <div className="flex-1 min-w-[104px] rounded-2xl bg-paper-raised border border-line p-3">
                     <p className="text-[11px] text-ink-soft uppercase tracking-wide">Neto</p>
                     <p className={`text-sm font-bold mt-0.5 ${totalNeto >= 0 ? 'text-gold' : 'text-ink'}`}>
                       {totalNeto < 0 ? '-' : ''}{formatCOP(Math.abs(totalNeto))}

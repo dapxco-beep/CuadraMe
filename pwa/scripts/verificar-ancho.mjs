@@ -81,7 +81,7 @@ function responder(url, metodo) {
   if (p === '/reportes/mensual') {
     return {
       mes: '2026-10', ingresos: 4500000, gastos: 2300000, balance: 2200000, top_categorias: [
-        { categoria: 'Comida', total: 900000, porcentaje: 39 }, { categoria: 'Transporte', total: 400000, porcentaje: 17 },
+        { categoria: 'Comida', monto: 900000 }, { categoria: 'Transporte', monto: 400000 },
       ],
       salud: { score: 72, tips: ['Vas bien: sigue así.'], nivel: 'bien' }, por_categoria: {},
     }
@@ -97,11 +97,11 @@ function responder(url, metodo) {
   return metodo === 'GET' ? [] : {}
 }
 
-const PANTALLAS = [
-  ['Inicio', '/'], ['Movimientos', '/movimientos'], ['Cuentas', '/cuentas'],
-  ['Traer movimientos', '/sincronizacion'], ['Perfil', '/perfil'],
-]
-const ANCHOS = [[360, 740], [390, 844]]
+const PANTALLAS = process.env.PW_PANTALLAS
+  ? process.env.PW_PANTALLAS.split(',').map((x) => [x.slice(0, x.indexOf(':')), x.slice(x.indexOf(':') + 1)])
+  : [['Inicio', '/'], ['Movimientos', '/movimientos'], ['Cuentas', '/cuentas'], ['Traer movimientos', '/sincronizacion'], ['Perfil', '/perfil']]
+// PW_ANCHOS="1280x900" y PW_PANTALLAS="Tabla:/movimientos?vista=tabla" permiten revisar otros tamaños y rutas.
+const ANCHOS = process.env.PW_ANCHOS ? process.env.PW_ANCHOS.split(',').map((x) => x.split('x').map(Number)) : [[360, 740], [390, 844]]
 
 const navegador = await chromium.launch({ headless: true, executablePath: process.env.PW_CHROMIUM || undefined })
 let fallos = 0
@@ -109,7 +109,7 @@ if (CAPTURAS) mkdirSync(CAPTURAS, { recursive: true })
 
 for (const [ancho, alto] of ANCHOS) {
   const ctx = await navegador.newContext({
-    viewport: { width: ancho, height: alto }, deviceScaleFactor: 3, isMobile: true, hasTouch: true,
+    viewport: { width: ancho, height: alto }, deviceScaleFactor: ancho < 800 ? 3 : 1, isMobile: ancho < 800, hasTouch: ancho < 800,
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
   })
   // Sesión sintética (supabase-js la lee de localStorage sin pedir nada a la red mientras no venza).
