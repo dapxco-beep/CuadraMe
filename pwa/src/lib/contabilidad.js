@@ -202,7 +202,8 @@ function razonDura(m, tipos = {}) {
     return { 'pago de tarjeta': 'pago_tarjeta', 'ajuste de saldo': 'ajuste', 'aporte a meta': 'aporte_meta' }[cat] || 'categoria'
   }
   if (m.tipo === 'expense' && esPagoTarjeta(m.descripcion || '')) return 'pago_tarjeta'
-  if (m.tipo === 'income' && tipos[m.cuenta_id] === 'credito') return 'abono_tarjeta'
+  // Si la persona dijo «es un ingreso real» (p. ej. un reembolso), se respeta.
+  if (m.tipo === 'income' && tipos[m.cuenta_id] === 'credito' && !notasDe(m).includes(MARCA_NO_TRASLADO)) return 'abono_tarjeta'
   return null
 }
 

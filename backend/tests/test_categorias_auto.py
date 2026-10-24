@@ -52,13 +52,13 @@ def _cat(nombre, icono="🦄", **extra):
 
 def test_las_ocultas_siguen_accesibles_y_se_pueden_reactivar(usuario):
     base = client.get("/categorias").json()
-    assert len(base) == 8
+    assert len(base) == 10
     comida = next(c for c in base if c["nombre"] == "Comida")
     assert client.put(f"/categorias/{comida['id']}", json={"activa": False}).json()["activa"] is False
 
     assert "Comida" not in [c["nombre"] for c in client.get("/categorias").json()]
     todas = client.get("/categorias?incluir_inactivas=true").json()
-    assert len(todas) == 8 and next(c for c in todas if c["nombre"] == "Comida")["activa"] is False
+    assert len(todas) == 10 and next(c for c in todas if c["nombre"] == "Comida")["activa"] is False
 
     client.put(f"/categorias/{comida['id']}", json={"activa": True})
     assert "Comida" in [c["nombre"] for c in client.get("/categorias").json()]

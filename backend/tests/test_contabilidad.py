@@ -234,3 +234,14 @@ def test_recurrente_de_pago_de_tarjeta_no_entra_en_el_flujo_de_caja():
     client.post("/recurrentes", json={"nombre": "Netflix", "monto": 30_000, "tipo": "expense", "cuenta_id": banco})
     f = client.get("/reportes/flujo-caja-futuro?meses=1").json()
     assert f["meses"][0]["gastos_esperados"] == 30_000
+
+
+def test_ingreso_en_tarjeta_marcado_como_real_si_cuenta():
+    """Un reembolso (o un ingreso anotado a mano en la tarjeta) que la persona marca «es un ingreso real» suma;
+    sin esa marca se sigue leyendo como abono de pago de la tarjeta."""
+    tipos = {"T": "credito"}
+    sin_marca = _m("r1", "income", 80_000, "Reembolso", "T")
+    con_marca = {**_m("r2", "income", 90_000, "Sk", "T"), "notas": "no_es_traslado"}
+    te = tipos_efectivos([sin_marca, con_marca], tipos)
+    assert te["r1"] == "transfer"
+    assert te["r2"] == "income"

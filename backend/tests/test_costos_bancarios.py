@@ -296,7 +296,7 @@ def test_cron_exige_secreto():
 def test_categorias_de_sistema_aparecen_al_usarse_y_no_estorban_antes():
     app.dependency_overrides[get_current_user] = lambda: UsuarioActual(id="u-costos-cat", email="k@t.com", nombre="K")
     base = client.get("/categorias").json()
-    assert len(base) == 8 and not any(c["es_sistema"] for c in base)
+    assert len(base) == 10 and not any(c["es_sistema"] for c in base)
     c = client.post("/cuentas", json={"nombre": "Ahorros Cat", "saldo": 0}).json()
     client.post("/movimientos", json={"cuenta_id": c["id"], "descripcion": "Rendimientos cajita", "monto": 5_000,
                                       "tipo": "income", "categoria": "Rendimientos"})

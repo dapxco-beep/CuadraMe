@@ -92,3 +92,16 @@ describe('totalesConTipos (subtotales de Movimientos)', () => {
     expect(t.neto).toBe(700)
   })
 })
+
+describe('ingreso en tarjeta de crédito', () => {
+  it('es abono (neutral) salvo que la persona lo marque como ingreso real', async () => {
+    const { tiposEfectivos } = await import('../lib/contabilidad')
+    const base = { tipo: 'income', cuenta_id: 'T', fecha: '2026-10-20', fuente: 'manual', categoria: 'Ingresos' }
+    const te = tiposEfectivos(
+      [{ ...base, id: 1, monto: 80000, descripcion: 'Sk' }, { ...base, id: 2, monto: 90000, descripcion: 'Sk', notas: 'no_es_traslado' }],
+      { tipos: { T: 'credito' } }
+    )
+    expect(te[1]).toBe('transfer')
+    expect(te[2]).toBe('income')
+  })
+})

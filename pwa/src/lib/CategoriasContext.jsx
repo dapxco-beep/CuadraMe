@@ -50,12 +50,20 @@ export function CategoriasProvider({ children }) {
   const colores = Object.fromEntries(categorias.filter((c) => c.color).map((c) => [c.nombre, c.color]))
   const colorDe = (nombre) => colores[nombre] || null
 
+  // Nombres que valen para un movimiento: 'expense' → categorías de gasto (y «ambos»), 'income' → de ingreso (y «ambos»).
+  // Sin tipo (o 'transfer') salen todas. `incluir` fuerza una categoría ya asignada para que no desaparezca al editar.
+  const nombresDe = (tipoMovimiento, incluir) => {
+    const quiere = tipoMovimiento === 'income' ? 'ingreso' : tipoMovimiento === 'expense' ? 'gasto' : null
+    const lista = activas.filter((c) => !quiere || !c.tipo || c.tipo === 'ambos' || c.tipo === quiere).map((c) => c.nombre)
+    return incluir && !lista.includes(incluir) ? [incluir, ...lista] : lista
+  }
+
   // Subcategorías de una categoría, en el orden en que se crearon
   const subsDe = (categoria) => subcategorias.filter((s) => s.categoria === categoria)
 
   return (
     <CategoriasContext.Provider
-      value={{ categorias, activas, nombres, nombresPresupuesto, iconoDe, colorDe, cargando, recargar, subcategorias, subsDe }}
+      value={{ categorias, activas, nombres, nombresDe, nombresPresupuesto, iconoDe, colorDe, cargando, recargar, subcategorias, subsDe }}
     >
       {children}
     </CategoriasContext.Provider>

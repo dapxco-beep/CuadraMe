@@ -44,7 +44,8 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
   const id = idProp ?? params.id
   const volver = useVolver('/movimientos')
   const { cuentas, recargar: recargarCuentas } = useCuentas()
-  const { nombres: categorias, iconoDe, subsDe } = useCategorias()
+  const { nombres: todasLasCategorias, nombresDe: nombresDeTipo, iconoDe, subsDe } = useCategorias()
+  const nombresDe = (t) => (nombresDeTipo ? nombresDeTipo(t) : todasLasCategorias)
   const { confirmar, elegir, avisar } = useDialogos()
   const [movimiento, setMovimiento] = useState(null)
   const [noEncontrado, setNoEncontrado] = useState(false)
@@ -291,6 +292,10 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
 
   const signo = signoDe(movimiento)
   const direccion = direccionDe(movimiento)
+  // Entra a una tarjeta de crédito: se lee como pago de la tarjeta (neutral) salvo que la persona diga que es un ingreso real.
+  const esAbonoTarjeta =
+    cuenta?.tipo === 'credito' && direccion === 'income' && !(movimiento.notas || '').includes('no_es_traslado') &&
+    movimiento.categoria !== CATEGORIA_PAGO_TARJETA
   const puedeMarcar = !esTransferencia && (movimiento.tipo === 'income' || movimiento.tipo === 'expense')
   const campo =
     'w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm outline-none focus:border-accent'
@@ -417,7 +422,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
               value={form.categoria}
               onChange={(e) => setForm({ ...form, categoria: e.target.value, subcategoria: '' })}
             >
-              {[...new Set([form.categoria, ...categorias])].map((c) => (
+              {[...new Set([form.categoria, ...nombresDe(form.tipo)])].map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
@@ -514,7 +519,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           {horaCorta(movimiento.fecha) && <Fila label="Hora" valor={horaCorta(movimiento.fecha)} />}
           <Fila label="Tipo" valor={etiquetaTipo(movimiento)} />
           {(movimiento.categoria === CATEGORIA_PAGO_TARJETA || esPagoTarjeta(movimiento.descripcion) ||
-            (cuenta?.tipo === 'credito' && (movimiento.tipo === 'income' || (movimiento.notas || '').endsWith(':in')))) && (
+            (cuenta?.tipo === 'credito' && ((movimiento.tipo === 'income' && esAbonoTarjeta) || (movimiento.notas || '').endsWith(':in')))) && (
             <p role="note" data-testid="aviso-pago-tarjeta" className="px-4 py-3 text-xs bg-accent-soft flex gap-2">
               <Icono icono={Info} tam="sm" className="text-accent mt-0.5" />
               <span>
@@ -531,6 +536,16 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                 </p>
               )}
               <div className="flex flex-col gap-2">
+                {esAbonoTarjeta && (
+                  <button
+                    onClick={() => aplicarTraslado('real', 'Listo: cuenta como ingreso')}
+                    disabled={trasladando}
+                    data-testid="es-ingreso-real"
+                    className="rounded-xl bg-accent text-paper-raised py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
+                  >
+                    No es un pago de la tarjeta: es un ingreso
+                  </button>
+                )}
                 {esTrasladoConfirmado(movimiento) ? (
                   <button
                     onClick={() =>

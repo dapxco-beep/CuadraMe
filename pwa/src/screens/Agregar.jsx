@@ -48,7 +48,8 @@ export default function Agregar() {
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const auth = useAuth()
   const { avisar } = useDialogos() || {}
-  const { nombres: categoriasRapidas } = useCategorias()
+  const { nombres: todasLasCategorias, nombresDe: nombresDeTipo } = useCategorias()
+  const nombresDe = (t) => (nombresDeTipo ? nombresDeTipo(t) : todasLasCategorias)
   const [cuentaElegidaId, setCuentaId] = useState('')
   const [cuentaDestinoId, setCuentaDestinoId] = useState('')
   const [monto, setMonto] = useState('')
@@ -81,6 +82,12 @@ export default function Agregar() {
   const cuentaId = cuentaElegidaId || cuentaInicial(cuentas, leerUltimaCuenta(auth?.usuario?.id))
   const cuentaActual = cuentas.find((c) => c.id === cuentaId)
   const esTransferencia = tipo === 'transfer'
+  // Gastos e ingresos tienen sus propias categorías (Comida… / Salario…); «ambos» sale en las dos.
+  const categoriasRapidas = nombresDe(tipo)
+  useEffect(() => {
+    // Al pasar de gasto a ingreso (o al revés) una categoría que no corresponde se quita
+    if (categoria && !esTransferencia && !nombresDe(tipo).includes(categoria)) setCategoria('')
+  }, [tipo]) // eslint-disable-line react-hooks/exhaustive-deps
   const destinosPosibles = cuentas.filter((c) => c.id !== cuentaId)
   const destinoId = destinosPosibles.some((c) => c.id === cuentaDestinoId)
     ? cuentaDestinoId

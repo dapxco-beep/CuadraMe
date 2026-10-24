@@ -21,16 +21,47 @@ router = APIRouter(prefix="/categorias", tags=["categorias"])
 # ninguna todavía, para que a partir de ahí sean filas editables como
 # cualquier categoría que el usuario agregue — nunca vuelven a estar
 # hardcodeadas en el frontend.
+# Cada una dice si vale para gastos, ingresos o ambos: en Agregar y al editar, un ingreso solo ofrece
+# categorías de ingreso (y «ambos») y un gasto las de gasto (y «ambos»).
 CATEGORIAS_BASE = [
-    ("Comida", "🍔"),
-    ("Transporte", "🚗"),
-    ("Ocio", "🎬"),
-    ("Hogar", "🏠"),
-    ("Salud", "💊"),
-    ("Transferencias", "↔️"),
-    ("Ingresos", "💰"),
-    ("Otros", "🏷️"),
+    ("Comida", "🍔", "gasto"),
+    ("Transporte", "🚗", "gasto"),
+    ("Ocio", "🎬", "gasto"),
+    ("Hogar", "🏠", "gasto"),
+    ("Salud", "💊", "gasto"),
+    ("Transferencias", "↔️", "ambos"),
+    ("Ingresos", "💰", "ingreso"),
+    ("Salario", "💼", "ingreso"),
+    ("Otros ingresos", "🪙", "ingreso"),
+    ("Otros", "🏷️", "ambos"),
 ]
+
+
+def _asegurar_tipos_base(db: Session, usuario_id: str, existentes: list[Categoria]) -> list[Categoria]:
+    """A quien ya tenía las categorías base (sin tipo): les pone el tipo (gasto/ingreso) si siguen en «ambos»
+    y agrega las de ingreso que falten (Salario, Otros ingresos). Respeta lo que la persona ya cambió:
+    solo toca categorías base que nunca editó su tipo, y nunca crea una con un nombre que ya tiene."""
+    tipo_base = {n.lower(): t for n, _, t in CATEGORIAS_BASE}
+    cambios = False
+    for c in existentes:
+        t = tipo_base.get((c.nombre or "").strip().lower())
+        if c.es_base and t and t != "ambos" and (c.tipo in (None, "", "ambos")):
+            c.tipo = t
+            cambios = True
+    tienen = {c.nombre.strip().lower() for c in existentes}
+    orden = max([c.orden or 0 for c in existentes], default=-1) + 1
+    nuevas = []
+    for nombre, icono, tipo in CATEGORIAS_BASE:
+        if tipo == "ingreso" and nombre.lower() not in tienen:
+            nuevas.append(Categoria(usuario_id=usuario_id, nombre=nombre, icono=icono, orden=orden, es_base=True, tipo=tipo))
+            orden += 1
+    if nuevas:
+        db.add_all(nuevas)
+    if cambios or nuevas:
+        db.commit()
+        for c in nuevas:
+            db.refresh(c)
+    return existentes + nuevas
 
 
 def _asegurar_categorias_sistema(db: Session, usuario_id: str, existentes: list[Categoria]) -> list[Categoria]:
@@ -61,11 +92,11 @@ def _asegurar_categorias_sistema(db: Session, usuario_id: str, existentes: list[
 def _asegurar_categorias_base(db: Session, usuario_id: str) -> list[Categoria]:
     existentes = db.query(Categoria).filter(Categoria.usuario_id == usuario_id).all()
     if existentes:
-        return _asegurar_categorias_sistema(db, usuario_id, existentes)
+        return _asegurar_categorias_sistema(db, usuario_id, _asegurar_tipos_base(db, usuario_id, existentes))
 
     nuevas = [
-        Categoria(usuario_id=usuario_id, nombre=nombre, icono=icono, orden=i, es_base=True)
-        for i, (nombre, icono) in enumerate(CATEGORIAS_BASE)
+        Categoria(usuario_id=usuario_id, nombre=nombre, icono=icono, orden=i, es_base=True, tipo=tipo)
+        for i, (nombre, icono, tipo) in enumerate(CATEGORIAS_BASE)
     ]
     db.add_all(nuevas)
     db.commit()

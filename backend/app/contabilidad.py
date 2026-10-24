@@ -180,7 +180,8 @@ def _razon_dura(m, tipos_cuenta: dict[str, str] | None = None) -> str | None:
     if tipo == "expense" and es_pago_tarjeta(_g(m, "descripcion", "") or ""):
         return "pago_tarjeta"
     # Lo que ENTRA a una cuenta de crédito es el abono de un pago, no un ingreso.
-    if tipo == "income" and (tipos_cuenta or {}).get(_g(m, "cuenta_id")) == "credito":
+    # Si la persona dijo «no es un traslado / es un ingreso real», se respeta (p. ej. un reembolso).
+    if tipo == "income" and (tipos_cuenta or {}).get(_g(m, "cuenta_id")) == "credito" and not _descartado(m):
         return "abono_tarjeta"
     return None
 

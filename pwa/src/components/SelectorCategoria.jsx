@@ -20,8 +20,11 @@ const sinTildes = (t) => (t || '').toLowerCase().normalize('NFD').replace(/[̀-�
  *    Si no tiene, guarda de una como siempre; «Con subcategoría» deja detallar desde cero en un toque.
  * onElegir(categoria, { recordar, anteriores, subcategoria }) lo resuelve la pantalla (actualización optimista).
  */
-export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, movimiento, recientes = [], conSubcategorias = true, onElegir, onCerrar }) {
-  const { nombres, iconoDe, recargar, subsDe: subsDeTodas } = useCategorias()
+export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, movimiento, tipoMovimiento, recientes = [], conSubcategorias = true, onElegir, onCerrar }) {
+  const { nombres: todas, nombresDe, iconoDe, recargar, subsDe: subsDeTodas } = useCategorias()
+  // Solo las categorías que valen para este movimiento (gasto o ingreso); sin tipo, todas.
+  const tipoMov = tipoMovimiento || movimiento?.tipo
+  const nombres = useMemo(() => (nombresDe ? nombresDe(tipoMov, categoriaActual) : todas), [nombresDe, todas, tipoMov, categoriaActual]) // eslint-disable-line react-hooks/exhaustive-deps
   // Pantallas que aún no guardan subcategoría (conSubcategorias={false}) siguen en un solo paso.
   const subsDe = conSubcategorias ? subsDeTodas : undefined
   const [paso, setPaso] = useState(null) // categoría elegida cuando se está escogiendo su subcategoría
