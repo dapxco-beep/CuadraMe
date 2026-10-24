@@ -75,3 +75,20 @@ describe('paridad con backend/app/contabilidad.py', () => {
     expect(con.tasaAhorro).toBe(70)
   })
 })
+
+describe('totalesConTipos (subtotales de Movimientos)', () => {
+  it('el traslado entre mis cuentas no suma ni resta; el gasto a un tercero sí', async () => {
+    const { totalesConTipos, tiposEfectivos } = await import('../lib/contabilidad')
+    const movs = [
+      { id: 1, tipo: 'income', monto: 1000, cuenta_id: 'a', fecha: '2026-10-01', descripcion: 'Sueldo' },
+      { id: 2, tipo: 'expense', monto: 300, cuenta_id: 'a', fecha: '2026-10-01', descripcion: 'Mercado' },
+      { id: 3, tipo: 'transfer', monto: 500, cuenta_id: 'a', fecha: '2026-10-01', descripcion: 'TRF', notas: 'TRF:x:out' },
+      { id: 4, tipo: 'transfer', monto: 500, cuenta_id: 'b', fecha: '2026-10-01', descripcion: 'TRF', notas: 'TRF:x:in' },
+    ]
+    const te = tiposEfectivos(movs, {})
+    const t = totalesConTipos(movs, te)
+    expect(t.ingresos).toBe(1000)
+    expect(t.gastos).toBe(300)
+    expect(t.neto).toBe(700)
+  })
+})

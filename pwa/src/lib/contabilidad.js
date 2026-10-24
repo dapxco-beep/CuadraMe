@@ -375,6 +375,18 @@ export function totalesIngresosGastos(movs, ctx = {}, filtro = () => true) {
   return { ingresos, gastos, balance: ingresos - gastos, tasaAhorro: ingresos > 0 ? ((ingresos - gastos) / ingresos) * 100 : null }
 }
 
+// Suma ingresos/gastos de `items` con tipos efectivos ya calculados (`te` = tiposEfectivos de TODA la lista, así un
+// traslado cuya otra pata está fuera del grupo sigue siendo neutral). Sirve para subtotales por día o por selección.
+export function totalesConTipos(items, te) {
+  let ingresos = 0
+  let gastos = 0
+  for (const m of items) {
+    if (te[m.id] === 'income') ingresos += montoDe(m)
+    else if (te[m.id] === 'expense') gastos += montoDe(m)
+  }
+  return { ingresos, gastos, neto: ingresos - gastos }
+}
+
 // Moneda base: espejo de a_base() en backend/app/contabilidad.py. `tasas` = {MONEDA: unidades de base
 // por 1 de esa moneda}. Devuelve [valor, convertido]; sin tasa NO se suma a ciegas (convertido=false).
 export function aBase(monto, origen, base, tasas = {}) {

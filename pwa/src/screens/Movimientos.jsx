@@ -10,7 +10,7 @@ import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
-import { contextoDeCuentas, totalesIngresosGastos } from '../lib/contabilidad'
+import { contextoDeCuentas, tiposEfectivos, totalesConTipos } from '../lib/contabilidad'
 import { direccionDe, etiquetaTraslado, signoDe } from '../lib/traslados'
 import { esAuto, claveComercio } from '../lib/comercio'
 import { useModoPantalla } from '../lib/useAncho'
@@ -196,6 +196,17 @@ const FilaMovimiento = memo(function FilaMovimiento({
     </div>
   )
 })
+
+// Neto del día (ingresos − gastos reales); vacío si el día solo tuvo traslados.
+function SubtotalDia({ items, tipos }) {
+  const { ingresos, gastos, neto } = totalesConTipos(items, tipos)
+  if (!ingresos && !gastos) return null
+  return (
+    <span className="text-[11px] font-semibold text-ink-soft tabular-nums" data-testid="subtotal-dia">
+      {neto < 0 ? '-' : '+'}{formatCOP(Math.abs(neto))}
+    </span>
+  )
+}
 
 export default function Movimientos() {
   const { cuentas, recargar: recargarCuentas } = useCuentas()
@@ -432,12 +443,15 @@ export default function Movimientos() {
   filtradosRef.current = filtrados
   const activos = hayFiltros(f)
   // Regla única: se empareja sobre TODA la lista cargada (la otra pata puede estar filtrada) y se suma lo filtrado.
-  const totales = useMemo(() => {
-    const ids = new Set(filtrados.map((m) => m.id))
-    return totalesIngresosGastos(movimientos, contextoDeCuentas(cuentas), (m) => ids.has(m.id))
-  }, [movimientos, filtrados, cuentas])
+  const tipos = useMemo(() => tiposEfectivos(movimientos, contextoDeCuentas(cuentas)), [movimientos, cuentas])
+  const totales = useMemo(() => totalesConTipos(filtrados, tipos), [filtrados, tipos])
   const totalIngresos = totales.ingresos
   const totalGastos = totales.gastos
+  const totalNeto = totales.neto
+  const netoSeleccion = useMemo(
+    () => totalesConTipos(movimientos.filter((m) => seleccionados.has(m.id)), tipos).neto,
+    [movimientos, seleccionados, tipos]
+  )
   const gruposDia = useMemo(() => {
     const mapa = new Map()
     for (const m of filtrados) {
@@ -1139,8 +1153,8 @@ export default function Movimientos() {
                 </div>
               )}
 
-              {activos && filtrados.length > 0 && (
-                <div className="px-5 mb-3 flex gap-3">
+              {filtrados.length > 0 && (
+                <div className="px-5 mb-3 flex gap-2" data-testid="resumen-lista">
                   <div className="flex-1 rounded-2xl bg-paper-raised border border-line p-3">
                     <p className="text-[11px] text-ink-soft uppercase tracking-wide">Ingresos</p>
                     <p className="text-sm font-bold text-gold mt-0.5">{formatCOP(totalIngresos)}</p>
@@ -1149,7 +1163,20 @@ export default function Movimientos() {
                     <p className="text-[11px] text-ink-soft uppercase tracking-wide">Gastos</p>
                     <p className="text-sm font-bold text-ink mt-0.5">{formatCOP(totalGastos)}</p>
                   </div>
+                  <div className="flex-1 rounded-2xl bg-paper-raised border border-line p-3">
+                    <p className="text-[11px] text-ink-soft uppercase tracking-wide">Neto</p>
+                    <p className={`text-sm font-bold mt-0.5 ${totalNeto >= 0 ? 'text-gold' : 'text-ink'}`}>
+                      {totalNeto < 0 ? '-' : ''}{formatCOP(Math.abs(totalNeto))}
+                    </p>
+                  </div>
                 </div>
+              )}
+              {filtrados.length > 0 && (
+                <p className="px-5 -mt-1 mb-3 text-[11px] text-ink-soft" data-testid="resumen-conteo">
+                  {filtrados.length} movimiento{filtrados.length === 1 ? '' : 's'}
+                  {hayMas ? ' cargados · baja para ver más y que los totales los incluyan' : ''}
+                  {' · no cuenta traslados ni pagos de tarjeta'}
+                </p>
               )}
 
               <div className="px-5 mb-4 flex items-center gap-2">
@@ -1307,9 +1334,10 @@ export default function Movimientos() {
                 const gi = ventana.ini + k
                 return (
                 <div key={grupo.diaKey} data-dia={grupo.diaKey} className={gi === 0 ? '' : 'pt-5'}>
-                  <p className="text-[11px] font-bold text-ink-soft uppercase tracking-wide mb-1">
-                    {grupo.label}
-                  </p>
+                  <div className="flex items-baseline justify-between gap-3 mb-1">
+                    <p className="text-[11px] font-bold text-ink-soft uppercase tracking-wide">{grupo.label}</p>
+                    <SubtotalDia items={grupo.items} tipos={tipos} />
+                  </div>
                   {grupo.items.map((m, i) => (
                     <FilaMovimiento
                       key={m.id}
@@ -1417,6 +1445,11 @@ export default function Movimientos() {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-paper font-medium shrink-0 px-1" aria-live="polite">
               {seleccionados.size} seleccionado{seleccionados.size === 1 ? '' : 's'}
+              {seleccionados.size > 0 && (
+                <span className="opacity-80 tabular-nums" data-testid="suma-seleccion">
+                  {' · '}{netoSeleccion < 0 ? '-' : ''}{formatCOP(Math.abs(netoSeleccion))}
+                </span>
+              )}
             </span>
             <button
               disabled={seleccionados.size === 0 || aplicando}
