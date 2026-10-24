@@ -155,7 +155,7 @@ describe('Autorización de tratamiento de datos', () => {
     await userEvent.click(continuar)
     await waitFor(() => expect(listo).toHaveBeenCalled())
     const [version, items] = api.guardarConsentimientos.mock.calls[0]
-    expect(version).toBe('1.1')
+    expect(version).toBe('1.2')
     expect(items).toEqual([
       { finalidad: 'tratamiento_basico', aceptado: true },
       { finalidad: 'lectura_correo', aceptado: false },
@@ -166,7 +166,7 @@ describe('Autorización de tratamiento de datos', () => {
   })
 
   it('Perfil: revocar una autorización opcional registra aceptado=false', async () => {
-    const f = (aceptado) => ({ aceptado, version: '1.1', fecha_co: '2026-10-03T09:00:00' })
+    const f = (aceptado) => ({ aceptado, version: '1.2', fecha_co: '2026-10-03T09:00:00' })
     api.consentimientos.mockResolvedValue({
       finalidades: { tratamiento_basico: f(true), lectura_correo: f(false), ia: f(true), notificaciones: f(false) },
     })
@@ -178,7 +178,7 @@ describe('Autorización de tratamiento de datos', () => {
     expect(screen.getByText('Borrar mi cuenta y todos mis datos')).toBeInTheDocument()
     await userEvent.click(interruptor)
     await userEvent.click(await screen.findByRole('button', { name: 'Revocar' }))
-    await waitFor(() => expect(api.guardarConsentimientos).toHaveBeenCalledWith('1.1', [{ finalidad: 'ia', aceptado: false }], 'perfil'))
+    await waitFor(() => expect(api.guardarConsentimientos).toHaveBeenCalledWith('1.2', [{ finalidad: 'ia', aceptado: false }], 'perfil'))
   })
 })
 

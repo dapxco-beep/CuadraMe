@@ -30,7 +30,7 @@ router = APIRouter(prefix="/consentimientos", tags=["consentimientos"])
 
 # Subir esta versión cuando cambien los textos legales: a todos los usuarios se les
 # vuelve a pedir la autorización (ver `requiere_autorizacion`).
-VERSION_TEXTOS = "1.1"
+VERSION_TEXTOS = "1.2"
 
 FINALIDADES = {
     "tratamiento_basico": {"obligatoria": True, "titulo": "Tratamiento básico de mis datos"},

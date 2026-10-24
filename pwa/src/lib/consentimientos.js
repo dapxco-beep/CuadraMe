@@ -3,7 +3,7 @@
 // versión que muestran las pantallas legales: al cambiar los textos se sube en los tres sitios
 // y a todos los usuarios se les vuelve a pedir la autorización.
 
-export const VERSION_TEXTOS = '1.1'
+export const VERSION_TEXTOS = '1.2'
 export const CORREO_RESPONSABLE = 'dapxco@gmail.com'
 
 export const FINALIDADES = {
@@ -17,7 +17,7 @@ export const FINALIDADES = {
     titulo: 'Leer mi correo (Gmail, solo lectura)',
     obligatoria: false,
     texto:
-      'Autorizo a CuadraMe a leer mi Gmail en modo solo lectura para sugerirme movimientos y encontrar extractos bancarios. No envía, borra ni modifica correos; puedo desconectarlo cuando quiera.',
+      'Autorizo a CuadraMe a leer mi Gmail en modo solo lectura, únicamente: los correos con la etiqueta que yo elija, las notificaciones de bancos conocidos y los extractos en PDF de mis bancos. De cada uno guarda remitente, asunto, un fragmento corto y los datos extraídos (monto, comercio, fecha); el PDF no se guarda. Solo se usa para sugerirme movimientos que yo apruebo. No envía, borra ni modifica correos, no se usa para publicidad ni para entrenar inteligencia artificial, y no se vende. Puedo desconectarlo cuando quiera en Perfil → Privacidad y datos y eso revoca el permiso en Google.',
   },
   ia: {
     titulo: 'Procesar mis datos con inteligencia artificial',

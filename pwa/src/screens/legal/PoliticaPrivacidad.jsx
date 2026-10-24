@@ -14,7 +14,7 @@ export default function PoliticaPrivacidad() {
       </header>
 
       <div className="px-6 mt-4 text-sm leading-relaxed text-ink space-y-5">
-        <p className="text-xs text-ink-soft">Versión 1.1 (borrador) · Última actualización: 9 de octubre de 2026</p>
+        <p className="text-xs text-ink-soft">Versión 1.2 (borrador) · Última actualización: 9 de octubre de 2026</p>
 
         <section>
           <h2 className="font-semibold mb-1.5">1. Responsable del tratamiento</h2>
@@ -168,6 +168,13 @@ export default function PoliticaPrivacidad() {
             Conservamos tus datos mientras tu cuenta esté activa. Si solicitas la eliminación de tu
             cuenta, eliminaremos tus datos personales de nuestros sistemas dentro de un plazo
             razonable, salvo la información que debamos conservar por obligación legal.
+          </p>
+          <p className="mt-2">
+            Del contenido de los correos de Gmail que lees con tu autorización (remitente, asunto y
+            fragmento) borramos el contenido de los correos que descartas o ignoras a los 30 días, y el
+            de los que se convierten en movimiento a los 12 meses. Conservamos solo lo mínimo para no
+            volver a leer el mismo correo (identificador, fecha, monto y estado). Si desconectas Gmail,
+            revocamos el permiso en Google y borramos el token de inmediato.
           </p>
         </section>
 
