@@ -7,6 +7,7 @@ os.environ.setdefault("DATABASE_URL", f"sqlite:///{os.path.join(tempfile.mkdtemp
 
 from datetime import datetime  # noqa: E402
 
+import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app import estado_traer  # noqa: E402
@@ -18,7 +19,12 @@ from app.models import HistorialExtracto, Movimiento  # noqa: E402
 
 client = TestClient(app)
 UID = "rep-1"
-app.dependency_overrides[get_current_user] = lambda: UsuarioActual(id=UID, email="r@test.com", nombre="Rep")
+
+
+@pytest.fixture(autouse=True)
+def _usuario():
+    app.dependency_overrides[get_current_user] = lambda: UsuarioActual(id=UID, email="r@test.com", nombre="Rep")
+    yield
 
 DESC = "Pago de tu tarjeta (factura anterior)"
 

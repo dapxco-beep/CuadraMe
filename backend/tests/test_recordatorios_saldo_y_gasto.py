@@ -6,6 +6,7 @@ os.environ.setdefault("DATABASE_URL", f"sqlite:///{os.path.join(tempfile.mkdtemp
 
 from datetime import timedelta  # noqa: E402
 
+import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.auth import UsuarioActual, get_current_user  # noqa: E402
@@ -14,7 +15,12 @@ from app.utiles import ahora_co  # noqa: E402
 
 client = TestClient(app)
 USUARIO = {"u": UsuarioActual(id="rsg-0", email="r@test.com", nombre="R")}
-app.dependency_overrides[get_current_user] = lambda: USUARIO["u"]
+
+
+@pytest.fixture(autouse=True)
+def _usuario():
+    app.dependency_overrides[get_current_user] = lambda: USUARIO["u"]
+    yield
 
 
 def como(uid):
