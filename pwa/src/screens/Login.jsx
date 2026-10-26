@@ -34,7 +34,7 @@ export default function Login() {
       } else {
         await registro(nombre, email, password)
         setEsperaCodigo(true)
-        setMensaje(`Te enviamos un código a ${email.trim()}. Escríbelo aquí (revisa también el spam).`)
+        setMensaje(`Te enviamos un correo a ${email.trim()}. Escribe aquí el código que trae, o toca el enlace del correo. Revisa también el spam.`)
       }
     } catch (err) {
       setError(mensajeDeError(err, 'No pudimos continuar. Intenta de nuevo.'))
@@ -118,8 +118,7 @@ export default function Login() {
           >
             {cargando ? 'Un momento...' : 'Confirmar y entrar'}
           </button>
-          <p className="text-xs text-ink-soft text-center">También sirve tocar el enlace del correo, si lo trae.</p>
-          <button type="button" onClick={onReenviar} className="text-sm text-accent font-medium text-center min-h-11">
+                    <button type="button" onClick={onReenviar} className="text-sm text-accent font-medium text-center min-h-11">
             Reenviar código
           </button>
           <button

@@ -71,6 +71,37 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
   // Guarda un cambio de traslado (categoría neutral / marca de "real") y refresca lista y detalle.
   // `decision`: 'traslado' («Es un traslado entre mis cuentas») o 'real» («No es un traslado»). Se recuerda por
   // regla (huella de la descripción) y vale en TODOS los cálculos del servidor.
+  // Un toque para corregir un movimiento que quedó como gasto siendo ingreso (o al revés). El servidor recalcula los saldos.
+  async function cambiarTipoRapido() {
+    const nuevo = movimiento.tipo === 'income' ? 'expense' : 'income'
+    const ok = await confirmar(
+      nuevo === 'income'
+        ? 'Pasará a contar como un ingreso: el saldo de la cuenta sube y entra en tus ingresos del mes.'
+        : 'Pasará a contar como un gasto: el saldo de la cuenta baja y entra en tus gastos del mes.',
+      { titulo: nuevo === 'income' ? '¿Cambiar a ingreso?' : '¿Cambiar a gasto?', confirmarTexto: 'Cambiar' }
+    )
+    if (!ok) return
+    setTrasladando(true)
+    try {
+      const cambios = { tipo: nuevo }
+      // Si la categoría no corresponde al nuevo tipo (p. ej. «Comida» en un ingreso), se pasa a una que sí.
+      const validas = nombresDe(nuevo)
+      if (!validas.includes(movimiento.categoria)) {
+        cambios.categoria = validas.includes('Ingresos') && nuevo === 'income' ? 'Ingresos' : nuevo === 'expense' ? 'Otros' : validas[0] || movimiento.categoria
+      }
+      const actualizado = await api.editarMovimiento(id, cambios)
+      setMovimiento(actualizado)
+      parchearEnCaches(actualizado)
+      onCambio?.(actualizado)
+      await recargarCuentas()
+      avisar(nuevo === 'income' ? 'Listo: ahora es un ingreso' : 'Listo: ahora es un gasto', 'ok')
+    } catch (err) {
+      avisar(err.message || 'No se pudo cambiar. Revisa tu conexión e intenta de nuevo.')
+    } finally {
+      setTrasladando(false)
+    }
+  }
+
   async function aplicarTraslado(decision, mensaje) {
     setTrasladando(true)
     try {
@@ -333,6 +364,18 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           {signo}
           {formatMoneda(movimiento.monto, cuenta?.moneda)}
         </p>
+        {!esTransferencia && !editando && (movimiento.tipo === 'income' || movimiento.tipo === 'expense') && (
+          <button
+            type="button"
+            onClick={cambiarTipoRapido}
+            disabled={trasladando}
+            data-testid="cambiar-tipo-rapido"
+            className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-accent rounded-full border border-line px-3.5 min-h-[44px] disabled:opacity-60"
+          >
+            <Icono icono={ArrowLeftRight} tam="sm" />
+            {movimiento.tipo === 'income' ? 'Es un gasto, cambiar' : 'Es un ingreso, cambiar'}
+          </button>
+        )}
         <div className="mt-3 px-6 flex items-start justify-center gap-1 max-w-full">
           <p className="text-base font-semibold text-center break-words min-w-0" data-testid="detalle-descripcion">{nombreDe(movimiento)}</p>
           {!esTransferencia && !editandoNombre && <BotonLapiz original={movimiento.descripcion} onClick={abrirNombre} className="mt-0.5" />}

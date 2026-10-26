@@ -206,6 +206,14 @@ describe('DetalleMovimiento', () => {
     )
   })
 
+  it('un movimiento mal registrado se pasa de gasto a ingreso con un toque (pide confirmar)', async () => {
+    detalle('m1')
+    await userEvent.click(await screen.findByTestId('cambiar-tipo-rapido'))
+    expect(api.editarMovimiento).not.toHaveBeenCalled()
+    await userEvent.click(await screen.findByRole('button', { name: 'Cambiar' }))
+    await waitFor(() => expect(api.editarMovimiento).toHaveBeenCalledWith('m1', expect.objectContaining({ tipo: 'income' })))
+  })
+
   it('pide confirmación antes de eliminar', async () => {
     detalle('m1')
     await userEvent.click(await screen.findByText('Eliminar movimiento'))
