@@ -398,7 +398,8 @@ def llamar_ia(usuario_msg: str, temperatura: float = 0.3) -> str | None:
         return limpiar_respuesta_ia(resp.json()["choices"][0]["message"]["content"]) or None
     except Exception as e:  # noqa: BLE001
         # Solo el tipo de error: nunca el cuerpo ni el texto del usuario.
-        logger.warning("asistente: fallo de IA (%s)", type(e).__name__)
+        estado = getattr(getattr(e, "response", None), "status_code", None)  # p. ej. 401 = clave de OpenRouter rechazada
+        logger.warning("asistente: fallo de IA (%s%s)", type(e).__name__, f" HTTP {estado}" if estado else "")
         return None
 
 
