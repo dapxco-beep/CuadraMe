@@ -93,6 +93,7 @@ function responder(url, metodo) {
   if (p === '/presupuestos/disponible-hoy') return { disponible_hoy: 40000, dias_restantes: 20, presupuestos: [] }
   if (p === '/cuentas/resumen') return { total: 10575678, disponible: 12425678, deuda_tarjetas: 1850000, cuentas: CUENTAS, por_moneda: [], por_tipo: [] }
   if (p === '/conexiones/estado') return { hay_falla: false }
+  if (p === '/conciliacion/cuadre/resumen') return { hay_problema: true, n_no_cuadran: 1, aviso: '', cuentas: [{ cuenta_id: 'c2', cuenta: 'Nu Colombia Crédito', estado: 'no_cuadra', mes: '2026-10', diferencia: -160000, texto: 'No cuadra en octubre (dif. $160.000)' }] }
   if (/\/(conteo|por-revisar|por-confirmar)/.test(p)) return metodo === 'GET' && p.endsWith('conteo') ? { conteo: 0 } : []
   return metodo === 'GET' ? [] : {}
 }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftRight, Bot, ChevronDown, ChevronRight, CreditCard, Gift, HeartPulse, Landmark, LayoutGrid, Lightbulb, LineChart, PieChart,
-  PiggyBank, Plus, RefreshCw, Repeat, Sparkles, Wallet,
+  PiggyBank, Plus, RefreshCw, Repeat, Sparkles, Wallet, X,
 } from 'lucide-react'
 import { IlustracionVacia, Isotipo, Monto, SelloCuadre } from '../brand/Marca'
 import { api } from '../lib/api'
@@ -38,6 +38,7 @@ import { useModoMenu } from '../lib/modoSimple'
 import { armarCamino, leerEstado } from '../lib/primerUso'
 import { estadoCuadre } from '../lib/cuadre'
 import { useJalarParaRefrescar } from '../lib/jalarRefrescar'
+import { avisoVisible, guardarOcultos, leerOcultos } from '../lib/avisoCuadre'
 import { contextoDeCuentas } from '../lib/contabilidad'
 import { fechaHace,gastosDeLaSemana, siguientePasoInicio } from '../lib/inicioSimple'
 import { resumenCarriles } from '../lib/carriles'
@@ -157,11 +158,19 @@ export default function Inicio() {
     [movsSemana, cuentas]
   )
   const [sinCategorizar, setSinCategorizar] = useState(0)
-  const [avisoCuadre, setAvisoCuadre] = useState(null) // {n, texto} solo si algún mes cerrado no cuadra
+  // Aviso de cuadre: solo si algún mes cerrado no cuadra Y no lo ocultaste con esa misma diferencia
+  const [resumenCuadre, setResumenCuadre] = useState(null)
+  const [ocultosCuadre, setOcultosCuadre] = useState(leerOcultos)
+  const avisoCuadre = avisoVisible(resumenCuadre, ocultosCuadre)
+  function ocultarAvisoCuadre() {
+    const nuevos = [...new Set([...ocultosCuadre, ...(avisoCuadre?.claves || [])])]
+    setOcultosCuadre(nuevos)
+    guardarOcultos(nuevos)
+  }
   useEffect(() => {
     let activo = true
     Promise.resolve().then(() => api.cuadreResumen?.()).then((r) => {
-      if (activo) setAvisoCuadre(r?.hay_problema ? { n: r.n_no_cuadran, texto: r.aviso || '' } : null)
+      if (activo) setResumenCuadre(r || null)
     }).catch(() => {})
     return () => { activo = false }
   }, [])
@@ -282,19 +291,31 @@ export default function Inicio() {
 
       {/* Solo cuando algún mes cerrado no cuadra con el banco (también en modo simple) */}
       {avisoCuadre && (
-        <Link
-          to="/sincronizacion"
-          state={{ abrir: 'extractos' }}
-          role="alert"
-          data-testid="aviso-cuadre"
-          className="mx-6 mt-2 rounded-2xl bg-danger-soft border border-danger/30 p-3 flex items-center justify-between gap-3"
-        >
-          <p className="text-xs text-danger">
-            {avisoCuadre.n > 1 ? `${avisoCuadre.n} cuentas no cuadran con tu banco. ` : 'Una cuenta no cuadra con tu banco. '}
-            {avisoCuadre.texto}
-          </p>
-          <span className="text-xs font-semibold text-danger shrink-0">Ver cuadre</span>
-        </Link>
+        <div className="mx-6 mt-2 rounded-2xl bg-danger-soft border border-danger/30 flex items-stretch">
+          <Link
+            to="/sincronizacion"
+            state={{ abrir: 'extractos' }}
+            role="alert"
+            data-testid="aviso-cuadre"
+            className="flex-1 min-w-0 p-3 flex items-center justify-between gap-3"
+          >
+            <p className="text-xs text-danger">
+              {avisoCuadre.n > 1 ? `${avisoCuadre.n} cuentas no cuadran con tu banco. ` : 'Una cuenta no cuadra con tu banco. '}
+              {avisoCuadre.texto}
+            </p>
+            <span className="text-xs font-semibold text-danger shrink-0">Ver cuadre</span>
+          </Link>
+          <button
+            type="button"
+            onClick={ocultarAvisoCuadre}
+            data-testid="ocultar-aviso-cuadre"
+            aria-label="Ocultar este aviso hasta que cambie la diferencia"
+            title="Ocultar hasta que cambie la diferencia"
+            className="relative shrink-0 w-11 flex items-center justify-center text-danger/70 hover:text-danger before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
       )}
 
       {/* Primeros pasos: solo mientras falte algo (y no se haya ocultado); luego vive en Perfil */}
