@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.CuadraMeCaptura" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">#B9461A</item>
+        <item name="colorPrimaryDark">#8F3513</item>
+        <item name="colorAccent">#B9461A</item>
+        <item name="android:windowBackground">#F7F4EE</item>
+    </style>
+</resources>
