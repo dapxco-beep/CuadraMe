@@ -160,7 +160,7 @@ export default function EvolucionCategoria({ fmt, className = '' }) {
         </ul>
       )}
 
-      <table className="sr-only">
+      <div className="sr-only"><table>
         <caption>Gasto mensual de {nombre}</caption>
         <thead><tr><th>Mes</th><th>Gasto</th><th>Vs mes anterior</th><th>Vs su promedio</th></tr></thead>
         <tbody>
@@ -168,7 +168,7 @@ export default function EvolucionCategoria({ fmt, className = '' }) {
             <tr key={m.mes}><th scope="row">{m.etiqueta_larga}</th><td>{fmt(m.valor)} pesos</td><td>{textoVar(m.vsAnt)}</td><td>{textoVar(m.vsProm)}</td></tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </section>
   )
 }

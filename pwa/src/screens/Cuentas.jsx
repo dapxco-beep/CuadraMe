@@ -137,7 +137,7 @@ export default function Cuentas() {
                 >
                   <TarjetaCuenta cuenta={c} ultimoMovimiento={resumen ? (resumen.ultimo_por_cuenta?.[c.id] ?? null) : undefined} />
                 </button>
-                <div className="flex flex-col items-center gap-1 shrink-0">
+                <div className="flex flex-col items-center gap-1 shrink-0 w-[76px]">
                   <button
                     onClick={() => setEditando(c)}
                     className="w-11 h-11 flex items-center justify-center text-ink-soft"

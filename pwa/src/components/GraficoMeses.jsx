@@ -148,7 +148,7 @@ export default function GraficoMeses({ meses, fmt, seleccion = null, onSeleccion
           </li>
         )}
       </ul>
-      <table className="sr-only">
+      <div className="sr-only"><table>
         <caption>Ingresos, gastos y balance por mes</caption>
         <thead><tr><th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Balance</th></tr></thead>
         <tbody>
@@ -156,7 +156,7 @@ export default function GraficoMeses({ meses, fmt, seleccion = null, onSeleccion
             <tr key={m.mes}><th scope="row">{m.etiqueta_larga}</th><td>{fmt(m.ingresos)} pesos</td><td>{fmt(m.gastos)} pesos</td><td>{fmt(m.balance)} pesos</td></tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </div>
   )
 }

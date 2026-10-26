@@ -173,8 +173,8 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
   const nSubs = subsDe ? subsDe(c.nombre).length : 0
   return (
     <>
-    <div className={`flex items-center gap-1 pl-4 pr-2 py-3 ${!c.activa ? 'opacity-70' : ''}`}>
-      <button onClick={onEditar} className="flex items-center gap-3 flex-1 min-w-0 text-left" aria-label={`Editar ${c.nombre}`}>
+    <div className={`flex flex-wrap items-center gap-x-1 pl-4 pr-2 py-3 ${!c.activa ? 'opacity-70' : ''}`}>
+      <button onClick={onEditar} className="flex items-center gap-3 flex-1 min-w-[10rem] text-left" aria-label={`Editar ${c.nombre}`}>
         <span
           className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-xl bg-accent-soft"
           style={c.color ? { backgroundColor: `${c.color}26`, boxShadow: `inset 0 0 0 1.5px ${c.color}` } : undefined}
@@ -183,14 +183,16 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
           {c.icono}
         </span>
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{c.nombre}</p>
-          <p className="text-[11px] text-ink-soft truncate">
+          <p className="text-sm font-medium line-clamp-2">{c.nombre}</p>
+          <p className="text-[11px] text-ink-soft line-clamp-2">
             {[c.es_base ? 'Base' : null, ETIQUETA_TIPO[c.tipo] || null, `${c.movimientos || 0} mov.`]
               .filter(Boolean)
               .join(' · ')}
           </p>
         </div>
       </button>
+      {/* Los botones de la derecha bajan a su propia línea cuando el nombre no cabe (celulares angostos) */}
+      <div className="ml-auto flex items-center shrink-0">
       {admite && (
         <button
           onClick={() => setAbierta((v) => !v)}
@@ -239,6 +241,7 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
           <EyeOff size={16} /> Reactivar
         </button>
       )}
+      </div>
     </div>
     {admite && abierta && <SubcategoriasDeCategoria categoria={c} />}
     </>

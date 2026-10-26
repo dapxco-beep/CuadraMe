@@ -14,7 +14,7 @@ const ACCIONES = [
 
 export function AccionesRapidas() {
   return (
-    <nav className="mx-6 mt-3 grid grid-cols-4 gap-2" aria-label="Acciones rápidas" data-testid="acciones-rapidas">
+    <nav className="mx-6 mt-3 grid grid-cols-4 gap-2 lg:grid-cols-2 xl:grid-cols-4" aria-label="Acciones rápidas" data-testid="acciones-rapidas">
       {ACCIONES.map((a) => (
         <Link
           key={a.texto}

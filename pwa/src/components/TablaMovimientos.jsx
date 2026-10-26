@@ -12,6 +12,9 @@ import { fechaHoraMovimiento } from '../lib/fechaMovimiento'
 // Tabla de movimientos para escritorio. Mismas reglas que la lista: filas virtualizadas (alto fijo,
 // solo se pintan las visibles más un margen), selección masiva con casillas y el detalle en el panel.
 export const ALTO_FILA_TABLA = 48
+// Anchos fijos (px). Descripción toma lo que sobra y no baja de MIN_DESCRIPCION; si no cabe todo, se ocultan Cuenta y luego Categoría.
+const ANCHO = { casilla: 44, fecha: 200, categoria: 156, cuenta: 144, monto: 124 }
+const MIN_DESCRIPCION = 160
 const MARGEN = 600
 const LLAVE_COLUMNAS = 'cuadrame:tabla-movimientos:columnas'
 
@@ -48,8 +51,8 @@ const Fila = memo(function Fila({ m, columnas, icono, moneda, cuenta, esSel, act
       <td className="w-11 pl-2">
         <Casilla marcada={esSel} etiqueta={`Seleccionar ${m.descripcion}`} onClick={() => onToggle(m.id)} />
       </td>
-      <td className="px-3 text-xs text-ink-soft whitespace-nowrap">{fechaCorta(m.fecha)}</td>
-      <td className="px-3 min-w-0 max-w-0 w-full">
+      <td className="px-3 text-xs text-ink-soft truncate">{fechaCorta(m.fecha)}</td>
+      <td className="px-3 overflow-hidden">
         <Link
           to={`/movimientos/${m.id}`}
           onClick={(e) => {
@@ -64,22 +67,23 @@ const Fila = memo(function Fila({ m, columnas, icono, moneda, cuenta, esSel, act
         </Link>
       </td>
       {columnas.categoria && (
-        <td className="px-3 whitespace-nowrap">
+        <td className="px-3 overflow-hidden">
           {esTransfer ? (
-            <span className="text-xs text-ink-soft">{m.categoria}</span>
+            <span className="block truncate text-xs text-ink-soft">{m.categoria}</span>
           ) : (
             <button
               type="button"
               onClick={() => onChip(m)}
               aria-label={`Cambiar categoría de ${m.descripcion}`}
-              className="inline-flex items-center gap-1 text-xs text-ink-soft rounded-full border border-line px-2.5 min-h-[32px] hover:border-accent hover:text-ink"
+              className="inline-flex items-center gap-1 max-w-full text-xs text-ink-soft rounded-full border border-line px-2.5 min-h-[32px] hover:border-accent hover:text-ink"
             >
-              <span aria-hidden="true">{icono}</span> {m.categoria}{m.subcategoria ? ` · ${m.subcategoria}` : ''}
+              <span aria-hidden="true" className="shrink-0">{icono}</span>
+              <span className="truncate">{m.categoria}{m.subcategoria ? ` · ${m.subcategoria}` : ''}</span>
             </button>
           )}
         </td>
       )}
-      {columnas.cuenta && <td className="px-3 text-xs text-ink-soft whitespace-nowrap max-w-[160px] truncate">{cuenta}</td>}
+      {columnas.cuenta && <td className="px-3 text-xs text-ink-soft truncate" title={cuenta}>{cuenta}</td>}
       <td className={`px-3 pr-4 text-right text-[15px] font-bold tabular-nums whitespace-nowrap ${dir === 'income' ? 'text-gold' : dir ? 'text-ink' : 'text-ink-soft'}`}>
         {signoDe(m)}
         {formatMoneda(m.monto, moneda)}
@@ -101,6 +105,17 @@ export default function TablaMovimientos({
   const [menu, setMenu] = useState(false)
   const [vista, setVista] = useState(0)
   const raiz = useRef(null)
+  const [ancho, setAncho] = useState(0) // ancho real del recuadro (0 = aún no se sabe)
+  useLayoutEffect(() => {
+    const el = raiz.current
+    if (!el) return undefined
+    const medir = () => setAncho(Math.round(el.getBoundingClientRect().width))
+    medir()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const ro = new ResizeObserver(medir)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const ordenados = useMemo(
     () =>
@@ -157,7 +172,16 @@ export default function TablaMovimientos({
   }
 
   const todos = n > 0 && ordenados.every((m) => seleccionados.has(m.id))
-  const visibles = COLUMNAS_TABLA.filter((c) => c.fija || columnas[c.id])
+  // Lo que cabe de verdad en el recuadro (no en la ventana): con zoom, ventana angosta o nombres largos, primero se
+  // oculta Cuenta y luego Categoría; el Monto siempre se ve completo.
+  const efectivas = { ...columnas }
+  if (ancho > 0) {
+    const cabe = (c) => ANCHO.casilla + ANCHO.fecha + ANCHO.monto + (c.categoria ? ANCHO.categoria : 0) + (c.cuenta ? ANCHO.cuenta : 0) + MIN_DESCRIPCION <= ancho
+    if (!cabe(efectivas)) efectivas.cuenta = false
+    if (!cabe(efectivas)) efectivas.categoria = false
+  }
+  const sinEspacio = (columnas.cuenta && !efectivas.cuenta) || (columnas.categoria && !efectivas.categoria)
+  const visibles = COLUMNAS_TABLA.filter((c) => c.fija || efectivas[c.id])
   const total = visibles.length + 1
 
   return (
@@ -194,7 +218,12 @@ export default function TablaMovimientos({
             </>
           )}
         </div>
-        <div className="relative">
+        <div className="relative flex items-center gap-3 shrink-0">
+          {sinEspacio && (
+            <span className="hidden xl:inline text-[11px] text-ink-soft" data-testid="tabla-sin-espacio">
+              Sin espacio para todas las columnas
+            </span>
+          )}
           <button
             type="button"
             aria-expanded={menu}
@@ -223,7 +252,15 @@ export default function TablaMovimientos({
       </div>
 
       <div ref={raiz} className="rounded-2xl border border-line bg-paper overflow-clip">
-        <table className="w-full border-collapse text-left" aria-label="Movimientos en tabla" aria-rowcount={n + 1}>
+        <table className="w-full table-fixed border-collapse text-left" aria-label="Movimientos en tabla" aria-rowcount={n + 1}>
+          <colgroup>
+            <col style={{ width: ANCHO.casilla }} />
+            <col style={{ width: ANCHO.fecha }} />
+            <col />
+            {efectivas.categoria && <col style={{ width: ANCHO.categoria }} />}
+            {efectivas.cuenta && <col style={{ width: ANCHO.cuenta }} />}
+            <col style={{ width: ANCHO.monto }} />
+          </colgroup>
           <thead className="sticky top-0 z-10 bg-paper-raised">
             <tr className="border-b border-line" style={{ height: ALTO_FILA_TABLA }}>
               <th scope="col" className="w-11 pl-2">
@@ -261,7 +298,7 @@ export default function TablaMovimientos({
               <Fila
                 key={m.id}
                 m={m}
-                columnas={columnas}
+                columnas={efectivas}
                 icono={iconoDe(m.categoria)}
                 moneda={monedaDe[m.cuenta_id]}
                 cuenta={nombreCuenta(m.cuenta_id)}

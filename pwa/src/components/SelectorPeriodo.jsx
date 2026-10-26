@@ -44,9 +44,9 @@ export default function SelectorPeriodo({ opciones = PERIODOS_INFORME, valor, on
 
   return (
     <div>
-      <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-6 px-6" role="group" aria-label={etiqueta}>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={etiqueta}>
         {opciones.map((o) => (
-          <Chip key={o.id} activo={valor?.periodo === o.id} onClick={() => elegir(o.id)} className="shrink-0 text-xs font-semibold">
+          <Chip key={o.id} activo={valor?.periodo === o.id} onClick={() => elegir(o.id)} className="text-xs font-semibold">
             {o.label}
           </Chip>
         ))}

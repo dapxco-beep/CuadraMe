@@ -171,7 +171,7 @@ export default function DividirGasto() {
         <h1 className="text-2xl font-semibold">Dividir gasto</h1>
       </header>
 
-      <div className="px-5 mt-3 grid grid-cols-[1fr_auto] gap-2">
+      <div className="px-5 mt-3 grid grid-cols-1 min-[480px]:grid-cols-[1fr_auto] gap-2">
         <input
           aria-label="Descripción"
           value={descripcion}
@@ -184,7 +184,7 @@ export default function DividirGasto() {
           value={monto}
           onValor={setMonto}
           placeholder="Total"
-          className={`${campo} w-32 text-right tabular-nums`}
+          className={`${campo} w-full min-[480px]:w-32 text-right tabular-nums`}
         />
       </div>
       {cuentas.length > 1 && (

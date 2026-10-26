@@ -124,6 +124,7 @@ for (const [ancho, alto] of ANCHOS) {
     sessionStorage.setItem('cuadrame:splash', '1')
   }, { ref: REF })
   await ctx.route(/localhost:8000/, (route) => {
+    if (process.env.PW_REAL) return route.continue() // PW_REAL=1: usa la API local de verdad (con los datos de la demo) en vez de los datos simulados
     const req = route.request()
     const url = new URL(req.url())
     route.fulfill({
@@ -138,7 +139,7 @@ for (const [ancho, alto] of ANCHOS) {
   }
   for (const [nombre, ruta] of PANTALLAS) {
     await pagina.goto(`${BASE}/#${ruta}`)
-    await pagina.waitForTimeout(1800)
+    await pagina.waitForTimeout(Number(process.env.PW_ESPERA) || 1800)
     // Traer movimientos: se despliega también el punto de partida (formulario con saldos) y el bloque del correo.
     if (ruta === '/sincronizacion') {
       await pagina.locator('[data-testid="modo-historico"]').click({ timeout: 3000 }).catch(() => {})
@@ -148,12 +149,14 @@ for (const [ancho, alto] of ANCHOS) {
     const r = await pagina.evaluate(() => {
       const ancho = document.documentElement.clientWidth
       const fuera = []
+      const anchos = [] // PW_DIAG: todo lo que pasa del borde, aunque un contenedor lo recorte
       for (const el of document.querySelectorAll('body *')) {
         const b = el.getBoundingClientRect()
         if (b.width === 0 || b.height === 0) continue
         const estilo = getComputedStyle(el)
         if (estilo.visibility === 'hidden' || estilo.display === 'none') continue
         // un contenedor con scroll propio (carruseles) puede ser más ancho por dentro: lo que cuenta es su caja
+        if ((b.right > ancho + 1 || b.left < -1) && anchos.length < 8) anchos.push(`${el.tagName.toLowerCase()}.${String(el.className).slice(0, 50)} [${Math.round(b.left)},${Math.round(b.right)}] ${String(el.textContent).trim().slice(0, 25)}`)
         if (b.right > ancho + 1 || b.left < -1) {
           // se ignora si algún ancestro lo recorta (overflow distinto de visible)
           let p = el.parentElement
@@ -167,12 +170,13 @@ for (const [ancho, alto] of ANCHOS) {
         }
       }
       const doc = document.documentElement
-      return { ancho, scrollW: doc.scrollWidth, bodyW: document.body.scrollWidth, fuera: fuera.slice(0, 6), texto: document.body.innerText.slice(0, 60).replace(/\n/g, ' ') }
+      return { ancho, scrollW: doc.scrollWidth, bodyW: document.body.scrollWidth, fuera: fuera.slice(0, 6), anchos, texto: document.body.innerText.slice(0, 60).replace(/\n/g, ' ') }
     })
     const hayScroll = r.scrollW > r.ancho + 1 || r.bodyW > r.ancho + 1
     const ok = !hayScroll && r.fuera.length === 0
     if (!ok) fallos += 1
-    console.log(`${ok ? 'OK ' : 'MAL'} ${ancho}x${alto} ${nombre}: scrollW=${r.scrollW}/${r.ancho}${r.fuera.length ? ' fuera=' + JSON.stringify(r.fuera) : ''} :: ${r.texto}`)
+    if (process.env.PW_DIAG && r.anchos.length) console.log("   pasa del borde:", JSON.stringify(r.anchos))
+    console.log(`${ok ? 'OK ' : 'MAL'} ${ancho}x${alto} ${nombre}: scrollW=${r.scrollW}/${r.ancho} bodyW=${r.bodyW}${r.fuera.length ? ' fuera=' + JSON.stringify(r.fuera) : ''} :: ${r.texto}`)
     // PW_SCROLL=1600: baja la pantalla antes de la captura (la app hace scroll dentro de un contenedor, no de la página)
     if (process.env.PW_SCROLL) {
       await pagina.evaluate((y) => { const el = [...document.querySelectorAll('div')].find((d) => getComputedStyle(d).overflowY === 'auto' && d.scrollHeight > d.clientHeight); if (el) el.scrollTop = y }, Number(process.env.PW_SCROLL))

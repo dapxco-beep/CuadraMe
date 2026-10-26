@@ -17,7 +17,9 @@ import { AccionesRapidas, AvisoNegativo, EsteMes } from './InicioExtras'
 //   3. Un consejo para ti
 export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null }) {
   return (
-    <div data-testid="inicio-simple">
+    <div data-testid="inicio-simple" className="dos-col dos-col-5-6">
+     {/* En pantallas anchas: izquierda = saldo y acciones; derecha = el mes y lo reciente. En celular siguen en una sola columna, en el mismo orden. */}
+     <div className="col">
       {/* BLOQUE 1 */}
       <section
         className="mx-6 mt-3 hero-marca card-marca relative overflow-hidden p-5 stagger-item"
@@ -47,6 +49,8 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
 
       <AvisoNegativo saldo={saldo} cuentas={cuentas} fmt={fmt} />
       <AccionesRapidas />
+     </div>
+     <div className="col">
       <EsteMes reporte={reporte} fmt={fmt} iconoDe={iconoDe} />
 
       {/* Cuenta nueva con el camino de 3 pasos a la vista: el paso 2 ya dice «trae tus movimientos»; no repetirlo en otra tarjeta vacía */}
@@ -112,6 +116,7 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
       {/* BLOQUE 3 */}
       <ConsejoParaTi max={1} />
       {!enCamino && <OfrecerPrimeraMeta className="mx-6 mt-2 flex justify-center" />}
+     </div>
     </div>
   )
 }
