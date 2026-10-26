@@ -10,6 +10,9 @@ import AtajoAvanzado from '../components/AtajoAvanzado'
 import Icono from '../components/Icono'
 import Cuadri from '../brand/Cuadri'
 import { CapturaAutomatizacion, CapturaCierreApp, CapturaClave, CapturaPegarClave } from '../components/AtajoIlustraciones'
+import {
+  AndroidAccesoNotificaciones, AndroidDescarga, AndroidPegarClave, AndroidPermitirInstalar, AndroidProbar, FlujoAutomatico,
+} from '../components/IlustracionesGuia'
 import { useClaveAtajo } from '../lib/useClaveAtajo'
 import { detectarDispositivo } from '../lib/primerUso'
 import {
@@ -23,6 +26,8 @@ import {
 // Si un enlace cambia, quien ya instaló el atajo conserva su versión: hay que pegar el nuevo aquí.
 export const ATAJO_ICLOUD_URL = 'https://www.icloud.com/shortcuts/8b2de178aff84465a938df4a5ef9c0dc'
 export const ATAJO_CIERRE_URL = 'https://www.icloud.com/shortcuts/d34fa153ac844631baf36d8e158f7bf4'
+// La app de Android («CuadraMe Captura») se descarga de aquí mismo, sin tiendas ni terceros.
+export const APK_URL = '/descargas/cuadrame-captura.apk'
 
 const INTERVALO_REVISION_MS = 6000
 
@@ -35,6 +40,7 @@ export default function ConectarDispositivo() {
   const volver = useVolver('/perfil')
   const claveAtajo = useClaveAtajo()
   const dispositivo = detectarDispositivo()
+  const [plataforma, setPlataforma] = useState(dispositivo === 'android' ? 'android' : 'ios') // iPhone usa Atajos; Android usa la app Captura
   const [paso, setPasoEstado] = useState(() => leerPaso()) // -1 intro, 0..2 pasos, 3 probar
   const [ultimoUso, setUltimoUso] = useState(null)
   const [llegoAhora, setLlegoAhora] = useState(false) // llegó mientras mirabas esta pantalla
@@ -80,10 +86,16 @@ export default function ConectarDispositivo() {
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <Icono icono={ArrowLeft} tam="md" />
         </button>
-        <h1 className="text-xl font-bold leading-tight">Registro automático al pagar con el iPhone</h1>
+        <h1 className="text-xl font-bold leading-tight">Registro automático de tus pagos</h1>
       </header>
 
-      {yaFunciona ? (
+      {(plataforma === 'android' || paso < 0 || yaFunciona) && (
+        <SelectorPlataforma valor={plataforma} onCambio={setPlataforma} />
+      )}
+
+      {plataforma === 'android' ? (
+        <AndroidCaptura claveAtajo={claveAtajo} />
+      ) : yaFunciona ? (
         <PantallaListo
           ultimoUso={ultimoUso}
           llegoAhora={llegoAhora}
@@ -109,16 +121,16 @@ export default function ConectarDispositivo() {
         />
       )}
 
-      <AtajoAvanzado claveAtajo={claveAtajo} />
+      {plataforma === 'ios' && <AtajoAvanzado claveAtajo={claveAtajo} />}
 
       <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4 flex items-start gap-3" aria-label="Privacidad">
         <Icono icono={ShieldCheck} tam="md" className="text-accent mt-0.5" />
         <div>
           <p className="text-sm font-semibold">Qué datos viajan</p>
           <p className="text-xs text-ink-soft mt-1 leading-relaxed">
-            Solo el comercio, el monto, el nombre de la tarjeta, la fecha y la moneda de cada pago, junto con tu clave
-            personal. Nunca el número completo de tu tarjeta, tu clave del banco ni tus otras apps. Todo viaja por
-            conexión segura (HTTPS) y puedes cortar la conexión cuando quieras creando una clave nueva.
+            {plataforma === 'android'
+              ? 'La app solo lee los avisos de las apps de pago de la lista (Google Wallet, Nequi, Nu y tus bancos) y manda su texto a CuadraMe junto con tu clave personal. Nunca lee tus chats, correos ni redes, ni tu clave del banco. Todo viaja por conexión segura (HTTPS) y puedes cortar la conexión cuando quieras creando una clave nueva o quitando el permiso en Android.'
+              : 'Solo el comercio, el monto, el nombre de la tarjeta, la fecha y la moneda de cada pago, junto con tu clave personal. Nunca el número completo de tu tarjeta, tu clave del banco ni tus otras apps. Todo viaja por conexión segura (HTTPS) y puedes cortar la conexión cuando quieras creando una clave nueva.'}
           </p>
         </div>
       </section>
@@ -143,31 +155,33 @@ function Intro({ dispositivo, onEmpezar }) {
         </span>
       </div>
 
-      {esIphone ? (
-        <>
-          <button onClick={onEmpezar} className="btn btn-primario btn-bloque mt-4 inline-flex items-center justify-center gap-2">
-            Empezar (menos de 2 minutos) <Icono icono={ArrowRight} tam="md" />
-          </button>
-          <p className="text-xs text-ink-soft text-center mt-2">Son 3 pasos cortos. Si no quieres, no pasa nada: puedes usar el correo o tus extractos.</p>
-        </>
-      ) : (
-        <div className="mt-4 rounded-2xl bg-paper-raised border border-line p-4" data-testid="otro-dispositivo">
-          <p className="text-sm font-semibold">
-            {dispositivo === 'android' ? 'Estás en un Android.' : 'Parece que no estás en un iPhone.'}
-          </p>
-          <p className="text-sm text-ink-soft mt-1">
-            Este registro automático es solo para iPhone. Tus pagos igual llegan a CuadraMe por tu correo o subiendo
-            tus extractos del banco.
-          </p>
-          <div className="flex flex-col gap-2 mt-3">
-            <Link to="/sincronizacion" className="btn btn-suave btn-bloque inline-flex items-center justify-center gap-2">
-              Traer mis movimientos por correo o extracto
-            </Link>
-            <button onClick={onEmpezar} className="btn btn-fantasma btn-bloque">
-              Tengo un iPhone: ver los pasos
-            </button>
+      <div className="mt-4 rounded-2xl bg-paper-raised border border-line p-4" data-testid="como-funciona">
+        <h3 className="text-sm font-bold mb-2">Así funciona</h3>
+        <FlujoAutomatico />
+        <dl className="mt-3 space-y-2 text-sm">
+          <div>
+            <dt className="font-semibold inline">Atajo: </dt>
+            <dd className="inline text-ink-soft">una mini-receta de tu iPhone. La app «Atajos» ya viene instalada; tú solo la agregas con un toque.</dd>
           </div>
-        </div>
+          <div>
+            <dt className="font-semibold inline">Automatización: </dt>
+            <dd className="inline text-ink-soft">lo que la pone a correr sola. Aquí: cada vez que pagas con Apple Pay. Tú no haces nada más.</dd>
+          </div>
+        </dl>
+      </div>
+
+      <button onClick={onEmpezar} className="btn btn-primario btn-bloque mt-4 inline-flex items-center justify-center gap-2">
+        Empezar (menos de 2 minutos) <Icono icono={ArrowRight} tam="md" />
+      </button>
+      <p className="text-xs text-ink-soft text-center mt-2">
+        {esIphone
+          ? 'Son 3 pasos cortos, cada uno con su dibujo. Si no quieres, no pasa nada: puedes usar el correo o tus extractos.'
+          : 'Estos pasos se hacen desde tu iPhone: puedes verlos aquí y repetirlos allá. También puedes traer tus movimientos por correo o extracto.'}
+      </p>
+      {!esIphone && (
+        <Link to="/sincronizacion" className="btn btn-suave btn-bloque mt-3 inline-flex items-center justify-center gap-2" data-testid="otro-dispositivo">
+          Traer mis movimientos por correo o extracto
+        </Link>
       )}
     </section>
   )
@@ -405,6 +419,130 @@ function PantallaListo({ ultimoUso, llegoAhora, onRepasar }) {
       <button onClick={onRepasar} className="btn btn-fantasma btn-bloque mt-3">
         Ver los pasos otra vez
       </button>
+    </section>
+  )
+}
+
+/* ---------- Elegir iPhone o Android ---------- */
+
+function SelectorPlataforma({ valor, onCambio }) {
+  const opciones = [
+    { id: 'ios', titulo: 'iPhone', detalle: 'Con Atajos' },
+    { id: 'android', titulo: 'Android', detalle: 'Con la app CuadraMe Captura' },
+  ]
+  return (
+    <div className="mx-6 mt-4" role="group" aria-label="Tu celular">
+      <p className="text-xs font-semibold text-ink-soft mb-1.5">¿Qué celular tienes?</p>
+      <div className="grid grid-cols-2 gap-2">
+        {opciones.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            aria-pressed={valor === o.id}
+            onClick={() => onCambio(o.id)}
+            data-testid={`plataforma-${o.id}`}
+            className={`rounded-2xl border p-3 text-left min-h-[64px] ${valor === o.id ? 'bg-accent-soft border-accent' : 'bg-paper-raised border-line'}`}
+          >
+            <span className="block text-sm font-bold">{o.titulo}</span>
+            <span className="block text-xs text-ink-soft mt-0.5">{o.detalle}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ---------- Android: app «CuadraMe Captura» ---------- */
+
+// ¿El servidor tiene de verdad el archivo? (si no, la página de inicio responde 200 con HTML y no sirve)
+function useApkDisponible() {
+  const [ok, setOk] = useState(null) // null = comprobando
+  useEffect(() => {
+    let activo = true
+    fetch(APK_URL, { method: 'HEAD' })
+      .then((r) => activo && setOk(r.ok && !(r.headers.get('content-type') || '').includes('text/html')))
+      .catch(() => activo && setOk(false))
+    return () => { activo = false }
+  }, [])
+  return ok
+}
+
+function PasoAndroid({ n, titulo, Dibujo, children }) {
+  return (
+    <li className="rounded-2xl bg-paper-raised border border-line p-4 flex items-start gap-4">
+      <div className="w-[96px] shrink-0">
+        <Dibujo />
+      </div>
+      <div className="min-w-0 flex-1">
+        <span className="inline-flex w-7 h-7 rounded-full bg-accent text-paper-raised text-sm font-bold items-center justify-center" aria-hidden="true">{n}</span>
+        <h3 className="text-base font-bold mt-1">
+          <span className="sr-only">Paso {n}: </span>
+          {titulo}
+        </h3>
+        <div className="text-sm text-ink-soft mt-1 space-y-2">{children}</div>
+      </div>
+    </li>
+  )
+}
+
+function AndroidCaptura({ claveAtajo }) {
+  const apk = useApkDisponible()
+  return (
+    <section className="mx-6 mt-4" aria-label="Registro automático en Android" data-testid="android-captura">
+      <div className="rounded-2xl bg-paper-raised border border-line p-5 flex flex-col items-center text-center">
+        <Cuadri pose="senalando" size={88} />
+        <h2 className="text-lg font-bold mt-2">Cada vez que pagas con tu celular, CuadraMe lo anota solo.</h2>
+        <p className="text-sm text-ink-soft mt-2 max-w-xs">
+          Instalas una app pequeña, «CuadraMe Captura». Lee el aviso que te llega al pagar (Google Wallet, Nequi, Nu, tu banco) y lo manda a CuadraMe.
+        </p>
+      </div>
+
+      <div className="mt-4 rounded-2xl bg-paper-raised border border-line p-4">
+        <h3 className="text-sm font-bold mb-2">Así funciona</h3>
+        <FlujoAutomatico />
+      </div>
+
+      <h2 className="text-lg font-bold mt-6 mb-3">Instálala en 5 pasos</h2>
+      <ol className="space-y-3" aria-label="Pasos para Android">
+        <PasoAndroid n={1} titulo="Descarga la app" Dibujo={AndroidDescarga}>
+          <p>Toca el botón. Es un archivo pequeño (APK) de CuadraMe: no pasa por ninguna tienda ni tercero.</p>
+          {apk === false ? (
+            <p className="rounded-xl bg-accent-soft p-3 text-sm" data-testid="apk-pronto">
+              Estamos terminando de publicar la app de Android. Mientras tanto, tus pagos igual llegan por correo o extracto.
+            </p>
+          ) : (
+            <a href={APK_URL} download className="btn btn-primario btn-bloque inline-flex items-center justify-center gap-2" data-testid="descargar-apk">
+              <Icono icono={Download} tam="md" /> Descargar CuadraMe Captura
+            </a>
+          )}
+        </PasoAndroid>
+        <PasoAndroid n={2} titulo="Permite instalarla" Dibujo={AndroidPermitirInstalar}>
+          <p>Android avisará que la app viene de fuera de la tienda: es normal, la hicimos nosotros. Activa el permiso, vuelve atrás y toca <b>Instalar</b>.</p>
+        </PasoAndroid>
+        <PasoAndroid n={3} titulo="Copia tu clave" Dibujo={AndroidPegarClave}>
+          <p>Es la llave para que la app te reconozca. Cópiala y pégala dentro de la app en «Tu clave de conexión».</p>
+          <ClaveAtajo {...claveAtajo} grande android />
+        </PasoAndroid>
+        <PasoAndroid n={4} titulo="Dale acceso a los avisos" Dibujo={AndroidAccesoNotificaciones}>
+          <p>En la app toca <b>Abrir ajustes de Android</b>, busca «CuadraMe Captura» y actívala. Solo tú puedes dar este permiso.</p>
+        </PasoAndroid>
+        <PasoAndroid n={5} titulo="Pruébala" Dibujo={AndroidProbar}>
+          <p>En la app toca <b>Probar conexión</b> y luego <b>Enviar un pago de prueba</b>. Aparece en CuadraMe como «Por confirmar» y lo puedes descartar.</p>
+          <Link to="/movimientos?filtro=por-revisar" className="text-accent font-semibold text-sm inline-flex items-center gap-1 min-h-11">
+            Ver lo que está por confirmar <Icono icono={ArrowRight} tam="sm" />
+          </Link>
+        </PasoAndroid>
+      </ol>
+
+      <details className="mt-4 rounded-2xl bg-paper-raised border border-line p-4">
+        <summary className="text-sm font-semibold cursor-pointer min-h-6">¿No me llegan los pagos?</summary>
+        <ul className="list-disc pl-5 mt-2 space-y-1.5 text-sm text-ink-soft">
+          <li>Revisa en la app que diga «Acceso a notificaciones activo».</li>
+          <li>Algunos celulares (Xiaomi, Samsung, Huawei) cierran las apps en segundo plano: en Ajustes → Batería, pon «CuadraMe Captura» en «Sin restricciones».</li>
+          <li>La app solo ve los avisos que el banco manda. Si Nequi o tu banco no muestran notificación al pagar, no hay nada que leer.</li>
+          <li>Si cambias de celular, repite los pasos 1 a 4 con la misma clave.</li>
+        </ul>
+      </details>
     </section>
   )
 }

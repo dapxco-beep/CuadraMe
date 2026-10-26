@@ -44,20 +44,44 @@ afterEach(() => poner(uaOriginal))
 describe('Intro', () => {
   it('se llama «Registro automático», explica en 2 frases y dice que funciona en iPhone', async () => {
     montar()
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Registro automático al pagar con el iPhone')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Registro automático de tus pagos')
     expect(screen.getByText(/Cada vez que pagas con Apple Pay, CuadraMe lo anota solo/)).toBeInTheDocument()
     expect(screen.getByText('Funciona en iPhone')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Empezar/ })).toBeInTheDocument()
     expect(screen.queryByText(/endpoint|header|token/i)).toBeNull()
   })
 
-  it('en Android explica con una línea que use correo o extractos (no deja pantalla vacía)', () => {
+  it('explica qué es un atajo y una automatización, con el dibujo de cómo funciona', () => {
+    montar()
+    const caja = screen.getByTestId('como-funciona')
+    expect(within(caja).getByRole('img', { name: /pagas con tu celular/ })).toBeInTheDocument()
+    expect(caja).toHaveTextContent(/Atajo:/)
+    expect(caja).toHaveTextContent(/Automatización:/)
+  })
+
+  it('en Android muestra el flujo de la app CuadraMe Captura, con 5 pasos y dibujos', () => {
     poner(UA_ANDROID)
     montar()
-    const caja = screen.getByTestId('otro-dispositivo')
-    expect(caja).toHaveTextContent(/solo para iPhone/)
-    expect(caja).toHaveTextContent(/correo o subiendo tus extractos/)
-    expect(within(caja).getByRole('link', { name: /correo o extracto/ })).toHaveAttribute('href', '/sincronizacion')
+    const flujo = screen.getByTestId('android-captura')
+    const pasos = within(flujo).getByRole('list', { name: 'Pasos para Android' })
+    expect(within(pasos).getAllByRole('listitem')).toHaveLength(5)
+    expect(within(pasos).getAllByRole('img').length).toBeGreaterThanOrEqual(5)
+    expect(screen.getByTestId('plataforma-android')).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('se puede cambiar a iPhone desde Android, y los pasos de Atajos aparecen', async () => {
+    poner(UA_ANDROID)
+    montar()
+    await userEvent.click(screen.getByTestId('plataforma-ios'))
+    expect(screen.queryByTestId('android-captura')).toBeNull()
+    expect(screen.getByRole('button', { name: /Empezar/ })).toBeInTheDocument()
+  })
+
+  it('en un computador (ni iPhone ni Android) ofrece traer los movimientos por correo o extracto', () => {
+    poner('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36')
+    montar()
+    const link = within(screen.getByTestId('otro-dispositivo')).getByText(/correo o extracto/)
+    expect(link.closest('a')).toHaveAttribute('href', '/sincronizacion')
   })
 })
 

@@ -111,7 +111,7 @@ if (CAPTURAS) mkdirSync(CAPTURAS, { recursive: true })
 for (const [ancho, alto] of ANCHOS) {
   const ctx = await navegador.newContext({
     viewport: { width: ancho, height: alto }, deviceScaleFactor: ancho < 800 ? 3 : 1, isMobile: ancho < 800, hasTouch: ancho < 800,
-    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    userAgent: process.env.PW_UA || 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
   })
   // Sesión sintética (supabase-js la lee de localStorage sin pedir nada a la red mientras no venza).
   await ctx.addInitScript(({ ref }) => {
@@ -173,6 +173,11 @@ for (const [ancho, alto] of ANCHOS) {
     const ok = !hayScroll && r.fuera.length === 0
     if (!ok) fallos += 1
     console.log(`${ok ? 'OK ' : 'MAL'} ${ancho}x${alto} ${nombre}: scrollW=${r.scrollW}/${r.ancho}${r.fuera.length ? ' fuera=' + JSON.stringify(r.fuera) : ''} :: ${r.texto}`)
+    // PW_SCROLL=1600: baja la pantalla antes de la captura (la app hace scroll dentro de un contenedor, no de la página)
+    if (process.env.PW_SCROLL) {
+      await pagina.evaluate((y) => { const el = [...document.querySelectorAll('div')].find((d) => getComputedStyle(d).overflowY === 'auto' && d.scrollHeight > d.clientHeight); if (el) el.scrollTop = y }, Number(process.env.PW_SCROLL))
+      await pagina.waitForTimeout(400)
+    }
     if (CAPTURAS) await pagina.screenshot({ path: `${CAPTURAS}/${ancho}-${nombre.replace(/\s+/g, '_')}.png`, fullPage: false })
   }
   await ctx.close()

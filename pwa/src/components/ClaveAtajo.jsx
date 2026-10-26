@@ -7,7 +7,7 @@ import { useDialogos } from '../lib/DialogosContext'
 //     si es nueva, aviso de que no se vuelve a mostrar.
 //  2) Ya existe pero guardada de forma segura: solo «empieza por cdm_ab12…» + «Crear una clave nueva».
 //  3) Aún no hay estado (cargando) o no hay clave.
-export default function ClaveAtajo({ clave, cargando, tieneClave, prefijo, recienCreada, crearNueva, grande = false }) {
+export default function ClaveAtajo({ clave, cargando, tieneClave, prefijo, recienCreada, crearNueva, grande = false, android = false }) {
   const { confirmar, avisar } = useDialogos()
   const [copiado, setCopiado] = useState(false)
   const [creando, setCreando] = useState(false)
@@ -25,7 +25,9 @@ export default function ClaveAtajo({ clave, cargando, tieneClave, prefijo, recie
   async function nueva() {
     if (tieneClave) {
       const ok = await confirmar(
-        'Tu Atajo del iPhone dejará de funcionar hasta que pegues la clave nueva en él. Te mostraremos la clave nueva una sola vez para que la copies.',
+        android
+          ? 'La app de tu Android dejará de funcionar hasta que pegues la clave nueva en ella. Te mostraremos la clave nueva una sola vez para que la copies.'
+          : 'Tu Atajo del iPhone dejará de funcionar hasta que pegues la clave nueva en él. Te mostraremos la clave nueva una sola vez para que la copies.',
         { titulo: '¿Crear una clave nueva?', confirmarTexto: 'Sí, crear clave nueva', peligro: true }
       )
       if (!ok) return
@@ -100,7 +102,7 @@ export default function ClaveAtajo({ clave, cargando, tieneClave, prefijo, recie
           Tu clave empieza por <strong>{prefijo || 'cdm_…'}</strong>. Por seguridad ya no se puede mostrar completa.
         </p>
       ) : (
-        <p className="text-sm">Aún no tienes una clave para conectar tu Atajo.</p>
+        <p className="text-sm">Aún no tienes una clave para conectar {android ? 'la app' : 'tu Atajo'}.</p>
       )}
       <button
         onClick={nueva}
@@ -111,7 +113,7 @@ export default function ClaveAtajo({ clave, cargando, tieneClave, prefijo, recie
       </button>
       {tieneClave && (
         <p className="text-xs text-ink-soft mt-2">
-          Si ya conectaste tu Atajo, no necesitas hacer nada. Crea una nueva solo si la perdiste o quieres cortar el acceso.
+          Si ya conectaste {android ? 'la app' : 'tu Atajo'}, no necesitas hacer nada. Crea una nueva solo si la perdiste o quieres cortar el acceso.
         </p>
       )}
     </div>

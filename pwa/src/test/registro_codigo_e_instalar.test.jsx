@@ -69,6 +69,6 @@ describe('Instalar en Android con un toque', () => {
     act(() => _simularEvento({ prompt: vi.fn(), userChoice: Promise.resolve({ outcome: 'accepted' }) }))
     render(<GuiaInstalar dispositivo="ios" onCerrar={() => {}} />)
     expect(screen.queryByTestId('instalar-un-toque')).toBeNull()
-    expect(screen.getByText(/Añadir a pantalla de inicio/)).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Pasos para iPhone' })).toBeInTheDocument()
   })
 })

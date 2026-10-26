@@ -704,3 +704,13 @@ button, a {
 @keyframes gr-crece { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 @keyframes gr-traza { to { stroke-dashoffset: 0; } }
 @keyframes gr-fundido { from { opacity: 0; } to { opacity: 1; } }
+
+/* Guías de instalación: el círculo «toca aquí» pulsa (y se queda quieto si la persona pidió menos movimiento) */
+@keyframes guia-pulso {
+  0% { transform: scale(0.7); opacity: 0.55; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+.guia-pulso { transform-box: fill-box; transform-origin: center; animation: guia-pulso 1.6s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .guia-pulso { animation: none; opacity: 0.35; }
+}

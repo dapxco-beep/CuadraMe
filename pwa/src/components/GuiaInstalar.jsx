@@ -1,44 +1,60 @@
-import { Check, Compass, Download, EllipsisVertical, Share, SquarePlus } from 'lucide-react'
+import { CheckCircle2, Download } from 'lucide-react'
 import Hoja from './Hoja'
 import Icono from './Icono'
 import { Boton } from './ui'
 import { detectarDispositivo } from '../lib/primerUso'
 import { instalar, useInstalable } from '../lib/instalarPwa'
+import {
+  AndroidChrome, AndroidConfirmar, AndroidMenu, IosAnadir, IosCompartir, IosSafari, PantallaInicioConIcono,
+} from './IlustracionesGuia'
 
-// Pasos con dibujo: cada uno muestra el MISMO ícono que la persona verá en su pantalla,
+// Cada paso lleva el DIBUJO de la pantalla que verá la persona, con un círculo que pulsa donde debe tocar,
 // para que lo reconozca sin tener que entender palabras como «PWA» o «instalar».
 const PASOS_IOS = [
-  { icono: Compass, titulo: 'Abre CuadraMe en Safari', texto: 'Tiene que ser Safari, el navegador azul con una brújula. En Chrome no aparece la opción.' },
-  { icono: Share, titulo: 'Toca el botón Compartir', texto: 'Es un cuadrito con una flecha hacia arriba, abajo en el centro de la pantalla.' },
-  { icono: SquarePlus, titulo: 'Elige «Añadir a pantalla de inicio»', texto: 'Desliza el menú hacia arriba si no lo ves.' },
-  { icono: Check, titulo: 'Toca «Añadir» y listo', texto: 'Aparece el ícono de CuadraMe en tu pantalla. Ábrela siempre desde ahí.' },
+  { Dibujo: IosSafari, titulo: 'Abre CuadraMe en Safari', texto: 'Tiene que ser Safari, el navegador azul con una brújula. En Chrome no aparece la opción.' },
+  { Dibujo: IosCompartir, titulo: 'Toca el botón Compartir', texto: 'Es un cuadrito con una flecha hacia arriba, abajo en el centro. Luego elige «Añadir a pantalla de inicio» (desliza el menú hacia arriba si no la ves).' },
+  { Dibujo: IosAnadir, titulo: 'Toca «Añadir»', texto: 'Está arriba a la derecha. Puedes dejar el nombre «CuadraMe» como está.' },
+  { Dibujo: PantallaInicioConIcono, titulo: '¡Listo! Ábrela desde el ícono', texto: 'Aparece junto a tus demás apps. Ábrela siempre desde ahí: así funciona como una app y te puede mandar avisos.' },
 ]
 
 const PASOS_ANDROID = [
-  { icono: EllipsisVertical, titulo: 'Abre CuadraMe en Chrome y toca los tres puntos', texto: 'Están arriba a la derecha de la pantalla.' },
-  { icono: Download, titulo: 'Elige «Instalar app»', texto: 'A veces dice «Añadir a la pantalla de inicio». Es lo mismo.' },
-  { icono: Check, titulo: 'Confirma con «Instalar»', texto: 'El ícono de CuadraMe aparece junto a tus demás apps.' },
+  { Dibujo: AndroidChrome, titulo: 'Abre CuadraMe en Chrome y toca los tres puntos', texto: 'Están arriba a la derecha de la pantalla.' },
+  { Dibujo: AndroidMenu, titulo: 'Elige «Instalar app»', texto: 'A veces dice «Añadir a la pantalla de inicio». Es lo mismo.' },
+  { Dibujo: AndroidConfirmar, titulo: 'Confirma con «Instalar»', texto: 'Chrome la instala como cualquier otra app. No descarga archivos ni necesita nada de terceros.' },
+  { Dibujo: PantallaInicioConIcono, titulo: '¡Listo! Ábrela desde el ícono', texto: 'El ícono de CuadraMe aparece junto a tus demás apps.' },
 ]
 
 function Lista({ pasos, etiqueta }) {
   return (
-    <ol className="space-y-3" aria-label={etiqueta}>
+    <ol className="space-y-4" aria-label={etiqueta}>
       {pasos.map((p, i) => (
-        <li key={p.titulo} className="flex items-start gap-3">
-          <span className="w-11 h-11 rounded-2xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
-            <Icono icono={p.icono} tam="lg" />
-          </span>
-          <div className="min-w-0 pt-0.5">
-            <p className="t-cuerpo font-semibold">
-              <span className="text-ink-soft">{i + 1}. </span>
+        <li key={p.titulo} className="flex items-start gap-4">
+          <div className="w-[104px] shrink-0">
+            <p.Dibujo />
+          </div>
+          <div className="min-w-0 pt-1">
+            <span className="inline-flex w-7 h-7 rounded-full bg-accent text-paper-raised text-sm font-bold items-center justify-center" aria-hidden="true">
+              {i + 1}
+            </span>
+            <p className="t-cuerpo font-semibold mt-1.5">
+              <span className="sr-only">Paso {i + 1}: </span>
               {p.titulo}
             </p>
-            <p className="t-apoyo mt-0.5">{p.texto}</p>
+            <p className="t-apoyo mt-1">{p.texto}</p>
           </div>
         </li>
       ))}
     </ol>
   )
+}
+
+// ¿Ya se abrió desde el ícono de la pantalla de inicio (como app instalada)?
+function yaInstalada() {
+  try {
+    return window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator?.standalone === true
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -47,6 +63,7 @@ function Lista({ pasos, etiqueta }) {
  */
 export default function GuiaInstalar({ onCerrar, dispositivo = detectarDispositivo() }) {
   const instalable = useInstalable()
+  const instalada = yaInstalada()
   return (
     <Hoja onCerrar={onCerrar} titulo="Ponla en tu celular" testId="guia-instalar">
       {({ cerrar }) => (
@@ -54,6 +71,11 @@ export default function GuiaInstalar({ onCerrar, dispositivo = detectarDispositi
           <p className="t-apoyo mb-4">
             Así CuadraMe se abre con un toque, sin escribir la dirección, y puede mandarte avisos. No ocupa espacio y no cuesta nada.
           </p>
+          {instalada && (
+            <p role="status" data-testid="ya-instalada" className="rounded-2xl bg-cuadra-soft p-3 mb-4 flex items-center gap-2 text-sm font-semibold">
+              <Icono icono={CheckCircle2} tam="md" className="text-cuadra shrink-0" /> Ya la tienes instalada: estás usando la app.
+            </p>
+          )}
           {dispositivo === 'ios' && <Lista pasos={PASOS_IOS} etiqueta="Pasos para iPhone" />}
           {dispositivo === 'android' && instalable && (
             <div className="mb-4">
