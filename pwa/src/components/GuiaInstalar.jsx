@@ -3,6 +3,7 @@ import Hoja from './Hoja'
 import Icono from './Icono'
 import { Boton } from './ui'
 import { detectarDispositivo } from '../lib/primerUso'
+import { instalar, useInstalable } from '../lib/instalarPwa'
 
 // Pasos con dibujo: cada uno muestra el MISMO ícono que la persona verá en su pantalla,
 // para que lo reconozca sin tener que entender palabras como «PWA» o «instalar».
@@ -45,6 +46,7 @@ function Lista({ pasos, etiqueta }) {
  * (computador), muestra los dos y avisa que se hace desde el celular.
  */
 export default function GuiaInstalar({ onCerrar, dispositivo = detectarDispositivo() }) {
+  const instalable = useInstalable()
   return (
     <Hoja onCerrar={onCerrar} titulo="Ponla en tu celular" testId="guia-instalar">
       {({ cerrar }) => (
@@ -53,7 +55,20 @@ export default function GuiaInstalar({ onCerrar, dispositivo = detectarDispositi
             Así CuadraMe se abre con un toque, sin escribir la dirección, y puede mandarte avisos. No ocupa espacio y no cuesta nada.
           </p>
           {dispositivo === 'ios' && <Lista pasos={PASOS_IOS} etiqueta="Pasos para iPhone" />}
-          {dispositivo === 'android' && <Lista pasos={PASOS_ANDROID} etiqueta="Pasos para Android" />}
+          {dispositivo === 'android' && instalable && (
+            <div className="mb-4">
+              <Boton bloque onClick={() => instalar().then((r) => r === 'accepted' && cerrar())} data-testid="instalar-un-toque">
+                <Icono icono={Download} tam="md" /> Instalar CuadraMe
+              </Boton>
+              <p className="t-apoyo mt-2">Un toque y listo: Chrome la instala como una app más. No descarga archivos ni necesita nada de terceros.</p>
+            </div>
+          )}
+          {dispositivo === 'android' && (
+            <>
+              {instalable && <p className="t-apoyo mb-3">Si prefieres hacerlo a mano:</p>}
+              <Lista pasos={PASOS_ANDROID} etiqueta="Pasos para Android" />
+            </>
+          )}
           {dispositivo === 'otro' && (
             <div className="space-y-5">
               <p className="t-cuerpo rounded-2xl bg-accent-soft p-3">

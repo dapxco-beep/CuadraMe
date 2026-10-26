@@ -41,6 +41,17 @@ export function AuthProvider({ children }) {
     if (error) throw new Error(traducirError(error.message))
   }
 
+  // Confirmar el correo con el código que llega por email (en vez de abrir un enlace): al acertar, entra solo.
+  async function confirmarCodigo(email, codigo) {
+    const { error } = await supabase.auth.verifyOtp({ email, token: String(codigo).trim(), type: 'signup' })
+    if (error) throw new Error(traducirError(error.message))
+  }
+
+  async function reenviarCodigo(email) {
+    const { error } = await supabase.auth.resend({ type: 'signup', email })
+    if (error) throw new Error(traducirError(error.message))
+  }
+
   async function loginConGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -84,7 +95,7 @@ export function AuthProvider({ children }) {
     : null
 
   return (
-    <AuthContext.Provider value={{ usuario, session, cargando, recuperando, login, registro, loginConGoogle, logout, recuperarPassword, cambiarPassword }}>
+    <AuthContext.Provider value={{ usuario, session, cargando, recuperando, login, registro, confirmarCodigo, reenviarCodigo, loginConGoogle, logout, recuperarPassword, cambiarPassword }}>
       {children}
     </AuthContext.Provider>
   )
@@ -101,6 +112,8 @@ function traducirError(msg) {
   if (msg.includes('Email not confirmed')) return 'Confirma tu correo antes de entrar (revisa tu bandeja y spam)'
   if (msg.includes('rate limit') || msg.includes('too many')) return 'Demasiados intentos. Espera unos minutos e intenta de nuevo'
   if (msg.includes('same password')) return 'La nueva contraseña debe ser distinta a la anterior'
+  if (msg.includes('Token has expired') || msg.includes('invalid')) return 'El código no es correcto o ya venció. Revisa los números o pide uno nuevo'
+  if (msg.includes('sending') || msg.includes('not authorized')) return 'No pudimos enviar el correo ahora. Intenta de nuevo en unos minutos'
   if (msg.includes('Failed to fetch')) return 'Sin conexión. Revisa tu internet e intenta de nuevo'
   return msg
 }

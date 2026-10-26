@@ -5,7 +5,7 @@ import { EncabezadoMarca } from '../brand/Marca'
 import { mensajeDeError } from '../lib/mensajes'
 
 export default function Login() {
-  const { login, registro, loginConGoogle, recuperarPassword } = useAuth()
+  const { login, registro, confirmarCodigo, reenviarCodigo, loginConGoogle, recuperarPassword } = useAuth()
   const [modo, setModo] = useState('login') // login | registro
   const [nombre, setNombre] = useState('')
   const [email, setEmail] = useState('')
@@ -14,6 +14,8 @@ export default function Login() {
   const [error, setError] = useState('')
   const [mensaje, setMensaje] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [esperaCodigo, setEsperaCodigo] = useState(false) // tras crear la cuenta: escribe el código que llegó al correo
+  const [codigo, setCodigo] = useState('')
 
   async function onSubmit(e) {
     e.preventDefault()
@@ -31,12 +33,37 @@ export default function Login() {
         await login(email, password)
       } else {
         await registro(nombre, email, password)
-        setMensaje('Revisa tu correo para confirmar tu cuenta antes de entrar')
+        setEsperaCodigo(true)
+        setMensaje(`Te enviamos un código a ${email.trim()}. Escríbelo aquí (revisa también el spam).`)
       }
     } catch (err) {
       setError(mensajeDeError(err, 'No pudimos continuar. Intenta de nuevo.'))
     } finally {
       setCargando(false)
+    }
+  }
+
+  async function onConfirmar(e) {
+    e.preventDefault()
+    setError('')
+    setCargando(true)
+    try {
+      await confirmarCodigo(email.trim(), codigo)
+      // al acertar, la sesión se abre sola y la app te lleva adentro
+    } catch (err) {
+      setError(mensajeDeError(err, 'No pudimos confirmar el código. Intenta de nuevo.'))
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  async function onReenviar() {
+    setError('')
+    try {
+      await reenviarCodigo(email.trim())
+      setMensaje('Listo, te enviamos un código nuevo.')
+    } catch (err) {
+      setError(mensajeDeError(err, 'No pudimos reenviar el código. Intenta en unos minutos.'))
     }
   }
 
@@ -64,6 +91,47 @@ export default function Login() {
     } catch (err) {
       setError(mensajeDeError(err, 'No pudimos entrar con Google. Intenta de nuevo.'))
     }
+  }
+
+  if (esperaCodigo) {
+    return (
+      <div className="flex-1 flex flex-col justify-center px-8 py-10 pantalla-centrada">
+        <EncabezadoMarca titulo="Confirma tu correo" />
+        <form onSubmit={onConfirmar} className="flex flex-col gap-3" data-testid="paso-codigo">
+          <input
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 8))}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="Código del correo"
+            aria-label="Código del correo"
+            required
+            minLength={6}
+            className="rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-center text-xl tracking-[0.3em] outline-none focus:border-accent"
+          />
+          {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+          {mensaje && <p role="status" className="text-sm text-accent">{mensaje}</p>}
+          <button
+            type="submit"
+            disabled={cargando || codigo.length < 6}
+            className="mt-2 w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-50"
+          >
+            {cargando ? 'Un momento...' : 'Confirmar y entrar'}
+          </button>
+          <p className="text-xs text-ink-soft text-center">También sirve tocar el enlace del correo, si lo trae.</p>
+          <button type="button" onClick={onReenviar} className="text-sm text-accent font-medium text-center min-h-11">
+            Reenviar código
+          </button>
+          <button
+            type="button"
+            onClick={() => { setEsperaCodigo(false); setCodigo(''); setError(''); setMensaje('') }}
+            className="text-xs text-ink-soft text-center min-h-11"
+          >
+            Cambiar el correo
+          </button>
+        </form>
+      </div>
+    )
   }
 
   return (

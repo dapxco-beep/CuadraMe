@@ -10,6 +10,7 @@ import '@fontsource/sora/latin-700.css'
 import '@fontsource/sora/latin-800.css'
 import './index.css'
 import App from './App.jsx'
+import { iniciarInstalacion } from './lib/instalarPwa'
 import LineaVersion from './components/LineaVersion'
 import { bloquearZoomPellizco } from './lib/estabilidadVista'
 
@@ -103,6 +104,7 @@ window.addEventListener('load', () => {
 
 bloquearZoomPellizco()
 
+iniciarInstalacion() // guarda el aviso de Chrome para ofrecer «Instalar» con un toque
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <LimiteDeError>
