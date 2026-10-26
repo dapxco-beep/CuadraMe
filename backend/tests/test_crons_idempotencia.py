@@ -320,7 +320,11 @@ def test_enviar_push_no_se_cae_con_errores_distintos_de_webpush(monkeypatch, cap
         raise ConnectionError("red caída https://secreto")
 
     monkeypatch.setattr(push_mod, "webpush", _boom)
-    monkeypatch.setattr(settings, "vapid_private_key_pem", "pem-falso")
+    from py_vapid import Vapid01
+
+    clave = Vapid01()
+    clave.generate_keys()  # una clave REAL: el envío la convierte en objeto antes de llamar a webpush
+    monkeypatch.setattr(settings, "vapid_private_key_pem", clave.private_pem().decode().strip().replace("\n", "\\n"))
     _usuario_con_push_y_gasto("ci-push-red", ahora_co())
     db = SessionLocal()
     try:
