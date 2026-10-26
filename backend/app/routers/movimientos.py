@@ -1,4 +1,5 @@
 ﻿import re
+import hashlib
 import uuid
 from datetime import datetime, timedelta
 
@@ -11,6 +12,7 @@ from app.auth import UsuarioActual, get_current_user, get_current_user_by_api_ke
 from sqlalchemy import and_, or_
 
 from app import duplicados as dup
+from app import notificaciones as notif
 from app import pendientes
 from app import saldo_inicial_auto
 from app import subcategorias as subcat
@@ -60,6 +62,7 @@ from app.schemas import (
     MovimientoPorVozResponse,
     MovimientoRapidoCreate,
     MovimientoRapidoOut,
+    NotificacionAndroid,
     MovimientoUpdate,
     RecategorizarComercioRequest,
     RecategorizarMasivoRequest,
@@ -306,6 +309,17 @@ def cierre_pregunta(
     ahora = ahora_co()
     ventana = f"{ahora:%Y-%m-%d}:{ahora.hour // horas}:{horas}"
     return {"preguntar": "si" if reclamar_marca(db, usuario.id, "cierre_pregunta", ventana) else "no"}
+
+
+@router.get("/notificaciones-apps")
+def apps_de_notificaciones(usuario: UsuarioActual = Depends(get_current_user_by_api_key)):
+    """Lista de apps cuyas notificaciones debe leer la app de Android. Vive en el servidor: agregar un banco
+    nuevo no exige reinstalar el APK. `palabras`: el teléfono también envía las de otras apps si traen alguna."""
+    verificar_limite(f"notif-apps:{usuario.id}", 60, 3600, "Demasiadas consultas seguidas. Intenta en un rato.")
+    return {
+        "version": 1,
+        "paquetes": [{"paquete": p, "nombre": n, "clase": c} for p, (n, c) in sorted(notif.APPS.items())],
+    }
 
 
 @router.get("/{movimiento_id}", response_model=MovimientoOut)
@@ -1067,6 +1081,47 @@ def crear_movimiento_rapido(
         cuenta_nombre=cuenta.nombre,
         ya_estaba_por=absorbido[0] if absorbido else None,
     )
+
+
+@router.post("/rapido-notificacion")
+def crear_movimiento_desde_notificacion(
+    data: NotificacionAndroid,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user_by_api_key),
+):
+    """Android: la app manda el texto crudo de una notificación (Google Wallet, Nequi, Nu, bancos...) y el servidor
+    lo convierte en un movimiento «por confirmar», igual que los Atajos de iOS. Autenticado por API key.
+    Lo que no parece un movimiento (códigos, promociones, avisos sin monto) se ignora con 200 y registrado=false:
+    el teléfono no debe reintentar. Un reintento de la MISMA notificación jamás crea un segundo movimiento."""
+    verificar_limite(f"notificacion:{usuario.id}", 600, 3600, "Demasiadas notificaciones seguidas. Intenta en un rato.")
+    n = notif.interpretar(data.paquete, data.titulo, data.texto)
+    if n is None:
+        return {"ok": True, "registrado": False, "motivo": "no_parece_un_movimiento"}
+    huella = hashlib.sha256(f"{data.paquete}|{data.titulo}|{data.texto}|{data.publicado_ms or ''}".encode()).hexdigest()[:40]
+    fecha = None
+    if data.publicado_ms:
+        try:
+            # hora de Colombia, que es como se guardan todas las fechas
+            fecha = (datetime.utcfromtimestamp(data.publicado_ms / 1000) - timedelta(hours=5)).isoformat()
+        except (OverflowError, OSError, ValueError):
+            fecha = None
+    rapido = MovimientoRapidoCreate(
+        monto=n.monto,
+        tipo=n.tipo,
+        # En Wallet el comercio y la tarjeta mapean la cuenta (alias); en un banco el nombre del banco hace de cuenta.
+        comercio=n.comercio if n.clase == "wallet" else None,
+        descripcion=n.comercio,
+        tarjeta=n.tarjeta if n.clase == "wallet" else None,
+        cuenta=n.app if n.clase == "banco" else None,
+        fecha=fecha,
+        fuente=n.fuente,
+        id_transaccion=huella,
+    )
+    out = crear_movimiento_rapido(rapido, db, usuario)
+    return {
+        "ok": True, "registrado": not out.duplicado, "duplicado": out.duplicado, "movimiento_id": out.id,
+        "mensaje": out.mensaje, "por_confirmar": out.por_confirmar, "traslado_propio": n.traslado_propio,
+    }
 
 
 @router.post("/rapido-prueba", response_model=MovimientoRapidoOut)

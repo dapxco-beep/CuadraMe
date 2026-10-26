@@ -289,6 +289,14 @@ class ConfirmarCategoriasRequest(BaseModel):
     movimiento_ids: Optional[list[str]] = None  # None = todos los pendientes de revisión
 
 
+class NotificacionAndroid(BaseModel):
+    """Una notificación del teléfono (Android) tal cual: el servidor decide si es un movimiento de dinero."""
+    paquete: str = Field(default="", max_length=120)  # nombre del paquete de la app que la mostró
+    titulo: str = Field(default="", max_length=300)
+    texto: str = Field(default="", max_length=2000)
+    publicado_ms: Optional[int] = None  # cuándo la mostró Android (milisegundos Unix); sirve para la hora y para no repetirla
+
+
 class MovimientoRapidoCreate(BaseModel):
     """Para registro sin login: Atajos de iOS (disparador 'Transacción' de Wallet),
     Tasker, reglas de correo. Acepta lo que entrega iOS tal cual: comercio, monto
