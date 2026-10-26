@@ -5,6 +5,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./cuadrame.db"
     supabase_url: str = "https://pkapcorvslqdmigjmggu.supabase.co"
     openrouter_api_key: str = ""
+    # IA gratuita principal (modelos abiertos). Vacía = solo se usa OpenRouter. Ver app/ia.py.
+    groq_api_key: str = ""
+    groq_model: str = "openai/gpt-oss-120b"
     # Modelo de OpenRouter de PAGO y con política de no entrenamiento. Es lo único con lo que
     # contenido de Gmail podría llegar a una IA externa (y solo con consentimiento «ia»).
     # Vacío (por defecto) = el contenido de Gmail NUNCA sale hacia un proveedor de IA.

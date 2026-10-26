@@ -19,9 +19,8 @@ import re
 import unicodedata
 from datetime import datetime, timedelta
 
-import httpx
 
-from app.config import settings
+from app import ia
 from app.voz_parser import (
     PALABRAS_GASTO,
     PALABRAS_INGRESO,
@@ -31,8 +30,6 @@ from app.voz_parser import (
 
 logger = logging.getLogger("cuadrame.asistente")
 
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
 MAX_RESPUESTA = 1200
 
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
@@ -375,31 +372,16 @@ SISTEMA = (
 
 
 def llamar_ia(usuario_msg: str, temperatura: float = 0.3) -> str | None:
-    """Una llamada a OpenRouter. Devuelve None ante cualquier fallo: el
-    llamador usa el texto determinista. No se registra el contenido."""
-    if not settings.openrouter_api_key:
+    """Una llamada a la IA (Groq, con OpenRouter de respaldo; ver ia.py). Devuelve None ante cualquier
+    fallo: el llamador usa el texto determinista. No se registra el contenido."""
+    if not ia.hay_ia():
         return None
     try:
-        resp = httpx.post(
-            OPENROUTER_URL,
-            headers={"Authorization": f"Bearer {settings.openrouter_api_key}"},
-            json={
-                "model": OPENROUTER_MODEL,
-                "messages": [
-                    {"role": "system", "content": SISTEMA},
-                    {"role": "user", "content": usuario_msg},
-                ],
-                "temperature": temperatura,
-                "max_tokens": 500,
-            },
-            timeout=20,
-        )
-        resp.raise_for_status()
-        return limpiar_respuesta_ia(resp.json()["choices"][0]["message"]["content"]) or None
-    except Exception as e:  # noqa: BLE001
-        # Solo el tipo de error: nunca el cuerpo ni el texto del usuario.
-        estado = getattr(getattr(e, "response", None), "status_code", None)  # p. ej. 401 = clave de OpenRouter rechazada
-        logger.warning("asistente: fallo de IA (%s%s)", type(e).__name__, f" HTTP {estado}" if estado else "")
+        return limpiar_respuesta_ia(ia.completar(
+            [{"role": "system", "content": SISTEMA}, {"role": "user", "content": usuario_msg}],
+            temperatura=temperatura, max_tokens=500,
+        )) or None
+    except Exception:  # noqa: BLE001  (ia.py ya registró proveedor y código HTTP, nunca el contenido)
         return None
 
 

@@ -16,7 +16,8 @@ from app.config import settings
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 # Mismo modelo gratuito (con visión) que ya usan insights.py y pdf_extract.py.
-MODELO_VISION = "nvidia/nemotron-nano-12b-v2-vl:free"
+# Necesita visión: Groq no la tiene, por eso esta lectura va directo a OpenRouter (modelo gratuito con visión).
+MODELO_VISION = "google/gemma-4-31b-it:free"
 
 MAX_BYTES_IMAGEN = 1_500_000  # el cliente ya comprime a ~300-800 KB; esto es un tope duro
 FORMATOS = {"image/jpeg": b"\xff\xd8\xff", "image/png": b"\x89PNG", "image/webp": b"RIFF"}

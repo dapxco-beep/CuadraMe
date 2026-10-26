@@ -11,13 +11,14 @@ import re
 import httpx
 import pdfplumber
 
+from app import ia
 from app.config import settings
 from app.contabilidad import tipo_con_direccion
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 # Modelo gratuito: sus proveedores pueden guardar y entrenar con lo que reciben. Por eso SOLO
 # se usa con texto que el usuario subió él mismo, ya enmascarado y con su consentimiento «ia».
-OPENROUTER_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
+OPENROUTER_MODEL = "google/gemma-4-31b-it:free"  # marca «modelo gratuito» (la llamada real la decide ia.py)
 
 # Origen del contenido. «gmail» = viene de Google (Uso Limitado: no se transfiere a terceros
 # ni se usa para IA generalizada); «manual» = el usuario lo subió desde su dispositivo.
@@ -33,11 +34,11 @@ def modelo_ia_permitido(origen: str, consentimiento_ia: bool) -> str | None:
       OPENROUTER_MODEL_PRIVADO; sin esa variable, nunca (por defecto está vacía).
     - Manual: el privado si existe; si no, el gratuito (texto enmascarado).
     Cualquier origen desconocido se trata como Gmail (lo más restrictivo)."""
-    if not consentimiento_ia or not settings.openrouter_api_key:
+    if not consentimiento_ia:
         return None
-    privado = (settings.openrouter_model_privado or "").strip()
+    privado = (settings.openrouter_model_privado or "").strip() if settings.openrouter_api_key else ""
     if origen == ORIGEN_MANUAL:
-        return privado or OPENROUTER_MODEL
+        return privado or (OPENROUTER_MODEL if ia.hay_ia() else None)
     return privado or None
 
 
@@ -146,7 +147,7 @@ def extraer_via_ia(
     consentimiento «ia» y un modelo privado (ver `modelo_ia_permitido`)."""
     api_key = settings.openrouter_api_key
     modelo = modelo_ia_permitido(origen, consentimiento_ia)
-    if not api_key or not texto_plano or not modelo:
+    if not texto_plano or not modelo:
         return []
     privado = modelo != OPENROUTER_MODEL
     texto_plano = enmascarar_texto(texto_plano, nombre_titular)
@@ -168,33 +169,43 @@ def extraer_via_ia(
         if not trozo.strip():
             continue
         prompt = f"{prompt_base}\n\nTEXTO DEL EXTRACTO (parte):\n{trozo}"
-        try:
-            resp = httpx.post(
-                OPENROUTER_URL,
-                json={
-                    "model": modelo,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.1,
-                    "max_tokens": 4096,
-                    # Con el modelo privado se exige además que el proveedor no guarde ni entrene.
-                    **({"provider": {"data_collection": "deny"}} if privado else {}),
-                },
-                headers={"Authorization": f"Bearer {api_key}"},
-                timeout=60,
-            )
-        except httpx.HTTPError:
-            continue
+        if not privado:
+            # Texto manual y enmascarado: proveedores gratuitos (Groq y, si falla, OpenRouter).
+            try:
+                texto_resp = ia.completar([{"role": "user", "content": prompt}], temperatura=0.1,
+                                          max_tokens=4096, timeout=60)
+            except Exception as e:  # noqa: BLE001
+                if getattr(getattr(e, "response", None), "status_code", None) == 429:
+                    break  # cupo agotado: no se insiste con el resto de trozos
+                continue
+        else:
+            try:
+                resp = httpx.post(
+                    OPENROUTER_URL,
+                    json={
+                        "model": modelo,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.1,
+                        "max_tokens": 4096,
+                        # Con el modelo privado se exige además que el proveedor no guarde ni entrene.
+                        "provider": {"data_collection": "deny"},
+                    },
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=60,
+                )
+            except httpx.HTTPError:
+                continue
 
-        if resp.status_code == 429:
-            break
-        if resp.status_code != 200:
-            continue
+            if resp.status_code == 429:
+                break
+            if resp.status_code != 200:
+                continue
 
-        try:
-            data = resp.json()
-            texto_resp = data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, ValueError):
-            continue
+            try:
+                data = resp.json()
+                texto_resp = data["choices"][0]["message"]["content"]
+            except (KeyError, IndexError, ValueError):
+                continue
 
         movs = _parse_respuesta_ia(texto_resp)
         todos.extend(movs)

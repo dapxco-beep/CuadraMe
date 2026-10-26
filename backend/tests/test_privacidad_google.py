@@ -18,8 +18,10 @@ import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app import backup as bk  # noqa: E402
+from app import ia as ia_nueva  # noqa: E402
 from app import insights  # noqa: E402
 from app import asistente as ia_mod  # noqa: E402
+from app import factura as factura_mod  # noqa: E402
 from app import pdf_extract as pe  # noqa: E402
 from app.auth import UsuarioActual, get_current_user  # noqa: E402
 from app.config import settings  # noqa: E402
@@ -84,7 +86,7 @@ class EspiaHttp:
 @pytest.fixture()
 def espia(monkeypatch):
     e = EspiaHttp()
-    for mod in (pe, insights, ia_mod):
+    for mod in (pe, ia_nueva, factura_mod):
         monkeypatch.setattr(mod.httpx, "post", e)
     monkeypatch.setattr(settings, "openrouter_api_key", "sk-or-prueba")
     monkeypatch.setattr(settings, "openrouter_model_privado", "")

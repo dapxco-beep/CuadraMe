@@ -6,13 +6,10 @@ usuario (vía OpenRouter, mismo modelo gratuito usado en pdf_extract.py).
 import json
 from collections import defaultdict
 
-import httpx
 
 from app.utiles import ahora_co
-from app.config import settings
+from app import ia
 
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
 
 
 def detectar_anomalias(movimientos: list[dict]) -> list[dict]:
@@ -58,7 +55,7 @@ def _resumen_contexto(resumen: dict) -> str:
 
 def generar_resumen_semanal(resumen: dict) -> str:
     """resumen: dict con ingresos/gastos de la semana, top categorías, anomalías, etc."""
-    if not settings.openrouter_api_key:
+    if not ia.hay_ia():
         return _resumen_fallback(resumen)
 
     prompt = (
@@ -71,18 +68,7 @@ def generar_resumen_semanal(resumen: dict) -> str:
     )
 
     try:
-        resp = httpx.post(
-            OPENROUTER_URL,
-            headers={"Authorization": f"Bearer {settings.openrouter_api_key}"},
-            json={
-                "model": OPENROUTER_MODEL,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.6,
-            },
-            timeout=20,
-        )
-        resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"].strip()
+        return ia.completar([{"role": "user", "content": prompt}], temperatura=0.6, max_tokens=400)
     except Exception:
         return _resumen_fallback(resumen)
 
@@ -100,7 +86,7 @@ def responder_pregunta(pregunta: str, contexto: dict) -> str | None:
     """Chat de finanzas: responde preguntas sobre los datos del usuario, usando
     SOLO el contexto que se le pasa (no accede a la base de datos directamente,
     así que no puede inventar cifras que no estén en el contexto)."""
-    if not settings.openrouter_api_key:
+    if not ia.hay_ia():
         return None
 
     prompt = (
@@ -113,17 +99,6 @@ def responder_pregunta(pregunta: str, contexto: dict) -> str | None:
     )
 
     try:
-        resp = httpx.post(
-            OPENROUTER_URL,
-            headers={"Authorization": f"Bearer {settings.openrouter_api_key}"},
-            json={
-                "model": OPENROUTER_MODEL,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.3,
-            },
-            timeout=20,
-        )
-        resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"].strip()
+        return ia.completar([{"role": "user", "content": prompt}], temperatura=0.3, max_tokens=400)
     except Exception:
         return None
