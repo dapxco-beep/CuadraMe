@@ -1,33 +1,86 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChevronRight, Download } from 'lucide-react'
+import { AlertTriangle, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import Icono from './Icono'
+import Hoja from './Hoja'
+import { Boton } from './ui'
+import { CATALOGO_ACCESOS, MAX_ACCESOS, useAccesosInicio } from '../lib/accesosInicio'
 import { cuentasEnNegativo } from '../lib/inicioSimple'
 
 // Bloques prácticos del Inicio simple: por qué el disponible está en negativo, accesos rápidos y «Este mes».
 
-const ACCIONES = [
-  { texto: 'Gasto', icono: ArrowUpRight, ruta: '/agregar?foco=monto' },
-  { texto: 'Ingreso', icono: ArrowDownLeft, ruta: '/agregar?tipo=income&foco=monto' },
-  { texto: 'Pasar plata', icono: ArrowLeftRight, ruta: '/agregar?tipo=transfer' },
-  { texto: 'Traer', icono: Download, ruta: '/sincronizacion' },
-]
+// Accesos del Inicio: por defecto dos filas (anotar, traer, dividir cuenta, metas, deudas, pagos fijos);
+// «Personalizar» deja elegir cuáles y en qué orden (el orden es el de selección).
+export function AccionesRapidas({ max = null }) {
+  const { ids, accesos, guardar, restablecer } = useAccesosInicio()
+  const [editando, setEditando] = useState(false)
+  const [elegidos, setElegidos] = useState(ids)
 
-export function AccionesRapidas() {
+  function abrir() {
+    setElegidos(ids)
+    setEditando(true)
+  }
+  function alternar(id) {
+    setElegidos((previos) => (previos.includes(id) ? previos.filter((x) => x !== id) : previos.length < MAX_ACCESOS ? [...previos, id] : previos))
+  }
+
   return (
-    <nav className="mx-6 mt-3 grid grid-cols-4 gap-2 lg:grid-cols-2 xl:grid-cols-4" aria-label="Acciones rápidas" data-testid="acciones-rapidas">
-      {ACCIONES.map((a) => (
-        <Link
-          key={a.texto}
-          to={a.ruta}
-          className="tarjeta min-h-[76px] flex flex-col items-center justify-start pt-2.5 gap-1 text-xs leading-tight text-center font-semibold text-ink active:scale-[0.97] transition-transform"
-        >
-          <span className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center">
-            <Icono icono={a.icono} tam="md" />
-          </span>
-          {a.texto}
-        </Link>
-      ))}
-    </nav>
+    <>
+      <nav className="mx-6 mt-3 grid grid-cols-4 gap-2 lg:grid-cols-2 xl:grid-cols-4" aria-label="Acciones rápidas" data-testid="acciones-rapidas">
+        {(max ? accesos.slice(0, max) : accesos).map((a) => (
+          <Link
+            key={a.id}
+            to={a.ruta}
+            className="tarjeta min-h-[76px] flex flex-col items-center justify-start pt-2.5 gap-1 px-1 text-xs leading-tight text-center font-semibold text-ink active:scale-[0.97] transition-transform"
+          >
+            <span className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center">
+              <Icono icono={a.icono} tam="md" />
+            </span>
+            {a.texto}
+          </Link>
+        ))}
+      </nav>
+      {!max && <div className="mx-6 flex justify-end">
+        <button type="button" onClick={abrir} data-testid="personalizar-accesos" className="min-h-11 inline-flex items-center gap-1.5 text-xs font-semibold text-accent">
+          <Icono icono={SlidersHorizontal} tam="sm" /> Personalizar
+        </button>
+      </div>}
+      {editando && (
+        <Hoja onCerrar={() => setEditando(false)} titulo="Tus accesos del Inicio">
+          {({ cerrar }) => (
+            <div data-testid="hoja-accesos">
+              <p className="t-apoyo">Toca para poner o quitar. Salen en el orden en que los eliges (hasta {MAX_ACCESOS}).</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {CATALOGO_ACCESOS.map((a) => {
+                  const puesto = elegidos.indexOf(a.id)
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      aria-pressed={puesto >= 0}
+                      onClick={() => alternar(a.id)}
+                      className={`min-h-12 flex items-center gap-2 rounded-2xl border px-3 text-left text-sm font-medium ${puesto >= 0 ? 'border-accent bg-accent-soft text-ink' : 'border-line bg-paper text-ink-soft'}`}
+                    >
+                      <Icono icono={a.icono} tam="sm" className="text-accent shrink-0" />
+                      <span className="flex-1 min-w-0">{a.texto}</span>
+                      {puesto >= 0 && <span className="text-[11px] font-bold text-accent">{puesto + 1}</span>}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Boton variante="secundario" onClick={() => { restablecer(); cerrar() }} className="flex-1">
+                  Como estaba
+                </Boton>
+                <Boton onClick={() => { if (elegidos.length) guardar(elegidos); cerrar() }} className="flex-1">
+                  Listo
+                </Boton>
+              </div>
+            </div>
+          )}
+        </Hoja>
+      )}
+    </>
   )
 }
 

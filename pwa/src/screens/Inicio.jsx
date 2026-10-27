@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftRight, Bot, ChevronDown, ChevronRight, CreditCard, Gift, HeartPulse, Landmark, LayoutGrid, Lightbulb, LineChart, PieChart,
-  PiggyBank, Plus, RefreshCw, Repeat, Sparkles, Wallet, X,
+  PiggyBank, Plus, RefreshCw, Repeat, Sparkles, Users, Wallet, X,
 } from 'lucide-react'
 import { IlustracionVacia, Isotipo, Monto, SelloCuadre } from '../brand/Marca'
 import { api } from '../lib/api'
@@ -57,7 +57,8 @@ const ACCESOS_RAPIDOS = [
   { to: '/metas', icon: PiggyBank, label: 'Metas' },
   { to: '/deudas', icon: CreditCard, label: 'Deudas' },
   { to: '/recurrentes', icon: Repeat, label: 'Pagos fijos' },
-  { to: '/insights', icon: Sparkles, label: 'Hallazgos' },
+  { to: '/insights', icon: Sparkles, label: 'Cosas raras' },
+  { to: '/amigos', icon: Users, label: 'Dividir cuenta' },
 ]
 
 // Fila de enlace dentro de una sección: ícono + título + apoyo + flecha
@@ -625,7 +626,7 @@ export default function Inicio() {
             </SeccionPlegable>
 
             <SeccionPlegable id="accesos" titulo="Accesos" icono={LayoutGrid}>
-              <div className="grid grid-cols-5 gap-2 pt-2">
+              <div className="grid grid-cols-3 gap-2 pt-2">
                 {ACCESOS_RAPIDOS.map(({ to, icon, label }) => (
                   <Link
                     key={to}

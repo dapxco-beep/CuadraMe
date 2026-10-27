@@ -5,6 +5,7 @@ import { EstadoVacio } from '../brand/Marca'
 import Cuadri from '../brand/Cuadri'
 import GuiaInstalar from '../components/GuiaInstalar'
 import RecorridoEntrada from '../components/RecorridoEntrada'
+import QueSePuedeHacer from '../components/QueSePuedeHacer'
 import LineaVersion from '../components/LineaVersion'
 import Icono from '../components/Icono'
 import { Boton, CampoTexto } from '../components/ui'
@@ -138,6 +139,7 @@ export default function Ayuda() {
       </div>
 
       {!buscando && <RecorridoEntrada />}
+      {!buscando && <QueSePuedeHacer fija />}
 
       {resultados.length === 0 ? (
         <EstadoVacio

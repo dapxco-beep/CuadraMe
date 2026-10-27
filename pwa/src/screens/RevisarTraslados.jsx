@@ -68,7 +68,7 @@ export default function RevisarTraslados() {
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-xl font-bold">Revisar posibles traslados</h1>
+        <h1 className="text-xl font-bold">Plata que pasé entre mis cuentas</h1>
       </header>
       <p className="px-6 text-sm text-ink-soft">
         Un traslado es plata que pasas entre tus cuentas: no cuenta como ingreso ni gasto. <Ayudita termino="traslado" /> Tú decides; no cambiamos nada solos.

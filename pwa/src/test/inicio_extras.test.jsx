@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AccionesRapidas, AvisoNegativo, EsteMes } from '../components/InicioExtras'
 import { cuentasEnNegativo } from '../lib/inicioSimple'
@@ -26,10 +26,28 @@ describe('Inicio: bloques prácticos', () => {
     expect(screen.queryByTestId('aviso-negativo')).toBeNull()
   })
 
-  it('acciones rápidas: gasto, ingreso, pasar plata y traer', () => {
+  it('acciones rápidas por defecto: anotar, traer, dividir cuenta, metas, deudas y pagos fijos', () => {
+    localStorage.clear()
     render(<MemoryRouter><AccionesRapidas /></MemoryRouter>)
-    const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'))
-    expect(hrefs).toEqual(['/agregar?foco=monto', '/agregar?tipo=income&foco=monto', '/agregar?tipo=transfer', '/sincronizacion'])
+    const hrefs = within(screen.getByTestId('acciones-rapidas')).getAllByRole('link').map((a) => a.getAttribute('href'))
+    expect(hrefs).toEqual([
+      '/agregar?foco=monto', '/agregar?tipo=income&foco=monto', '/agregar?tipo=transfer', '/sincronizacion',
+      '/amigos', '/metas', '/deudas', '/recurrentes',
+    ])
+  })
+
+  it('Personalizar: la persona elige sus accesos y se recuerdan', async () => {
+    localStorage.clear()
+    render(<MemoryRouter><AccionesRapidas /></MemoryRouter>)
+    fireEvent.click(screen.getByTestId('personalizar-accesos'))
+    const hoja = within(await screen.findByTestId('hoja-accesos'))
+    fireEvent.click(hoja.getByRole('button', { name: /Metas/ })) // quita Metas
+    fireEvent.click(hoja.getByRole('button', { name: /Presupuesto/ })) // pone Presupuesto al final
+    fireEvent.click(hoja.getByRole('button', { name: 'Listo' }))
+    const hrefs = within(screen.getByTestId('acciones-rapidas')).getAllByRole('link').map((a) => a.getAttribute('href'))
+    expect(hrefs).not.toContain('/metas')
+    expect(hrefs[hrefs.length - 1]).toBe('/presupuesto')
+    expect(hrefs).toContain('/amigos')
   })
 
   it('Este mes muestra entró, salió y neto, y no sale sin movimientos', () => {
