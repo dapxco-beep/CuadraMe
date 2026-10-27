@@ -62,6 +62,28 @@ describe('bloquearZoomPellizco', () => {
     quitar()
   })
 
+  it('frena el arrastre lateral de la página pero no el vertical ni el de una tabla', () => {
+    const quitar = bloquearZoomPellizco(document)
+    const mover = (de, dx, dy) => {
+      const ini = evento('touchstart', { touches: [{ clientX: 100, clientY: 100 }] })
+      de.dispatchEvent(ini)
+      const m = evento('touchmove', { touches: [{ clientX: 100 + dx, clientY: 100 + dy }] })
+      de.dispatchEvent(m)
+      return m.defaultPrevented
+    }
+    const pagina = document.createElement('div')
+    document.body.appendChild(pagina)
+    expect(mover(pagina, 40, 2)).toBe(true) // de lado: se frena
+    expect(mover(pagina, 2, 40)).toBe(false) // vertical: pasa
+    const tabla = document.createElement('div')
+    tabla.style.overflowX = 'auto'
+    Object.defineProperty(tabla, 'scrollWidth', { value: 500 })
+    Object.defineProperty(tabla, 'clientWidth', { value: 200 })
+    document.body.appendChild(tabla)
+    expect(mover(tabla, 40, 2)).toBe(false) // tabla deslizable: pasa
+    quitar()
+  })
+
   it('devuelve cómo deshacerlo', () => {
     const quitar = bloquearZoomPellizco(document)
     quitar()

@@ -16,6 +16,15 @@
 // necesite letra más grande la sube en Ajustes del teléfono (Texto y tamaño de pantalla) o en el
 // navegador, y la app la sigue.
 
+/** ¿Algún ancestro de `el` se desliza de lado a propósito (tabla, carrusel)? Entonces el gesto horizontal es suyo. */
+function dentroDeDeslizableLateral(el) {
+  for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
+    const ov = typeof getComputedStyle === 'function' ? getComputedStyle(n).overflowX : ''
+    if ((ov === 'auto' || ov === 'scroll') && n.scrollWidth > n.clientWidth) return true
+  }
+  return false
+}
+
 /** Frena el zoom por pellizco sin tocar el scroll de un dedo ni los toques. Devuelve cómo deshacerlo. */
 export function bloquearZoomPellizco(doc = typeof document !== 'undefined' ? document : null) {
   if (!doc) return () => {}
@@ -32,7 +41,25 @@ export function bloquearZoomPellizco(doc = typeof document !== 'undefined' ? doc
   }
   doc.addEventListener('touchmove', alMover, { passive: false })
 
+  // Un dedo que arrastra de lado fuera de una tabla/carrusel NO debe mover la página (en iOS y Android
+  // instalada se «corre» hacia los lados). El arrastre vertical y los deslizables laterales pasan intactos.
+  let inicio = null
+  const alTocar = (e) => {
+    const t = e.touches && e.touches.length === 1 ? e.touches[0] : null
+    inicio = t ? { x: t.clientX, y: t.clientY, el: e.target } : null
+  }
+  const alArrastrar = (e) => {
+    if (!inicio || !e.touches || e.touches.length !== 1) return
+    const dx = e.touches[0].clientX - inicio.x
+    const dy = e.touches[0].clientY - inicio.y
+    if (Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(dy) && !dentroDeDeslizableLateral(inicio.el)) evitar(e)
+  }
+  doc.addEventListener('touchstart', alTocar, { passive: true })
+  doc.addEventListener('touchmove', alArrastrar, { passive: false })
+
   return () => {
+    doc.removeEventListener('touchstart', alTocar)
+    doc.removeEventListener('touchmove', alArrastrar)
     gestos.forEach((g) => doc.removeEventListener(g, evitar))
     doc.removeEventListener('touchmove', alMover)
   }

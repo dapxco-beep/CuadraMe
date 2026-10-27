@@ -166,7 +166,7 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  overscroll-behavior-y: none;
+  overscroll-behavior: none; /* ni rebote ni arrastre hacia los lados */
   transition: background var(--dur-normal) var(--ease), color var(--dur-normal) var(--ease);
 }
 
