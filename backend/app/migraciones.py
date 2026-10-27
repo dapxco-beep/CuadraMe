@@ -191,6 +191,14 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'CREATE INDEX IF NOT EXISTS ix_arreglos_auto_usuario_lote ON arreglos_auto (usuario_id, lote_id)',
         ],
     ),
+    (
+        # Vacas: cómo pagarle al organizador y el aviso «ya pagué» (la tabla colectas/aportes_colecta nació con create_all).
+        "0011_vaca_datos_pago",
+        [
+            'ALTER TABLE colectas ADD COLUMN IF NOT EXISTS datos_pago VARCHAR NULL',
+            'ALTER TABLE aportes_colecta ADD COLUMN IF NOT EXISTS avisado_en TIMESTAMP NULL',
+        ],
+    ),
 ]
 
 

@@ -18,7 +18,7 @@ export default function Colectas() {
     try {
       setLista(await api.colectas())
     } catch (e) {
-      setError(e.message || 'No se pudieron cargar las colectas. Revisa tu conexión e intenta de nuevo.')
+      setError(e.message || 'No se pudieron cargar las vacas. Revisa tu conexión e intenta de nuevo.')
     }
     setCargando(false)
   }, [])
@@ -37,18 +37,18 @@ export default function Colectas() {
           >
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-2xl font-semibold truncate">Colectas</h1>
+          <h1 className="text-2xl font-semibold truncate">Vacas</h1>
         </div>
         <button
           onClick={() => navigate('/colectas/nueva')}
           className="w-11 h-11 shrink-0 rounded-full bg-ink text-paper flex items-center justify-center"
-          aria-label="Nueva colecta"
+          aria-label="Nueva vaca"
         >
           <Plus size={20} />
         </button>
       </header>
 
-      {cargando && <EsqueletoLista filas={3} className="mx-5 mt-6" etiqueta="Cargando colectas" />}
+      {cargando && <EsqueletoLista filas={3} className="mx-5 mt-6" etiqueta="Cargando vacas" />}
       {error && (
         <div className="px-5 mt-6" role="alert">
           <p className="text-sm text-danger">{error}</p>
@@ -61,12 +61,12 @@ export default function Colectas() {
       {!cargando && !error && lista.length === 0 && (
         <div className="px-8 mt-16 text-center">
           <PiggyBank size={24} className="mx-auto text-ink-soft" aria-hidden="true" />
-          <p className="font-semibold mt-2">Aún no tienes colectas</p>
+          <p className="font-semibold mt-2">Aún no tienes vacas</p>
           <p className="text-sm text-ink-soft mt-1">
             Para la inscripción del equipo, un paseo o un regalo: ves quién ya puso, quién falta, y se lo recuerdas por WhatsApp.
           </p>
           <button onClick={() => navigate('/colectas/nueva')} className="mt-4 bg-ink text-paper rounded-2xl px-5 py-3 text-sm font-semibold">
-            Crear mi primera colecta
+            Crear mi primera vaca
           </button>
         </div>
       )}

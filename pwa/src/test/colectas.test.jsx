@@ -55,6 +55,9 @@ beforeEach(() => {
     pagarColecta: vi.fn().mockResolvedValue({ id: 'p9' }),
     compartirColecta: vi.fn().mockResolvedValue({ token: 'tokenlargo' }),
     colectaPublica: vi.fn(),
+    avisarPagoColecta: vi.fn().mockResolvedValue({ ok: true }),
+    descartarAvisoColecta: vi.fn().mockResolvedValue({ ok: true }),
+    editarColecta: vi.fn().mockResolvedValue({ ok: true }),
   })
 })
 
@@ -81,7 +84,7 @@ describe('ayudantes de colectas', () => {
   })
 })
 
-describe('lista de colectas', () => {
+describe('lista de vacas', () => {
   it('muestra el avance de cada colecta', async () => {
     montar('/colectas')
     expect(await screen.findByText('Inscripción torneo')).toBeTruthy()
@@ -92,7 +95,7 @@ describe('lista de colectas', () => {
   it('sin colectas invita a crear la primera', async () => {
     api.colectas.mockResolvedValue([])
     montar('/colectas')
-    expect(await screen.findByText('Crear mi primera colecta')).toBeTruthy()
+    expect(await screen.findByText('Crear mi primera vaca')).toBeTruthy()
   })
 })
 
@@ -112,6 +115,25 @@ describe('detalle de colecta', () => {
     await waitFor(() => expect(api.compartirColecta).toHaveBeenCalledWith('k1'))
   })
 
+  it('quien dijo «ya pagué» se confirma o se descarta desde el detalle', async () => {
+    const user = userEvent.setup()
+    api.colecta.mockResolvedValue({ ...DETALLE, participantes: [{ ...DETALLE.participantes[0], avisado: true }, DETALLE.participantes[1]] })
+    montar('/colectas/k1')
+    expect(await screen.findByText('Dice que ya pagó')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'No fue' }))
+    await waitFor(() => expect(api.descartarAvisoColecta).toHaveBeenCalledWith('k1', 'a2'))
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }))
+    await waitFor(() => expect(api.pagarColecta).toHaveBeenCalledWith('k1', 'a2', { monto: undefined, registrar_ingreso: true }))
+  })
+
+  it('los datos para pagar se guardan con su propio botón', async () => {
+    const user = userEvent.setup()
+    montar('/colectas/k1')
+    await user.type(await screen.findByLabelText('Datos para pagarte'), 'Nequi 3001234567')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(api.editarColecta).toHaveBeenCalledWith('k1', { datos_pago: 'Nequi 3001234567' }))
+  })
+
   it('quien falta tiene botón de recordar por WhatsApp', async () => {
     montar('/colectas/k1')
     const enlace = await screen.findByRole('link', { name: /Recordar/ })
@@ -120,6 +142,37 @@ describe('detalle de colecta', () => {
 })
 
 describe('página pública (sin sesión)', () => {
+  const PUBLICA = {
+    nombre: 'Torneo', descripcion: '', moneda: 'COP', estado: 'abierta', fecha_limite: null, meta: 100000, recogido: 50000, falta: 50000,
+    datos_pago: 'Llave Bre-B @torneo',
+    participantes: [{ id: 'a1', nombre: 'Ana', estado: 'pagado', avisado: false }, { id: 'a2', nombre: 'Luis', estado: 'falta', avisado: false }, { id: 'a3', nombre: 'Camila', estado: 'falta', avisado: true }],
+  }
+
+  it('muestra cómo pagar y deja avisar «ya pagué» solo a quien falta y no avisó', async () => {
+    const user = userEvent.setup()
+    api.colectaPublica.mockResolvedValue(PUBLICA)
+    montar('/c/tokenlargo')
+    expect(await screen.findByText('Llave Bre-B @torneo')).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Ya pagué' })).toHaveLength(1) // Ana ya pagó y Camila ya avisó
+    expect(screen.getByText('Avisó')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Ya pagué' }))
+    await waitFor(() => expect(api.avisarPagoColecta).toHaveBeenCalledWith('tokenlargo', 'a2'))
+  })
+
+  it('ofrece crear la propia vaca (gancho para nuevos usuarios)', async () => {
+    api.colectaPublica.mockResolvedValue(PUBLICA)
+    montar('/c/tokenlargo')
+    expect(await screen.findByRole('link', { name: 'Crear mi vaca gratis' })).toBeTruthy()
+  })
+
+  it('una vaca cerrada no pide pagos ni deja avisar', async () => {
+    api.colectaPublica.mockResolvedValue({ ...PUBLICA, estado: 'cerrada' })
+    montar('/c/tokenlargo')
+    await screen.findByText(/ya está cerrada/)
+    expect(screen.queryByRole('button', { name: 'Ya pagué' })).toBeNull()
+    expect(screen.queryByText('Llave Bre-B @torneo')).toBeNull()
+  })
+
   it('muestra el avance y solo nombres de pila', async () => {
     api.colectaPublica.mockResolvedValue({
       nombre: 'Torneo', descripcion: '', moneda: 'COP', estado: 'abierta', fecha_limite: null, meta: 100000, recogido: 50000, falta: 50000,

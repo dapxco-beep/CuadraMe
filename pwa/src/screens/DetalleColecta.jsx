@@ -21,7 +21,7 @@ const COLOR_ESTADO = {
   falta: 'bg-paper text-ink-soft border border-line',
 }
 
-// Una colecta: quién ya puso, quién falta, recordarle por WhatsApp y compartir el avance en un enlace.
+// Una vaca: quién ya puso, quién falta, recordarle por WhatsApp y compartir el avance en un enlace.
 export default function DetalleColecta() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -33,13 +33,14 @@ export default function DetalleColecta() {
   const [parcial, setParcial] = useState(null) // { aporte_id, monto }
   const [alCuenta, setAlCuenta] = useState(true)
   const [agregando, setAgregando] = useState(false)
+  const [datosPago, setDatosPago] = useState('')
 
   const cargar = useCallback(async () => {
     setError('')
     try {
       setC(await api.colecta(id))
     } catch (e) {
-      setError(e.status === 404 ? 'Esta colecta ya no existe.' : e.message || 'No se pudo cargar la colecta. Revisa tu conexión.')
+      setError(e.status === 404 ? 'Esta vaca ya no existe.' : e.message || 'No se pudo cargar la vaca. Revisa tu conexión.')
     }
   }, [id])
   useEffect(() => {
@@ -48,6 +49,9 @@ export default function DetalleColecta() {
   useEffect(() => {
     api.contactosGasto().then(setContactos).catch(() => {})
   }, [])
+  useEffect(() => {
+    if (c) setDatosPago(c.datos_pago || '')
+  }, [c?.datos_pago]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const cuentaDestino = cuentas.find((x) => x.id === c?.cuenta_id)
 
@@ -78,6 +82,25 @@ export default function DetalleColecta() {
       if (pago.registrado_en_cuenta) recargar?.()
     } catch (e) {
       avisar(e.message || 'No se pudo deshacer el pago. Intenta de nuevo.')
+    }
+  }
+
+  async function guardarDatosPago() {
+    try {
+      await api.editarColecta(id, { datos_pago: datosPago.trim() })
+      avisar('Guardado', 'ok')
+      await cargar()
+    } catch (e) {
+      avisar(e.message || 'No se pudo guardar. Intenta de nuevo.')
+    }
+  }
+
+  async function descartarAviso(p) {
+    try {
+      await api.descartarAvisoColecta(id, p.aporte_id)
+      await cargar()
+    } catch (e) {
+      avisar(e.message || 'No se pudo descartar el aviso. Intenta de nuevo.')
     }
   }
 
@@ -121,7 +144,7 @@ export default function DetalleColecta() {
 
   async function borrar() {
     const ok = await confirmar(
-      `¿Borrar la colecta "${c.nombre}"? Los ingresos que ya registraste en tus cuentas no se tocan.`,
+      `¿Borrar la vaca "${c.nombre}"? Los ingresos que ya registraste en tus cuentas no se tocan.`,
       { confirmarTexto: 'Borrar', peligro: true }
     )
     if (!ok) return
@@ -129,7 +152,7 @@ export default function DetalleColecta() {
       await api.eliminarColecta(id)
       navigate('/colectas', { replace: true })
     } catch (e) {
-      avisar(e.message || 'No se pudo borrar la colecta. Intenta de nuevo.')
+      avisar(e.message || 'No se pudo borrar la vaca. Intenta de nuevo.')
     }
   }
 
@@ -144,7 +167,7 @@ export default function DetalleColecta() {
   }
 
   async function quitar(p) {
-    const ok = await confirmar(`¿Quitar a ${p.nombre} de la colecta?`, { confirmarTexto: 'Quitar' })
+    const ok = await confirmar(`¿Quitar a ${p.nombre} de la vaca?`, { confirmarTexto: 'Quitar' })
     if (!ok) return
     try {
       await api.quitarParticipanteColecta(id, p.aporte_id)
@@ -163,7 +186,7 @@ export default function DetalleColecta() {
       >
         <ArrowLeft size={20} />
       </button>
-      <h1 className="text-2xl font-semibold truncate">{c?.nombre || 'Colecta'}</h1>
+      <h1 className="text-2xl font-semibold truncate">{c?.nombre || 'Vaca'}</h1>
     </header>
   )
 
@@ -180,7 +203,7 @@ export default function DetalleColecta() {
     return (
       <div className="flex-1 overflow-y-auto pb-8 screen-enter">
         {Cabecera}
-        <EsqueletoLista filas={3} className="mx-5 mt-6" etiqueta="Cargando colecta" />
+        <EsqueletoLista filas={3} className="mx-5 mt-6" etiqueta="Cargando vaca" />
       </div>
     )
   }
@@ -228,6 +251,16 @@ export default function DetalleColecta() {
                 {ETIQUETA_ESTADO[p.estado]}
               </span>
             </div>
+
+            {p.avisado && p.estado !== 'pagado' && (
+              <div className="mt-2 rounded-xl bg-accent-soft px-3 py-2 flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-accent">Dice que ya pagó</span>
+                <div className="flex gap-3 text-xs">
+                  <button onClick={() => pagar(p)} className="min-h-9 font-semibold text-accent underline">Confirmar</button>
+                  <button onClick={() => descartarAviso(p)} className="min-h-9 text-ink-soft underline">No fue</button>
+                </div>
+              </div>
+            )}
 
             {p.estado !== 'pagado' && (
               <div className="flex flex-wrap gap-2 mt-2">
@@ -288,7 +321,7 @@ export default function DetalleColecta() {
             )}
             {p.pagos.length === 0 && (
               <button onClick={() => quitar(p)} className="mt-1 text-[11px] text-ink-soft underline">
-                Quitar de la colecta
+                Quitar de la vaca
               </button>
             )}
           </li>
@@ -303,7 +336,7 @@ export default function DetalleColecta() {
         ) : (
           <div className="rounded-2xl border border-line bg-paper-raised p-3">
             {disponibles.length === 0 ? (
-              <p className="text-sm text-ink-soft">Todos tus contactos ya están. Crea más desde “Nueva colecta”.</p>
+              <p className="text-sm text-ink-soft">Todos tus contactos ya están. Crea más desde “Nueva vaca”.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {disponibles.map((x) => (
@@ -319,13 +352,22 @@ export default function DetalleColecta() {
       </section>
 
       <section className="px-5 mt-6">
+        <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">¿Cómo te pagan?</p>
+        <div className="flex gap-2">
+          <input aria-label="Datos para pagarte" value={datosPago} onChange={(e) => setDatosPago(e.target.value)} maxLength={200} placeholder="Ej. Llave Bre-B @torneo · Nequi 300 123 4567" className="flex-1 min-w-0 rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm outline-none focus:border-accent" />
+          <button onClick={guardarDatosPago} disabled={datosPago.trim() === (c.datos_pago || '')} className="shrink-0 bg-ink text-paper rounded-2xl px-4 text-sm font-semibold disabled:opacity-40">Guardar</button>
+        </div>
+        <p className="text-[11px] text-ink-soft mt-1">Lo verá quien tenga el enlace. Los pagos se hacen por fuera (Bre-B, Nequi, efectivo); CuadraMe solo lleva la cuenta.</p>
+      </section>
+
+      <section className="px-5 mt-6">
         <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Compartir el avance</p>
         {!c.token_publico ? (
           <>
             <button onClick={compartir} className="w-full rounded-2xl border border-line bg-paper-raised py-3 text-sm font-semibold flex items-center justify-center gap-2">
               <Share2 size={16} /> Crear enlace para ver el avance
             </button>
-            <p className="text-[11px] text-ink-soft mt-1">Solo lectura: nombre de la colecta, avance y quién pagó (solo nombre de pila). Sin tus cuentas ni movimientos.</p>
+            <p className="text-[11px] text-ink-soft mt-1">Solo lectura: nombre de la vaca, avance y quién pagó (solo nombre de pila). Sin tus cuentas ni movimientos.</p>
           </>
         ) : (
           <div className="rounded-2xl border border-line bg-paper-raised p-3">
@@ -345,9 +387,9 @@ export default function DetalleColecta() {
 
       <div className="px-5 mt-8 flex items-center justify-between">
         <button onClick={cambiarEstado} className="text-sm text-ink-soft underline">
-          {c.estado === 'abierta' ? 'Cerrar colecta' : 'Reabrir colecta'}
+          {c.estado === 'abierta' ? 'Cerrar vaca' : 'Reabrir vaca'}
         </button>
-        <button onClick={borrar} className="text-sm text-danger underline">Borrar colecta</button>
+        <button onClick={borrar} className="text-sm text-danger underline">Borrar vaca</button>
       </div>
     </div>
   )

@@ -20,7 +20,7 @@ const iso = (d) => d.toISOString()
 const dias = (n) => new Date(hoy.getTime() - n * 86400000)
 
 const CUENTAS = [
-  { id: 'c1', nombre: 'Bancolombia Ahorros con un nombre bastante largo', tipo: 'ahorro', saldo: 12345678, moneda: 'COP', icono: '\u{1F3E6}' },
+  { id: 'c1', nombre: process.env.PW_MARKETING ? 'Cuenta de ahorros' : 'Bancolombia Ahorros con un nombre bastante largo', tipo: 'ahorro', saldo: 12345678, moneda: 'COP', icono: '\u{1F3E6}' },
   { id: 'c2', nombre: 'Nu Tarjeta', tipo: 'credito', saldo: -1850000, moneda: 'COP', icono: '\u{1F4B3}', cupo_total: 5000000, dia_corte: 10, dia_pago: 25 },
   { id: 'c3', nombre: 'Efectivo', tipo: 'efectivo', saldo: 80000, moneda: 'COP', icono: '\u{1F4B5}' },
 ]
@@ -63,6 +63,12 @@ const CLAVE = {
   ],
 }
 
+
+const BONITO = !!process.env.PW_MARKETING
+const NOM = BONITO
+  ? { hogar: 'Apartamento', col: 'Inscripción del torneo', luis: 'Luis', ana: 'Ana', mercado: 'Mercado del mes', correo: 'luis@ejemplo.com' }
+  : { hogar: 'Apartamento con un nombre bastante largo', col: 'Inscripción del torneo de fútbol sin espacios_extra_largos_1234567890', luis: 'Luis Fernando Rodríguez Hernández', ana: 'Ana María', mercado: 'Mercado del mes con una descripción larguísima sin espacios_extra_largos_12345678', correo: 'alguien.con.un.correo.largo@ejemplo.com' }
+
 function responder(url, metodo) {
   const p = url.pathname
   if (p === '/consentimientos') return { requiere_autorizacion: false, consentimientos: [], items: [] }
@@ -95,14 +101,14 @@ function responder(url, metodo) {
   if (p === '/conexiones/estado') return { hay_falla: false }
   if (p === '/conciliacion/cuadre/resumen') return { hay_problema: true, n_no_cuadran: 1, aviso: '', cuentas: [{ cuenta_id: 'c2', cuenta: 'Nu Colombia Crédito', estado: 'no_cuadra', mes: '2026-10', diferencia: -160000, texto: 'No cuadra en octubre (dif. $160.000)' }] }
   if (/\/(conteo|por-revisar|por-confirmar)/.test(p)) return metodo === 'GET' && p.endsWith('conteo') ? { conteo: 0 } : []
-  if (p.startsWith('/colectas/publico/')) return { nombre: 'Inscripción del torneo de fútbol sin espacios_extra_largos_1234567890', descripcion: '', moneda: 'COP', estado: 'abierta', fecha_limite: null, meta: 900000, recogido: 420000, falta: 480000, participantes: [{ nombre: 'Ana', estado: 'pagado' }, { nombre: 'Luis', estado: 'falta' }] }
-  if (p === '/colectas') return [{ id: 'k1', nombre: 'Inscripción del torneo de fútbol sin espacios_extra_largos_1234567890', moneda: 'COP', estado: 'abierta', meta: 900000, recogido: 420000, falta: 480000, personas: 9, pagaron: 4, compartida: true }]
-  if (p === '/colectas/k1') return { id: 'k1', nombre: 'Inscripción del torneo de fútbol', descripcion: '', modo: 'por_persona', moneda: 'COP', estado: 'abierta', fecha_limite: iso(dias(-9)), cuenta_id: 'c1', meta: 900000, recogido: 420000, falta: 480000, personas: 3, pagaron: 1, compartida: true, token_publico: 't'.repeat(32), participantes: [{ aporte_id: 'a1', participante_id: 'x1', nombre: 'Luis Fernando Rodríguez Hernández', telefono: '3001234567', debe: 100000, pagado: 0, falta: 100000, estado: 'falta', pagos: [] }, { aporte_id: 'a2', participante_id: 'x2', nombre: 'Ana', telefono: '', debe: 100000, pagado: 40000, falta: 60000, estado: 'parcial', pagos: [{ id: 'p1', monto: 40000, fecha: iso(dias(2)), registrado_en_cuenta: true }] }, { aporte_id: 'a3', participante_id: 'x3', nombre: 'Camila', telefono: '', debe: 100000, pagado: 100000, falta: 0, estado: 'pagado', pagos: [{ id: 'p2', monto: 100000, fecha: iso(dias(3)), registrado_en_cuenta: false }] }] }
-  if (p === '/hogares') return [{ id: 'h1', nombre: 'Apartamento con un nombre bastante largo para probar', moneda: 'COP', rol: 'admin', mi_miembro_id: 'ma', miembros: 3, mi_saldo: -123456 }]
+  if (p.startsWith('/colectas/publico/')) return { nombre: NOM.col, descripcion: '', moneda: 'COP', estado: 'abierta', fecha_limite: null, meta: 900000, recogido: 420000, falta: 480000, datos_pago: 'Llave Bre-B: @torneo-futbol', participantes: [{ id: 'a1', nombre: 'Ana', estado: 'pagado', avisado: false }, { id: 'a2', nombre: 'Luis', estado: 'falta', avisado: false }, { id: 'a3', nombre: 'Camila', estado: 'falta', avisado: true }] }
+  if (p === '/colectas') return [{ id: 'k1', nombre: NOM.col, moneda: 'COP', estado: 'abierta', meta: 900000, recogido: 420000, falta: 480000, personas: 9, pagaron: 4, compartida: true }]
+  if (p === '/colectas/k1') return { id: 'k1', nombre: NOM.col, descripcion: '', modo: 'por_persona', moneda: 'COP', estado: 'abierta', fecha_limite: iso(dias(-9)), cuenta_id: 'c1', meta: 900000, recogido: 420000, falta: 480000, personas: 3, pagaron: 1, compartida: true, token_publico: 't'.repeat(32), datos_pago: 'Llave Bre-B: @torneo-futbol', participantes: [{ aporte_id: 'a1', participante_id: 'x1', nombre: NOM.luis, telefono: '3001234567', debe: 100000, pagado: 0, falta: 100000, estado: 'falta', avisado: true, pagos: [] }, { aporte_id: 'a2', participante_id: 'x2', nombre: 'Ana', telefono: '', debe: 100000, pagado: 40000, falta: 60000, estado: 'parcial', pagos: [{ id: 'p1', monto: 40000, fecha: iso(dias(2)), registrado_en_cuenta: true }] }, { aporte_id: 'a3', participante_id: 'x3', nombre: 'Camila', telefono: '', debe: 100000, pagado: 100000, falta: 0, estado: 'pagado', pagos: [{ id: 'p2', monto: 100000, fecha: iso(dias(3)), registrado_en_cuenta: false }] }] }
+  if (p === '/hogares') return [{ id: 'h1', nombre: NOM.hogar, moneda: 'COP', rol: 'admin', mi_miembro_id: 'ma', miembros: 3, mi_saldo: -123456 }]
   if (p === '/hogares/invitaciones/mias') return [{ token: 'y'.repeat(30), hogar: 'Casa de los compañeros', vence_en: iso(dias(-5)) }]
-  if (p === '/hogares/h1') return { id: 'h1', nombre: 'Apartamento con un nombre bastante largo', moneda: 'COP', rol: 'admin', mi_miembro_id: 'ma', mis_avisos: true, miembros: [{ id: 'ma', apodo: 'Ana María', rol: 'admin', activo: true, soy_yo: true, saldo: 150000 }, { id: 'mb', apodo: 'Luis Fernando Rodríguez Hernández', rol: 'miembro', activo: true, soy_yo: false, saldo: -90000 }, { id: 'mc', apodo: 'Camila', rol: 'miembro', activo: true, soy_yo: false, saldo: -60000 }], simplificado: [{ de: 'mb', a: 'ma', monto: 90000, de_nombre: 'Luis Fernando Rodríguez Hernández', a_nombre: 'Ana María' }, { de: 'mc', a: 'ma', monto: 60000, de_nombre: 'Camila', a_nombre: 'Ana María' }], invitaciones: [{ id: 'i1', token: 't'.repeat(32), email: 'alguien.con.un.correo.largo@ejemplo.com', vence_en: iso(dias(-6)) }] }
-  if (p === '/hogares/h1/gastos') return [{ id: 'g1', descripcion: 'Mercado del mes con una descripción larguísima sin espacios_extra_largos_12345678', categoria: 'Comida', total: 450000, moneda: 'COP', fecha: iso(dias(2)), pagador: 'Ana María', creado_por_id: 'ma', partes: [] }, { id: 'g2', descripcion: 'Arriendo', categoria: 'Hogar', total: 1800000, moneda: 'COP', fecha: iso(dias(9)), pagador: 'Camila', creado_por_id: 'mc', partes: [] }]
-  if (p === '/hogares/h1/resumen') return { mes: '2026-10', moneda: 'COP', total: 2250000, por_miembro: [{ miembro_id: 'ma', nombre: 'Ana María', puso: 450000, consumio: 750000 }, { miembro_id: 'mc', nombre: 'Camila', puso: 1800000, consumio: 750000 }], por_categoria: [{ categoria: 'Hogar', monto: 1800000 }, { categoria: 'Comida', monto: 450000 }] }
+  if (p === '/hogares/h1') return { id: 'h1', nombre: NOM.hogar, moneda: 'COP', rol: 'admin', mi_miembro_id: 'ma', mis_avisos: true, miembros: [{ id: 'ma', apodo: NOM.ana, rol: 'admin', activo: true, soy_yo: true, saldo: 150000 }, { id: 'mb', apodo: NOM.luis, rol: 'miembro', activo: true, soy_yo: false, saldo: -90000 }, { id: 'mc', apodo: 'Camila', rol: 'miembro', activo: true, soy_yo: false, saldo: -60000 }], simplificado: [{ de: 'mb', a: 'ma', monto: 90000, de_nombre: NOM.luis, a_nombre: NOM.ana }, { de: 'mc', a: 'ma', monto: 60000, de_nombre: 'Camila', a_nombre: NOM.ana }], invitaciones: [{ id: 'i1', token: 't'.repeat(32), email: NOM.correo, vence_en: iso(dias(-6)) }] }
+  if (p === '/hogares/h1/gastos') return [{ id: 'g1', descripcion: NOM.mercado, categoria: 'Comida', total: 450000, moneda: 'COP', fecha: iso(dias(2)), pagador: NOM.ana, creado_por_id: 'ma', partes: [] }, { id: 'g2', descripcion: 'Arriendo', categoria: 'Hogar', total: 1800000, moneda: 'COP', fecha: iso(dias(9)), pagador: 'Camila', creado_por_id: 'mc', partes: [] }]
+  if (p === '/hogares/h1/resumen') return { mes: '2026-10', moneda: 'COP', total: 2250000, por_miembro: [{ miembro_id: 'ma', nombre: NOM.ana, puso: 450000, consumio: 750000 }, { miembro_id: 'mc', nombre: 'Camila', puso: 1800000, consumio: 750000 }], por_categoria: [{ categoria: 'Hogar', monto: 1800000 }, { categoria: 'Comida', monto: 450000 }] }
   if (p.startsWith('/hogares/invitaciones/')) return { hogar: 'Casa de los compañeros', moneda: 'COP', vence_en: iso(dias(-5)) }
   return metodo === 'GET' ? [] : {}
 }
@@ -123,7 +129,7 @@ for (const [ancho, alto] of ANCHOS) {
     userAgent: process.env.PW_UA || 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
   })
   // Sesión sintética (supabase-js la lee de localStorage sin pedir nada a la red mientras no venza).
-  await ctx.addInitScript(({ ref }) => {
+  await ctx.addInitScript(({ ref, tema }) => {
     const sesion = {
       access_token: 'token-falso', refresh_token: 'r', token_type: 'bearer', expires_in: 3600,
       expires_at: Math.floor(Date.now() / 1000) + 3600,
@@ -131,7 +137,8 @@ for (const [ancho, alto] of ANCHOS) {
     }
     localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify(sesion))
     sessionStorage.setItem('cuadrame:splash', '1')
-  }, { ref: REF })
+    if (tema) localStorage.setItem('findp_theme', tema)
+  }, { ref: REF, tema: process.env.PW_TEMA || '' })
   await ctx.route(/localhost:8000/, (route) => {
     if (process.env.PW_REAL) return route.continue() // PW_REAL=1: usa la API local de verdad (con los datos de la demo) en vez de los datos simulados
     const req = route.request()

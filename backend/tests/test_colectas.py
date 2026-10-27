@@ -158,3 +158,65 @@ def test_borrar_colecta_limpia_aportes_y_pagos_pero_no_toca_ingresos():
     assert client.delete(f"/colectas/{cid}").status_code == 200
     assert client.get(f"/colectas/{cid}").status_code == 404
     assert _saldo(cuenta["id"]) == 60_000
+
+
+# ───────────── Nivel A: datos para pagar y «ya pagué» desde el enlace ─────────────
+
+def test_datos_para_pagar_se_guardan_se_muestran_en_el_enlace_y_se_pueden_quitar():
+    cid, _ = _crear(datos_pago="  Llave Bre-B: @torneo  ")
+    assert client.get(f"/colectas/{cid}").json()["datos_pago"] == "Llave Bre-B: @torneo"
+    token = client.post(f"/colectas/{cid}/compartir").json()["token"]
+    assert client.get(f"/colectas/publico/{token}").json()["datos_pago"] == "Llave Bre-B: @torneo"
+    assert client.patch(f"/colectas/{cid}", json={"datos_pago": ""}).status_code == 200
+    assert client.get(f"/colectas/{cid}").json()["datos_pago"] == ""
+    assert client.get(f"/colectas/publico/{token}").json()["datos_pago"] == ""
+
+
+def test_ya_pague_desde_el_enlace_deja_una_marca_y_no_toca_lo_recogido():
+    cid, _ = _crear()
+    token = client.post(f"/colectas/{cid}/compartir").json()["token"]
+    pub = client.get(f"/colectas/publico/{token}").json()
+    persona = pub["participantes"][0]
+    assert persona["avisado"] is False
+    app.dependency_overrides.pop(get_current_user, None)  # quien avisa NO tiene sesión
+    assert client.post(f"/colectas/publico/{token}/aportes/{persona['id']}/avisar").status_code == 200
+    assert next(p for p in client.get(f"/colectas/publico/{token}").json()["participantes"] if p["id"] == persona["id"])["avisado"]
+    _como("col-test_ya_pague_desde_el_enlace_deja_una_marca_y_no_toca_lo_recogido")
+    d = client.get(f"/colectas/{cid}").json()
+    assert d["recogido"] == 0  # lo recogido NO cambió con el aviso
+    assert d["avisaron"] == 1 and sum(1 for p in d["participantes"] if p["avisado"]) == 1
+
+
+def test_confirmar_el_pago_limpia_el_aviso_y_el_organizador_puede_descartarlo():
+    cid, _ = _crear()
+    token = client.post(f"/colectas/{cid}/compartir").json()["token"]
+    ids = [p["id"] for p in client.get(f"/colectas/publico/{token}").json()["participantes"]]
+    for i in ids[:2]:
+        client.post(f"/colectas/publico/{token}/aportes/{i}/avisar")
+    d = client.get(f"/colectas/{cid}").json()
+    avisados = [p for p in d["participantes"] if p["avisado"]]
+    assert len(avisados) == 2
+    client.post(f"/colectas/{cid}/aportes/{avisados[0]['aporte_id']}/pagos", json={})  # confirma
+    assert client.delete(f"/colectas/{cid}/aportes/{avisados[1]['aporte_id']}/aviso").status_code == 200  # descarta
+    d = client.get(f"/colectas/{cid}").json()
+    assert d["avisaron"] == 0 and d["recogido"] == 50_000
+
+
+def test_aviso_publico_rechaza_tokens_malos_aportes_ajenos_y_vacas_cerradas():
+    cid, _ = _crear()
+    otro, _ = _crear(nombre="Otra")
+    token = client.post(f"/colectas/{cid}/compartir").json()["token"]
+    ap_otro = client.get(f"/colectas/{otro}").json()["participantes"][0]["aporte_id"]
+    ap = client.get(f"/colectas/{cid}").json()["participantes"][0]["aporte_id"]
+    assert client.post(f"/colectas/publico/corto/aportes/{ap}/avisar").status_code == 404
+    assert client.post(f"/colectas/publico/{'x' * 30}/aportes/{ap}/avisar").status_code == 404
+    assert client.post(f"/colectas/publico/{token}/aportes/{ap_otro}/avisar").status_code == 404  # aporte de otra vaca
+    client.patch(f"/colectas/{cid}", json={"estado": "cerrada"})
+    assert client.post(f"/colectas/publico/{token}/aportes/{ap}/avisar").status_code == 404
+
+
+def test_otro_usuario_no_puede_descartar_el_aviso_de_mi_vaca():
+    cid, _ = _crear()
+    ap = client.get(f"/colectas/{cid}").json()["participantes"][0]["aporte_id"]
+    _como("col-intruso-aviso")
+    assert client.delete(f"/colectas/{cid}/aportes/{ap}/aviso").status_code == 404

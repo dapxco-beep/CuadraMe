@@ -25,6 +25,7 @@ class Colecta(Base):
     cuenta_id = Column(String, nullable=True)  # donde se registran como ingreso los pagos (opcional)
     token_publico = Column(String, nullable=True, unique=True, index=True)  # enlace de solo lectura; null = no compartida
     estado = Column(String, default="abierta")  # abierta | cerrada
+    datos_pago = Column(String, nullable=True)  # cómo pagarle al organizador (llave Bre-B, Nequi...): solo texto, CuadraMe no mueve plata
     creado_en = Column(DateTime, default=datetime.utcnow)
 
 
@@ -37,6 +38,7 @@ class AporteColecta(Base):
     usuario_id = Column(String, nullable=False, index=True)
     participante_id = Column(String, nullable=False)  # 'yo' | id de contacto
     debe = Column(Float, nullable=False, default=0)
+    avisado_en = Column(DateTime, nullable=True)  # la persona dijo «ya pagué» desde el enlace; el organizador lo confirma
 
 
 class PagoColecta(Base):

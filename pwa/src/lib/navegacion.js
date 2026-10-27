@@ -51,8 +51,8 @@ export const GRUPOS = [
     icon: Users,
     items: [
       { to: '/amigos', icon: Users, label: 'Dividir gastos con amigos', palabras: 'dividir gastos amigos cuenta compartida cena viaje deben me deben' },
-      { to: '/hogares', icon: Home, label: 'Hogar o pareja', palabras: 'hogar pareja familia casa compañeros apartamento gastos juntos quien debe a quien arriendo mercado servicios' },
-      { to: '/colectas', icon: Gift, label: 'Colectas (vacas)', palabras: 'colecta vaca inscripcion equipo futbol torneo paseo regalo cuota aporte quien puso falta' },
+      { to: '/hogares', icon: Home, label: 'Parche (pareja, casa, amigos)', palabras: 'parche hogar pareja familia casa compañeros apartamento gastos juntos quien debe a quien arriendo mercado servicios' },
+      { to: '/colectas', icon: Gift, label: 'Vacas', palabras: 'vaca colecta vaquita inscripcion equipo futbol torneo paseo regalo cuota aporte quien puso falta' },
       { to: '/compartir', icon: Users, label: 'Compartir con mi pareja o familia', palabras: 'compartir cuenta pareja familia hogar invitar pareja esposo esposa ver anotar acceso' },
     ],
   },

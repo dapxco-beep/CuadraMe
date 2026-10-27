@@ -12,7 +12,7 @@ const MODOS = [
   { id: 'meta_total', label: 'Una meta total', ayuda: 'Se reparte en partes iguales entre quienes elijas.' },
 ]
 
-// Crear una colecta: nombre, cuánto, quiénes (tus contactos; no necesitan cuenta) y, si quieres,
+// Crear una vaca: nombre, cuánto, quiénes (tus contactos; no necesitan cuenta) y, si quieres,
 // la cuenta donde entra la plata para que cada pago quede como ingreso.
 export default function NuevaColecta() {
   const navigate = useNavigate()
@@ -26,6 +26,7 @@ export default function NuevaColecta() {
   const [incluirme, setIncluirme] = useState(false)
   const [cuentaId, setCuentaId] = useState('')
   const [fecha, setFecha] = useState('')
+  const [datosPago, setDatosPago] = useState('')
   const [nuevo, setNuevo] = useState(null)
   const [guardando, setGuardando] = useState(false)
 
@@ -69,10 +70,11 @@ export default function NuevaColecta() {
         cuenta_id: cuentaId || undefined,
         moneda,
         fecha_limite: fecha ? `${fecha}T12:00:00` : undefined,
+        datos_pago: datosPago.trim() || undefined,
       })
       navigate(`/colectas/${r.id}`, { replace: true })
     } catch (e) {
-      avisar(e.message || 'No se pudo crear la colecta. Revisa tu conexión e intenta de nuevo.')
+      avisar(e.message || 'No se pudo crear la vaca. Revisa tu conexión e intenta de nuevo.')
       setGuardando(false)
     }
   }
@@ -91,12 +93,12 @@ export default function NuevaColecta() {
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-2xl font-semibold">Nueva colecta</h1>
+        <h1 className="text-2xl font-semibold">Nueva vaca</h1>
       </header>
 
       <div className="px-5 mt-3 flex flex-col gap-3">
         <input
-          aria-label="Nombre de la colecta"
+          aria-label="Nombre de la vaca"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           placeholder="¿Para qué es? (ej. Inscripción del torneo)"
@@ -104,7 +106,7 @@ export default function NuevaColecta() {
           className={campo}
         />
 
-        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tipo de colecta">
+        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tipo de vaca">
           {MODOS.map((m) => (
             <button
               key={m.id}
@@ -194,6 +196,11 @@ export default function NuevaColecta() {
           </label>
         )}
         <label className="text-xs text-ink-soft font-medium uppercase tracking-wide">
+          ¿Cómo te pagan? (opcional)
+          <input value={datosPago} onChange={(e) => setDatosPago(e.target.value)} maxLength={200} placeholder="Ej. Llave Bre-B @torneo · Nequi 300 123 4567" className={`${campo} mt-1 normal-case tracking-normal text-ink`} />
+          <span className="block mt-1 text-[11px] normal-case tracking-normal">Lo verá quien tenga el enlace. Los pagos se hacen por fuera; CuadraMe solo lleva la cuenta.</span>
+        </label>
+        <label className="text-xs text-ink-soft font-medium uppercase tracking-wide">
           Fecha límite (opcional)
           <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={`${campo} mt-1 normal-case tracking-normal text-ink`} />
         </label>
@@ -206,7 +213,7 @@ export default function NuevaColecta() {
           </p>
         )}
         <button onClick={crear} disabled={!puede} className="w-full bg-ink text-paper rounded-2xl py-3.5 text-sm font-semibold disabled:opacity-40">
-          {guardando ? 'Creando…' : 'Crear colecta'}
+          {guardando ? 'Creando…' : 'Crear vaca'}
         </button>
       </div>
     </div>
