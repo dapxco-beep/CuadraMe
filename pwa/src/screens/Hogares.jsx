@@ -35,7 +35,7 @@ export default function Hogares() {
     if (!nuevo?.nombre.trim()) return
     try {
       const r = await api.crearHogar({ nombre: nuevo.nombre.trim() })
-      navigate(`/hogares/${r.id}`)
+      navigate(`/hogares/${r.id}`, { state: { recienCreado: true } })
     } catch (e) {
       avisar(e.message || 'No se pudo crear el parche. Intenta de nuevo.')
     }

@@ -5,8 +5,13 @@ export function enlaceInvitacionHogar(token, origen = typeof window !== 'undefin
   return `${origen}/#/unirse/${token}`
 }
 
+// Texto que acompaña al enlace: dice qué es, que es gratis y que quien no tiene cuenta la crea en un minuto.
+export function textoInvitacion(hogar) {
+  return `Te invito a "${hogar}" en CuadraMe para llevar los gastos juntos. Es gratis: si no tienes cuenta, la creas en un minuto.`
+}
+
 export function enlaceCompartirInvitacion({ hogar, enlace }) {
-  return `https://wa.me/?text=${encodeURIComponent(`Te invito a "${hogar}" en CuadraMe para llevar los gastos juntos: ${enlace}`)}`
+  return `https://wa.me/?text=${encodeURIComponent(`${textoInvitacion(hogar)} ${enlace}`)}`
 }
 
 // Frase de una deuda del libro: «Beto le debe $50.000 a Ana» (o «Tú le debes…» / «Ana te debe…»).

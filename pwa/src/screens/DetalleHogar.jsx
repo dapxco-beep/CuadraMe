@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Bell, BellOff, Copy, MessageCircle, Plus, Share2 } from 'lucide-react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { api } from '../lib/api'
 import { formatMoneda } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
-import { enlaceCobroHogar, enlaceCompartirInvitacion, enlaceInvitacionHogar, fraseDeuda } from '../lib/hogares'
+import { enlaceCobroHogar, enlaceCompartirInvitacion, enlaceInvitacionHogar, fraseDeuda, textoInvitacion } from '../lib/hogares'
 
 // Un parche: quién le debe a quién, los gastos del libro común, las personas y las invitaciones.
 export default function DetalleHogar() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { confirmar, avisar } = useDialogos()
+  const recienCreado = Boolean(useLocation().state?.recienCreado)
   const [h, setH] = useState(null)
   const [gastos, setGastos] = useState([])
   const [error, setError] = useState('')
@@ -69,21 +70,26 @@ export default function DetalleHogar() {
 
   // Camino principal: crea un enlace de un solo uso y abre el menú de compartir del celular (WhatsApp,
   // mensajes, contactos…). Sin ese menú (computador), abre WhatsApp Web con el mensaje armado.
+  // Abre el menú de compartir del celular (WhatsApp, mensajes, contactos…). Sin ese menú (computador),
+  // abre WhatsApp Web con el mensaje armado. Si el menú falla, al menos deja el enlace copiado.
+  async function compartir(enlace) {
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: 'Invitación a CuadraMe', text: textoInvitacion(h.nombre), url: enlace })
+      } catch (e) {
+        if (e?.name !== 'AbortError') await copiar(enlace)
+      }
+    } else {
+      window.open(enlaceCompartirInvitacion({ hogar: h.nombre, enlace }), '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  // Camino principal: crea un enlace de un solo uso y lo comparte.
   async function compartirEnlace() {
     try {
       const inv = await api.invitarAlHogar(id, '')
-      const enlace = enlaceInvitacionHogar(inv.token)
       cargar()
-      const texto = `Te invito a "${h.nombre}" en CuadraMe para llevar los gastos juntos`
-      if (typeof navigator.share === 'function') {
-        try {
-          await navigator.share({ title: 'Invitación a CuadraMe', text: texto, url: enlace })
-        } catch (e) {
-          if (e?.name !== 'AbortError') await copiar(enlace) // no se pudo abrir el menú: al menos queda copiado
-        }
-      } else {
-        window.open(enlaceCompartirInvitacion({ hogar: h.nombre, enlace }), '_blank', 'noopener,noreferrer')
-      }
+      await compartir(enlaceInvitacionHogar(inv.token))
     } catch (e) {
       avisar(e.message || 'No se pudo crear la invitación. Intenta de nuevo.')
     }
@@ -182,6 +188,18 @@ export default function DetalleHogar() {
   return (
     <div className="flex-1 overflow-y-auto pb-10 screen-enter">
       {Cabecera}
+      {esAdmin && h.miembros.filter((m) => m.activo).length === 1 && (
+        <section className="px-5 mt-2" data-testid="parche-solo">
+          <div className="rounded-2xl border border-accent bg-accent-soft p-4">
+            <p className="text-base font-semibold">{recienCreado ? '¡Tu parche está listo!' : 'Estás solo en este parche'}</p>
+            <p className="text-xs text-ink-soft mt-1">Invita a tu gente para llevar los gastos juntos y ver quién le debe a quién.</p>
+            <button onClick={compartirEnlace} className="mt-3 w-full bg-ink text-paper rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2 min-h-12">
+              <Share2 size={20} /> Invitar con un enlace
+            </button>
+          </div>
+        </section>
+      )}
+
 
       <section className="px-5 mt-2">
         <div className="rounded-2xl border border-line bg-paper-raised p-4">
@@ -292,7 +310,7 @@ export default function DetalleHogar() {
                   <p className="text-xs break-all mt-1 select-all">{enlace}</p>
                   <div className="flex gap-2 mt-2">
                     <button onClick={() => copiar(enlace)} className="flex-1 rounded-xl border border-line text-xs font-semibold py-2 flex items-center justify-center gap-1.5"><Copy size={16} /> Copiar</button>
-                    <a href={enlaceCompartirInvitacion({ hogar: h.nombre, enlace })} target="_blank" rel="noopener noreferrer" className="flex-1 rounded-xl bg-accent-soft text-accent text-xs font-semibold py-2 flex items-center justify-center gap-1.5"><MessageCircle size={16} /> WhatsApp</a>
+                    <button onClick={() => compartir(enlace)} className="flex-1 rounded-xl bg-accent-soft text-accent text-xs font-semibold py-2 flex items-center justify-center gap-1.5"><Share2 size={16} /> Compartir</button>
                     <button onClick={() => cancelar(i)} className="px-3 text-xs text-ink-soft underline">Cancelar</button>
                   </div>
                 </li>

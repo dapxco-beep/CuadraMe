@@ -149,6 +149,28 @@ describe('detalle del hogar', () => {
     expect(api.invitarAlHogar).not.toHaveBeenCalled()
   })
 
+  it('si estás solo en el parche, un aviso arriba invita con enlace; con más personas no sale', async () => {
+    api.hogar.mockResolvedValue({ ...DETALLE, miembros: DETALLE.miembros.slice(0, 1) })
+    const { unmount } = montar('/hogares/h1')
+    expect(await screen.findByTestId('parche-solo')).toBeTruthy()
+    unmount()
+    api.hogar.mockResolvedValue(DETALLE)
+    montar('/hogares/h1')
+    await screen.findByText('Mercado')
+    expect(screen.queryByTestId('parche-solo')).toBeNull()
+  })
+
+  it('una invitación pendiente se puede volver a compartir', async () => {
+    const compartir = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'share', { value: compartir, configurable: true })
+    const user = userEvent.setup()
+    montar('/hogares/h1')
+    await user.click(await screen.findByRole('button', { name: /Compartir/ }))
+    await waitFor(() => expect(compartir).toHaveBeenCalled())
+    expect(compartir.mock.calls[0][0].text).toMatch(/gratis/)
+    delete navigator.share
+  })
+
   it('solo administración ve las invitaciones; un miembro común no', async () => {
     api.hogar.mockResolvedValue({ ...DETALLE, rol: 'miembro', invitaciones: [] })
     montar('/hogares/h1')
