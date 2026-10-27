@@ -199,6 +199,13 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'ALTER TABLE aportes_colecta ADD COLUMN IF NOT EXISTS avisado_en TIMESTAMP NULL',
         ],
     ),
+    (
+        # Hogares: qué movimiento personal nació de la parte de cada quien, para no copiar dos veces un gasto a «mis gastos».
+        "0012_parte_hogar_movimiento",
+        [
+            'ALTER TABLE partes_gasto_hogar ADD COLUMN IF NOT EXISTS movimiento_id VARCHAR NULL',
+        ],
+    ),
 ]
 
 

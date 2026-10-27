@@ -73,6 +73,9 @@ class ParteGastoHogar(Base):
     gasto_id = Column(String, ForeignKey("gastos_hogar.id", ondelete="CASCADE"), nullable=False, index=True)
     miembro_id = Column(String, nullable=False)  # miembros_hogar.id
     monto = Column(Float, nullable=False)
+    # Movimiento PERSONAL que se creó con esta parte (solo la parte de quien lo copió). Sin esto no se sabe qué gasto
+    # del hogar ya está en «mis gastos» y se podría copiar dos veces. Es un id suelto, sin llave foránea: borrar el movimiento no toca el libro.
+    movimiento_id = Column(String, nullable=True)
 
 
 class PagoHogar(Base):

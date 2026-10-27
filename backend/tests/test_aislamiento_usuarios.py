@@ -349,6 +349,7 @@ ATAQUES = [
     ("GET", "/hogares/{hogar}/gastos", None),
     ("POST", "/hogares/{hogar}/gastos", {"descripcion": "x", "total": 10, "participantes": [{"id": "{miembro_hogar}"}]}),
     ("DELETE", "/hogares/{hogar}/gastos/{gasto_hogar}", None),
+    ("POST", "/hogares/{hogar}/gastos/{gasto_hogar}/a-mis-gastos", {"cuenta_id": "x"}),
     ("GET", "/hogares/{hogar}/pagos", None),
     ("POST", "/hogares/{hogar}/pagos", {"de_id": "{miembro_hogar}", "a_id": "otro", "monto": 1}),
     ("DELETE", "/hogares/{hogar}/pagos/{pago_hogar}", None),
