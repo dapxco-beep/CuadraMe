@@ -130,6 +130,25 @@ describe('detalle del hogar', () => {
     await waitFor(() => expect(api.pagarHogar).toHaveBeenCalledWith('h1', { de_id: 'mb', a_id: 'ma', monto: 50000 }))
   })
 
+  it('«Invitar con un enlace» crea la invitación sin correo y abre el menú de compartir', async () => {
+    const compartir = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'share', { value: compartir, configurable: true })
+    const user = userEvent.setup()
+    montar('/hogares/h1')
+    await user.click(await screen.findByTestId('invitar-enlace'))
+    await waitFor(() => expect(api.invitarAlHogar).toHaveBeenCalledWith('h1', ''))
+    await waitFor(() => expect(compartir).toHaveBeenCalled())
+    expect(compartir.mock.calls[0][0].url).toBe('http://localhost:3000/#/unirse/t')
+    delete navigator.share
+  })
+
+  it('invitar por correo sin escribir el correo no crea nada', async () => {
+    const user = userEvent.setup()
+    montar('/hogares/h1')
+    await user.click(await screen.findByRole('button', { name: 'Invitar' }))
+    expect(api.invitarAlHogar).not.toHaveBeenCalled()
+  })
+
   it('solo administración ve las invitaciones; un miembro común no', async () => {
     api.hogar.mockResolvedValue({ ...DETALLE, rol: 'miembro', invitaciones: [] })
     montar('/hogares/h1')

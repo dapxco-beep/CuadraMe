@@ -57,10 +57,33 @@ export default function DetalleHogar() {
   }
 
   async function invitar() {
+    if (!correo.trim()) return avisar('Escribe el correo de la persona, o usa «Invitar con un enlace».')
     try {
       await api.invitarAlHogar(id, correo.trim())
       setCorreo('')
       cargar()
+    } catch (e) {
+      avisar(e.message || 'No se pudo crear la invitación. Intenta de nuevo.')
+    }
+  }
+
+  // Camino principal: crea un enlace de un solo uso y abre el menú de compartir del celular (WhatsApp,
+  // mensajes, contactos…). Sin ese menú (computador), abre WhatsApp Web con el mensaje armado.
+  async function compartirEnlace() {
+    try {
+      const inv = await api.invitarAlHogar(id, '')
+      const enlace = enlaceInvitacionHogar(inv.token)
+      cargar()
+      const texto = `Te invito a "${h.nombre}" en CuadraMe para llevar los gastos juntos`
+      if (typeof navigator.share === 'function') {
+        try {
+          await navigator.share({ title: 'Invitación a CuadraMe', text: texto, url: enlace })
+        } catch (e) {
+          if (e?.name !== 'AbortError') await copiar(enlace) // no se pudo abrir el menú: al menos queda copiado
+        }
+      } else {
+        window.open(enlaceCompartirInvitacion({ hogar: h.nombre, enlace }), '_blank', 'noopener,noreferrer')
+      }
     } catch (e) {
       avisar(e.message || 'No se pudo crear la invitación. Intenta de nuevo.')
     }
@@ -248,13 +271,18 @@ export default function DetalleHogar() {
       {esAdmin && (
         <section className="px-5 mt-6">
           <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Invitar</p>
+          <button onClick={compartirEnlace} data-testid="invitar-enlace" className="w-full bg-ink text-paper rounded-2xl px-4 py-3.5 text-sm font-semibold flex items-center justify-center gap-2 min-h-12">
+            <Share2 size={20} /> Invitar con un enlace
+          </button>
+          <p className="text-[11px] text-ink-soft mt-1.5">Se abre tu menú de compartir: elige WhatsApp, mensajes o un contacto. El enlace sirve una sola vez, por 7 días.</p>
+          <p className="text-xs text-ink-soft mt-4 mb-2">¿Prefieres invitar a una cuenta por su correo?</p>
           <div className="flex gap-2">
-            <input aria-label="Correo de la persona (opcional)" value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="Correo (opcional)" inputMode="email" className="flex-1 min-w-0 rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm outline-none focus:border-accent" />
-            <button onClick={invitar} className="shrink-0 bg-ink text-paper rounded-2xl px-4 text-sm font-semibold flex items-center gap-1.5">
-              <Share2 size={16} /> Crear
+            <input aria-label="Correo de la persona (opcional)" value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="Correo de la persona" inputMode="email" className="flex-1 min-w-0 rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm outline-none focus:border-accent" />
+            <button onClick={invitar} className="shrink-0 border border-line rounded-2xl px-4 text-sm font-semibold">
+              Invitar
             </button>
           </div>
-          <p className="text-[11px] text-ink-soft mt-1">Con correo, solo esa cuenta puede unirse. Sin correo, quien tenga el enlace (una sola vez, por 7 días).</p>
+          <p className="text-[11px] text-ink-soft mt-1">Con correo, solo esa cuenta puede unirse.</p>
           <ul className="mt-2 flex flex-col gap-2">
             {h.invitaciones.map((i) => {
               const enlace = enlaceInvitacionHogar(i.token)
