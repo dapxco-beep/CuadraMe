@@ -118,6 +118,13 @@ def _sembrar():
     liq = _ok(client.post("/gastos-compartidos/liquidaciones", json={"de_id": I["contacto"], "a_id": "yo",
                                                                     "monto": 10, "nota": MARCA}))
     I["liquidacion"] = liq.get("id") or client.get("/gastos-compartidos/liquidaciones").json()[0]["id"]
+    I["hogar"] = _ok(client.post("/hogares", json={"nombre": f"{MARCA} Casa"}))["id"]
+    _det = client.get(f"/hogares/{I['hogar']}").json()
+    I["miembro_hogar"] = _det["mi_miembro_id"]
+    I["gasto_hogar"] = _ok(client.post(f"/hogares/{I['hogar']}/gastos", json={
+        "descripcion": f"{MARCA} mercado", "total": 100, "participantes": [{"id": I["miembro_hogar"]}]}))["id"]
+    I["pago_hogar"] = "pago-inexistente"  # un pago real necesita 2 miembros; el 404 sale antes, por no ser miembro
+    I["invitacion_hogar"] = _ok(client.post(f"/hogares/{I['hogar']}/invitar", json={}))["id"]
     I["colecta"] = _ok(client.post("/colectas", json={"nombre": f"{MARCA} Vaca", "valor": 100, "participantes": [I["contacto"]]}))["id"]
     I["aporte_colecta"] = client.get(f"/colectas/{I['colecta']}").json()["participantes"][0]["aporte_id"]
     _ok(client.post(f"/colectas/{I['colecta']}/aportes/{I['aporte_colecta']}/pagos", json={"monto": 10}))
@@ -241,7 +248,7 @@ def test_lecturas_de_a_si_ven_sus_datos():
     como(A)
     for ruta in ("/cuentas", "/movimientos", "/metas", "/gastos-compartidos/contactos", "/patrimonio/activos", "/inversiones",
                  "/inversiones/brokers", "/subcategorias", "/correos/lista", "/correos/extractos", "/conciliacion/historial", "/reglas-categoria",
-                 "/sincronizacion/extractos", "/autoarreglo/lotes", "/colectas"):  # «Todos los extractos»: la lista completa de A
+                 "/sincronizacion/extractos", "/autoarreglo/lotes", "/colectas", "/hogares"):  # «Todos los extractos»: la lista completa de A
         assert MARCA.lower() in client.get(ruta).text.lower(), ruta
 
 
@@ -329,6 +336,22 @@ ATAQUES = [
     ("POST", "/colectas/{colecta}/compartir", None),
     ("DELETE", "/colectas/{colecta}/compartir", None),
     ("POST", "/colectas", {"nombre": "x", "valor": 10, "participantes": ["{contacto}"]}),
+    # hogares: B (no miembro) recibe 404 en todo lo del hogar de A y nada cambia (el detalle de cada caso, en test_hogares.py)
+    ("GET", "/hogares/{hogar}", None),
+    ("PATCH", "/hogares/{hogar}", {"nombre": "hackeada"}),
+    ("DELETE", "/hogares/{hogar}", None),
+    ("PATCH", "/hogares/{hogar}/yo", {"apodo": "hack"}),
+    ("POST", "/hogares/{hogar}/invitar", {}),
+    ("DELETE", "/hogares/{hogar}/invitaciones/{invitacion_hogar}", None),
+    ("PATCH", "/hogares/{hogar}/miembros/{miembro_hogar}", {"rol": "miembro"}),
+    ("DELETE", "/hogares/{hogar}/miembros/{miembro_hogar}", None),
+    ("GET", "/hogares/{hogar}/gastos", None),
+    ("POST", "/hogares/{hogar}/gastos", {"descripcion": "x", "total": 10, "participantes": [{"id": "{miembro_hogar}"}]}),
+    ("DELETE", "/hogares/{hogar}/gastos/{gasto_hogar}", None),
+    ("GET", "/hogares/{hogar}/pagos", None),
+    ("POST", "/hogares/{hogar}/pagos", {"de_id": "{miembro_hogar}", "a_id": "otro", "monto": 1}),
+    ("DELETE", "/hogares/{hogar}/pagos/{pago_hogar}", None),
+    ("GET", "/hogares/{hogar}/resumen", None),
     ("POST", "/gastos-compartidos", {"descripcion": "x", "total": 10, "modo": "iguales", "registro": "ninguno",
                                      "grupo_id": "{grupo}", "pagador_id": "yo",
                                      "participantes": [{"id": "yo", "valor": 1}, {"id": "{contacto}", "valor": 1}]}),
@@ -503,6 +526,8 @@ def test_b_no_acumula_filas_con_ids_de_a():
 # ── 3. Cobertura: ningún endpoint queda sin clasificar ──────────────────────────────
 # Prefijos cubiertos por ATAQUES o LISTAS (se calcula) + rutas que por diseño no llevan id de recurso.
 SIN_ID_DE_RECURSO = {
+    # hogares: crear es solo del propio usuario; los tokens de invitación son la llave (aleatoria, de un solo uso, con límite de intentos)
+    "/hogares", "/hogares/invitaciones/{token}", "/hogares/invitaciones/{token}/aceptar",
     # escrituras que solo afectan al propio usuario (no reciben ids ajenos)
     "/salud/crear-tarjeta",  # crea/lee solo filas PROPIAS por nombre de banco (probado en test_salud_autocuracion)
     "/ahorcado/nueva-partida", "/asistente/mensaje", "/categorias/orden", "/cierre-mes/preferencias",

@@ -4,7 +4,7 @@ import { api } from './lib/api'
 import { precargarArranque } from './lib/arranque'
 import ConsentimientoGlobal from './components/ConsentimientoGlobal'
 import { useNombre } from './lib/nombre'
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ThemeProvider } from './lib/ThemeContext'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { CuentasProvider, useCuentas } from './lib/CuentasContext'
@@ -21,6 +21,7 @@ import { EsqueletoPantalla } from './components/Esqueletos'
 import ErrorAmable from './brand/ErrorAmable'
 import { MSG_SIN_CONEXION } from './lib/mensajesBase'
 import Login from './screens/Login'
+import { guardarInvitacionPendiente, tomarInvitacionPendiente } from './lib/hogares'
 import Inicio from './screens/Inicio'
 
 // El motor de animación (~35 KB) se baja aparte, después del primer pintado.
@@ -80,6 +81,11 @@ const Colectas = lazy(() => import('./screens/Colectas'))
 const NuevaColecta = lazy(() => import('./screens/NuevaColecta'))
 const DetalleColecta = lazy(() => import('./screens/DetalleColecta'))
 const ColectaPublica = lazy(() => import('./screens/ColectaPublica'))
+const Hogares = lazy(() => import('./screens/Hogares'))
+const DetalleHogar = lazy(() => import('./screens/DetalleHogar'))
+const NuevoGastoHogar = lazy(() => import('./screens/NuevoGastoHogar'))
+const ResumenHogar = lazy(() => import('./screens/ResumenHogar'))
+const UnirseHogar = lazy(() => import('./screens/UnirseHogar'))
 
 function Cargando() {
   return <CargandoMarca />
@@ -116,9 +122,24 @@ function precargarPantallas() {
   return () => cancelar.forEach((c) => c())
 }
 
+// Quien abre una invitación sin sesión: se guarda el enlace y se le muestra el ingreso. Al entrar (también con Google,
+// que pierde el #) AppGate lo lleva de vuelta a la invitación.
+function InvitacionSinSesion() {
+  const { token } = useParams()
+  useEffect(() => {
+    guardarInvitacionPendiente(token)
+  }, [token])
+  return <Login />
+}
+
 function AppGate() {
   const { cuentas, cargando, error, recargar } = useCuentas()
+  const irA = useNavigate()
   useEffect(() => precargarPantallas(), [])
+  useEffect(() => {
+    const pendiente = tomarInvitacionPendiente()
+    if (pendiente) irA(`/unirse/${pendiente}`, { replace: true })
+  }, [irA])
 
   // Solo la primera carga bloquea la pantalla. Las recargas posteriores (por ejemplo
   // al guardar un movimiento) se hacen en segundo plano; antes parpadeaba toda la app.
@@ -159,6 +180,11 @@ function AppGate() {
         <Route path="/agregar" element={<Agregar />} />
         <Route path="/dividir" element={<DividirGasto />} />
         <Route path="/amigos" element={<CuentasAmigos />} />
+        <Route path="/hogares" element={<Hogares />} />
+        <Route path="/hogares/:id" element={<DetalleHogar />} />
+        <Route path="/hogares/:id/gasto" element={<NuevoGastoHogar />} />
+        <Route path="/hogares/:id/resumen" element={<ResumenHogar />} />
+        <Route path="/unirse/:token" element={<UnirseHogar />} />
         <Route path="/colectas" element={<Colectas />} />
         <Route path="/colectas/nueva" element={<NuevaColecta />} />
         <Route path="/colectas/:id" element={<DetalleColecta />} />
@@ -228,6 +254,7 @@ function AppRoutes() {
     return (
       <Suspense fallback={<Cargando />}>
       <Routes>
+        <Route path="/unirse/:token" element={<InvitacionSinSesion />} />
         <Route path="/c/:token" element={<ColectaPublica />} />
         <Route path="/legal/terminos" element={<TerminosCondiciones />} />
         <Route path="/legal/privacidad" element={<PoliticaPrivacidad />} />

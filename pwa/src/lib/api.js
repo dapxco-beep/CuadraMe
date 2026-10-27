@@ -774,6 +774,28 @@ export const api = {
   dejarDeCompartirColecta: (id) => request(`/colectas/${id}/compartir`, { method: 'DELETE' }),
   colectaPublica: (token) => request(`/colectas/publico/${encodeURIComponent(token)}`, { auth: false, sinCache: true }),
 
+  // Hogares (pareja, familia): libro común entre personas con cuenta
+  hogares: () => request('/hogares'),
+  hogar: (id) => request(`/hogares/${id}`),
+  crearHogar: (data) => request('/hogares', { method: 'POST', body: data }),
+  renombrarHogar: (id, nombre) => request(`/hogares/${id}`, { method: 'PATCH', body: { nombre } }),
+  borrarHogar: (id) => request(`/hogares/${id}`, { method: 'DELETE' }),
+  ajustesHogar: (id, data) => request(`/hogares/${id}/yo`, { method: 'PATCH', body: data }),
+  invitarAlHogar: (id, email) => request(`/hogares/${id}/invitar`, { method: 'POST', body: { email: email || undefined } }),
+  cancelarInvitacionHogar: (id, invId) => request(`/hogares/${id}/invitaciones/${invId}`, { method: 'DELETE' }),
+  misInvitacionesHogar: () => request('/hogares/invitaciones/mias'),
+  verInvitacionHogar: (token) => request(`/hogares/invitaciones/${encodeURIComponent(token)}`, { sinCache: true }),
+  aceptarInvitacionHogar: (token, apodo) => request(`/hogares/invitaciones/${encodeURIComponent(token)}/aceptar`, { method: 'POST', body: { apodo: apodo || undefined } }),
+  rolMiembroHogar: (id, miembroId, rol) => request(`/hogares/${id}/miembros/${miembroId}`, { method: 'PATCH', body: { rol } }),
+  quitarMiembroHogar: (id, miembroId) => request(`/hogares/${id}/miembros/${miembroId}`, { method: 'DELETE' }),
+  gastosHogar: (id) => request(`/hogares/${id}/gastos`),
+  crearGastoHogar: (id, data) => request(`/hogares/${id}/gastos`, { method: 'POST', body: data }),
+  borrarGastoHogar: (id, gastoId) => request(`/hogares/${id}/gastos/${gastoId}`, { method: 'DELETE' }),
+  pagosHogar: (id) => request(`/hogares/${id}/pagos`),
+  pagarHogar: (id, data) => request(`/hogares/${id}/pagos`, { method: 'POST', body: data }),
+  deshacerPagoHogar: (id, pagoId) => request(`/hogares/${id}/pagos/${pagoId}`, { method: 'DELETE' }),
+  resumenHogar: (id, mes) => request(`/hogares/${id}/resumen${mes ? `?mes=${mes}` : ''}`),
+
   // Foto de factura (la IA solo sugiere; nada se guarda hasta que el usuario confirme)
   escanearFactura: (imagenBase64, mime) =>
     request('/facturas/escanear', { method: 'POST', body: { imagen_base64: imagenBase64, mime } }),

@@ -546,6 +546,9 @@ export default function Agregar() {
         <button onClick={() => navigate('/colectas')} className="w-full text-center text-sm text-accent font-medium min-h-11">
           Colectas: inscripción, paseo, regalo
         </button>
+        <button onClick={() => navigate('/hogares')} className="w-full text-center text-sm text-accent font-medium min-h-11">
+          Hogar o pareja: gastos juntos
+        </button>
       </div>
     </div>
   )

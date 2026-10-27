@@ -28,13 +28,15 @@ from app.gmail_oauth import revocar_token
 from app.models import CorreoGasto, Cuenta, ExtractoCorreo, HuellaOrigen, Movimiento, Perfil
 from app.models_fiscal import MarcaFiscal
 from app.models_gastos import GastoCompartido, GrupoGasto
+from app.models_hogares import GastoHogar, InvitacionHogar, MiembroHogar
 from app.utiles import ahora_co, celda_segura
 
 logger = logging.getLogger(__name__)
 
 # Tablas SIN usuario_id: cuelgan de otra. Si se agrega una nueva, hay que decidir aquí
 # cómo se exporta y se borra (test_derechos_titular.py lo exige).
-TABLAS_HIJAS = {"invitaciones_cuenta", "miembros_grupo_gasto", "partes_gasto"}
+TABLAS_HIJAS = {"invitaciones_cuenta", "miembros_grupo_gasto", "partes_gasto",
+                "hogares", "invitaciones_hogar", "gastos_hogar", "partes_gasto_hogar", "pagos_hogar"}
 # Tablas internas del sistema (no son datos del titular).
 TABLAS_INTERNAS = {"marcas_cron", "importaciones_respaldo", "tasas_referencia", "cotizaciones_inversion", "consultas_precio", "formas_asunto_fallidas"}
 # Tablas públicas del sistema (sin dueño ni datos personales): ni se exportan ni se borran con la cuenta.
@@ -82,6 +84,10 @@ def recopilar(db: Session, usuario_id: str, email: str = "") -> dict[str, list[d
     mis_cuentas = [r[0] for r in db.query(Cuenta.id).filter(Cuenta.usuario_id == usuario_id).all()]
     mis_grupos = [r[0] for r in db.query(GrupoGasto.id).filter(GrupoGasto.usuario_id == usuario_id).all()]
     mis_gastos = [r[0] for r in db.query(GastoCompartido.id).filter(GastoCompartido.usuario_id == usuario_id).all()]
+    # Hogares: solo los que sigue integrando (quien salió no tiene derecho a ver lo posterior; su propia fila sí va).
+    mis_hogares = [r[0] for r in db.query(MiembroHogar.hogar_id).filter(
+        MiembroHogar.usuario_id == usuario_id, MiembroHogar.activo.is_(True)).all()]
+    gastos_hogar = [r[0] for r in db.query(GastoHogar.id).filter(GastoHogar.hogar_id.in_(mis_hogares or [""])).all()]
 
     datos: dict[str, list[dict]] = {}
     for tabla in Base.metadata.sorted_tables:
@@ -99,6 +105,14 @@ def recopilar(db: Session, usuario_id: str, email: str = "") -> dict[str, list[d
             cond = c.grupo_id.in_(mis_grupos or [""])
         elif tabla.name == "partes_gasto":
             cond = c.gasto_id.in_(mis_gastos or [""])
+        elif tabla.name == "hogares":
+            cond = c.id.in_(mis_hogares or [""])
+        elif tabla.name in ("gastos_hogar", "pagos_hogar"):
+            cond = c.hogar_id.in_(mis_hogares or [""])
+        elif tabla.name == "partes_gasto_hogar":
+            cond = c.gasto_id.in_(gastos_hogar or [""])
+        elif tabla.name == "invitaciones_hogar":
+            cond = or_(c.invitado_por == usuario_id, c.email == (email or "").lower() if email else False)
         else:
             # Tabla hija nueva sin tratar: mejor no exportarla que exportar de más.
             logger.error("derechos_titular: tabla %s sin regla de exportación", tabla.name)
@@ -139,6 +153,29 @@ def armar_zip(datos: dict, email: str) -> bytes:
             # BOM para que Excel abra bien las tildes y la ñ.
             z.writestr(f"csv/{nombre}.csv", "﻿" + _csv(filas))
     return salida.getvalue()
+
+
+def _salir_de_hogares(db: Session, uid: str, email: str = "") -> None:
+    """Hogares: el libro es de todos, así que NO se borra lo que otros ya usan. Su membresía queda anónima
+    («Ex miembro», sin id de usuario) para que los saldos de los demás no cambien; si era la única persona
+    activa, el hogar entero se borra; si era la única administración, el miembro activo más antiguo la hereda."""
+    from app.routers.hogares import borrar_hogar  # import tardío: evita un ciclo de módulos
+
+    for m in db.query(MiembroHogar).filter(MiembroHogar.usuario_id == uid).all():
+        otros = db.query(MiembroHogar).filter(
+            MiembroHogar.hogar_id == m.hogar_id, MiembroHogar.activo.is_(True), MiembroHogar.id != m.id
+        ).order_by(MiembroHogar.unido_en).all()
+        if m.activo and not otros:
+            borrar_hogar(db, m.hogar_id)
+            continue
+        if m.activo and m.rol == "admin" and not any(o.rol == "admin" for o in otros):
+            otros[0].rol = "admin"
+        m.usuario_id, m.apodo, m.activo, m.rol, m.avisos = None, "Ex miembro", False, "miembro", False
+    db.flush()
+    inv = db.query(InvitacionHogar).filter(InvitacionHogar.invitado_por == uid)
+    inv.delete(synchronize_session=False)
+    if email:
+        db.query(InvitacionHogar).filter(InvitacionHogar.email == email.lower()).delete(synchronize_session=False)
 
 
 def borrar_todo(db: Session, usuario_id: str, email: str = "") -> dict:
@@ -193,6 +230,8 @@ def borrar_todo(db: Session, usuario_id: str, email: str = "") -> dict:
     db.execute(inv.delete().where(inv.c.invitado_por == uid))
     if email:
         db.execute(inv.delete().where(inv.c.email_invitado == email.lower()))
+
+    _salir_de_hogares(db, uid, email)
 
     mis_grupos = db.query(GrupoGasto.id).filter(GrupoGasto.usuario_id == uid)
     mis_gastos = db.query(GastoCompartido.id).filter(GastoCompartido.usuario_id == uid)
