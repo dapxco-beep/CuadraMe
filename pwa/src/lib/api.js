@@ -772,6 +772,9 @@ export const api = {
   deshacerPagoColecta: (id, pagoId) => request(`/colectas/${id}/pagos/${pagoId}`, { method: 'DELETE' }),
   compartirColecta: (id) => request(`/colectas/${id}/compartir`, { method: 'POST' }),
   dejarDeCompartirColecta: (id) => request(`/colectas/${id}/compartir`, { method: 'DELETE' }),
+  descartarAvisoColecta: (id, aporteId) => request(`/colectas/${id}/aportes/${aporteId}/aviso`, { method: 'DELETE' }),
+  avisarPagoColecta: (token, aporteId) =>
+    request(`/colectas/publico/${encodeURIComponent(token)}/aportes/${aporteId}/avisar`, { method: 'POST', auth: false }),
   colectaPublica: (token) => request(`/colectas/publico/${encodeURIComponent(token)}`, { auth: false, sinCache: true }),
 
   // Hogares (pareja, familia): libro común entre personas con cuenta

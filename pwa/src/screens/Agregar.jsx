@@ -544,10 +544,10 @@ export default function Agregar() {
           Dividir gastos con amigos
         </button>
         <button onClick={() => navigate('/colectas')} className="w-full text-center text-sm text-accent font-medium min-h-11">
-          Colectas: inscripción, paseo, regalo
+          Vacas: inscripción, paseo, regalo
         </button>
         <button onClick={() => navigate('/hogares')} className="w-full text-center text-sm text-accent font-medium min-h-11">
-          Hogar o pareja: gastos juntos
+          Parche: gastos juntos (pareja, casa, amigos)
         </button>
       </div>
     </div>

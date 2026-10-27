@@ -94,7 +94,7 @@ describe('ayudantes de hogares', () => {
   })
 })
 
-describe('lista de hogares', () => {
+describe('lista de parches', () => {
   it('muestra cada hogar con tu saldo', async () => {
     montar('/hogares')
     expect(await screen.findByText('Casa')).toBeTruthy()
@@ -110,7 +110,7 @@ describe('lista de hogares', () => {
   it('sin hogares invita a crear el primero', async () => {
     api.hogares.mockResolvedValue([])
     montar('/hogares')
-    expect(await screen.findByText('Crear mi primer hogar')).toBeTruthy()
+    expect(await screen.findByText('Crear mi primer parche')).toBeTruthy()
   })
 })
 
@@ -158,7 +158,7 @@ describe('unirse con la invitación', () => {
     const user = userEvent.setup()
     montar('/unirse/' + 'z'.repeat(30))
     expect(await screen.findByText('Casa')).toBeTruthy()
-    await user.click(screen.getByRole('button', { name: 'Unirme al hogar' }))
+    await user.click(screen.getByRole('button', { name: 'Unirme al parche' }))
     await waitFor(() => expect(api.aceptarInvitacionHogar).toHaveBeenCalledWith('z'.repeat(30), 'Beto'))
     await waitFor(() => expect(screen.getByTestId('ruta').textContent).toBe('/hogares/h1'))
   })

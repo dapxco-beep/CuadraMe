@@ -18,7 +18,7 @@ const AYUDA = {
   porcentajes: 'Escribe el porcentaje de cada uno; debe sumar 100.',
 }
 
-// Nuevo gasto del hogar: qué, cuánto, quién pagó y cómo se reparte. Opcional: copiar MI parte a una cuenta mía.
+// Nuevo gasto del parche: qué, cuánto, quién pagó y cómo se reparte. Opcional: copiar MI parte a una cuenta mía.
 export default function NuevoGastoHogar() {
   const { id } = useParams()
   const navigate = useNavigate()

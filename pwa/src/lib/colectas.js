@@ -10,7 +10,7 @@ export function enlacePublicoColecta(token, origen = typeof window !== 'undefine
 export function enlaceRecordatorioColecta({ nombre, telefono, falta, moneda = 'COP', colecta, enlace = '' }) {
   const primerNombre = String(nombre || '').trim().split(/\s+/)[0]
   const texto =
-    `Hola${primerNombre ? ` ${primerNombre}` : ''}! 😊 Te recuerdo la colecta "${colecta}": ` +
+    `Hola${primerNombre ? ` ${primerNombre}` : ''}! 😊 Te recuerdo la vaca "${colecta}": ` +
     `te faltan ${formatMoneda(falta, moneda)}. ` +
     `${enlace ? `Aquí ves cómo va: ${enlace} ` : ''}¡Gracias!`
   return `https://wa.me/${telefonoParaWhatsApp(telefono)}?text=${encodeURIComponent(texto)}`
@@ -18,7 +18,7 @@ export function enlaceRecordatorioColecta({ nombre, telefono, falta, moneda = 'C
 
 // Mensaje para invitar al grupo a ver el avance (se manda por el grupo de WhatsApp).
 export function enlaceCompartirColecta({ colecta, enlace }) {
-  return `https://wa.me/?text=${encodeURIComponent(`Así va la colecta "${colecta}": ${enlace}`)}`
+  return `https://wa.me/?text=${encodeURIComponent(`Así va la vaca "${colecta}": ${enlace}`)}`
 }
 
 export const ETIQUETA_ESTADO = { pagado: 'Pagó', parcial: 'Parcial', falta: 'Falta' }

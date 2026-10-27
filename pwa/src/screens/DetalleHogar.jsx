@@ -7,7 +7,7 @@ import { formatMoneda } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
 import { enlaceCobroHogar, enlaceCompartirInvitacion, enlaceInvitacionHogar, fraseDeuda } from '../lib/hogares'
 
-// Un hogar: quién le debe a quién, los gastos del libro común, las personas y las invitaciones.
+// Un parche: quién le debe a quién, los gastos del libro común, las personas y las invitaciones.
 export default function DetalleHogar() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -24,7 +24,7 @@ export default function DetalleHogar() {
       setH(d)
       setGastos(g)
     } catch (e) {
-      setError(e.status === 404 ? 'Este hogar no existe o ya no haces parte de él.' : e.message || 'No se pudo cargar el hogar. Revisa tu conexión.')
+      setError(e.status === 404 ? 'Este parche no existe o ya no haces parte de él.' : e.message || 'No se pudo cargar el parche. Revisa tu conexión.')
     }
   }, [id])
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function DetalleHogar() {
   }
 
   async function borrarGasto(g) {
-    const ok = await confirmar(`¿Quitar “${g.descripcion}” del hogar? Si lo copiaste a tu cuenta, ese movimiento no se borra.`, { confirmarTexto: 'Quitar' })
+    const ok = await confirmar(`¿Quitar “${g.descripcion}” del parche? Si lo copiaste a tu cuenta, ese movimiento no se borra.`, { confirmarTexto: 'Quitar' })
     if (!ok) return
     try {
       await api.borrarGastoHogar(id, g.id)
@@ -96,7 +96,7 @@ export default function DetalleHogar() {
   async function quitar(m) {
     const yo = m.soy_yo
     const ok = await confirmar(
-      yo ? `¿Salir de “${h.nombre}”? Ya no verás nada del hogar; lo que aportaste se conserva para los demás.` : `¿Sacar a ${m.apodo} del hogar?`,
+      yo ? `¿Salir de “${h.nombre}”? Ya no verás nada del parche; lo que aportaste se conserva para los demás.` : `¿Sacar a ${m.apodo} del parche?`,
       { confirmarTexto: yo ? 'Salir' : 'Sacar', peligro: true }
     )
     if (!ok) return
@@ -116,7 +116,7 @@ export default function DetalleHogar() {
       await api.borrarHogar(id)
       navigate('/hogares', { replace: true })
     } catch (e) {
-      avisar(e.message || 'No se pudo borrar el hogar. Intenta de nuevo.')
+      avisar(e.message || 'No se pudo borrar el parche. Intenta de nuevo.')
     }
   }
 
@@ -134,7 +134,7 @@ export default function DetalleHogar() {
       <button onClick={() => navigate('/hogares')} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
         <ArrowLeft size={20} />
       </button>
-      <h1 className="text-2xl font-semibold truncate">{h?.nombre || 'Hogar'}</h1>
+      <h1 className="text-2xl font-semibold truncate">{h?.nombre || 'Parche'}</h1>
     </header>
   )
 
@@ -151,7 +151,7 @@ export default function DetalleHogar() {
     return (
       <div className="flex-1 overflow-y-auto pb-8 screen-enter">
         {Cabecera}
-        <EsqueletoLista filas={3} className="mx-5 mt-6" etiqueta="Cargando hogar" />
+        <EsqueletoLista filas={3} className="mx-5 mt-6" etiqueta="Cargando parche" />
       </div>
     )
   }
@@ -279,7 +279,7 @@ export default function DetalleHogar() {
           {h.mis_avisos ? <Bell size={16} /> : <BellOff size={16} />}
           {h.mis_avisos ? 'Avisarme cuando alguien registre un gasto' : 'Avisos apagados'}
         </button>
-        {esAdmin && <button onClick={borrarHogar} className="text-sm text-danger underline mt-3">Borrar hogar para todos</button>}
+        {esAdmin && <button onClick={borrarHogar} className="text-sm text-danger underline mt-3">Borrar parche para todos</button>}
       </section>
     </div>
   )

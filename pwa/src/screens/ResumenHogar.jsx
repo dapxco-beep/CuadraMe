@@ -18,7 +18,7 @@ function etiquetaMes(mes) {
   return new Date(a, m - 1, 1).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
 }
 
-// Resumen del mes del hogar: cuánto puso (pagó) y cuánto consumió (su parte) cada quien, y en qué se fue.
+// Resumen del mes del parche: cuánto puso (pagó) y cuánto consumió (su parte) cada quien, y en qué se fue.
 export default function ResumenHogar() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -54,7 +54,7 @@ export default function ResumenHogar() {
         <>
           <section className="px-5 mt-4">
             <div className="rounded-2xl border border-line bg-paper-raised p-4">
-              <p className="text-xs text-ink-soft uppercase tracking-wide font-medium">Gasto del hogar</p>
+              <p className="text-xs text-ink-soft uppercase tracking-wide font-medium">Gasto del parche</p>
               <p className="text-2xl font-semibold tabular-nums">{formatMoneda(r.total, r.moneda)}</p>
             </div>
           </section>

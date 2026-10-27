@@ -84,8 +84,8 @@ export const GRUPOS = [
 export const EXTRA_BUSQUEDA = [
   { to: '/compartir', icon: Users, label: 'Compartir con mi pareja o familia', palabras: 'compartir cuenta pareja familia hogar invitar pareja esposo esposa ver anotar acceso' },
   { to: '/amigos', icon: Users, label: 'Dividir gastos con amigos', palabras: 'dividir gastos amigos cuenta compartida cena viaje deben me deben' },
-  { to: '/hogares', icon: Users, label: 'Hogar o pareja', palabras: 'hogar pareja familia casa compañeros apartamento gastos juntos quien debe a quien arriendo mercado servicios' },
-  { to: '/colectas', icon: Users, label: 'Colectas (vacas)', palabras: 'colecta vaca inscripcion equipo futbol torneo paseo regalo cuota aporte quien puso falta' },
+  { to: '/hogares', icon: Users, label: 'Parche (pareja, casa, amigos)', palabras: 'parche hogar pareja familia casa compañeros apartamento gastos juntos quien debe a quien arriendo mercado servicios' },
+  { to: '/colectas', icon: Users, label: 'Vacas', palabras: 'vaca colecta vaquita inscripcion equipo futbol torneo paseo regalo cuota aporte quien puso falta' },
 ]
 
 // Destino SOLO para quien administra CuadraMe. No está en GRUPOS ni en el buscador: se agrega aparte

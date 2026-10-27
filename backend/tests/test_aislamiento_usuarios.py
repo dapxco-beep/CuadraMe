@@ -333,6 +333,7 @@ ATAQUES = [
     ("DELETE", "/colectas/{colecta}/participantes/{aporte_colecta}", None),
     ("POST", "/colectas/{colecta}/aportes/{aporte_colecta}/pagos", {}),
     ("DELETE", "/colectas/{colecta}/pagos/{pago_colecta}", None),
+    ("DELETE", "/colectas/{colecta}/aportes/{aporte_colecta}/aviso", None),
     ("POST", "/colectas/{colecta}/compartir", None),
     ("DELETE", "/colectas/{colecta}/compartir", None),
     ("POST", "/colectas", {"nombre": "x", "valor": 10, "participantes": ["{contacto}"]}),
@@ -570,7 +571,7 @@ SIN_SESION = {
     "/inversiones/cron/resumen-semanal", "/push/vapid-public-key", "/push/cron/revisar-presupuestos",
     "/push/cron/aportes-automaticos", "/push/cron/premiar-presupuestos-mes", "/push/cron/resumen-semanal",
     "/push/cron/recordar-registro", "/push/cron/recordar-recurrentes", "/resumen/cron/semanal",
-    "/colectas/publico/{token}",  # enlace de solo lectura: el token largo y aleatorio es la llave (probado en test_colectas.py)
+    "/colectas/publico/{token}", "/colectas/publico/{token}/aportes/{aporte_id}/avisar",  # enlace de solo lectura: el token largo y aleatorio es la llave (probado en test_colectas.py)
     "/formas-asunto/cron/mas-frecuentes",  # lista interna anónima: exige X-Cron-Secret
 }
 

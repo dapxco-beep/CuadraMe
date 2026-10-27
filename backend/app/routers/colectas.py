@@ -42,6 +42,7 @@ class ColectaIn(BaseModel):
     moneda: str = Field(default="COP", max_length=3)
     fecha_limite: Optional[datetime] = None
     cuenta_id: Optional[str] = None  # donde se registran los pagos como ingreso
+    datos_pago: Optional[str] = Field(default=None, max_length=200)
 
 
 class ColectaPatch(BaseModel):
@@ -50,6 +51,7 @@ class ColectaPatch(BaseModel):
     fecha_limite: Optional[datetime] = None
     estado: Optional[Literal["abierta", "cerrada"]] = None
     cuenta_id: Optional[str] = None
+    datos_pago: Optional[str] = Field(default=None, max_length=200)
 
 
 class ParticipanteIn(BaseModel):
@@ -68,7 +70,7 @@ class PagoIn(BaseModel):
 def _colecta_o_404(db: Session, usuario_id: str, colecta_id: str) -> Colecta:
     c = db.query(Colecta).filter(Colecta.id == colecta_id, Colecta.usuario_id == usuario_id).first()
     if not c:
-        raise HTTPException(status_code=404, detail="Colecta no encontrada")
+        raise HTTPException(status_code=404, detail="Vaca no encontrada")
     return c
 
 
@@ -126,7 +128,7 @@ def _resumen(db: Session, c: Colecta) -> dict:
         "meta": meta, "recogido": total_pagado, "falta": max(meta - total_pagado, 0.0),
         "personas": len(aportes),
         "pagaron": sum(1 for a in aportes if _estado_aporte(a.debe, pagado.get(a.id, 0.0)) == "pagado"),
-        "compartida": bool(c.token_publico),
+        "compartida": bool(c.token_publico), "avisaron": sum(1 for a in aportes if a.avisado_en),
     }
 
 
@@ -138,7 +140,7 @@ def ver_publica(token: str, request: Request, db: Session = Depends(get_db)):
     verificar_limite(f"colecta-publica:{ip_cliente(request)}", 60, 600, "Demasiadas consultas. Intenta en {espera}.")
     c = db.query(Colecta).filter(Colecta.token_publico == token).first() if len(token) >= 20 else None
     if not c:
-        raise HTTPException(status_code=404, detail="Esta colecta no existe o ya no se comparte")
+        raise HTTPException(status_code=404, detail="Esta vaca no existe o ya no se comparte")
     aportes = db.query(AporteColecta).filter(AporteColecta.colecta_id == c.id).all()
     pagado = _pagado_por_aporte(db, [a.id for a in aportes])
     nombres = {x.id: x.nombre for x in db.query(ContactoGasto).filter(ContactoGasto.usuario_id == c.usuario_id).all()}
@@ -146,14 +148,32 @@ def ver_publica(token: str, request: Request, db: Session = Depends(get_db)):
     return {
         "nombre": c.nombre, "descripcion": r["descripcion"], "moneda": c.moneda, "estado": c.estado,
         "fecha_limite": c.fecha_limite, "meta": r["meta"], "recogido": r["recogido"], "falta": r["falta"],
+        "datos_pago": c.datos_pago or "",
         "participantes": [
             {
+                "id": a.id,
+                "avisado": bool(a.avisado_en),
                 "nombre": ("Organizador" if a.participante_id == YO else (nombres.get(a.participante_id, "?").split(" ")[0])),
                 "estado": _estado_aporte(a.debe, pagado.get(a.id, 0.0)),
             }
             for a in aportes
         ],
     }
+
+
+@router.post("/publico/{token}/aportes/{aporte_id}/avisar")
+def avisar_pago(token: str, aporte_id: str, request: Request, db: Session = Depends(get_db)):
+    """Desde el enlace: «ya pagué». NO cambia lo recogido; solo deja una marca para que el organizador lo confirme.
+    Es público (sin sesión), por eso va con límite y solo toca esa marca."""
+    verificar_limite(f"colecta-aviso:{ip_cliente(request)}", 20, 600, "Demasiados avisos. Intenta en {espera}.")
+    c = db.query(Colecta).filter(Colecta.token_publico == token).first() if len(token) >= 20 else None
+    a = db.query(AporteColecta).filter(AporteColecta.id == aporte_id, AporteColecta.colecta_id == c.id).first() if c else None
+    if not c or not a or c.estado != "abierta":
+        raise HTTPException(status_code=404, detail="Esta vaca no existe o ya no se comparte")
+    if _estado_aporte(a.debe, _pagado_por_aporte(db, [a.id]).get(a.id, 0.0)) != "pagado":
+        a.avisado_en = ahora_co()
+        db.commit()
+    return {"ok": True}
 
 
 # ---------- Colectas ----------
@@ -167,7 +187,7 @@ def listar(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_c
 @router.post("")
 def crear(data: ColectaIn, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
     if db.query(Colecta).filter(Colecta.usuario_id == usuario.id).count() >= MAX_COLECTAS:
-        raise HTTPException(status_code=400, detail="Llegaste al máximo de colectas; cierra o borra alguna")
+        raise HTTPException(status_code=400, detail="Llegaste al máximo de vacas; cierra o borra alguna")
     ids = list(dict.fromkeys(data.participantes))  # sin repetidos, conserva el orden
     _contactos_de(db, usuario.id, ids)
     if data.incluirme:
@@ -182,6 +202,7 @@ def crear(data: ColectaIn, db: Session = Depends(get_db), usuario: UsuarioActual
     c = Colecta(
         usuario_id=usuario.id, nombre=data.nombre.strip(), descripcion=data.descripcion.strip(), modo=data.modo,
         meta_total=sum(debes), moneda=moneda, fecha_limite=data.fecha_limite, cuenta_id=data.cuenta_id,
+        datos_pago=(data.datos_pago or "").strip() or None,
     )
     db.add(c)
     db.flush()
@@ -212,10 +233,10 @@ def detalle(colecta_id: str, db: Session = Depends(get_db), usuario: UsuarioActu
             "aporte_id": a.id, "participante_id": a.participante_id,
             "nombre": "Tú" if a.participante_id == YO else (ct.nombre if ct else "?"),
             "telefono": ct.telefono if ct else "", "debe": a.debe, "pagado": pg, "falta": max(a.debe - pg, 0.0),
-            "estado": _estado_aporte(a.debe, pg), "pagos": por_aporte.get(a.id, []),
+            "estado": _estado_aporte(a.debe, pg), "pagos": por_aporte.get(a.id, []), "avisado": bool(a.avisado_en),
         })
     participantes.sort(key=lambda p: ({"falta": 0, "parcial": 1, "pagado": 2}[p["estado"]], p["nombre"].lower()))
-    return {**_resumen(db, c), "token_publico": c.token_publico, "participantes": participantes}
+    return {**_resumen(db, c), "token_publico": c.token_publico, "datos_pago": c.datos_pago or "", "participantes": participantes}
 
 
 @router.patch("/{colecta_id}")
@@ -227,7 +248,11 @@ def editar(
     if cambios.get("cuenta_id"):
         _cuenta_o_400(db, usuario.id, cambios["cuenta_id"])
     for campo, valor in cambios.items():
-        setattr(c, campo, valor.strip() if isinstance(valor, str) and campo != "cuenta_id" else valor)
+        if isinstance(valor, str) and campo != "cuenta_id":
+            valor = valor.strip()
+            if campo == "datos_pago" and not valor:
+                valor = None  # vacío = quitarlos
+        setattr(c, campo, valor)
     db.commit()
     return {"ok": True}
 
@@ -308,16 +333,31 @@ def registrar_pago(
         )
         mov = crear_movimiento(
             MovimientoCreate(
-                cuenta_id=cuenta.id, descripcion=f"Colecta {c.nombre}: {nombre}", monto=monto, tipo="income",
-                categoria="Ingresos", fecha=ahora_co(), notas="Colecta", confirmar_nuevo=True,
+                cuenta_id=cuenta.id, descripcion=f"Vaca {c.nombre}: {nombre}", monto=monto, tipo="income",
+                categoria="Ingresos", fecha=ahora_co(), notas="Vaca", confirmar_nuevo=True,
             ),
             db=db, usuario=usuario,
         )
         movimiento_id = mov.id
     pago = PagoColecta(aporte_id=a.id, usuario_id=usuario.id, monto=monto, fecha=ahora_co(), movimiento_id=movimiento_id)
     db.add(pago)
+    a.avisado_en = None  # lo confirmado ya no está «por confirmar»
     db.commit()
     return {"id": pago.id, "movimiento_id": movimiento_id}
+
+
+@router.delete("/{colecta_id}/aportes/{aporte_id}/aviso")
+def descartar_aviso(
+    colecta_id: str, aporte_id: str, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
+):
+    """El organizador descarta un «ya pagué» que no es cierto (o que ya no aplica)."""
+    c = _colecta_o_404(db, usuario.id, colecta_id)
+    a = db.query(AporteColecta).filter(AporteColecta.id == aporte_id, AporteColecta.colecta_id == c.id).first()
+    if not a:
+        raise HTTPException(status_code=404, detail="Participante no encontrado")
+    a.avisado_en = None
+    db.commit()
+    return {"ok": True}
 
 
 @router.delete("/{colecta_id}/pagos/{pago_id}")
