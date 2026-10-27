@@ -19,10 +19,24 @@ export const PRINCIPALES = [
   { to: '/presupuesto', icon: PieChart, label: 'Presupuesto', corta: 'Presup.', atajo: 'G P' },
 ]
 
+// Ordenados por lo que la persona quiere hacer, no por tipo de dato. Los `id` no cambian (el menú recuerda
+// qué grupo dejó abierto); solo cambian los títulos y qué destino vive en cada uno.
 export const GRUPOS = [
   {
+    id: 'datos',
+    titulo: 'Anotar y traer',
+    icon: Database,
+    items: [
+      { to: '/sincronizacion', icon: RefreshCw, label: 'Traer movimientos', corta: 'Traer', palabras: 'sincronizar sincronizacion importar correo correos gmail extracto conciliar pdf excel csv archivo conexiones estado falla' },
+      { to: '/conectar-dispositivo', icon: Smartphone, label: 'Registro automático', palabras: 'conectar dispositivo atajo iphone android wallet celular' },
+      { to: '/categorias', icon: Tag, label: 'Categorías', palabras: 'etiquetas iconos' },
+      { to: '/entrenar-categorias', icon: GraduationCap, label: 'Enseñar categorías', palabras: 'entrenar aprender clasificar' },
+      { to: '/reglas-categoria', icon: SlidersHorizontal, label: 'Reglas automáticas', palabras: 'reglas automatico comercio categoria' },
+    ],
+  },
+  {
     id: 'dinero',
-    titulo: 'Dinero',
+    titulo: 'Mi plata',
     icon: Wallet,
     items: [
       { to: '/cuentas', icon: Wallet, label: 'Cuentas', palabras: 'saldo banco tarjeta efectivo ajustar' },
@@ -32,39 +46,39 @@ export const GRUPOS = [
     ],
   },
   {
+    id: 'juntos',
+    titulo: 'Con otras personas',
+    icon: Users,
+    items: [
+      { to: '/amigos', icon: Users, label: 'Dividir gastos con amigos', palabras: 'dividir gastos amigos cuenta compartida cena viaje deben me deben' },
+      { to: '/hogares', icon: Home, label: 'Hogar o pareja', palabras: 'hogar pareja familia casa compañeros apartamento gastos juntos quien debe a quien arriendo mercado servicios' },
+      { to: '/colectas', icon: Gift, label: 'Colectas (vacas)', palabras: 'colecta vaca inscripcion equipo futbol torneo paseo regalo cuota aporte quien puso falta' },
+      { to: '/compartir', icon: Users, label: 'Compartir con mi pareja o familia', palabras: 'compartir cuenta pareja familia hogar invitar pareja esposo esposa ver anotar acceso' },
+    ],
+  },
+  {
     id: 'ahorro',
-    titulo: 'Ahorro e inversión',
+    titulo: 'Metas y ahorro',
     icon: TrendingUp,
     items: [
       { to: '/metas', icon: PiggyBank, label: 'Metas', palabras: 'ahorro objetivo meta' },
       { to: '/patrimonio', icon: Landmark, label: 'Patrimonio', corta: 'Patrim.', palabras: 'inversion activos neto cdt acciones' },
       { to: '/inversiones', icon: TrendingUp, label: 'Inversiones', corta: 'Invers.', palabras: 'acciones etf fondos broker portafolio ticker trii bolsa cripto rentabilidad' },
-      { to: '/cierre-mes', icon: CalendarCheck, label: 'Cierre de mes', palabras: 'balance mes informe' },
-      { to: '/resumen', icon: Gift, label: 'Resumen del mes', palabras: 'wrapped diapositivas compartir' },
     ],
   },
   {
     id: 'entender',
-    titulo: 'Entender',
+    titulo: 'Cómo voy',
     icon: Lightbulb,
     items: [
       { to: '/informe', icon: PieChart, label: 'En qué gasto mi plata', palabras: 'informe en que gasto mi plata categoria comercios reporte' },
+      { to: '/cierre-mes', icon: CalendarCheck, label: 'Cierre de mes', palabras: 'balance mes informe' },
+      { to: '/resumen', icon: Gift, label: 'Resumen del mes', palabras: 'wrapped diapositivas compartir' },
       { to: '/mi-cuenta-cuadra', icon: Scale, label: 'Mi cuenta cuadra', palabras: 'cuadre cuadra extracto banco tarjeta semaforo diferencia' },
       { to: '/traslados', icon: ArrowLeftRight, label: 'Plata que pasé entre mis cuentas', palabras: 'traslado entre mis cuentas nequi nu bancolombia no cuenta' },
       { to: '/insights', icon: Sparkles, label: 'Cosas raras en mis gastos', palabras: 'hallazgos insights consejos descubrimientos' },
-      { to: '/asistente', icon: Bot, label: 'Asistente', palabras: 'cuadrame ai ia pregunta chat' },
       { to: '/ahorcado', icon: Sprout, label: 'Qué tan sana va mi plata', palabras: 'arbol financiero salud puntaje ahorcado vidas' },
-    ],
-  },
-  {
-    id: 'datos',
-    titulo: 'Datos',
-    icon: Database,
-    items: [
-      { to: '/sincronizacion', icon: RefreshCw, label: 'Traer movimientos', corta: 'Traer', palabras: 'sincronizar sincronizacion importar correo correos gmail extracto conciliar pdf excel csv archivo conexiones estado falla' },
-      { to: '/categorias', icon: Tag, label: 'Categorías', palabras: 'etiquetas iconos' },
-      { to: '/entrenar-categorias', icon: GraduationCap, label: 'Enseñar categorías', palabras: 'entrenar aprender clasificar' },
-      { to: '/reglas-categoria', icon: SlidersHorizontal, label: 'Reglas automáticas', palabras: 'reglas automatico comercio categoria' },
+      { to: '/asistente', icon: Bot, label: 'Asistente', palabras: 'cuadrame ai ia pregunta chat' },
     ],
   },
   {
@@ -76,17 +90,12 @@ export const GRUPOS = [
       { to: '/aprende', icon: BookOpen, label: 'Aprende', palabras: 'lecciones glosario educacion finanzas tarjeta credito debito interes cupo presupuesto fraude que es' },
       { to: '/ayuda', icon: LifeBuoy, label: 'Ayuda', palabras: 'preguntas frecuentes dudas soporte como funciona extracto clave pdf gmail primeros pasos' },
       { to: '/legal/privacidad', icon: ShieldCheck, label: 'Privacidad', palabras: 'datos legal terminos politica' },
-      { to: '/conectar-dispositivo', icon: Smartphone, label: 'Registro automático', palabras: 'conectar dispositivo atajo iphone android wallet celular' },
     ],
   },
 ]
 
-export const EXTRA_BUSQUEDA = [
-  { to: '/compartir', icon: Users, label: 'Compartir con mi pareja o familia', palabras: 'compartir cuenta pareja familia hogar invitar pareja esposo esposa ver anotar acceso' },
-  { to: '/amigos', icon: Users, label: 'Dividir gastos con amigos', palabras: 'dividir gastos amigos cuenta compartida cena viaje deben me deben' },
-  { to: '/hogares', icon: Users, label: 'Hogar o pareja', palabras: 'hogar pareja familia casa compañeros apartamento gastos juntos quien debe a quien arriendo mercado servicios' },
-  { to: '/colectas', icon: Users, label: 'Colectas (vacas)', palabras: 'colecta vaca inscripcion equipo futbol torneo paseo regalo cuota aporte quien puso falta' },
-]
+// Hoy todos los destinos viven en un grupo; queda por si algún día hay uno que solo deba encontrar el buscador.
+export const EXTRA_BUSQUEDA = []
 
 // Destino SOLO para quien administra CuadraMe. No está en GRUPOS ni en el buscador: se agrega aparte
 // cuando el correo de la sesión coincide con VITE_ADMIN_EMAIL. Es solo comodidad visual; la seguridad
@@ -128,8 +137,10 @@ export const EXPLICACION = {
   '/reglas-categoria': 'Si un lugar siempre es del mismo tipo de gasto, que se ponga solo.',
   '/aprende': 'Lecciones cortas, de un minuto, sobre plata.',
   '/sincronizacion': 'Trae tus movimientos del banco: desde el correo, un extracto en PDF o un Excel.',
-  '/amigos': 'Divide una cuenta con amigos y anota quién te debe y a quién le debes.',
-  '/compartir': 'Lleva la plata del hogar con tu pareja o familia.',
+  '/amigos': 'Divide una cuenta con amigos (cena, viaje) y mira quién te debe.',
+  '/compartir': 'Deja que tu pareja o familia vea y anote en tu cuenta.',
+  '/hogares': 'Lleva los gastos de la casa con tu pareja o compañeros: quién puso qué y quién le debe a quién.',
+  '/colectas': 'Una vaca para un paseo, un regalo o un equipo: quién puso y quién falta.',
   '/legal/privacidad': 'Qué datos usamos y cómo los cuidamos.',
   '/conectar-dispositivo': 'Anota solos los pagos que haces con tu celular (opcional).',
 }
@@ -142,7 +153,7 @@ export function gruposSegunModo({ completo = false, enUso = [] } = {}) {
   if (completo) return GRUPOS
   const porRuta = Object.fromEntries(ITEMS_MAS.map((i) => [i.to, i]))
   const conExplica = (i) => ({ ...i, explica: EXPLICACION[i.to] })
-  const esenciales = RUTAS_ESENCIALES.map((to) => porRuta[to]).filter(Boolean)
+  const esenciales = RUTAS_ESENCIALES.map((to) => porRuta[to]).filter(Boolean).map(conExplica)
   const usadas = ITEMS_MAS.filter((i) => enUso.includes(i.to) && !RUTAS_ESENCIALES.includes(i.to)).map(conExplica)
   const resto = ITEMS_MAS.filter((i) => !RUTAS_ESENCIALES.includes(i.to) && !enUso.includes(i.to)).map(conExplica)
   return [

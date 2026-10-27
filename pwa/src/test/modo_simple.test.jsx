@@ -132,7 +132,7 @@ describe('Menú «Más» (teléfono) en modo simple', () => {
     await abrirMas()
     const hoja = await screen.findByRole('dialog', { name: 'Más opciones' })
     for (const nombre of ['Traer movimientos', 'Perfil', 'Ayuda']) {
-      expect(within(hoja).getByRole('link', { name: nombre })).toBeInTheDocument()
+      expect(within(hoja).getByRole('link', { name: new RegExp('^' + nombre) })).toBeInTheDocument()
     }
     expect(within(hoja).queryByRole('link', { name: /Deudas/ })).toBeNull()
     const boton = within(hoja).getByRole('button', { name: /Más funciones/ })
@@ -192,7 +192,7 @@ describe('Barras de pantalla ancha en modo simple', () => {
       </MemoryRouter>
     )
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
-    expect(within(nav).getByRole('link', { name: 'Traer movimientos' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: /^Traer movimientos/ })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: 'Perfil' })).toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: /Deudas/ })).toBeNull()
     const boton = within(nav).getByRole('button', { name: 'Más funciones' })
@@ -288,7 +288,7 @@ describe('Inicio simplificado', () => {
     expect(within(camino).getAllByRole('listitem')).toHaveLength(3)
     expect(within(camino).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
     expect(within(camino).getByRole('link', { name: 'Crear mi cuenta' })).toHaveAttribute('href', '/cuentas')
-    expect(within(camino).queryByRole('link', { name: 'Traer movimientos' })).toBeNull()
+    expect(within(camino).queryByRole('link', { name: /^Traer movimientos/ })).toBeNull()
     // el recorrido largo no se abre solo y, mientras el camino de 3 pasos está a la vista, tampoco compite con él
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.queryByRole('button', { name: /Conoce CuadraMe en 1 minuto/ })).toBeNull()
@@ -301,7 +301,7 @@ describe('Inicio simplificado', () => {
     montarInicio()
     const camino = await screen.findByTestId('camino-primer-uso')
     expect(within(camino).getByTestId('progreso-camino')).toHaveTextContent('1 de 3 pasos')
-    expect(within(camino).getByRole('link', { name: 'Traer movimientos' })).toHaveAttribute('href', '/sincronizacion')
+    expect(within(camino).getByRole('link', { name: /^Traer movimientos/ })).toHaveAttribute('href', '/sincronizacion')
     expect(camino).not.toHaveTextContent(/atajo/i)
   })
 

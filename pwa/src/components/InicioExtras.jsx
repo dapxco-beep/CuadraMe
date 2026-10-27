@@ -11,7 +11,7 @@ import { cuentasEnNegativo } from '../lib/inicioSimple'
 
 // Accesos del Inicio: por defecto dos filas (anotar, traer, dividir cuenta, metas, deudas, pagos fijos);
 // «Personalizar» deja elegir cuáles y en qué orden (el orden es el de selección).
-export function AccionesRapidas({ max = null }) {
+export function AccionesRapidas({ max = null, margen = 'mx-6 mt-3' }) {
   const { ids, accesos, guardar, restablecer } = useAccesosInicio()
   const [editando, setEditando] = useState(false)
   const [elegidos, setElegidos] = useState(ids)
@@ -26,7 +26,7 @@ export function AccionesRapidas({ max = null }) {
 
   return (
     <>
-      <nav className="mx-6 mt-3 grid grid-cols-4 gap-2 lg:grid-cols-2 xl:grid-cols-4" aria-label="Acciones rápidas" data-testid="acciones-rapidas">
+      <nav className={`${margen} grid grid-cols-4 gap-2 lg:grid-cols-2 xl:grid-cols-4`} aria-label="Acciones rápidas" data-testid="acciones-rapidas">
         {(max ? accesos.slice(0, max) : accesos).map((a) => (
           <Link
             key={a.id}
@@ -40,7 +40,7 @@ export function AccionesRapidas({ max = null }) {
           </Link>
         ))}
       </nav>
-      {!max && <div className="mx-6 flex justify-end">
+      {!max && <div className={`${margen.includes('mx-') ? 'mx-6' : ''} flex justify-end`}>
         <button type="button" onClick={abrir} data-testid="personalizar-accesos" className="min-h-11 inline-flex items-center gap-1.5 text-xs font-semibold text-accent">
           <Icono icono={SlidersHorizontal} tam="sm" /> Personalizar
         </button>

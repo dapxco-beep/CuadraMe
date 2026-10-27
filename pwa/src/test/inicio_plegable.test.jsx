@@ -77,7 +77,7 @@ describe('Inicio — bloque protagonista y dos acciones', () => {
       expect(screen.getByRole('button', { name: new RegExp(nombre) })).toHaveAttribute('aria-expanded', 'false')
     }
     // Lo plegado no se monta: nada de Patrimonio, Metas ni el mazo de cuentas a la vista
-    expect(screen.queryByRole('link', { name: 'Patrimonio' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Deudas' })).toBeNull()
     expect(screen.queryByText('Disponible real este mes')).toBeNull()
   })
 
@@ -103,7 +103,7 @@ describe('Inicio — secciones plegables que recuerdan su estado', () => {
     const { unmount } = montar()
     const boton = await screen.findByRole('button', { name: /Accesos/ })
     expect(boton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('link', { name: 'Patrimonio' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Deudas' })).toBeInTheDocument()
     await userEvent.click(boton)
     expect(boton).toHaveAttribute('aria-expanded', 'false')
     expect(JSON.parse(localStorage.getItem('cuadrame:inicio-secciones')).accesos).toBe(false)

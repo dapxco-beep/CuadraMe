@@ -34,6 +34,7 @@ import { Boton } from '../components/ui'
 import { Bloque, EsqueletoFila } from '../components/Esqueletos'
 import { textoActualizado } from '../lib/saldos'
 import InicioSimple from '../components/InicioSimple'
+import { AccionesRapidas } from '../components/InicioExtras'
 import { useModoMenu } from '../lib/modoSimple'
 import { armarCamino, leerEstado } from '../lib/primerUso'
 import { estadoCuadre } from '../lib/cuadre'
@@ -52,15 +53,6 @@ import AccesoCuadre from '../components/AccesoCuadre'
 const DIAS_CUENTA_NUEVA = 14
 
 // Patrimonio y el resto de pantallas viven en «Más»; aquí quedan a un toque los más usados.
-const ACCESOS_RAPIDOS = [
-  { to: '/patrimonio', icon: Landmark, label: 'Patrimonio' },
-  { to: '/metas', icon: PiggyBank, label: 'Metas' },
-  { to: '/deudas', icon: CreditCard, label: 'Deudas' },
-  { to: '/recurrentes', icon: Repeat, label: 'Pagos fijos' },
-  { to: '/insights', icon: Sparkles, label: 'Cosas raras' },
-  { to: '/amigos', icon: Users, label: 'Dividir cuenta' },
-]
-
 // Fila de enlace dentro de una sección: ícono + título + apoyo + flecha
 function FilaEnlace({ to, state, icono, titulo, apoyo, testId }) {
   return (
@@ -579,9 +571,9 @@ export default function Inicio() {
               )}
               {reporte && reporte.top_categorias.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-line">
-                  <p className="t-h2 mb-1">Gastos por categoría</p>
+                  <p className="t-h2 mb-1">Donde más se va tu plata</p>
                   <div className="divide-y divide-line">
-                    {reporte.top_categorias.map((c) => (
+                    {reporte.top_categorias.slice(0, 3).map((c) => (
                       <div key={c.categoria} className="flex items-center gap-3 py-2.5">
                         <span className="w-9 h-9 rounded-xl shrink-0 bg-accent-soft flex items-center justify-center text-lg" aria-hidden="true">
                           {iconoDe(c.categoria)}
@@ -626,18 +618,8 @@ export default function Inicio() {
             </SeccionPlegable>
 
             <SeccionPlegable id="accesos" titulo="Accesos" icono={LayoutGrid}>
-              <div className="grid grid-cols-3 gap-2 pt-2">
-                {ACCESOS_RAPIDOS.map(({ to, icon, label }) => (
-                  <Link
-                    key={to}
-                    to={to}
-                    className="flex flex-col items-center justify-center gap-1.5 card-marca-sm bg-paper border border-line py-3 min-h-[60px]"
-                  >
-                    <Icono icono={icon} tam="md" className="text-accent" />
-                    <span className="text-[11px] font-medium text-ink-soft">{label}</span>
-                  </Link>
-                ))}
-              </div>
+              {/* Los mismos accesos que el Inicio simple, personalizables: un solo lugar en vez de dos listas distintas */}
+              <AccionesRapidas margen="mt-2" />
               <div className="divide-y divide-line mt-2">
                 <FilaEnlace to="/informe" icono={PieChart} titulo="En qué gasto mi plata" apoyo="Ingresos contra gastos, por categoría y comercio" />
                 <FilaEnlace to="/informe#evolucion" icono={LineChart} titulo="Mi evolución" apoyo="Cómo cambian tus ingresos, gastos y ahorro mes a mes" testId="ver-evolucion-completo" />

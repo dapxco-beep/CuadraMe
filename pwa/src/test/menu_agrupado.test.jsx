@@ -51,12 +51,14 @@ afterEach(() => {
 
 describe('navegacion.js (fuente única)', () => {
   it('agrupa los destinos por tema con los nombres pedidos', () => {
-    expect(GRUPOS.map((g) => g.titulo)).toEqual(['Dinero', 'Ahorro e inversión', 'Entender', 'Datos', 'Ajustes'])
+    expect(GRUPOS.map((g) => g.titulo)).toEqual(['Anotar y traer', 'Mi plata', 'Con otras personas', 'Metas y ahorro', 'Cómo voy', 'Ajustes'])
     const etiquetas = (id) => GRUPOS.find((g) => g.id === id).items.map((i) => i.label)
     expect(etiquetas('dinero')).toEqual(['Cuentas', 'Deudas', 'Pagos fijos', 'Impuestos'])
     expect(etiquetas('datos')).toContain('Traer movimientos')
     expect(ITEMS_MAS.find((i) => i.label === 'Traer movimientos').to).toBe('/sincronizacion')
-    expect(etiquetas('ajustes')).toEqual(['Perfil', 'Aprende', 'Ayuda', 'Privacidad', 'Registro automático'])
+    expect(etiquetas('ajustes')).toEqual(['Perfil', 'Aprende', 'Ayuda', 'Privacidad'])
+    // Dividir, hogar y colectas ya no se esconden: viven en un grupo a la vista
+    expect(GRUPOS.find((g) => g.id === 'juntos').items.map((i) => i.to)).toEqual(['/amigos', '/hogares', '/colectas', '/compartir'])
   })
 
   it('la búsqueda tolera acentos y mayúsculas, y encuentra por palabras clave', () => {
@@ -92,7 +94,7 @@ describe('Menú «Más» del teléfono', () => {
     expect(within(hoja).getByRole('link', { name: 'Categorías' })).toBeInTheDocument()
     expect(within(hoja).getByRole('link', { name: 'Enseñar categorías' })).toBeInTheDocument()
     expect(within(hoja).queryByRole('link', { name: 'Deudas' })).toBeNull()
-    expect(within(hoja).queryByRole('heading', { name: 'Dinero' })).toBeNull()
+    expect(within(hoja).queryByRole('heading', { name: 'Mi plata' })).toBeNull()
 
     await userEvent.clear(buscador)
     await userEvent.type(buscador, 'xyzxyz')
@@ -138,7 +140,7 @@ describe('Barra lateral de escritorio', () => {
   it('agrupa los destinos en secciones plegables y recuerda el estado', async () => {
     montarShell(1440)
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
-    const btnDatos = within(nav).getByRole('button', { name: 'Datos' })
+    const btnDatos = within(nav).getByRole('button', { name: 'Anotar y traer' })
     expect(btnDatos).toHaveAttribute('aria-expanded', 'true')
     expect(within(nav).getByRole('link', { name: 'Traer movimientos' })).toBeInTheDocument()
 
@@ -161,7 +163,7 @@ describe('Barra lateral de escritorio', () => {
     localStorage.setItem('cuadrame:nav-grupos-cerrados', JSON.stringify(['datos']))
     montarShell(1440, '/categorias')
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
-    expect(within(nav).getByRole('button', { name: 'Datos' })).toHaveAttribute('aria-expanded', 'true')
+    expect(within(nav).getByRole('button', { name: 'Anotar y traer' })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('el buscador filtra y «/» lo enfoca', async () => {
