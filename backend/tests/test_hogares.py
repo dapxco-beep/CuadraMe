@@ -309,3 +309,60 @@ def test_la_descarga_de_datos_incluye_el_hogar_activo_y_no_el_ajeno(gente):
         assert ajeno not in {h["id"] for h in datos_ana["hogares"]}
     finally:
         db.close()
+
+
+def test_pasar_mi_parte_a_mis_gastos_una_sola_vez_y_solo_la_mia(gente):
+    hid, ana, beto = _hogar_de_a_y_b(gente)
+    como(gente["ana"])
+    gid = client.post(f"/hogares/{hid}/gastos", json={
+        "descripcion": "Mercado", "total": 100_000, "participantes": [{"id": ana}, {"id": beto}]}).json()["id"]
+    como(gente["beto"])
+    cuenta = client.post("/cuentas", json={"nombre": "Mi cuenta", "saldo": 200_000, "moneda": "COP"}).json()
+    antes = next(g for g in client.get(f"/hogares/{hid}/gastos").json() if g["id"] == gid)
+    assert antes["mi_parte"] == 50_000 and antes["en_mis_gastos"] is False
+    r = client.post(f"/hogares/{hid}/gastos/{gid}/a-mis-gastos", json={"cuenta_id": cuenta["id"]})
+    assert r.status_code == 200 and r.json()["monto"] == 50_000
+    assert next(c["saldo"] for c in client.get("/cuentas").json() if c["id"] == cuenta["id"]) == 150_000
+    assert next(g for g in client.get(f"/hogares/{hid}/gastos").json() if g["id"] == gid)["en_mis_gastos"] is True
+    # Segunda vez: no duplica
+    assert client.post(f"/hogares/{hid}/gastos/{gid}/a-mis-gastos", json={"cuenta_id": cuenta["id"]}).status_code == 409
+    assert next(c["saldo"] for c in client.get("/cuentas").json() if c["id"] == cuenta["id"]) == 150_000
+    # Ana no ve que Beto lo pasó, y su propia parte sigue pendiente
+    como(gente["ana"])
+    assert next(g for g in client.get(f"/hogares/{hid}/gastos").json() if g["id"] == gid)["en_mis_gastos"] is False
+
+
+def test_gasto_creado_con_copia_queda_vinculado_y_no_se_puede_pasar_otra_vez(gente):
+    hid, ana, beto = _hogar_de_a_y_b(gente)
+    como(gente["beto"])
+    cuenta = client.post("/cuentas", json={"nombre": "Mi cuenta", "saldo": 200_000, "moneda": "COP"}).json()
+    gid = client.post(f"/hogares/{hid}/gastos", json={
+        "descripcion": "Internet", "total": 100_000, "participantes": [{"id": ana}, {"id": beto}],
+        "registrar_en_mi_cuenta": True, "cuenta_id": cuenta["id"]}).json()["id"]
+    assert next(g for g in client.get(f"/hogares/{hid}/gastos").json() if g["id"] == gid)["en_mis_gastos"] is True
+    assert client.post(f"/hogares/{hid}/gastos/{gid}/a-mis-gastos", json={"cuenta_id": cuenta["id"]}).status_code == 409
+
+
+def test_si_borro_mi_movimiento_el_gasto_se_puede_pasar_de_nuevo(gente):
+    hid, ana, beto = _hogar_de_a_y_b(gente)
+    como(gente["beto"])
+    cuenta = client.post("/cuentas", json={"nombre": "Mi cuenta", "saldo": 200_000, "moneda": "COP"}).json()
+    gid = client.post(f"/hogares/{hid}/gastos", json={
+        "descripcion": "Gas", "total": 40_000, "participantes": [{"id": ana}, {"id": beto}],
+        "registrar_en_mi_cuenta": True, "cuenta_id": cuenta["id"]}).json()["id"]
+    mov = next(m for m in client.get("/movimientos").json() if m["descripcion"].startswith("Gas"))
+    assert client.delete(f"/movimientos/{mov['id']}").status_code in (200, 204)
+    assert next(g for g in client.get(f"/hogares/{hid}/gastos").json() if g["id"] == gid)["en_mis_gastos"] is False
+    assert client.post(f"/hogares/{hid}/gastos/{gid}/a-mis-gastos", json={"cuenta_id": cuenta["id"]}).status_code == 200
+
+
+def test_pasar_a_mis_gastos_no_funciona_para_un_extrano_ni_con_cuenta_ajena(gente):
+    hid, ana, beto = _hogar_de_a_y_b(gente)
+    como(gente["ana"])
+    gid = client.post(f"/hogares/{hid}/gastos", json={
+        "descripcion": "Luz", "total": 60_000, "participantes": [{"id": ana}, {"id": beto}]}).json()["id"]
+    cuenta_ana = client.post("/cuentas", json={"nombre": "De Ana", "saldo": 10_000, "moneda": "COP"}).json()
+    como(gente["extra"])
+    assert client.post(f"/hogares/{hid}/gastos/{gid}/a-mis-gastos", json={"cuenta_id": "x"}).status_code == 404
+    como(gente["beto"])
+    assert client.post(f"/hogares/{hid}/gastos/{gid}/a-mis-gastos", json={"cuenta_id": cuenta_ana["id"]}).status_code == 404

@@ -171,6 +171,22 @@ describe('detalle del hogar', () => {
     delete navigator.share
   })
 
+  it('cada gasto dice si tu parte ya está en tus gastos o deja pasarla (una sola vez)', async () => {
+    api.gastosHogar.mockResolvedValue([
+      { id: 'g1', descripcion: 'Mercado', categoria: 'Comida', total: 100000, moneda: 'COP', fecha: '2026-10-20T12:00:00', pagador: 'Ana', creado_por_id: 'ma', partes: [], mi_parte: 50000, en_mis_gastos: false },
+      { id: 'g2', descripcion: 'Internet', categoria: null, total: 80000, moneda: 'COP', fecha: '2026-10-21T12:00:00', pagador: 'Ana', creado_por_id: 'ma', partes: [], mi_parte: 40000, en_mis_gastos: true },
+    ])
+    api.pasarGastoHogarAMisGastos = vi.fn().mockResolvedValue({ ok: true })
+    const user = userEvent.setup()
+    montar('/hogares/h1')
+    expect(await screen.findByTestId('en-mis-gastos')).toHaveTextContent('ya está en tus gastos')
+    const botones = screen.getAllByTestId('pasar-a-mis-gastos')
+    expect(botones).toHaveLength(1)
+    await user.click(botones[0])
+    // con una sola cuenta de la misma moneda se pasa directo; con varias, pide elegir
+    await waitFor(() => expect(api.pasarGastoHogarAMisGastos.mock.calls.length + (screen.queryByTestId('hoja-cuentas-pasar') ? 1 : 0)).toBe(1))
+  })
+
   it('solo administración ve las invitaciones; un miembro común no', async () => {
     api.hogar.mockResolvedValue({ ...DETALLE, rol: 'miembro', invitaciones: [] })
     montar('/hogares/h1')

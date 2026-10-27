@@ -18,6 +18,7 @@ from app.compartidos import cuenta_accesible
 from app.database import get_db
 from app.division import DivisionInvalida, calcular_saldos, dividir, simplificar_deudas
 from app.limites import verificar_limite
+from app.models import Movimiento
 from app.models_hogares import GastoHogar, Hogar, InvitacionHogar, MiembroHogar, PagoHogar, ParteGastoHogar
 from app.push import enviar_push
 from app.routers.gastos_compartidos import decimales_de
@@ -387,14 +388,60 @@ def _serializar_gasto(g: GastoHogar, partes: dict[str, float], nombres: dict[str
 
 @router.get("/{hogar_id}/gastos")
 def listar_gastos(hogar_id: str, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
-    h, _ = _miembro_o_404(db, usuario, hogar_id)
+    h, yo = _miembro_o_404(db, usuario, hogar_id)
     nombres = _nombres(_miembros(db, h.id))
     gastos = db.query(GastoHogar).filter(GastoHogar.hogar_id == h.id).order_by(GastoHogar.fecha.desc()).limit(300).all()
     partes: dict[str, dict[str, float]] = {}
+    mios: dict[str, str] = {}  # gasto_id -> movimiento personal que nació de MI parte (solo lo mío, nunca el de otros)
     if gastos:
         for p in db.query(ParteGastoHogar).filter(ParteGastoHogar.gasto_id.in_([g.id for g in gastos])).all():
             partes.setdefault(p.gasto_id, {})[p.miembro_id] = p.monto
-    return [_serializar_gasto(g, partes.get(g.id, {}), nombres) for g in gastos]
+            if p.miembro_id == yo.id and p.movimiento_id:
+                mios[p.gasto_id] = p.movimiento_id
+    # Si borré ese movimiento, el gasto vuelve a poder pasarse a mis gastos.
+    vivos = set()
+    if mios:
+        vivos = {i for (i,) in db.query(Movimiento.id).filter(Movimiento.id.in_(list(mios.values()))).all()}
+    salida = []
+    for g in gastos:
+        d = _serializar_gasto(g, partes.get(g.id, {}), nombres)
+        d["mi_parte"] = partes.get(g.id, {}).get(yo.id)
+        d["en_mis_gastos"] = mios.get(g.id) in vivos
+        salida.append(d)
+    return salida
+
+
+class PasarAMisGastosIn(BaseModel):
+    cuenta_id: str
+
+
+@router.post("/{hogar_id}/gastos/{gasto_id}/a-mis-gastos")
+def pasar_a_mis_gastos(hogar_id: str, gasto_id: str, data: PasarAMisGastosIn, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """Copia MI parte de un gasto del hogar a una cuenta mía. Una sola vez por gasto: si ya está, avisa y no duplica."""
+    h, yo = _miembro_o_404(db, usuario, hogar_id)
+    g = db.query(GastoHogar).filter(GastoHogar.id == gasto_id, GastoHogar.hogar_id == h.id).first()
+    if not g:
+        raise HTTPException(status_code=404, detail="Gasto no encontrado")
+    parte = db.query(ParteGastoHogar).filter(ParteGastoHogar.gasto_id == g.id, ParteGastoHogar.miembro_id == yo.id).first()
+    if not parte or parte.monto <= 0:
+        raise HTTPException(status_code=400, detail="Este gasto no tiene una parte tuya")
+    if parte.movimiento_id and db.query(Movimiento.id).filter(Movimiento.id == parte.movimiento_id).first():
+        raise HTTPException(status_code=409, detail="Este gasto ya está en tus gastos")
+    cuenta = cuenta_accesible(db, usuario.id, data.cuenta_id)
+    if not cuenta:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    if (cuenta.moneda or "COP").upper() != (h.moneda or "COP").upper():
+        raise HTTPException(status_code=400, detail="La cuenta debe estar en la misma moneda del hogar")
+    mov = crear_movimiento(
+        MovimientoCreate(
+            cuenta_id=cuenta.id, descripcion=f"{g.descripcion} ({h.nombre})", monto=parte.monto, tipo="expense",
+            categoria=g.categoria, fecha=g.fecha, notas="Gasto del hogar", confirmar_nuevo=True,
+        ),
+        db=db, usuario=usuario,
+    )
+    parte.movimiento_id = mov.id
+    db.commit()
+    return {"ok": True, "movimiento_id": mov.id, "monto": parte.monto}
 
 
 @router.post("/{hogar_id}/gastos")
@@ -429,17 +476,18 @@ def crear_gasto(hogar_id: str, data: GastoIn, db: Session = Depends(get_db), usu
     )
     db.add(g)
     db.flush()
-    for mid, monto in partes.items():
-        db.add(ParteGastoHogar(gasto_id=g.id, miembro_id=mid, monto=monto))
+    filas_partes = {mid: ParteGastoHogar(gasto_id=g.id, miembro_id=mid, monto=monto) for mid, monto in partes.items()}
+    db.add_all(filas_partes.values())
     mi_parte = partes.get(yo.id, 0.0)
     if cuenta is not None and mi_parte > 0:  # solo MI parte, en MI cuenta (nada de otros miembros)
-        crear_movimiento(
+        mov = crear_movimiento(
             MovimientoCreate(
                 cuenta_id=cuenta.id, descripcion=f"{data.descripcion.strip()} ({h.nombre})", monto=mi_parte, tipo="expense",
                 categoria=data.categoria, fecha=fecha, notas="Gasto del hogar", confirmar_nuevo=True,
             ),
             db=db, usuario=usuario,
         )
+        filas_partes[yo.id].movimiento_id = mov.id  # queda el vínculo: este gasto ya está en mis gastos
     db.commit()
 
     for m in activos.values():  # avisos a los demás (los que no los apagaron); nunca debe romper el registro

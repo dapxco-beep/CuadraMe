@@ -794,6 +794,7 @@ export const api = {
   gastosHogar: (id) => request(`/hogares/${id}/gastos`),
   crearGastoHogar: (id, data) => request(`/hogares/${id}/gastos`, { method: 'POST', body: data }),
   borrarGastoHogar: (id, gastoId) => request(`/hogares/${id}/gastos/${gastoId}`, { method: 'DELETE' }),
+  pasarGastoHogarAMisGastos: (id, gastoId, cuentaId) => request(`/hogares/${id}/gastos/${gastoId}/a-mis-gastos`, { method: 'POST', body: { cuenta_id: cuentaId } }),
   pagosHogar: (id) => request(`/hogares/${id}/pagos`),
   pagarHogar: (id, data) => request(`/hogares/${id}/pagos`, { method: 'POST', body: data }),
   deshacerPagoHogar: (id, pagoId) => request(`/hogares/${id}/pagos/${pagoId}`, { method: 'DELETE' }),

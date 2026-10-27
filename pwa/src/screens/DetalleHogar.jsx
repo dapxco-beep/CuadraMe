@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Bell, BellOff, Copy, MessageCircle, Plus, Share2 } from 'lucide-react'
 import { EsqueletoLista } from '../components/Esqueletos'
+import Hoja from '../components/Hoja'
 import { api } from '../lib/api'
+import { useCuentas } from '../lib/CuentasContext'
 import { formatMoneda } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
 import { enlaceCobroHogar, enlaceCompartirInvitacion, enlaceInvitacionHogar, fraseDeuda, textoInvitacion } from '../lib/hogares'
@@ -13,6 +15,8 @@ export default function DetalleHogar() {
   const navigate = useNavigate()
   const { confirmar, avisar } = useDialogos()
   const recienCreado = Boolean(useLocation().state?.recienCreado)
+  const { cuentas, recargar } = useCuentas()
+  const [pasando, setPasando] = useState(null) // gasto cuya parte se va a pasar a mis gastos
   const [h, setH] = useState(null)
   const [gastos, setGastos] = useState([])
   const [error, setError] = useState('')
@@ -93,6 +97,28 @@ export default function DetalleHogar() {
     } catch (e) {
       avisar(e.message || 'No se pudo crear la invitación. Intenta de nuevo.')
     }
+  }
+
+  // Mi parte de un gasto del parche → un movimiento mío. El servidor lo hace una sola vez por gasto (si ya está, avisa).
+  async function pasarAMisGastos(g, cuentaId) {
+    try {
+      await api.pasarGastoHogarAMisGastos(id, g.id, cuentaId)
+      setPasando(null)
+      avisar('Listo: tu parte ya está en tus gastos', 'ok')
+      cargar()
+      recargar?.()
+    } catch (e) {
+      setPasando(null)
+      avisar(e.message || 'No se pudo pasar a tus gastos. Intenta de nuevo.')
+      cargar()
+    }
+  }
+
+  function pedirPasar(g) {
+    const ok = cuentas.filter((c) => (c.moneda || 'COP') === h.moneda)
+    if (ok.length === 0) return avisar('Primero crea una cuenta en la misma moneda del parche.')
+    if (ok.length === 1) return pasarAMisGastos(g, ok[0].id)
+    setPasando(g)
   }
 
   async function copiar(enlace) {
@@ -188,6 +214,23 @@ export default function DetalleHogar() {
   return (
     <div className="flex-1 overflow-y-auto pb-10 screen-enter">
       {Cabecera}
+      {pasando && (
+        <Hoja onCerrar={() => setPasando(null)} titulo="¿En qué cuenta?">
+          {() => (
+            <div data-testid="hoja-cuentas-pasar">
+              <h2 className="text-lg font-bold">¿En qué cuenta registras tu parte?</h2>
+              <p className="t-apoyo mt-1">Se anota solo lo tuyo: {formatMoneda(pasando.mi_parte, pasando.moneda)} de “{pasando.descripcion}”.</p>
+              <div className="mt-3 flex flex-col gap-2">
+                {cuentas.filter((c) => (c.moneda || 'COP') === h.moneda).map((c) => (
+                  <button key={c.id} onClick={() => pasarAMisGastos(pasando, c.id)} className="min-h-12 rounded-2xl border border-line bg-paper px-4 text-left text-sm font-medium">
+                    {c.nombre}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </Hoja>
+      )}
       {esAdmin && h.miembros.filter((m) => m.activo).length === 1 && (
         <section className="px-5 mt-2" data-testid="parche-solo">
           <div className="rounded-2xl border border-accent bg-accent-soft p-4">
@@ -252,6 +295,15 @@ export default function DetalleHogar() {
                 </div>
                 <p className="text-sm font-semibold tabular-nums shrink-0">{formatMoneda(g.total, g.moneda)}</p>
               </div>
+              {g.mi_parte > 0 && (
+                g.en_mis_gastos ? (
+                  <p className="mt-1.5 text-[11px] text-cuadra font-medium" data-testid="en-mis-gastos">✓ Tu parte ({formatMoneda(g.mi_parte, g.moneda)}) ya está en tus gastos</p>
+                ) : (
+                  <button onClick={() => pedirPasar(g)} className="mt-1.5 text-xs font-semibold text-accent underline" data-testid="pasar-a-mis-gastos">
+                    Pasar mi parte ({formatMoneda(g.mi_parte, g.moneda)}) a mis gastos
+                  </button>
+                )
+              )}
               {(esAdmin || g.creado_por_id === h.mi_miembro_id) && (
                 <button onClick={() => borrarGasto(g)} className="mt-1 text-[11px] text-ink-soft underline">Quitar</button>
               )}
