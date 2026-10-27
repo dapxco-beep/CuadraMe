@@ -315,7 +315,7 @@ export default function Compartir() {
         )}
 
         <p className="mx-6 mt-8 text-xs text-ink-soft">
-          ¿Quieres repartir un gasto con amigos? Eso es otra cosa: <Link to="/amigos" className="text-accent font-semibold underline">Dividir gastos con amigos</Link>.
+          ¿Quieres repartir un gasto con amigos? Eso es otra cosa: <Link to="/amigos" className="text-accent font-semibold underline">Dividir gastos con amigos</Link>. ¿Llevar los gastos de la casa entre varias personas, cada una con su cuenta? Eso es un <Link to="/hogares" className="text-accent font-semibold underline">Parche</Link>.
         </p>
       </div>
     </div>

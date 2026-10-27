@@ -156,6 +156,10 @@ for (const [ancho, alto] of ANCHOS) {
   for (const [nombre, ruta] of PANTALLAS) {
     await pagina.goto(`${BASE}/#${ruta}`)
     await pagina.waitForTimeout(Number(process.env.PW_ESPERA) || 1800)
+    if (process.env.PW_CLICK) { // PW_CLICK='Más': abre ese botón antes de medir/capturar (p. ej. la hoja del menú)
+      await pagina.getByRole('button', { name: process.env.PW_CLICK }).first().click({ timeout: 3000 }).catch(() => {})
+      await pagina.waitForTimeout(700)
+    }
     // Traer movimientos: se despliega también el punto de partida (formulario con saldos) y el bloque del correo.
     if (ruta === '/sincronizacion') {
       await pagina.locator('[data-testid="modo-historico"]').click({ timeout: 3000 }).catch(() => {})

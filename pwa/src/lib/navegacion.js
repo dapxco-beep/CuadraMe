@@ -1,7 +1,7 @@
 import {
-  Activity, ArrowLeftRight, Bot, BookOpen, CalendarCheck, CreditCard, Database, Gift, GraduationCap, Home, Landmark, Lightbulb, List, PieChart, PiggyBank,
-  LifeBuoy, Receipt, RefreshCw, Repeat, Scale, Settings, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Sprout, Tag,
-  TrendingUp, User, Users, Wallet,
+  Activity, ArrowLeftRight, Bot, BookOpen, CalendarCheck, CreditCard, Database, Gift, GraduationCap, HandCoins, Home, Landmark, Lightbulb, List, PieChart, PiggyBank,
+  LifeBuoy, Receipt, RefreshCw, Repeat, Scale, Settings, Share2, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Split, Sprout, Tag,
+  TrendingUp, User, Users, UsersRound, Wallet,
 } from 'lucide-react'
 
 // ═══ Única fuente de verdad de la navegación ═══════════════════════════════
@@ -50,10 +50,10 @@ export const GRUPOS = [
     titulo: 'Con otras personas',
     icon: Users,
     items: [
-      { to: '/amigos', icon: Users, label: 'Dividir gastos con amigos', palabras: 'dividir gastos amigos cuenta compartida cena viaje deben me deben' },
-      { to: '/hogares', icon: Home, label: 'Parche (pareja, casa, amigos)', palabras: 'parche hogar pareja familia casa compañeros apartamento gastos juntos quien debe a quien arriendo mercado servicios' },
-      { to: '/colectas', icon: Gift, label: 'Vacas', palabras: 'vaca colecta vaquita inscripcion equipo futbol torneo paseo regalo cuota aporte quien puso falta' },
-      { to: '/compartir', icon: Users, label: 'Compartir con mi pareja o familia', palabras: 'compartir cuenta pareja familia hogar invitar pareja esposo esposa ver anotar acceso' },
+      { to: '/amigos', icon: Split, label: 'Dividir gastos con amigos', palabras: 'dividir gastos amigos cuenta compartida cena viaje deben me deben' },
+      { to: '/hogares', icon: UsersRound, label: 'Parche (pareja, casa, amigos)', palabras: 'parche hogar pareja familia casa compañeros apartamento gastos juntos quien debe a quien arriendo mercado servicios' },
+      { to: '/colectas', icon: HandCoins, label: 'Vacas', palabras: 'vaca colecta vaquita inscripcion equipo futbol torneo paseo regalo cuota aporte quien puso falta' },
+      { to: '/compartir', icon: Share2, label: 'Compartir con mi pareja o familia', palabras: 'compartir cuenta pareja familia hogar invitar pareja esposo esposa ver anotar acceso' },
     ],
   },
   {
