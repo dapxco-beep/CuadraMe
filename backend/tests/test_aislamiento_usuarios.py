@@ -118,6 +118,10 @@ def _sembrar():
     liq = _ok(client.post("/gastos-compartidos/liquidaciones", json={"de_id": I["contacto"], "a_id": "yo",
                                                                     "monto": 10, "nota": MARCA}))
     I["liquidacion"] = liq.get("id") or client.get("/gastos-compartidos/liquidaciones").json()[0]["id"]
+    I["colecta"] = _ok(client.post("/colectas", json={"nombre": f"{MARCA} Vaca", "valor": 100, "participantes": [I["contacto"]]}))["id"]
+    I["aporte_colecta"] = client.get(f"/colectas/{I['colecta']}").json()["participantes"][0]["aporte_id"]
+    _ok(client.post(f"/colectas/{I['colecta']}/aportes/{I['aporte_colecta']}/pagos", json={"monto": 10}))
+    I["pago_colecta"] = client.get(f"/colectas/{I['colecta']}").json()["participantes"][0]["pagos"][0]["id"]
     activo = _ok(client.post("/patrimonio/activos", json={"clase": "accion", "nombre": f"{MARCA} Acción",
                                                           "unidades": 2, "costo_promedio": 10, "precio_actual": 12}))
     I["activo"] = activo["id"]
@@ -237,7 +241,7 @@ def test_lecturas_de_a_si_ven_sus_datos():
     como(A)
     for ruta in ("/cuentas", "/movimientos", "/metas", "/gastos-compartidos/contactos", "/patrimonio/activos", "/inversiones",
                  "/inversiones/brokers", "/subcategorias", "/correos/lista", "/correos/extractos", "/conciliacion/historial", "/reglas-categoria",
-                 "/sincronizacion/extractos", "/autoarreglo/lotes"):  # «Todos los extractos»: la lista completa de A
+                 "/sincronizacion/extractos", "/autoarreglo/lotes", "/colectas"):  # «Todos los extractos»: la lista completa de A
         assert MARCA.lower() in client.get(ruta).text.lower(), ruta
 
 
@@ -314,6 +318,17 @@ ATAQUES = [
     ("DELETE", "/gastos-compartidos/grupos/{grupo}", None),
     ("DELETE", "/gastos-compartidos/{gasto}", None),
     ("DELETE", "/gastos-compartidos/liquidaciones/{liquidacion}", None),
+    # colectas: B no lee, edita, borra, paga, comparte ni deshace nada de la colecta de A
+    ("GET", "/colectas/{colecta}", None),
+    ("PATCH", "/colectas/{colecta}", {"nombre": "hackeada"}),
+    ("DELETE", "/colectas/{colecta}", None),
+    ("POST", "/colectas/{colecta}/participantes", {"contacto_id": "{contacto}"}),
+    ("DELETE", "/colectas/{colecta}/participantes/{aporte_colecta}", None),
+    ("POST", "/colectas/{colecta}/aportes/{aporte_colecta}/pagos", {}),
+    ("DELETE", "/colectas/{colecta}/pagos/{pago_colecta}", None),
+    ("POST", "/colectas/{colecta}/compartir", None),
+    ("DELETE", "/colectas/{colecta}/compartir", None),
+    ("POST", "/colectas", {"nombre": "x", "valor": 10, "participantes": ["{contacto}"]}),
     ("POST", "/gastos-compartidos", {"descripcion": "x", "total": 10, "modo": "iguales", "registro": "ninguno",
                                      "grupo_id": "{grupo}", "pagador_id": "yo",
                                      "participantes": [{"id": "yo", "valor": 1}, {"id": "{contacto}", "valor": 1}]}),
@@ -530,6 +545,7 @@ SIN_SESION = {
     "/inversiones/cron/resumen-semanal", "/push/vapid-public-key", "/push/cron/revisar-presupuestos",
     "/push/cron/aportes-automaticos", "/push/cron/premiar-presupuestos-mes", "/push/cron/resumen-semanal",
     "/push/cron/recordar-registro", "/push/cron/recordar-recurrentes", "/resumen/cron/semanal",
+    "/colectas/publico/{token}",  # enlace de solo lectura: el token largo y aleatorio es la llave (probado en test_colectas.py)
     "/formas-asunto/cron/mas-frecuentes",  # lista interna anónima: exige X-Cron-Secret
 }
 

@@ -19,6 +19,7 @@ from app import models_comentarios  # noqa: F401  (registra la tabla comentarios
 from app import models_rendimientos  # noqa: F401  (registra cajitas y tasas_referencia para create_all)
 from app import models_avisos  # noqa: F401  (registra eventos_actividad y ajustes_avisos para create_all)
 from app import models_autoarreglo  # noqa: F401  (registra arreglos_auto para create_all)
+from app import models_colectas  # noqa: F401  (registra colectas, aportes_colecta y pagos_colecta para create_all)
 from app import avisos as avisos_servicio  # noqa: F401  (registra la tabla eventos_actividad y los ganchos de activación)
 from app.routers import (
     ahorcado,
@@ -29,6 +30,7 @@ from app.routers import (
     categorias,
     subcategorias,
     cierre,
+    colectas,
     comentarios,
     compartir,
     conciliacion,
@@ -165,6 +167,7 @@ app.include_router(patrimonio.router)
 app.include_router(inversiones.router)
 app.include_router(planificacion.router)
 app.include_router(gastos_compartidos.router)
+app.include_router(colectas.router)
 app.include_router(facturas.router)
 app.include_router(asistente.router)
 app.include_router(importar.router)

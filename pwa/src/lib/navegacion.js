@@ -84,6 +84,7 @@ export const GRUPOS = [
 export const EXTRA_BUSQUEDA = [
   { to: '/compartir', icon: Users, label: 'Compartir con mi pareja o familia', palabras: 'compartir cuenta pareja familia hogar invitar pareja esposo esposa ver anotar acceso' },
   { to: '/amigos', icon: Users, label: 'Dividir gastos con amigos', palabras: 'dividir gastos amigos cuenta compartida cena viaje deben me deben' },
+  { to: '/colectas', icon: Users, label: 'Colectas (vacas)', palabras: 'colecta vaca inscripcion equipo futbol torneo paseo regalo cuota aporte quien puso falta' },
 ]
 
 // Destino SOLO para quien administra CuadraMe. No está en GRUPOS ni en el buscador: se agrega aparte

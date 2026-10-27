@@ -760,6 +760,20 @@ export const api = {
   saldosGasto: (grupoId) => request(`/gastos-compartidos/saldos${grupoId ? `?grupo_id=${grupoId}` : ''}`),
   registrarPagoGasto: (data) => request('/gastos-compartidos/liquidaciones', { method: 'POST', body: data }),
 
+  // Colectas (vacas): inscripción del equipo, paseo, regalo
+  colectas: () => request('/colectas'),
+  colecta: (id) => request(`/colectas/${id}`),
+  crearColecta: (data) => request('/colectas', { method: 'POST', body: data }),
+  editarColecta: (id, data) => request(`/colectas/${id}`, { method: 'PATCH', body: data }),
+  eliminarColecta: (id) => request(`/colectas/${id}`, { method: 'DELETE' }),
+  agregarParticipanteColecta: (id, data) => request(`/colectas/${id}/participantes`, { method: 'POST', body: data }),
+  quitarParticipanteColecta: (id, aporteId) => request(`/colectas/${id}/participantes/${aporteId}`, { method: 'DELETE' }),
+  pagarColecta: (id, aporteId, data = {}) => request(`/colectas/${id}/aportes/${aporteId}/pagos`, { method: 'POST', body: data }),
+  deshacerPagoColecta: (id, pagoId) => request(`/colectas/${id}/pagos/${pagoId}`, { method: 'DELETE' }),
+  compartirColecta: (id) => request(`/colectas/${id}/compartir`, { method: 'POST' }),
+  dejarDeCompartirColecta: (id) => request(`/colectas/${id}/compartir`, { method: 'DELETE' }),
+  colectaPublica: (token) => request(`/colectas/publico/${encodeURIComponent(token)}`, { auth: false, sinCache: true }),
+
   // Foto de factura (la IA solo sugiere; nada se guarda hasta que el usuario confirme)
   escanearFactura: (imagenBase64, mime) =>
     request('/facturas/escanear', { method: 'POST', body: { imagen_base64: imagenBase64, mime } }),

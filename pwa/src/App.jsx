@@ -76,6 +76,10 @@ const AutorizacionDatos = lazy(() => import('./screens/legal/AutorizacionDatos')
 // Gastos compartidos (bloque aislado para minimizar conflictos al integrar)
 const DividirGasto = lazy(() => import('./screens/DividirGasto'))
 const CuentasAmigos = lazy(() => import('./screens/CuentasAmigos'))
+const Colectas = lazy(() => import('./screens/Colectas'))
+const NuevaColecta = lazy(() => import('./screens/NuevaColecta'))
+const DetalleColecta = lazy(() => import('./screens/DetalleColecta'))
+const ColectaPublica = lazy(() => import('./screens/ColectaPublica'))
 
 function Cargando() {
   return <CargandoMarca />
@@ -155,6 +159,10 @@ function AppGate() {
         <Route path="/agregar" element={<Agregar />} />
         <Route path="/dividir" element={<DividirGasto />} />
         <Route path="/amigos" element={<CuentasAmigos />} />
+        <Route path="/colectas" element={<Colectas />} />
+        <Route path="/colectas/nueva" element={<NuevaColecta />} />
+        <Route path="/colectas/:id" element={<DetalleColecta />} />
+        <Route path="/c/:token" element={<ColectaPublica />} />
         <Route path="/presupuesto" element={<Presupuesto />} />
         <Route path="/patrimonio" element={<Patrimonio />} />
         <Route path="/inversiones" element={<Inversiones />} />
@@ -220,6 +228,7 @@ function AppRoutes() {
     return (
       <Suspense fallback={<Cargando />}>
       <Routes>
+        <Route path="/c/:token" element={<ColectaPublica />} />
         <Route path="/legal/terminos" element={<TerminosCondiciones />} />
         <Route path="/legal/privacidad" element={<PoliticaPrivacidad />} />
         <Route path="/legal/autorizacion-datos" element={<AutorizacionDatos />} />
