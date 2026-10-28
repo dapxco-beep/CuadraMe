@@ -74,6 +74,7 @@ describe('Perfil — resumen semanal por correo', () => {
   it('viene apagado y se activa con el interruptor (opt-in)', async () => {
     api.resumenPreferencias = vi.fn().mockResolvedValue({ correo: false, email: 'resumen@test.com' })
     api.guardarResumenPreferencias = vi.fn().mockResolvedValue({ ok: true, correo: true })
+    localStorage.setItem('cuadrame:inicio-secciones', JSON.stringify({ 'perfil-seguridad': true, 'perfil-avisos': true })) // bloques del Perfil abiertos
     montar(<Perfil />)
     const interruptor = await screen.findByRole('switch', { name: /Resumen semanal por correo/ })
     await waitFor(() => expect(screen.getByText(/l@test\.com/)).toBeInTheDocument())
@@ -87,6 +88,7 @@ describe('Perfil — resumen semanal por correo', () => {
   it('si guardar falla, el interruptor vuelve a su estado anterior', async () => {
     api.resumenPreferencias = vi.fn().mockResolvedValue({ correo: false, email: 'resumen@test.com' })
     api.guardarResumenPreferencias = vi.fn().mockRejectedValue(new Error('sin conexión'))
+    localStorage.setItem('cuadrame:inicio-secciones', JSON.stringify({ 'perfil-seguridad': true, 'perfil-avisos': true })) // bloques del Perfil abiertos
     montar(<Perfil />)
     const interruptor = await screen.findByRole('switch', { name: /Resumen semanal por correo/ })
     await userEvent.click(interruptor)

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, Flag, Mail, Receipt, Check, ChevronDown, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, MessageCircle, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
+import { Bell, ShieldCheck, User, Flag, Mail, Receipt, Check, ChevronDown, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, MessageCircle, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
 import { useDialogos } from '../lib/DialogosContext'
+import SeccionPlegable from '../components/SeccionPlegable'
 import LineaVersion from '../components/LineaVersion'
 import SeccionSeguridad from '../components/SeccionSeguridad'
 import SeccionPrivacidad from '../components/SeccionPrivacidad'
@@ -57,6 +58,18 @@ export default function Perfil() {
       setGuardandoNombre(false)
     }
   }
+
+  // Un enlace con # (p. ej. /perfil#punto-de-partida) abre el bloque plegado que lo contiene.
+  useEffect(() => {
+    const h = window.location.hash || ''
+    const destino = h.includes('#', 1) ? h.slice(h.indexOf('#', 1) + 1) : ''
+    if (!destino) return
+    const el = document.getElementById(destino)
+    if (el) return
+    const mapa = { pais: 'perfil-cuenta', 'punto-de-partida': 'perfil-cuenta' }
+    const bloque = document.querySelector('[data-seccion="' + mapa[destino] + '"] button[aria-expanded="false"]')
+    bloque?.click()
+  }, [])
 
   useEffect(() => {
     estadoPermiso().then(setPermisoPush)
@@ -152,6 +165,8 @@ export default function Perfil() {
         </div>
       </section>
 
+      <SeccionPlegable id="perfil-cuenta" titulo="Mi cuenta" icono={User} abiertaPorDefecto className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
+        <div className="-mx-4 -mt-1">
       {/* Cómo te llamamos: solo el nombre; el correo de la cuenta no se edita aquí */}
       <section className="mx-6 mt-4" aria-label="Cómo te llamamos">
         <form onSubmit={guardarMiNombre} className="rounded-2xl bg-paper-raised border border-line p-4" noValidate>
@@ -174,6 +189,18 @@ export default function Perfil() {
           {errorNombrePerfil && <p id="perfil-nombre-error" role="alert" className="text-sm text-danger mt-2">{errorNombrePerfil}</p>}
           <p className="text-xs text-ink-soft mt-2">Así te saludamos en la app, los avisos y los correos.</p>
         </form>
+      </section>
+
+      <div className="mx-6 mt-8" id="pais">
+        <SelectorPais />
+      </div>
+
+      <section className="mx-6 mt-8" id="punto-de-partida" aria-labelledby="titulo-punto-de-partida">
+        <div className="flex items-center gap-2 mb-3">
+          <Flag size={16} className="text-ink-soft" aria-hidden="true" />
+          <h2 id="titulo-punto-de-partida" className="text-[15px] font-semibold">Punto de partida</h2>
+        </div>
+        <PuntoDePartida variante="perfil" />
       </section>
 
       {/* Modo simple: por defecto el menú muestra solo lo esencial; aquí se muestran todas las funciones */}
@@ -203,9 +230,210 @@ export default function Perfil() {
         </div>
       </section>
 
+      <section className="mx-6 mt-8">
+        <div className="flex items-center gap-2 mb-3">
+          <Palette size={16} className="text-ink-soft" />
+          <h2 className="text-[15px] font-semibold">Apariencia</h2>
+        </div>
+        <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTheme(t.id)}
+              aria-pressed={theme === t.id}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+            >
+              <span
+                className="w-11 h-11 rounded-full shrink-0 border border-line"
+                style={{ background: themePreview[t.id] }}
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">{t.nombre}</p>
+                <p className="text-xs text-ink-soft">{t.desc}</p>
+              </div>
+              {theme === t.id && <Check size={20} className="text-accent shrink-0" />}
+            </button>
+          ))}
+        </div>
+        {/* Cuadri, la mascota: se guarda solo en este dispositivo y viene activado */}
+        <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3 mt-3">
+          <Cuadri pose="feliz" size={52} siempre animar={false} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium" id="etq-mostrar-cuadri">Mostrar a Cuadri</p>
+            <p className="text-xs text-ink-soft mt-0.5">La mascota de CuadraMe acompaña el recorrido, los consejos y las celebraciones. Se guarda en este dispositivo.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => cambiarCuadri(!mostrarCuadri)}
+            role="switch"
+            aria-checked={mostrarCuadri}
+            aria-labelledby="etq-mostrar-cuadri"
+            data-testid="switch-mostrar-cuadri"
+            className="shrink-0 min-h-11 w-14 flex items-center justify-center"
+          >
+            <span className={`block w-12 h-7 rounded-full transition-colors relative ${mostrarCuadri ? 'bg-accent' : 'bg-line'}`}>
+              <span
+                className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                  mostrarCuadri ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </span>
+          </button>
+        </div>
+      </section>
+
+        </div>
+      </SeccionPlegable>
+
+      <SeccionPlegable id="perfil-seguridad" titulo="Seguridad y datos" icono={ShieldCheck} className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
+        <div className="-mx-4 -mt-1">
+      <SeccionSeguridad />
+      <SeccionPrivacidad onEliminarCuenta={eliminarMiCuenta} eliminando={eliminandoCuenta} />
+
+      <section className="mx-6 mt-6">
+        <h2 className="text-[15px] font-semibold mb-3">Legal</h2>
+        <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
+          <Link to="/legal/terminos" className="flex items-center gap-3 px-4 py-3.5">
+            <FileText size={20} className="text-ink-soft shrink-0" />
+            <p className="flex-1 text-sm font-medium">Términos y Condiciones</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/legal/privacidad" className="flex items-center gap-3 px-4 py-3.5">
+            <FileText size={20} className="text-ink-soft shrink-0" />
+            <p className="flex-1 text-sm font-medium">Política de Privacidad</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/legal/autorizacion-datos" className="flex items-center gap-3 px-4 py-3.5">
+            <FileText size={20} className="text-ink-soft shrink-0" />
+            <p className="flex-1 text-sm font-medium">Autorización de datos</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+        </div>
+      </section>
+
+        </div>
+      </SeccionPlegable>
+
+      <SeccionPlegable id="perfil-avisos" titulo="Avisos y conexiones" icono={Bell} className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
+        <div className="-mx-4 -mt-1">
+      <section className="mx-6 mt-8">
+        <div className="flex items-center gap-2 mb-3">
+          <Mail size={16} className="text-ink-soft" aria-hidden="true" />
+          <h2 className="text-[15px] font-semibold">Correo</h2>
+        </div>
+        <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-medium" id="etq-resumen-correo">Resumen semanal por correo</p>
+            <p className="text-xs text-ink-soft mt-0.5">
+              Cada domingo te escribimos a {resumenCorreo.email || 'tu correo'} con lo que gastaste, en qué se fue más la
+              plata y qué pagos vienen. Puedes apagarlo cuando quieras.
+            </p>
+          </div>
+          <button
+            onClick={toggleResumenCorreo}
+            disabled={resumenCorreo.cargando}
+            role="switch"
+            aria-checked={resumenCorreo.activo}
+            aria-labelledby="etq-resumen-correo"
+            data-testid="switch-resumen-correo"
+            className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${resumenCorreo.activo ? 'bg-accent' : 'bg-line'}`}
+          >
+            <span
+              className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                resumenCorreo.activo ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+        </div>
+      </section>
+
+      {pushSoportado() && (
+        <section className="mx-6 mt-8">
+          <div className="flex items-center gap-2 mb-3">
+            <Bell size={16} className="text-ink-soft" />
+            <h2 className="text-[15px] font-semibold">Notificaciones</h2>
+          </div>
+          <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium">Alertas de presupuesto</p>
+              <p className="text-xs text-ink-soft mt-0.5">
+                Te avisamos cuando te acerques al límite de una categoría
+              </p>
+            </div>
+            <button
+              onClick={toggleNotificaciones}
+              disabled={cargandoPush}
+              role="switch"
+              aria-checked={permisoPush === 'granted'}
+              aria-label="Alertas de presupuesto"
+              className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${
+                permisoPush === 'granted' ? 'bg-accent' : 'bg-ink-soft/35'
+              } disabled:opacity-60`}
+            >
+              <span
+                className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                  permisoPush === 'granted' ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3 mt-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium">Recordatorio diario</p>
+              <p className="text-xs text-ink-soft mt-0.5">
+                A las 8 p. m. te avisamos solo si hoy no registraste nada
+                {permisoPush !== 'granted' ? ' (activa primero las alertas de arriba)' : ''}
+              </p>
+            </div>
+            <button
+              onClick={toggleRecordatorio}
+              role="switch"
+              aria-checked={recordatorio}
+              aria-label="Recordatorio diario"
+              className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${recordatorio ? 'bg-accent' : 'bg-ink-soft/35'}`}
+            >
+              <span
+                className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                  recordatorio ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+        </section>
+      )}
+
+      {completo && (
+      <section className="mx-6 mt-8">
+        <div className="flex items-center gap-2 mb-3">
+          <Link2 size={16} className="text-ink-soft" />
+          <h2 className="text-[15px] font-semibold">Registro automático al pagar</h2>
+          <span className="text-[11px] font-bold text-ink-soft bg-line px-2 py-0.5 rounded-full uppercase tracking-wide">
+            Avanzado
+          </span>
+        </div>
+        <div className="rounded-2xl bg-paper-raised border border-line p-4">
+          <p className="text-xs text-ink-soft mb-3">
+            Anota tus pagos solo, con el celular: con Atajos del iPhone, Tasker en Android o con Siri.
+            Hay que configurarlo una vez. Si registras desde la app, no lo necesitas.
+          </p>
+          <ClaveAtajo {...claveAtajo} />
+          <Link
+            to="/conectar-dispositivo"
+            className="flex items-center justify-center gap-1.5 mt-3 text-sm text-accent font-semibold"
+          >
+            Ver guía paso a paso (iPhone/Android) <ChevronRight size={16} />
+          </Link>
+        </div>
+      </section>
+      )}
+
       {/* Lo que desaparece de Inicio al completarse (u ocultarse) sigue aquí para repasarlo */}
       <RecorridoEntrada />
       <AsistentePrimerUso variante="perfil" />
+
+        </div>
+      </SeccionPlegable>
 
       <section className="mx-6 mt-6">
         <Link to="/ayuda" className="flex items-center gap-3 rounded-2xl bg-paper-raised border border-line px-4 py-3.5">
@@ -378,216 +606,6 @@ export default function Perfil() {
         </div>
       </section>
       )}
-
-      </GrupoPerfil>
-
-      <GrupoPerfil id="avisos" titulo="Avisos y correo" apoyo="Resumen semanal y notificaciones" icono={Bell}>
-      <section className="mx-6 mt-8">
-        <div className="flex items-center gap-2 mb-3">
-          <Mail size={16} className="text-ink-soft" aria-hidden="true" />
-          <h2 className="text-[15px] font-semibold">Correo</h2>
-        </div>
-        <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3">
-          <div className="flex-1">
-            <p className="text-sm font-medium" id="etq-resumen-correo">Resumen semanal por correo</p>
-            <p className="text-xs text-ink-soft mt-0.5">
-              Cada domingo te escribimos a {resumenCorreo.email || 'tu correo'} con lo que gastaste, en qué se fue más la
-              plata y qué pagos vienen. Puedes apagarlo cuando quieras.
-            </p>
-          </div>
-          <button
-            onClick={toggleResumenCorreo}
-            disabled={resumenCorreo.cargando}
-            role="switch"
-            aria-checked={resumenCorreo.activo}
-            aria-labelledby="etq-resumen-correo"
-            data-testid="switch-resumen-correo"
-            className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${resumenCorreo.activo ? 'bg-accent' : 'bg-line'}`}
-          >
-            <span
-              className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
-                resumenCorreo.activo ? 'translate-x-5' : 'translate-x-0.5'
-              }`}
-            />
-          </button>
-        </div>
-      </section>
-
-      {pushSoportado() && (
-        <section className="mx-6 mt-8">
-          <div className="flex items-center gap-2 mb-3">
-            <Bell size={16} className="text-ink-soft" />
-            <h2 className="text-[15px] font-semibold">Notificaciones</h2>
-          </div>
-          <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3">
-            <div className="flex-1">
-              <p className="text-sm font-medium">Alertas de presupuesto</p>
-              <p className="text-xs text-ink-soft mt-0.5">
-                Te avisamos cuando te acerques al límite de una categoría
-              </p>
-            </div>
-            <button
-              onClick={toggleNotificaciones}
-              disabled={cargandoPush}
-              role="switch"
-              aria-checked={permisoPush === 'granted'}
-              aria-label="Alertas de presupuesto"
-              className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${
-                permisoPush === 'granted' ? 'bg-accent' : 'bg-ink-soft/35'
-              } disabled:opacity-60`}
-            >
-              <span
-                className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
-                  permisoPush === 'granted' ? 'translate-x-5' : 'translate-x-0.5'
-                }`}
-              />
-            </button>
-          </div>
-
-          <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3 mt-3">
-            <div className="flex-1">
-              <p className="text-sm font-medium">Recordatorio diario</p>
-              <p className="text-xs text-ink-soft mt-0.5">
-                A las 8 p. m. te avisamos solo si hoy no registraste nada
-                {permisoPush !== 'granted' ? ' (activa primero las alertas de arriba)' : ''}
-              </p>
-            </div>
-            <button
-              onClick={toggleRecordatorio}
-              role="switch"
-              aria-checked={recordatorio}
-              aria-label="Recordatorio diario"
-              className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${recordatorio ? 'bg-accent' : 'bg-ink-soft/35'}`}
-            >
-              <span
-                className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
-                  recordatorio ? 'translate-x-5' : 'translate-x-0.5'
-                }`}
-              />
-            </button>
-          </div>
-        </section>
-      )}
-
-      </GrupoPerfil>
-
-      <GrupoPerfil id="ajustes" titulo="Seguridad y ajustes" apoyo="Bloqueo, punto de partida, registro automático y apariencia" icono={Palette}>
-      <SeccionSeguridad />
-
-      <div className="mx-6 mt-8" id="pais">
-        <SelectorPais />
-      </div>
-
-      <section className="mx-6 mt-8" id="punto-de-partida" aria-labelledby="titulo-punto-de-partida">
-        <div className="flex items-center gap-2 mb-3">
-          <Flag size={16} className="text-ink-soft" aria-hidden="true" />
-          <h2 id="titulo-punto-de-partida" className="text-[15px] font-semibold">Punto de partida</h2>
-        </div>
-        <PuntoDePartida variante="perfil" />
-      </section>
-
-      {completo && (
-      <section className="mx-6 mt-8">
-        <div className="flex items-center gap-2 mb-3">
-          <Link2 size={16} className="text-ink-soft" />
-          <h2 className="text-[15px] font-semibold">Registro automático al pagar</h2>
-          <span className="text-[11px] font-bold text-ink-soft bg-line px-2 py-0.5 rounded-full uppercase tracking-wide">
-            Avanzado
-          </span>
-        </div>
-        <div className="rounded-2xl bg-paper-raised border border-line p-4">
-          <p className="text-xs text-ink-soft mb-3">
-            Anota tus pagos solo, con el celular: con Atajos del iPhone, Tasker en Android o con Siri.
-            Hay que configurarlo una vez. Si registras desde la app, no lo necesitas.
-          </p>
-          <ClaveAtajo {...claveAtajo} />
-          <Link
-            to="/conectar-dispositivo"
-            className="flex items-center justify-center gap-1.5 mt-3 text-sm text-accent font-semibold"
-          >
-            Ver guía paso a paso (iPhone/Android) <ChevronRight size={16} />
-          </Link>
-        </div>
-      </section>
-      )}
-
-      <section className="mx-6 mt-8">
-        <div className="flex items-center gap-2 mb-3">
-          <Palette size={16} className="text-ink-soft" />
-          <h2 className="text-[15px] font-semibold">Apariencia</h2>
-        </div>
-        <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
-          {THEMES.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTheme(t.id)}
-              aria-pressed={theme === t.id}
-              className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
-            >
-              <span
-                className="w-11 h-11 rounded-full shrink-0 border border-line"
-                style={{ background: themePreview[t.id] }}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{t.nombre}</p>
-                <p className="text-xs text-ink-soft">{t.desc}</p>
-              </div>
-              {theme === t.id && <Check size={20} className="text-accent shrink-0" />}
-            </button>
-          ))}
-        </div>
-        {/* Cuadri, la mascota: se guarda solo en este dispositivo y viene activado */}
-        <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3 mt-3">
-          <Cuadri pose="feliz" size={52} siempre animar={false} />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium" id="etq-mostrar-cuadri">Mostrar a Cuadri</p>
-            <p className="text-xs text-ink-soft mt-0.5">La mascota de CuadraMe acompaña el recorrido, los consejos y las celebraciones. Se guarda en este dispositivo.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => cambiarCuadri(!mostrarCuadri)}
-            role="switch"
-            aria-checked={mostrarCuadri}
-            aria-labelledby="etq-mostrar-cuadri"
-            data-testid="switch-mostrar-cuadri"
-            className="shrink-0 min-h-11 w-14 flex items-center justify-center"
-          >
-            <span className={`block w-12 h-7 rounded-full transition-colors relative ${mostrarCuadri ? 'bg-accent' : 'bg-line'}`}>
-              <span
-                className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
-                  mostrarCuadri ? 'translate-x-5' : 'translate-x-0.5'
-                }`}
-              />
-            </span>
-          </button>
-        </div>
-      </section>
-
-      </GrupoPerfil>
-
-      <GrupoPerfil id="privacidad" titulo="Privacidad y legal" apoyo="Tus datos, términos y borrar tu cuenta" icono={FileText}>
-      <SeccionPrivacidad onEliminarCuenta={eliminarMiCuenta} eliminando={eliminandoCuenta} />
-
-      <section className="mx-6 mt-6">
-        <h2 className="text-[15px] font-semibold mb-3">Legal</h2>
-        <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
-          <Link to="/legal/terminos" className="flex items-center gap-3 px-4 py-3.5">
-            <FileText size={20} className="text-ink-soft shrink-0" />
-            <p className="flex-1 text-sm font-medium">Términos y Condiciones</p>
-            <ChevronRight size={16} className="text-ink-soft" />
-          </Link>
-          <Link to="/legal/privacidad" className="flex items-center gap-3 px-4 py-3.5">
-            <FileText size={20} className="text-ink-soft shrink-0" />
-            <p className="flex-1 text-sm font-medium">Política de Privacidad</p>
-            <ChevronRight size={16} className="text-ink-soft" />
-          </Link>
-          <Link to="/legal/autorizacion-datos" className="flex items-center gap-3 px-4 py-3.5">
-            <FileText size={20} className="text-ink-soft shrink-0" />
-            <p className="flex-1 text-sm font-medium">Autorización de datos</p>
-            <ChevronRight size={16} className="text-ink-soft" />
-          </Link>
-        </div>
-      </section>
 
       </GrupoPerfil>
 
