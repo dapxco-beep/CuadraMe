@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -29,7 +30,7 @@ export default function ResumenHogar() {
   useEffect(() => {
     setR(null)
     setError('')
-    api.resumenHogar(id, mes).then(setR).catch((e) => setError(e.message || 'No se pudo cargar el resumen. Revisa tu conexión.'))
+    api.resumenHogar(id, mes).then(setR).catch((e) => setError(textoError(e, 'cargar el resumen')))
   }, [id, mes])
 
   const maxCat = r ? Math.max(...r.por_categoria.map((c) => c.monto), 1) : 1

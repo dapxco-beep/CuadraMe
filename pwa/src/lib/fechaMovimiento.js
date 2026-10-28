@@ -1,14 +1,9 @@
+import { aFecha } from './fechaLocal'
 // Fecha y hora de un movimiento para identificarlo de un vistazo: «mié 8 oct · 4:30 p. m.».
 // La hora SOLO se muestra cuando existe: los extractos y archivos traen 00:00 (o 12:00 de relleno) y
 // ahí se muestra solo el día, sin inventar «12:00 a. m.».
 const TIENE_ZONA = /(Z|[+-]\d{2}:?\d{2})$/
 
-function aFecha(valor) {
-  if (valor == null || valor === '') return null
-  // «2026-10-08» solo con día se lee como medianoche local (no UTC, que lo corre un día atrás)
-  const d = new Date(typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor) ? `${valor}T00:00:00` : valor)
-  return Number.isNaN(d.getTime()) ? null : d
-}
 
 // Si el texto trae zona (Z o +hh:mm) se muestra en hora de Colombia; si es una fecha «de pared»
 // (sin zona) se respeta tal cual, sin desplazarla.

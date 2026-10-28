@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { useNavigate } from 'react-router-dom'
@@ -193,7 +194,7 @@ function TarjetaAtajo({ a, recargar }) {
       setAviso('Clave nueva lista. Cópiala ahora: no se vuelve a mostrar. La anterior ya no sirve.')
       recargar()
     } catch (err) {
-      setError(err.message || 'No se pudo generar la clave. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'generar la clave'))
     }
   }
 
@@ -213,7 +214,7 @@ function TarjetaAtajo({ a, recargar }) {
       window.dispatchEvent(new CustomEvent('cuadrame:movimientos-cambio'))
       recargar()
     } catch (err) {
-      setError(err.status === 401 ? 'Tu clave no es válida. Genera una nueva.' : err.message || 'No se pudo probar. Revisa tu conexión e intenta de nuevo.')
+      setError(err.status === 401 ? 'Tu clave no es válida. Genera una nueva.' : textoError(err, 'probar'))
     } finally {
       setProbando(false)
     }
@@ -307,7 +308,7 @@ function TarjetaPush({ p }) {
       await activarPush()
       await leerEstadoLocal()
     } catch (err) {
-      setError(err.message || 'No se pudieron activar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'activar'))
     }
   }
 
@@ -364,7 +365,7 @@ export default function Conexiones({ embebido = false, alIr }) {
         setEstado(e)
         setError('')
       })
-      .catch((err) => setError(err.message || 'No se pudo cargar el estado. Revisa tu conexión e intenta de nuevo.'))
+      .catch((err) => setError(textoError(err, 'cargar el estado')))
   }
   useEffect(() => {
     recargar()

@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
@@ -84,7 +85,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
       })
       mostrar(r)
     } catch (err) {
-      setError(err.message || 'No se pudo leer el archivo. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'leer el archivo'))
     } finally {
       setCargando(false)
     }
@@ -167,7 +168,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
       await recargarCuentas()
       setResultado(r)
     } catch (err) {
-      setError(err.message || 'No se pudo importar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'importar'))
     } finally {
       setCargando(false)
     }

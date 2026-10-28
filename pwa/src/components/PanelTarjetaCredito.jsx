@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { Pencil, X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -246,7 +247,7 @@ function FormTarjeta({ cuenta, onClose, onGuardada }) {
       })
       onGuardada()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'guardar'))
     } finally {
       setGuardando(false)
     }

@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useState } from 'react'
 import { EsqueletoTarjeta } from '../components/Esqueletos'
 import { ArrowLeft, Check, GraduationCap, Search } from 'lucide-react'
@@ -30,7 +31,7 @@ function Fila({ item, categorias, onGuardar }) {
     try {
       await onGuardar(item, categoria, anteriores, forzar)
     } catch (err) {
-      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'guardar'))
       setEstado('')
     }
   }
@@ -99,7 +100,7 @@ export default function EntrenarCategorias() {
     try {
       setDatos(await api.vocabularioCategorias())
     } catch (err) {
-      setError(err.message || 'No se pudo cargar tu vocabulario. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'cargar tu vocabulario'))
     }
     setCargando(false)
   }, [])
@@ -133,7 +134,7 @@ export default function EntrenarCategorias() {
     try {
       setExplicacion(await api.explicarCategoria(q.trim()))
     } catch (err) {
-      setError(err.message || 'No se pudo buscar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'buscar'))
     }
     setBuscando(false)
   }

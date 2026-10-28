@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -39,7 +40,7 @@ export default function HojaNuevaCategoria({ onCreada, onCerrar }) {
       onCreada(limpio)
       cerrar()
     } catch (err) {
-      setAviso(err.message || 'No se pudo crear la categoría. Revisa tu conexión e intenta de nuevo.')
+      setAviso(textoError(err, 'crear la categoría'))
       setGuardando(false)
     }
   }

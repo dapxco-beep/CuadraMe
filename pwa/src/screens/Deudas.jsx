@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { useVolver } from '../lib/useVolver'
@@ -37,7 +38,7 @@ export default function Deudas() {
     try {
       setDeudas(await api.deudas())
     } catch (err) {
-      setError(err.message || 'No se pudieron cargar tus deudas. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'cargar tus deudas'))
     }
     setCargando(false)
   }
@@ -195,7 +196,7 @@ function FormDeuda({ onClose, onGuardada }) {
       })
       onGuardada()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'guardar'))
     } finally {
       setGuardando(false)
     }
@@ -297,7 +298,7 @@ function FormPago({ deuda, onClose, onPagado }) {
       await api.pagarDeuda(deuda.id, Number(monto))
       onPagado()
     } catch (err) {
-      setError(err.message || 'No se pudo registrar el pago. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'registrar el pago'))
     } finally {
       setGuardando(false)
     }

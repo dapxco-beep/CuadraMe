@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeftRight, PiggyBank, Plus, Sprout, X } from 'lucide-react'
@@ -144,7 +145,7 @@ function HojaCajita({ cuentaId, moneda, principal, onCerrar }) {
       avisarCambioRendimientos()
       onCerrar()
     } catch (err) {
-      setError(err.message || 'No pudimos crear la cajita. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'crear la cajita'))
       setGuardando(false)
     }
   }

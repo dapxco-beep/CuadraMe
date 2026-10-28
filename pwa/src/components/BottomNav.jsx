@@ -35,7 +35,7 @@ export default function BottomNav() {
       replace
       end={p.to === '/'}
       className={({ isActive }) =>
-        `flex flex-col items-center gap-1 px-1 py-1 min-w-[64px] transition-colors ${isActive ? 'text-accent' : 'text-ink-soft'}`
+        `flex flex-col items-center justify-center gap-1 px-1 py-1 min-w-[64px] min-h-12 transition-colors ${isActive ? 'text-accent' : 'text-ink-soft'}`
       }
     >
       {({ isActive }) => <Pestana Icon={p.icon} label={p.label} activa={isActive} />}
@@ -65,7 +65,7 @@ export default function BottomNav() {
             aria-haspopup="dialog"
             aria-expanded={abierto}
             onClick={() => setAbierto(true)}
-            className={`flex flex-col items-center gap-1 px-1 py-1 min-w-[64px] transition-colors ${
+            className={`flex flex-col items-center justify-center gap-1 px-1 py-1 min-w-[64px] min-h-12 transition-colors ${
               enMas || abierto ? 'text-accent' : 'text-ink-soft'
             }`}
           >

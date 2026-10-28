@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { DUR, EASE } from '../lib/tokens'
 import { EsqueletoTarjeta } from '../components/Esqueletos'
@@ -102,7 +103,7 @@ export default function Wrapped() {
     setI(0)
     api.wrapped(mes)
       .then((d) => activo && setDatos(d))
-      .catch((e) => activo && setError(e.message || 'No se pudo cargar tu resumen. Revisa tu conexión e intenta de nuevo.'))
+      .catch((e) => activo && setError(textoError(e, 'cargar tu resumen')))
     return () => {
       activo = false
     }
@@ -128,7 +129,7 @@ export default function Wrapped() {
       const r = await compartirImagen(datos, fmt)
       if (r === 'descargado') avisar('Se descargó la imagen de tu resumen.')
     } catch (err) {
-      avisar(err.message || 'No se pudo compartir. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'compartir'))
     } finally {
       setCompartiendo(false)
     }

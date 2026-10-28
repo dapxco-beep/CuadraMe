@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { CreditCard } from 'lucide-react'
 import { api } from '../lib/api'
@@ -31,7 +32,7 @@ export default function PropuestaTarjeta({ propuesta, cuentaId, className = '' }
       await recargar?.()
       setEstado('aplicada')
     } catch (err) {
-      setError(err.message || 'No se pudo actualizar la tarjeta. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'actualizar la tarjeta'))
     } finally {
       setAplicando(false)
     }

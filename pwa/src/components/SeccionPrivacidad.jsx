@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight, Download, ShieldCheck, Trash2, Upload } from 'lucide-react'
@@ -42,7 +43,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
       cargar()
       setHistorial(null)
     } catch (err) {
-      avisar(err.message || 'No pudimos guardar el cambio. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'guardar el cambio'))
     } finally {
       setOcupado('')
     }
@@ -53,7 +54,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
     try {
       setHistorial(await api.historialConsentimientos())
     } catch (err) {
-      avisar(err.message || 'No pudimos cargar el historial. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'cargar el historial'))
     }
   }
 
@@ -61,7 +62,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
     try {
       await api.descargarMisDatos()
     } catch (err) {
-      avisar(err.message || 'No pudimos descargar tus datos. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'descargar tus datos'))
     }
   }
 

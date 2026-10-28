@@ -3,6 +3,7 @@
 // lo hace el backend; aquí solo hay lo necesario para dibujar y para la vista
 // previa del formulario.
 
+import { aFecha } from './fechaLocal'
 import { Car, Package, ChartPie, Coins, Globe, House, Landmark, TrendingUp, Wallet } from 'lucide-react'
 
 export const CLASES = {
@@ -52,9 +53,10 @@ export function formatPct(valor, decimales = 1) {
 // backend (Act/365); sirve para la vista previa mientras se llena el formulario.
 export function valorCDT(capital, tasaEA, inicio, fecha, vencimiento = null) {
   if (!(capital > 0) || !(tasaEA >= 0)) return 0
-  let f = new Date(fecha)
-  if (vencimiento && f > new Date(vencimiento)) f = new Date(vencimiento)
-  const dias = Math.max(0, (f - new Date(inicio)) / 86400000)
+  const fecha_ = (v) => aFecha(v) ?? new Date(NaN)
+  let f = fecha_(fecha)
+  if (vencimiento && f > fecha_(vencimiento)) f = fecha_(vencimiento)
+  const dias = Math.max(0, (f - fecha_(inicio)) / 86400000)
   return capital * Math.pow(1 + tasaEA / 100, dias / 365)
 }
 

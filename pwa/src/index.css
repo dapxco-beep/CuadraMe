@@ -394,6 +394,13 @@ button, a {
   outline-offset: 2px;
 }
 
+/* Botones y enlaces con la clase «outline-none» de Tailwind perdían el anillo en teclado: este
+   !important lo garantiza solo en foco por teclado (:focus-visible no se activa con un toque o clic). */
+button:focus-visible, a:focus-visible, summary:focus-visible, [role='button']:focus-visible, [role='tab']:focus-visible {
+  outline: 2px solid var(--color-accent) !important;
+  outline-offset: 2px;
+}
+
 /* ── Puntero (ratón / trackpad): hover solo donde existe hover, para no dejar
    estados "pegados" en pantallas táctiles ───────────────────────────────── */
 @media (hover: hover) {

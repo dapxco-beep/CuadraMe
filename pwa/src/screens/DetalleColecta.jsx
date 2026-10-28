@@ -1,3 +1,5 @@
+import { aFecha } from '../lib/fechaLocal'
+import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, Copy, MessageCircle, Share2, Undo2 } from 'lucide-react'
@@ -40,7 +42,7 @@ export default function DetalleColecta() {
     try {
       setC(await api.colecta(id))
     } catch (e) {
-      setError(e.status === 404 ? 'Esta vaca ya no existe.' : e.message || 'No se pudo cargar la vaca. Revisa tu conexión.')
+      setError(e.status === 404 ? 'Esta vaca ya no existe.' : textoError(e, 'cargar la vaca'))
     }
   }, [id])
   useEffect(() => {
@@ -309,7 +311,7 @@ export default function DetalleColecta() {
                 {p.pagos.map((pg) => (
                   <li key={pg.id} className="flex items-center justify-between text-xs text-ink-soft">
                     <span className="tabular-nums">
-                      {formatMoneda(pg.monto, c.moneda)} · {new Date(pg.fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
+                      {formatMoneda(pg.monto, c.moneda)} · {aFecha(pg.fecha)?.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
                       {pg.registrado_en_cuenta ? ' · en tu cuenta' : ''}
                     </span>
                     <button onClick={() => deshacer(p, pg)} className="min-h-9 px-2 flex items-center gap-1 text-ink-soft" aria-label={`Deshacer pago de ${p.nombre}`}>

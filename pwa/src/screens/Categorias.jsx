@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { useVolver } from '../lib/useVolver'
@@ -34,7 +35,7 @@ export default function Categorias() {
       await api.editarCategoria(cat.id, { activa: !cat.activa })
       recargar()
     } catch (err) {
-      avisar(err.message || 'No se pudo cambiar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'cambiar'))
     }
   }
 
@@ -48,7 +49,7 @@ export default function Categorias() {
       await api.reordenarCategorias(ids)
       recargar()
     } catch (err) {
-      avisar(err.message || 'No se pudo reordenar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'reordenar'))
     }
   }
 
@@ -275,7 +276,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
       }
       onGuardada()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'guardar'))
     } finally {
       setGuardando(false)
     }
@@ -299,7 +300,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
         setMoverDe(err.detalle)
         setDestino(activas.find((c) => c.id !== categoria.id)?.nombre || '')
       } else {
-        setError(err.message || 'No se pudo eliminar. Revisa tu conexión e intenta de nuevo.')
+        setError(textoError(err, 'eliminar'))
       }
       setEliminando(false)
     }
@@ -313,7 +314,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
       await api.eliminarCategoria(categoria.id, destino)
       onEliminada()
     } catch (err) {
-      setError(err.message || 'No se pudo eliminar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'eliminar'))
       setEliminando(false)
     }
   }

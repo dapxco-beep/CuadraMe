@@ -1,3 +1,5 @@
+import { aFecha } from '../lib/fechaLocal'
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { ChevronDown, CircleHelp, Plus, RefreshCw, TrendingUp, X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -44,7 +46,7 @@ export default function Inversiones() {
       setDatos(await api.inversiones())
       api.opcionesInversiones?.().then((o) => o && setOpciones(o)).catch(() => {})
     } catch (e) {
-      setError(e.message || 'No pudimos cargar tus inversiones. Revisa tu conexión.')
+      setError(textoError(e, 'cargar tus inversiones'))
     }
   }
   useEffect(() => { cargar() }, [])
@@ -533,7 +535,7 @@ function Detalle({ id, onClose, onCambio }) {
             <ul className="divide-y divide-line text-xs">
               {p.transacciones.map((t) => (
                 <li key={t.id} className="py-2 flex justify-between gap-2">
-                  <span>{new Date(t.fecha).toLocaleDateString('es-CO')} · {t.tipo}{t.cantidad ? ` · ${t.cantidad} u. a ${formatMoneda(t.precio, p.moneda)}` : t.monto ? ` · ${formatMoneda(t.monto, p.moneda)}` : ''}</span>
+                  <span>{aFecha(t.fecha)?.toLocaleDateString('es-CO')} · {t.tipo}{t.cantidad ? ` · ${t.cantidad} u. a ${formatMoneda(t.precio, p.moneda)}` : t.monto ? ` · ${formatMoneda(t.monto, p.moneda)}` : ''}</span>
                   <button onClick={() => borrarTx(t.id)} className="text-danger font-semibold min-h-11 px-2" aria-label="Eliminar movimiento">Quitar</button>
                 </li>
               ))}

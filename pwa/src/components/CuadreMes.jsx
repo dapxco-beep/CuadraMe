@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { AlertTriangle, CheckCircle2, CircleDashed, Scale } from 'lucide-react'
 import { api } from '../lib/api'
@@ -63,7 +64,7 @@ function SaldoInicialSinExplicar({ cuentaId, diag, moneda, onHecho }) {
       setId(r.movimiento_id || null)
       onHecho()
     } catch (err) {
-      setError(err.message || 'No pudimos hacerlo. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'hacerlo'))
     } finally {
       setOcupado(false)
     }

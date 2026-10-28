@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { Mail, Sparkles, Wallet } from 'lucide-react'
 import { api } from '../lib/api'
@@ -105,7 +106,7 @@ export default function CrearCuenta({ onCreada }) {
         terminar(cuenta)
       }
     } catch (err) {
-      setError(err.message || 'No pudimos crear la cuenta. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'crear la cuenta'))
     } finally {
       setGuardando(false)
     }

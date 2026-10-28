@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { Link } from 'react-router-dom'
@@ -486,7 +487,7 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
       avisar?.(`Listo: presupuesto de ${categoria} guardado. Te avisamos antes de pasarte.`, 'ok')
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No pudimos guardarlo. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'guardarlo'))
     } finally {
       setGuardando(false)
     }

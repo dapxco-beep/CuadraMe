@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ShieldCheck } from 'lucide-react'
@@ -23,7 +24,7 @@ export default function AutorizacionTratamiento({ onListo }) {
       await api.guardarConsentimientos(VERSION_TEXTOS, items, 'registro')
       onListo()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar tu autorización. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'guardar tu autorización'))
       setGuardando(false)
     }
   }

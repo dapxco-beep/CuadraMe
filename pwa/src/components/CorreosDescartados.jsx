@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp, Undo2 } from 'lucide-react'
 import { api } from '../lib/api'
@@ -56,7 +57,7 @@ export default function CorreosDescartados({ cantidad = 0, abierto: abiertoInici
     let vivo = true
     Promise.resolve(api.correosDescartados?.(100))
       .then((r) => vivo && setLista(Array.isArray(r) ? r : []))
-      .catch((e) => vivo && setError(e.message || 'No pudimos cargar esos correos. Revisa tu conexión e intenta de nuevo.'))
+      .catch((e) => vivo && setError(textoError(e, 'cargar esos correos')))
     return () => {
       vivo = false
     }
@@ -73,7 +74,7 @@ export default function CorreosDescartados({ cantidad = 0, abierto: abiertoInici
       setLista((l) => (l || []).filter((x) => x.id !== c.id))
       onCambio?.()
     } catch (e) {
-      setError(e.message || 'No se pudo recuperar el correo. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(e, 'recuperar el correo'))
     } finally {
       setOcupado(null)
     }

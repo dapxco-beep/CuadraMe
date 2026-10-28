@@ -105,14 +105,17 @@ export function useAuth() {
   return useContext(AuthContext)
 }
 
-function traducirError(msg) {
+export function traducirError(texto) {
+  const msg = String(texto || '')
   if (msg.includes('Invalid login credentials')) return 'Correo o contraseña incorrectos'
   if (msg.includes('User already registered')) return 'Ese correo ya está registrado'
   if (msg.includes('Password should be at least')) return 'La contraseña es muy corta'
   if (msg.includes('Email not confirmed')) return 'Confirma tu correo antes de entrar (revisa tu bandeja y spam)'
   if (msg.includes('rate limit') || msg.includes('too many')) return 'Demasiados intentos. Espera unos minutos e intenta de nuevo'
   if (msg.includes('same password')) return 'La nueva contraseña debe ser distinta a la anterior'
-  if (msg.includes('Token has expired') || msg.includes('invalid')) return 'El código no es correcto o ya venció. Revisa los números o pide uno nuevo'
+  if (/email address.*invalid|invalid.*email|unable to validate email/i.test(msg)) return 'Ese correo no parece válido. Revísalo e intenta de nuevo'
+  if (msg.includes('Token has expired') || /otp.*(invalid|expired)|invalid.*(token|otp|code)/i.test(msg)) return 'El código no es correcto o ya venció. Revisa los números o pide uno nuevo'
+  if (/invalid/i.test(msg)) return 'Algo de lo que escribiste no es válido. Revísalo e intenta de nuevo'
   if (msg.includes('sending') || msg.includes('not authorized')) return 'No pudimos enviar el correo ahora. Intenta de nuevo en unos minutos'
   if (msg.includes('Failed to fetch')) return 'Sin conexión. Revisa tu internet e intenta de nuevo'
   return msg

@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { FileUp, LifeBuoy, ShieldCheck, Trash2, X } from 'lucide-react'
@@ -87,7 +88,7 @@ export default function BancoNoEsta({ onClose, bancoInicial = '' }) {
       id = r.id
     } catch (err) {
       setEnviando(false)
-      return setError(err.message || 'No pudimos enviar tu aviso. Revisa tu conexión e intenta de nuevo.')
+      return setError(textoError(err, 'enviar tu aviso'))
     }
     let subido = false
     if (archivo && almacen) {

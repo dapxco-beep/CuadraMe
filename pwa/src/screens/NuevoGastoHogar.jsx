@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
@@ -69,7 +70,7 @@ export default function NuevoGastoHogar() {
       if (copiar) recargar?.()
       navigate(`/hogares/${id}`, { replace: true })
     } catch (e) {
-      avisar(e.message || 'No se pudo guardar el gasto. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(e, 'guardar el gasto'))
       setGuardando(false)
     }
   }

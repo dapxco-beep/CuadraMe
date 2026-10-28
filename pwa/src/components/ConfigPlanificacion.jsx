@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -50,7 +51,7 @@ export default function ConfigPlanificacion({ presupuestos, onClose, onGuardado 
       })
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No pudimos guardar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'guardar'))
     }
     setGuardando(false)
   }

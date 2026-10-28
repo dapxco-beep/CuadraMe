@@ -1,3 +1,4 @@
+import { msFecha } from './fechaLocal'
 // Traslados entre cuentas propias en el cliente (espejo de backend/app/contabilidad.py).
 // Regla: TODO movimiento tiene dirección (entra o sale) y mueve el saldo; lo que cambia es si
 // cuenta como ingreso/gasto en los informes. Un traslado propio es neutral; una transferencia
@@ -84,7 +85,7 @@ const DOS_DIAS = 2 * 86400 * 1000
 export function candidatosContraparte(m, otros) {
   const d = direccionDe(m)
   if (!d) return []
-  const t = new Date(m.fecha).getTime()
+  const t = msFecha(m.fecha)
   return otros
     .filter(
       (o) =>
@@ -92,8 +93,8 @@ export function candidatosContraparte(m, otros) {
         o.cuenta_id !== m.cuenta_id &&
         direccionDe(o) === (d === 'income' ? 'expense' : 'income') &&
         Math.abs(o.monto - m.monto) < 1 &&
-        Math.abs(new Date(o.fecha).getTime() - t) <= DOS_DIAS &&
+        Math.abs(msFecha(o.fecha) - t) <= DOS_DIAS &&
         !esTrasladoConfirmado(o)
     )
-    .sort((a, b) => Math.abs(new Date(a.fecha) - t) - Math.abs(new Date(b.fecha) - t))
+    .sort((a, b) => Math.abs(msFecha(a.fecha) - t) - Math.abs(msFecha(b.fecha) - t))
 }

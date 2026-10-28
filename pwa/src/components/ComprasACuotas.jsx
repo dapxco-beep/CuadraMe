@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -43,7 +44,7 @@ export default function ComprasACuotas({ cuenta }) {
       await api.pagarCuotaTarjeta(id)
       await cargar()
     } catch (err) {
-      setError(err.message || 'No se pudo marcar la cuota. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'marcar la cuota'))
     }
   }
 
@@ -54,7 +55,7 @@ export default function ComprasACuotas({ cuenta }) {
       setQuitando(null)
       await cargar()
     } catch (err) {
-      setError(err.message || 'No se pudo quitar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'quitar'))
     }
   }
 
@@ -149,7 +150,7 @@ function FormCuotas({ cuenta, onClose, onGuardada }) {
       })
       await onGuardada()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'guardar'))
       setGuardando(false)
     }
   }

@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
@@ -104,7 +105,7 @@ export default function DividirGasto() {
       setElegidos((prev) => [...prev, c.id])
       setNuevo(null)
     } catch (e) {
-      setError(e.message || 'No se pudo crear el contacto. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(e, 'crear el contacto'))
     }
   }
 
@@ -119,7 +120,7 @@ export default function DividirGasto() {
       setGrupoId(g.id)
       setNombreGrupo(null)
     } catch (e) {
-      setError(e.message || 'No se pudo crear el grupo. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(e, 'crear el grupo'))
     }
   }
 
@@ -148,7 +149,7 @@ export default function DividirGasto() {
       await recargarCuentas()
       navigate('/amigos', { replace: true })
     } catch (e) {
-      setError(e.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(e, 'guardar'))
     } finally {
       setGuardando(false)
     }

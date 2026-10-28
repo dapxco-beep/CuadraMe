@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
@@ -287,7 +288,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
       }
       onGuardada()
     } catch (err) {
-      setError(err.message || 'No pudimos guardar la cuenta. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'guardar la cuenta'))
     } finally {
       setGuardando(false)
     }

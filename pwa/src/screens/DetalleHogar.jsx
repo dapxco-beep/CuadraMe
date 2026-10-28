@@ -1,3 +1,5 @@
+import { aFecha } from '../lib/fechaLocal'
+import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Bell, BellOff, Copy, MessageCircle, Plus, Share2 } from 'lucide-react'
@@ -29,7 +31,7 @@ export default function DetalleHogar() {
       setH(d)
       setGastos(g)
     } catch (e) {
-      setError(e.status === 404 ? 'Este parche no existe o ya no haces parte de él.' : e.message || 'No se pudo cargar el parche. Revisa tu conexión.')
+      setError(e.status === 404 ? 'Este parche no existe o ya no haces parte de él.' : textoError(e, 'cargar el parche'))
     }
   }, [id])
   useEffect(() => {
@@ -289,7 +291,7 @@ export default function DetalleHogar() {
                 <div className="min-w-0">
                   <p className="text-sm font-semibold break-words">{g.descripcion}</p>
                   <p className="text-xs text-ink-soft">
-                    Pagó {g.pagador} · {new Date(g.fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
+                    Pagó {g.pagador} · {aFecha(g.fecha)?.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
                     {g.categoria ? ` · ${g.categoria}` : ''}
                   </p>
                 </div>

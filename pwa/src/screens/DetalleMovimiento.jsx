@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { EsqueletoPantalla } from '../components/Esqueletos'
 import { Link, useParams } from 'react-router-dom'
@@ -97,7 +98,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       await recargarCuentas()
       avisar(nuevo === 'income' ? 'Listo: ahora es un ingreso' : 'Listo: ahora es un gasto', 'ok')
     } catch (err) {
-      avisar(err.message || 'No se pudo cambiar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'cambiar'))
     } finally {
       setTrasladando(false)
     }
@@ -114,7 +115,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       setContrapartes(null)
       avisar(mensaje, 'ok')
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'guardar'))
     } finally {
       setTrasladando(false)
     }
@@ -134,7 +135,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
         candidatosContraparte(movimiento, lista).filter((o) => moneda(o.cuenta_id) === moneda(movimiento.cuenta_id))
       )
     } catch (err) {
-      avisar(err.message || 'No se pudo buscar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'buscar'))
     } finally {
       setTrasladando(false)
     }
@@ -153,7 +154,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       setContrapartes(null)
       avisar('Vinculados: ya no cuentan como ingreso ni gasto', 'ok')
     } catch (err) {
-      avisar(err.message || 'No se pudo vincular. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'vincular'))
     } finally {
       setTrasladando(false)
     }
@@ -167,7 +168,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       parchearEnCaches(nuevo)
       onCambio?.(nuevo)
     } catch (err) {
-      avisar(err.message || 'No se pudo confirmar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'confirmar'))
     }
   }
 
@@ -185,7 +186,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       setEditandoNombre(false)
       avisar(limpiarNombre(texto) ? 'Nombre guardado' : 'Volvió el nombre del banco', 'ok')
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'guardar'))
     } finally {
       setGuardandoNombre(false)
     }
@@ -241,7 +242,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       setEditando(false)
       avisar('Movimiento actualizado', 'ok')
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'guardar'))
     } finally {
       setGuardando(false)
     }
@@ -278,7 +279,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       else volver()
     } catch (err) {
       setEliminando(false)
-      avisar(err.message || 'No se pudo eliminar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'eliminar'))
     }
   }
 
@@ -316,7 +317,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       await recargarCuentas?.()
       avisar('Listo: pasó a tu efectivo. No cuenta como gasto.', 'ok')
     } catch (err) {
-      avisar(err.message || 'No pudimos pasarlo. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'pasarlo'))
     } finally {
       setTrasladando(false)
     }

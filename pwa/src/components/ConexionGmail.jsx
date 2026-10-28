@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ChevronDown, Mail, ShieldCheck } from 'lucide-react'
@@ -33,7 +34,7 @@ export default function ConexionGmail({ estado, onCambio }) {
       const { url } = await api.gmailConectar()
       window.location.href = url
     } catch (err) {
-      setError(err.message || 'No se pudo iniciar la conexión con Gmail. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'iniciar la conexión con Gmail'))
     }
   }
 
@@ -48,7 +49,7 @@ export default function ConexionGmail({ estado, onCambio }) {
       await api.gmailDesconectar()
       onCambio?.()
     } catch (err) {
-      setError(err.message || 'No se pudo desconectar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'desconectar'))
     }
   }
 

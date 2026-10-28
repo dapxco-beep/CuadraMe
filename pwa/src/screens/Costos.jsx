@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, ArrowLeft, ChevronRight, Receipt, Repeat, X } from 'lucide-react'
@@ -85,7 +86,7 @@ export default function Costos() {
     Promise.resolve()
       .then(() => api.costosBancarios())
       .then((d) => activo && setDatos(d))
-      .catch((e) => activo && setError(e.message || 'No se pudo cargar. Revisa tu conexión e intenta de nuevo.'))
+      .catch((e) => activo && setError(textoError(e, 'cargar')))
       .finally(() => activo && setCargando(false))
     return () => {
       activo = false

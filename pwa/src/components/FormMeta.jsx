@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PiggyBank, X } from 'lucide-react'
@@ -87,7 +88,7 @@ export default function FormMeta({ onClose, onGuardada }) {
       avisar?.(`Listo: creaste la meta «${nombre.trim()}». Toca «Aportar ahora» cuando separes plata.`, 'ok')
       onGuardada?.(meta)
     } catch (err) {
-      setError(err.message || 'No pudimos crear la meta. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'crear la meta'))
     } finally {
       setGuardando(false)
     }

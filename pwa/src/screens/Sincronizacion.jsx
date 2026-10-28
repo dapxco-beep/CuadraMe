@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
@@ -208,7 +209,7 @@ export default function Sincronizacion({ modo = 'extractos' }) {
       setCola({ items: porCat?.items || [], total: porCat?.total || 0 })
       setError('')
     } catch (err) {
-      if (montado.current) setError(err.message || 'No se pudo cargar. Revisa tu conexión e intenta de nuevo.')
+      if (montado.current) setError(textoError(err, 'cargar'))
     } finally {
       if (montado.current) setCargando(false)
     }
@@ -691,7 +692,7 @@ export default function Sincronizacion({ modo = 'extractos' }) {
       const lista = await api.extractosCorreo('descartado')
       setIgnorados(Array.isArray(lista) ? lista : [])
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudieron cargar los ignorados. Revisa tu conexión e intenta de nuevo.')
+      setAvisoExt(textoError(err, 'cargar los ignorados'))
     }
   }
 
@@ -704,7 +705,7 @@ export default function Sincronizacion({ modo = 'extractos' }) {
       setCorreosIgnorados((l) => (l || []).filter((x) => x.id !== c.id))
       cargar()
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudo recuperar el correo. Revisa tu conexión e intenta de nuevo.')
+      setAvisoExt(textoError(err, 'recuperar el correo'))
     } finally {
       setRecuperando(null)
     }
@@ -715,7 +716,7 @@ export default function Sincronizacion({ modo = 'extractos' }) {
       const lista = await api.correosLista('ignorados', 0, 30)
       setCorreosIgnorados(Array.isArray(lista) ? lista : [])
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudieron cargar los correos ignorados. Revisa tu conexión e intenta de nuevo.')
+      setAvisoExt(textoError(err, 'cargar los correos ignorados'))
     }
   }
 
@@ -750,7 +751,7 @@ export default function Sincronizacion({ modo = 'extractos' }) {
       if (hayProtegidos && typeof api.probarClavePdf === 'function') await probarClave()
       else setAvisoExt('Clave guardada. Toca «Traer todo ahora» para abrir esos extractos.')
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudo guardar la clave. Revisa tu conexión e intenta de nuevo.')
+      setAvisoExt(textoError(err, 'guardar la clave'))
     }
   }
 
@@ -760,7 +761,7 @@ export default function Sincronizacion({ modo = 'extractos' }) {
       setClaveInfo((c) => ({ ...c, configurada: false }))
       setPruebaClave({ resultado: null, mensaje: '', error: '' })
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudo borrar la clave. Revisa tu conexión e intenta de nuevo.')
+      setAvisoExt(textoError(err, 'borrar la clave'))
     }
   }
 
@@ -776,7 +777,7 @@ export default function Sincronizacion({ modo = 'extractos' }) {
       })
       await cargar()
     } catch (err) {
-      setAvisoExt(err.message || 'No se pudo cambiar la categoría. Revisa tu conexión e intenta de nuevo.')
+      setAvisoExt(textoError(err, 'cambiar la categoría'))
     } finally {
       if (montado.current) {
         setOcupados((s) => {

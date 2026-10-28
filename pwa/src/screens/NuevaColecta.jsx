@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus } from 'lucide-react'
@@ -74,7 +75,7 @@ export default function NuevaColecta() {
       })
       navigate(`/colectas/${r.id}`, { replace: true })
     } catch (e) {
-      avisar(e.message || 'No se pudo crear la vaca. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(e, 'crear la vaca'))
       setGuardando(false)
     }
   }
