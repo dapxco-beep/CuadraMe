@@ -99,13 +99,12 @@ export default function Inversiones() {
             <Resumen d={datos} />
             {hayConcentracion(datos.concentracion, datos.posiciones.length) && (
               <p className="mx-5 mt-3 rounded-2xl bg-accent-soft p-3 text-xs" role="note">
-                {datos.concentracion.nombre} pesa el {datos.concentracion.pct.toFixed(0)} % de tu portafolio. Repartir
-                el riesgo es una idea general; la decisión es tuya.
+                {datos.concentracion.nombre} pesa el {datos.concentracion.pct.toFixed(0)} % de tu portafolio.
               </p>
             )}
             {datos.sin_precio.length > 0 && (
               <p className="mx-5 mt-3 text-xs text-ink-soft">
-                Sin precio todavía: {datos.sin_precio.join(', ')}. Ábrelas y pon un precio a mano.
+                Sin precio: {datos.sin_precio.join(', ')}.
               </p>
             )}
             <div className="mx-5 mt-3 flex items-center gap-3">
@@ -140,13 +139,13 @@ export default function Inversiones() {
             <VerMas titulo="más opciones">
               <label className="mx-5 mt-4 flex items-center gap-3 text-sm min-h-11">
                 <input type="checkbox" checked={opciones.resumen_semanal} onChange={alternarSemanal} />
-                Avisarme una vez por semana cómo va mi portafolio
+                Avisarme cada semana cómo va
               </label>
             </VerMas>
             <EnlacesRelacionados enlaces={[
-              { a: '/patrimonio', texto: 'Ver todo lo que tienes', apoyo: 'Tus inversiones, cuentas y deudas juntas' },
+              { a: '/patrimonio', texto: 'Ver todo lo que tienes' },
               { a: '/cuentas', texto: 'Mis cuentas' },
-              { a: '/metas', texto: 'Metas de ahorro', apoyo: 'Para lo que quieres lograr con esta plata' },
+              { a: '/metas', texto: 'Metas de ahorro' },
             ]} />
           </div>
         </div>
@@ -167,7 +166,7 @@ function Vacio({ onAgregar, onCsv }) {
       <TrendingUp size={32} className="mx-auto mb-3 text-accent" aria-hidden="true" />
       <p className="text-sm font-semibold mb-1">Aquí verás tus inversiones</p>
       <p className="text-sm text-ink-soft mb-4">
-        Acciones, ETF, fondos, cripto o CDT, con el precio al día y cuánto vas ganando. Es opcional: agrégalas solo si quieres seguirlas.
+        Sigue tus acciones, fondos, cripto o CDT. Es opcional.
       </p>
       <button onClick={onAgregar} className="bg-ink text-paper font-semibold rounded-2xl px-5 py-3 text-sm">Agregar mi primera inversión</button>
       <div><button onClick={onCsv} className="mt-2 text-xs font-semibold text-accent min-h-11">Tengo un archivo CSV</button></div>
@@ -190,7 +189,7 @@ function Resumen({ d }) {
         {d.hoy_cop !== null && d.hoy_cop !== undefined && (
           <div><p className="opacity-90">Hoy</p><p className="font-semibold tabular-nums">{d.hoy_cop >= 0 ? '+' : '-'}{formatCOP(Math.abs(d.hoy_cop))}</p></div>
         )}
-        {d.dividendos > 0 && <div><p className="opacity-90">Pagos recibidos (dividendos)</p><p className="font-semibold tabular-nums">{formatCOP(d.dividendos)}</p></div>}
+        {d.dividendos > 0 && <div><p className="opacity-90">Dividendos</p><p className="font-semibold tabular-nums">{formatCOP(d.dividendos)}</p></div>}
       </div>
       <div className="grid grid-cols-3 gap-2 mt-4 text-xs" aria-label="Rentabilidad por periodo">
         <div><p className="opacity-90">Este año</p><p className="font-semibold">{pctTexto(p.ytd_pct)}</p></div>
@@ -198,7 +197,7 @@ function Resumen({ d }) {
         <div><p className="opacity-90">Desde el inicio</p><p className="font-semibold">{pctTexto(p.desde_inicio_pct)}</p></div>
       </div>
       {d.tir_pct !== null && d.tir_pct !== undefined && (
-        <p className="mt-3 text-xs opacity-90">Cuánto te rinde al año lo que aportaste (TIR): <strong>{pctTexto(d.tir_pct)}</strong></p>
+        <p className="mt-3 text-xs opacity-90">Rinde al año (TIR): <strong>{pctTexto(d.tir_pct)}</strong></p>
       )}
     </div>
   )
@@ -291,7 +290,7 @@ function FormBroker({ onClose, onListo }) {
   return (
     <Hoja onCerrar={onClose}>
       <Encabezado titulo="Agregar plataforma" onClose={onClose} />
-      <p className="text-xs text-ink-soft mb-3">Es opcional: dónde tienes la inversión (broker, fiduciaria, exchange).</p>
+      <p className="text-xs text-ink-soft mb-3">Dónde tienes la inversión (broker, fiduciaria…).</p>
       <Campo etiqueta="Nombre">
         <input list="brokers-sugeridos" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. Trii" className={clsInput} />
         <datalist id="brokers-sugeridos">{BROKERS_SUGERIDOS.map((b) => <option key={b} value={b} />)}</datalist>

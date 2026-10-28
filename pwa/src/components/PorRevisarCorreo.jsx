@@ -15,7 +15,7 @@ export default function PorRevisarCorreo({ correos, onResuelto, onCuentaCreada, 
         Por revisar · {correos.length} del correo
       </h2>
       <p className="text-xs text-ink-soft mt-0.5 mb-3">
-        Los leí de las notificaciones de tu banco. Revisa la fecha y apruébalos: así pasan a tu lista.
+        Revisa la fecha y apruébalos para que pasen a tu lista.
       </p>
       <CorreosPorRevisar correos={correos} onResuelto={onResuelto} onCuentaCreada={onCuentaCreada} onRecargar={onRecargar} />
     </section>

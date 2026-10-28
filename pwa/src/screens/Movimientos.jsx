@@ -835,7 +835,7 @@ export default function Movimientos() {
   async function eliminarSeleccion() {
     const ids = [...seleccionados]
     const titulo = `¿Eliminar ${ids.length} ${ids.length === 1 ? 'movimiento' : 'movimientos'}?`
-    const aviso = 'El saldo de las cuentas se ajustará como si estos movimientos nunca hubieran existido. Esto no se puede deshacer.'
+    const aviso = 'El saldo se ajusta como si nunca hubieran existido. No se puede deshacer.'
     // Si alguno vino del correo o de un extracto se pregunta UNA sola vez «¿Qué pasó?» para todos (no uno por uno).
     // Sin ninguno de esos, es la confirmación de siempre y el servidor aplica «duplicado» (no hay correo que vuelva).
     let motivo
@@ -981,7 +981,7 @@ export default function Movimientos() {
                   </span>
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-semibold leading-tight">¿En qué gasto mi plata?</span>
-                    <span className="block text-xs text-ink-soft mt-0.5">Mira tus gastos por categoría y por mes</span>
+                    <span className="block text-xs text-ink-soft mt-0.5">Por categoría y por mes</span>
                   </span>
                   <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
                 </Link>
@@ -996,7 +996,7 @@ export default function Movimientos() {
                     >
                       <span className="flex-1 min-w-0">
                         <span className="block text-sm font-semibold text-accent">Correos por revisar ({porCorreo.correos.length})</span>
-                        <span className="block text-xs text-ink-soft">Los leí de tu banco. Apruébalos para que pasen a tu lista.</span>
+                        <span className="block text-xs text-ink-soft">Apruébalos para que pasen a tu lista.</span>
                       </span>
                       <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
                     </button>
@@ -1008,7 +1008,7 @@ export default function Movimientos() {
                     >
                       <span className="flex-1 min-w-0">
                         <span className="block text-sm font-semibold">Correos descartados ({descartados >= 100 ? '99+' : descartados})</span>
-                        <span className="block text-xs text-ink-soft">Los descartaste al borrar un movimiento parecido. Recupéralos si sí eran tuyos.</span>
+                        <span className="block text-xs text-ink-soft">Recupéralos si sí eran tuyos.</span>
                       </span>
                       <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
                     </button>
@@ -1122,7 +1122,7 @@ export default function Movimientos() {
                     ))}
                   </select>
                   <button onClick={() => exportar('csv')} className="text-xs text-accent font-medium px-2 text-left" aria-label="Exportar CSV">
-                    Descargar en CSV (para expertos)
+                    Descargar en CSV
                   </button>
                 </div>
               )}
@@ -1172,8 +1172,7 @@ export default function Movimientos() {
               {filtrados.length > 0 && (
                 <p className="px-5 -mt-1 mb-3 text-[11px] text-ink-soft" data-testid="resumen-conteo">
                   {filtrados.length} movimiento{filtrados.length === 1 ? '' : 's'}
-                  {hayMas ? ' cargados · baja para ver más y que los totales los incluyan' : ''}
-                  {' · no cuenta traslados ni pagos de tarjeta'}
+                  {hayMas ? ' cargados · baja para ver más' : ''}
                 </p>
               )}
 
@@ -1216,7 +1215,7 @@ export default function Movimientos() {
           <PorRevisarCorreo correos={porCorreo.correos} onResuelto={correoResuelto} onCuentaCreada={porCorreo.recargar} onRecargar={porCorreo.recargar} className="mx-5 mb-4" />
           {soloCorreo ? (
             porCorreo.cargado && porCorreo.correos.length === 0 && (
-              <EstadoVacio icono={ListChecks} titulo="Nada por revisar del correo" texto="Cuando llegue una notificación de tu banco, la verás aquí con su fecha." className="mx-5" />
+              <EstadoVacio icono={ListChecks} titulo="Nada por revisar del correo" texto="Los avisos de tu banco aparecerán aquí." className="mx-5" />
             )
           ) : cargando ? (
             <EsqueletoLista filas={8} className="mx-5" etiqueta="Cargando movimientos" />
@@ -1229,7 +1228,7 @@ export default function Movimientos() {
             <EstadoVacio
               icono={ListChecks}
               titulo="Aún no tienes movimientos"
-              texto="Anota el primero o trae los de tu banco: aquí los verás ordenados por día."
+              texto="Anota el primero o trae los de tu banco."
               className="mx-5"
             >
               <div className="mt-4 flex flex-col gap-2">
@@ -1244,7 +1243,7 @@ export default function Movimientos() {
               titulo={f.revisar && chipsActivos.length === 0 && !f.cat && !f.conf ? 'Todo está revisado' : 'No hay movimientos que coincidan'}
               texto={
                 f.revisar && chipsActivos.length === 0 && !f.cat && !f.conf
-                  ?'No hay categorías automáticas pendientes ni movimientos en "Otros".'
+                  ?'No queda nada por confirmar.'
                   : 'Prueba con otro filtro o búsqueda.'
               }
               className="mx-5"
@@ -1459,7 +1458,7 @@ export default function Movimientos() {
             <>
               <h2 className="text-lg font-semibold mb-1">Mover a otra cuenta</h2>
               <p className="text-xs text-ink-soft mb-3">
-                {seleccionados.size} seleccionados. Los saldos de ambas cuentas se ajustan solos.
+                {seleccionados.size} seleccionados.
               </p>
               <div className="space-y-2">
                 {cuentas.map((c) => (

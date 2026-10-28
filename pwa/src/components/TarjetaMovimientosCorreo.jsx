@@ -19,10 +19,10 @@ export default function TarjetaMovimientosCorreo({ conectado = null, leyendo = f
           <h2 className="text-sm font-semibold">Movimientos del correo</h2>
           <p className="text-xs text-ink-soft mt-0.5">
             {conectado === false
-              ? 'Conecta tu correo y las compras que tu banco te avisa se anotan solas.'
+              ? 'Conecta tu correo y tus compras se anotan solas.'
               : porRevisar > 0
                 ? `${porRevisar} ${porRevisar === 1 ? 'aviso espera' : 'avisos esperan'} tu revisión.`
-                : 'Los avisos de tu banco llegan aquí y tú los apruebas.'}
+                : 'Los avisos de tu banco llegan aquí.'}
           </p>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowLeftRight, ChevronRight, Copy, Info, Pencil, Trash2, X 
 import { CATEGORIA_PAGO_TARJETA, esPagoTarjeta } from '../lib/contabilidad'
 import Icono from '../components/Icono'
 import Ayudita from '../components/Ayudita'
+import VerMas from '../components/VerMas'
 import { formatMoneda, nombreOrigen } from '../lib/format'
 import { diaCorto, fechaHoraMovimiento, horaCorta } from '../lib/fechaMovimiento'
 import { api } from '../lib/api'
@@ -76,8 +77,8 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
     const nuevo = movimiento.tipo === 'income' ? 'expense' : 'income'
     const ok = await confirmar(
       nuevo === 'income'
-        ? 'Pasará a contar como un ingreso: el saldo de la cuenta sube y entra en tus ingresos del mes.'
-        : 'Pasará a contar como un gasto: el saldo de la cuenta baja y entra en tus gastos del mes.',
+        ? 'Entrará en tus ingresos del mes y el saldo sube.'
+        : 'Entrará en tus gastos del mes y el saldo baja.',
       { titulo: nuevo === 'income' ? '¿Cambiar a ingreso?' : '¿Cambiar a gasto?', confirmarTexto: 'Cambiar' }
     )
     if (!ok) return
@@ -251,7 +252,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
     // solo «duplicado» y «no va» impiden que el correo lo vuelva a traer; «error» lo devuelve a Por revisar.
     let motivo
     if (!esTransferencia && vinoDeCorreoOExtracto(movimiento)) {
-      motivo = await elegir('El saldo de la cuenta se ajustará como si este movimiento nunca hubiera existido.', {
+      motivo = await elegir('El saldo se ajusta como si nunca hubiera existido.', {
         titulo: '¿Qué pasó?',
         opciones: OPCIONES_BORRADO,
       })
@@ -259,8 +260,8 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
     } else {
       const ok = await confirmar(
         esTransferencia
-          ? 'Se eliminarán las dos partes de la transferencia y el dinero volverá a la cuenta de origen.'
-          : 'El saldo de la cuenta se ajustará como si este movimiento nunca hubiera existido.',
+          ? 'Se borran las dos partes y la plata vuelve a la cuenta de origen.'
+          : 'El saldo se ajusta como si nunca hubiera existido.',
         { titulo: '¿Eliminar este movimiento?', confirmarTexto: 'Eliminar', peligro: true }
       )
       if (!ok) return
@@ -539,7 +540,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           {esAuto(movimiento) && (
             <div className="px-4 py-3.5">
               <p className="text-sm">
-                La app puso esta categoría sola <InsigniaAuto movimiento={movimiento} />
+                Categoría puesta sola <InsigniaAuto movimiento={movimiento} />
               </p>
               <div className="flex gap-2 mt-3">
                 <button
@@ -566,8 +567,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
             <p role="note" data-testid="aviso-pago-tarjeta" className="px-4 py-3 text-xs bg-accent-soft flex gap-2">
               <Icono icono={Info} tam="sm" className="text-accent mt-0.5" />
               <span>
-                <b>Esto no es un gasto nuevo, es pagar lo que ya compraste.</b> El gasto ya se contó cuando hiciste la compra
-                con la tarjeta; por eso este pago no suma a tus gastos del mes.
+                <b>Esto no es un gasto nuevo, es pagar lo que ya compraste.</b>
               </span>
             </p>
           )}
@@ -575,7 +575,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
             <div className="px-4 py-3.5">
               {esPosibleTraslado(movimiento) && (
                 <p className="text-sm mb-3">
-                  Parece un movimiento entre tus propias cuentas. Si lo es, no cuenta como ingreso ni gasto. <Ayudita termino="traslado" />
+                  ¿Es plata entre tus cuentas? <Ayudita termino="traslado" />
                 </p>
               )}
               <div className="flex flex-col gap-2">
@@ -605,7 +605,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                 ) : (
                   <>
                     <button
-                      onClick={() => aplicarTraslado('traslado', 'Listo: es un traslado entre tus cuentas, no cuenta como ingreso ni gasto')}
+                      onClick={() => aplicarTraslado('traslado', 'Listo: es un traslado, no cuenta como ingreso ni gasto')}
                       disabled={trasladando}
                       className="rounded-xl bg-accent text-paper-raised py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
                     >
@@ -637,7 +637,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
               </div>
               {contrapartes && contrapartes.length === 0 && (
                 <p className="text-xs text-ink-soft mt-3">
-                  No encontré el otro lado (mismo monto, en otra cuenta tuya, con menos de 2 días de diferencia).
+                  No encontré el otro lado.
                 </p>
               )}
               {contrapartes && contrapartes.length > 0 && (
@@ -701,6 +701,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
       )}
 
       {!editando && (
+        <VerMas titulo="más enlaces">
         <nav aria-label="Seguir explorando" className="px-5 mt-5 flex flex-col gap-1" data-testid="enlaces-detalle">
           {!esTransferencia && (
             <Link to="/informe" className="flex items-center justify-between min-h-[44px] text-sm font-medium text-accent">
@@ -716,6 +717,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
             Ver más de {movimiento.categoria} <ChevronRight size={16} aria-hidden="true" />
           </Link>
         </nav>
+        </VerMas>
       )}
 
       {!editando && (
