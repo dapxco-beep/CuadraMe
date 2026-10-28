@@ -14,7 +14,7 @@
 
 export const TEMAS = {
   empezar: 'Para empezar',
-  traer: 'Traer movimientos',
+  traer: 'Traer extractos',
   entender: 'Entender mis números',
   privacidad: 'Privacidad y seguridad',
 }
@@ -53,7 +53,7 @@ export const PREGUNTAS = [
       'El extracto es el resumen mensual de tu cuenta o tarjeta, en PDF. Casi todos los bancos lo dan gratis.',
       '- **En la app o la página de tu banco:** busca «Extractos», «Estados de cuenta» o «Certificados».',
       '- **En tu correo:** muchos bancos lo envían cada mes. Si conectas tu Gmail, CuadraMe lo encuentra solo.',
-      'Descárgalo como **PDF** (no como foto ni captura de pantalla) y súbelo en «Traer movimientos».',
+      'Descárgalo como **PDF** (no como foto ni captura de pantalla) y súbelo en «Traer extractos».',
     ],
     palabras: 'extracto pdf banco estado de cuenta descargar resumen mensual subir conciliar',
     accion: { texto: 'Subir un extracto', to: '/sincronizacion' },
@@ -117,7 +117,7 @@ export const PREGUNTAS = [
       'Cuando abres la app te pregunta «¿Son tuyos?». Puedes **confirmar**, **editar** o **descartar** cada uno.',
     ],
     palabras: 'confirmar revisar pendiente bandeja son tuyos automatico llegaron solos',
-    accion: { texto: 'Traer movimientos', to: '/sincronizacion' },
+    accion: { texto: 'Traer extractos', to: '/sincronizacion' },
   },
   {
     id: 'gmail-seguro',

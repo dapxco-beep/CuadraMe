@@ -76,7 +76,11 @@ function responder(url, metodo) {
   if (p === '/categorias') return CATEGORIAS
   if (p === '/movimientos') return MOVS
   if (p === '/sincronizacion/estado') return ESTADO_SINC
-  if (p === '/sincronizacion/por-categorizar') return { items: [], total: 0, limite: 20, offset: 0 }
+  if (p === '/sincronizacion/por-categorizar') return { items: [], total: 12, limite: 20, offset: 0 }
+  if (p === '/cierre-mes') return []
+  if (p === '/cierre-mes/preferencias') return { correo: false }
+  if (p === '/cierre-mes/extractos') return { hay_datos: true, etiqueta: 'Septiembre', moneda_base: 'COP', parcial: false, meses: [], monedas_sin_tasa: [], total: {}, resumen_bancos: [{ banco: 'Nu', estado: 'cuadra' }, { banco: 'Nequi', estado: 'no_cuadra', diferencia: 39496 }], bancos: [{ banco: 'Nu', estado: 'cuadra', cuentas: [{ cuenta_id: 'c2', nombre: 'Nu', estado: 'cuadra', moneda: 'COP', diferencia: 0 }] }, { banco: 'Nequi', estado: 'no_cuadra', diferencia: 39496, cuentas: [{ cuenta_id: 'c3', nombre: 'Nequi', estado: 'no_cuadra', moneda: 'COP', diferencia: 39496 }] }] }
+  if (p === '/insights/alertas-proactivas') return { comisiones: [{ descripcion: 'Cuota de manejo', total_mes: 20000, veces: 1 }], cobros_duplicados: [{ movimiento_id_1: 'm1', descripcion: 'Netflix', monto: 30000 }] }
   if (p === '/correos/gmail/estado') return { conectado: true, email: 'persona@gmail.com', etiqueta: 'gastos' }
   if (p === '/correos/extractos') return EXTRACTOS
   if (p === '/correos/clave-pdf') return CLAVE

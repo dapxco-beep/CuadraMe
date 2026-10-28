@@ -5,7 +5,7 @@
 export const BOTON_TAREA = {
   correos_por_revisar: 'Ver los por revisar',
   falta_clave: 'Poner la clave',
-  extractos_por_conciliar: 'Conciliar',
+  extractos_por_conciliar: 'Revisar el extracto',
   extractos_sin_leer: 'Subir de nuevo',
   posibles_duplicados: 'Ver los repetidos',
   sin_cuenta: 'Crear la cuenta',
@@ -29,9 +29,9 @@ export function textoOrigenes(origenes) {
 
 // Leyenda de la cobertura por mes: el color nunca va solo.
 export const LEYENDA_COBERTURA = [
-  { clave: 'conciliado', texto: 'Revisado' },
+  { clave: 'conciliado', texto: 'Cuadra con tu banco' },
   { clave: 'parcial', texto: 'Por revisar' },
-  { clave: 'extracto_pendiente', texto: 'Sin procesar' },
+  { clave: 'extracto_pendiente', texto: 'Sin abrir' },
   { clave: 'falta_clave', texto: 'Necesita clave' },
   { clave: 'no_se_pudo_leer', texto: 'No se pudo leer' },
   { clave: 'sin_extracto', texto: 'Sin extracto' },

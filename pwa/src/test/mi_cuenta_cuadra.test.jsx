@@ -70,7 +70,7 @@ describe('pantalla', () => {
     api.correrAutoarreglo.mockResolvedValue(respuesta([]))
     montar()
     expect(await screen.findByText('Aún no hay nada que comparar')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Traer movimientos' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Traer extractos' }))
     expect(screen.getByTestId('sitio')).toHaveTextContent('/sincronizacion')
   })
   it('si falla, lo dice y permite reintentar', async () => {

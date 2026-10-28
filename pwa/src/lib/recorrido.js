@@ -25,7 +25,7 @@ export const PASOS_RECORRIDO = [
     detalle:
       'Correo: ideal para empezar, sin escribir nada. Extracto: lo más exacto, lo comparamos con lo que ya anotaste. Excel: para traer de una vez un historial viejo. Atajo de Apple Pay: solo iPhone y es opcional; anota cada pago al instante.',
     ruta: '/sincronizacion',
-    accion: 'Traer movimientos',
+    accion: 'Traer extractos',
   },
   {
     id: 'informes',

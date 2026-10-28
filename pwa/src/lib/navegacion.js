@@ -1,6 +1,6 @@
 import {
   Activity, ArrowLeftRight, Bot, BookOpen, CalendarCheck, CreditCard, Database, Gift, GraduationCap, HandCoins, Home, Landmark, Lightbulb, List, PieChart, PiggyBank,
-  LifeBuoy, Receipt, RefreshCw, Repeat, Scale, Settings, Share2, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Split, Sprout, Tag,
+  LifeBuoy, Mail, Receipt, RefreshCw, Repeat, Scale, Settings, Share2, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Split, Sprout, Tag,
   TrendingUp, User, Users, UsersRound, Wallet,
 } from 'lucide-react'
 
@@ -27,7 +27,8 @@ export const GRUPOS = [
     titulo: 'Anotar y traer',
     icon: Database,
     items: [
-      { to: '/sincronizacion', icon: RefreshCw, label: 'Traer movimientos', corta: 'Traer', palabras: 'sincronizar sincronizacion importar correo correos gmail extracto conciliar pdf excel csv archivo conexiones estado falla' },
+      { to: '/movimientos-correo', icon: Mail, label: 'Movimientos del correo', corta: 'Correo', palabras: 'correo gmail avisos notificaciones banco compras transferencias movimientos del dia revisar aprobar leer' },
+      { to: '/sincronizacion', icon: RefreshCw, label: 'Traer extractos', corta: 'Extractos', palabras: 'sincronizar sincronizacion importar correo correos gmail extracto conciliar pdf excel csv archivo conexiones estado falla' },
       { to: '/conectar-dispositivo', icon: Smartphone, label: 'Registro automático', palabras: 'conectar dispositivo atajo iphone android wallet celular' },
       { to: '/categorias', icon: Tag, label: 'Categorías', palabras: 'etiquetas iconos' },
       { to: '/entrenar-categorias', icon: GraduationCap, label: 'Enseñar categorías', palabras: 'entrenar aprender clasificar' },
@@ -136,7 +137,8 @@ export const EXPLICACION = {
   '/entrenar-categorias': 'Enséñale a CuadraMe en qué categoría va cada gasto.',
   '/reglas-categoria': 'Si un lugar siempre es del mismo tipo de gasto, que se ponga solo.',
   '/aprende': 'Lecciones cortas, de un minuto, sobre plata.',
-  '/sincronizacion': 'Trae tus movimientos del banco: desde el correo, un extracto en PDF o un Excel.',
+  '/sincronizacion': 'Trae el extracto de tu banco (PDF o Excel) y mira si cada cuenta cuadra, mes a mes.',
+  '/movimientos-correo': 'Los avisos de compras y transferencias de tu banco llegan a tu correo; aquí los apruebas.',
   '/amigos': 'Divide una cuenta con amigos (cena, viaje) y mira quién te debe.',
   '/compartir': 'Deja que tu pareja o familia vea y anote en tu cuenta.',
   '/hogares': 'Lleva los gastos de la casa con tu pareja o compañeros: quién puso qué y quién le debe a quién.',

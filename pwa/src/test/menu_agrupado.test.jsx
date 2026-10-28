@@ -54,8 +54,8 @@ describe('navegacion.js (fuente única)', () => {
     expect(GRUPOS.map((g) => g.titulo)).toEqual(['Anotar y traer', 'Mi plata', 'Con otras personas', 'Metas y ahorro', 'Cómo voy', 'Ajustes'])
     const etiquetas = (id) => GRUPOS.find((g) => g.id === id).items.map((i) => i.label)
     expect(etiquetas('dinero')).toEqual(['Cuentas', 'Deudas', 'Pagos fijos', 'Impuestos'])
-    expect(etiquetas('datos')).toContain('Traer movimientos')
-    expect(ITEMS_MAS.find((i) => i.label === 'Traer movimientos').to).toBe('/sincronizacion')
+    expect(etiquetas('datos')).toContain('Traer extractos')
+    expect(ITEMS_MAS.find((i) => i.label === 'Traer extractos').to).toBe('/sincronizacion')
     expect(etiquetas('ajustes')).toEqual(['Perfil', 'Aprende', 'Ayuda', 'Privacidad'])
     // Dividir, hogar y colectas ya no se esconden: viven en un grupo a la vista
     expect(GRUPOS.find((g) => g.id === 'juntos').items.map((i) => i.to)).toEqual(['/amigos', '/hogares', '/colectas', '/compartir'])
@@ -64,7 +64,7 @@ describe('navegacion.js (fuente única)', () => {
   it('la búsqueda tolera acentos y mayúsculas, y encuentra por palabras clave', () => {
     expect(normalizar('Categorías')).toBe('categorias')
     expect(buscarDestinos('CATEGORIAS').map((d) => d.label)).toContain('Categorías')
-    expect(buscarDestinos('sincronizacion')[0].label).toBe('Traer movimientos')
+    expect(buscarDestinos('sincronizacion')[0].label).toBe('Traer extractos')
     expect(buscarDestinos('gmail').map((d) => d.to)).toContain('/sincronizacion')
     expect(buscarDestinos('zzzz')).toEqual([])
     expect(buscarDestinos('   ')).toEqual([])
@@ -142,11 +142,11 @@ describe('Barra lateral de escritorio', () => {
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
     const btnDatos = within(nav).getByRole('button', { name: 'Anotar y traer' })
     expect(btnDatos).toHaveAttribute('aria-expanded', 'true')
-    expect(within(nav).getByRole('link', { name: 'Traer movimientos' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'Traer extractos' })).toBeInTheDocument()
 
     await userEvent.click(btnDatos)
     expect(btnDatos).toHaveAttribute('aria-expanded', 'false')
-    expect(within(nav).queryByRole('link', { name: 'Traer movimientos' })).toBeNull()
+    expect(within(nav).queryByRole('link', { name: 'Traer extractos' })).toBeNull()
     expect(JSON.parse(localStorage.getItem('cuadrame:nav-grupos-cerrados'))).toEqual(['datos'])
   })
 
@@ -154,8 +154,8 @@ describe('Barra lateral de escritorio', () => {
     localStorage.setItem('cuadrame:nav-recientes', JSON.stringify(['/sincronizacion']))
     montarShell(1440)
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
-    // «Traer movimientos» ya está en su grupo: aparece UNA sola vez y no se mueve arriba
-    expect(within(nav).getAllByRole('link', { name: 'Traer movimientos' })).toHaveLength(1)
+    // «Traer extractos» ya está en su grupo: aparece UNA sola vez y no se mueve arriba
+    expect(within(nav).getAllByRole('link', { name: 'Traer extractos' })).toHaveLength(1)
     expect(within(nav).queryByText('Recientes')).toBeNull()
   })
 

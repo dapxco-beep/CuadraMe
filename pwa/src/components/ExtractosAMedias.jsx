@@ -24,7 +24,7 @@ export default function ExtractosAMedias({ lista = [], onSeguir, onCambiarCuenta
     )
   }
   return (
-    <section className={`rounded-2xl border border-accent bg-accent-soft p-4 ${className}`} aria-label="Extractos a medio conciliar" data-testid="extractos-a-medias">
+    <section className={`rounded-2xl border border-accent bg-accent-soft p-4 ${className}`} aria-label="Extractos a medias" data-testid="extractos-a-medias">
       <h2 className="text-sm font-semibold flex items-center gap-2">
         <FileClock size={16} aria-hidden="true" /> {tituloAMedias(lista.length)}
       </h2>

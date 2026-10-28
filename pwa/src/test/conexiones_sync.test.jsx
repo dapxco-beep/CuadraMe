@@ -60,6 +60,7 @@ function montar(ui, ruta) {
         <Routes>
           <Route path="/conexiones" element={<Conexiones />} />
           <Route path="/sincronizacion" element={<Sincronizacion />} />
+          <Route path="/movimientos-correo" element={<Sincronizacion modo="correo" />} />
         </Routes>
       </MemoryRouter>
     </DialogosProvider>
@@ -163,8 +164,8 @@ describe('Centro: asistente, resumen y correos ignorados', () => {
     api.sincronizacionPorCategorizar.mockResolvedValue({ items: [], total: 0 })
   })
 
-  it('sin nada por hacer queda en calma, y «Buscar ahora» resume lo que trajo', async () => {
-    // «Traer todo» lee cada uso por separado: movimientos por un lado, extractos por el otro.
+  it('sin nada por hacer queda en calma, y «Buscar ahora» resume lo que trajo (cada pantalla lee solo lo suyo)', async () => {
+    // «Traer extractos» lee los PDF; «Movimientos del correo» lee los avisos del banco: cada uno solo lo suyo.
     api.sincronizarCorreos.mockImplementation(async (p) => (p?.tipo === 'extractos'
       ? { ok: true, completado: true, extractos_encontrados: 3, tipo: 'extractos' }
       : { ok: true, completado: true, nuevos: 18, tipo: 'movimientos' }))
@@ -172,12 +173,24 @@ describe('Centro: asistente, resumen y correos ignorados', () => {
     expect(await screen.findByTestId('todo-al-dia')).toBeTruthy()
     expect(screen.queryByTestId('pasos')).toBeNull() // ya no hay barra Conecta → Trae → Revisa: un asistente, un paso a la vez
     fireEvent.click(screen.getByRole('button', { name: 'Buscar ahora' }))
-    expect(await screen.findByText(/Encontré 18 movimientos nuevos y 3 extractos\./)).toBeTruthy()
+    expect(await screen.findByText(/Encontré 3 extractos\./)).toBeTruthy()
+    expect(api.sincronizarCorreos).not.toHaveBeenCalledWith(expect.objectContaining({ tipo: 'movimientos' }))
+  })
+
+  it('«Movimientos del correo» lee solo los avisos del banco', async () => {
+    api.sincronizarCorreos.mockImplementation(async (p) => (p?.tipo === 'extractos'
+      ? { ok: true, completado: true, extractos_encontrados: 3, tipo: 'extractos' }
+      : { ok: true, completado: true, nuevos: 18, tipo: 'movimientos' }))
+    montar(null, '/movimientos-correo')
+    expect(await screen.findByTestId('todo-al-dia')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar ahora' }))
+    expect(await screen.findByText(/Encontré 18 movimientos nuevos\./)).toBeTruthy()
+    expect(api.sincronizarCorreos).not.toHaveBeenCalledWith(expect.objectContaining({ tipo: 'extractos' }))
   })
 
   it('«Ver correos ignorados» los lista', async () => {
     api.correosLista.mockResolvedValue([{ id: 'i1', asunto: 'Promo 0', remitente: 'b@banco.co' }])
-    montar(null, '/sincronizacion')
+    montar(null, '/movimientos-correo')
     // Los correos ya registrados e ignorados viven en «Ver todo» → «Correos».
     fireEvent.click(await screen.findByTestId('ver-todo'))
     fireEvent.click(await screen.findByTestId('tab-correos'))

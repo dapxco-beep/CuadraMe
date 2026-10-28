@@ -67,7 +67,7 @@ describe('Movimientos: origen y accesos al correo', () => {
     api.correosLista.mockResolvedValue([{ id: 'k1' }, { id: 'k2' }])
     montar()
     await userEvent.click(await screen.findByRole('button', { name: /^Correos descartados \(2\)/ }))
-    expect(screen.getByTestId('ruta').textContent).toContain('/sincronizacion')
+    expect(screen.getByTestId('ruta').textContent).toContain('/movimientos-correo')
     expect(screen.getByTestId('ruta').textContent).toContain('correos-descartados')
   })
 

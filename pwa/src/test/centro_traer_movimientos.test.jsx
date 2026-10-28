@@ -284,8 +284,8 @@ describe('contadores y estados', () => {
 
   it('el encabezado y el paso muestran el mismo total, y solo hay UN botón de paso', async () => {
     montarCentro()
-    expect(await screen.findByText('Tienes 5 cosas por hacer')).toBeTruthy()
-    expect(screen.getByTestId('progreso-pasos')).toHaveTextContent('Paso 1 de 5')
+    expect(await screen.findByText('Tienes 3 cosas por hacer')).toBeTruthy()
+    expect(screen.getByTestId('progreso-pasos')).toHaveTextContent('Paso 1 de 3')
     expect(screen.getAllByTestId(/^tarea-/)).toHaveLength(1)
     expect(screen.queryByText(/Por revisar/)).toBeNull() // ya no hay secciones apiladas con su contador
   })
@@ -334,7 +334,7 @@ describe('contadores y estados', () => {
       .mockReturnValueOnce(new Promise((res) => { terminar = res }))
     montarCentro()
     fireEvent.click(await screen.findByRole('button', { name: 'Buscar ahora' }))
-    expect(await screen.findByText('Leyendo tus avisos del banco… 10 de 40')).toBeTruthy()
+    expect(await screen.findByText('Leyendo tus extractos… 10 de 40')).toBeTruthy()
     const barra = screen.getByRole('progressbar', { name: 'Progreso de la búsqueda' })
     expect(barra).toHaveAttribute('aria-valuenow', '25')
     expect(barra.closest('[aria-live="polite"]')).toBeTruthy()
@@ -347,6 +347,6 @@ describe('contadores y estados', () => {
     montarCentro()
     expect(await screen.findByRole('alert')).toHaveTextContent('Sin conexión')
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
-    expect(await screen.findByText('Tienes 5 cosas por hacer')).toBeTruthy()
+    expect(await screen.findByText('Tienes 3 cosas por hacer')).toBeTruthy()
   })
 })

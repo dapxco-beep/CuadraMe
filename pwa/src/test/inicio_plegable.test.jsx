@@ -72,7 +72,7 @@ describe('Inicio — bloque protagonista y dos acciones', () => {
     montar()
     await screen.findByText('Puedes gastar hoy')
     expect(screen.getByRole('link', { name: /Agregar movimiento/ })).toHaveAttribute('href', '/agregar')
-    expect(screen.getByRole('link', { name: /Traer movimientos/ })).toHaveAttribute('href', '/sincronizacion')
+    expect(screen.getByRole('link', { name: /Traer extractos/ })).toHaveAttribute('href', '/sincronizacion')
     for (const nombre of ['Cuentas', 'Movimientos recientes', 'Presupuesto', 'Salud financiera', 'Accesos', 'Recomendaciones']) {
       expect(screen.getByRole('button', { name: new RegExp(nombre) })).toHaveAttribute('aria-expanded', 'false')
     }
@@ -81,9 +81,9 @@ describe('Inicio — bloque protagonista y dos acciones', () => {
     expect(screen.queryByText('Disponible real este mes')).toBeNull()
   })
 
-  it('el número de tareas aparece en «Traer movimientos»', async () => {
+  it('el número de tareas aparece en «Traer extractos»', async () => {
     montar()
-    const enlace = await screen.findByRole('link', { name: /Traer movimientos/ })
+    const enlace = await screen.findByRole('link', { name: /Traer extractos/ })
     await waitFor(() => expect(enlace).toHaveTextContent('3'))
   })
 })

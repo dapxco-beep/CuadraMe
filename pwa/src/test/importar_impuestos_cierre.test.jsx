@@ -170,6 +170,7 @@ describe('pantalla Cierre de mes', () => {
     api.cierreMes.mockRejectedValue(new Error('404'))
     api.generarCierreMes.mockResolvedValue(informe)
     montar(<CierreMes />)
+    fireEvent.click(await screen.findByRole('button', { name: /Paso 4/ })) // el cierre se genera en el último paso
     fireEvent.click(await screen.findByText('Generar cierre'))
     expect(await screen.findByText('Revisa Comida')).toBeTruthy()
   })

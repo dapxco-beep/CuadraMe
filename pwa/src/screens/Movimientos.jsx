@@ -33,6 +33,7 @@ import DetalleMovimiento from './DetalleMovimiento'
 import EtiquetaOrigen from '../components/EtiquetaOrigen'
 import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
 import PorRevisarCorreo from '../components/PorRevisarCorreo'
+import TarjetaMovimientosCorreo from '../components/TarjetaMovimientosCorreo'
 import { BotonLapiz, EditorNombre, PistaBanco } from '../components/NombreEditable'
 import { limpiarNombre, MIN_REPETICIONES_NOMBRE, nombreDe, tieneNombrePropio } from '../lib/tituloMovimiento'
 import { usePorRevisarCorreo } from '../lib/usePorRevisarCorreo'
@@ -267,6 +268,7 @@ export default function Movimientos() {
   const [leyendoCorreo, setLeyendoCorreo] = useState(false)
   const [avisoCorreo, setAvisoCorreo] = useState('')
   const gmailConectado = useRef(null) // null = aún no se sabe
+  const [conectadoCorreo, setConectadoCorreo] = useState(null) // lo mismo, para pintarlo
   const leyendoRef = useRef(false)
   const actualizarCorreo = useCallback(
     async (manual = false) => {
@@ -279,8 +281,9 @@ export default function Movimientos() {
           gmailConectado.current = false
         }
       }
+      setConectadoCorreo(gmailConectado.current)
       if (!gmailConectado.current) {
-        if (manual) setAvisoCorreo('Conecta tu correo en «Traer movimientos» para leer tus notificaciones.')
+        if (manual) setAvisoCorreo('Conecta tu correo en «Movimientos del correo» para leer tus notificaciones.')
         return
       }
       leyendoRef.current = true
@@ -969,9 +972,14 @@ export default function Movimientos() {
         )}
       </header>
 
-      <p role="status" aria-live="polite" className="px-5 -mt-2 mb-2 text-xs text-ink-soft min-h-[16px]" data-testid="estado-correo">
-        {leyendoCorreo ? 'Leyendo tu correo…' : avisoCorreo}
-      </p>
+      <TarjetaMovimientosCorreo
+        className="mx-5 mb-3"
+        conectado={conectadoCorreo}
+        leyendo={leyendoCorreo}
+        aviso={avisoCorreo}
+        porRevisar={porCorreo.correos.length}
+        onTraer={() => actualizarCorreo(true)}
+      />
 
       {/* ≥1024 px: filtros (o el detalle del movimiento) a la izquierda, lista a la derecha */}
       <div className={`dos-col ${enTabla ? 'dos-col-riel-tabla' : 'dos-col-5-6'}`}>
@@ -1028,7 +1036,7 @@ export default function Movimientos() {
                   )}
                   {descartados > 0 && (
                     <button
-                      onClick={() => navigate('/sincronizacion', { state: { abrir: 'correos-descartados' } })}
+                      onClick={() => navigate('/movimientos-correo', { state: { abrir: 'correos-descartados' } })}
                       className="w-full min-h-[56px] flex items-center gap-3 rounded-2xl bg-paper-raised border border-line px-4 py-2.5 text-left"
                     >
                       <span className="flex-1 min-w-0">
@@ -1259,7 +1267,8 @@ export default function Movimientos() {
             >
               <div className="mt-4 flex flex-col gap-2">
                 <Boton to="/agregar" bloque>Anotar un movimiento</Boton>
-                <Boton to="/sincronizacion" variante="secundario" bloque>Traer movimientos del banco</Boton>
+                <Boton to="/movimientos-correo" variante="secundario" bloque>Traer del correo</Boton>
+                <Boton to="/sincronizacion" variante="secundario" bloque>Subir un extracto</Boton>
               </div>
             </EstadoVacio>
           ) : filtrados.length === 0 ? (

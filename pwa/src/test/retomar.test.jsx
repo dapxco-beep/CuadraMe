@@ -5,7 +5,7 @@ import { borrarBorrador, extractosAMedias, guardarBorrador, leerBorrador, resume
 
 const fila = (o) => ({ historial_id: 'h1', cuenta_id: 'c1', cuenta: 'Nu Colombia', mes_etiqueta: 'Octubre 2025', estado_vista: 'por_revisar', por_revisar: 52, ...o })
 
-describe('extractos a medio conciliar', () => {
+describe('extractos a medias', () => {
   it('toma solo los por revisar con revisión guardada y movimientos por importar', () => {
     const estado = { todos_extractos: { items: [
       fila({}),
@@ -20,15 +20,15 @@ describe('extractos a medio conciliar', () => {
   })
 
   it('textos', () => {
-    expect(tituloAMedias(1)).toBe('Tienes 1 extracto a medio conciliar')
-    expect(tituloAMedias(3)).toBe('Tienes 3 extractos a medio conciliar')
+    expect(tituloAMedias(1)).toBe('Tienes 1 extracto a medias')
+    expect(tituloAMedias(3)).toBe('Tienes 3 extractos a medias')
     expect(textoFaltan(1)).toBe('faltan importar 1 movimiento')
   })
 
   it('la tarjeta lista cada extracto y «Seguir» abre exactamente ese', () => {
     const abiertos = []
     render(<ExtractosAMedias lista={extractosAMedias({ todos_extractos: { items: [fila({}), fila({ historial_id: 'h5', por_revisar: 51, mes_etiqueta: 'Abril 2026' })] } })} onSeguir={(x) => abiertos.push(x.historialId)} />)
-    expect(screen.getByText('Tienes 2 extractos a medio conciliar')).toBeTruthy()
+    expect(screen.getByText('Tienes 2 extractos a medias')).toBeTruthy()
     expect(screen.getByText('faltan importar 51 movimientos')).toBeTruthy()
     fireEvent.click(screen.getByLabelText('Seguir con Nu Colombia Abril 2026'))
     expect(abiertos).toEqual(['h5'])
@@ -41,11 +41,11 @@ describe('extractos a medio conciliar', () => {
 })
 
 describe('resumen del lote', () => {
-  it('cuenta conciliados, por importar y sin clave', () => {
+  it('cuenta los que cuadran, por importar y sin clave', () => {
     const nuevo = { items: [{ estado: 'nuevo' }] }
     const ya = { items: [{ estado: 'ya' }] }
     const lote = [{ estado: 'listo', ...ya }, { estado: 'listo', ...ya }, { estado: 'listo', ...ya }, { estado: 'listo', ...nuevo }, { estado: 'listo', ...nuevo }, { estado: 'falta_clave' }]
-    expect(resumenLote(lote)).toBe('Subiste 6: 3 conciliados, 2 por importar, 1 sin clave')
+    expect(resumenLote(lote)).toBe('Subiste 6: 3 cuadran con el banco, 2 por importar, 1 sin clave')
   })
   it('con un solo archivo no hace falta resumen', () => {
     expect(resumenLote([{ estado: 'listo', items: [] }])).toBe('')
