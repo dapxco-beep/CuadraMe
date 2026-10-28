@@ -7,7 +7,7 @@ import { resumenEstadoGmail, TEXTO_APRENDIENDO } from '../lib/estadoGmail'
 // «Gmail conectado · último extracto leído: 15 oct» + aviso amable si falta un extracto + «estamos aprendiendo tu banco».
 // `gmail` y `cuentas` (de sincronizacion/estado) ya los tiene la pantalla; el historial se pide aquí (si falla, solo se
 // omite la fecha). Sin conexión o sin datos no muestra nada que asuste.
-export default function EstadoGmail({ gmail, cuentas, className = '' }) {
+export default function EstadoGmail({ gmail, cuentas, className = '', soloCorreo = false }) {
   const [historial, setHistorial] = useState([])
   useEffect(() => {
     let activo = true
@@ -17,6 +17,17 @@ export default function EstadoGmail({ gmail, cuentas, className = '' }) {
       .catch(() => {})
     return () => { activo = false }
   }, [])
+  // «Movimientos del correo» habla solo de los avisos del banco: nada de extractos ni de bancos por aprender.
+  if (soloCorreo) {
+    if (!gmail?.conectado) return null
+    return (
+      <section className={className} aria-label="Estado de Gmail" data-testid="estado-gmail">
+        <p className="flex items-center gap-1.5 text-xs text-ink-soft" data-testid="estado-gmail-linea">
+          <Icono icono={Mail} tam="sm" /> <span>Gmail conectado · leyendo los avisos de tu banco</span>
+        </p>
+      </section>
+    )
+  }
   const r = resumenEstadoGmail({ gmail, historial, cuentas })
   if (!r.linea) return null
   return (

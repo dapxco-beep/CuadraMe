@@ -145,7 +145,8 @@ def _notificar(db: Session, fila: CierreMes, informe: dict) -> dict:
     """Push siempre (si tiene dispositivos); correo solo si lo activó. Cada canal una sola vez."""
     r = {"push": 0, "correo": 0}
     if not fila.notificado_push:
-        enviar_push(db, fila.usuario_id, informe["titulo"], informe["resumen_corto"], "/cierre-mes")
+        # La app lo recibe como asistente: el aviso invita a revisar que todo cuadre antes de dar el mes por cerrado.
+        enviar_push(db, fila.usuario_id, informe["titulo"], f"{informe['resumen_corto']} Revisa que todo cuadre y ciérralo en 4 pasos.", "/cierre-mes")
         fila.notificado_push = True
         r["push"] = 1
     if not fila.notificado_correo:

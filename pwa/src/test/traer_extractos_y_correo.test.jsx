@@ -113,6 +113,13 @@ describe('las dos caras de la pantalla', () => {
     expect(await screen.findByRole('heading', { name: 'Movimientos del correo' })).toBeTruthy()
   })
 
+  it('la línea de estado de «Movimientos del correo» habla solo de avisos, sin extractos', async () => {
+    montar('/movimientos-correo')
+    const linea = await screen.findByTestId('estado-gmail-linea')
+    expect(linea).toHaveTextContent('Gmail conectado · leyendo los avisos de tu banco')
+    expect(linea.textContent).not.toMatch(/extracto/i)
+  })
+
   it('un enlace viejo que pide los correos en /sincronizacion se lleva a /movimientos-correo', async () => {
     montar('/sincronizacion', { abrir: 'correos-descartados' })
     expect(await screen.findByRole('heading', { name: 'Movimientos del correo' })).toBeTruthy()
