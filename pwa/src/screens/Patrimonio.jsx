@@ -15,6 +15,8 @@ import GraficoDescomposicion from '../components/GraficoDescomposicion'
 import { Isotipo, Monto, IlustracionVacia } from '../brand/Marca'
 import Hoja from '../components/Hoja'
 import InputMonto from '../components/InputMonto'
+import VerMas from '../components/VerMas'
+import EnlacesRelacionados from '../components/EnlacesRelacionados'
 
 const MONEDAS = ['COP', 'USD', 'EUR']
 const CLASES_ACTIVO = ['cdt', 'fondo', 'etf', 'accion', 'cripto', 'inmueble', 'vehiculo', 'otro']
@@ -68,7 +70,7 @@ export default function Patrimonio() {
         </button>
       </header>
 
-      <p className="mx-5 text-xs text-ink-soft">Tu patrimonio es todo lo que tienes menos todo lo que debes.</p>
+      <p className="mx-5 text-xs text-ink-soft">Tu patrimonio es todo lo que tienes menos lo que debes.</p>
       <OfertaInversiones />
       <AvisoSinTasa monedas={datos?.monedas_sin_tasa} base={datos?.moneda_base} onResuelto={cargar} className="mx-5 mt-3" />
 
@@ -92,32 +94,35 @@ export default function Patrimonio() {
 
             {datos.historial.length > 0 && (
               <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': 1 }}>
-                <h2 className="text-sm font-semibold mb-3">Evolución</h2>
+                <h2 className="text-sm font-semibold mb-3">Cómo ha cambiado</h2>
                 <GraficoPatrimonio historial={datos.historial} />
               </section>
             )}
 
-            {descomposicion.length > 0 && (
-              <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': 2 }}>
-                <h2 className="text-sm font-semibold mb-3">¿De dónde viene tu crecimiento?</h2>
-                <GraficoDescomposicion meses={descomposicion} />
-              </section>
-            )}
-
-            {datos.distribucion.length > 0 && (
-              <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': 2 }}>
-                <h2 className="text-sm font-semibold mb-3">Distribución</h2>
-                <DonaDistribucion distribucion={datos.distribucion} />
-              </section>
+            {(descomposicion.length > 0 || datos.distribucion.length > 0) && (
+              <VerMas titulo="más gráficos">
+                {descomposicion.length > 0 && (
+                  <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
+                    <h2 className="text-sm font-semibold mb-3">¿De dónde viene tu crecimiento?</h2>
+                    <GraficoDescomposicion meses={descomposicion} />
+                  </section>
+                )}
+                {datos.distribucion.length > 0 && (
+                  <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
+                    <h2 className="text-sm font-semibold mb-3">En qué está repartida tu plata</h2>
+                    <DonaDistribucion distribucion={datos.distribucion} />
+                  </section>
+                )}
+              </VerMas>
             )}
 
             </div>
             <div className="col">
             <section className="mx-5 mt-4">
-              <h2 className="text-sm font-semibold mb-1">Mis activos</h2>
+              <h2 className="text-sm font-semibold mb-1">Lo que tienes que vale plata</h2>
               <p className="text-xs text-ink-soft mb-2 flex gap-1.5 items-start" data-testid="aviso-inversion">
                 <Info size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-                Las cuentas de tipo inversión ya se cuentan en “Cuentas”: no hace falta registrarlas también como activo.
+                Las cuentas de inversión ya se cuentan en «Cuentas»: no las agregues también aquí.
               </p>
               {datos.activos.length === 0 ? (
                 <div className="card-marca bg-paper-raised border border-line p-6 text-center">
@@ -142,7 +147,7 @@ export default function Patrimonio() {
 
             {datos.pasivos.length > 0 && (
               <section className="mx-5 mt-4">
-                <h2 className="text-sm font-semibold mb-2">Pasivos (tus deudas)</h2>
+                <h2 className="text-sm font-semibold mb-2">Lo que debes</h2>
                 <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line">
                   {datos.pasivos.map((p) => (
                     <div key={p.id} className="flex items-center justify-between px-4 py-3">
@@ -157,11 +162,17 @@ export default function Patrimonio() {
               </section>
             )}
 
-            <p className="mx-5 mt-4 text-[11px] text-ink-soft leading-relaxed">
-              Los totales se expresan en pesos colombianos (COP) con la tasa de cambio del día. La rentabilidad de cada
-              activo se calcula en su propia moneda. El valor de fondos, acciones, inmuebles y vehículos depende del
-              precio que registres.
-            </p>
+            <VerMas titulo="cómo se calcula">
+              <p className="mx-5 mt-3 text-[11px] text-ink-soft leading-relaxed">
+                Los totales van en pesos colombianos (COP), con el dólar o euro del día. Lo que ganas con cada cosa se
+                cuenta en su propia moneda. El valor de fondos, acciones, inmuebles y vehículos es el precio que tú pongas.
+              </p>
+            </VerMas>
+            <EnlacesRelacionados enlaces={[
+              { a: '/cuentas', texto: 'Mis cuentas', apoyo: 'Cuánto hay en cada una' },
+              { a: '/deudas', texto: 'Mis deudas', apoyo: 'Lo que debes y cómo pagarlo' },
+              { a: '/inversiones', texto: 'Mis inversiones', apoyo: 'Acciones, fondos y CDT con su precio al día' },
+            ]} />
             </div>
           </div>
         )
@@ -208,13 +219,13 @@ function TarjetaNeto({ datos }) {
   return (
     <div className="mx-5 mt-3 hero-marca card-marca relative overflow-hidden p-5 stagger-item" style={{ '--stagger-i': 0 }}>
       <Isotipo mono size={130} className="absolute -right-5 -bottom-7 opacity-[0.1]" />
-      <p className="t-kicker mb-2">Patrimonio neto</p>
+      <p className="t-kicker mb-2">Tu patrimonio</p>
       <p className="text-[38px] t-display"><Monto texto={formatCOP(datos.patrimonio_neto)} /></p>
       {variacion !== null && variacion !== undefined && (
         <p className="mt-1 text-xs flex items-center gap-1 opacity-90">
           {sube ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
           {sube ? '+' : '-'}
-          {formatCOP(Math.abs(variacion))} vs. el mes anterior
+          {formatCOP(Math.abs(variacion))} frente al mes pasado
         </p>
       )}
       <div className="grid grid-cols-3 gap-2 mt-4 text-xs">
@@ -273,19 +284,19 @@ function TarjetaActivo({ activo: a, indice, onEditar }) {
 
       <div className="flex items-center justify-between mt-3 text-xs">
         <span className={`font-semibold tabular-nums ${colorGanancia(a.ganancia)}`}>
-          {a.rentabilidad_pct === null ? 'Sin costo registrado' : formatPct(a.rentabilidad_pct)}
+          {a.rentabilidad_pct === null ? 'Falta decir cuánto te costó' : formatPct(a.rentabilidad_pct)}
           {a.rentabilidad_pct !== null && ` · ${a.ganancia >= 0 ? '+' : '-'}${formatMoneda(Math.abs(a.ganancia), a.moneda)}`}
         </span>
         {a.xirr_pct !== null && a.xirr_pct !== undefined && (
-          <span className="text-ink-soft tabular-nums" title="Tasa interna de retorno efectiva anual (XIRR)">
-            XIRR {formatPct(a.xirr_pct)} E.A.
+          <span className="text-ink-soft tabular-nums" title="Lo que rinde al año, contando cuándo pusiste la plata">
+            Rinde {formatPct(a.xirr_pct)} al año
           </span>
         )}
       </div>
 
       {a.clase === 'cdt' && (
         <p className="text-[11px] text-ink-soft mt-1.5">
-          {formatPorcentaje(a.tasa_ea, { decimales: 2 })} E.A. · {a.vencido ? 'Vencido' : `vence en ${a.dias_al_vencimiento} días`} · al vencimiento{' '}
+          {formatPorcentaje(a.tasa_ea, { decimales: 2 })} al año · {a.vencido ? 'Vencido' : `vence en ${a.dias_al_vencimiento} días`} · al vencimiento{' '}
           {formatMoneda(a.valor_vencimiento, a.moneda)}
         </p>
       )}
@@ -359,12 +370,12 @@ function FormActivo({ activo, onClose, onGuardado }) {
 
   async function guardar() {
     setError('')
-    if (!nombre.trim()) return setError('Ponle un nombre')
+    if (!nombre.trim()) return setError('Ponle un nombre para reconocerlo.')
     const base = { clase, nombre: nombre.trim(), moneda }
     let payload
     if (esCDT) {
       if (!(Number(capital) > 0)) return setError('Ingresa el capital del CDT')
-      if (tasaEA === '') return setError('Ingresa la tasa E.A.')
+      if (tasaEA === '') return setError('Escribe cuánto te paga al año, en porcentaje. Por ejemplo 12.5.')
       if (!inicio || !vencimiento) return setError('Ingresa las fechas de inicio y vencimiento')
       if (vencimiento <= inicio) return setError('El vencimiento debe ser posterior al inicio')
       payload = { ...base, capital: Number(capital), tasa_ea: Number(tasaEA), fecha_inicio: aFecha(inicio), fecha_vencimiento: aFecha(vencimiento) }
@@ -471,10 +482,10 @@ function FormActivo({ activo, onClose, onGuardado }) {
 
       {esCDT && (
         <>
-          <Campo etiqueta="Capital invertido">
+          <Campo etiqueta="Plata que pusiste">
             <InputMonto value={capital} onValor={setCapital} placeholder="Ej. 5.000.000" className={claseInput} />
           </Campo>
-          <Campo etiqueta="Tasa efectiva anual (%)">
+          <Campo etiqueta="Lo que te paga al año (%)">
             <input value={tasaEA} onChange={(e) => setTasaEA(soloNumero(e.target.value))} inputMode="decimal" placeholder="Ej. 12.5" className={claseInput} />
           </Campo>
           <div className="grid grid-cols-2 gap-3">

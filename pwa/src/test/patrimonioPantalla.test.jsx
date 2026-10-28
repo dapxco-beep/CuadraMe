@@ -67,14 +67,15 @@ beforeEach(() => {
 describe('Patrimonio', () => {
   it('muestra patrimonio neto, activos con rentabilidad y pasivos', async () => {
     montar()
-    expect(await screen.findByText('Patrimonio neto')).toBeInTheDocument()
+    expect(await screen.findByText('Tu patrimonio')).toBeInTheDocument()
     expect(screen.getAllByText(/25\.000\.000/).length).toBeGreaterThan(0)
     expect(screen.getByLabelText('Editar VOO')).toBeInTheDocument()
     expect(screen.getByText(/\+11,1 %/)).toBeInTheDocument()
-    expect(screen.getByText(/XIRR \+14,2 % E\.A\./)).toBeInTheDocument()
+    expect(screen.getByText(/Rinde \+14,2 % al año/)).toBeInTheDocument()
     expect(screen.getByText(/CDT Davivienda/)).toBeInTheDocument()
     expect(screen.getByText('Tarjeta Visa')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: /Evolución del patrimonio/ })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /Ver más gráficos/ }))
     expect(screen.getByRole('img', { name: /Distribución/ })).toBeInTheDocument()
   })
 
@@ -83,7 +84,7 @@ describe('Patrimonio', () => {
     montar()
     expect(await screen.findByRole('alert')).toHaveTextContent('Sin conexión')
     await userEvent.click(screen.getByText('Reintentar'))
-    expect(await screen.findByText('Patrimonio neto')).toBeInTheDocument()
+    expect(await screen.findByText('Tu patrimonio')).toBeInTheDocument()
   })
 
   it('estado vacío invita a agregar el primer activo', async () => {
@@ -97,7 +98,7 @@ describe('Patrimonio', () => {
 
   it('crea un CDT con vista previa del valor al vencimiento', async () => {
     montar()
-    await screen.findByText('Patrimonio neto')
+    await screen.findByText('Tu patrimonio')
     await userEvent.click(screen.getByLabelText('Agregar activo'))
     await userEvent.type(screen.getByPlaceholderText(/CDT Bancolombia/), 'Mi CDT')
     const [capital, tasa] = screen.getAllByRole('textbox').slice(1)
@@ -117,7 +118,7 @@ describe('Patrimonio', () => {
 
   it('valida campos obligatorios antes de llamar a la API', async () => {
     montar()
-    await screen.findByText('Patrimonio neto')
+    await screen.findByText('Tu patrimonio')
     await userEvent.click(screen.getByLabelText('Agregar activo'))
     await userEvent.click(screen.getAllByRole('button', { name: 'Agregar activo' }).at(-1))
     expect(await screen.findByRole('alert')).toHaveTextContent('Ponle un nombre')

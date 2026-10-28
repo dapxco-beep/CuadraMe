@@ -127,6 +127,7 @@ describe('Tarjeta de crédito en Cuentas', () => {
 describe('Simulador de estrategia en Deudas', () => {
   it('simula con el extra ingresado y muestra fecha libre y ahorro de cada método', async () => {
     montar(<Deudas />)
+    await userEvent.click(await screen.findByRole('button', { name: /Ver cómo pagar más rápido/ }))
     await userEvent.type(await screen.findByLabelText(/cuánto extra/i), '200000')
     await userEvent.click(screen.getByRole('button', { name: 'Simular' }))
     await waitFor(() => expect(api.estrategiaDeudas).toHaveBeenCalledWith(200000))
@@ -147,6 +148,7 @@ describe('Simulador de estrategia en Deudas', () => {
   it('muestra el error del backend', async () => {
     api.estrategiaDeudas.mockRejectedValueOnce(new Error('Sin conexión'))
     montar(<Deudas />)
+    await userEvent.click(await screen.findByRole('button', { name: /Ver cómo pagar más rápido/ }))
     await userEvent.click(await screen.findByRole('button', { name: 'Simular' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Sin conexión')
   })

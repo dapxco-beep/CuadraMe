@@ -110,7 +110,7 @@ describe('Patrimonio — aviso de cuentas de inversión', () => {
       distribucion: [], historial: [], pasivos: [], activos: [],
     })
     montar(<Patrimonio />)
-    expect(await screen.findByText(/cuentas de tipo inversión ya se cuentan/)).toBeInTheDocument()
+    expect(await screen.findByText(/cuentas de inversión ya se cuentan/)).toBeInTheDocument()
   })
 })
 

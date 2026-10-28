@@ -16,6 +16,7 @@ import BarraProgreso from '../components/BarraProgreso'
 import CelebracionCuadri from '../brand/CelebracionCuadri'
 import { FRASES, yaCelebrado } from '../lib/cuadri'
 import InputMonto from '../components/InputMonto'
+import EnlacesRelacionados from '../components/EnlacesRelacionados'
 
 // Cuánto se propone aportar «ahora»: la opción sugerida según lo que te sobra; si no hay, lo que pide
 // llegar a tiempo; si no, el aporte automático que ya tiene la meta.
@@ -127,6 +128,16 @@ export default function Metas() {
         </div>
       )}
 
+      {!cargando && !error && metas.length > 0 && (
+        <div className="max-w-2xl md:mx-auto">
+          <EnlacesRelacionados enlaces={[
+            { a: '/cuentas', texto: 'Mis cuentas', apoyo: 'Mira dónde tienes la plata para tus metas' },
+            { a: '/recurrentes', texto: 'Pagos fijos', apoyo: 'Lo que ya tienes comprometido cada mes' },
+            { a: '/presupuesto', texto: 'Mi presupuesto', apoyo: 'Cuánto te sobra para ahorrar' },
+          ]} />
+        </div>
+      )}
+
       {planeando && (
         <PlanificadorMeta
           onClose={() => setPlaneando(false)}
@@ -195,7 +206,7 @@ function TarjetaMeta({ meta: m, plan, consejo, indice, onAportar }) {
           )}
           {m.eta_meses && !sugerida && (
             <p className="text-xs text-ink-soft">
-              A tu ritmo actual, la alcanzas en ~{m.eta_meses} {m.eta_meses === 1 ? 'mes' : 'meses'}
+              Si sigues así, la alcanzas en ~{m.eta_meses} {m.eta_meses === 1 ? 'mes' : 'meses'}
             </p>
           )}
           {opciones.length > 1 && (

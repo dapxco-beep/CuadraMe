@@ -13,6 +13,8 @@ import GraficoPatrimonio from '../components/GraficoPatrimonio'
 import Hoja from '../components/Hoja'
 import InputMonto from '../components/InputMonto'
 import { EsqueletoTarjeta } from '../components/Esqueletos'
+import VerMas from '../components/VerMas'
+import EnlacesRelacionados from '../components/EnlacesRelacionados'
 
 const MONEDAS = ['COP', 'USD', 'EUR', 'MXN', 'CLP', 'BRL', 'ARS', 'PEN']
 const clsInput = 'w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent'
@@ -112,13 +114,15 @@ export default function Inversiones() {
               </button>
               {mensaje && <span className="text-xs text-ink-soft" role="status">{mensaje}</span>}
             </div>
-            {datos.evolucion.length > 0 && (
-              <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
-                <h2 className="text-sm font-semibold mb-3">Evolución de tu portafolio</h2>
-                <GraficoPatrimonio historial={serieEvolucion(datos.evolucion)} />
-              </section>
-            )}
-            <Distribuciones d={datos} />
+            <VerMas titulo="gráficos y reparto">
+              {datos.evolucion.length > 0 && (
+                <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
+                  <h2 className="text-sm font-semibold mb-3">Cómo ha cambiado tu portafolio</h2>
+                  <GraficoPatrimonio historial={serieEvolucion(datos.evolucion)} />
+                </section>
+              )}
+              <Distribuciones d={datos} />
+            </VerMas>
           </div>
           <div className="col">
             <section className="mx-5 mt-4">
@@ -133,10 +137,17 @@ export default function Inversiones() {
               </div>
               <button onClick={() => setHoja({ tipo: 'csv' })} className="mt-3 text-xs font-semibold text-accent min-h-11">Importar desde un archivo CSV</button>
             </section>
-            <label className="mx-5 mt-4 flex items-center gap-3 text-sm min-h-11">
-              <input type="checkbox" checked={opciones.resumen_semanal} onChange={alternarSemanal} />
-              Avisarme una vez por semana cómo va mi portafolio
-            </label>
+            <VerMas titulo="más opciones">
+              <label className="mx-5 mt-4 flex items-center gap-3 text-sm min-h-11">
+                <input type="checkbox" checked={opciones.resumen_semanal} onChange={alternarSemanal} />
+                Avisarme una vez por semana cómo va mi portafolio
+              </label>
+            </VerMas>
+            <EnlacesRelacionados enlaces={[
+              { a: '/patrimonio', texto: 'Ver todo lo que tienes', apoyo: 'Tus inversiones, cuentas y deudas juntas' },
+              { a: '/cuentas', texto: 'Mis cuentas' },
+              { a: '/metas', texto: 'Metas de ahorro', apoyo: 'Para lo que quieres lograr con esta plata' },
+            ]} />
           </div>
         </div>
       )}
@@ -179,7 +190,7 @@ function Resumen({ d }) {
         {d.hoy_cop !== null && d.hoy_cop !== undefined && (
           <div><p className="opacity-90">Hoy</p><p className="font-semibold tabular-nums">{d.hoy_cop >= 0 ? '+' : '-'}{formatCOP(Math.abs(d.hoy_cop))}</p></div>
         )}
-        {d.dividendos > 0 && <div><p className="opacity-90">Dividendos recibidos</p><p className="font-semibold tabular-nums">{formatCOP(d.dividendos)}</p></div>}
+        {d.dividendos > 0 && <div><p className="opacity-90">Pagos recibidos (dividendos)</p><p className="font-semibold tabular-nums">{formatCOP(d.dividendos)}</p></div>}
       </div>
       <div className="grid grid-cols-3 gap-2 mt-4 text-xs" aria-label="Rentabilidad por periodo">
         <div><p className="opacity-90">Este año</p><p className="font-semibold">{pctTexto(p.ytd_pct)}</p></div>
@@ -187,7 +198,7 @@ function Resumen({ d }) {
         <div><p className="opacity-90">Desde el inicio</p><p className="font-semibold">{pctTexto(p.desde_inicio_pct)}</p></div>
       </div>
       {d.tir_pct !== null && d.tir_pct !== undefined && (
-        <p className="mt-3 text-xs opacity-90">Rentabilidad anual de tus aportes (TIR): <strong>{pctTexto(d.tir_pct)}</strong></p>
+        <p className="mt-3 text-xs opacity-90">Cuánto te rinde al año lo que aportaste (TIR): <strong>{pctTexto(d.tir_pct)}</strong></p>
       )}
     </div>
   )
@@ -201,7 +212,7 @@ function Distribuciones({ d }) {
   if (!lista.length) return null
   return (
     <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
-      <h2 className="text-sm font-semibold mb-3">Distribución</h2>
+      <h2 className="text-sm font-semibold mb-3">En qué está repartida tu plata</h2>
       <div className="flex gap-2 mb-3" role="group" aria-label="Agrupar por">
         {opciones.map(([id, label]) => (
           <button key={id} onClick={() => setVista(id)} aria-pressed={vista === id}

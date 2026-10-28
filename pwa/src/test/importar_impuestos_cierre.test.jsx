@@ -132,8 +132,8 @@ describe('pantalla Impuestos', () => {
     expect(await screen.findByText(/no asesoría tributaria/)).toBeTruthy()
     expect(screen.getByText('Colsanitas')).toBeTruthy()
     fireEvent.click(screen.getByText('Confirmar'))
-    fireEvent.change(screen.getByLabelText('Nota de soporte'), { target: { value: 'Factura en Drive' } })
-    fireEvent.click(screen.getByText('Guardar como posible deducible'))
+    fireEvent.change(screen.getByLabelText('Dónde está la factura'), { target: { value: 'Factura en Drive' } })
+    fireEvent.click(screen.getByText('Guardar este gasto'))
     await waitFor(() => expect(api.impuestosMarcar).toHaveBeenCalledWith('m1', {
       categoria_fiscal: 'salud', soporte: 'Factura en Drive', estado: 'confirmada',
     }))
