@@ -71,6 +71,14 @@ const NOM = BONITO
 
 function responder(url, metodo) {
   const p = url.pathname
+  if (process.env.PW_NUEVO) {
+    if (['/cuentas', '/movimientos', '/correos/pendientes', '/correos/extractos'].includes(p)) return []
+    if (p === '/cuentas/resumen') return { total: 0, disponible: 0, deuda_tarjetas: 0, cuentas: [], por_moneda: [], por_tipo: [] }
+    if (p === '/correos/gmail/estado') return { conectado: false }
+    if (p === '/sincronizacion/estado') return { meses: [], cuentas: [], sin_cuenta: [], tareas: [], ultima_sync: null, punto_partida: { definido: false } }
+    if (p === '/conciliacion/cuadre/resumen') return { hay_problema: false, n_no_cuadran: 0, cuentas: [] }
+    if (p === '/reportes/mensual') return { mes: '2026-10', ingresos: 0, gastos: 0, balance: 0, top_categorias: [], salud: { score: 0, tips: [], nivel: 'bien' }, por_categoria: {} }
+  }
   if (p === '/consentimientos') return { requiere_autorizacion: false, consentimientos: [], items: [] }
   if (p === '/cuentas') return CUENTAS
   if (p === '/categorias') return CATEGORIAS
