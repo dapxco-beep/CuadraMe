@@ -97,7 +97,7 @@ describe('Detalle de un traslado', () => {
 
   it('vincular con la contraparte marca las dos patas', async () => {
     detalle('e')
-    await userEvent.click(await screen.findByText('Vincular con su contraparte'))
+    await userEvent.click(await screen.findByText('Buscar el otro lado del traslado'))
     await userEvent.click(await screen.findByText('Vincular'))
     await waitFor(() => expect(api.decidirTraslado).toHaveBeenCalledWith({ ids: ['e', 'i'], decision: 'traslado', recordar: false }))
   })

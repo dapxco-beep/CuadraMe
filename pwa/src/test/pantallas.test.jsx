@@ -136,7 +136,7 @@ describe('Movimientos', () => {
     montar(<Movimientos />)
     const enlace = await screen.findByTestId('ver-detalle-gastos')
     expect(enlace).toHaveAttribute('href', '/informe')
-    expect(enlace).toHaveTextContent('Ver detalle de tus gastos')
+    expect(enlace).toHaveTextContent('¿En qué gasto mi plata?')
   })
 
   it('ofrece cargar más cuando la página viene llena', async () => {

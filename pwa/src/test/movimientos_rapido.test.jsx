@@ -228,7 +228,8 @@ describe('filtros en la URL', () => {
   it('cambiar un filtro actualiza la URL (sin llenar el historial) y se muestra como chip activo', async () => {
     montar()
     await screen.findByText('Netflix')
-    await userEvent.click(screen.getByRole('button', { name: 'Filtros de fecha y cuenta' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Más acciones' }))
+    await userEvent.click(await screen.findByRole('button', { name: /Filtrar por fecha, cuenta o categoría/ }))
     await userEvent.selectOptions(screen.getByLabelText('Filtrar por cuenta'), 'c2')
     expect(screen.getByTestId('donde')).toHaveTextContent('/movimientos?cuenta=c2')
     expect(screen.queryByText('PANADERIA LA 80 BOGOTA')).toBeNull()
