@@ -40,7 +40,7 @@ describe('Descargar mis datos', () => {
   it('explica en palabras simples qué trae y descarga el ZIP completo', async () => {
     api.descargarMisDatos.mockResolvedValue()
     montar()
-    expect(await screen.findByText(/Un archivo ZIP con todo lo que CuadraMe guarda de ti/)).toBeInTheDocument()
+    expect(await screen.findByText(/Un archivo con todo lo que CuadraMe guarda de ti/)).toBeInTheDocument()
     await userEvent.click(screen.getByText('Descargar mis datos'))
     await waitFor(() => expect(api.descargarMisDatos).toHaveBeenCalledTimes(1))
   })

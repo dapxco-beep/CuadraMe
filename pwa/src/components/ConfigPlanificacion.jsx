@@ -35,9 +35,9 @@ export default function ConfigPlanificacion({ presupuestos, onClose, onGuardado 
 
   async function guardar() {
     setError('')
-    if (Math.abs(suma - 100) > 0.01) return setError(`La regla suma ${suma}%; debe sumar 100%`)
+    if (Math.abs(suma - 100) > 0.01) return setError(`Los tres porcentajes suman ${suma}% y deben sumar 100%. Ajústalos.`)
     const dia = diaPago ? Number(diaPago) : null
-    if (dia !== null && (dia < 1 || dia > 31)) return setError('El día de pago va de 1 a 31')
+    if (dia !== null && (dia < 1 || dia > 31)) return setError('El día de pago es un número del 1 al 31.')
     setGuardando(true)
     try {
       await api.guardarConfigPlanificacion({
@@ -50,7 +50,7 @@ export default function ConfigPlanificacion({ presupuestos, onClose, onGuardado 
       })
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      setError(err.message || 'No pudimos guardar. Revisa tu conexión e intenta de nuevo.')
     }
     setGuardando(false)
   }
@@ -68,7 +68,7 @@ export default function ConfigPlanificacion({ presupuestos, onClose, onGuardado 
         </button>
       </div>
 
-      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Periodo para presupuestos nuevos</p>
+      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Cada cuánto, en los presupuestos nuevos</p>
       <div className="grid grid-cols-3 gap-2 mb-4">
         {PERIODOS.map((p) => (
           <button
@@ -81,19 +81,19 @@ export default function ConfigPlanificacion({ presupuestos, onClose, onGuardado 
         ))}
       </div>
 
-      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Día de pago (alinea tu quincena)</p>
+      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Día en que te pagan (para ordenar tu quincena)</p>
       <input
         value={diaPago}
         onChange={(e) => setDiaPago(e.target.value.replace(/\D/g, '').slice(0, 2))}
         inputMode="numeric"
-        placeholder="Vacío = quincena 1-15 y 16-fin"
+        placeholder="Si lo dejas vacío: del 1 al 15 y del 16 al fin de mes"
         aria-label="Día de pago"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
       />
 
-      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Regla para repartir ingresos</p>
+      <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Cómo repartir lo que te entra</p>
       <div className="grid grid-cols-3 gap-2 mb-1">
-        {[['necesidades', 'Fijos'], ['deseos', 'Libre'], ['ahorro', 'Ahorro']].map(([k, et]) => (
+        {[['necesidades', 'Lo fijo'], ['deseos', 'Lo libre'], ['ahorro', 'Ahorro']].map(([k, et]) => (
           <label key={k} className="text-xs text-ink-soft">
             {et} %
             <input
@@ -110,7 +110,7 @@ export default function ConfigPlanificacion({ presupuestos, onClose, onGuardado 
 
       {presupuestos.length > 0 && (
         <>
-          <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Arrastrar el sobrante al siguiente periodo</p>
+          <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Pasar lo que sobre al siguiente periodo</p>
           <div className="space-y-1.5 mb-4">
             {presupuestos.map((p) => (
               <label key={p.id} className="flex items-center gap-3 rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm">

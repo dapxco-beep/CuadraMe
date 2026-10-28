@@ -38,7 +38,7 @@ export default function Impuestos() {
     try {
       setDatos(await api.impuestosResumen(a))
     } catch (err) {
-      setError(err.message || 'No se pudo cargar. Revisa tu conexión e intenta de nuevo.')
+      setError(err.message || 'No pudimos cargar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -53,7 +53,7 @@ export default function Impuestos() {
       await api.impuestosAjustes(id)
       await cargar()
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      avisar(err.message || 'No pudimos guardar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -68,7 +68,7 @@ export default function Impuestos() {
       setAbierto(null)
       await cargar()
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      avisar(err.message || 'No pudimos guardar. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -79,7 +79,7 @@ export default function Impuestos() {
       await api.impuestosQuitarMarca(item.movimiento_id)
       await cargar()
     } catch (err) {
-      avisar(err.message || 'No se pudo quitar. Revisa tu conexión e intenta de nuevo.')
+      avisar(err.message || 'No pudimos quitar. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -87,7 +87,7 @@ export default function Impuestos() {
     try {
       await api.impuestosExcel(anio)
     } catch {
-      avisar('No se pudo exportar. Revisa tu conexión e intenta de nuevo.')
+      avisar('No pudimos descargar el archivo. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -129,7 +129,7 @@ export default function Impuestos() {
           <Info size={16} className="text-accent shrink-0 mt-0.5" />
           <p className="text-xs text-ink">
             {datos?.aviso ||
-              'Información de apoyo, no asesoría tributaria. Los valores son estimaciones; confirma siempre con tu contador y con la normativa vigente de la DIAN.'}
+              'Es una guía, no asesoría de impuestos. Las cifras son aproximadas: confírmalas con tu contador o en la DIAN.'}
           </p>
         </div>
       </div>
@@ -144,9 +144,9 @@ export default function Impuestos() {
         <>
           <section className="px-5 mt-5">
             <h2 className="text-[15px] font-semibold mb-1">4x1000 (GMF)</h2>
-            <p className="text-xs text-ink-soft mb-3">Es un impuesto de 4 pesos por cada 1.000 que sacas de tu cuenta. Aquí ves cuánto llevas, calculado con lo que sale de tus cuentas de ahorro.</p>
+            <p className="text-xs text-ink-soft mb-3">Es un impuesto de $4 por cada $1.000 que sacas de tu cuenta del banco. Aquí ves cuánto llevas, según lo que ha salido de tus cuentas de ahorro.</p>
             <div className="rounded-2xl bg-paper-raised border border-line p-4">
-              <p className="text-xs text-ink-soft">Estimado {anio}</p>
+              <p className="text-xs text-ink-soft">Aproximado {anio}</p>
               <p className="text-2xl font-bold">{formatCOP(gmf.total_estimado)}</p>
               <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
                 <div>
@@ -181,7 +181,7 @@ export default function Impuestos() {
               )}
 
               <label className="block mt-4 text-xs no-print">
-                <span className="block text-ink-soft mb-1">Mi cuenta libre de este impuesto (la ley deja una por persona, hasta {gmf.tope_exento_mensual.toLocaleString('es-CO')} COP al mes)</span>
+                <span className="block text-ink-soft mb-1">Mi cuenta que no paga este impuesto (la ley deja una por persona, hasta ${gmf.tope_exento_mensual.toLocaleString('es-CO')} al mes)</span>
                 <select
                   aria-label="Cuenta exenta del 4x1000"
                   value={datos.cuenta_exenta_gmf_id || ''}
@@ -201,7 +201,7 @@ export default function Impuestos() {
           <section className="px-5 mt-6">
             <h2 className="text-[15px] font-semibold mb-1">Gastos que podrían bajar tu impuesto de renta</h2>
             <p className="text-xs text-ink-soft mb-3">
-              Los buscamos por su nombre o categoría. Que aparezcan aquí no es garantía: confírmalos, anota dónde está la factura y revísalos con tu contador.
+              Los buscamos por su nombre o categoría. Que salgan aquí no asegura que sirvan: confírmalos, anota dónde está la factura y revísalos con tu contador.
             </p>
 
             <div className="rounded-2xl bg-paper-raised border border-line p-4 mb-3 grid grid-cols-2 gap-3 text-center">

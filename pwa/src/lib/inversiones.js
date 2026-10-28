@@ -1,7 +1,7 @@
 // Funciones puras del módulo Inversiones (sin React ni red). Los cálculos oficiales
 // (costo promedio, rentabilidad, TIR) los hace el backend; aquí solo textos y formato.
 
-export const AVISO_EDUCATIVO = 'Información educativa, no es asesoría de inversión.'
+export const AVISO_EDUCATIVO = 'Es para que aprendas: no es asesoría de inversión ni te dice dónde invertir.'
 
 export const TIPOS_POSICION = [
   { id: 'accion', label: 'Acción', ejemplo: 'Ej. Ecopetrol, Apple' },
@@ -27,11 +27,11 @@ export const BROKERS_SUGERIDOS = [
 ]
 
 export const GLOSARIO = [
-  ['Ticker', 'El código corto con el que se identifica una acción o un fondo en la bolsa. Ej. ECOPETROL o VOO.'],
-  ['Costo promedio', 'Lo que en promedio pagaste por cada unidad, contando todas tus compras y comisiones.'],
-  ['Ganancia no realizada', 'Lo que ganarías o perderías si vendieras hoy. Mientras no vendas, puede cambiar.'],
-  ['Ganancia realizada', 'La que ya quedó en tu bolsillo porque vendiste.'],
-  ['TIR (rentabilidad anual)', 'Cuánto rindió tu plata por año, teniendo en cuenta cuándo pusiste o sacaste cada aporte.'],
+  ['Ticker', 'El nombre corto de una acción o fondo en la bolsa, como una placa. Ej. ECOPETROL o VOO.'],
+  ['Costo promedio', 'Lo que en promedio te costó cada unidad, sumando todas tus compras y lo que cobró quien las hizo.'],
+  ['Ganancia no realizada', 'Lo que ganarías o perderías si vendieras hoy. Mientras no vendas, cambia con el precio.'],
+  ['Ganancia realizada', 'La plata que ya ganaste (o perdiste) de verdad, porque ya vendiste.'],
+  ['TIR (cuánto rindió al año)', 'Cuánto creció tu plata cada año, contando cuándo pusiste o sacaste cada aporte.'],
 ]
 
 export function colorSigno(v) {

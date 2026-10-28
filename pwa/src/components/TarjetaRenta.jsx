@@ -39,7 +39,7 @@ export default function TarjetaRenta() {
     }
   }
 
-  if (error) return <p className="px-5 mt-5 text-sm text-ink-soft">No pudimos calcular si te toca declarar. Intenta de nuevo en un rato.</p>
+  if (error) return <p className="px-5 mt-5 text-sm text-ink-soft">No pudimos calcular si te toca declarar. Inténtalo de nuevo en un rato.</p>
   if (!r) return null
   const res = r.resultado
   const IconoRes = ICONO_RESULTADO[res.clave] || CircleHelp
@@ -47,7 +47,7 @@ export default function TarjetaRenta() {
   return (
     <section className="px-5 mt-5" aria-label="¿Tengo que declarar renta?" data-testid="tarjeta-renta">
       <h2 className="text-[15px] font-semibold mb-1">¿Tengo que declarar renta?</h2>
-      <p className="text-xs text-ink-soft mb-3">Renta del año {r.anio}: lo que la DIAN revisa para saber si te toca.</p>
+      <p className="text-xs text-ink-soft mb-3">La renta es el impuesto que se paga sobre lo que ganas en el año. Para {r.anio}, la DIAN mira estos cinco topes.</p>
       <div className="rounded-2xl bg-paper-raised border border-line p-4">
         <div className="flex items-start gap-3">
           <span className="w-10 h-10 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
@@ -97,7 +97,7 @@ export default function TarjetaRenta() {
         <details className="mt-4 text-xs text-ink-soft">
           <summary className="min-h-11 flex items-center cursor-pointer font-medium text-ink">Qué cuenta y qué no ve CuadraMe</summary>
           <p className="mb-1.5">
-            Los topes son en UVT (la medida de la DIAN; en {r.anio} una UVT vale {formatCOP(r.uvt)}). Si superas <b>cualquiera</b> de los cinco,
+            Los topes se miden en UVT, una unidad que usa la DIAN (en {r.anio} una UVT vale {formatCOP(r.uvt)}). Si superas <b>cualquiera</b> de los cinco,
             probablemente te toca declarar. Las consignaciones incluyen la plata que pasas entre tus propias cuentas, por eso
             pueden ser más que tus ingresos.
           </p>
@@ -125,7 +125,7 @@ export default function TarjetaRenta() {
             Ir a la DIAN <Icono icono={ExternalLink} tam="sm" />
           </a>
         </div>
-        <p className="text-[11px] text-ink-soft mt-1">{r.aviso} Orientación educativa, no es asesoría tributaria.</p>
+        <p className="text-[11px] text-ink-soft mt-1">{r.aviso} Es una guía para orientarte: no es asesoría tributaria ni reemplaza a un contador.</p>
       </div>
     </section>
   )

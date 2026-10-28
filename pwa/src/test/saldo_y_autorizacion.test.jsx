@@ -177,7 +177,7 @@ describe('Autorización de tratamiento de datos', () => {
     expect(screen.getByText('Descargar mis datos')).toBeInTheDocument()
     expect(screen.getByText('Borrar mi cuenta y todos mis datos')).toBeInTheDocument()
     await userEvent.click(interruptor)
-    await userEvent.click(await screen.findByRole('button', { name: 'Revocar' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Quitar permiso' }))
     await waitFor(() => expect(api.guardarConsentimientos).toHaveBeenCalledWith('1.2', [{ finalidad: 'ia', aceptado: false }], 'perfil'))
   })
 })

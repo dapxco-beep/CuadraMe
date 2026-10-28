@@ -22,13 +22,13 @@ export default function ImpuestosInformativo() {
           <CalendarCheck size={20} aria-hidden="true" /> {t('impuestos.declaracion', pais)}
         </h2>
         <p className="text-sm mt-1.5">{t('impuestos.recordatorio', pais)}</p>
-        {decl?.mes && <p className="text-xs text-ink-soft mt-1.5">Mes habitual: {MESES[decl.mes - 1]}.</p>}
+        {decl?.mes && <p className="text-xs text-ink-soft mt-1.5">Suele hacerse en {MESES[decl.mes - 1]}.</p>}
       </section>
       {(otros.length > 0 || unidad) && (
         <section className="rounded-2xl bg-paper-raised border border-line p-4" aria-label="Otros datos">
           <h2 className="text-[15px] font-semibold">Para tener en cuenta</h2>
           <ul className="mt-1.5 space-y-1 text-sm">
-            {unidad && <li>Unidad de referencia: {unidad.nombre} ({unidad.sigla}).</li>}
+            {unidad && <li>Unidad que usan para sus topes: {unidad.nombre} ({unidad.sigla}).</li>}
             {otros.map((i) => (
               <li key={i.id}>{i.nombre}</li>
             ))}
@@ -36,7 +36,7 @@ export default function ImpuestosInformativo() {
         </section>
       )}
       <p className="text-xs text-ink-soft">
-        Calculadoras de renta y deducibles de {config.nombre}: todavía no. Por ahora te recordamos las fechas.
+        Todavía no calculamos la renta ni los gastos que bajan el impuesto en {config.nombre}. Por ahora solo te recordamos las fechas.
       </p>
     </div>
   )

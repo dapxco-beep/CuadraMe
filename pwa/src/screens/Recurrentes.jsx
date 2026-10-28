@@ -21,8 +21,8 @@ const estadoColor = {
 
 const estadoLabel = {
   pagado: 'Pagado este mes',
-  proximo: 'Próximo a vencer',
-  vencido: 'Vencido',
+  proximo: 'Se acerca la fecha',
+  vencido: 'Ya pasó la fecha',
   pendiente: 'Pendiente',
 }
 
@@ -103,7 +103,7 @@ export default function Recurrentes() {
         </button>
       </header>
 
-      <p className="mx-5 mt-1 text-xs text-ink-soft">Lo que pagas o recibes cada mes, como el arriendo, una suscripción o la nómina.</p>
+      <p className="mx-5 mt-1 text-xs text-ink-soft">Lo que pagas o recibes cada mes, como el arriendo, una suscripción o la nómina. Anótalo una vez y no se te olvida.</p>
 
       {!cargando && sugerencias.length > 0 && (
         <section className="mx-5 mt-4">

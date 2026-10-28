@@ -26,8 +26,8 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
   async function cambiar(finalidad, aceptado) {
     if (!aceptado) {
       const ok = await confirmar(
-        'Dejaremos de tratar tus datos para esta finalidad. Queda registrado, y puedes volver a autorizarlo cuando quieras.',
-        { titulo: `¿Revocar «${FINALIDADES[finalidad].titulo}»?`, confirmarTexto: 'Revocar', peligro: true }
+        'Dejaremos de usar tus datos para esto. Queda anotado y puedes volver a darnos el permiso cuando quieras.',
+        { titulo: `¿Quitar el permiso de «${FINALIDADES[finalidad].titulo}»?`, confirmarTexto: 'Quitar permiso', peligro: true }
       )
       if (!ok) return
     }
@@ -42,7 +42,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
       cargar()
       setHistorial(null)
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar el cambio. Revisa tu conexión e intenta de nuevo.')
+      avisar(err.message || 'No pudimos guardar el cambio. Revisa tu conexión e intenta de nuevo.')
     } finally {
       setOcupado('')
     }
@@ -53,7 +53,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
     try {
       setHistorial(await api.historialConsentimientos())
     } catch (err) {
-      avisar(err.message || 'No se pudo cargar el historial. Revisa tu conexión e intenta de nuevo.')
+      avisar(err.message || 'No pudimos cargar el historial. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -61,7 +61,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
     try {
       await api.descargarMisDatos()
     } catch (err) {
-      avisar(err.message || 'No se pudo descargar tus datos. Revisa tu conexión e intenta de nuevo.')
+      avisar(err.message || 'No pudimos descargar tus datos. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -78,8 +78,8 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
           <div className="px-4 py-3.5">
             <p className="text-sm font-medium">{FINALIDADES.tratamiento_basico.titulo}</p>
             <p className="text-xs text-ink-soft mt-0.5">
-              Obligatoria para usar CuadraMe · aceptada {formatearFechaCO(fin.tratamiento_basico.fecha_co)} · versión {fin.tratamiento_basico.version}.
-              Para revocarla, elimina tu cuenta (abajo).
+              Necesaria para usar CuadraMe · la aceptaste el {formatearFechaCO(fin.tratamiento_basico.fecha_co)} · versión {fin.tratamiento_basico.version}.
+              Para quitarla, borra tu cuenta (abajo).
             </p>
           </div>
         )}
@@ -91,7 +91,7 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{FINALIDADES[f].titulo}</p>
                   <p className="text-xs text-ink-soft mt-0.5">
-                    {x.aceptado ? 'Autorizado' : x.fecha_co ? 'Revocado' : 'No autorizado'}
+                    {x.aceptado ? 'Con tu permiso' : x.fecha_co ? 'Permiso quitado' : 'Sin tu permiso'}
                     {x.fecha_co ? ` · ${formatearFechaCO(x.fecha_co)}` : ''}
                   </p>
                 </div>
@@ -109,15 +109,15 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
             )
           })}
         <button onClick={verHistorial} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
-          <p className="flex-1 text-sm font-medium">Historial de mis autorizaciones</p>
+          <p className="flex-1 text-sm font-medium">Historial de mis permisos</p>
           <ChevronRight size={16} className={`text-ink-soft transition-transform ${historial ? 'rotate-90' : ''}`} />
         </button>
         {historial && (
           <ul className="px-4 py-3 space-y-1.5 text-xs text-ink-soft">
-            {historial.length === 0 && <li>Aún no has aceptado ni cancelado ninguna autorización.</li>}
+            {historial.length === 0 && <li>Aún no has dado ni quitado ningún permiso.</li>}
             {historial.map((h) => (
               <li key={h.id}>
-                {formatearFechaCO(h.fecha_co)} · {FINALIDADES[h.finalidad]?.titulo || h.finalidad} · {h.aceptado ? 'autorizó' : 'revocó'} (v{h.version})
+                {formatearFechaCO(h.fecha_co)} · {FINALIDADES[h.finalidad]?.titulo || h.finalidad} · {h.aceptado ? 'diste permiso' : 'quitaste el permiso'} (versión {h.version})
               </li>
             ))}
           </ul>
@@ -126,18 +126,18 @@ export default function SeccionPrivacidad({ onEliminarCuenta, eliminando }) {
           <Download size={20} className="text-accent shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-medium">Descargar mis datos</p>
-            <p className="text-xs text-ink-soft mt-0.5">Un archivo ZIP con todo lo que CuadraMe guarda de ti. Se abre en Excel.</p>
+            <p className="text-xs text-ink-soft mt-0.5">Un archivo con todo lo que CuadraMe guarda de ti. Lo puedes abrir en Excel.</p>
           </div>
         </button>
         <button onClick={() => setImportando(true)} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
           <Upload size={20} className="text-accent shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-medium">Importar mi respaldo</p>
-            <p className="text-xs text-ink-soft mt-0.5">Recupera lo que descargaste antes. Ves una vista previa y puedes deshacerlo.</p>
+            <p className="text-xs text-ink-soft mt-0.5">Recupera lo que descargaste antes. Primero ves cómo quedaría y puedes deshacerlo.</p>
           </div>
         </button>
         <Link to="/legal/autorizacion-datos" className="flex items-center gap-3 px-4 py-3.5">
-          <p className="flex-1 text-sm font-medium">Ver textos legales</p>
+          <p className="flex-1 text-sm font-medium">Leer los textos legales</p>
           <ChevronRight size={16} className="text-ink-soft" />
         </Link>
         <button
