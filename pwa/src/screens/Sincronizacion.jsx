@@ -980,7 +980,7 @@ export default function Sincronizacion({ modo = 'extractos' }) {
         <div className="col">
           <AvisoAutoarreglo className="mt-3" />
           <AvisoSalud className="mx-6 mt-3" />
-          <EstadoGmail gmail={gmail} cuentas={filasCuentas} className="mx-6 mt-3" />
+          <EstadoGmail gmail={gmail} cuentas={filasCuentas} soloCorreo={esCorreo} className="mx-6 mt-3" />
           <div className="mx-6 mt-3">
             <PasoGuiado
               estado={estadoG}
