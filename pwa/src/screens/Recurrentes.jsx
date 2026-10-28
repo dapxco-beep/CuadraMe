@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
@@ -229,7 +230,7 @@ function FormRecurrente({ onClose, onGuardado }) {
       avisar?.(`Listo: «${nombre.trim()}» quedó en tus pagos fijos.`, 'ok')
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No pudimos guardarlo. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'guardarlo'))
     } finally {
       setGuardando(false)
     }

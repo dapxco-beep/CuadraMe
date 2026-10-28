@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { useNavigate } from 'react-router-dom'
@@ -26,7 +27,7 @@ export default function CuentasAmigos() {
       setMonedas(s.monedas)
       setGastos(g)
     } catch (e) {
-      setError(e.message || 'No se pudieron cargar los gastos con amigos. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(e, 'cargar los gastos con amigos'))
     }
     setCargando(false)
   }, [grupoId])
@@ -46,7 +47,7 @@ export default function CuentasAmigos() {
       avisar('Pago registrado', 'ok')
       cargar()
     } catch (e) {
-      avisar(e.message || 'No se pudo registrar el pago. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(e, 'registrar el pago'))
     }
   }
 
@@ -59,7 +60,7 @@ export default function CuentasAmigos() {
       await api.eliminarGastoCompartido(g.id)
       cargar()
     } catch (e) {
-      avisar(e.message || 'No se pudo quitar el gasto. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(e, 'quitar el gasto'))
     }
   }
 

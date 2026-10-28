@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
@@ -27,7 +28,7 @@ export default function ReglasCategoria() {
     try {
       setReglas(await api.reglasCategoria())
     } catch (err) {
-      setError(err.message || 'No se pudieron cargar tus reglas. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'cargar tus reglas'))
     }
     setCargando(false)
   }
@@ -170,7 +171,7 @@ function FormRegla({ onClose, onGuardado }) {
       await api.crearReglaCategoria({ patron: patron.trim(), categoria })
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'guardar'))
     } finally {
       setGuardando(false)
     }

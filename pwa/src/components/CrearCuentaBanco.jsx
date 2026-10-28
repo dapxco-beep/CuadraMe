@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -35,7 +36,7 @@ export default function CrearCuentaBanco({ banco, onClose, onCreada }) {
       await recargar?.()
       onCreada?.(cuenta)
     } catch (err) {
-      setError(err.message || 'No se pudo crear la cuenta. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'crear la cuenta'))
       setGuardando(false)
     }
   }

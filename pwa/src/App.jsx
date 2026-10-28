@@ -13,6 +13,7 @@ import { DialogosProvider } from './lib/DialogosContext'
 import { BloqueoProvider, useBloqueo } from './lib/BloqueoContext'
 import PantallaBloqueo from './components/PantallaBloqueo'
 import ShellApp from './components/ShellApp'
+import LimiteRuta from './components/LimiteRuta'
 import BandejaPorConfirmar from './components/BandejaPorConfirmar'
 import RedirigirAlCentro from './components/RedirigirAlCentro'
 import SplashMarca, { splashPendiente } from './brand/SplashMarca'
@@ -172,6 +173,7 @@ function AppGate() {
       <ShellApp>
       {/* Mientras llega el código de una pantalla se ve su esqueleto DENTRO de la app (con el menú), no una pantalla de marca aparte */}
       <Suspense fallback={<EsqueletoPantalla />}>
+      <LimiteRuta>
       <Routes>
         <Route path="/" element={<Inicio />} />
         <Route path="/cuentas" element={<Cuentas />} />
@@ -229,6 +231,7 @@ function AppGate() {
         <Route path="/legal/autorizacion-datos" element={<AutorizacionDatos />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </LimiteRuta>
       </Suspense>
       </ShellApp>
       {/* "¿Son tuyos?": al abrir y al volver a primer plano, movimientos que llegaron solos */}

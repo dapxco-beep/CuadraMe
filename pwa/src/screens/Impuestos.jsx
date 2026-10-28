@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { Boton } from '../components/ui'
 import { useVolver } from '../lib/useVolver'
@@ -38,7 +39,7 @@ export default function Impuestos() {
     try {
       setDatos(await api.impuestosResumen(a))
     } catch (err) {
-      setError(err.message || 'No pudimos cargar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'cargar'))
     }
   }
 
@@ -53,7 +54,7 @@ export default function Impuestos() {
       await api.impuestosAjustes(id)
       await cargar()
     } catch (err) {
-      avisar(err.message || 'No pudimos guardar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'guardar'))
     }
   }
 
@@ -68,7 +69,7 @@ export default function Impuestos() {
       setAbierto(null)
       await cargar()
     } catch (err) {
-      avisar(err.message || 'No pudimos guardar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'guardar'))
     } finally {
       setGuardando(false)
     }
@@ -79,7 +80,7 @@ export default function Impuestos() {
       await api.impuestosQuitarMarca(item.movimiento_id)
       await cargar()
     } catch (err) {
-      avisar(err.message || 'No pudimos quitar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'quitar'))
     }
   }
 

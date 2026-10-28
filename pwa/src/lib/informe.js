@@ -2,6 +2,7 @@
 // eje Y, periodos de fecha y selección de meses de la tendencia. Se prueban en
 // src/test/informes.test.jsx.
 
+import { aFecha } from './fechaLocal'
 import { formatPorcentaje } from './format'
 
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
@@ -61,7 +62,7 @@ export function seleccionarMeses(meses, n, vacios = false) {
 // ── fechas ─────────────────────────────────────────────────────────
 
 export function aISO(fecha) {
-  const f = new Date(fecha)
+  const f = aFecha(fecha) ?? new Date(NaN)
   return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`
 }
 

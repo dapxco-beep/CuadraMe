@@ -9,6 +9,8 @@
 // El servidor es la fuente de verdad de los reportes. Esto solo evita que los totales que se calculan
 // en pantalla (Movimientos, gastos de la semana en Inicio) cuenten distinto.
 
+import { msFecha } from './fechaLocal'
+
 export const CATEGORIA_PAGO_TARJETA = 'Pago de tarjeta'
 export const MARCA_TRASLADO_PROPIO = 'posible_traslado_propio'
 export const MARCA_NO_TRASLADO = 'no_es_traslado'
@@ -216,7 +218,7 @@ function redondeoPar(x) {
   return f % 2 === 0 ? f : f + 1
 }
 
-const tiempo = (m) => new Date(m.fecha).getTime() / 1000
+const tiempo = (m) => msFecha(m.fecha) / 1000
 const montoDe = (m) => Number(m.monto) || 0
 
 function lowerBound(arr, x) {

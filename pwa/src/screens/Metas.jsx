@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
@@ -288,7 +289,7 @@ function FormAporte({ meta, montoInicial, onClose, onAportado }) {
       )
       onAportado(r)
     } catch (err) {
-      setError(err.message || 'No pudimos registrar el aporte. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'registrar el aporte'))
     } finally {
       setGuardando(false)
     }

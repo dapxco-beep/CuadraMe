@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, ChevronRight, X } from 'lucide-react'
@@ -76,7 +77,7 @@ export function HojaCambiarCategoria({ movimiento, onClose, onHecho }) {
       })
       onHecho(r, categoria)
     } catch (err) {
-      setError(err.message || 'No se pudo cambiar la categoría. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'cambiar la categoría'))
       setGuardando(false)
     }
   }

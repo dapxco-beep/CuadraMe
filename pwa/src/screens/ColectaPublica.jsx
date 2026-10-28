@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Copy } from 'lucide-react'
@@ -24,7 +25,7 @@ export default function ColectaPublica() {
     api
       .colectaPublica(token)
       .then(setD)
-      .catch((e) => setError(e.status === 404 ? 'Esta vaca no existe o ya no se comparte.' : e.message || 'No se pudo cargar. Revisa tu conexión.'))
+      .catch((e) => setError(e.status === 404 ? 'Esta vaca no existe o ya no se comparte.' : textoError(e, 'cargar')))
   useEffect(() => {
     cargar()
   }, [token]) // eslint-disable-line react-hooks/exhaustive-deps

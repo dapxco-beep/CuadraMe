@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useMemo, useState } from 'react'
 import { EsqueletoGrafica, EsqueletoLista } from '../components/Esqueletos'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
@@ -130,7 +131,7 @@ export default function Informe() {
     setDesgloses({})
     api.informeGasto(params)
       .then((d) => activo && setInforme(d))
-      .catch((e) => activo && setError(e.message || 'No se pudo cargar el informe. Revisa tu conexión e intenta de nuevo.'))
+      .catch((e) => activo && setError(textoError(e, 'cargar el informe')))
       .finally(() => activo && setCargando(false))
     return () => {
       activo = false

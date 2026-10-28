@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -56,7 +57,7 @@ export default function PlanificadorMeta({ onClose, onCreada }) {
         })
       )
     } catch (err) {
-      setError(err.message || 'No pudimos hacer la cuenta. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'hacer la cuenta'))
     }
     setCargando(false)
   }
@@ -73,7 +74,7 @@ export default function PlanificadorMeta({ onClose, onCreada }) {
       })
       onCreada()
     } catch (err) {
-      setError(err.message || 'No pudimos crear la meta. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'crear la meta'))
     }
   }
 

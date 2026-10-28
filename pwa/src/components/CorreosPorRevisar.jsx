@@ -1,3 +1,5 @@
+import { hoyISO as fechaHoy } from '../lib/fechaLocal'
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { CalendarDays, Check, CheckCheck, GraduationCap, Mail, Pencil, X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -54,7 +56,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada,
   const montoDe = (c) => (sinMonto(c) ? montoEscrito(c) : montoEscrito(c) > 0 ? montoEscrito(c) : c.monto)
   const fechaElegida = (c) => fechaPorCorreo[c.id] || valorInputFecha(c.fecha_movimiento)
   const fechaCambio = (c) => Boolean(c.fecha_movimiento) && fechaElegida(c) !== valorInputFecha(c.fecha_movimiento)
-  const hoyISO = new Date().toISOString().slice(0, 10)
+  const hoyISO = fechaHoy()
   // Lo que se envía del nombre propio: nada si no lo cambió (el servidor usa el comercio leído).
   const extraNombre = (c) =>
     tituloPorCorreo[c.id] ? { titulo: tituloPorCorreo[c.id], ...(recordarTituloPorCorreo[c.id] ? { recordar_titulo: true } : {}) } : {}
@@ -99,7 +101,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada,
       else await api.aprobarCorreo(c.id, cuentaId)
       onResuelto?.(c)
     } catch (err) {
-      setError(err.message || 'No se pudo aprobar el movimiento. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'aprobar el movimiento'))
     } finally {
       ocupar(c.id, false)
     }
@@ -138,7 +140,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada,
       await api.descartarCorreo(c.id)
       onResuelto?.(c)
     } catch (err) {
-      setError(err.message || 'No se pudo descartar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'descartar'))
     } finally {
       ocupar(c.id, false)
     }

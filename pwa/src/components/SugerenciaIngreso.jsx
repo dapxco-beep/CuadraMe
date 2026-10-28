@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { X } from 'lucide-react'
@@ -24,7 +25,7 @@ export default function SugerenciaIngreso({ monto: montoInicial, cuentaId, onClo
     try {
       setSug(await api.distribuirIngreso(Number(valor)))
     } catch (err) {
-      setError(err.message || 'No se pudo calcular la sugerencia. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'calcular la sugerencia'))
     }
     setCargando(false)
   }
@@ -46,7 +47,7 @@ export default function SugerenciaIngreso({ monto: montoInicial, cuentaId, onClo
       onAplicado?.()
       onClose()
     } catch (err) {
-      setError(err.message || 'No se pudo apartar el dinero. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'apartar el dinero'))
     }
     setAplicando(false)
   }

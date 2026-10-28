@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
@@ -16,7 +17,7 @@ export default function UnirseHogar() {
   const [uniendo, setUniendo] = useState(false)
 
   useEffect(() => {
-    api.verInvitacionHogar(token).then(setInv).catch((e) => setError(e.status === 404 ? 'Esta invitación no existe, ya se usó o venció. Pídele a quien te invitó una nueva.' : e.message || 'No se pudo cargar la invitación. Revisa tu conexión.'))
+    api.verInvitacionHogar(token).then(setInv).catch((e) => setError(e.status === 404 ? 'Esta invitación no existe, ya se usó o venció. Pídele a quien te invitó una nueva.' : textoError(e, 'cargar la invitación')))
   }, [token])
   useEffect(() => {
     setApodo((a) => a || usuario?.nombrePila || usuario?.nombre || '')

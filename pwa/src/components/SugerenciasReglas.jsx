@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useState } from 'react'
 import { Sparkles, Undo2, X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -55,7 +56,7 @@ export default function SugerenciasReglas({ onCreadas }) {
       await cargar()
       onCreadas?.()
     } catch (err) {
-      setAviso({ texto: err.message || 'No se pudo crear. Revisa tu conexión e intenta de nuevo.' })
+      setAviso({ texto: textoError(err, 'crear') })
     }
     setOcupado(false)
   }

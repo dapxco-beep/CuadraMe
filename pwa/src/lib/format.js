@@ -9,7 +9,10 @@ const COP = new Intl.NumberFormat('es-CO', {
 // Nombre histórico: formatea en la MONEDA BASE del perfil (moneda base fase 2). Para quien tiene base COP
 // (todos hoy) es idéntico a siempre; con otra base (MXN, CLP, PEN...) usa esa moneda y el formato de su país.
 // Lo que de verdad es COP (impuestos DIAN) usa `formatCOPFijo`.
+const SIN_DATO = '—'
+
 export function formatCOP(value) {
+  if (!Number.isFinite(Number(value))) return SIN_DATO
   const { moneda } = formatoActual()
   if (moneda && moneda !== 'COP') return formatMoneda(value, moneda)
   return formatCOPFijo(value)
@@ -19,6 +22,7 @@ export function formatCOP(value) {
 // muestra con el código («COP 1.234») para no hacerlos pasar por pesos locales.
 const COP_CODIGO = new Map()
 export function formatCOPFijo(value) {
+  if (!Number.isFinite(Number(value))) return SIN_DATO
   const { locale } = formatoActual()
   if (locale === 'es-CO') return COP.format(value)
   if (!COP_CODIGO.has(locale)) {
@@ -36,6 +40,7 @@ const formateadores = new Map()
 const SIN_DECIMALES = new Set(['COP', 'CLP', 'CRC', 'PYG', 'JPY'])
 
 export function formatMoneda(value, moneda = 'COP') {
+  if (!Number.isFinite(Number(value))) return SIN_DATO
   const { locale } = formatoActual()
   if ((!moneda || moneda === 'COP') && locale === 'es-CO') return COP.format(value)
   const mon = moneda || 'COP'

@@ -1,3 +1,5 @@
+import { hoyISO } from '../lib/fechaLocal'
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { haceCuanto } from '../lib/inversiones'
@@ -47,7 +49,7 @@ export default function Patrimonio() {
       // Extra: si falla, el resto de la pantalla no se afecta.
       api.descomposicionPatrimonio().then((r) => setDescomposicion(r?.meses || [])).catch(() => {})
     } catch (err) {
-      setError(err.message || 'No pudimos cargar tu patrimonio. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'cargar tu patrimonio'))
     }
     setCargando(false)
   }
@@ -332,7 +334,7 @@ const deFecha = (iso) => (iso ? String(iso).slice(0, 10) : '')
 function FormActivo({ activo, onClose, onGuardado }) {
   const { confirmar } = useDialogos()
   const editando = Boolean(activo)
-  const hoy = new Date().toISOString().slice(0, 10)
+  const hoy = hoyISO()
 
   const [clase, setClase] = useState(activo?.clase || 'cdt')
   const [nombre, setNombre] = useState(activo?.nombre || '')
@@ -405,7 +407,7 @@ function FormActivo({ activo, onClose, onGuardado }) {
       else await api.crearActivo(payload)
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'guardar'))
     } finally {
       setGuardando(false)
     }
@@ -423,7 +425,7 @@ function FormActivo({ activo, onClose, onGuardado }) {
       await api.eliminarActivo(activo.id)
       onGuardado()
     } catch (err) {
-      setError(err.message || 'No se pudo eliminar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'eliminar'))
       setGuardando(false)
     }
   }

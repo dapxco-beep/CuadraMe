@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { useVolver } from '../lib/useVolver'
 import { AlertTriangle, ArrowLeft, Check, Info, Send, Sparkles, X } from 'lucide-react'
@@ -90,7 +91,7 @@ function TarjetaPropuesta({ msg, onResuelto }) {
       })
       onResuelto('confirmado')
     } catch (e) {
-      setError(e.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(e, 'guardar'))
       setGuardando(false)
     }
   }
@@ -172,7 +173,7 @@ function TarjetaPlan({ msg, onResuelto }) {
       })
       onResuelto('confirmado')
     } catch (e) {
-      setError(e.message || 'No se pudo crear el plan. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(e, 'crear el plan'))
       setGuardando(false)
     }
   }

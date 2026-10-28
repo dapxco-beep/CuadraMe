@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Check, Eye, EyeOff, Mail, Pencil, UserMinus, UserPlus, Users, X } from 'lucide-react'
@@ -100,7 +101,7 @@ export default function Compartir() {
     // «Ya existe una invitación pendiente» no es un problema: la persona ya fue invitada a esa cuenta.
     const reales = fallos.filter((r) => !/pendiente/i.test(r.reason?.message || ''))
     if (reales.length === resultados.length) {
-      return setError(reales[0].reason?.message || 'No pudimos enviar la invitación. Revisa tu conexión e intenta de nuevo.')
+      return setError(textoError(reales[0].reason, 'enviar la invitación'))
     }
     avisar?.(
       reales.length
@@ -148,7 +149,7 @@ export default function Compartir() {
       avisar?.(`Listo: dejaste de compartir «${fila.cuenta.nombre}».`, 'ok')
       cargar()
     } catch (err) {
-      avisar?.(err.message || 'No pudimos quitar el acceso. Revisa tu conexión e intenta de nuevo.')
+      avisar?.(textoError(err, 'quitar el acceso'))
     }
   }
 

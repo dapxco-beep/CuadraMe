@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Home, Plus } from 'lucide-react'
@@ -23,7 +24,7 @@ export default function Hogares() {
       setLista(hs)
       setInvitaciones(inv)
     } catch (e) {
-      setError(e.message || 'No se pudieron cargar tus parches. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(e, 'cargar tus parches'))
     }
     setCargando(false)
   }, [])

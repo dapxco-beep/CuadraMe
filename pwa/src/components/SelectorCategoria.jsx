@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useMemo, useState } from 'react'
 import { Plus, Search, X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -104,7 +105,7 @@ export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, 
       await recargar?.()
       elegir(paso, cerrar, s?.nombre || nombre)
     } catch (err) {
-      setAviso(err.message || 'No se pudo crear la subcategoría. Revisa tu conexión e intenta de nuevo.')
+      setAviso(textoError(err, 'crear la subcategoría'))
       setGuardandoSub(false)
     }
   }
@@ -122,7 +123,7 @@ export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, 
       await recargar?.()
       elegir(nombre, cerrar)
     } catch (err) {
-      setAviso(err.message || 'No se pudo crear la categoría. Revisa tu conexión e intenta de nuevo.')
+      setAviso(textoError(err, 'crear la categoría'))
       setCreando(false)
     }
   }

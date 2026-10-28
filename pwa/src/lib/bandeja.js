@@ -3,6 +3,7 @@
 //
 // Todo lo que se guarda en localStorage va en try/catch: en modo privado, con
 // datos bloqueados o en vistas previas puede lanzar, y la app debe seguir andando.
+import { fechaLocalISO } from './fechaLocal'
 
 export const CLAVE_BANDEJA = 'cuadrame.bandeja.cerrada'
 export const CLAVE_PREGUNTA = 'cuadrame.pregunta.oculta'
@@ -51,12 +52,7 @@ export function recordarBandejaCerrada(pendientes, ahora = Date.now()) {
 
 // --- Pregunta "¿hiciste algún movimiento?" ---------------------------------
 
-export function fechaLocalISO(d = new Date()) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const dia = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${dia}`
-}
+export { fechaLocalISO }
 
 /** "AAAA-MM-DDTHH:MM:SS" (hora de Colombia, sin zona) -> Date local. */
 export function fechaDeMovimiento(texto) {

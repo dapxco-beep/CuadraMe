@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Pencil, Smartphone, Trash2, X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -95,7 +96,7 @@ export default function BandejaPorConfirmar() {
       quitar([m.id])
       avisarCambio()
     } catch (err) {
-      avisar(err.message || 'No se pudo confirmar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'confirmar'))
     } finally {
       setOcupado(false)
     }
@@ -108,7 +109,7 @@ export default function BandejaPorConfirmar() {
       quitar(pendientes.map((m) => m.id))
       avisarCambio()
     } catch (err) {
-      avisar(err.message || 'No se pudieron confirmar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'confirmar'))
     } finally {
       setOcupado(false)
     }
@@ -127,7 +128,7 @@ export default function BandejaPorConfirmar() {
       quitar([m.id])
       avisarCambio()
     } catch (err) {
-      avisar(err.message || 'No se pudo descartar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'descartar'))
     } finally {
       setOcupado(false)
     }
@@ -147,7 +148,7 @@ export default function BandejaPorConfirmar() {
         hechos.push(m.id)
       }
     } catch (err) {
-      avisar(err.message || 'No se pudieron descartar todos. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'descartar todos'))
     } finally {
       if (hechos.length) {
         quitar(hechos)
@@ -175,7 +176,7 @@ export default function BandejaPorConfirmar() {
       quitar([m.id])
       avisarCambio()
     } catch (err) {
-      avisar(err.message || 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'guardar'))
     } finally {
       setOcupado(false)
     }

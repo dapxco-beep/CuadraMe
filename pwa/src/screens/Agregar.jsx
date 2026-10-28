@@ -1,3 +1,5 @@
+import { hoyISO } from '../lib/fechaLocal'
+import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
@@ -15,12 +17,6 @@ import SugerenciaIngreso from '../components/SugerenciaIngreso'
 import { useCategorias } from '../lib/CategoriasContext'
 import TarjetaCuenta from '../components/TarjetaCuenta'
 import InputMonto from '../components/InputMonto'
-
-function hoyISO() {
-  const d = new Date()
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
-  return d.toISOString().slice(0, 10)
-}
 
 function calcularFrecuentes(movimientos) {
   const vistos = new Map()
@@ -252,7 +248,7 @@ export default function Agregar() {
       if (err.status === 409 && err.detalle?.codigo === 'posible_duplicado') {
         setPosibleDuplicado(err.detalle.mensaje || err.message)
       } else {
-        setError(err.message || 'No pudimos guardarlo. Revisa tu conexión e intenta de nuevo.')
+        setError(textoError(err, 'guardarlo'))
       }
     } finally {
       setGuardando(false)
@@ -374,6 +370,7 @@ export default function Agregar() {
             type="date"
             value={fecha}
             max={hoyISO()}
+            aria-label="Fecha del movimiento"
             onChange={(e) => setFecha(e.target.value)}
             className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-2.5 text-sm outline-none focus:border-accent"
           />

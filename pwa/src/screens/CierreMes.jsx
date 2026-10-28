@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
@@ -101,7 +102,7 @@ export default function CierreMes() {
         setLista(l)
         setMes(l[0]?.mes || mesAnterior())
       })
-      .catch((e) => setError(e.message || 'No se pudo cargar. Revisa tu conexión e intenta de nuevo.'))
+      .catch((e) => setError(textoError(e, 'cargar')))
   }, [])
 
   useEffect(() => {
@@ -163,7 +164,7 @@ export default function CierreMes() {
       listaRef.current = [...(listaRef.current || []), { mes }]
       setInforme(nuevo)
     } catch (e) {
-      setError(e.message || 'No se pudo generar. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(e, 'generar'))
     } finally {
       setCargando(false)
     }

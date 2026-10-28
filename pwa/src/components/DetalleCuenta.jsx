@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { EsqueletoTexto } from './Esqueletos'
 import { Link, useNavigate } from 'react-router-dom'
@@ -33,7 +34,7 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
     try {
       setDet(await api.detalleCuenta(cuentaId))
     } catch (err) {
-      setError(err.message || 'No se pudo cargar la cuenta. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'cargar la cuenta'))
     }
   }
 
@@ -196,7 +197,7 @@ function FormAjuste({ cuenta, onHecho }) {
       await api.ajustarSaldo(cuenta.id, nuevoSaldo)
       await onHecho()
     } catch (err) {
-      setError(err.message || 'No se pudo ajustar el saldo. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'ajustar el saldo'))
     } finally {
       setGuardando(false)
     }

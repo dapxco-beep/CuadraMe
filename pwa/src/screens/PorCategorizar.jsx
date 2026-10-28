@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ChevronDown, ChevronUp, EyeOff, Flag, Hand, ListChecks, Tag, Undo2, Zap } from 'lucide-react'
 import { EsqueletoLista } from '../components/Esqueletos'
@@ -126,7 +127,7 @@ export default function PorCategorizar() {
         setDatos(await api.porCategorizar(LIMITE_VISIBLE, todos))
         setSilencios((await api.silenciosPorCategorizar())?.silencios || [])
       } catch (err) {
-        setError(err.message || 'No se pudo cargar. Revisa tu conexión e intenta de nuevo.')
+        setError(textoError(err, 'cargar'))
       }
     },
     [verTodos]

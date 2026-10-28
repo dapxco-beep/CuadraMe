@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { Fingerprint, ShieldCheck } from 'lucide-react'
 import { useBloqueo } from '../lib/BloqueoContext'
@@ -50,7 +51,7 @@ function FormPin({ titulo, boton, pedirConfirmacion, onListo, onCancelar }) {
     try {
       await onListo(pin)
     } catch (err) {
-      setError(err.message || 'No pudimos guardarlo. Revisa tu conexión e intenta de nuevo.')
+      setError(textoError(err, 'guardarlo'))
       setTrabajando(false)
     }
   }

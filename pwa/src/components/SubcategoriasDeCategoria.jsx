@@ -1,3 +1,4 @@
+import { textoError } from '../lib/textoError'
 import { useState } from 'react'
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -29,7 +30,7 @@ export default function SubcategoriasDeCategoria({ categoria }) {
       setAgregando(false)
       await recargar()
     } catch (err) {
-      avisar(err.message || 'No se pudo crear la subcategoría. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'crear la subcategoría'))
     } finally {
       setOcupado(false)
     }
@@ -47,7 +48,7 @@ export default function SubcategoriasDeCategoria({ categoria }) {
       setEditandoId(null)
       await recargar()
     } catch (err) {
-      avisar(err.message || 'No se pudo cambiar el nombre. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'cambiar el nombre'))
     } finally {
       setOcupado(false)
     }
@@ -63,7 +64,7 @@ export default function SubcategoriasDeCategoria({ categoria }) {
       await api.eliminarSubcategoria(s.id)
       await recargar()
     } catch (err) {
-      avisar(err.message || 'No se pudo borrar. Revisa tu conexión e intenta de nuevo.')
+      avisar(textoError(err, 'borrar'))
     }
   }
 
