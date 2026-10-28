@@ -34,8 +34,8 @@ export function ofertaEfectivo(sentido, tieneEfectivo) {
   const pregunta = sentido === 'retiro' ? '¿Lo pasamos a tu efectivo?' : '¿Lo sacamos de tu efectivo?'
   const apoyo =
     sentido === 'retiro'
-      ? 'Sacar plata del cajero no es un gasto: es plata que pasa de tu banco a tu bolsillo.'
-      : 'Consignar efectivo no es un ingreso nuevo: es plata que pasa de tu bolsillo al banco.'
+      ? 'Sacar del cajero no es un gasto: pasa de tu banco a tu bolsillo.'
+      : 'Consignar no es un ingreso: pasa de tu bolsillo al banco.'
   const boton = tieneEfectivo ? 'Sí, pasarlo' : 'Crear mi efectivo y pasarlo'
   return { pregunta, apoyo, boton }
 }
