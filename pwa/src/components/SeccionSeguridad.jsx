@@ -44,13 +44,13 @@ function FormPin({ titulo, boton, pedirConfirmacion, onListo, onCancelar }) {
   async function enviar(e) {
     e.preventDefault()
     setError('')
-    if (!pinValido(pin)) return setError('El PIN debe tener entre 4 y 6 dígitos')
-    if (pedirConfirmacion && pin !== repetido) return setError('Los PIN no coinciden')
+    if (!pinValido(pin)) return setError('Tu PIN debe tener entre 4 y 6 números.')
+    if (pedirConfirmacion && pin !== repetido) return setError('Los dos PIN no son iguales. Escríbelos de nuevo.')
     setTrabajando(true)
     try {
       await onListo(pin)
     } catch (err) {
-      setError(err.message || 'No se pudo completar. Revisa tu conexión e intenta de nuevo.')
+      setError(err.message || 'No pudimos guardarlo. Revisa tu conexión e intenta de nuevo.')
       setTrabajando(false)
     }
   }
@@ -100,7 +100,7 @@ export default function SeccionSeguridad() {
   }
 
   async function quitar(pin) {
-    if (!(await verificarPin(pin))) throw new Error('PIN incorrecto')
+    if (!(await verificarPin(pin))) throw new Error('Ese no es tu PIN. Inténtalo otra vez.')
     quitarPin()
     setBioActiva(false)
     setModo(null)
@@ -115,7 +115,7 @@ export default function SeccionSeguridad() {
       await activarBiometria(usuario?.email)
       setBioActiva(true)
     } catch {
-      avisar('No se pudo activar la huella o el rostro. Puedes seguir usando tu PIN.')
+      avisar('No pudimos activar la huella o el rostro. Puedes seguir entrando con tu PIN.')
     }
   }
 
@@ -130,7 +130,7 @@ export default function SeccionSeguridad() {
           <div className="flex-1">
             <p className="text-sm font-medium">PIN para abrir la app</p>
             <p className="text-xs text-ink-soft mt-0.5">
-              Tu PIN se guarda solo en este celular. Nunca llega a nuestros servidores.
+              Tu PIN se guarda solo en este celular. Nosotros nunca lo vemos.
             </p>
           </div>
           <Interruptor
@@ -144,13 +144,13 @@ export default function SeccionSeguridad() {
           <FormPin titulo="Crea tu PIN" boton="Guardar PIN" pedirConfirmacion onListo={crear} onCancelar={() => setModo(null)} />
         )}
         {modo === 'quitar' && (
-          <FormPin titulo="Escribe tu PIN actual para quitarlo" boton="Quitar PIN" onListo={quitar} onCancelar={() => setModo(null)} />
+          <FormPin titulo="Para quitar el PIN, escribe el que tienes ahora" boton="Quitar PIN" onListo={quitar} onCancelar={() => setModo(null)} />
         )}
 
         {tienePin && (
           <>
             <div className="mt-4 pt-3 border-t border-line">
-              <label htmlFor="bloqueo-min" className="text-sm font-medium">Bloquear automáticamente</label>
+              <label htmlFor="bloqueo-min" className="text-sm font-medium">Pedir el PIN de nuevo</label>
               <select
                 id="bloqueo-min"
                 value={minutos}
@@ -165,7 +165,7 @@ export default function SeccionSeguridad() {
                   <option key={m} value={m}>{etiqueta(m)}</option>
                 ))}
               </select>
-              <p className="text-xs text-ink-soft mt-1">Tiempo que puede estar la app en segundo plano antes de pedir el PIN.</p>
+              <p className="text-xs text-ink-soft mt-1">Cuánto tiempo puedes dejar la app sin usar antes de que te pida el PIN.</p>
             </div>
 
             {bioOk && (
@@ -173,7 +173,7 @@ export default function SeccionSeguridad() {
                 <Fingerprint size={20} className="text-accent shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">Huella o Face ID</p>
-                  <p className="text-xs text-ink-soft mt-0.5">El PIN siempre queda como respaldo</p>
+                  <p className="text-xs text-ink-soft mt-0.5">Entras con tu huella o tu cara. Si no funciona, usas el PIN.</p>
                 </div>
                 <Interruptor activo={bioActiva} etiquetaAria="Huella o Face ID" onClick={alternarBio} />
               </div>

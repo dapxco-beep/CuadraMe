@@ -22,11 +22,11 @@ const COLOR_VIABILIDAD = {
 }
 const TEXTO_VIABILIDAD = {
   lograda: 'Ya la lograste',
-  viable: 'Va bien con tus números',
-  ajustada: 'Posible, pero ajustada',
+  viable: 'Va bien con lo que ganas y gastas',
+  ajustada: 'Se puede, pero te va a quedar justo',
   incompatible: 'No cuadra con tus ingresos y gastos',
   fecha_vencida: 'La fecha ya pasó',
-  sin_datos: 'Aún no tengo suficientes datos tuyos',
+  sin_datos: 'Aún no tengo datos tuyos para decirte',
 }
 
 // "Quiero $12 millones en diciembre de 2027" -> cuánto aportar al mes, si es
@@ -43,8 +43,8 @@ export default function PlanificadorMeta({ onClose, onCreada }) {
 
   async function calcular() {
     setError('')
-    if (!objetivo || Number(objetivo) <= 0) return setError('¿Cuánto quieres reunir?')
-    if (!mes) return setError('Elige el mes en que la quieres lograr')
+    if (!objetivo || Number(objetivo) <= 0) return setError('Escribe cuánta plata quieres reunir.')
+    if (!mes) return setError('Elige para qué mes la quieres.')
     setCargando(true)
     try {
       setPlan(
@@ -56,14 +56,14 @@ export default function PlanificadorMeta({ onClose, onCreada }) {
         })
       )
     } catch (err) {
-      setError(err.message || 'No se pudo calcular. Revisa tu conexión e intenta de nuevo.')
+      setError(err.message || 'No pudimos hacer la cuenta. Revisa tu conexión e intenta de nuevo.')
     }
     setCargando(false)
   }
 
   async function crear() {
     setError('')
-    if (!nombre.trim()) return setError('Ponle un nombre a tu meta')
+    if (!nombre.trim()) return setError('Ponle un nombre a tu meta, por ejemplo «Viaje a Japón».')
     try {
       await api.crearMeta({
         nombre: nombre.trim(),
@@ -73,7 +73,7 @@ export default function PlanificadorMeta({ onClose, onCreada }) {
       })
       onCreada()
     } catch (err) {
-      setError(err.message || 'No se pudo crear la meta. Revisa tu conexión e intenta de nuevo.')
+      setError(err.message || 'No pudimos crear la meta. Revisa tu conexión e intenta de nuevo.')
     }
   }
 
@@ -87,7 +87,7 @@ export default function PlanificadorMeta({ onClose, onCreada }) {
           <X size={16} />
         </button>
       </div>
-      <p className="text-xs text-ink-soft mb-4">Dime cuánto y para cuándo; yo calculo cuánto aportar según lo que de verdad ahorras.</p>
+      <p className="text-xs text-ink-soft mb-4">Dime cuánto y para cuándo, y te digo cuánto apartar cada mes según lo que de verdad te sobra.</p>
 
       <InputMonto entero value={objetivo} onValor={setObjetivo}
         placeholder="¿Cuánto quieres reunir? (ej. 12000000)" aria-label="Monto que quieres reunir" className={campo} />
@@ -96,7 +96,7 @@ export default function PlanificadorMeta({ onClose, onCreada }) {
       <InputMonto entero value={saldo} onValor={setSaldo}
         placeholder="Lo que ya tienes para esta meta (opcional)" aria-label="Saldo actual" className={campo} />
       <input value={tasa} onChange={(e) => setTasa(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal"
-        placeholder="Rendimiento % E.A. si lo inviertes (opcional)" aria-label="Rendimiento EA" className={campo} />
+        placeholder="Si la inviertes: ¿cuánto rinde al año, en %? (opcional)" aria-label="Rendimiento EA" className={campo} />
 
       {error && <p className="text-sm text-danger mb-3" role="alert">{error}</p>}
       <button onClick={calcular} disabled={cargando} className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60">
