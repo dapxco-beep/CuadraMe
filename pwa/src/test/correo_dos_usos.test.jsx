@@ -55,11 +55,14 @@ const abrirConexion = () => fireEvent.click(screen.getByTestId('abrir-conexiones
 const montarTarjetas = (correos) =>
   render(<DialogosProvider><CorreosPorRevisar correos={correos} onResuelto={vi.fn()} /></DialogosProvider>)
 
-const montar = () =>
+const montar = (ruta = '/sincronizacion') =>
   render(
     <DialogosProvider>
-      <MemoryRouter initialEntries={['/sincronizacion']}>
-        <Routes><Route path="/sincronizacion" element={<Sincronizacion />} /></Routes>
+      <MemoryRouter initialEntries={[ruta]}>
+        <Routes>
+          <Route path="/sincronizacion" element={<Sincronizacion />} />
+          <Route path="/movimientos-correo" element={<Sincronizacion modo="correo" />} />
+        </Routes>
       </MemoryRouter>
     </DialogosProvider>
   )
@@ -79,7 +82,7 @@ beforeEach(() => {
 
 describe('lib/carriles', () => {
   it('el resumen no mezcla los dos conteos', () => {
-    expect(resumenCarriles(TAREAS)).toBe('3 movimientos por revisar · 3 extractos por conciliar')
+    expect(resumenCarriles(TAREAS)).toBe('3 movimientos por revisar · 3 extractos por revisar')
     expect(resumenCarriles([{ id: 'correos_por_revisar', cantidad: 1 }])).toBe('1 movimiento por revisar')
     expect(resumenCarriles([{ id: 'sin_cuenta', cantidad: 2 }])).toBe('')
   })
@@ -127,7 +130,7 @@ describe('EtiquetaOrigen', () => {
   })
 })
 
-describe('Traer movimientos: las dos tarjetas del correo', () => {
+describe('Traer extractos y Movimientos del correo: los dos usos del correo', () => {
   it('los dos usos del correo tienen su interruptor en «Conexiones y claves»; la pantalla principal no los repite', async () => {
     montar()
     await screen.findByTestId('paso-guiado')
@@ -138,16 +141,19 @@ describe('Traer movimientos: las dos tarjetas del correo', () => {
     expect(within(screen.getByTestId('interruptor-extractos')).getByRole('switch', { name: /Leer extractos/i })).toBeChecked()
   })
 
-  it('si falla un carril se dice cuál y el otro sigue funcionando', async () => {
+  it('si falla un uso se dice cuál y el otro sigue funcionando (cada pantalla lee solo el suyo)', async () => {
     api.sincronizarCorreos.mockImplementation(async (p) => (p?.tipo === 'extractos'
       ? { ok: false, error: 'No se pudo sincronizar tus correos.' }
       : { ok: true, completado: true, nuevos: 1, tipo: 'movimientos' }))
+    // «Movimientos del correo» sigue funcionando aunque la lectura de extractos esté fallando...
+    const vistaCorreo = montar('/movimientos-correo')
+    fireEvent.click(await screen.findByRole('button', { name: 'Buscar ahora' }))
+    expect(await screen.findByTestId('resumen-busqueda')).toHaveTextContent('Encontré 1 movimiento nuevo.')
+    vistaCorreo.unmount()
+    // ...y «Traer extractos» dice que ESA lectura no pudo.
     montar()
     fireEvent.click(await screen.findByRole('button', { name: 'Buscar ahora' }))
-    // Una frase dice qué trajo y cuál lectura no pudo; la otra siguió funcionando.
-    const resumen = await screen.findByTestId('resumen-busqueda')
-    expect(resumen).toHaveTextContent('Encontré 1 movimiento nuevo.')
-    expect(resumen).toHaveTextContent(/No pude leer: .*xtractos/i)
+    expect(await screen.findByRole('alert')).toBeTruthy() // la lectura de extractos falló y se dice, sin tocar la de avisos
     abrirConexion()
     expect(await screen.findByText(/^Extractos: /i)).toBeTruthy()
   })
@@ -196,8 +202,8 @@ describe('Traer movimientos: las dos tarjetas del correo', () => {
     expect(screen.getByTestId('tarea-falta_clave')).toBeTruthy()
   })
 
-  it('«Ver todo» → «Correos» no repite la lista: ofrece «Ver los N por revisar»', async () => {
-    montar()
+  it('«Movimientos del correo» → «Ver todo» no repite la lista: ofrece «Ver los N por revisar»', async () => {
+    montar('/movimientos-correo')
     fireEvent.click(await screen.findByTestId('ver-todo'))
     fireEvent.click(await screen.findByTestId('tab-correos'))
     const boton = await screen.findByTestId('ver-por-revisar')

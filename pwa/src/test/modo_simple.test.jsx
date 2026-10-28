@@ -64,7 +64,7 @@ describe('navegacion: grupos según el modo', () => {
   it('modo simple: lo esencial a la vista y el resto en «Más funciones», plegado y explicado', () => {
     const g = gruposSegunModo({ completo: false })
     expect(g.map((x) => x.id)).toEqual(['esencial', MAS_FUNCIONES_ID])
-    expect(g[0].items.map((i) => i.label)).toEqual(['Traer movimientos', 'Perfil', 'Ayuda'])
+    expect(g[0].items.map((i) => i.label)).toEqual(['Traer extractos', 'Perfil', 'Ayuda'])
     const mas = g[1]
     expect(mas.plegado).toBe(true)
     // todas las demás pantallas siguen ahí (las rutas no cambian) y cada una trae su frase
@@ -88,7 +88,7 @@ describe('navegacion: grupos según el modo', () => {
     expect(buscarDestinos('4x1000').map((d) => d.to)).toContain('/impuestos')
   })
 
-  it('el riel solo suma «Traer movimientos» en modo simple', () => {
+  it('el riel solo suma «Traer extractos» en modo simple', () => {
     expect(extrasRiel({ completo: false }).map((i) => i.to)).toEqual(['/sincronizacion'])
     expect(extrasRiel({ completo: true }).map((i) => i.to)).toEqual(['/patrimonio', '/sincronizacion'])
   })
@@ -131,7 +131,7 @@ describe('Menú «Más» (teléfono) en modo simple', () => {
   it('muestra solo lo esencial y «Más funciones» plegado; al abrirlo, cada una con su frase', async () => {
     await abrirMas()
     const hoja = await screen.findByRole('dialog', { name: 'Más opciones' })
-    for (const nombre of ['Traer movimientos', 'Perfil', 'Ayuda']) {
+    for (const nombre of ['Traer extractos', 'Perfil', 'Ayuda']) {
       expect(within(hoja).getByRole('link', { name: new RegExp('^' + nombre) })).toBeInTheDocument()
     }
     expect(within(hoja).queryByRole('link', { name: /Deudas/ })).toBeNull()
@@ -166,7 +166,7 @@ describe('Menú «Más» (teléfono) en modo simple', () => {
 })
 
 describe('Barras de pantalla ancha en modo simple', () => {
-  it('riel: Inicio, Movimientos, Presupuesto y Traer movimientos; sin Patrimonio', () => {
+  it('riel: Inicio, Movimientos, Presupuesto y Traer extractos; sin Patrimonio', () => {
     simularAncho(820)
     render(
       <MemoryRouter>
@@ -176,7 +176,7 @@ describe('Barras de pantalla ancha en modo simple', () => {
       </MemoryRouter>
     )
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
-    for (const nombre of ['Inicio', 'Movimientos', 'Presupuesto', 'Traer movimientos']) {
+    for (const nombre of ['Inicio', 'Movimientos', 'Presupuesto', 'Traer extractos']) {
       expect(within(nav).getByRole('link', { name: nombre })).toBeInTheDocument()
     }
     expect(within(nav).queryByRole('link', { name: 'Patrimonio' })).toBeNull()
@@ -192,7 +192,7 @@ describe('Barras de pantalla ancha en modo simple', () => {
       </MemoryRouter>
     )
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
-    expect(within(nav).getByRole('link', { name: /^Traer movimientos/ })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: /^Traer extractos/ })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: 'Perfil' })).toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: /Deudas/ })).toBeNull()
     const boton = within(nav).getByRole('button', { name: 'Más funciones' })
@@ -288,7 +288,7 @@ describe('Inicio simplificado', () => {
     expect(within(camino).getAllByRole('listitem')).toHaveLength(3)
     expect(within(camino).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
     expect(within(camino).getByRole('link', { name: 'Crear mi cuenta' })).toHaveAttribute('href', '/cuentas')
-    expect(within(camino).queryByRole('link', { name: /^Traer movimientos/ })).toBeNull()
+    expect(within(camino).queryByRole('link', { name: /^Traer extractos/ })).toBeNull()
     // el recorrido largo no se abre solo y, mientras el camino de 3 pasos está a la vista, tampoco compite con él
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.queryByRole('button', { name: /Conoce CuadraMe en 1 minuto/ })).toBeNull()
@@ -301,7 +301,7 @@ describe('Inicio simplificado', () => {
     montarInicio()
     const camino = await screen.findByTestId('camino-primer-uso')
     expect(within(camino).getByTestId('progreso-camino')).toHaveTextContent('1 de 3 pasos')
-    expect(within(camino).getByRole('link', { name: /^Traer movimientos/ })).toHaveAttribute('href', '/sincronizacion')
+    expect(within(camino).getByRole('link', { name: /^Traer extractos/ })).toHaveAttribute('href', '/sincronizacion')
     expect(camino).not.toHaveTextContent(/atajo/i)
   })
 

@@ -23,7 +23,7 @@ export const EJEMPLO_CARRIL = {
 }
 
 export const BOTON_CARRIL = {
-  movimientos: 'Traer movimientos',
+  movimientos: 'Traer movimientos del correo',
   extractos: 'Buscar extractos',
 }
 
@@ -45,7 +45,7 @@ export function resumenCarriles(tareas) {
   const ext = suma(['extractos_por_conciliar', 'falta_clave'])
   const partes = []
   if (mov) partes.push(`${plural(mov, 'movimiento', 'movimientos')} por revisar`)
-  if (ext) partes.push(`${plural(ext, 'extracto', 'extractos')} por conciliar`)
+  if (ext) partes.push(`${plural(ext, 'extracto', 'extractos')} por revisar`)
   return partes.join(' · ')
 }
 
@@ -61,7 +61,7 @@ export function contadoresCarril(carril, c) {
   }
   return [
     { clave: 'encontrados', texto: plural(c.encontrados || 0, 'encontrado', 'encontrados') },
-    { clave: 'por_conciliar', texto: plural(c.por_conciliar || 0, 'por conciliar', 'por conciliar') },
+    { clave: 'por_conciliar', texto: plural(c.por_conciliar || 0, 'por revisar', 'por revisar') },
     ...(c.con_clave_pendiente ? [{ clave: 'clave', texto: `${plural(c.con_clave_pendiente, 'necesita', 'necesitan')} clave` }] : []),
     { clave: 'al_dia', texto: `${c.al_dia || 0} al día` },
   ]

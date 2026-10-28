@@ -87,9 +87,9 @@ export const CAMINO = [
   {
     id: 'movimientos',
     titulo: 'Trae tus movimientos',
-    apoyo: 'Desde tu correo, el extracto del banco o un Excel. No necesitas instalar nada más.',
+    apoyo: 'Con el extracto de tu banco (PDF o Excel) o con los avisos de tu correo. No necesitas instalar nada más.',
     ruta: '/sincronizacion',
-    accion: 'Traer movimientos',
+    accion: 'Traer extractos',
   },
   {
     id: 'resumen',

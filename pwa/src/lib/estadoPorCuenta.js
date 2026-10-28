@@ -24,16 +24,16 @@ export function vistaCelda(celda, { esMesActual = false } = {}) {
     case 'anterior':
       return { clave: 'anterior', texto: 'Antes de tu inicio', detalle: '', accion: 'ninguna' }
     case 'conciliado':
-      return { clave: 'conciliado', texto: 'Conciliado', detalle: c.movimientos ? `${plural(c.movimientos, 'mov.', 'mov.')}` : '', accion: 'ver' }
+      return { clave: 'conciliado', texto: 'Cuadra con tu banco', detalle: c.movimientos ? `${plural(c.movimientos, 'mov.', 'mov.')}` : '', accion: 'ver' }
     case 'parcial':
       return {
         clave: 'falta_importar',
-        texto: c.por_revisar ? `Falta importar ${c.por_revisar}` : 'Falta importar',
+        texto: c.por_revisar ? `Faltan ${c.por_revisar} por agregar` : 'Falta agregar',
         detalle: c.lectura_dudosa ? 'Elige un monto' : 'Revisa y agrega',
         accion: 'importar',
       }
     case 'extracto_pendiente':
-      return { clave: 'falta_importar', texto: 'Falta importar', detalle: 'Llegó, sin revisar', accion: 'importar' }
+      return { clave: 'falta_importar', texto: 'Falta agregar', detalle: 'Llegó, sin revisar', accion: 'importar' }
     case 'falta_clave':
       return { clave: 'no_se_pudo_leer', texto: 'No se pudo leer', detalle: c.motivo_corto || 'falta la clave', accion: 'clave' }
     case 'no_se_pudo_leer':

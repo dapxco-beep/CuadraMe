@@ -105,6 +105,7 @@ function montar(ruta = '/sincronizacion') {
       <MemoryRouter initialEntries={[ruta]}>
         <Routes>
           <Route path="/sincronizacion" element={<Sincronizacion />} />
+          <Route path="/movimientos-correo" element={<Sincronizacion modo="correo" />} />
           <Route path="/conciliacion" element={<p>Pantalla conciliación</p>} />
         </Routes>
       </MemoryRouter>
@@ -160,13 +161,13 @@ describe('helpers de Sincronización', () => {
 describe('pantalla Sincronización', () => {
   it('muestra UNA cosa a la vez: el estado, el paso principal y lo que viene después', async () => {
     montar()
-    expect(await screen.findByText('Tienes 5 cosas por hacer')).toBeTruthy()
+    expect(await screen.findByText('Tienes 3 cosas por hacer')).toBeTruthy()
     // Un solo botón grande, con la tarea de más prioridad (la clave); las demás esperan su turno.
     const tarjetas = screen.getAllByTestId(/^tarea-/).map((t) => t.getAttribute('data-testid'))
     expect(tarjetas).toEqual(['tarea-falta_clave'])
     expect(screen.getByTestId('paso-titulo').textContent).toBe('Falta la clave de tu PDF')
-    expect(screen.getByTestId('progreso-pasos').textContent).toMatch(/Paso 1 de 5/)
-    expect(screen.getByTestId('despues').textContent).toMatch(/Después: crea tu cuenta de Nequi y 3 más/)
+    expect(screen.getByTestId('progreso-pasos').textContent).toMatch(/Paso 1 de 3/)
+    expect(screen.getByTestId('despues').textContent).toMatch(/Después: crea tu cuenta de Nequi y 1 más/)
     // Un solo botón para buscar; ya no hay «Traer todo ahora» ni uno por uso del correo.
     expect(screen.getByRole('button', { name: 'Buscar ahora' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Traer todo ahora' })).toBeNull()
@@ -184,7 +185,7 @@ describe('pantalla Sincronización', () => {
 
   it('las casillas de mes miden 44 px de toque como mínimo y en 360 px el nombre pasa arriba de las casillas', async () => {
     montar()
-    await screen.findByText('Tienes 5 cosas por hacer')
+    await screen.findByText('Tienes 3 cosas por hacer')
     abrirTodo('meses')
     const celdas = screen.getAllByRole('button', { name: /Bancolombia Ahorros, .* 2026: / })
     expect(celdas.length).toBeGreaterThan(0)
@@ -198,7 +199,7 @@ describe('pantalla Sincronización', () => {
 
   it('la grilla tiene texto accesible por celda y al tocarla abre el detalle del mes', async () => {
     montar()
-    await screen.findByText('Tienes 5 cosas por hacer')
+    await screen.findByText('Tienes 3 cosas por hacer')
     abrirTodo('meses')
     expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, junio 2026: Revisado' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Bancolombia Ahorros, julio 2026: Necesita clave' })).toBeTruthy()
@@ -227,7 +228,7 @@ describe('pantalla Sincronización', () => {
   it('los extractos dicen banco, estado en palabras y no se concilian sin cuenta elegida', async () => {
     api.conciliarExtractoCorreo.mockResolvedValue({ ok: true, historial_id: 'h1' })
     montar()
-    await screen.findByText('Tienes 5 cosas por hacer')
+    await screen.findByText('Tienes 3 cosas por hacer')
     abrirTodo('extractos')
     const nuevo = screen.getByTestId('extracto-e1')
     expect(within(nuevo).getByText('Nuevo · listo para revisar')).toBeTruthy()
@@ -262,7 +263,7 @@ describe('pantalla Sincronización', () => {
   it('por categorizar: elegir categoría recuerda el comercio por defecto; la casilla lo evita', async () => {
     api.recategorizarComercio.mockResolvedValue({ ok: true, actualizados: 3, patron: 'PANADERIA LA 80' })
     api.sincronizacionEstado.mockResolvedValue({ ...ESTADO, tareas: ESTADO.tareas.filter((t) => t.id === 'movimientos_por_categorizar') })
-    montar()
+    montar('/movimientos-correo') // categorizar comercios es de los movimientos, no de los extractos
     fireEvent.click(await screen.findByTestId('tarea-movimientos_por_categorizar'))
     await screen.findByTestId('cat-m1')
     const m1 = screen.getByTestId('cat-m1')
@@ -283,15 +284,14 @@ describe('pantalla Sincronización', () => {
     api.sincronizarCorreos
       .mockResolvedValueOnce({ ok: true, completado: false, leidos: 120, total_estimado: 340 })
       .mockReturnValueOnce(segundo)
-      .mockResolvedValueOnce({ ok: true, completado: true, leidos: 0, extractos_encontrados: 2 }) // el uso «extractos»
     montar()
-    await screen.findByText('Tienes 5 cosas por hacer')
+    await screen.findByText('Tienes 3 cosas por hacer')
     fireEvent.click(screen.getByRole('button', { name: 'Buscar ahora' }))
-    expect(await screen.findByText('Leyendo tus avisos del banco… 120 de 340')).toBeTruthy()
-    terminar({ ok: true, completado: true, leidos: 340, total_estimado: 340, nuevos: 12 })
-    expect(await screen.findByText(/Leí 340 correos\. Encontré 12 movimientos nuevos y 2 extractos\./)).toBeTruthy()
-    expect(api.sincronizarCorreos).toHaveBeenCalledTimes(3) // 2 lotes de movimientos + 1 de extractos
-    expect(api.sincronizarCorreos.mock.calls[2][0]).toEqual({ tipo: 'extractos' })
+    expect(await screen.findByText('Leyendo tus extractos… 120 de 340')).toBeTruthy()
+    terminar({ ok: true, completado: true, leidos: 340, total_estimado: 340, extractos_encontrados: 2 })
+    expect(await screen.findByText(/Leí 340 correos\. Encontré 2 extractos\./)).toBeTruthy()
+    expect(api.sincronizarCorreos).toHaveBeenCalledTimes(2) // «Traer extractos» lee solo el uso «extractos» (2 lotes)
+    expect(api.sincronizarCorreos.mock.calls.every(([p]) => p?.tipo === 'extractos')).toBe(true)
     // Al terminar vuelve a pedir el estado para refrescar tareas y grilla.
     await waitFor(() => expect(api.sincronizacionEstado.mock.calls.length).toBeGreaterThanOrEqual(2))
   })
@@ -301,7 +301,7 @@ describe('pantalla Sincronización', () => {
     montar()
     expect(await screen.findByText('Sin conexión')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
-    expect(await screen.findByText('Tienes 5 cosas por hacer')).toBeTruthy()
+    expect(await screen.findByText('Tienes 3 cosas por hacer')).toBeTruthy()
   })
 })
 

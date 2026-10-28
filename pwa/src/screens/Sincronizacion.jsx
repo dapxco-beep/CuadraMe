@@ -92,7 +92,14 @@ function AlDia({ texto = 'Todo al día' }) {
   )
 }
 
-export default function Sincronizacion() {
+// Dos caras de la misma pantalla, para que cada una hable de UNA cosa:
+//   modo 'extractos' (/sincronizacion): «Traer extractos» (PDF del banco, Excel, clave, cuadre mes a mes).
+//   modo 'correo' (/movimientos-correo): «Movimientos del correo» (los avisos del banco: leerlos, revisarlos, aprobarlos).
+// Los dos comparten la conexión con Gmail (hoja «Conexiones y claves»); lo demás se separa por tipo de tarea.
+const TAREAS_DEL_CORREO = ['correos_por_revisar', 'correos_descartados', 'movimientos_por_categorizar', 'posibles_duplicados']
+
+export default function Sincronizacion({ modo = 'extractos' }) {
+  const esCorreo = modo === 'correo'
   const navigate = useNavigate()
   const location = useLocation()
   const volver = useVolver('/')
@@ -101,6 +108,11 @@ export default function Sincronizacion() {
   const { fmt } = useBloqueo()
   const { confirmar, avisar } = useDialogos() || {}
   const llegada = location.state || null
+  // Un enlace viejo que pide la otra cara (p. ej. «correos descartados» a /sincronizacion) se lleva a la que corresponde.
+  useEffect(() => {
+    const pideOtraCara = esCorreo ? ['extractos', 'subir'].includes(llegada?.abrir) : seccionDeRuta(llegada?.abrir) === 'movimientos'
+    if (pideOtraCara) navigate(esCorreo ? '/sincronizacion' : '/movimientos-correo', { replace: true, state: llegada })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [estado, setEstado] = useState(null)
   const [gmail, setGmail] = useState(null)
@@ -113,7 +125,7 @@ export default function Sincronizacion() {
   const [cola, setCola] = useState({ items: [], total: 0 })
   const [cargando, setCargando] = useState(true)
   const raiz = useRef(null)
-  useEstadoLista('/sincronizacion', { contenedorRef: raiz, listo: !cargando }) // al volver, misma posición
+  useEstadoLista(esCorreo ? '/movimientos-correo' : '/sincronizacion', { contenedorRef: raiz, listo: !cargando }) // al volver, misma posición
   const [error, setError] = useState('')
   const [progreso, setProgreso] = useState(null)
   const [resumen, setResumen] = useState('')
@@ -142,7 +154,7 @@ export default function Sincronizacion() {
   const [recordar, setRecordar] = useState({}) // id -> false cuando la casilla se desmarca
   // La hoja abierta (null = ninguna): todo | conexion | clave | categorizar | subir | asunto | punto.
   const [hoja, setHoja] = useState(() => (/[?&]gmail=/.test(location.search || '') || seccionDeRuta(llegada?.abrir) === 'conexion' ? 'conexion' : null))
-  const [tab, setTab] = useState(() => (seccionDeRuta(llegada?.abrir) === 'movimientos' ? 'correos' : 'extractos'))
+  const [tab, setTab] = useState(() => (esCorreo || seccionDeRuta(llegada?.abrir) === 'movimientos' ? 'correos' : 'extractos'))
   const [fase, setFase] = useState(null) // qué se está leyendo: movimientos | extractos | correo | clave | saldos
   const [recien, setRecien] = useState(false) // acaba de resolverse un paso
   const maxPasos = useRef(0)
@@ -302,7 +314,7 @@ export default function Sincronizacion() {
     setErroresCarril({})
     setResultadosCarril({})
     setProgreso({ leidos: 0, total_estimado: 0 })
-    const activos = lecturaActiva()
+    const activos = lecturaCara()
     try {
       if (silencioso === true) {
         // Al abrir la pantalla: una sola lectura (sin ruido ni errores por carril) con lo que esté encendido.
@@ -393,6 +405,12 @@ export default function Sincronizacion() {
   // Lo que el usuario dejó encendido (por defecto los dos, como siempre).
   function lecturaActiva() {
     return { movimientos: gmail?.leer_movimientos !== false, extractos: gmail?.leer_extractos !== false }
+  }
+
+  // Cada cara lee solo lo suyo: «Traer extractos» no toca los avisos del día a día, y al revés.
+  function lecturaCara() {
+    const activos = lecturaActiva()
+    return esCorreo ? { ...activos, extractos: false } : { ...activos, movimientos: false }
   }
 
   // Un solo uso del correo: su propio botón, progreso, resultado y error.
@@ -776,12 +794,12 @@ export default function Sincronizacion() {
   }
 
   // ── Lo pendiente, como pasos (una cosa a la vez) ────────────────────
-  const tareas = estado?.tareas || []
-  const sinCuenta = estado?.sin_cuenta || []
+  const tareas = (estado?.tareas || []).filter((t) => esCorreo === TAREAS_DEL_CORREO.includes(t.id))
+  const sinCuenta = esCorreo ? [] : estado?.sin_cuenta || []
   const meses = estado?.meses || []
   const filasCuentas = estado?.cuentas || []
   const conectado = Boolean(gmail?.conectado)
-  const aMedias = extractosAMedias(estado)
+  const aMedias = esCorreo ? [] : extractosAMedias(estado)
   const primerUso = sinDatos({ estado, conectado })
   const puntoPendiente = estado?.punto_partida?.definido === false && !pospuestoPP && (conectado || primerUso)
   const pasos = construirPasos({ tareas, aMedias, conectado, primerUso, claveConfigurada: Boolean(claveInfo.configurada), sinCuenta, puntoPendiente })
@@ -948,7 +966,7 @@ export default function Sincronizacion() {
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="flex-1 min-w-0 text-xl font-bold leading-tight">Traer movimientos</h1>
+        <h1 className="flex-1 min-w-0 text-xl font-bold leading-tight">{esCorreo ? 'Movimientos del correo' : 'Traer extractos'}</h1>
         <button
           onClick={() => setHoja('conexion')}
           data-testid="abrir-conexiones"
@@ -984,15 +1002,15 @@ export default function Sincronizacion() {
               onVerTodo={() => abrirTodo(tab)}
             />
           </div>
-          <EstadoPorCuenta
+          {!esCorreo && <EstadoPorCuenta
             cuentas={filasCuentas}
             meses={meses}
             onMes={accionMes}
             deudas={deudasTarjeta}
             pieCredito={<ArreglarTarjetas onListo={cargar} onRevisar={() => abrirGrupoExtractos(FILTRO_DE_TAREA.extractos_por_conciliar)} />}
             className="mx-6 mt-5 mb-2"
-          />
-          <RegistrarRendimientos className="mx-6 mb-2 !w-auto" onListo={cargar} />
+          />}
+          {!esCorreo && <RegistrarRendimientos className="mx-6 mb-2 !w-auto" onListo={cargar} />}
         </div>
 
         {/* Escritorio: lo que sigue y lo que hago solo. En el celular no se ve: una pregunta a la vez. */}
@@ -1036,10 +1054,10 @@ export default function Sincronizacion() {
           {() => (
             <>
               <h2 className="text-lg font-bold">Ver todo</h2>
-              <div role="tablist" aria-label="Qué quieres ver" className="mt-3 grid grid-cols-3 gap-1 rounded-2xl bg-paper-raised/70 p-1 ring-1 ring-line/40">
-                {verEnTab('extractos', 'Extractos', pendientes.length)}
-                {verEnTab('correos', 'Correos', nCorreos)}
-                {verEnTab('meses', 'Por mes', 0)}
+              <div role="tablist" aria-label="Qué quieres ver" className={`mt-3 grid ${esCorreo ? 'grid-cols-1' : 'grid-cols-2'} gap-1 rounded-2xl bg-paper-raised/70 p-1 ring-1 ring-line/40`}>
+                {!esCorreo && verEnTab('extractos', 'Extractos', pendientes.length)}
+                {esCorreo && verEnTab('correos', 'Avisos de tu banco', nCorreos)}
+                {!esCorreo && verEnTab('meses', 'Mes a mes', 0)}
               </div>
 
               {tab === 'extractos' && (
@@ -1180,8 +1198,8 @@ export default function Sincronizacion() {
 
               {tab === 'meses' && (
                 <div role="tabpanel" aria-label="Por mes" className="mt-2" data-testid="seccion-meses">
-                  <section aria-label="Cobertura por mes">
-                    <Sub id="sinc-cuentas" titulo="Cobertura por mes · cuentas">
+                  <section aria-label="Tus cuentas, mes a mes">
+                    <Sub id="sinc-cuentas" titulo="Tus cuentas, mes a mes">
           {filasCuentas.length === 0 ? (
             <p className="text-sm text-ink-soft">Aún no tienes cuentas.</p>
           ) : (
@@ -1613,7 +1631,7 @@ function FilaExtracto({
           )}
           {faltaTarjeta && (
             <p className="text-xs text-ink-soft mt-0.5" data-testid="falta-cuenta-tarjeta">
-              Es el extracto de tu tarjeta de crédito {ex.banco ? nombreCorto(ex.banco) : ''}: crea tu cuenta de tarjeta para conciliarlo.
+              Es el extracto de tu tarjeta de crédito {ex.banco ? nombreCorto(ex.banco) : ''}: crea tu cuenta de tarjeta para poder revisarlo.
             </p>
           )}
           {ex.estado === 'falta_clave' && ex.clave_estado === 'no_abrio' && (

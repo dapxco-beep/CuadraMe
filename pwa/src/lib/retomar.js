@@ -22,7 +22,7 @@ export function extractosAMedias(estado) {
     }))
 }
 
-export const tituloAMedias = (n) => (n === 1 ? 'Tienes 1 extracto a medio conciliar' : `Tienes ${n} extractos a medio conciliar`)
+export const tituloAMedias = (n) => (n === 1 ? 'Tienes 1 extracto a medias' : `Tienes ${n} extractos a medias`)
 export const textoFaltan = (n) => `faltan importar ${plural(n, 'movimiento', 'movimientos')}`
 
 /** «Subiste 6: 3 conciliados, 2 por importar, 1 sin clave» a partir de lo que pasó con cada archivo. */
@@ -43,7 +43,7 @@ export function resumenLote(archivos) {
     }
   }
   const partes = []
-  if (conciliados) partes.push(`${conciliados} ${conciliados === 1 ? 'conciliado' : 'conciliados'}`)
+  if (conciliados) partes.push(`${conciliados} ${conciliados === 1 ? 'cuadra con el banco' : 'cuadran con el banco'}`)
   if (porImportar) partes.push(`${porImportar} por importar`)
   if (sinClave) partes.push(`${sinClave} sin clave`)
   if (conError) partes.push(`${conError} con error`)

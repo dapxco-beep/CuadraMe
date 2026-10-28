@@ -41,10 +41,10 @@ const aMedias = {
   },
 }
 
-const montar = () => render(
+const montar = (modo) => render(
   <DialogosProvider>
     <MemoryRouter initialEntries={['/sincronizacion']}>
-      <Routes><Route path="/sincronizacion" element={<Sincronizacion />} /></Routes>
+      <Routes><Route path="/sincronizacion" element={<Sincronizacion modo={modo} />} /></Routes>
     </MemoryRouter>
   </DialogosProvider>,
 )
@@ -76,16 +76,16 @@ describe('asistente de «Traer movimientos»', () => {
   })
 
   it('al resolverse un paso aparece «Listo ✓ — siguiente:» y el contador avanza', async () => {
-    api.sincronizacionEstado.mockResolvedValueOnce(base({ tareas: [tarea('falta_clave'), tarea('correos_por_revisar', 2)] }))
+    api.sincronizacionEstado.mockResolvedValueOnce(base({ tareas: [tarea('falta_clave'), tarea('extractos_por_conciliar', 2)] }))
     api.sincronizarCorreos.mockResolvedValue({ ok: true, completado: true, nuevos: 0, extractos_encontrados: 0 })
     montar()
     expect(await screen.findByTestId('progreso-pasos')).toHaveTextContent('Paso 1 de 2')
     expect(screen.queryByTestId('paso-listo')).toBeNull()
     // Se lee el correo y la clave guardada abre los PDF: el paso de la clave desaparece solo.
-    api.sincronizacionEstado.mockResolvedValue(base({ tareas: [tarea('correos_por_revisar', 2)] }))
+    api.sincronizacionEstado.mockResolvedValue(base({ tareas: [tarea('extractos_por_conciliar', 2)] }))
     fireEvent.click(screen.getByRole('button', { name: 'Buscar ahora' }))
     expect(await screen.findByTestId('paso-listo')).toHaveTextContent('Listo ✓ — siguiente:')
-    expect(screen.getByTestId('paso-titulo')).toHaveTextContent('Revisa 2 movimientos')
+    expect(screen.getByTestId('paso-titulo')).toHaveTextContent('Revisa tus 2 extractos')
     expect(screen.getByTestId('progreso-pasos')).toHaveTextContent('Paso 2 de 2')
   })
 
@@ -119,15 +119,27 @@ describe('asistente de «Traer movimientos»', () => {
   })
 
   it('«Ver todo» y «Conexiones y claves» son hojas con su propio contenido, no secciones apiladas', async () => {
-    api.sincronizacionEstado.mockResolvedValue(base({ tareas: [tarea('correos_por_revisar', 2)] }))
+    api.sincronizacionEstado.mockResolvedValue(base({ tareas: [tarea('extractos_por_conciliar', 2)] }))
     montar()
     await screen.findByTestId('paso-guiado')
     expect(screen.queryByTestId('seccion-extractos')).toBeNull()
     fireEvent.click(screen.getByTestId('ver-todo'))
     expect(await screen.findByRole('dialog', { name: 'Ver todo' })).toBeTruthy()
     expect(screen.getByTestId('seccion-extractos')).toBeTruthy()
-    fireEvent.click(screen.getByTestId('tab-correos'))
-    expect(screen.getByTestId('seccion-correos')).toBeTruthy()
+    expect(screen.queryByTestId('tab-correos')).toBeNull() // los avisos del banco viven en su propia pantalla
+    fireEvent.click(screen.getByTestId('tab-meses'))
+    expect(screen.getByTestId('seccion-meses')).toBeTruthy()
     expect(screen.queryByTestId('seccion-extractos')).toBeNull()
+  })
+
+  it('«Movimientos del correo» tiene su propia pantalla: solo los avisos del banco', async () => {
+    api.sincronizacionEstado.mockResolvedValue(base({ tareas: [tarea('correos_por_revisar', 2), tarea('extractos_por_conciliar', 1)] }))
+    montar('correo')
+    expect(await screen.findByRole('heading', { name: 'Movimientos del correo' })).toBeTruthy()
+    expect(await screen.findByTestId('paso-titulo')).toHaveTextContent('Revisa 2 movimientos') // el extracto NO aparece aquí
+    expect(screen.queryByText(/Revisa tu extracto/)).toBeNull()
+    fireEvent.click(screen.getByTestId('ver-todo'))
+    expect(await screen.findByTestId('seccion-correos')).toBeTruthy()
+    expect(screen.queryByTestId('tab-extractos')).toBeNull()
   })
 })

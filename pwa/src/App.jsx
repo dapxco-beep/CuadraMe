@@ -199,6 +199,7 @@ function AppGate() {
         <Route path="/correos" element={<RedirigirAlCentro ruta="/correos" />} />
         <Route path="/conexiones" element={<RedirigirAlCentro ruta="/conexiones" />} />
         <Route path="/sincronizacion" element={<Sincronizacion />} />
+        <Route path="/movimientos-correo" element={<Sincronizacion modo="correo" />} />
         <Route path="/mi-cuenta-cuadra" element={<MiCuentaCuadra />} />
         <Route path="/insights" element={<Insights />} />
         <Route path="/asistente" element={<Asistente />} />

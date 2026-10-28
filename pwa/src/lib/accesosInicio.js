@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bot, CreditCard, Download, Landmark, PieChart, PiggyBank, Repeat, Users, Wallet } from 'lucide-react'
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bot, CreditCard, Download, Landmark, Mail, PieChart, PiggyBank, Repeat, Users, Wallet } from 'lucide-react'
 import { useAuth } from './AuthContext'
 
 // Accesos del Inicio que la persona elige («Personalizar»).
@@ -12,7 +12,8 @@ export const CATALOGO_ACCESOS = [
   { id: 'gasto', texto: 'Gasto', icono: ArrowUpRight, ruta: '/agregar?foco=monto' },
   { id: 'ingreso', texto: 'Ingreso', icono: ArrowDownLeft, ruta: '/agregar?tipo=income&foco=monto' },
   { id: 'pasar', texto: 'Pasar plata', icono: ArrowLeftRight, ruta: '/agregar?tipo=transfer' },
-  { id: 'traer', texto: 'Traer del banco', icono: Download, ruta: '/sincronizacion' },
+  { id: 'traer', texto: 'Traer extractos', icono: Download, ruta: '/sincronizacion' },
+  { id: 'correo', texto: 'Movimientos del correo', icono: Mail, ruta: '/movimientos-correo' },
   { id: 'dividir', texto: 'Dividir cuenta', icono: Users, ruta: '/amigos' },
   { id: 'metas', texto: 'Metas', icono: PiggyBank, ruta: '/metas' },
   { id: 'deudas', texto: 'Deudas', icono: CreditCard, ruta: '/deudas' },

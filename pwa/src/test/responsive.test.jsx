@@ -68,7 +68,7 @@ describe('Shell responsive', () => {
     expect(container.querySelector('.barra-riel')).not.toBeNull()
     expect(container.querySelector('.barra-completa')).toBeNull()
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
-    for (const nombre of ['Inicio', 'Movimientos', 'Presupuesto', 'Patrimonio', 'Traer movimientos', 'Agregar movimiento']) {
+    for (const nombre of ['Inicio', 'Movimientos', 'Presupuesto', 'Patrimonio', 'Traer extractos', 'Agregar movimiento']) {
       expect(within(nav).getByRole('link', { name: nombre })).toBeInTheDocument()
     }
     // Una sola navegación (no hay barra inferior duplicada)

@@ -21,9 +21,9 @@ export function siguientePasoInicio({ cuentas = 0, movimientos = 0, sinCategoriz
     return {
       id: 'traer',
       titulo: 'Trae tus movimientos',
-      apoyo: 'Desde el correo de tu banco, un extracto o un Excel. También puedes anotar uno a mano.',
+      apoyo: 'Con el extracto de tu banco (PDF o Excel) o con los avisos de tu correo. También puedes anotar uno a mano.',
       ruta: '/sincronizacion',
-      accion: 'Traer movimientos',
+      accion: 'Traer extractos',
     }
   }
   if (sinCategorizar > 0) {

@@ -192,7 +192,7 @@ export default function Inicio() {
     despues(() => api.gmailEstado().then((e) => activo && setGmailConectado(!!e.conectado)).catch(() => {}))
     // Aviso solo si algo se rompió (semáforo rojo); si el tablero falla, no se muestra nada.
     despues(() => Promise.resolve().then(() => api.conexionesEstado?.()).then((c) => activo && setConexionFalla(!!c?.hay_falla)).catch(() => {}))
-    // Cuántas cosas esperan en «Traer movimientos» (si falla, el acceso se muestra sin número).
+    // Cuántas cosas esperan en «Traer extractos» y «Movimientos del correo» (si falla, el acceso se muestra sin número).
     Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && (setTareasSync(s?.tareas ? s.tareas.filter((t) => !t.opcional).length : null), setLineaCorreo(resumenCarriles(s?.tareas)), setAMedias(extractosAMedias(s)), setSinCategorizar((s?.tareas || []).find((t) => t.id === 'movimientos_por_categorizar')?.cantidad || 0))).catch(() => {})
     // Tendencia del gasto de los últimos meses para la mini gráfica (opcional: sin datos no se dibuja).
     despues(() => Promise.resolve().then(() => api.tendencias?.(6)).then((t) => activo && setTendencia(t?.meses ?? null)).catch(() => {}))
@@ -444,7 +444,7 @@ export default function Inicio() {
               Agregar movimiento
             </Boton>
             <Boton to="/sincronizacion" variante="secundario" icono={RefreshCw} className="btn-compacto" data-testid="acceso-sincronizacion">
-              Traer movimientos
+              Traer extractos
               {tareasSync > 0 && (
                 <span className="ml-0.5 min-w-5 h-5 px-1.5 rounded-full bg-accent text-paper-raised text-[11px] font-bold flex items-center justify-center t-cifra">
                   <span className="sr-only">{tareasSync} por resolver</span>

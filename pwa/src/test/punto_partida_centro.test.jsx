@@ -30,12 +30,13 @@ import Sincronizacion from '../screens/Sincronizacion'
 
 const estado = (pp) => ({ meses: [], cuentas: [], sin_cuenta: [], ultima_sync: null, tareas: [], punto_partida: pp })
 
-function montar() {
+function montar(ruta = '/sincronizacion') {
   return render(
     <DialogosProvider>
-      <MemoryRouter initialEntries={['/sincronizacion']}>
+      <MemoryRouter initialEntries={[ruta]}>
         <Routes>
           <Route path="/sincronizacion" element={<Sincronizacion />} />
+          <Route path="/movimientos-correo" element={<Sincronizacion modo="correo" />} />
         </Routes>
       </MemoryRouter>
     </DialogosProvider>
@@ -74,7 +75,7 @@ describe('Traer movimientos y el punto de partida', () => {
     await waitFor(() => expect(screen.queryByTestId('punto-partida-elegir')).toBeNull())
     unmount()
     montar()
-    await screen.findByRole('heading', { name: 'Traer movimientos' })
+    await screen.findByRole('heading', { name: 'Traer extractos' })
     expect(await screen.findByTestId('todo-al-dia')).toBeTruthy()
     expect(screen.queryByTestId('tarea-punto_partida')).toBeNull()
     expect(screen.queryByTestId('punto-partida-elegir')).toBeNull()
@@ -84,8 +85,8 @@ describe('Traer movimientos y el punto de partida', () => {
     api.sincronizacionEstado.mockResolvedValue(estado({
       definido: true, modo: 'hoy', fecha: '2026-10-01', saldos: {}, anteriores: { correos: 4, extractos: 0 },
     }))
-    montar()
-    await screen.findByRole('heading', { name: 'Traer movimientos' })
+    montar('/movimientos-correo') // los correos anteriores a la fecha de inicio se avisan en «Movimientos del correo»
+    await screen.findByRole('heading', { name: 'Movimientos del correo' })
     expect(screen.queryByTestId('punto-partida-elegir')).toBeNull()
     fireEvent.click(await screen.findByTestId('ver-todo'))
     fireEvent.click(await screen.findByTestId('tab-correos'))

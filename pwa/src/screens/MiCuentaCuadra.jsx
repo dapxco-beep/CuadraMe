@@ -67,7 +67,7 @@ export default function MiCuentaCuadra() {
           className="mx-6 mt-6"
         >
           <button type="button" onClick={() => navigate('/sincronizacion')} className="mt-3 min-h-11 rounded-xl bg-accent px-4 text-sm font-semibold text-paper-raised">
-            Traer movimientos
+            Traer extractos
           </button>
         </EstadoVacio>
       )}

@@ -265,8 +265,16 @@ export default function Perfil() {
           <Link to="/sincronizacion" className="flex items-center gap-3 px-4 py-3.5">
             <RefreshCw size={20} className="text-accent shrink-0" />
             <div className="flex-1">
-              <p className="text-sm font-medium">Traer movimientos</p>
-              <p className="text-xs text-ink-soft mt-0.5">Desde tu correo, el extracto del banco o un Excel</p>
+              <p className="text-sm font-medium">Traer extractos</p>
+              <p className="text-xs text-ink-soft mt-0.5">El extracto de tu banco, en PDF o Excel</p>
+            </div>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/movimientos-correo" className="flex items-center gap-3 px-4 py-3.5">
+            <RefreshCw size={20} className="text-accent shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Movimientos del correo</p>
+              <p className="text-xs text-ink-soft mt-0.5">Los avisos de compras y transferencias que tu banco te manda</p>
             </div>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
