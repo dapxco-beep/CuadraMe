@@ -152,6 +152,10 @@ export default function Presupuesto() {
         </div>
       </header>
 
+      <p className="mx-6 mt-1 text-xs text-ink-soft">
+        Un presupuesto es lo máximo que quieres gastar en algo. Cada barra muestra cuánto llevas.
+      </p>
+
       {/* ≥1024 px: resumen/proyección a la izquierda, categorías a la derecha */}
       <div className="dos-col dos-col-6-5">
       <div className="col lg:col-start-2 lg:row-start-1">
@@ -230,7 +234,7 @@ export default function Presupuesto() {
                           {/* Las cifras van en su propia línea bajo el nombre: en 390 px no caben al lado sin encimarse */}
                           <p className="text-xs text-ink-soft mt-0.5" data-testid="gastado-limite">
                             <span className="whitespace-nowrap">{formatCOP(p.gastado)}</span>{' '}
-                            <span className="whitespace-nowrap">/ {formatCOP(p.limite)}</span>
+                            <span className="whitespace-nowrap">de {formatCOP(p.limite)}</span>
                           </p>
                         </div>
                         <button onClick={() => eliminar(p.id)} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label={`Quitar el presupuesto de ${p.categoria}`}>
@@ -244,7 +248,7 @@ export default function Presupuesto() {
                         <BarraProgreso
                           pct={animarBarras ? p.pct : 0}
                           label={`Gastado en ${p.categoria}`}
-                          texto={`${formatPorcentaje(p.pct)} del límite`}
+                          texto={`${formatPorcentaje(p.pct)} de lo que pusiste`}
                           color={
                             sobrepasado
                               ? 'var(--color-danger)'
@@ -277,6 +281,12 @@ export default function Presupuesto() {
                           Te quedan {formatCOP(Math.max(0, p.limite - p.gastado))} para no pasarte este mes
                         </p>
                       )}
+                      <Link
+                        to={`/movimientos?cat=${encodeURIComponent(p.categoria)}`}
+                        className="inline-flex items-center gap-1 text-xs text-accent font-semibold mt-2 min-h-11"
+                      >
+                        Ver en qué lo gastaste <ChevronRight size={16} />
+                      </Link>
                     </div>
                   )
                 })}
@@ -369,6 +379,9 @@ export default function Presupuesto() {
           <p className="text-xs text-ink-soft mt-3">
             Es un cálculo con tus pagos fijos y lo que sueles gastar. No es una promesa.
           </p>
+          <Link to="/recurrentes" className="inline-flex items-center gap-1 text-xs text-accent font-semibold mt-1 min-h-11">
+            Ver tus pagos fijos <ChevronRight size={16} />
+          </Link>
         </section>
       )}
       </SeccionPlegable>
@@ -489,7 +502,8 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
       <InputMonto entero
         value={limite}
         onValor={setLimite}
-        placeholder={`Límite ${etiquetaPeriodo(periodo).toLowerCase()} (ej. 500000)`}
+        placeholder="Ej. 500000"
+        aria-label="Lo máximo que quieres gastar"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
       />
 

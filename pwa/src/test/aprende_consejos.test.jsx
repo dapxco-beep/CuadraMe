@@ -240,7 +240,7 @@ describe('Débito vs crédito en la app', () => {
   it('al transferir hacia una tarjeta avisa que pagarla no es un gasto nuevo', async () => {
     montar(<Agregar />)
     expect(screen.queryByTestId('aviso-pago-tarjeta')).toBeNull() // un gasto normal no lo lleva
-    await userEvent.click(screen.getByRole('button', { name: 'Transferir' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Pasar plata' }))
     // desde Bancolombia, el único destino posible es la tarjeta Visa Nu
     expect(screen.getByTestId('aviso-pago-tarjeta')).toHaveTextContent('Esto no es un gasto nuevo, es pagar lo que ya compraste')
   })
