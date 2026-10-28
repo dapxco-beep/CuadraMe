@@ -14,6 +14,8 @@ const api = vi.hoisted(() => ({
   importarFaltantes: vi.fn(),
   importarVistaPrevia: vi.fn(),
   importarConfirmar: vi.fn(),
+  clavePdfEstado: vi.fn(),
+  guardarClavePdf: vi.fn(),
 }))
 vi.mock('../lib/api', () => ({ api }))
 vi.mock('../lib/CuentasContext', () => ({
@@ -258,6 +260,45 @@ describe('subida múltiple: pantalla', () => {
   const respuesta = (desc) => ({
     ok: true, historial_id: `h-${desc}`, banco_detectado: 'nequi', total_movimientos: 1, periodo_desde: '2026-09-01', periodo_hasta: '2026-09-30',
     review: [{ fingerprint: `fp-${desc}`, fecha: '2026-09-03', descripcion: desc, monto: 9000, tipo: 'expense', estado: 'faltante', categoria_sugerida: 'Otros' }],
+  })
+
+  it('la clave que abre el PDF se guarda (cifrada) para los próximos extractos, si no había ninguna', async () => {
+    api.clavePdfEstado.mockResolvedValue({ configurada: false })
+    api.guardarClavePdf.mockResolvedValue({ ok: true })
+    api.procesarExtracto
+      .mockResolvedValueOnce({ ok: false, requiere_clave: true, error: 'El PDF tiene clave' })
+      .mockResolvedValueOnce(respuesta('CAFE CLAVE'))
+    montar(<SubidaMultiple archivosIniciales={[pdf('con-clave.pdf')]} cuentaInicial="c1" onCancelar={vi.fn()} />)
+    await userEvent.click(screen.getByRole('button', { name: /Procesar/ }))
+    const campo = await screen.findByLabelText('Clave de con-clave.pdf')
+    expect(await screen.findByLabelText(/Guardar esta clave/)).toBeChecked()
+    await userEvent.type(campo, '1234')
+    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
+    expect(await screen.findByText(/Clave guardada: tus próximos extractos se abren solos/)).toBeInTheDocument()
+    expect(api.guardarClavePdf).toHaveBeenCalledWith('1234')
+  })
+
+  it('si la persona desmarca la casilla, la clave NO se guarda', async () => {
+    api.clavePdfEstado.mockResolvedValue({ configurada: false })
+    api.procesarExtracto
+      .mockResolvedValueOnce({ ok: false, requiere_clave: true, error: 'El PDF tiene clave' })
+      .mockResolvedValueOnce(respuesta('CAFE SOLO UNA VEZ'))
+    montar(<SubidaMultiple archivosIniciales={[pdf('una-vez.pdf')]} cuentaInicial="c1" onCancelar={vi.fn()} />)
+    await userEvent.click(screen.getByRole('button', { name: /Procesar/ }))
+    await userEvent.click(await screen.findByLabelText(/Guardar esta clave/))
+    await userEvent.type(screen.getByLabelText('Clave de una-vez.pdf'), 'abcd')
+    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
+    await waitFor(() => expect(api.procesarExtracto).toHaveBeenCalledTimes(2))
+    expect(api.guardarClavePdf).not.toHaveBeenCalled()
+  })
+
+  it('si ya hay una clave guardada no ofrece guardar otra (no se pisa la de los demás PDF)', async () => {
+    api.clavePdfEstado.mockResolvedValue({ configurada: true })
+    api.procesarExtracto.mockResolvedValueOnce({ ok: false, requiere_clave: true, error: 'El PDF tiene clave' })
+    montar(<SubidaMultiple archivosIniciales={[pdf('otro-banco.pdf')]} cuentaInicial="c1" onCancelar={vi.fn()} />)
+    await userEvent.click(screen.getByRole('button', { name: /Procesar/ }))
+    await screen.findByLabelText('Clave de otro-banco.pdf')
+    expect(screen.queryByLabelText(/Guardar esta clave/)).toBeNull()
   })
 
   it('procesa en cola, muestra el estado de cada archivo y deja revisar los que salieron bien', async () => {

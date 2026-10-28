@@ -76,7 +76,7 @@ function periodoTexto(p) {
 
 const nuevoArchivo = (f, cuentas, cuentaInicial) => ({
   id: nuevoId(), file: f, nombre: f.name, tipo: tipoDeArchivo(f.name),
-  cuentaId: sugerirCuenta(f.name, cuentas, cuentaInicial), password: '', estado: 'pendiente', error: '',
+  cuentaId: sugerirCuenta(f.name, cuentas, cuentaInicial), password: '', recordarClave: true, claveGuardada: false, estado: 'pendiente', error: '',
   banco: '', periodo: null, items: [],
 })
 
@@ -123,6 +123,18 @@ export default function SubidaMultiple({
   const archivosRef = useRef(archivos)
   archivosRef.current = archivos
   const montado = useRef(true)
+  // null = aún no se sabe; false = no hay clave guardada (se ofrece guardar la que escriba); true = ya hay una (no se pisa).
+  const [claveConfigurada, setClaveConfigurada] = useState(null)
+  const claveConfiguradaRef = useRef(null)
+  useEffect(() => {
+    Promise.resolve(api.clavePdfEstado?.())
+      .then((r) => {
+        const v = Boolean(r?.configurada)
+        claveConfiguradaRef.current = v
+        if (montado.current) setClaveConfigurada(v)
+      })
+      .catch(() => {})
+  }, [])
   useEffect(() => {
     montado.current = true
     return () => {
@@ -234,7 +246,19 @@ export default function SubidaMultiple({
         if (r.requiere_clave) return { estado: 'falta_clave', error: r.error }
         throw new Error(errorLegible(r.error))
       }
-      return { estado: 'listo', error: '', ...normalizarPdf(r), nMov: r.total_movimientos }
+      // La clave abrió el PDF: si no había ninguna guardada y la persona quiso, se guarda (cifrada) para los próximos.
+      let claveGuardada = false
+      if (a.password && a.recordarClave && claveConfiguradaRef.current === false) {
+        try {
+          await api.guardarClavePdf(a.password)
+          claveConfiguradaRef.current = true
+          claveGuardada = true
+          if (montado.current) setClaveConfigurada(true)
+        } catch {
+          /* no se pudo guardar: el extracto igual se leyó; se puede guardar luego en «Clave de tus PDF» */
+        }
+      }
+      return { estado: 'listo', error: '', claveGuardada, ...normalizarPdf(r), nMov: r.total_movimientos }
     }
     const r = await api.importarVistaPrevia({ cuenta_id: a.cuentaId, nombre_archivo: a.nombre, archivo_base64: base64 })
     const n = normalizarTabular(r)
@@ -816,6 +840,9 @@ export default function SubidaMultiple({
                       {a.banco} · {periodoTexto(a.periodo)} · {a.nMov} {a.nMov === 1 ? 'movimiento' : 'movimientos'}
                     </p>
                   )}
+                  {a.estado === 'listo' && a.claveGuardada && (
+                    <p className="text-xs text-cuadra mt-1" role="status">Clave guardada: tus próximos extractos se abren solos.</p>
+                  )}
                   {a.estado === 'listo' && <AvisoYaConciliado info={a.yaConciliado} cuenta={nombreCuenta(a.cuentaId)} className="mt-2" />}
                   {(a.estado === 'error' || a.estado === 'falta_clave') && a.error && (
                     <p className="text-xs text-danger mt-1" role="alert">{a.error}</p>
@@ -857,6 +884,12 @@ export default function SubidaMultiple({
                     Reintentar
                   </button>
                 </div>
+              )}
+              {a.estado === 'falta_clave' && claveConfigurada === false && (
+                <label className="flex items-start gap-2 mt-2 ml-8 text-xs text-ink-soft min-h-[32px]">
+                  <input type="checkbox" checked={a.recordarClave} onChange={(e) => parchar(a.id, { recordarClave: e.target.checked })} className="w-4 h-4 mt-0.5 accent-accent" />
+                  <span>Guardar esta clave (cifrada) para abrir mis próximos extractos solos</span>
+                </label>
               )}
               {a.estado === 'error' && (
                 <div className="mt-2 ml-8 flex flex-wrap gap-x-4 gap-y-1">
