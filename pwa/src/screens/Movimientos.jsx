@@ -31,7 +31,7 @@ import Hoja from '../components/Hoja'
 import TablaMovimientos from '../components/TablaMovimientos'
 import DetalleMovimiento from './DetalleMovimiento'
 import EtiquetaOrigen from '../components/EtiquetaOrigen'
-import { fechaHoraMovimiento, fechaDeMovimiento } from '../lib/fechaMovimiento'
+import { fechaHoraMovimiento, fechaDeMovimiento, claveDia, etiquetaDia } from '../lib/fechaMovimiento'
 import PorRevisarCorreo from '../components/PorRevisarCorreo'
 import TarjetaMovimientosCorreo from '../components/TarjetaMovimientosCorreo'
 import { BotonLapiz, EditorNombre, PistaBanco } from '../components/NombreEditable'
@@ -47,18 +47,6 @@ const PRESION_LARGA_MS = 450
 const ALTO_DIA_BASE = 40 // etiqueta del día + espacio, para estimar antes de medir
 const ALTO_FILA_ESTIMADO = 72
 const MARGEN_VENTANA = 800 // px extra arriba y abajo para que el scroll rápido no muestre vacío
-
-function etiquetaDia(fechaISO) {
-  const fecha = new Date(fechaISO)
-  const hoy = new Date()
-  const ayer = new Date(hoy)
-  ayer.setDate(hoy.getDate() - 1)
-  const mismodiaQue = (a, b) => a.toDateString() === b.toDateString()
-
-  if (mismodiaQue(fecha, hoy)) return 'Hoy'
-  if (mismodiaQue(fecha, ayer)) return 'Ayer'
-  return fecha.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })
-}
 
 // Una fila de la lista. Está memoizada: al categorizar UN movimiento solo se vuelve a pintar su
 // fila (las demás reciben las mismas props y React las salta), clave con miles de movimientos.
@@ -481,7 +469,7 @@ export default function Movimientos() {
   const gruposDia = useMemo(() => {
     const mapa = new Map()
     for (const m of filtrados) {
-      const k = m.fecha.slice(0, 10)
+      const k = claveDia(m.fecha) || String(m.fecha).slice(0, 10)
       let g = mapa.get(k)
       if (!g) {
         g = { diaKey: k, label: etiquetaDia(m.fecha), items: [] }
@@ -939,14 +927,17 @@ export default function Movimientos() {
         )}
       </header>
 
-      <TarjetaMovimientosCorreo
-        className="mx-5 mb-3"
-        conectado={conectadoCorreo}
-        leyendo={leyendoCorreo}
-        aviso={avisoCorreo}
-        porRevisar={porCorreo.correos.length}
-        onTraer={() => actualizarCorreo(true)}
-      />
+      {/* Solo si hay algo pendiente (avisos por revisar, una lectura en curso o su resultado); si no, queda el enlace discreto bajo los totales */}
+      {(porCorreo.correos.length > 0 || leyendoCorreo || !!avisoCorreo) && (
+        <TarjetaMovimientosCorreo
+          className="mx-5 mb-3"
+          conectado={conectadoCorreo}
+          leyendo={leyendoCorreo}
+          aviso={avisoCorreo}
+          porRevisar={porCorreo.correos.length}
+          onTraer={() => actualizarCorreo(true)}
+        />
+      )}
 
       {/* ≥1024 px: filtros (o el detalle del movimiento) a la izquierda, lista a la derecha */}
       <div className={`dos-col ${enTabla ? 'dos-col-riel-tabla' : 'dos-col-5-6'}`}>
@@ -967,24 +958,6 @@ export default function Movimientos() {
                     className="bg-transparent outline-none text-sm flex-1 placeholder:text-ink-soft"
                   />
                 </div>
-              </div>
-
-              {/* Del listado al detalle: en qué se va la plata (por categoría, comercio y periodo) */}
-              <div className="px-5 mb-3">
-                <Link
-                  to="/informe"
-                  data-testid="ver-detalle-gastos"
-                  className="flex items-center gap-3 rounded-2xl border border-line bg-paper-raised px-4 min-h-[52px]"
-                >
-                  <span className="w-9 h-9 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
-                    <PieChart size={20} aria-hidden="true" />
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-semibold leading-tight">¿En qué gasto mi plata?</span>
-                    <span className="block text-xs text-ink-soft mt-0.5">Por categoría y por mes</span>
-                  </span>
-                  <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
-                </Link>
               </div>
 
               {(porCorreo.correos.length > 0 || descartados > 0) && (
@@ -1169,6 +1142,17 @@ export default function Movimientos() {
                   </div>
                 </div>
               )}
+              {/* Del listado al detalle: en qué se va la plata (enlace discreto; la lista queda arriba) */}
+              <div className="px-5 -mt-1 mb-2 flex flex-wrap items-center gap-x-4">
+                <Link to="/informe" data-testid="ver-detalle-gastos" className="min-h-11 inline-flex items-center gap-1 text-xs font-semibold text-accent">
+                  <PieChart size={16} aria-hidden="true" /> ¿En qué gasto mi plata?
+                </Link>
+                {!(porCorreo.correos.length > 0 || leyendoCorreo || avisoCorreo) && (
+                  <Link to="/movimientos-correo" data-testid="ver-correo-discreto" className="min-h-11 inline-flex items-center text-xs font-semibold text-accent">
+                    Movimientos del correo
+                  </Link>
+                )}
+              </div>
               {filtrados.length > 0 && (
                 <p className="px-5 -mt-1 mb-3 text-[11px] text-ink-soft" data-testid="resumen-conteo">
                   {filtrados.length} movimiento{filtrados.length === 1 ? '' : 's'}
