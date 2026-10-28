@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import Icono from './Icono'
 import Hoja from './Hoja'
 import { Boton } from './ui'
@@ -170,5 +170,46 @@ export function EsteMes({ reporte, fmt, iconoDe }) {
         </ul>
       )}
     </section>
+  )
+}
+
+// Una carga principal falló: se dice en la misma tarjeta y se deja reintentar (nunca un hueco mudo).
+// `enOscuro`: para usarlo sobre la tarjeta de color del saldo.
+export function NoCargo({ onReintentar, className = '', enOscuro = false }) {
+  return (
+    <p role="status" data-testid="no-cargo" className={`${className} flex flex-wrap items-center gap-x-2 text-xs ${enOscuro ? 'opacity-95' : 'text-ink-soft'}`}>
+      <span>No pudimos cargar esto</span>
+      <span aria-hidden="true">·</span>
+      <button type="button" onClick={onReintentar} className="min-h-11 font-semibold underline underline-offset-2">
+        Reintentar
+      </button>
+    </p>
+  )
+}
+
+// Avisos importantes: solo se ve el más importante (el primero de la lista); el resto queda tras «Ver más avisos».
+// `items`: [{ id, nodo }] ya ordenados de más a menos importante.
+export function AvisosPrioridad({ items = [] }) {
+  const [abierto, setAbierto] = useState(false)
+  if (!items.length) return null
+  const [primero, ...resto] = items
+  return (
+    <div data-testid="avisos-prioridad">
+      <div key={primero.id}>{primero.nodo}</div>
+      {resto.length > 0 && (
+        <div className="mx-6 mt-1">
+          <button
+            type="button"
+            aria-expanded={abierto}
+            onClick={() => setAbierto((v) => !v)}
+            className="min-h-11 flex items-center gap-1 text-xs font-semibold text-accent"
+          >
+            {abierto ? 'Ver menos avisos' : `Ver más avisos (${resto.length})`}
+            <Icono icono={ChevronDown} tam="sm" className={abierto ? 'rotate-180' : ''} />
+          </button>
+        </div>
+      )}
+      {abierto && resto.map((a) => <div key={a.id}>{a.nodo}</div>)}
+    </div>
   )
 }

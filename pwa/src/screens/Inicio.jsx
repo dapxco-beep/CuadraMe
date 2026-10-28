@@ -19,7 +19,6 @@ import CarruselDescubrir from '../components/CarruselDescubrir'
 import { useNombreParaSaludar } from '../lib/nombre'
 import AsistentePrimerUso from '../components/AsistentePrimerUso'
 import SugerenciaPais from '../components/SugerenciaPais'
-import RecorridoEntrada from '../components/RecorridoEntrada'
 import { etapaPorScore } from '../lib/saludFinanciera'
 import ResumenSaldo from '../components/ResumenSaldo'
 import PreguntaMovimiento from '../components/PreguntaMovimiento'
@@ -41,7 +40,8 @@ import { estadoCuadre } from '../lib/cuadre'
 import { useJalarParaRefrescar } from '../lib/jalarRefrescar'
 import { avisoVisible, guardarOcultos, leerOcultos } from '../lib/avisoCuadre'
 import { contextoDeCuentas } from '../lib/contabilidad'
-import { fechaHace,gastosDeLaSemana, siguientePasoInicio } from '../lib/inicioSimple'
+import { cuentasEnNegativo, fechaHace, gastosDeLaSemana, siguientePasoInicio } from '../lib/inicioSimple'
+import { AvisoNegativo, AvisosPrioridad, NoCargo } from '../components/InicioExtras'
 import { resumenCarriles } from '../lib/carriles'
 import ExtractosAMedias from '../components/ExtractosAMedias'
 import { extractosAMedias } from '../lib/retomar'
@@ -142,6 +142,10 @@ export default function Inicio() {
   const [errorCarga, setErrorCarga] = useState('')
   const [intento, setIntento] = useState(0)
   const [verMas, setVerMas] = useState(false)
+  // Cargas principales que fallaron (el saldo y el disponible): la tarjeta lo dice y deja reintentar. Las secundarias siguen en silencio.
+  const [falloBolsillo, setFalloBolsillo] = useState(false)
+  const [falloResumen, setFalloResumen] = useState(false)
+  const [falloDisponible, setFalloDisponible] = useState(false)
   // Jalar hacia abajo estando arriba del todo vuelve a pedir los datos (con vibración corta)
   const jalar = useJalarParaRefrescar(() => new Promise((ok) => { setIntento((n) => n + 1); setTimeout(ok, 900) }))
   const [movsSemana, setMovsSemana] = useState(() => (Array.isArray(previo.semana) ? previo.semana : null))
@@ -185,10 +189,10 @@ export default function Inicio() {
     Promise.resolve().then(() => api.movimientos(200, 0, { desde: fechaHace(6) })).then((l) => activo && Array.isArray(l) && setMovsSemana(l)).catch(() => {})
     // Lo secundario (solo se ve en «Ver más» o es un aviso raro) espera a que lo principal ya esté pintado.
     const despues = (fn) => timers.push(setTimeout(() => activo && fn(), 1200))
-    despues(() => api.disponibleHoy().then((d) => activo && setDisponible(d)).catch(() => {}))
-    api.enMiBolsillo().then((b) => activo && setBolsillo(b)).catch(() => {})
-    // Desglose del saldo (disponible / tarjetas / por moneda y tipo). Si falla, el héroe sigue funcionando.
-    Promise.resolve().then(() => api.resumenCuentas()).then((r) => activo && setResumen(r)).catch(() => {})
+    despues(() => Promise.resolve().then(() => api.disponibleHoy()).then((d) => activo && (setDisponible(d), setFalloDisponible(false))).catch(() => activo && setFalloDisponible(true)))
+    Promise.resolve().then(() => api.enMiBolsillo()).then((b) => activo && (setBolsillo(b), setFalloBolsillo(false))).catch(() => activo && setFalloBolsillo(true))
+    // Desglose del saldo (disponible / tarjetas / por moneda y tipo). Si falla, el héroe sigue con el saldo de las cuentas y avisa.
+    Promise.resolve().then(() => api.resumenCuentas()).then((r) => activo && (setResumen(r), setFalloResumen(false))).catch(() => activo && setFalloResumen(true))
     despues(() => api.gmailEstado().then((e) => activo && setGmailConectado(!!e.conectado)).catch(() => {}))
     // Aviso solo si algo se rompió (semáforo rojo); si el tablero falla, no se muestra nada.
     despues(() => Promise.resolve().then(() => api.conexionesEstado?.()).then((c) => activo && setConexionFalla(!!c?.hay_falla)).catch(() => {}))
@@ -239,6 +243,71 @@ export default function Inicio() {
   const esperarSaldo = !completo && cuentas.length > 0 && movimientos.length > 0
   const siguienteInicio = siguientePasoInicio({ cuentas: cuentas.length, movimientos: movimientos.length, sinCategorizar })
 
+  // Fallos de las cargas principales (solo cuentan si no hay un dato previo con el que pintar)
+  const falloSaldo = !errorCarga && ((falloBolsillo && !bolsillo) || (falloResumen && !resumen))
+  const reintentar = () => setIntento((n) => n + 1)
+  // Avisos por orden de importancia: se ve el primero; el resto queda tras «Ver más avisos».
+  const hayNegativo = !completo && gastarSaldo < 0 && cuentasEnNegativo(cuentas).length > 0
+  const avisos = [
+    hayNegativo && { id: 'negativo', nodo: <AvisoNegativo saldo={gastarSaldo} cuentas={cuentas} fmt={fmt} /> },
+    avisoCuadre && {
+      id: 'cuadre',
+      nodo: (
+        <div className="mx-6 mt-2 rounded-2xl bg-danger-soft border border-danger/30 flex items-stretch">
+          <Link
+            to="/sincronizacion"
+            state={{ abrir: 'extractos' }}
+            role="alert"
+            data-testid="aviso-cuadre"
+            className="flex-1 min-w-0 p-3 flex items-center justify-between gap-3"
+          >
+            <p className="text-xs text-danger">
+              {avisoCuadre.n > 1 ? `${avisoCuadre.n} cuentas no cuadran con tu banco. ` : 'Una cuenta no cuadra con tu banco. '}
+              {avisoCuadre.texto}
+            </p>
+            <span className="text-xs font-semibold text-danger shrink-0">Ver cuadre</span>
+          </Link>
+          <button
+            type="button"
+            onClick={ocultarAvisoCuadre}
+            data-testid="ocultar-aviso-cuadre"
+            aria-label="Ocultar este aviso hasta que cambie la diferencia"
+            title="Ocultar hasta que cambie la diferencia"
+            className="relative shrink-0 w-11 flex items-center justify-center text-danger/70 hover:text-danger before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+      ),
+    },
+    conexionFalla && {
+      id: 'conexion',
+      nodo: (
+        <Link
+          to="/sincronizacion"
+          state={{ abrir: 'estado' }}
+          role="alert"
+          data-testid="aviso-conexiones"
+          className="mx-6 mt-2 rounded-2xl bg-danger-soft border border-danger/30 p-3 flex items-center justify-between gap-3"
+        >
+          <p className="text-xs text-danger">Una de tus conexiones está fallando.</p>
+          <span className="text-xs font-semibold text-danger shrink-0">Ver estado</span>
+        </Link>
+      ),
+    },
+    aMedias.length > 0 && {
+      id: 'a-medias',
+      nodo: (
+        <ExtractosAMedias
+          compacto
+          lista={aMedias}
+          onSeguir={(x) => navigate('/sincronizacion', { state: { abrir: 'extractos', historialId: x.historialId, cuentaId: x.cuentaId } })}
+          className="mx-6 mt-3 !w-auto"
+        />
+      ),
+    },
+  ].filter(Boolean)
+
   const gastosMensuales = (tendencia || []).map((m) => Number(m.gastos)).filter((v) => Number.isFinite(v))
   const hayTendencia = gastosMensuales.length >= 2 && gastosMensuales.some((v) => v > 0)
   const textoTendencia = hayTendencia ? resumenTendencia(gastosMensuales, fmt) : ''
@@ -269,63 +338,13 @@ export default function Inicio() {
         </div>
       )}
 
-      {conexionFalla && (
-        <Link
-          to="/sincronizacion"
-          state={{ abrir: 'estado' }}
-          role="alert"
-          data-testid="aviso-conexiones"
-          className="mx-6 mt-2 rounded-2xl bg-danger-soft border border-danger/30 p-3 flex items-center justify-between gap-3"
-        >
-          <p className="text-xs text-danger">Una de tus conexiones está fallando.</p>
-          <span className="text-xs font-semibold text-danger shrink-0">Ver estado</span>
-        </Link>
-      )}
+      {/* Avisos: solo el más importante a la vista; los demás tras «Ver más avisos» */}
+      <AvisosPrioridad items={avisos} />
 
-      {/* Solo cuando algún mes cerrado no cuadra con el banco (también en modo simple) */}
-      {avisoCuadre && (
-        <div className="mx-6 mt-2 rounded-2xl bg-danger-soft border border-danger/30 flex items-stretch">
-          <Link
-            to="/sincronizacion"
-            state={{ abrir: 'extractos' }}
-            role="alert"
-            data-testid="aviso-cuadre"
-            className="flex-1 min-w-0 p-3 flex items-center justify-between gap-3"
-          >
-            <p className="text-xs text-danger">
-              {avisoCuadre.n > 1 ? `${avisoCuadre.n} cuentas no cuadran con tu banco. ` : 'Una cuenta no cuadra con tu banco. '}
-              {avisoCuadre.texto}
-            </p>
-            <span className="text-xs font-semibold text-danger shrink-0">Ver cuadre</span>
-          </Link>
-          <button
-            type="button"
-            onClick={ocultarAvisoCuadre}
-            data-testid="ocultar-aviso-cuadre"
-            aria-label="Ocultar este aviso hasta que cambie la diferencia"
-            title="Ocultar hasta que cambie la diferencia"
-            className="relative shrink-0 w-11 flex items-center justify-center text-danger/70 hover:text-danger before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']"
-          >
-            <X size={16} aria-hidden="true" />
-          </button>
-        </div>
-      )}
-
-      {/* Primeros pasos: solo mientras falte algo (y no se haya ocultado); luego vive en Perfil */}
+      {/* Una sola guía a la vez: mientras el camino de 3 pasos esté incompleto, es la única. Lo demás (siguiente paso,
+          «¿Qué puedes hacer?», la lista de mejoras y el recorrido de 1 minuto) vive en Inicio solo cuando no hay camino, o en Perfil y Ayuda. */}
       <SugerenciaPais />
-      {/* Quien aún no tiene cuentas ni movimientos ve los pasos primero; quien ya tiene sus datos ve primero su saldo
-          y los pasos que faltan (p. ej. «Mira tu resumen») quedan debajo, sin tapar lo que vino a ver. */}
-      {!esperarSaldo && <AsistentePrimerUso variante="inicio" camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />}
-      {/* Un solo mensaje arriba: mientras el camino de 3 pasos esté en pantalla, el recorrido de 1 minuto no compite con él (sigue en Ayuda y Perfil). */}
-      {!enCamino && <RecorridoEntrada variante="inicio" />}
-
-      {/* Extractos a medio conciliar: aviso discreto, en cualquiera de los dos modos */}
-      <ExtractosAMedias
-        compacto
-        lista={aMedias}
-        onSeguir={(x) => navigate('/sincronizacion', { state: { abrir: 'extractos', historialId: x.historialId, cuentaId: x.cuentaId } })}
-        className="mx-6 mt-3 !w-auto"
-      />
+      {!esperarSaldo && <AsistentePrimerUso variante="inicio" soloCamino camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />}
 
       {/* Modo simple: tres bloques y un «Ver más»; con «Mostrar todas las funciones», todo a la vista */}
       {!completo && (
@@ -342,9 +361,13 @@ export default function Inicio() {
             cuentas={cuentas}
             reporte={reporte}
             porDia={gastarHoy}
+            falloSaldo={falloSaldo}
+            onReintentar={reintentar}
+            mas={verMas}
+            conAviso={false}
           />
-          {/* Lo urgente sale arriba aunque «Ver más» esté cerrado: pago de tarjeta cerca y gasto fuera de lo normal */}
-          <Recordatorios soloTipos={TIPOS_URGENTES} max={2} />
+          {/* Lo urgente (pago de tarjeta cerca, gasto fuera de lo normal): si no hay otro aviso, uno solo a la vista; si lo hay, va dentro de «Ver más» */}
+          {avisos.length === 0 && <Recordatorios soloTipos={TIPOS_URGENTES} max={1} />}
           <div className="mx-6 mt-3">
             <button
               type="button"
@@ -362,7 +385,8 @@ export default function Inicio() {
               </Link>
             )}
           </div>
-          {esperarSaldo && <AsistentePrimerUso variante="inicio" camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />}
+          {verMas && avisos.length > 0 && <Recordatorios soloTipos={TIPOS_URGENTES} max={2} />}
+          {esperarSaldo && <AsistentePrimerUso variante="inicio" soloCamino camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />}
         </>
       )}
 
@@ -384,6 +408,7 @@ export default function Inicio() {
                 <Monto texto={fmt(gastarHoy !== null ? gastarHoy : saldoTotal)} />
               </p>
               {gastarHoy !== null && <p className="text-xs mt-1.5 opacity-90">Sin quedar mal el resto del mes</p>}
+              {falloSaldo && <NoCargo onReintentar={reintentar} enOscuro className="mt-2" />}
 
               {bolsillo && estadoCu.estado !== 'sin_datos' && (
                 <div className="mt-4 flex items-start gap-3" data-estado-cuadre={estadoCu.estado}>
@@ -467,7 +492,7 @@ export default function Inicio() {
 
           {/* Recordatorios útiles: pago de tarjeta, presupuesto al 80 % y extractos por revisar (descartables) */}
           <Recordatorios omitirExtractos={tareasSync > 0} omitirTipos={completo ? [] : TIPOS_URGENTES} />
-          <ConsejoParaTi />
+          {completo && <ConsejoParaTi />}
           <TarjetaTuPlata />
           <TarjetaCostos />
         </div>
@@ -558,6 +583,7 @@ export default function Inicio() {
                   </div>
                 </div>
               )}
+              {falloDisponible && !disponible && <NoCargo onReintentar={reintentar} className="mt-3 pt-3 border-t border-line" />}
               {disponible && disponible.categorias?.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-line">
                   <p className="t-apoyo">Además, dentro de tus presupuestos por categoría te quedan</p>

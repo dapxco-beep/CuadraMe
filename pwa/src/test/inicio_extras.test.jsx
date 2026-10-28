@@ -26,14 +26,22 @@ describe('Inicio: bloques prácticos', () => {
     expect(screen.queryByTestId('aviso-negativo')).toBeNull()
   })
 
-  it('acciones rápidas por defecto: anotar, traer, dividir cuenta, metas, deudas y pagos fijos', () => {
+  it('acciones rápidas por defecto: gasto, ingreso, pasar plata y traer (solo cuatro)', () => {
     localStorage.clear()
     render(<MemoryRouter><AccionesRapidas /></MemoryRouter>)
     const hrefs = within(screen.getByTestId('acciones-rapidas')).getAllByRole('link').map((a) => a.getAttribute('href'))
     expect(hrefs).toEqual([
       '/agregar?foco=monto', '/agregar?tipo=income&foco=monto', '/agregar?tipo=transfer', '/sincronizacion',
-      '/amigos', '/metas', '/deudas', '/recurrentes',
     ])
+  })
+
+  it('quien ya eligió sus accesos conserva los suyos (solo cambia el valor por defecto)', () => {
+    localStorage.clear()
+    localStorage.setItem('cuadrame:accesos-inicio:anon', JSON.stringify(['gasto', 'ingreso', 'pasar', 'traer', 'dividir', 'metas', 'deudas', 'fijos']))
+    render(<MemoryRouter><AccionesRapidas /></MemoryRouter>)
+    const hrefs = within(screen.getByTestId('acciones-rapidas')).getAllByRole('link').map((a) => a.getAttribute('href'))
+    expect(hrefs).toHaveLength(8)
+    expect(hrefs.slice(4)).toEqual(['/amigos', '/metas', '/deudas', '/recurrentes'])
   })
 
   it('Personalizar: la persona elige sus accesos y se recuerdan', async () => {
@@ -41,13 +49,13 @@ describe('Inicio: bloques prácticos', () => {
     render(<MemoryRouter><AccionesRapidas /></MemoryRouter>)
     fireEvent.click(screen.getByTestId('personalizar-accesos'))
     const hoja = within(await screen.findByTestId('hoja-accesos'))
-    fireEvent.click(hoja.getByRole('button', { name: /Metas/ })) // quita Metas
+    fireEvent.click(hoja.getByRole('button', { name: /Ingreso/ })) // quita Ingreso
     fireEvent.click(hoja.getByRole('button', { name: /Presupuesto/ })) // pone Presupuesto al final
     fireEvent.click(hoja.getByRole('button', { name: 'Listo' }))
     const hrefs = within(screen.getByTestId('acciones-rapidas')).getAllByRole('link').map((a) => a.getAttribute('href'))
-    expect(hrefs).not.toContain('/metas')
+    expect(hrefs).not.toContain('/agregar?tipo=income&foco=monto')
     expect(hrefs[hrefs.length - 1]).toBe('/presupuesto')
-    expect(hrefs).toContain('/amigos')
+    expect(hrefs).toContain('/sincronizacion')
   })
 
   it('Este mes muestra entró, salió y neto, y no sale sin movimientos', () => {

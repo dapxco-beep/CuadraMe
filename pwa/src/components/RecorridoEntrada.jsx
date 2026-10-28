@@ -64,22 +64,16 @@ export default function RecorridoEntrada({ variante = 'enlace' }) {
           </section>
         )
       ) : (
-        <section className="mx-6 mt-6">
+        <section className="mx-6 mt-1">
           <button
             type="button"
             onClick={abrir}
             data-testid="ver-recorrido"
-            className="w-full flex items-center gap-3 rounded-2xl bg-paper-raised border border-line px-4 py-3.5 text-left"
+            className="min-h-11 flex items-center gap-1.5 text-sm font-semibold text-accent text-left"
           >
-            <Icono icono={Compass} tam="md" className="text-accent" />
-            <span className="flex-1">
-              <span className="block text-sm font-medium">
-                {estado.terminado || estado.saltado || !estado.empezado ? 'Conoce CuadraMe en 1 minuto' : 'Continuar el recorrido'}
-              </span>
-              <span className="block text-xs text-ink-soft mt-0.5">
-                {TOTAL_PASOS} tarjetas cortas: qué es, cómo traer tu información y cómo se ven tus gastos.
-              </span>
-            </span>
+            <Icono icono={Compass} tam="sm" />
+            {estado.terminado || estado.saltado || !estado.empezado ? 'Ver la guía rápida' : 'Continuar la guía rápida'}
+            <span className="font-normal text-ink-soft">· Conoce CuadraMe en 1 minuto ({TOTAL_PASOS} tarjetas)</span>
           </button>
         </section>
       )}

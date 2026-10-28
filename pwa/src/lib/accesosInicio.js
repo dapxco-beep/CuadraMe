@@ -24,8 +24,8 @@ export const CATALOGO_ACCESOS = [
   { id: 'asistente', texto: 'Pregúntale a la IA', icono: Bot, ruta: '/asistente' },
 ]
 
-// Dos filas de cuatro: lo de todos los días arriba y lo que más se usa después.
-export const ACCESOS_POR_DEFECTO = ['gasto', 'ingreso', 'pasar', 'traer', 'dividir', 'metas', 'deudas', 'fijos']
+// Una fila de cuatro: lo de todos los días. «Personalizar» deja sumar hasta MAX_ACCESOS; quien ya eligió los suyos los conserva.
+export const ACCESOS_POR_DEFECTO = ['gasto', 'ingreso', 'pasar', 'traer']
 export const MAX_ACCESOS = 12
 
 const CLAVE = 'cuadrame:accesos-inicio'

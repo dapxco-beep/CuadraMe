@@ -227,7 +227,9 @@ function FilaPaso({ paso, destacado, onGuia, onSaltar, onRetomar, onActivar, act
 
 // `camino` ({ cuentas, movimientos }) lo pasa Inicio: con él, primero va el camino de 3 pasos y, al
 // completarlo, esta lista pasa a llamarse «Mejora tu experiencia» (instalar, avisos, atajo…).
-export default function AsistentePrimerUso({ variante = 'inicio', camino = null }) {
+// `soloCamino` (Inicio): una sola guía a la vez. Con el camino completo no se pinta la lista «Mejora tu experiencia»
+// (queda en Perfil, tras «Ver la guía de primeros pasos»); solo se deja la celebración al terminar.
+export default function AsistentePrimerUso({ variante = 'inicio', camino = null, soloCamino = false }) {
   const p = usePrimerUso()
   const [verTodos, setVerTodos] = useState(false)
   const [guia, setGuia] = useState(false)
@@ -258,6 +260,7 @@ export default function AsistentePrimerUso({ variante = 'inicio', camino = null 
   // Con el camino completo, «Cuentas» ya está hecho: la lista de mejoras trae solo lo demás.
   const pasos = pasosCamino ? p.pasos.filter((x) => x.id !== 'cuentas') : p.pasos
   const progreso = pasosCamino ? resumenProgreso(pasos) : p.progreso
+  if (enInicio && soloCamino && !progreso.completo) return null
   // En Inicio: solo mientras falte algo y no se haya ocultado. En Perfil siempre.
   if (enInicio && (progreso.completo || p.oculto)) {
     // Al completar los primeros pasos Cuadri celebra una sola vez (breve, descartable, sin bloquear).

@@ -28,6 +28,7 @@ export default function Perfil() {
   const { avisar } = useDialogos()
   const claveAtajo = useClaveAtajo()
   const { completo, setCompleto } = useModoMenu()
+  const [verGuia, setVerGuia] = useState(false)
   const [mostrarCuadri, cambiarCuadri] = useMostrarCuadri()
   const [permisoPush, setPermisoPush] = useState('default')
   const [cargandoPush, setCargandoPush] = useState(false)
@@ -203,32 +204,14 @@ export default function Perfil() {
         <PuntoDePartida variante="perfil" />
       </section>
 
-      {/* Modo simple: por defecto el menú muestra solo lo esencial; aquí se muestran todas las funciones */}
-      <section className="mx-6 mt-6" aria-label="Qué funciones ver">
-        <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium" id="etq-todas-funciones">Mostrar todas las funciones</p>
-            <p className="text-xs text-ink-soft mt-0.5">
-              {completo
-                ? 'Ves todo: metas, deudas, impuestos, lo que tienes y más.'
-                : 'Ahora ves solo lo básico. Actívalo para ver metas, deudas, impuestos y más.'}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setCompleto(!completo)}
-            role="switch"
-            aria-checked={completo}
-            aria-labelledby="etq-todas-funciones"
-            data-testid="switch-todas-funciones"
-            className="shrink-0 min-h-11 w-14 flex items-center justify-center"
-          >
-            <span className={`block w-12 h-7 rounded-full transition-colors relative ${completo ? 'bg-accent' : 'bg-line'}`}>
-              <span className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${completo ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </span>
-          </button>
-        </div>
-      </section>
+      {/* El interruptor «Mostrar todas las funciones» vive ahora en el menú «Más»; aquí queda un enlace corto para no perder la función */}
+      <p className="mx-6 mt-4 text-xs text-ink-soft">
+        {completo ? 'Ves todas las funciones.' : 'Ahora ves solo lo básico.'}{' '}
+        <button type="button" onClick={() => setCompleto(!completo)} data-testid="enlace-todas-funciones" className="min-h-11 font-semibold text-accent">
+          {completo ? 'Ver solo lo básico' : 'Ver todas las funciones'}
+        </button>
+        . También lo cambias en «Más».
+      </p>
 
       <section className="mx-6 mt-8">
         <div className="flex items-center gap-2 mb-3">
@@ -428,9 +411,21 @@ export default function Perfil() {
       </section>
       )}
 
-      {/* Lo que desaparece de Inicio al completarse (u ocultarse) sigue aquí para repasarlo */}
-      <RecorridoEntrada />
-      <AsistentePrimerUso variante="perfil" />
+      {/* Guías: dos enlaces discretos (antes eran tarjetas grandes que repetían lo de Inicio) */}
+      <section className="mx-6 mt-6" aria-label="Guías">
+        <button
+          type="button"
+          onClick={() => setVerGuia((v) => !v)}
+          aria-expanded={verGuia}
+          data-testid="ver-guia-primeros-pasos"
+          className="min-h-11 flex items-center gap-1.5 text-sm font-semibold text-accent"
+        >
+          Ver la guía de primeros pasos
+          <ChevronDown size={16} className={verGuia ? 'rotate-180' : ''} aria-hidden="true" />
+        </button>
+        {verGuia && <AsistentePrimerUso variante="perfil" />}
+        <RecorridoEntrada />
+      </section>
 
         </div>
       </SeccionPlegable>

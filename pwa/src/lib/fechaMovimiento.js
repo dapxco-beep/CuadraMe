@@ -20,6 +20,26 @@ function partes(valor) {
   return { d, h, mi }
 }
 
+// Día (AAAA-MM-DD) en el que cae un movimiento. Con zona (Z o ±hh:mm) se cuenta en hora de Colombia: un gasto de las
+// 9 p. m. llega al servidor como el día siguiente en UTC, pero es del día de Bogotá. Sin zona se respeta la fecha tal cual.
+export function claveDia(valor) {
+  const d = aFecha(valor)
+  if (!d) return ''
+  if (typeof valor === 'string' && !TIENE_ZONA.test(valor) && /^d{4}-d{2}-d{2}/.test(valor)) return valor.slice(0, 10)
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d)
+  const g = (t) => p.find((x) => x.type === t)?.value
+  return `${g('year')}-${g('month')}-${g('day')}`
+}
+
+/** «Hoy», «Ayer» o «8 de octubre», contando los días en hora de Colombia. */
+export function etiquetaDia(valor, ahora = new Date()) {
+  const k = claveDia(valor)
+  if (!k) return ''
+  if (k === claveDia(ahora.toISOString())) return 'Hoy'
+  if (k === claveDia(new Date(ahora.getTime() - 86_400_000).toISOString())) return 'Ayer'
+  return new Date(`${k}T12:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })
+}
+
 export function tieneHora(valor) {
   const p = partes(valor)
   if (!p) return false
