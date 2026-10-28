@@ -14,8 +14,10 @@ vi.mock('../lib/CategoriasContext', () => ({ useCategorias: () => ({ iconoDe: ()
 import { ThemeProvider } from '../lib/ThemeContext'
 import { DialogosProvider } from '../lib/DialogosContext'
 import ShellApp from '../components/ShellApp'
+import { HojaMas } from '../components/MenuMas'
 import BottomNav from '../components/BottomNav'
 import Inicio from '../screens/Inicio'
+import InicioSimple from '../components/InicioSimple'
 import Perfil from '../screens/Perfil'
 import {
   EXPLICACION, GRUPOS, ITEMS_MAS, MAS_FUNCIONES_ID, buscarDestinos, extrasRiel, gruposSegunModo,
@@ -202,8 +204,21 @@ describe('Barras de pantalla ancha en modo simple', () => {
   })
 })
 
-describe('Perfil: «Mostrar todas las funciones»', () => {
-  it('es un interruptor apagado por defecto que cambia el modo y oculta lo avanzado', async () => {
+describe('«Mostrar todas las funciones» vive en el menú «Más»', () => {
+  it('es un interruptor apagado por defecto, al final de la hoja, que cambia el modo', async () => {
+    render(
+      <MemoryRouter>
+        <HojaMas onCerrar={() => {}} pathname="/" />
+      </MemoryRouter>
+    )
+    const interruptor = await screen.findByRole('switch', { name: 'Mostrar todas las funciones' })
+    expect(interruptor).toHaveAttribute('aria-checked', 'false')
+    await userEvent.click(interruptor)
+    expect(interruptor).toHaveAttribute('aria-checked', 'true')
+    expect(leerModoCompleto(auth.usuario.id)).toBe(true)
+  })
+
+  it('Perfil ya no trae el interruptor, solo un enlace corto que hace lo mismo', async () => {
     Object.assign(api, {
       confianzaAutoimport: vi.fn().mockResolvedValue({ confianza_autoimport: 0.75 }),
       apiKey: vi.fn().mockResolvedValue({ api_key: 'k' }),
@@ -217,11 +232,10 @@ describe('Perfil: «Mostrar todas las funciones»', () => {
         </DialogosProvider>
       </ThemeProvider>
     )
-    const interruptor = await screen.findByRole('switch', { name: 'Mostrar todas las funciones' })
-    expect(interruptor).toHaveAttribute('aria-checked', 'false')
+    const enlace = await screen.findByTestId('enlace-todas-funciones')
+    expect(screen.queryByRole('switch', { name: 'Mostrar todas las funciones' })).toBeNull()
     expect(screen.queryByText('Planeación')).toBeNull()
-    await userEvent.click(interruptor)
-    expect(interruptor).toHaveAttribute('aria-checked', 'true')
+    await userEvent.click(enlace)
     expect(leerModoCompleto(auth.usuario.id)).toBe(true)
     expect(screen.getByText('Planeación')).toBeInTheDocument()
   })
@@ -314,12 +328,15 @@ describe('Inicio simplificado', () => {
     const b1 = await screen.findByRole('region', { name: 'Cuánto tienes y qué pasó esta semana' })
     expect(b1).toHaveTextContent('Tienes disponible')
     await waitFor(() => expect(within(b1).getByTestId('gastos-semana')).toHaveTextContent(/40\.000/))
-    const lista = screen.getByRole('region', { name: 'Últimos movimientos' })
-    expect(within(lista).getAllByRole('link', { name: /Compra/ })).toHaveLength(3)
-    expect(await screen.findByTestId('consejo-para-ti')).toHaveTextContent('Ahorra algo cada semana')
-    // el resto de tarjetas queda tras «Ver más»
+    // a la vista: saldo, accesos y «Este mes»; lo reciente y el consejo quedan tras «Ver más»
+    expect(screen.getByTestId('acciones-rapidas')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Últimos movimientos' })).toBeNull()
+    expect(screen.queryByTestId('consejo-para-ti')).toBeNull()
     expect(screen.queryByRole('button', { name: /Presupuesto/ })).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: 'Ver más' }))
+    const lista = await screen.findByRole('region', { name: 'Últimos movimientos' })
+    expect(within(lista).getAllByRole('link', { name: /Compra/ })).toHaveLength(3)
+    expect(await screen.findByTestId('consejo-para-ti')).toHaveTextContent('Ahorra algo cada semana')
     expect(await screen.findByRole('button', { name: /Presupuesto/ })).toBeInTheDocument()
   })
 
@@ -343,14 +360,34 @@ describe('Inicio simplificado', () => {
     expect(within(paso).getByRole('link', { name: 'Ver presupuesto' })).toHaveAttribute('href', '/presupuesto')
   })
 
-  it('al completar los 3 pasos, instalar, avisos y atajo quedan como «Mejora tu experiencia»', async () => {
+  it('al completar los 3 pasos, «Mejora tu experiencia» sale de Inicio y queda tras «Ver la guía de primeros pasos» en Perfil', async () => {
     mocksInicio({ cuentas: 1, movs: [MOV('a')] })
     localStorage.setItem('cuadrame:primeros-pasos', JSON.stringify({ [auth.usuario.id]: { resumenVisto: true, saltados: [] } }))
     montarInicio()
-    const mejora = await screen.findByRole('region', { name: 'Mejora tu experiencia' })
-    expect(within(mejora).getByRole('heading', { name: 'Mejora tu experiencia' })).toBeInTheDocument()
+    expect(await screen.findByTestId('inicio-simple')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Mejora tu experiencia' })).toBeNull()
     expect(screen.queryByTestId('camino-primer-uso')).toBeNull()
-    expect(within(mejora).queryByText('Crea tus cuentas')).toBeNull()
+    // una sola guía a la vista: el siguiente paso (y no «¿Qué puedes hacer?» a la vez)
+    expect(screen.getByTestId('siguiente-paso')).toBeInTheDocument()
+    expect(screen.queryByTestId('que-se-puede-hacer')).toBeNull()
+  })
+
+  it('sin camino ni siguiente paso, «¿Qué puedes hacer?» ocupa el lugar de la guía', () => {
+    render(
+      <MemoryRouter>
+        <InicioSimple saldo={1000} gastosSemana={0} recientes={[]} siguiente={null} enCamino={false} fmt={(n) => String(n)} iconoDe={() => ''} />
+      </MemoryRouter>
+    )
+    expect(screen.getByTestId('que-se-puede-hacer')).toBeInTheDocument()
+  })
+
+  it('con el camino de 3 pasos a la vista es la única guía (sin recorrido, sin siguiente paso, sin «¿Qué puedes hacer?»)', async () => {
+    mocksInicio({ cuentas: 1, movs: [] })
+    montarInicio()
+    await screen.findByTestId('camino-primer-uso')
+    expect(screen.queryByTestId('que-se-puede-hacer')).toBeNull()
+    expect(screen.queryByTestId('siguiente-paso')).toBeNull()
+    expect(screen.queryByTestId('recorrido-retomar')).toBeNull()
   })
 
   it('modo completo: Inicio con todas las secciones, como siempre', async () => {

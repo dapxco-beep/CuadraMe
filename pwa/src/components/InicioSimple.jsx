@@ -9,16 +9,16 @@ import SemanaMini from './SemanaMini'
 import { RenglonTuPlata } from './TuPlataTrabajando'
 import { Boton } from './ui'
 import { nombreDe } from '../lib/tituloMovimiento'
-import { AccionesRapidas, AvisoNegativo, EsteMes } from './InicioExtras'
+import { AccionesRapidas, AvisoNegativo, EsteMes, NoCargo } from './InicioExtras'
 import QueSePuedeHacer from './QueSePuedeHacer'
 
-// Inicio para quien llega sin saber de finanzas: tres bloques y nada más.
-//   1. Cuánto tienes y qué pasó esta semana (saldo, gastos de la semana, 3 últimos movimientos)
-//   2. UN siguiente paso claro (si el camino de 3 pasos está en pantalla, él ya cumple ese papel)
-//   3. Un consejo para ti
-export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null }) {
-  // Quien aún no tiene movimientos ve lo mínimo: saldo, cuatro acciones y el siguiente paso. El resto aparece cuando ya hay qué mostrar.
+// Inicio para quien llega sin saber de finanzas. A la vista: el saldo, los accesos y «Este mes».
+//   - UNA sola guía a la vez: el camino de 3 pasos (lo pinta Inicio) o, sin camino, el siguiente paso o «¿Qué puedes hacer?».
+//   - Con `mas` (el «Ver más» de Inicio) se suman lo reciente, el gasto por día, el consejo y las tarjetas informativas.
+//   - `conAviso`: Inicio ya pinta los avisos (solo el más importante); sin él, esta pantalla muestra el de saldo negativo.
+export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null, falloSaldo = false, onReintentar, mas = true, conAviso = true }) {
   const nuevo = recientes.length === 0
+  const hayGuia = enCamino || !!siguiente
   return (
     <div data-testid="inicio-simple" className="dos-col dos-col-5-6">
      {/* En pantallas anchas: izquierda = saldo y acciones; derecha = el mes y lo reciente. En celular siguen en una sola columna, en el mismo orden. */}
@@ -45,19 +45,20 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
             <p className="text-lg font-bold t-cifra mt-0.5" data-testid="gastos-semana">
               {gastosSemana === null ? '—' : fmt(gastosSemana)}
             </p>
-            <SemanaMini />
+            {mas && <SemanaMini />}
           </div>
         </div>
       </section>
 
-      <AvisoNegativo saldo={saldo} cuentas={cuentas} fmt={fmt} />
-      <AccionesRapidas max={nuevo ? 4 : null} />
+      {falloSaldo && <NoCargo onReintentar={onReintentar} className="mx-6 mt-2" />}
+      {conAviso && <AvisoNegativo saldo={saldo} cuentas={cuentas} fmt={fmt} />}
+      <AccionesRapidas />
      </div>
      <div className="col">
       <EsteMes reporte={reporte} fmt={fmt} iconoDe={iconoDe} />
 
       {/* Cuenta nueva con el camino de 3 pasos a la vista: el paso 2 ya dice «trae tus movimientos»; no repetirlo en otra tarjeta vacía */}
-      {!(enCamino && recientes.length === 0) && (
+      {mas && !(enCamino && recientes.length === 0) && (
       <section className="mx-6 mt-3 tarjeta-lista" aria-label="Últimos movimientos">
         {recientes.length === 0 ? (
           <div className="px-4 py-4 text-center">
@@ -113,13 +114,13 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
         </section>
       )}
 
-      {/* Solo si ya tienes cajitas: cuánto ganó tu plata este mes */}
-      {!nuevo && <QueSePuedeHacer />}
-      {!nuevo && <RenglonTuPlata />}
+      {/* «¿Qué puedes hacer?» solo cuando no hay otra guía a la vista */}
+      {!hayGuia && <QueSePuedeHacer />}
 
-      {/* BLOQUE 3 */}
-      {!nuevo && <ConsejoParaTi max={1} />}
-      {!enCamino && <OfrecerPrimeraMeta className="mx-6 mt-2 flex justify-center" />}
+      {/* Detrás de «Ver más»: cuánto ganó tu plata este mes, un consejo y la invitación a la primera meta */}
+      {mas && !nuevo && <RenglonTuPlata />}
+      {mas && !nuevo && <ConsejoParaTi max={1} />}
+      {mas && !enCamino && <OfrecerPrimeraMeta className="mx-6 mt-2 flex justify-center" />}
      </div>
     </div>
   )

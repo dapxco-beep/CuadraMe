@@ -34,7 +34,7 @@ function Destino({ item, pathname, onIr, compacto = false }) {
 export function HojaMas({ onCerrar, pathname }) {
   const navigate = useNavigate()
   const admin = esAdminVisible(useAuth()?.usuario?.email)
-  const { completo, enUso } = useModoMenu()
+  const { completo, enUso, setCompleto } = useModoMenu()
   const grupos = useMemo(() => gruposSegunModo({ completo, enUso }), [completo, enUso.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
   const [masAbierto, setMasAbierto] = useState(false)
   const [consulta, setConsulta] = useState('')
@@ -180,6 +180,32 @@ export function HojaMas({ onCerrar, pathname }) {
                   </ul>
                 </section>
               )}
+              {/* Al final de la hoja: pasar de «solo lo básico» a todas las funciones (antes vivía en Perfil) */}
+              <section aria-label="Qué funciones ver" className="mt-5 pt-4 border-t border-line">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium" id="etq-todas-funciones">Mostrar todas las funciones</p>
+                    <p className="text-xs text-ink-soft mt-0.5">
+                      {completo
+                        ? 'Ves todo: metas, deudas, impuestos, lo que tienes y más.'
+                        : 'Ahora ves solo lo básico. Actívalo para ver metas, deudas, impuestos y más.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCompleto(!completo)}
+                    role="switch"
+                    aria-checked={completo}
+                    aria-labelledby="etq-todas-funciones"
+                    data-testid="switch-todas-funciones"
+                    className="shrink-0 min-h-11 w-14 flex items-center justify-center"
+                  >
+                    <span className={`block w-12 h-7 rounded-full transition-colors relative ${completo ? 'bg-accent' : 'bg-line'}`}>
+                      <span className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${completo ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </span>
+                  </button>
+                </div>
+              </section>
             </>
           )}
         </>

@@ -103,7 +103,7 @@ describe('Inicio — secciones plegables que recuerdan su estado', () => {
     const { unmount } = montar()
     const boton = await screen.findByRole('button', { name: /Accesos/ })
     expect(boton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('link', { name: 'Deudas' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ingreso' })).toBeInTheDocument()
     await userEvent.click(boton)
     expect(boton).toHaveAttribute('aria-expanded', 'false')
     expect(JSON.parse(localStorage.getItem('cuadrame:inicio-secciones')).accesos).toBe(false)

@@ -180,7 +180,7 @@ describe('RecorridoEntrada', () => {
   it('desde Perfil/Ayuda se ve otra vez desde el principio y al terminar vuelve a Inicio', async () => {
     guardarRecorrido('u1', { empezado: true, terminado: true, paso: 3 })
     montar(<RecorridoEntrada />, '/perfil')
-    await userEvent.click(screen.getByRole('button', { name: /Conoce CuadraMe en 1 minuto/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Ver la guía rápida/ }))
     expect(screen.getByTestId('recorrido-avance')).toHaveTextContent('Paso 1 de 4')
     await userEvent.click(screen.getByRole('button', { name: 'Ir al paso 4: Privacidad' }))
     await userEvent.click(screen.getByRole('button', { name: 'Terminar y empezar' }))
