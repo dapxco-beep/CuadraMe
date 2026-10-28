@@ -17,6 +17,7 @@ import Hoja from '../components/Hoja'
 import InputMonto from '../components/InputMonto'
 import VerMas from '../components/VerMas'
 import EnlacesRelacionados from '../components/EnlacesRelacionados'
+import Ayudita from '../components/Ayudita'
 
 const MONEDAS = ['COP', 'USD', 'EUR']
 const CLASES_ACTIVO = ['cdt', 'fondo', 'etf', 'accion', 'cripto', 'inmueble', 'vehiculo', 'otro']
@@ -70,7 +71,9 @@ export default function Patrimonio() {
         </button>
       </header>
 
-      <p className="mx-5 text-xs text-ink-soft">Tu patrimonio es todo lo que tienes menos lo que debes.</p>
+      <p className="mx-5 text-xs text-ink-soft">
+        Tu patrimonio es todo lo que tienes menos lo que debes.<span className="ml-4"><Ayudita termino="patrimonio" /></span>
+      </p>
       <OfertaInversiones />
       <AvisoSinTasa monedas={datos?.monedas_sin_tasa} base={datos?.moneda_base} onResuelto={cargar} className="mx-5 mt-3" />
 
@@ -122,15 +125,15 @@ export default function Patrimonio() {
               <h2 className="text-sm font-semibold mb-1">Lo que tienes que vale plata</h2>
               <p className="text-xs text-ink-soft mb-2 flex gap-1.5 items-start" data-testid="aviso-inversion">
                 <Info size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-                Las cuentas de inversión ya se cuentan en «Cuentas»: no las agregues también aquí.
+                Las cuentas de inversión ya se cuentan en «Cuentas».
               </p>
               {datos.activos.length === 0 ? (
                 <div className="card-marca bg-paper-raised border border-line p-6 text-center">
                   <IlustracionVacia icono={Landmark} size={92} className="mb-3" />
                   <p className="text-sm text-ink-soft mb-3">
                     {vacio
-                      ? 'Un activo es algo tuyo que vale plata: un CDT, un fondo, una casa o un vehículo. Agrega el primero.'
-                      : 'Agrega tus CDT, fondos, acciones, inmuebles o vehículos para ver tu patrimonio completo.'}
+                      ? 'Un activo es algo tuyo que vale plata: un CDT, un fondo, una casa o un carro.'
+                      : 'Agrega lo que tengas para ver tu patrimonio completo.'}
                   </p>
                   <button onClick={() => setFormulario({})} className="text-sm font-semibold text-accent min-h-11 px-3">
                     Agregar activo
@@ -162,12 +165,6 @@ export default function Patrimonio() {
               </section>
             )}
 
-            <VerMas titulo="cómo se calcula">
-              <p className="mx-5 mt-3 text-[11px] text-ink-soft leading-relaxed">
-                Los totales van en pesos colombianos (COP), con el dólar o euro del día. Lo que ganas con cada cosa se
-                cuenta en su propia moneda. El valor de fondos, acciones, inmuebles y vehículos es el precio que tú pongas.
-              </p>
-            </VerMas>
             <EnlacesRelacionados enlaces={[
               { a: '/cuentas', texto: 'Mis cuentas', apoyo: 'Cuánto hay en cada una' },
               { a: '/deudas', texto: 'Mis deudas', apoyo: 'Lo que debes y cómo pagarlo' },
@@ -199,7 +196,7 @@ function OfertaInversiones() {
   if (oculto) return null
   return (
     <div className="mx-5 mt-3 rounded-2xl border border-line bg-paper-raised p-3 text-xs" data-testid="oferta-inversiones">
-      <p className="mb-2">¿Tienes inversiones o bienes que quieras seguir? (acciones, fondos, CDT, cripto, un inmueble, un carro…)</p>
+      <p className="mb-2">¿Tienes inversiones, una casa o un carro?</p>
       <div className="flex gap-3">
         <Link to="/inversiones" className="font-semibold text-accent min-h-11 flex items-center">Ver Inversiones</Link>
         <button
@@ -238,7 +235,7 @@ function TarjetaNeto({ datos }) {
           <p className="font-semibold tabular-nums">{formatCOP(datos.total_cuentas)}</p>
           {datos.deudas_tarjeta > 0 && (
             <p className="opacity-80 text-[10px]" data-testid="nota-tarjetas">
-              incluye {formatCOP(datos.deudas_tarjeta)} que debes en tarjetas
+              incluye {formatCOP(datos.deudas_tarjeta)} de tarjetas
             </p>
           )}
         </div>
@@ -247,7 +244,7 @@ function TarjetaNeto({ datos }) {
           <p className="font-semibold tabular-nums">-{formatCOP(datos.total_deudas)}</p>
           {datos.pasivos_duplicados?.length > 0 && (
             <p className="opacity-80 text-[10px]" data-testid="nota-duplicadas">
-              «{datos.pasivos_duplicados[0].nombre}» ya cuenta como tarjeta: no se suma dos veces
+              «{datos.pasivos_duplicados[0].nombre}» no se suma dos veces
             </p>
           )}
         </div>
@@ -302,14 +299,14 @@ function TarjetaActivo({ activo: a, indice, onEditar }) {
       )}
       {a.clase !== 'cdt' && a.precio_fecha && (
         <p className="text-[11px] text-ink-soft mt-1.5">
-          {a.fuente_precio === 'inversiones' ? 'Precio' : 'Valor manual'} al {fechaCorta(a.precio_fecha)} · actualizado {haceCuanto(a.precio_fecha)}
-          {a.sugerir_actualizar ? ' · te conviene revisarlo' : ''}
+          {a.fuente_precio === 'inversiones' ? 'Precio' : 'Valor manual'} · actualizado {haceCuanto(a.precio_fecha)}
+          {a.sugerir_actualizar ? ' · revísalo' : ''}
         </p>
       )}
       {a.variacion_tipo && (
         <p className="text-[11px] text-ink-soft mt-1">
-          {a.variacion_tipo === 'valorizacion' ? 'Valorización' : 'Depreciación'}: {formatPct(a.variacion_pct)} frente a lo que costó (estimación)
-          {a.arriendo_anual_pct ? ` · arriendo ≈ ${a.arriendo_anual_pct.toFixed(1).replace('.', ',')} % anual del valor` : ''}
+          {a.variacion_tipo === 'valorizacion' ? 'Valorización' : 'Depreciación'}: {formatPct(a.variacion_pct)} (aprox.)
+          {a.arriendo_anual_pct ? ` · arriendo ≈ ${a.arriendo_anual_pct.toFixed(1).replace('.', ',')} % al año` : ''}
         </p>
       )}
     </button>

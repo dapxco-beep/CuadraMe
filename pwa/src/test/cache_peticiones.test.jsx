@@ -151,6 +151,7 @@ describe('Medición: peticiones al abrir Inicio', () => {
 
 describe('Medición: peticiones al abrir Perfil', () => {
   it('antes vs después', async () => {
+    localStorage.setItem('cuadrame:inicio-secciones', JSON.stringify({ 'perfil-seguridad': true, 'perfil-avisos': true })) // bloques del Perfil abiertos
     const espera = () => screen.findAllByText(/Privacidad/)
     const antes = await medir(Perfil, espera, { desactivar: true })
     const despues = await medir(Perfil, espera, { ttl: 5000 })

@@ -238,6 +238,7 @@ describe('DetalleMovimiento', () => {
 
 describe('Perfil', () => {
   it('eliminar cuenta exige escribir ELIMINAR (no basta un toque)', async () => {
+    localStorage.setItem('cuadrame:inicio-secciones', JSON.stringify({ 'perfil-seguridad': true, 'perfil-avisos': true })) // bloques del Perfil abiertos
     montar(<Perfil />)
     await userEvent.click(await screen.findByText('Borrar mi cuenta y todos mis datos'))
     const borrar = await screen.findByRole('button', { name: 'Borrar todo' })
