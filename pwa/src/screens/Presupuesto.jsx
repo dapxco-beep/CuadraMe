@@ -18,9 +18,12 @@ import Hoja from '../components/Hoja'
 import Ayudita from '../components/Ayudita'
 import InputMonto from '../components/InputMonto'
 import SeccionPlegable from '../components/SeccionPlegable'
+import VerMas from '../components/VerMas'
 import DesgloseSubcategorias from '../components/DesgloseSubcategorias'
 import { useDialogos } from '../lib/DialogosContext'
 
+// Cuántos presupuestos se ven de entrada; el resto queda tras «Ver más».
+const MAX_VISIBLES = 4
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 // Gasto del mes por categoría, a partir del reporte mensual.
@@ -190,107 +193,46 @@ export default function Presupuesto() {
           const gastadoTotal = conDatos.reduce((s, p) => s + p.gastado, 0)
           const pctGeneral = limiteTotal > 0 ? Math.min(100, Math.round((gastadoTotal / limiteTotal) * 100)) : 0
           const colorNivel = pctGeneral >= 100 ? 'var(--color-danger)' : pctGeneral >= 80 ? 'var(--color-accent-2)' : 'var(--color-accent)'
+          const queda = limiteTotal - gastadoTotal
+          // Lo más urgente arriba: primero lo que ya se pasó o va más cargado.
+          const ordenados = [...conDatos].sort((a, b) => (b.pctReal || 0) - (a.pctReal || 0))
+          const principales = ordenados.slice(0, MAX_VISIBLES)
+          const otros = ordenados.slice(MAX_VISIBLES)
+          const tarjeta = (p, i) => (
+            <TarjetaPresupuesto key={p.id} p={p} i={i} animarBarras={animarBarras} onQuitar={() => eliminar(p.id)} />
+          )
 
           return (
-            <div className="mx-6 mt-4 flex gap-4">
-              {/* Termómetro: nivel general del mes de un vistazo */}
-              <div className="flex flex-col items-center pt-1 shrink-0">
+            <div className="mx-6 mt-4">
+              {/* Lo esencial: cuánto queda para gastar */}
+              <div className="rounded-2xl bg-paper-raised border border-line p-4">
+                <p className="text-xs text-ink-soft">{queda >= 0 ? 'Te queda para gastar' : 'Te pasaste por'}</p>
+                <p className={`text-2xl font-bold mt-0.5 ${queda < 0 ? 'text-danger' : ''}`} data-testid="queda-total">
+                  {formatCOP(Math.abs(queda))}
+                </p>
                 <BarraProgreso
-                  vertical
                   pct={animarBarras ? pctGeneral : 0}
                   color={colorNivel}
                   label="Uso general del presupuesto del mes"
-                  className="w-8 rounded-full bg-line overflow-hidden relative flex items-end"
-                  fillClass="rounded-full"
-                  style={{ height: `${Math.max(180, conDatos.length * 76)}px` }}
+                  texto={`${formatPorcentaje(pctGeneral)} usado`}
+                  className="h-2 rounded-full bg-line overflow-hidden mt-3"
                 />
-                <p className="text-[11px] text-ink-soft text-center mt-2.5 leading-tight font-medium">
-                  {formatPorcentaje(pctGeneral)} del<br />mes usado
+                <p className="text-xs text-ink-soft mt-2">
+                  Llevas {formatCOP(gastadoTotal)} de {formatCOP(limiteTotal)}, que es la suma de todos tus presupuestos.
                 </p>
               </div>
 
-              {/* Categorías, cada una con su propia barra */}
-              <div className="flex-1 min-w-0 space-y-3">
-                {conDatos.map((p, i) => {
-                  const sobrepasado = p.pctReal > 100
-                  const cercaDelLimite = !sobrepasado && p.pct >= p.alerta_pct
-                  return (
-                    <div key={p.id} className="rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': i }}>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold">
-                            {p.categoria}
-                            {p.proy && p.proy.periodo !== 'monthly' && (
-                              <span className="ml-1.5 text-[11px] font-bold text-ink-soft" data-testid="chip-periodo">
-                                {etiquetaPeriodo(p.proy.periodo)} · {textoRango(p.proy.inicio, p.proy.fin)}
-                              </span>
-                            )}
-                            {p.sobre_ajuste !== 0 && (
-                              <span className={`ml-1.5 text-[11px] font-bold ${p.sobre_ajuste > 0 ? 'text-gold' : 'text-ink-soft'}`}>
-                                {p.sobre_ajuste > 0 ? '+' : ''}{formatCOP(p.sobre_ajuste)}
-                              </span>
-                            )}
-                          </p>
-                          {/* Las cifras van en su propia línea bajo el nombre: en 390 px no caben al lado sin encimarse */}
-                          <p className="text-xs text-ink-soft mt-0.5" data-testid="gastado-limite">
-                            <span className="whitespace-nowrap">{formatCOP(p.gastado)}</span>{' '}
-                            <span className="whitespace-nowrap">de {formatCOP(p.limite)}</span>
-                          </p>
-                        </div>
-                        <button onClick={() => eliminar(p.id)} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label={`Quitar el presupuesto de ${p.categoria}`}>
-                            <X size={16} />
-                          </button>
-                      </div>
-                      <DesgloseSubcategorias categoria={p.categoria} />
-                      {p.proy && p.proy.estado !== 'sin_limite' ? (
-                        <BarraProyeccion item={p.proy} animar={animarBarras} />
-                      ) : (
-                        <BarraProgreso
-                          pct={animarBarras ? p.pct : 0}
-                          label={`Gastado en ${p.categoria}`}
-                          texto={`${formatPorcentaje(p.pct)} de lo que pusiste`}
-                          color={
-                            sobrepasado
-                              ? 'var(--color-danger)'
-                              : cercaDelLimite
-                              ? 'var(--color-accent-2)'
-                              : 'var(--color-accent)'
-                          }
-                        />
-                      )}
-                      {p.proy && p.proy.arrastre > 0 && (
-                        <p className="text-[11px] text-gold mt-1.5">
-                          Incluye {formatCOP(p.proy.arrastre)} que te sobraron del periodo anterior <Ayudita termino="sobrante" />
-                        </p>
-                      )}
-                      {p.proy && p.proy.mensaje && (
-                        <p
-                          className={`text-xs mt-1.5 ${p.proy.estado === 'excedido' || p.proy.estado === 'en_riesgo' ? 'text-danger' : 'text-ink-soft'}`}
-                          data-testid="mensaje-proyeccion"
-                        >
-                          {p.proy.mensaje}
-                        </p>
-                      )}
-                      {!p.proy && sobrepasado && (
-                        <p className="text-xs text-danger mt-1.5">
-                          Te pasaste por {formatCOP(p.gastado - p.limite)} — ajusta el resto del mes para compensarlo
-                        </p>
-                      )}
-                      {!p.proy && cercaDelLimite && (
-                        <p className="text-xs text-ink-soft mt-1.5">
-                          Te quedan {formatCOP(Math.max(0, p.limite - p.gastado))} para no pasarte este mes
-                        </p>
-                      )}
-                      <Link
-                        to={`/movimientos?cat=${encodeURIComponent(p.categoria)}`}
-                        className="inline-flex items-center gap-1 text-xs text-accent font-semibold mt-2 min-h-11"
-                      >
-                        Ver en qué lo gastaste <ChevronRight size={16} />
-                      </Link>
-                    </div>
-                  )
-                })}
+              {/* Categorías, las más cargadas primero */}
+              <div className="mt-3 space-y-3">
+                {principales.map(tarjeta)}
               </div>
+              {otros.length > 0 && (
+                <div className="-mx-5">
+                  <VerMas titulo={`los otros ${otros.length} presupuestos`}>
+                    <div className="mx-5 mt-3 space-y-3">{otros.map((p, i) => tarjeta(p, i))}</div>
+                  </VerMas>
+                </div>
+              )}
             </div>
           )
         })()
@@ -339,6 +281,7 @@ export default function Presupuesto() {
             <TrendingUp size={16} className="text-ink-soft" />
             <p className="text-sm font-semibold">Cuánto gastas cada mes</p>
           </div>
+          <p className="text-xs text-ink-soft mb-2">Cada barra es el total que gastaste en ese mes.</p>
           <GraficoTendencia meses={tendencias.meses ?? []} />
 
           {tendencias.proyeccion && (
@@ -425,6 +368,98 @@ export default function Presupuesto() {
             cargar()
           }}
         />
+      )}
+    </div>
+  )
+}
+
+// Una tarjeta por presupuesto: a la vista, lo que llevas, la barra y el aviso; el resto
+// (desglose, sobrante, ajustes, enlace a los movimientos) queda detrás de «Ver detalle».
+function TarjetaPresupuesto({ p, i, animarBarras, onQuitar }) {
+  const [detalle, setDetalle] = useState(false)
+  const sobrepasado = p.pctReal > 100
+  const cercaDelLimite = !sobrepasado && p.pct >= p.alerta_pct
+  return (
+    <div className="rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': i }}>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">
+            {p.categoria}
+            {p.proy && p.proy.periodo !== 'monthly' && (
+              <span className="ml-1.5 text-[11px] font-bold text-ink-soft" data-testid="chip-periodo">
+                {etiquetaPeriodo(p.proy.periodo)} · {textoRango(p.proy.inicio, p.proy.fin)}
+              </span>
+            )}
+          </p>
+          {/* Las cifras van en su propia línea bajo el nombre: en 390 px no caben al lado sin encimarse */}
+          <p className="text-xs text-ink-soft mt-0.5" data-testid="gastado-limite">
+            <span className="whitespace-nowrap">Llevas {formatCOP(p.gastado)}</span>{' '}
+            <span className="whitespace-nowrap">de {formatCOP(p.limite)}</span>
+          </p>
+        </div>
+        <button onClick={onQuitar} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label={`Quitar el presupuesto de ${p.categoria}`}>
+          <X size={16} />
+        </button>
+      </div>
+      {p.proy && p.proy.estado !== 'sin_limite' ? (
+        <BarraProyeccion item={p.proy} animar={animarBarras} />
+      ) : (
+        <BarraProgreso
+          pct={animarBarras ? p.pct : 0}
+          label={`Gastado en ${p.categoria}`}
+          texto={`${formatPorcentaje(p.pct)} de lo que pusiste`}
+          color={sobrepasado ? 'var(--color-danger)' : cercaDelLimite ? 'var(--color-accent-2)' : 'var(--color-accent)'}
+        />
+      )}
+      {p.proy && p.proy.mensaje && (
+        <p
+          className={`text-xs mt-1.5 ${p.proy.estado === 'excedido' || p.proy.estado === 'en_riesgo' ? 'text-danger' : 'text-ink-soft'}`}
+          data-testid="mensaje-proyeccion"
+        >
+          {p.proy.mensaje}
+        </p>
+      )}
+      {!p.proy && sobrepasado && (
+        <p className="text-xs text-danger mt-1.5">
+          Te pasaste por {formatCOP(p.gastado - p.limite)} — ajusta el resto del mes para compensarlo
+        </p>
+      )}
+      {!p.proy && cercaDelLimite && (
+        <p className="text-xs text-ink-soft mt-1.5">
+          Te quedan {formatCOP(Math.max(0, p.limite - p.gastado))} para no pasarte este mes
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={() => setDetalle((v) => !v)}
+        aria-expanded={detalle}
+        className="inline-flex items-center gap-1 text-xs text-accent font-semibold mt-1 min-h-11"
+      >
+        {detalle ? 'Ver menos' : 'Ver detalle'}
+        <ChevronRight size={16} className={detalle ? 'rotate-90' : ''} aria-hidden="true" />
+      </button>
+      {detalle && (
+        <div>
+          {p.sobre_ajuste !== 0 && (
+            <p className={`text-xs ${p.sobre_ajuste > 0 ? 'text-gold' : 'text-ink-soft'}`}>
+              {p.sobre_ajuste > 0
+                ? `Le pasaste ${formatCOP(p.sobre_ajuste)} desde otro presupuesto.`
+                : `Le quitaste ${formatCOP(Math.abs(p.sobre_ajuste))} para pasarlos a otro presupuesto.`}
+            </p>
+          )}
+          {p.proy && p.proy.arrastre > 0 && (
+            <p className="text-xs text-gold mt-1">
+              Incluye {formatCOP(p.proy.arrastre)} que te sobraron del periodo anterior <Ayudita termino="sobrante" />
+            </p>
+          )}
+          <DesgloseSubcategorias categoria={p.categoria} />
+          <Link
+            to={`/movimientos?cat=${encodeURIComponent(p.categoria)}`}
+            className="inline-flex items-center gap-1 text-xs text-accent font-semibold mt-1 min-h-11"
+          >
+            Ver en qué lo gastaste <ChevronRight size={16} />
+          </Link>
+        </div>
       )}
     </div>
   )

@@ -33,7 +33,7 @@ const NIVELES = {
   critico: {
     barra: 'var(--color-danger)',
     texto: 'text-danger',
-    aviso: 'Uso muy alto (más del 80%): te deja sin margen y puede afectar tu historial crediticio.',
+    aviso: 'Uso muy alto (más del 80%): te deja sin margen y puede afectar tu historial con los bancos.',
   },
   sin_cupo: { barra: 'var(--color-line)', texto: 'text-ink-soft', aviso: '' },
 }
@@ -48,9 +48,9 @@ export function BloqueExtracto({ t, moneda }) {
   if (t.saldo_declarado) {
     return (
       <div className="mt-3 rounded-xl border border-line bg-paper p-3 text-xs" data-testid="bloque-extracto-declarado">
-        <p className="font-semibold text-sm">Debes {formatMoneda(t.total_extracto, moneda)} (el saldo que declaraste)</p>
+        <p className="font-semibold text-sm">Debes {formatMoneda(t.total_extracto, moneda)} (lo que nos contaste)</p>
         <p className="text-ink-soft mt-1 leading-relaxed">
-          Aún no tenemos un extracto de tu banco, así que no sabemos cuánto pagar para evitar intereses.
+          Aún no tenemos el extracto de tu banco, así que no sabemos cuánto pagar para no pagar intereses.
           Sube tu extracto o tu próximo corte{t.proximo_corte ? ` (${fechaCorta(t.proximo_corte)})` : ''} y lo calculamos con datos reales.
         </p>
       </div>
@@ -121,14 +121,14 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
     <div className="mt-2 rounded-2xl bg-paper-raised border border-line p-4" data-testid="panel-tarjeta">
       {!configurada ? (
         <p className="text-xs text-ink-soft mb-3">
-          Agrega el cupo, el día de corte y el de pago para ver tu utilización y recibir un aviso antes de pagar.
+          Cuéntanos tu cupo (lo máximo que puedes gastar con la tarjeta), el día de corte y el día de pago. Así te avisamos antes de que toque pagar.
         </p>
       ) : (
         <>
           {t.utilizacion_pct != null && (
             <>
               <div className="flex justify-between text-xs mb-1.5">
-                <span className="font-semibold">Cupo usado <Ayudita termino="cupo" /></span>
+                <span className="font-semibold">Cuánto llevas usado del cupo <Ayudita termino="cupo" /></span>
                 <span className={`font-semibold ${nivel.texto}`}>{formatPorcentaje(t.utilizacion_pct)}</span>
               </div>
               <div
@@ -186,7 +186,7 @@ export default function PanelTarjetaCredito({ cuenta, onCambio }) {
                   <Ayudita termino="intereses" />
                 </p>
               ) : (
-                <p className="text-ink-soft">Agrega la tasa efectiva anual para estimar los intereses.</p>
+                <p className="text-ink-soft">Agrega el interés anual de tu tarjeta (sale en tu extracto) para calcular los intereses.</p>
               )}
               {t.proximo_pago && t.total_extracto == null && (
                 <p className="text-ink-soft">Paga el total antes del {fechaCorta(t.proximo_pago)} para no pagar intereses.</p>

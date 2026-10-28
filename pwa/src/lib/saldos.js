@@ -36,7 +36,7 @@ export function cupoDisponible(cuenta) {
 
 // Etiqueta clara de qué ES una cuenta y qué significa su saldo. La diferencia débito/crédito es lo que más
 // confunde: en una cuenta de ahorros el número es plata TUYA; en una tarjeta de crédito es lo que DEBES.
-//  - etiqueta: el nombre corto del tipo ("Débito / Ahorros" | "Tarjeta de crédito" | ...)
+//  - etiqueta: el nombre corto del tipo ("Cuenta de ahorros" | "Tarjeta de crédito" | ...)
 //  - significado: qué dice el número que se ve
 //  - termino: id del glosario de «Aprende» para el botón «¿qué es esto?»
 export function etiquetaCuenta(cuenta) {
@@ -53,8 +53,8 @@ export function etiquetaCuenta(cuenta) {
       return { etiqueta: 'Inversión', significado: 'Plata tuya invertida; su valor puede subir o bajar.', termino: 'saldo-disponible' }
     default:
       return {
-        etiqueta: 'Débito / Ahorros',
-        significado: 'Saldo disponible: plata tuya que puedes usar ya.',
+        etiqueta: 'Cuenta de ahorros',
+        significado: 'Plata tuya que puedes usar ya.',
         termino: 'saldo-disponible',
       }
   }

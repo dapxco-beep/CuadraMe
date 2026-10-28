@@ -44,8 +44,8 @@ describe('Panel de tarjeta: pago para no pagar intereses', () => {
     const t = { ...BASE, saldo_declarado: true, vencido: false, dias_para_limite: -5 }
     render(<PanelTarjetaCredito cuenta={cuenta(t)} />)
     const b = screen.getByTestId('bloque-extracto-declarado')
-    expect(b).toHaveTextContent(/el saldo que declaraste/)
-    expect(b).toHaveTextContent(/Aún no tenemos un extracto/)
+    expect(b).toHaveTextContent(/lo que nos contaste/)
+    expect(b).toHaveTextContent(/Aún no tenemos el extracto/)
     expect(screen.queryByText(/plazo ya pasó/)).not.toBeInTheDocument()
   })
 

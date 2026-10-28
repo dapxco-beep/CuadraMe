@@ -40,15 +40,15 @@ export default function ResumenSaldo({ resumen, bolsillo, className = '' }) {
       <div className="mt-3 rounded-2xl bg-[color-mix(in_srgb,currentColor_9%,transparent)] px-3.5 py-3 space-y-1.5 text-xs" data-testid="desglose-saldo">
         {modo === 'total' ? (
           <>
-            <Fila k="Disponible hoy (cuentas, sin tarjetas)" v={fmt(resumen.disponible_cop)} />
-            {comprometido !== null && <Fila k="Comprometido este mes (fijos y metas)" v={`− ${fmt(comprometido)}`} />}
-            <Fila k="Deudas de tarjeta de crédito" v={`− ${fmt(resumen.deudas_tarjeta_cop)}`} />
+            <Fila k="Disponible hoy (en tus cuentas, sin contar tarjetas)" v={fmt(resumen.disponible_cop)} />
+            {comprometido !== null && <Fila k="Comprometido este mes (pagos fijos y metas)" v={`− ${fmt(comprometido)}`} />}
+            <Fila k="Lo que debes en tarjetas de crédito" v={`− ${fmt(resumen.deudas_tarjeta_cop)}`} />
             {bolsillo?.cuotas_tarjeta_mes > 0 && (
               <Fila k="De eso, en cuotas este mes" v={fmt(bolsillo.cuotas_tarjeta_mes)} />
             )}
             <p className="pt-1 opacity-80 leading-snug">
-              Saldo actual = lo que tienes en cuentas menos lo que debes en tarjetas.
-              {comprometido !== null ? ' Lo comprometido aún no se descuenta de tu saldo: es lo que ya sabes que vas a pagar.' : ''}
+              Tu saldo es lo que tienes en tus cuentas menos lo que debes en tarjetas.
+              {comprometido !== null ? ' Lo comprometido aún no se descuenta de tu saldo: es plata que ya sabes que vas a pagar.' : ''}
             </p>
           </>
         ) : filas.length === 0 ? (

@@ -29,8 +29,26 @@ import BotonOjo from '../components/BotonOjo'
 import Hoja from '../components/Hoja'
 import { useAlertaVisible } from '../lib/useAlertaVisible'
 
+// Botón pequeño que muestra u oculta contenido secundario (se monta solo al abrir).
+function DesplegableMas({ etiqueta, className = '', children }) {
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <div className={className}>
+      <button
+        type="button"
+        onClick={() => setAbierto((v) => !v)}
+        aria-expanded={abierto}
+        className="inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-2 min-h-11"
+      >
+        {abierto ? 'Ocultar' : etiqueta}
+      </button>
+      {abierto && children}
+    </div>
+  )
+}
+
 const tipos = [
-  { id: 'ahorro', label: 'Débito / Ahorros' },
+  { id: 'ahorro', label: 'Cuenta de ahorros' },
   { id: 'efectivo', label: 'Efectivo' },
   { id: 'credito', label: 'Tarjeta de crédito' },
   { id: 'inversion', label: 'Inversión' },
@@ -110,7 +128,9 @@ export default function Cuentas() {
           <p className="text-xs mt-0.5 opacity-85">La plata que tienes hoy en todas tus cuentas.</p>
           <p className="text-3xl t-display mt-1.5">{fmt(resumen.total_cop)}</p>
           <p className="text-xs mt-1 opacity-85">{resumen.moneda_base && resumen.moneda_base !== 'COP' ? `En ${resumen.moneda_base}` : 'En pesos'} · {textoActualizado(resumen.ultimo_movimiento)}</p>
-          <ResumenSaldo resumen={resumen} className="mt-3" />
+          <DesplegableMas etiqueta="De dónde sale este número" className="mt-2">
+            <ResumenSaldo resumen={resumen} className="mt-3" />
+          </DesplegableMas>
         </section>
       )}
       {resumen && (
@@ -153,13 +173,16 @@ export default function Cuentas() {
               <p className="mt-1.5 px-1 text-[11px] text-ink-soft" data-testid="significado-saldo">
                 {etiquetaCuenta(c).significado} <Ayudita termino={etiquetaCuenta(c).termino} />
               </p>
-              {/* Estado de cuadre con el banco, a la vista: sin ir a buscarlo a «Traer movimientos» */}
-              <LineaCuadre item={cuadrePorCuenta[c.id]} className="mt-2" />
               <Link to={`/movimientos?cuenta=${c.id}`} className="inline-flex items-center gap-1 text-xs text-accent font-semibold min-h-11 px-1">
                 Ver sus movimientos
               </Link>
-              {/* Cuentas de ahorros: cuánto rinde (estimado) y cajitas */}
-              {c.tipo === 'ahorro' && <RendimientoCuenta cuentaId={c.id} />}
+              {/* Lo secundario queda plegado: si coincide con el banco y, en ahorros, cuánto rinde */}
+              <DesplegableMas etiqueta="Más de esta cuenta" className="px-1">
+                {/* Estado de cuadre con el banco, sin ir a buscarlo a «Traer movimientos» */}
+                <LineaCuadre item={cuadrePorCuenta[c.id]} className="mt-2" />
+                {/* Cuentas de ahorros: cuánto rinde (estimado) y cajitas */}
+                {c.tipo === 'ahorro' && <RendimientoCuenta cuentaId={c.id} />}
+              </DesplegableMas>
               {/* Las cuentas de crédito son tarjetas reales: cupo, corte y pago */}
               {c.tipo === 'credito' && <PanelTarjetaCredito cuenta={c} onCambio={recargar} />}
             </div>

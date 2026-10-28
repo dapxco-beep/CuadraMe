@@ -96,7 +96,7 @@ describe('Saldo actual claro', () => {
     envolver(<ResumenSaldo resumen={resumen} bolsillo={{ recurrentes_pendientes_mes: 100000, aportes_comprometidos_mes: 50000 }} />)
     expect(screen.getByText(/Disponible hoy/)).toBeInTheDocument()
     expect(screen.getByText(/Comprometido este mes/)).toBeInTheDocument()
-    expect(screen.getByText(/Deudas de tarjeta/)).toBeInTheDocument()
+    expect(screen.getByText(/Lo que debes en tarjetas/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Por moneda' }))
     expect(screen.getByText('USD')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Por tipo' }))

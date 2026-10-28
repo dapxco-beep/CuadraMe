@@ -222,8 +222,8 @@ describe('Consejo para ti', () => {
 // ── débito vs crédito ────────────────────────────────────────────────────────────────
 describe('Débito vs crédito en la app', () => {
   it('etiquetaCuenta distingue lo que significa cada saldo', () => {
-    expect(etiquetaCuenta({ tipo: 'ahorro' })).toMatchObject({ etiqueta: 'Débito / Ahorros' })
-    expect(etiquetaCuenta({ tipo: 'ahorro' }).significado).toMatch(/Saldo disponible/)
+    expect(etiquetaCuenta({ tipo: 'ahorro' })).toMatchObject({ etiqueta: 'Cuenta de ahorros' })
+    expect(etiquetaCuenta({ tipo: 'ahorro' }).significado).toMatch(/Plata tuya que puedes usar ya/)
     expect(etiquetaCuenta({ tipo: 'credito' })).toMatchObject({ etiqueta: 'Tarjeta de crédito' })
     expect(etiquetaCuenta({ tipo: 'credito' }).significado).toMatch(/lo que debes/)
   })

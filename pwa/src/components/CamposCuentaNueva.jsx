@@ -88,6 +88,7 @@ export default function CamposCuentaNueva({ tipo, valores, onCambio }) {
           aria-label="Tasa efectiva anual"
           className={campo}
         />
+        <span className="block text-[11px] text-ink-soft mt-1">Es el interés que te cobra el banco en un año si no pagas el total. Lo ves en tu extracto.</span>
       </label>
     </div>
   )
