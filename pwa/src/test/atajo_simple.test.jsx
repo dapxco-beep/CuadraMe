@@ -54,24 +54,37 @@ describe('Intro', () => {
   it('explica qué es un atajo y una automatización, con el dibujo de cómo funciona', () => {
     montar()
     const caja = screen.getByTestId('como-funciona')
-    expect(within(caja).getByRole('img', { name: /pagas con tu celular/ })).toBeInTheDocument()
+    // el dibujo y las definiciones están plegados en «¿Cómo funciona?»
+    expect(within(caja).getByRole('img', { name: /pagas con tu celular/, hidden: true })).toBeInTheDocument()
     expect(caja).toHaveTextContent(/Atajo:/)
     expect(caja).toHaveTextContent(/Automatización:/)
   })
 
-  it('en Android muestra el flujo de la app CuadraMe Captura, con 5 pasos y dibujos', () => {
+  it('en Android muestra UN paso a la vez de la app CuadraMe Captura, con dibujo y botón', async () => {
     poner(UA_ANDROID)
     montar()
     const flujo = screen.getByTestId('android-captura')
-    const pasos = within(flujo).getByRole('list', { name: 'Pasos para Android' })
-    expect(within(pasos).getAllByRole('listitem')).toHaveLength(5)
-    expect(within(pasos).getAllByRole('img').length).toBeGreaterThanOrEqual(5)
+    expect(within(flujo).getByText('Paso 1 de 5')).toBeInTheDocument()
+    expect(within(flujo).getByRole('heading', { name: 'Descarga la app' })).toBeInTheDocument()
+    expect(within(flujo).getAllByRole('img').length).toBeGreaterThanOrEqual(1)
+    expect(screen.queryByRole('heading', { name: 'Permite instalarla' })).toBeNull()
+    const titulos = ['Permite instalarla', 'Copia tu clave', 'Dale acceso a los avisos', 'Pruébala']
+    for (let i = 0; i < titulos.length; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /Siguiente/ }))
+      expect(screen.getByText(`Paso ${i + 2} de 5`)).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: titulos[i] })).toBeInTheDocument()
+      expect(within(screen.getByTestId('android-captura')).getAllByRole('img').length).toBeGreaterThanOrEqual(1)
+    }
+    expect(screen.getByRole('button', { name: /Listo/ })).toBeInTheDocument()
+    // «¿Usas otro celular?» es un enlace discreto; al abrirlo, Android sale marcado
+    await userEvent.click(screen.getByTestId('otro-celular'))
     expect(screen.getByTestId('plataforma-android')).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('se puede cambiar a iPhone desde Android, y los pasos de Atajos aparecen', async () => {
     poner(UA_ANDROID)
     montar()
+    await userEvent.click(screen.getByTestId('otro-celular'))
     await userEvent.click(screen.getByTestId('plataforma-ios'))
     expect(screen.queryByTestId('android-captura')).toBeNull()
     expect(screen.getByRole('button', { name: /Empezar/ })).toBeInTheDocument()
