@@ -117,7 +117,7 @@ export default function PlanificadorMeta({ onClose, onCreada }) {
           {plan.mensaje && <p className="text-xs text-ink-soft mt-2">{plan.mensaje}</p>}
           {plan.capacidad_ahorro != null && (
             <p className="text-[11px] text-ink-soft mt-2">
-              Según tus últimos meses te sobran unos {formatCOP(plan.capacidad_ahorro)} al mes.
+              Según tus últimos meses, te sobran unos {formatCOP(plan.capacidad_ahorro)} al mes.
             </p>
           )}
 
