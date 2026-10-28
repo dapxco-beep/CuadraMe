@@ -113,7 +113,8 @@ describe('Movimientos con volumen (1.500 sintéticos)', () => {
   it('"Seleccionar todo lo filtrado" cuenta los 1.500 aunque no estén pintados', async () => {
     montar()
     await screen.findByText('Compra sintética 0')
-    await userEvent.click(screen.getByText('Seleccionar'))
+    await userEvent.click(screen.getByRole('button', { name: 'Más acciones' }))
+    await userEvent.click(await screen.findByRole('button', { name: /Seleccionar varios/ }))
     await userEvent.click(await screen.findByText(/Seleccionar todo lo filtrado/))
     expect(screen.getByText(/200 seleccionados/)).toBeInTheDocument()
   })

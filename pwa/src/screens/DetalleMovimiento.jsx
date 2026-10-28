@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { EsqueletoPantalla } from '../components/Esqueletos'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
-import { ArrowLeft, ArrowLeftRight, Copy, Info, Pencil, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, ChevronRight, Copy, Info, Pencil, Trash2, X } from 'lucide-react'
 import { CATEGORIA_PAGO_TARJETA, esPagoTarjeta } from '../lib/contabilidad'
 import Icono from '../components/Icono'
 import Ayudita from '../components/Ayudita'
@@ -346,9 +346,9 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           <button
             onClick={empezarEdicion}
             aria-label="Editar movimiento"
-            className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+            className="inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-full bg-paper-raised border border-line text-sm font-medium"
           >
-            <Pencil size={16} />
+            <Pencil size={16} aria-hidden="true" /> Editar
           </button>
         )}
       </header>
@@ -632,12 +632,12 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                   disabled={trasladando}
                   className="rounded-xl border border-line py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
                 >
-                  Vincular con su contraparte
+                  Buscar el otro lado del traslado
                 </button>
               </div>
               {contrapartes && contrapartes.length === 0 && (
                 <p className="text-xs text-ink-soft mt-3">
-                  No encontré el movimiento contrario (mismo monto, otra cuenta, a menos de 2 días).
+                  No encontré el otro lado (mismo monto, en otra cuenta tuya, con menos de 2 días de diferencia).
                 </p>
               )}
               {contrapartes && contrapartes.length > 0 && (
@@ -663,7 +663,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
               )}
             </div>
           )}
-          <Fila label="Origen" valor={nombreOrigen(movimiento.fuente)} />
+          <Fila label="De dónde salió" valor={nombreOrigen(movimiento.fuente)} />
           {sentidoEfectivo && (
             <div className="rounded-xl bg-accent-soft p-3 mt-2" role="group" aria-label="Pasar a efectivo">
               <p className="text-sm font-semibold">{oferta.pregunta}</p>
@@ -698,6 +698,24 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
             )
           }}
         />
+      )}
+
+      {!editando && (
+        <nav aria-label="Seguir explorando" className="px-5 mt-5 flex flex-col gap-1" data-testid="enlaces-detalle">
+          {!esTransferencia && (
+            <Link to="/informe" className="flex items-center justify-between min-h-[44px] text-sm font-medium text-accent">
+              Ver en qué gasto mi plata <ChevronRight size={16} aria-hidden="true" />
+            </Link>
+          )}
+          {!esTransferencia && movimiento.tipo === 'expense' && (
+            <Link to="/presupuesto" className="flex items-center justify-between min-h-[44px] text-sm font-medium text-accent">
+              Ver mi presupuesto de {movimiento.categoria} <ChevronRight size={16} aria-hidden="true" />
+            </Link>
+          )}
+          <Link to={`/movimientos?cat=${encodeURIComponent(movimiento.categoria || '')}`} className="flex items-center justify-between min-h-[44px] text-sm font-medium text-accent">
+            Ver más de {movimiento.categoria} <ChevronRight size={16} aria-hidden="true" />
+          </Link>
+        </nav>
       )}
 
       {!editando && (

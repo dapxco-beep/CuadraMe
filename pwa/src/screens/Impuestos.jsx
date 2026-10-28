@@ -9,6 +9,7 @@ import TarjetaRenta from '../components/TarjetaRenta'
 import TarjetaGmfMes from '../components/TarjetaGmfMes'
 import ImpuestosInformativo from '../components/ImpuestosInformativo'
 import { usePais } from '../lib/pais'
+import EnlacesRelacionados from '../components/EnlacesRelacionados'
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
@@ -143,7 +144,7 @@ export default function Impuestos() {
         <>
           <section className="px-5 mt-5">
             <h2 className="text-[15px] font-semibold mb-1">4x1000 (GMF)</h2>
-            <p className="text-xs text-ink-soft mb-3">Estimado a partir de tus débitos en cuentas de ahorro (incluye los pagos de tarjeta, porque salen de la cuenta).</p>
+            <p className="text-xs text-ink-soft mb-3">Es un impuesto de 4 pesos por cada 1.000 que sacas de tu cuenta. Aquí ves cuánto llevas, calculado con lo que sale de tus cuentas de ahorro.</p>
             <div className="rounded-2xl bg-paper-raised border border-line p-4">
               <p className="text-xs text-ink-soft">Estimado {anio}</p>
               <p className="text-2xl font-bold">{formatCOP(gmf.total_estimado)}</p>
@@ -153,7 +154,7 @@ export default function Impuestos() {
                   <p className="font-semibold text-sm">{formatCOP(gmf.promedio_mensual)}</p>
                 </div>
                 <div>
-                  <p className="text-ink-soft">Ya registrado como "gravamen"</p>
+                  <p className="text-ink-soft">Ya anotado como impuesto</p>
                   <p className="font-semibold text-sm">{formatCOP(gmf.total_registrado)}</p>
                 </div>
               </div>
@@ -180,14 +181,14 @@ export default function Impuestos() {
               )}
 
               <label className="block mt-4 text-xs no-print">
-                <span className="block text-ink-soft mb-1">Mi cuenta exenta (la ley permite una por titular, hasta {gmf.tope_exento_mensual.toLocaleString('es-CO')} COP al mes)</span>
+                <span className="block text-ink-soft mb-1">Mi cuenta libre de este impuesto (la ley deja una por persona, hasta {gmf.tope_exento_mensual.toLocaleString('es-CO')} COP al mes)</span>
                 <select
                   aria-label="Cuenta exenta del 4x1000"
                   value={datos.cuenta_exenta_gmf_id || ''}
                   onChange={(e) => cambiarCuentaExenta(e.target.value)}
                   className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-xs"
                 >
-                  <option value="">Ninguna marcada</option>
+                  <option value="">Ninguna elegida</option>
                   {datos.cuentas_ahorro.map((c) => (
                     <option key={c.id} value={c.id}>{c.nombre}</option>
                   ))}
@@ -198,10 +199,9 @@ export default function Impuestos() {
           </section>
 
           <section className="px-5 mt-6">
-            <h2 className="text-[15px] font-semibold mb-1">Gastos posiblemente deducibles</h2>
+            <h2 className="text-[15px] font-semibold mb-1">Gastos que podrían bajar tu impuesto de renta</h2>
             <p className="text-xs text-ink-soft mb-3">
-              Los detectamos por su descripción o categoría. Que aparezcan aquí no significa que sean deducibles: confírmalos,
-              guarda una nota de dónde está el soporte y revísalos con tu contador.
+              Los buscamos por su nombre o categoría. Que aparezcan aquí no es garantía: confírmalos, anota dónde está la factura y revísalos con tu contador.
             </p>
 
             <div className="rounded-2xl bg-paper-raised border border-line p-4 mb-3 grid grid-cols-2 gap-3 text-center">
@@ -238,7 +238,7 @@ export default function Impuestos() {
                                 <span className={i.estado === 'confirmado' ? 'text-accent font-medium' : ''}>
                                   {i.estado === 'confirmado' ? 'Confirmado' : 'Sugerido'}
                                 </span>
-                                {i.soporte ? ` · Soporte: ${i.soporte}` : ''}
+                                {i.soporte ? ` · Factura: ${i.soporte}` : ''}
                               </p>
                             </div>
                             <p className="text-sm font-semibold shrink-0">{formatCOP(i.monto)}</p>
@@ -247,11 +247,11 @@ export default function Impuestos() {
                           {abierto === i.movimiento_id ? (
                             <div className="mt-2.5 no-print">
                               <input
-                                aria-label="Nota de soporte"
+                                aria-label="Dónde está la factura"
                                 value={soporte}
                                 onChange={(e) => setSoporte(e.target.value)}
                                 maxLength={300}
-                                placeholder="Dónde está el soporte (ej. factura en el correo, carpeta Drive)"
+                                placeholder="Dónde está la factura (ej. en el correo, en Drive)"
                                 className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-xs"
                               />
                               <div className="flex gap-2 mt-2">
@@ -260,7 +260,7 @@ export default function Impuestos() {
                                   disabled={guardando}
                                   className="flex-1 bg-ink text-paper rounded-xl py-2 text-xs font-semibold disabled:opacity-60"
                                 >
-                                  Guardar como posible deducible
+                                  Guardar este gasto
                                 </button>
                                 <button onClick={() => setAbierto(null)} className="rounded-xl border border-line px-3 py-2 text-xs">
                                   Cancelar
@@ -270,7 +270,7 @@ export default function Impuestos() {
                           ) : (
                             <div className="flex gap-2 mt-2.5 no-print">
                               <Boton tam="sm" variante="suave" onClick={() => { setAbierto(i.movimiento_id); setSoporte(i.soporte || '') }}>
-                                {i.estado === 'confirmado' ? 'Editar soporte' : 'Confirmar'}
+                                {i.estado === 'confirmado' ? 'Editar dónde está la factura' : 'Confirmar'}
                               </Boton>
                               {i.estado === 'confirmado' ? (
                                 <Boton tam="sm" variante="secundario" onClick={() => quitar(i)}>
@@ -312,6 +312,11 @@ export default function Impuestos() {
               Para el PDF, elige "Guardar como PDF" en la ventana de impresión de tu dispositivo.
             </p>
           </section>
+          <EnlacesRelacionados enlaces={[
+            { a: '/movimientos', texto: 'Mis movimientos', apoyo: 'Busca el gasto y revisa su categoría' },
+            { a: '/cierre-mes', texto: 'Cierre de mes' },
+            { a: '/ayuda', texto: 'Ayuda' },
+          ]} />
         </>
       )}
         </>

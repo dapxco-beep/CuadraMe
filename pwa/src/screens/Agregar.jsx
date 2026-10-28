@@ -149,7 +149,7 @@ export default function Agregar() {
       }
       setFactura(r)
     } catch (err) {
-      setErrorFactura(err.message || 'No pudimos leer la factura')
+      setErrorFactura(err.message || 'No pudimos leer la factura. Prueba con otra foto o escribe los datos tú.')
     } finally {
       setEscaneando(false)
     }
@@ -287,7 +287,7 @@ export default function Agregar() {
         {[
           { id: 'expense', label: 'Gasto' },
           { id: 'income', label: 'Ingreso' },
-          ...(cuentas.length > 1 ? [{ id: 'transfer', label: 'Transferir' }] : []),
+          ...(cuentas.length > 1 ? [{ id: 'transfer', label: 'Pasar plata' }] : []),
         ].map((t) => (
           <button
             key={t.id}
@@ -359,7 +359,7 @@ export default function Agregar() {
         <div role="status" className="mx-5 mt-2 rounded-2xl bg-accent-soft border border-accent/40 px-4 py-2.5 text-xs text-accent">
           <p className="font-semibold">Revisa los datos antes de guardar</p>
           <p className="mt-0.5">
-            La IA puede equivocarse.
+            Puede que algo esté mal leído.
             {factura.impuestos != null && ` IVA/impuestos: ${formatMoneda(factura.impuestos, factura.moneda)}.`}
             {factura.propina != null && ` Propina: ${formatMoneda(factura.propina, factura.moneda)}.`}
             {cuentaActual && factura.moneda !== (cuentaActual.moneda || 'COP') &&
@@ -540,7 +540,11 @@ export default function Agregar() {
         >
           {guardando ? 'Guardando...' : esTransferencia ? (destinosPosibles.find((c) => c.id === destinoId)?.tipo === 'credito' ? 'Pagar la tarjeta' : 'Pasar la plata') : 'Guardar movimiento'}
         </button>
-        <button onClick={() => navigate('/amigos')} className="w-full text-center text-sm text-accent font-medium mt-4 min-h-11">
+        <p className="text-xs text-ink-soft text-center mt-5">¿Lo pagas cada mes o lo compartes con otros?</p>
+        <button onClick={() => navigate('/recurrentes')} className="w-full text-center text-sm text-accent font-medium min-h-11">
+          Registrar un pago fijo (cada mes)
+        </button>
+        <button onClick={() => navigate('/amigos')} className="w-full text-center text-sm text-accent font-medium min-h-11">
           Dividir gastos con amigos
         </button>
         <button onClick={() => navigate('/colectas')} className="w-full text-center text-sm text-accent font-medium min-h-11">

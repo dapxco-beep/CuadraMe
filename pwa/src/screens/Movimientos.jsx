@@ -3,7 +3,7 @@ import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { Boton } from '../components/ui'
 import { Link, useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router-dom'
-import { ArrowLeftRight, Check, RefreshCw, ChevronDown, ChevronRight, Download, ListChecks, PieChart, Search, Shuffle, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeftRight, Check, RefreshCw, ChevronDown, ChevronRight, Download, ListChecks, MoreHorizontal, PieChart, Search, Shuffle, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
 import Icono from '../components/Icono'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
@@ -329,6 +329,7 @@ export default function Movimientos() {
   const [conteo, setConteo] = useState({ auto: 0, otros: 0, total: 0 })
   const [exportando, setExportando] = useState(false)
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
+  const [menuAcciones, setMenuAcciones] = useState(false)
   const [texto, setTexto] = useState(f.q)
   const [selector, setSelector] = useState(null)
   const [moverACuenta, setMoverACuenta] = useState(false)
@@ -905,7 +906,7 @@ export default function Movimientos() {
     f.q && { k: 'q', texto: `Texto: ${f.q}` },
     f.cuenta && { k: 'cuenta', texto: nombreCuenta(f.cuenta) },
     f.cat && f.cat !== 'Otros' && { k: 'cat', texto: f.cat },
-    f.tipo && { k: 'tipo', texto: { income: 'Ingresos', expense: 'Gastos', transfer: 'Transferencias' }[f.tipo] || f.tipo },
+    f.tipo && { k: 'tipo', texto: { income: 'Ingresos', expense: 'Gastos', transfer: 'Plata entre tus cuentas' }[f.tipo] || f.tipo },
     f.origen && { k: 'origen', texto: ORIGENES_FILTRO.find((o) => o.id === f.origen)?.texto || f.origen },
     f.desde && { k: 'desde', texto: `Desde ${f.desde}` },
     f.hasta && { k: 'hasta', texto: `Hasta ${f.hasta}` },
@@ -927,48 +928,14 @@ export default function Movimientos() {
             Cancelar
           </button>
         ) : (
-          <div className="flex items-center gap-2 ml-auto">
-            <button
-              onClick={() => actualizarCorreo(true)}
-              disabled={leyendoCorreo}
-              aria-label="Actualizar desde el correo"
-              className="w-11 h-11 rounded-full border border-line text-ink-soft flex items-center justify-center disabled:opacity-60"
-            >
-              <RefreshCw size={16} className={leyendoCorreo ? 'animate-spin' : ''} />
-            </button>
-            <button
-              onClick={() => setModoSeleccion(true)}
-              className="text-xs text-ink-soft font-medium px-3 min-h-[44px] rounded-full border border-line"
-            >
-              Seleccionar
-            </button>
-            <button
-              onClick={() => setMostrarFiltros((v) => !v)}
-              aria-label="Filtros de fecha y cuenta"
-              aria-expanded={filtrosVisibles}
-              className={`w-11 h-11 rounded-full border flex items-center justify-center ${
-                filtrosVisibles ? 'bg-accent-soft border-accent text-accent' : 'border-line text-ink-soft'
-              }`}
-            >
-              <SlidersHorizontal size={16} />
-            </button>
-            <button
-              onClick={() => exportar('xlsx')}
-              disabled={exportando}
-              className="w-11 h-11 rounded-full border border-line text-ink-soft flex items-center justify-center disabled:opacity-50"
-              aria-label="Exportar a Excel"
-            >
-              <Download size={16} />
-            </button>
-            <Link
-              to="/sincronizacion"
-              state={{ abrir: 'subir', manual: true }}
-              className="w-11 h-11 rounded-full border border-line text-ink-soft flex items-center justify-center"
-              aria-label="Importar desde Excel o CSV"
-            >
-              <Upload size={16} />
-            </Link>
-          </div>
+          <button
+            onClick={() => setMenuAcciones(true)}
+            aria-haspopup="dialog"
+            className="ml-auto inline-flex items-center gap-2 text-sm text-ink-soft font-medium px-4 min-h-[44px] rounded-full border border-line"
+          >
+            <MoreHorizontal size={16} aria-hidden="true" />
+            Más acciones
+          </button>
         )}
       </header>
 
@@ -1013,8 +980,8 @@ export default function Movimientos() {
                     <PieChart size={20} aria-hidden="true" />
                   </span>
                   <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-semibold leading-tight">Ver detalle de tus gastos</span>
-                    <span className="block text-xs text-ink-soft mt-0.5">Por categoría, comercio y periodo</span>
+                    <span className="block text-sm font-semibold leading-tight">¿En qué gasto mi plata?</span>
+                    <span className="block text-xs text-ink-soft mt-0.5">Mira tus gastos por categoría y por mes</span>
                   </span>
                   <ChevronRight size={16} className="text-ink-soft shrink-0" aria-hidden="true" />
                 </Link>
@@ -1080,7 +1047,7 @@ export default function Movimientos() {
               {conteo.total > 0 && !f.revisar && (
                 <div className="px-5 mb-3">
                   <Link to="/categorizar" className="text-xs text-ink-soft font-medium underline">
-                    Si quieres, ordena lo que más pesa
+                    Poner categoría a lo que más pesa
                   </Link>
                 </div>
               )}
@@ -1141,7 +1108,7 @@ export default function Movimientos() {
                     <option value="">Ingresos y gastos</option>
                     <option value="expense">Solo gastos</option>
                     <option value="income">Solo ingresos</option>
-                    <option value="transfer">Transferencias</option>
+                    <option value="transfer">Plata entre tus cuentas</option>
                   </select>
                   <select
                     aria-label="Filtrar por origen"
@@ -1155,7 +1122,7 @@ export default function Movimientos() {
                     ))}
                   </select>
                   <button onClick={() => exportar('csv')} className="text-xs text-accent font-medium px-2 text-left" aria-label="Exportar CSV">
-                    Exportar .csv (datos crudos)
+                    Descargar en CSV (para expertos)
                   </button>
                 </div>
               )}
@@ -1427,6 +1394,45 @@ export default function Movimientos() {
             if (s.masivo) salirModoSeleccion()
           }}
         />
+      )}
+
+      {menuAcciones && (
+        <Hoja onCerrar={() => setMenuAcciones(false)} titulo="Más acciones">
+          {({ cerrar }) => {
+            const fila = 'w-full min-h-[52px] flex items-center gap-3 px-2 text-left text-sm font-medium border-b border-line last:border-0 disabled:opacity-50'
+            const accion = (fn) => () => { cerrar(); fn() }
+            return (
+              <>
+                <h2 className="text-lg font-semibold mb-2">Más acciones</h2>
+                <div className="flex flex-col">
+                  <button className={fila} onClick={accion(() => setTimeout(() => document.querySelector('[data-atajo-buscar]')?.focus(), 0))}>
+                    <Search size={20} aria-hidden="true" /> Buscar
+                  </button>
+                  <button className={fila} onClick={accion(() => setMostrarFiltros((v) => !v))}>
+                    <SlidersHorizontal size={20} aria-hidden="true" /> Filtrar por fecha, cuenta o categoría
+                  </button>
+                  <button className={fila} disabled={exportando} onClick={accion(() => exportar('xlsx'))}>
+                    <Download size={20} aria-hidden="true" /> Descargar en Excel
+                  </button>
+                  <Link
+                    to="/sincronizacion"
+                    state={{ abrir: 'subir', manual: true }}
+                    className={fila}
+                    onClick={() => cerrar()}
+                  >
+                    <Upload size={20} aria-hidden="true" /> Subir archivo de Excel o CSV
+                  </Link>
+                  <button className={fila} onClick={accion(() => setModoSeleccion(true))}>
+                    <ListChecks size={20} aria-hidden="true" /> Seleccionar varios
+                  </button>
+                  <button className={fila} disabled={leyendoCorreo} onClick={accion(() => actualizarCorreo(true))}>
+                    <RefreshCw size={20} aria-hidden="true" /> Actualizar desde el correo
+                  </button>
+                </div>
+              </>
+            )
+          }}
+        </Hoja>
       )}
 
       {renombrando && (

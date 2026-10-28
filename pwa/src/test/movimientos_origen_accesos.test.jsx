@@ -80,7 +80,8 @@ describe('Movimientos: origen y accesos al correo', () => {
   it('el filtro Origen pide al servidor solo esos movimientos', async () => {
     montar()
     await screen.findByText('Tienda')
-    await userEvent.click(screen.getByRole('button', { name: /filtros/i }))
+    await userEvent.click(screen.getByRole('button', { name: 'Más acciones' }))
+    await userEvent.click(await screen.findByRole('button', { name: /Filtrar por fecha/ }))
     await userEvent.selectOptions(screen.getByLabelText('Filtrar por origen'), 'correo')
     await waitFor(() =>
       expect(api.movimientos.mock.calls.some((c) => c[2]?.origen === 'correo')).toBe(true)
