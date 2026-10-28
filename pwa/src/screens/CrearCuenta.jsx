@@ -19,12 +19,12 @@ const PASOS_BIENVENIDA = [
   {
     icon: Mail,
     titulo: 'O que lo haga por ti',
-    texto: 'Conecta tu Gmail y te sugerimos cada movimiento que llega de tu banco — tú solo apruebas.',
+    texto: 'Conecta tu Gmail y te mostramos lo que tu banco te avisa por correo. Tú solo apruebas.',
   },
   {
     icon: Sparkles,
     titulo: 'Entiende tus finanzas',
-    texto: 'Presupuestos, metas de ahorro, y un medidor visual de qué tan bien vas cada mes.',
+    texto: 'Presupuestos, metas de ahorro y una vista clara de cómo vas cada mes.',
   },
 ]
 
@@ -167,7 +167,7 @@ export default function CrearCuenta({ onCreada }) {
 
       <CamposCuentaNueva tipo={tipo} valores={campos} onCambio={setCampos} />
 
-      <p className="text-xs text-ink-soft mb-1.5">Moneda de la cuenta</p>
+      <p className="text-xs text-ink-soft mb-1.5">Moneda de la cuenta (en Colombia casi siempre es COP)</p>
       <div className="flex gap-2 mb-5" role="group" aria-label="Moneda de la cuenta">
         {['COP', 'USD', 'EUR'].map((m) => (
           <button

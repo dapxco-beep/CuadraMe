@@ -164,7 +164,7 @@ describe('Agregar', () => {
 
   it('hace una transferencia entre cuentas', async () => {
     montar(<Agregar />)
-    await userEvent.click(screen.getByRole('button', { name: 'Transferir' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Pasar plata' }))
     expect(screen.queryByPlaceholderText(/¿En qué fue/)).toBeNull()
     await userEvent.type(screen.getByPlaceholderText('0'), '40000')
     await userEvent.click(screen.getByText('Pasar la plata'))

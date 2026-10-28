@@ -100,13 +100,14 @@ export default function Cuentas() {
       </header>
 
       <p className="mx-6 mt-2 text-xs text-ink-soft">
-        Aquí está cada lugar donde tienes o debes plata. Toca una cuenta para ver sus movimientos o
-        ajustar su saldo si no coincide con tu banco.
+        Aquí está cada lugar donde tienes o debes plata. Toca una cuenta para ver el detalle o
+        arreglar su saldo si no coincide con tu banco.
       </p>
 
       {resumen && cuentas.length > 0 && (
         <section className="mx-6 mt-3 hero-marca card-marca p-4" aria-label="Saldo actual total">
           <p className="t-kicker">Saldo actual total</p>
+          <p className="text-xs mt-0.5 opacity-85">La plata que tienes hoy en todas tus cuentas.</p>
           <p className="text-3xl t-display mt-1.5">{fmt(resumen.total_cop)}</p>
           <p className="text-xs mt-1 opacity-85">{resumen.moneda_base && resumen.moneda_base !== 'COP' ? `En ${resumen.moneda_base}` : 'En pesos'} · {textoActualizado(resumen.ultimo_movimiento)}</p>
           <ResumenSaldo resumen={resumen} className="mt-3" />
@@ -154,6 +155,9 @@ export default function Cuentas() {
               </p>
               {/* Estado de cuadre con el banco, a la vista: sin ir a buscarlo a «Traer movimientos» */}
               <LineaCuadre item={cuadrePorCuenta[c.id]} className="mt-2" />
+              <Link to={`/movimientos?cuenta=${c.id}`} className="inline-flex items-center gap-1 text-xs text-accent font-semibold min-h-11 px-1">
+                Ver sus movimientos
+              </Link>
               {/* Cuentas de ahorros: cuánto rinde (estimado) y cajitas */}
               {c.tipo === 'ahorro' && <RendimientoCuenta cuentaId={c.id} />}
               {/* Las cuentas de crédito son tarjetas reales: cupo, corte y pago */}
@@ -373,7 +377,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
       )}
 
       <label className="block mb-4">
-        <span className="text-xs font-medium text-ink-soft">Alias de la tarjeta en Wallet (opcional)</span>
+        <span className="text-xs font-medium text-ink-soft">Nombre de la tarjeta en tu celular (opcional)</span>
         <input
           value={alias}
           onChange={(e) => setAlias(e.target.value)}
@@ -383,8 +387,8 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
           className="w-full mt-1 rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm outline-none focus:border-accent"
         />
         <span className="block text-[11px] text-ink-soft mt-1">
-          Cuando pagues con el celular, asignamos el pago a esta cuenta si el nombre de la tarjeta contiene este texto
-          o sus últimos 4 dígitos. Puedes poner varios separados por coma.
+          Sirve para que los pagos con el celular lleguen a esta cuenta. Escribe el nombre que ves en Wallet o los
+          últimos 4 números de la tarjeta.
         </span>
         {hermanas.length > 0 && (
           <span className="flex items-start gap-1.5 text-[11px] font-medium text-accent mt-1.5" data-testid="aviso-alias-banco">

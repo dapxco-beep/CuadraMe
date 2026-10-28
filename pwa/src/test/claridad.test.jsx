@@ -86,7 +86,7 @@ describe('Agregar: retroalimentación', () => {
 
   it('pagar una tarjeta se llama «Pagar la tarjeta» y avisa que no es un gasto nuevo', async () => {
     montar(<Agregar />)
-    await userEvent.click(screen.getByRole('button', { name: 'Transferir' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Pasar plata' }))
     await userEvent.type(screen.getByPlaceholderText('0'), '100000')
     await userEvent.click(screen.getByRole('button', { name: 'Pagar la tarjeta' }))
     expect(await screen.findByText(/pagaste .*100\.000.* a Visa\. No cuenta como gasto nuevo/)).toBeInTheDocument()
