@@ -11,6 +11,8 @@ import { ENTIDADES_FINANCIERAS_CO } from '../lib/entidadesFinancierasCO'
 import SimuladorDeudas from '../components/SimuladorDeudas'
 import Hoja from '../components/Hoja'
 import InputMonto from '../components/InputMonto'
+import EnlacesRelacionados from '../components/EnlacesRelacionados'
+import VerMas from '../components/VerMas'
 
 const urgenciaColor = {
   critico: 'text-danger',
@@ -68,7 +70,7 @@ export default function Deudas() {
 
       {deudas.length > 0 && (
         <div className="mx-5 mt-3 rounded-2xl bg-danger-soft p-4">
-          <p className="text-xs text-ink-soft mb-0.5">Deuda total</p>
+          <p className="text-xs text-ink-soft mb-0.5">Lo que debes en total</p>
           <p className="text-2xl font-bold text-danger">{formatCOP(totalDeuda)}</p>
         </div>
       )}
@@ -106,13 +108,13 @@ export default function Deudas() {
                 <p className="text-sm font-bold">{formatCOP(d.saldo_actual)}</p>
               </div>
               <p className="text-xs text-ink-soft mb-3">
-                {d.entidad} · cuota {formatCOP(d.cuota_mensual)}
+                {d.entidad} · pagas {formatCOP(d.cuota_mensual)} al mes
               </p>
               <div className="flex items-center justify-between text-xs mb-3">
                 <span className={urgenciaColor[d.urgencia]}>
                   Pago en {d.dias_para_pago} {d.dias_para_pago === 1 ? 'día' : 'días'}
                 </span>
-                {d.cuotas_faltantes && <span className="text-ink-soft">{d.cuotas_faltantes} cuotas restantes</span>}
+                {d.cuotas_faltantes && <span className="text-ink-soft">Te faltan {d.cuotas_faltantes} pagos</span>}
               </div>
               <button
                 onClick={() => setPagando(d)}
@@ -125,7 +127,18 @@ export default function Deudas() {
         </div>
       )}
 
-      {deudas.length > 0 && !cargando && !error && <SimuladorDeudas />}
+      {deudas.length > 0 && !cargando && !error && (
+        <>
+          <VerMas titulo="cómo pagar más rápido">
+            <SimuladorDeudas />
+          </VerMas>
+          <EnlacesRelacionados enlaces={[
+            { a: '/recurrentes', texto: 'Pagos fijos', apoyo: 'Anota aquí las cuotas que pagas cada mes' },
+            { a: '/cuentas', texto: 'Mis cuentas', apoyo: 'Desde dónde pagas' },
+            { a: '/presupuesto', texto: 'Mi presupuesto' },
+          ]} />
+        </>
+      )}
 
       {mostrarForm && (
         <FormDeuda
@@ -166,8 +179,8 @@ function FormDeuda({ onClose, onGuardada }) {
 
   async function guardar() {
     setError('')
-    if (!nombre.trim()) return setError('Ponle un nombre')
-    if (!saldoInicial || Number(saldoInicial) <= 0) return setError('Ingresa el saldo actual de la deuda')
+    if (!nombre.trim()) return setError('Ponle un nombre para reconocerla. Por ejemplo: Tarjeta Visa.')
+    if (!saldoInicial || Number(saldoInicial) <= 0) return setError('Escribe cuánto debes hoy, solo números. Por ejemplo 2000000.')
 
     setGuardando(true)
     try {
@@ -218,27 +231,27 @@ function FormDeuda({ onClose, onGuardada }) {
       <InputMonto entero
         value={saldoInicial}
         onValor={setSaldoInicial}
-        placeholder="Saldo actual de la deuda"
+        placeholder="¿Cuánto debes hoy?"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
       <InputMonto entero
         value={cuotaMensual}
         onValor={setCuotaMensual}
-        placeholder="Cuota mensual"
+        placeholder="¿Cuánto pagas al mes?"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
       <input
         value={tasaMensual}
         onChange={(e) => setTasaMensual(e.target.value.replace(/[^0-9.]/g, ''))}
         inputMode="decimal"
-        placeholder="Tasa mensual % (opcional)"
+        placeholder="Interés que te cobran al mes, % (opcional)"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
       <input
         value={diaPago}
         onChange={(e) => setDiaPago(e.target.value.replace(/\D/g, '').slice(0, 2))}
         inputMode="numeric"
-        placeholder="Día de pago (1-31)"
+        placeholder="¿Qué día del mes pagas? (1 a 31)"
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-3"
       />
 
@@ -277,7 +290,7 @@ function FormPago({ deuda, onClose, onPagado }) {
 
   async function guardar() {
     setError('')
-    if (!monto || Number(monto) <= 0) return setError('Ingresa un monto válido')
+    if (!monto || Number(monto) <= 0) return setError('Escribe cuánto vas a pagar, solo números. Por ejemplo 150000.')
 
     setGuardando(true)
     try {
@@ -302,7 +315,7 @@ function FormPago({ deuda, onClose, onPagado }) {
       <InputMonto entero
         value={monto}
         onValor={setMonto}
-        placeholder="Monto a pagar"
+        placeholder="¿Cuánto pagas?"
         autoFocus
         className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent mb-4"
       />

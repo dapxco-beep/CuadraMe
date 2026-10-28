@@ -7,6 +7,7 @@ import { formatCOP, formatVeces } from '../lib/format'
 import { rangoPeriodo } from '../lib/informe'
 import MapaActividad from '../components/MapaActividad'
 import SelectorPeriodo from '../components/SelectorPeriodo'
+import EnlacesRelacionados from '../components/EnlacesRelacionados'
 
 const PERIODOS_RESUMEN = [
   { id: '7_dias', label: 'Semana' },
@@ -70,7 +71,7 @@ export default function Insights() {
     } catch (err) {
       setMensajes((prev) => [
         ...prev,
-        { rol: 'asistente', texto: err.message || 'No pude responder eso — intenta de nuevo en un momento' },
+        { rol: 'asistente', texto: err.message || 'No pude responder eso. Intenta de nuevo en un momento.' },
       ])
     } finally {
       setEnviando(false)
@@ -138,8 +139,8 @@ export default function Insights() {
                 </div>
               </div>
               <p className="text-[11px] text-ink-soft mt-3 pt-3 border-t border-line">
-                Es lo que los expertos llaman <b>"edad del dinero"</b>: cuántos días podrías vivir con lo
-                que tienes hoy si dejaras de recibir ingresos — entre más días, más colchón para un imprevisto.
+                Son los días que podrías vivir con lo que tienes hoy si dejaras de recibir ingresos.
+                Entre más días, más tranquilo ante un imprevisto.
               </p>
             </section>
           )}
@@ -155,15 +156,15 @@ export default function Insights() {
                   <div key={c.descripcion} className="px-4 py-3">
                     <p className="text-sm font-medium">{c.descripcion}</p>
                     <p className="text-xs text-ink-soft mt-0.5">
-                      {formatCOP(c.total_mes)} en comisiones este mes ({formatVeces(c.veces)}) — vale la pena revisar si se puede evitar
+                      {formatCOP(c.total_mes)} en comisiones este mes ({formatVeces(c.veces)}). Mira si puedes evitarlas
                     </p>
                   </div>
                 ))}
                 {alertas.cobros_duplicados.map((d) => (
                   <div key={d.movimiento_id_1} className="px-4 py-3">
-                    <p className="text-sm font-medium">Posible cobro duplicado: {d.descripcion}</p>
+                    <p className="text-sm font-medium">Posible cobro repetido: {d.descripcion}</p>
                     <p className="text-xs text-ink-soft mt-0.5">
-                      {formatCOP(d.monto)} cobrado dos veces en menos de 48 horas — si fue un error, puedes reclamarlo
+                      {formatCOP(d.monto)} cobrado dos veces en menos de 2 días. Si fue un error, puedes reclamarlo
                     </p>
                   </div>
                 ))}
@@ -185,7 +186,7 @@ export default function Insights() {
                       <p className="text-sm font-bold text-gold">+{a.variacion_pct}%</p>
                     </div>
                     <p className="text-xs text-ink-soft mt-0.5">
-                      {formatCOP(a.monto_actual)} este mes vs. {formatCOP(a.promedio_historico)} promedio
+                      {formatCOP(a.monto_actual)} este mes; lo normal es {formatCOP(a.promedio_historico)}
                     </p>
                   </div>
                 ))}
@@ -204,7 +205,7 @@ export default function Insights() {
         <div className="rounded-2xl bg-paper-raised border border-line p-4 min-h-[120px] flex flex-col gap-3">
           {mensajes.length === 0 && (
             <div>
-              <p className="text-xs text-ink-soft mb-2">Respondo con tus cifras reales y te digo el periodo. Prueba:</p>
+              <p className="text-xs text-ink-soft mb-2">Te respondo con tus números y te digo de qué fechas. Prueba:</p>
               <div className="flex flex-wrap gap-1.5">
                 {PREGUNTAS_SUGERIDAS.map((q) => (
                   <button key={q} type="button" onClick={() => enviarPregunta(null, q)} className="text-xs rounded-full border border-line bg-paper px-3 py-1.5 min-h-[34px]">
@@ -256,6 +257,12 @@ export default function Insights() {
           </button>
         </form>
       </section>
+
+      <EnlacesRelacionados titulo="Sigue explorando" enlaces={[
+        { a: '/presupuesto', texto: 'Mi presupuesto', apoyo: 'Cuánto quieres gastar por categoría' },
+        { a: '/recurrentes', texto: 'Pagos fijos', apoyo: 'Lo que pagas cada mes' },
+        { a: '/categorizar', texto: 'Poner categorías', apoyo: 'Para que estos números sean más exactos' },
+      ]} />
     </div>
   )
 }

@@ -183,7 +183,7 @@ export default function Perfil() {
             <p className="text-sm font-medium" id="etq-todas-funciones">Mostrar todas las funciones</p>
             <p className="text-xs text-ink-soft mt-0.5">
               {completo
-                ? 'Ves todo: metas, deudas, impuestos, patrimonio y más.'
+                ? 'Ves todo: metas, deudas, impuestos, lo que tienes y más.'
                 : 'Ahora ves solo lo básico. Actívalo para ver metas, deudas, impuestos y más.'}
             </p>
           </div>
@@ -273,10 +273,10 @@ export default function Perfil() {
         </div>
 
         <div className="rounded-2xl bg-paper-raised border border-line p-4 mt-3">
-          <p className="text-sm font-medium" id="etq-confianza">¿Qué tan seguro debe estar CuadraMe para registrar solo?</p>
+          <p className="text-sm font-medium" id="etq-confianza">¿Cuándo registro movimientos sin preguntarte?</p>
           <p className="text-xs text-ink-soft mt-0.5 mb-3">
-            Al leer un extracto, si CuadraMe está muy seguro de la categoría, registra el movimiento sin
-            preguntarte. Más estricto: te pregunta más seguido.
+            Cuando leo un extracto y estoy muy seguro de la categoría, lo anoto sin preguntarte.
+            Si prefieres que te pregunte más, sube el porcentaje.
           </p>
           <input
             type="range"
@@ -290,9 +290,9 @@ export default function Perfil() {
             className="w-full accent-accent"
           />
           <div className="flex items-center justify-between text-xs text-ink-soft mt-1">
-            <span>Más permisivo</span>
+            <span>Pregunto menos</span>
             <span className="font-semibold text-ink">{Math.round(confianza * 100)}%{guardandoConfianza ? ' · guardando...' : ''}</span>
-            <span>Más estricto</span>
+            <span>Pregunto más</span>
           </div>
         </div>
       </section>
@@ -314,6 +314,19 @@ export default function Perfil() {
           <Link to="/deudas" className="flex items-center gap-3 px-4 py-3.5">
             <CreditCard size={20} className="text-accent shrink-0" />
             <p className="flex-1 text-sm font-medium">Deudas</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/patrimonio" className="flex items-center gap-3 px-4 py-3.5">
+            <Landmark size={20} className="text-accent shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Lo que tienes y lo que debes</p>
+              <p className="text-xs text-ink-soft mt-0.5">Tu patrimonio: todo lo que tienes menos lo que debes</p>
+            </div>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
+          <Link to="/inversiones" className="flex items-center gap-3 px-4 py-3.5">
+            <Sprout size={20} className="text-accent shrink-0" />
+            <p className="flex-1 text-sm font-medium">Inversiones</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/reglas-categoria" className="flex items-center gap-3 px-4 py-3.5">
@@ -341,7 +354,7 @@ export default function Perfil() {
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
           <Link to="/impuestos" className="flex items-center gap-3 px-4 py-3.5">
             <Receipt size={20} className="text-accent shrink-0" />
-            <p className="flex-1 text-sm font-medium">Impuestos: 4x1000 y renta</p>
+            <p className="flex-1 text-sm font-medium">Impuestos: 4x1000 y declaración de renta</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
           <Link to="/cierre-mes" className="flex items-center gap-3 px-4 py-3.5">
@@ -476,7 +489,7 @@ export default function Perfil() {
         </div>
         <div className="rounded-2xl bg-paper-raised border border-line p-4">
           <p className="text-xs text-ink-soft mb-3">
-            Anota solos tus pagos con el celular: con Atajos del iPhone, Tasker en Android o con Siri.
+            Anota tus pagos solo, con el celular: con Atajos del iPhone, Tasker en Android o con Siri.
             Hay que configurarlo una vez. Si registras desde la app, no lo necesitas.
           </p>
           <ClaveAtajo {...claveAtajo} />

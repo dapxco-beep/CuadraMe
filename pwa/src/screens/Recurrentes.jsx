@@ -10,6 +10,7 @@ import Hoja from '../components/Hoja'
 import InputMonto from '../components/InputMonto'
 import { CampoTexto, CampoMonto } from '../components/ui'
 import { useDialogos } from '../lib/DialogosContext'
+import EnlacesRelacionados from '../components/EnlacesRelacionados'
 
 const estadoColor = {
   pagado: 'text-accent',
@@ -175,6 +176,14 @@ export default function Recurrentes() {
             </div>
           ))}
         </div>
+      )}
+
+      {!cargando && !error && (
+        <EnlacesRelacionados enlaces={[
+          { a: '/cuentas', texto: 'Mis cuentas', apoyo: 'Desde dónde se paga cada cosa' },
+          { a: '/deudas', texto: 'Mis deudas', apoyo: 'Cuotas de créditos y tarjetas' },
+          { a: '/presupuesto', texto: 'Mi presupuesto', apoyo: 'Cuánto te queda después de los pagos fijos' },
+        ]} />
       )}
 
       {mostrarForm && (
