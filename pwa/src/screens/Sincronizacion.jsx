@@ -18,6 +18,7 @@ import {
 } from '../lib/sincronizacion'
 import { cantidadDe, sinDatos } from '../lib/centro'
 import { construirPasos, estadoGeneral, obligatorios, progresoPasos, textoBusqueda } from '../lib/siguientePaso'
+import { cuentasConExtracto, mesDeHoy, vistaCelda } from '../lib/estadoPorCuenta'
 import PasoGuiado from '../components/PasoGuiado'
 import AvisoSalud from '../components/AvisoSalud'
 import AvisoAutoarreglo from '../components/AvisoAutoarreglo'
@@ -802,7 +803,10 @@ export default function Sincronizacion({ modo = 'extractos' }) {
   const aMedias = esCorreo ? [] : extractosAMedias(estado)
   const primerUso = sinDatos({ estado, conectado })
   const puntoPendiente = estado?.punto_partida?.definido === false && !pospuestoPP && (conectado || primerUso)
-  const pasos = construirPasos({ tareas, aMedias, conectado, primerUso, claveConfigurada: Boolean(claveInfo.configurada), sinCuenta, puntoPendiente })
+  // Meses de cuentas con extracto (no el efectivo ni las inversiones) en los que aún no hay extracto.
+  const faltantes = esCorreo ? [] : cuentasConExtracto(filasCuentas).filter((c) => c.tipo !== 'inversion').flatMap((c) =>
+    (c.meses || []).filter((celda) => vistaCelda(celda, { esMesActual: celda.mes === mesDeHoy() }).clave === 'falta_extracto').map((celda) => ({ cuenta: c.nombre, mes: celda.mes })))
+  const pasos = construirPasos({ tareas, aMedias, conectado, primerUso, claveConfigurada: Boolean(claveInfo.configurada), sinCuenta, puntoPendiente, faltantes })
   const estadoG = estadoGeneral(pasos)
   const pendientesObl = obligatorios(pasos)
   const principal = pendientesObl[0] || null
@@ -894,6 +898,8 @@ export default function Sincronizacion({ modo = 'extractos' }) {
       }
       case 'movimientos_por_confirmar':
         return navigate('/movimientos?revisar=1')
+      case 'faltan_extractos':
+        return pedirSubir({})
       default:
         return accionTarea(p.tarea || { id: p.id })
     }

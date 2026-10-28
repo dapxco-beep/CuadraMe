@@ -56,3 +56,15 @@ describe('pasos del cierre de mes', () => {
     expect(textoAvance(0, [])).toBe('Paso 1 de 4')
   })
 })
+
+describe('el efectivo y las inversiones no dan falsas alarmas', () => {
+  const extCon = (...cuentas) => ({ hay_datos: true, bancos: [{ banco: 'Varios', cuentas }] })
+  it('que falte el extracto del efectivo o de un CDT no es un pendiente del cierre', () => {
+    const e = extCon({ cuenta_id: 'e', tipo: 'efectivo', estado: 'sin_extracto' }, { cuenta_id: 'i', tipo: 'inversion', estado: 'sin_extracto' }, { cuenta_id: 'a', tipo: 'ahorro', estado: 'cuadra' })
+    expect(estadoPasos({ ext: e })[0]).toMatchObject({ estado: 'ok', resumen: 'Todas tus cuentas cuadran con el banco.' })
+  })
+  it('pero una cuenta de ahorros o una tarjeta sin extracto sí cuenta', () => {
+    const e = extCon({ cuenta_id: 'a', tipo: 'ahorro', estado: 'sin_extracto' }, { cuenta_id: 't', tipo: 'credito', estado: 'sin_extracto' }, { cuenta_id: 'e', tipo: 'efectivo', estado: 'sin_extracto' })
+    expect(estadoPasos({ ext: e })[0].resumen).toBe('Falta el extracto de 2 cuentas.')
+  })
+})

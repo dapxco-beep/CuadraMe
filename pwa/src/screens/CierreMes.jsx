@@ -192,6 +192,13 @@ export default function CierreMes() {
     return x ? `${x.etiqueta}${x.con_extracto ? ' · con extracto' : ''}` : m
   }
 
+  // «septiembre 2026»: lo que se ve en la pantalla habla en palabras, no en «2026-09».
+  const nombreDelMes = (() => {
+    const x = mesesExt.find((y) => y.mes === mes)
+    if (x?.etiqueta) return String(x.etiqueta).toLowerCase()
+    const [a, m] = String(mes || '').split('-').map(Number)
+    return a && m ? new Date(a, m - 1, 1).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }) : mes
+  })()
   const pasos = estadoPasos({ ext, porCategorizar, alertas, informe })
   const actual = pasos[paso]
   const pendientes = pendientesDeCierre(pasos)
@@ -220,7 +227,7 @@ export default function CierreMes() {
         {error && <p className="text-sm text-danger mb-3">{error}</p>}
 
         {informe === false && actual.id !== 'resumen' && (
-          <p className="text-sm text-ink-soft mb-3">Aún no hay cierre de {mes}. Revísalo paso a paso y ciérralo cuando todo esté bien.</p>
+          <p className="text-sm text-ink-soft mb-3">Aún no hay cierre de {nombreDelMes}. Revísalo paso a paso y ciérralo cuando todo esté bien.</p>
         )}
 
         <Pasos pasos={pasos} actual={paso} onIr={ir} />
@@ -310,7 +317,7 @@ export default function CierreMes() {
 
               {informe === false && (
                 <div className="rounded-2xl bg-paper-raised border border-line p-5 text-center">
-                  <p className="text-sm text-ink-soft mb-3">Aún no hay cierre de {mes}. Se genera solo cada mes; también puedes crearlo ahora.</p>
+                  <p className="text-sm text-ink-soft mb-3">Aún no hay cierre de {nombreDelMes}. Se genera solo cada mes; también puedes crearlo ahora.</p>
                   <button onClick={generar} disabled={cargando} className="bg-ink text-paper rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
                     {cargando ? 'Generando...' : pendientes.length ? 'Generar cierre de todos modos' : 'Generar cierre'}
                   </button>

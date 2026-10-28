@@ -19,13 +19,16 @@ export function cuentasDelCierre(ext) {
   return (ext?.bancos || []).flatMap((b) => b.cuentas || [])
 }
 
+// El efectivo y las inversiones (un CDT) no mandan un extracto cada mes: que «falte» no es un pendiente del cierre.
+const SIN_EXTRACTO_MENSUAL = ['efectivo', 'inversion']
+
 function pasoCuentas(ext) {
   if (ext === null || ext === undefined) return { estado: 'cargando', resumen: 'Mirando tus cuentas…' }
   if (ext === false) return { estado: 'neutro', resumen: 'No pude comparar con tus extractos ahora. Puedes seguir.' }
   if (!ext.hay_datos) return { estado: 'neutro', resumen: 'Aún no hay movimientos de este mes para comparar.' }
   const cs = cuentasDelCierre(ext)
   const noCuadran = cs.filter((c) => c.estado === 'no_cuadra').length
-  const sinExtracto = cs.filter((c) => c.estado === 'sin_extracto').length
+  const sinExtracto = cs.filter((c) => c.estado === 'sin_extracto' && !SIN_EXTRACTO_MENSUAL.includes(c.tipo)).length
   if (noCuadran) return { estado: 'atencion', resumen: `${plural(noCuadran, 'cuenta no cuadra', 'cuentas no cuadran')} con tu banco.`, cantidad: noCuadran }
   if (sinExtracto) return { estado: 'atencion', resumen: `Falta el extracto de ${plural(sinExtracto, 'cuenta', 'cuentas')}.`, cantidad: sinExtracto }
   return { estado: 'ok', resumen: 'Todas tus cuentas cuadran con el banco.' }

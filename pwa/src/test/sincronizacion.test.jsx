@@ -175,12 +175,22 @@ describe('pantalla Sincronización', () => {
   })
 
   it('sin tareas muestra "Todo al día" con la fecha de la última vez "Todo al día" con la fecha de la última vez', async () => {
-    api.sincronizacionEstado.mockResolvedValue({ ...ESTADO, tareas: [], sin_cuenta: [], ultima_sync: new Date(Date.now() - 2 * 3600 * 1000).toISOString().replace('Z', '') })
+    // Sin tareas Y sin meses por subir (sin cuentas con extracto): ahora sí es «Todo al día».
+    api.sincronizacionEstado.mockResolvedValue({ ...ESTADO, tareas: [], sin_cuenta: [], cuentas: [], ultima_sync: new Date(Date.now() - 2 * 3600 * 1000).toISOString().replace('Z', '') })
     montar()
     const vacio = await screen.findByTestId('todo-al-dia')
     expect(vacio.textContent).toBe('Todo al día')
     expect(screen.getByTestId('resumen-tareas').textContent).toBe('Miré tu correo hace 2 h')
     expect(screen.queryByTestId('progreso-pasos')).toBeNull()
+  })
+
+  it('con meses sin extracto NO dice «Todo al día»: queda «Casi todo al día» y ofrece subir los extractos', async () => {
+    // Antes decía «Todo al día» con cada mes marcado «Falta el extracto»: una contradicción que confundía.
+    api.sincronizacionEstado.mockResolvedValue({ ...ESTADO, tareas: [], sin_cuenta: [] })
+    montar()
+    expect(await screen.findByText('Casi todo al día')).toBeTruthy()
+    expect(screen.queryByTestId('todo-al-dia')).toBeNull()
+    expect(screen.getByText(/subir (el extracto que falta|los \d+ extractos que faltan)/)).toBeTruthy()
   })
 
   it('las casillas de mes miden 44 px de toque como mínimo y en 360 px el nombre pasa arriba de las casillas', async () => {

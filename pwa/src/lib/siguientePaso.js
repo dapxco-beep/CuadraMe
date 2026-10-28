@@ -19,10 +19,16 @@ const plural = (c, uno, varios) => `${c} ${c === 1 ? uno : varios}`
 /** «agosto» a partir de «Agosto 2026» o «agosto de 2026»; vacío si no hay mes. */
 const soloMes = (mes) => String(mes || '').split(/\s|-/)[0].toLowerCase()
 
-function textoDe(id, { cantidad = 0, claveConfigurada = false, banco = '', aMedias = [], tarea = null }) {
+function textoDe(id, { cantidad = 0, claveConfigurada = false, banco = '', aMedias = [], tarea = null, cuentasFaltantes = [] }) {
   switch (id) {
     case 'conectar':
       return { titulo: 'Conecta tu Gmail', detalle: 'Así traigo solos tus movimientos y extractos. Solo pido permiso de lectura.', boton: 'Conectar Gmail' }
+    case 'faltan_extractos':
+      return {
+        titulo: cantidad === 1 ? `Falta el extracto de ${cuentasFaltantes[0] || 'una cuenta'}` : `Faltan extractos de ${cantidad} cuentas`,
+        detalle: 'Súbelos (PDF o Excel) o conecta tu Gmail para que los traiga solos.',
+        boton: 'Subir extractos',
+      }
     case 'punto_partida':
       return { titulo: '¿Desde cuándo leo tu correo?', detalle: 'Elige tu fecha de inicio para no traer movimientos viejos.', boton: 'Elegir la fecha' }
     case 'falta_clave':
@@ -98,7 +104,7 @@ function textoDe(id, { cantidad = 0, claveConfigurada = false, banco = '', aMedi
  * `primerUso` = sin Gmail y sin nada que mostrar todavía: ahí lo primero es conectar.
  * Cada paso: { id, titulo, detalle, boton, cantidad, opcional, tarea }.
  */
-export function construirPasos({ tareas = [], aMedias = [], conectado = true, primerUso = false, claveConfigurada = false, sinCuenta = [], puntoPendiente = false } = {}) {
+export function construirPasos({ tareas = [], aMedias = [], conectado = true, primerUso = false, claveConfigurada = false, sinCuenta = [], puntoPendiente = false, faltantes = [] } = {}) {
   const por = new Map()
   for (const t of tareas || []) por.set(t.id, t)
   const pasos = []
@@ -119,6 +125,9 @@ export function construirPasos({ tareas = [], aMedias = [], conectado = true, pr
   }
   // Tareas nuevas del servidor que esta lista aún no conoce: al final, con su propio texto.
   for (const t of tareas || []) if (!ORDEN_PASOS.includes(t.id)) poner(t.id, n(t.cantidad), t, Boolean(t.opcional))
+  // Meses de una cuenta sin extracto: no es obligatorio, pero tampoco es «todo al día» (queda como lo único que falta).
+  const cuentasF = [...new Set((faltantes || []).map((f) => f.cuenta))]
+  if (cuentasF.length) poner('faltan_extractos', cuentasF.length, null, true, { cuentasFaltantes: cuentasF })
   // Lo opcional (categorizar) siempre queda después de lo obligatorio (sort estable).
   return pasos.sort((a, b) => Number(a.opcional) - Number(b.opcional))
 }
@@ -134,6 +143,8 @@ function nombrePendienteOpcional(p) {
       return c === 1 ? 'mirar 1 correo descartado' : `mirar ${c} correos descartados`
     case 'movimientos_por_categorizar':
       return c === 1 ? 'ponerle categoría a 1 comercio' : `ponerle categoría a ${c} comercios`
+    case 'faltan_extractos':
+      return c === 1 ? 'subir el extracto que falta' : `subir los extractos de ${c} cuentas`
     case 'punto_partida':
       return 'elegir desde cuándo leo tu correo'
     default:

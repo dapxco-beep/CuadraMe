@@ -82,6 +82,12 @@ export default function EstadoPorCuenta({ cuentas = [], meses = [], onMes, pieCr
                   if (el && !el.dataset.listo) {
                     el.scrollLeft = el.scrollWidth
                     el.dataset.listo = '1'
+                    // Si hay meses más atrás, el borde izquierdo se desvanece: se nota que se puede deslizar, no que se cortó.
+                    if (el.scrollWidth > el.clientWidth + 4) {
+                      const m = 'linear-gradient(to right, transparent 0, #000 32px)'
+                      el.style.webkitMaskImage = m
+                      el.style.maskImage = m
+                    }
                   }
                 }}
               >
