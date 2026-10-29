@@ -72,13 +72,15 @@ describe('A. Metas con sugerencia', () => {
     expect(montoSugerido(PLAN, {})).toBe(500000)
   })
 
-  it('en modo simple «Metas» aparece cuando se crea la primera', () => {
+  it('en modo simple «Metas» está a la vista; una función avanzada aparece en su tema cuando la usas', () => {
     const uid = 'u-metas'
+    const visibles = (g) => g.filter((x) => x.id !== 'mas-funciones').flatMap((x) => x.items.map((i) => i.to))
     const sin = gruposSegunModo({ completo: false, enUso: leerFuncionesEnUso(uid) })
-    expect(sin.find((g) => g.id === 'en-uso')).toBeUndefined()
-    marcarFuncionEnUso(uid, '/metas')
+    expect(visibles(sin)).toContain('/metas') // «Metas» es de todos los días: siempre a la vista
+    expect(visibles(sin)).not.toContain('/patrimonio') // lo avanzado empieza en «Avanzadas»
+    marcarFuncionEnUso(uid, '/patrimonio')
     const con = gruposSegunModo({ completo: false, enUso: leerFuncionesEnUso(uid) })
-    expect(con.find((g) => g.id === 'en-uso').items.map((i) => i.to)).toContain('/metas')
+    expect(visibles(con)).toContain('/patrimonio') // al usarlo vuelve a su tema
   })
 })
 

@@ -206,11 +206,11 @@ export default function Perfil() {
 
       {/* El interruptor «Mostrar todas las funciones» vive ahora en el menú «Más»; aquí queda un enlace corto para no perder la función */}
       <p className="mx-6 mt-4 text-xs text-ink-soft">
-        {completo ? 'Ves todas las funciones.' : 'Ahora ves solo lo básico.'}{' '}
+        {completo ? 'Lo avanzado se ve en su tema.' : 'Lo avanzado está aparte, en «Avanzadas».'}{' '}
         <button type="button" onClick={() => setCompleto(!completo)} data-testid="enlace-todas-funciones" className="min-h-11 font-semibold text-accent">
-          {completo ? 'Ver solo lo básico' : 'Ver todas las funciones'}
+          {completo ? 'Volver a separarlo' : 'Mostrarlo todo'}
         </button>
-        . También lo cambias en «Más».
+        .
       </p>
 
       <section className="mx-6 mt-8">

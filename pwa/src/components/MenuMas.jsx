@@ -187,8 +187,8 @@ export function HojaMas({ onCerrar, pathname }) {
                     <p className="text-sm font-medium" id="etq-todas-funciones">Mostrar todas las funciones</p>
                     <p className="text-xs text-ink-soft mt-0.5">
                       {completo
-                        ? 'Ves todo: metas, deudas, impuestos, lo que tienes y más.'
-                        : 'Ahora ves solo lo básico. Actívalo para ver metas, deudas, impuestos y más.'}
+                        ? 'Ves todo en su tema, también lo avanzado.'
+                        : 'Lo avanzado (inversiones, impuestos, reglas) está en «Avanzadas».'}
                     </p>
                   </div>
                   <button

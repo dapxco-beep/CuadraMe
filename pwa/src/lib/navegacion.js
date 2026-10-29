@@ -112,10 +112,14 @@ export function esAdminVisible(email) {
 export const ITEMS_MAS = GRUPOS.flatMap((g) => g.items.map((i) => ({ ...i, grupo: g.id })))
 
 // ── Modo simple ──────────────────────────────────────────────────────────
-// Lo esencial a la vista; el resto, en el grupo plegado «Más funciones» con una frase de qué hace
-// cada una. Las rutas NO cambian: siguen abriendo por enlace directo y por el buscador.
+// TODO lo de todos los días a la vista, ordenado por tema (los mismos grupos de siempre). Solo lo que de verdad es
+// avanzado (ajustes finos, patrimonio, inversiones, impuestos, reglas por comercio) va aparte, plegado en «Avanzadas».
+// Lo avanzado que la persona ya usa deja de serlo para ella: vuelve a su tema. Las rutas NO cambian: siguen abriendo
+// por enlace directo y por el buscador.
 export const MAS_FUNCIONES_ID = 'mas-funciones'
-const RUTAS_ESENCIALES = ['/sincronizacion', '/perfil', '/ayuda']
+export const RUTAS_AVANZADAS = [
+  '/reglas-categoria', '/entrenar-categorias', '/conectar-dispositivo', '/traslados', '/impuestos', '/patrimonio', '/inversiones', '/ahorcado',
+]
 
 export const EXPLICACION = {
   '/cuentas': 'Tus bancos, tarjetas y efectivo, cada uno con su saldo.',
@@ -153,15 +157,13 @@ export const EXPLICACION = {
  */
 export function gruposSegunModo({ completo = false, enUso = [] } = {}) {
   if (completo) return GRUPOS
-  const porRuta = Object.fromEntries(ITEMS_MAS.map((i) => [i.to, i]))
   const conExplica = (i) => ({ ...i, explica: EXPLICACION[i.to] })
-  const esenciales = RUTAS_ESENCIALES.map((to) => porRuta[to]).filter(Boolean).map(conExplica)
-  const usadas = ITEMS_MAS.filter((i) => enUso.includes(i.to) && !RUTAS_ESENCIALES.includes(i.to)).map(conExplica)
-  const resto = ITEMS_MAS.filter((i) => !RUTAS_ESENCIALES.includes(i.to) && !enUso.includes(i.to)).map(conExplica)
+  const esAvanzada = (i) => RUTAS_AVANZADAS.includes(i.to) && !enUso.includes(i.to)
+  const temas = GRUPOS.map((g) => ({ ...g, items: g.items.filter((i) => !esAvanzada(i)).map(conExplica) })).filter((g) => g.items.length)
+  const avanzadas = ITEMS_MAS.filter(esAvanzada).map(conExplica)
   return [
-    { id: 'esencial', titulo: 'Lo esencial', items: esenciales },
-    ...(usadas.length ? [{ id: 'en-uso', titulo: 'Lo que ya usas', items: usadas }] : []),
-    { id: MAS_FUNCIONES_ID, titulo: 'Más funciones', plegado: true, items: resto },
+    ...temas,
+    ...(avanzadas.length ? [{ id: MAS_FUNCIONES_ID, titulo: 'Avanzadas', icon: SlidersHorizontal, plegado: true, items: avanzadas }] : []),
   ]
 }
 

@@ -47,16 +47,18 @@ export function tomarInvitacionPendiente() {
 
 // Comparte un gasto que YA registraste: se divide en partes iguales entre quienes están hoy en el parche y tú figuras como
 // quien pagó. No crea otro movimiento ni toca tu saldo (el servidor toma el monto real del movimiento).
-export async function compartirMovimientoEnParche(parcheId, mov) {
+export async function compartirMovimientoEnParche(parcheId, mov, { modo = 'iguales', participantes = null } = {}) {
   const h = await api.hogar(parcheId)
   const activos = (h.miembros || []).filter((m) => m.activo)
+  // Sin elegir nada: todos los del parche, en partes iguales. Elegido: entre quiénes y cómo (montos o porcentajes).
+  const reparto = participantes || activos.map((m) => ({ id: m.id }))
   await api.crearGastoHogar(parcheId, {
     descripcion: String(mov.descripcion || 'Gasto').slice(0, 120),
     total: Number(mov.monto),
-    modo: 'iguales',
-    participantes: activos.map((m) => ({ id: m.id })),
+    modo,
+    participantes: reparto,
     movimiento_id: mov.id,
     categoria: mov.categoria || undefined,
   })
-  return { parche: h.nombre, personas: activos.length }
+  return { parche: h.nombre, personas: reparto.length }
 }

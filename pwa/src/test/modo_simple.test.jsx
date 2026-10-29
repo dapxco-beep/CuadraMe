@@ -20,7 +20,7 @@ import Inicio from '../screens/Inicio'
 import InicioSimple from '../components/InicioSimple'
 import Perfil from '../screens/Perfil'
 import {
-  EXPLICACION, GRUPOS, ITEMS_MAS, MAS_FUNCIONES_ID, buscarDestinos, extrasRiel, gruposSegunModo,
+  EXPLICACION, GRUPOS, ITEMS_MAS, MAS_FUNCIONES_ID, RUTAS_AVANZADAS, buscarDestinos, extrasRiel, gruposSegunModo,
 } from '../lib/navegacion'
 import { detectarFuncionesEnUso, guardarModoCompleto, leerModoCompleto } from '../lib/modoSimple'
 import { armarCamino, CAMINO, META_CAMINO } from '../lib/primerUso'
@@ -63,26 +63,30 @@ describe('navegacion: grupos según el modo', () => {
     expect(gruposSegunModo({ completo: true })).toBe(GRUPOS)
   })
 
-  it('modo simple: lo esencial a la vista y el resto en «Más funciones», plegado y explicado', () => {
+  it('modo simple: todo lo de todos los días a la vista por temas y solo lo avanzado plegado en «Avanzadas»', () => {
     const g = gruposSegunModo({ completo: false })
-    expect(g.map((x) => x.id)).toEqual(['esencial', MAS_FUNCIONES_ID])
-    expect(g[0].items.map((i) => i.label)).toEqual(['Traer extractos', 'Perfil', 'Ayuda'])
-    const mas = g[1]
-    expect(mas.plegado).toBe(true)
-    // todas las demás pantallas siguen ahí (las rutas no cambian) y cada una trae su frase
-    const rutasMas = mas.items.map((i) => i.to)
-    for (const i of ITEMS_MAS.filter((x) => !g[0].items.some((e) => e.to === x.to))) {
-      expect(rutasMas).toContain(i.to)
-      expect(EXPLICACION[i.to], `falta la frase de ${i.to}`).toBeTruthy()
+    expect(g.map((x) => x.id)).toEqual(['datos', 'dinero', 'juntos', 'ahorro', 'entender', 'ajustes', MAS_FUNCIONES_ID])
+    const visibles = g.slice(0, -1).flatMap((x) => x.items.map((i) => i.to))
+    // lo de cada día está a la vista
+    for (const ruta of ['/sincronizacion', '/movimientos-correo', '/cuentas', '/deudas', '/recurrentes', '/amigos', '/hogares', '/colectas', '/metas', '/informe', '/cierre-mes', '/asistente', '/perfil', '/ayuda']) {
+      expect(visibles, ruta).toContain(ruta)
     }
-    expect(mas.items.every((i) => i.explica)).toBe(true)
+    // lo avanzado está aparte, plegado y explicado
+    const avanzadas = g[g.length - 1]
+    expect(avanzadas).toMatchObject({ titulo: 'Avanzadas', plegado: true })
+    expect(avanzadas.items.map((i) => i.to).sort()).toEqual([...RUTAS_AVANZADAS].sort())
+    expect(avanzadas.items.every((i) => i.explica), 'cada avanzada trae su frase').toBe(true)
+    for (const ruta of RUTAS_AVANZADAS) expect(visibles).not.toContain(ruta)
+    // nada se pierde: todas las pantallas siguen en el menú (las rutas no cambian)
+    expect([...visibles, ...avanzadas.items.map((i) => i.to)].sort()).toEqual(ITEMS_MAS.map((i) => i.to).sort())
   })
 
-  it('una función que ya usa la persona sube sola al menú', () => {
-    const g = gruposSegunModo({ completo: false, enUso: ['/metas', '/deudas'] })
-    expect(g.map((x) => x.id)).toEqual(['esencial', 'en-uso', MAS_FUNCIONES_ID])
-    expect(g[1].items.map((i) => i.label)).toEqual(['Deudas', 'Metas'])
-    expect(g[2].items.map((i) => i.to)).not.toContain('/metas')
+  it('una función avanzada que la persona ya usa deja de ser avanzada: vuelve a su tema', () => {
+    const g = gruposSegunModo({ completo: false, enUso: ['/patrimonio', '/impuestos'] })
+    const ahorro = g.find((x) => x.id === 'ahorro').items.map((i) => i.to)
+    expect(ahorro).toContain('/patrimonio')
+    expect(g.find((x) => x.id === 'dinero').items.map((i) => i.to)).toContain('/impuestos')
+    expect(g[g.length - 1].items.map((i) => i.to)).not.toContain('/patrimonio')
   })
 
   it('el buscador sigue encontrando todo, aunque esté plegado', () => {
@@ -130,32 +134,21 @@ describe('Menú «Más» (teléfono) en modo simple', () => {
     return userEvent.click(screen.getByRole('button', { name: 'Más' }))
   }
 
-  it('muestra solo lo esencial y «Más funciones» plegado; al abrirlo, cada una con su frase', async () => {
+  it('lo de todos los días está a la vista; lo avanzado, plegado en «Avanzadas» y con su frase', async () => {
     await abrirMas()
     const hoja = await screen.findByRole('dialog', { name: 'Más opciones' })
-    for (const nombre of ['Traer extractos', 'Perfil', 'Ayuda']) {
-      expect(within(hoja).getByRole('link', { name: new RegExp('^' + nombre) })).toBeInTheDocument()
+    for (const nombre of ['Traer extractos', 'Movimientos del correo', 'Cuentas', 'Deudas', 'Metas', 'Perfil', 'Ayuda']) {
+      expect(within(hoja).getByRole('link', { name: new RegExp('^' + nombre) }), nombre).toBeInTheDocument()
     }
-    expect(within(hoja).queryByRole('link', { name: /Deudas/ })).toBeNull()
-    const boton = within(hoja).getByRole('button', { name: /Más funciones/ })
+    expect(within(hoja).queryByRole('link', { name: /Impuestos/ })).toBeNull()
+    const boton = within(hoja).getByRole('button', { name: /Avanzadas/ })
     expect(boton).toHaveAttribute('aria-expanded', 'false')
 
     await userEvent.click(boton)
     expect(boton).toHaveAttribute('aria-expanded', 'true')
-    const deudas = within(hoja).getByRole('link', { name: /Deudas/ })
-    expect(deudas).toHaveAttribute('href', '/deudas')
-    expect(deudas).toHaveTextContent('Lo que debes y cuál conviene pagar primero.')
-  })
-
-  it('si ya tiene metas, «Metas» aparece sola en «Lo que ya usas»', async () => {
-    api.metas.mockResolvedValue([{ id: 'm1', nombre: 'Viaje' }])
-    await abrirMas()
-    const hoja = await screen.findByRole('dialog', { name: 'Más opciones' })
-    const seccion = await waitFor(() => {
-      const h = within(hoja).getByRole('heading', { name: 'Lo que ya usas' })
-      return h.closest('section')
-    })
-    expect(within(seccion).getByRole('link', { name: /Metas/ })).toHaveAttribute('href', '/metas')
+    const impuestos = within(hoja).getByRole('link', { name: /Impuestos/ })
+    expect(impuestos).toHaveAttribute('href', '/impuestos')
+    expect(impuestos).toHaveTextContent('Cuánto te cobran por el 4x1000')
   })
 
   it('con «Mostrar todas las funciones» vuelve el menú completo por grupos', async () => {
@@ -184,7 +177,7 @@ describe('Barras de pantalla ancha en modo simple', () => {
     expect(within(nav).queryByRole('link', { name: 'Patrimonio' })).toBeNull()
   })
 
-  it('barra lateral: «Más funciones» empieza plegado y se abre con un toque', async () => {
+  it('barra lateral: lo diario a la vista y «Avanzadas» empieza plegado y se abre con un toque', async () => {
     simularAncho(1440)
     render(
       <MemoryRouter>
@@ -196,11 +189,12 @@ describe('Barras de pantalla ancha en modo simple', () => {
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
     expect(within(nav).getByRole('link', { name: /^Traer extractos/ })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: 'Perfil' })).toBeInTheDocument()
-    expect(within(nav).queryByRole('link', { name: /Deudas/ })).toBeNull()
-    const boton = within(nav).getByRole('button', { name: 'Más funciones' })
+    expect(within(nav).getByRole('link', { name: /Deudas/ })).toBeInTheDocument()
+    expect(within(nav).queryByRole('link', { name: /Impuestos/ })).toBeNull()
+    const boton = within(nav).getByRole('button', { name: 'Avanzadas' })
     expect(boton).toHaveAttribute('aria-expanded', 'false')
     await userEvent.click(boton)
-    expect(within(nav).getByRole('link', { name: /Deudas/ })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: /Impuestos/ })).toBeInTheDocument()
   })
 })
 

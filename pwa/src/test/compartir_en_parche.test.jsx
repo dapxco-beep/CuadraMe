@@ -86,3 +86,81 @@ describe('compartir un gasto ya registrado en un parche', () => {
     expect(await screen.findByText('Este gasto ya está compartido en un parche.')).toBeTruthy()
   })
 })
+
+describe('cambiar cómo se divide', () => {
+  const PARCHE3 = {
+    id: 'h1', nombre: 'Apartamento',
+    miembros: [
+      { id: 'ma', apodo: 'Ana', soy_yo: true, activo: true },
+      { id: 'mb', apodo: 'Beto', soy_yo: false, activo: true },
+      { id: 'mc', apodo: 'Camila', soy_yo: false, activo: true },
+    ],
+  }
+  beforeEach(() => {
+    api.hogar.mockResolvedValue(PARCHE3)
+  })
+  const abrir = async (user) => {
+    await user.click(await screen.findByRole('radio', { name: 'Apartamento' }))
+    await user.click(screen.getByRole('button', { name: /Cambiar cómo se divide/ }))
+    await screen.findByTestId('como-se-divide')
+    await screen.findByRole('button', { name: 'Camila' })
+  }
+
+  it('entre quiénes: quitar a alguien reparte solo entre los demás, con lo que pone cada uno', async () => {
+    const user = userEvent.setup()
+    montar()
+    await abrir(user)
+    expect(screen.getByText('Cada uno pone $ 30.000.')).toBeTruthy() // 90.000 entre 3
+    await user.click(screen.getByRole('button', { name: 'Camila' }))
+    expect(screen.getByText('Cada uno pone $ 45.000.')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Compartir' }))
+    await waitFor(() => expect(api.crearGastoHogar).toHaveBeenCalled())
+    expect(api.crearGastoHogar.mock.calls[0][1]).toMatchObject({ modo: 'iguales', participantes: [{ id: 'ma', valor: 1 }, { id: 'mb', valor: 1 }] })
+  })
+
+  it('por montos: no deja compartir hasta que sume exacto y dice cuánto falta', async () => {
+    const user = userEvent.setup()
+    montar()
+    await abrir(user)
+    await user.click(screen.getByRole('radio', { name: 'Montos' }))
+    await user.type(screen.getByLabelText('Monto de Ana'), '50000')
+    await user.type(screen.getByLabelText('Monto de Beto'), '30000')
+    expect(screen.getByText('Faltan $ 10.000.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Compartir' })).toBeDisabled()
+    await user.type(screen.getByLabelText('Monto de Camila'), '10000')
+    expect(screen.getByText('Listo: suma exacto.')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Compartir' }))
+    await waitFor(() => expect(api.crearGastoHogar).toHaveBeenCalled())
+    expect(api.crearGastoHogar.mock.calls[0][1]).toMatchObject({
+      modo: 'montos', participantes: [{ id: 'ma', valor: 50000 }, { id: 'mb', valor: 30000 }, { id: 'mc', valor: 10000 }],
+    })
+  })
+
+  it('por porcentajes: dice cuánto falta o sobra', async () => {
+    const user = userEvent.setup()
+    montar()
+    await abrir(user)
+    await user.click(screen.getByRole('radio', { name: '%' }))
+    await user.type(screen.getByLabelText('Porcentaje de Ana'), '60')
+    await user.type(screen.getByLabelText('Porcentaje de Beto'), '30')
+    expect(screen.getByText('Falta 10%.')).toBeTruthy()
+    await user.type(screen.getByLabelText('Porcentaje de Camila'), '20')
+    expect(screen.getByText('Sobra 10%.')).toBeTruthy()
+  })
+
+  it('si pagó otra persona manda a anotarlo desde el parche', async () => {
+    const user = userEvent.setup()
+    montar()
+    await abrir(user)
+    expect(screen.getByRole('link', { name: 'Ir al parche' })).toHaveAttribute('href', '/hogares/h1/gasto')
+  })
+
+  it('sin nadie elegido no deja compartir', async () => {
+    const user = userEvent.setup()
+    montar()
+    await abrir(user)
+    for (const n of ['Yo', 'Beto', 'Camila']) await user.click(screen.getByRole('button', { name: n }))
+    expect(screen.getByText('Elige al menos una persona.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Compartir' })).toBeDisabled()
+  })
+})

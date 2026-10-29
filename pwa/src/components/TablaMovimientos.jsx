@@ -63,7 +63,7 @@ const Fila = memo(function Fila({ m, columnas, icono, moneda, cuenta, esSel, act
         >
           {nombreDe(m)}
           {tieneNombrePropio(m) && <span className="ml-2 text-[11px] font-normal text-ink-soft">Banco: {m.descripcion}</span>}
-          <EtiquetaOrigen origen={m.origen} canales={m.canales} className="ml-2 align-middle" />
+          <EtiquetaOrigen origen={m.origen} canales={m.canales} soloAvisos className="ml-2 align-middle" />
         </Link>
       </td>
       {columnas.categoria && (

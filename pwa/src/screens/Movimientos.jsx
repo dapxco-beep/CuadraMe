@@ -134,7 +134,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
             <p className="text-xs text-ink-soft mt-0.5 break-words" data-testid="fila-fecha-cuenta">
               {[fechaHoraMovimiento(fechaDeMovimiento(m)), cuentaNombre].filter(Boolean).join(' · ')}
             </p>
-            <EtiquetaOrigen origen={m.origen} canales={m.canales} className="mt-1" />
+            <EtiquetaOrigen origen={m.origen} canales={m.canales} soloAvisos className="mt-1" />
           </Link>
           <div className="flex items-center flex-wrap gap-y-1 pt-0.5 pb-2.5">
             {esTransfer ? (
