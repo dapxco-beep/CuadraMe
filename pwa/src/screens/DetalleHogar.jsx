@@ -37,6 +37,12 @@ export default function DetalleHogar() {
   useEffect(() => {
     cargar()
   }, [cargar])
+  // Otras personas cambian esto (un «ya pagué» desde el enlace, un gasto nuevo): al volver a la app se pone al día solo.
+  useEffect(() => {
+    const alVolver = () => document.visibilityState === 'visible' && cargar()
+    document.addEventListener('visibilitychange', alVolver)
+    return () => document.removeEventListener('visibilitychange', alVolver)
+  }, [cargar])
 
   const esAdmin = h?.rol === 'admin'
 

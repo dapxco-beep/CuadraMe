@@ -761,8 +761,9 @@ export const api = {
   registrarPagoGasto: (data) => request('/gastos-compartidos/liquidaciones', { method: 'POST', body: data }),
 
   // Colectas (vacas): inscripción del equipo, paseo, regalo
-  colectas: () => request('/colectas'),
-  colecta: (id) => request(`/colectas/${id}`),
+  // Lo que otras personas pueden cambiar (un «ya pagué» desde el enlace, un gasto nuevo en el parche) se pide siempre fresco.
+  colectas: () => request('/colectas', { sinCache: true }),
+  colecta: (id) => request(`/colectas/${id}`, { sinCache: true }),
   crearColecta: (data) => request('/colectas', { method: 'POST', body: data }),
   editarColecta: (id, data) => request(`/colectas/${id}`, { method: 'PATCH', body: data }),
   eliminarColecta: (id) => request(`/colectas/${id}`, { method: 'DELETE' }),
@@ -778,8 +779,8 @@ export const api = {
   colectaPublica: (token) => request(`/colectas/publico/${encodeURIComponent(token)}`, { auth: false, sinCache: true }),
 
   // Hogares (pareja, familia): libro común entre personas con cuenta
-  hogares: () => request('/hogares'),
-  hogar: (id) => request(`/hogares/${id}`),
+  hogares: () => request('/hogares', { sinCache: true }),
+  hogar: (id) => request(`/hogares/${id}`, { sinCache: true }),
   parchesDeMovimiento: (movimientoId) => request(`/hogares/de-movimiento/${movimientoId}`),
   crearHogar: (data) => request('/hogares', { method: 'POST', body: data }),
   renombrarHogar: (id, nombre) => request(`/hogares/${id}`, { method: 'PATCH', body: { nombre } }),
@@ -792,11 +793,11 @@ export const api = {
   aceptarInvitacionHogar: (token, apodo) => request(`/hogares/invitaciones/${encodeURIComponent(token)}/aceptar`, { method: 'POST', body: { apodo: apodo || undefined } }),
   rolMiembroHogar: (id, miembroId, rol) => request(`/hogares/${id}/miembros/${miembroId}`, { method: 'PATCH', body: { rol } }),
   quitarMiembroHogar: (id, miembroId) => request(`/hogares/${id}/miembros/${miembroId}`, { method: 'DELETE' }),
-  gastosHogar: (id) => request(`/hogares/${id}/gastos`),
+  gastosHogar: (id) => request(`/hogares/${id}/gastos`, { sinCache: true }),
   crearGastoHogar: (id, data) => request(`/hogares/${id}/gastos`, { method: 'POST', body: data }),
   borrarGastoHogar: (id, gastoId) => request(`/hogares/${id}/gastos/${gastoId}`, { method: 'DELETE' }),
   pasarGastoHogarAMisGastos: (id, gastoId, cuentaId) => request(`/hogares/${id}/gastos/${gastoId}/a-mis-gastos`, { method: 'POST', body: { cuenta_id: cuentaId } }),
-  pagosHogar: (id) => request(`/hogares/${id}/pagos`),
+  pagosHogar: (id) => request(`/hogares/${id}/pagos`, { sinCache: true }),
   pagarHogar: (id, data) => request(`/hogares/${id}/pagos`, { method: 'POST', body: data }),
   deshacerPagoHogar: (id, pagoId) => request(`/hogares/${id}/pagos/${pagoId}`, { method: 'DELETE' }),
   resumenHogar: (id, mes) => request(`/hogares/${id}/resumen${mes ? `?mes=${mes}` : ''}`),
