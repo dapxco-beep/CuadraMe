@@ -354,6 +354,7 @@ ATAQUES = [
     ("POST", "/hogares/{hogar}/pagos", {"de_id": "{miembro_hogar}", "a_id": "otro", "monto": 1}),
     ("DELETE", "/hogares/{hogar}/pagos/{pago_hogar}", None),
     ("GET", "/hogares/{hogar}/resumen", None),
+    ("GET", "/hogares/de-movimiento/{mov}", None),  # el movimiento de A ni se consulta desde B
     ("POST", "/gastos-compartidos", {"descripcion": "x", "total": 10, "modo": "iguales", "registro": "ninguno",
                                      "grupo_id": "{grupo}", "pagador_id": "yo",
                                      "participantes": [{"id": "yo", "valor": 1}, {"id": "{contacto}", "valor": 1}]}),

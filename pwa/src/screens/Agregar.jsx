@@ -11,6 +11,7 @@ import { encolarMovimiento } from '../lib/colaOffline'
 import { prepararImagen } from '../lib/imagen'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { useCuentas } from '../lib/CuentasContext'
+import { compartirMovimientoEnParche } from '../lib/hogares'
 import { cuentaInicial, guardarUltimaCuenta, leerUltimaCuenta } from '../lib/efectivo'
 import { useDialogos } from '../lib/DialogosContext'
 import SugerenciaIngreso from '../components/SugerenciaIngreso'
@@ -56,6 +57,11 @@ export default function Agregar() {
   const [sugerirIngreso, setSugerirIngreso] = useState(null) // { monto, cuentaId } tras registrar un ingreso
   const [categoria, setCategoria] = useState('')
   const [categoriaAutoDetectada, setCategoriaAutoDetectada] = useState(false)
+  const [parches, setParches] = useState([]) // mis parches: «¿Es de un parche?» solo sale si tengo alguno
+  const [parcheId, setParcheId] = useState('') // '' = no se comparte
+  useEffect(() => {
+    Promise.resolve(api.hogares?.()).then((x) => Array.isArray(x) && setParches(x)).catch(() => {})
+  }, [])
   const [frecuentes, setFrecuentes] = useState([])
   const [fecha, setFecha] = useState(hoyISO())
   const [mostrarFecha, setMostrarFecha] = useState(false)
@@ -199,7 +205,23 @@ export default function Agregar() {
       guardarUltimaCuenta(auth?.usuario?.id, cuentaId)
       await recargarCuentas()
       navigator.vibrate?.(12) // confirmación táctil corta (donde el celular la soporta)
-      avisar?.(`Guardado: ${descripcion.trim()} · ${formatCOP(Number(monto))}`, 'ok', creado?.id ? {
+      // Si eligió un parche, el gasto ya guardado se comparte ahí (sin crear otro movimiento). Si falla, el gasto igual quedó.
+      let compartidoEn = ''
+      let falloCompartir = ''
+      if (parcheId && creado?.id) {
+        try {
+          const c = await compartirMovimientoEnParche(parcheId, { id: creado.id, descripcion: descripcion.trim(), monto: Number(monto), categoria })
+          compartidoEn = c.parche
+        } catch (e) {
+          falloCompartir = e.message || 'No pudimos compartirlo.'
+        }
+      }
+      avisar?.(
+        falloCompartir
+          ? `Guardado: ${descripcion.trim()}. No se compartió en el parche (${falloCompartir}); puedes hacerlo desde el movimiento.`
+          : `Guardado${compartidoEn ? ` y compartido en ${compartidoEn}` : ''}: ${descripcion.trim()} · ${formatCOP(Number(monto))}`,
+        'ok',
+        creado?.id ? {
         accion: {
           texto: 'Deshacer',
           onClick: async () => {
@@ -503,6 +525,26 @@ export default function Agregar() {
           ))}
         </div>
       </div>
+      )}
+
+      {tipo === 'expense' && !esTransferencia && parches.length > 0 && (
+        <div className="px-5 mb-5" data-testid="elegir-parche">
+          <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">¿Es de un parche?</p>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Compartir en un parche">
+            {[{ id: '', nombre: 'No' }, ...parches].map((p) => (
+              <button
+                key={p.id || 'no'}
+                role="radio"
+                aria-checked={parcheId === p.id}
+                onClick={() => setParcheId(p.id)}
+                className={`rounded-2xl border px-3.5 py-2 text-sm font-medium ${parcheId === p.id ? 'bg-accent-soft border-accent text-accent' : 'border-line bg-paper-raised'}`}
+              >
+                {p.nombre}
+              </button>
+            ))}
+          </div>
+          {parcheId && <p className="text-[11px] text-ink-soft mt-2">Se divide en partes iguales entre quienes están en el parche. Tú pagas todo y ellos te deben su parte.</p>}
+        </div>
       )}
 
       {error && <p role="alert" className="px-5 text-sm text-danger mb-3">{error}</p>}

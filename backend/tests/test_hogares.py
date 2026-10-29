@@ -366,3 +366,59 @@ def test_pasar_a_mis_gastos_no_funciona_para_un_extrano_ni_con_cuenta_ajena(gent
     assert client.post(f"/hogares/{hid}/gastos/{gid}/a-mis-gastos", json={"cuenta_id": "x"}).status_code == 404
     como(gente["beto"])
     assert client.post(f"/hogares/{hid}/gastos/{gid}/a-mis-gastos", json={"cuenta_id": cuenta_ana["id"]}).status_code == 404
+
+
+# ───────────── Compartir un gasto que YA registré como movimiento ─────────────
+
+def _gasto_mio(cuenta_id, monto=90_000, tipo="expense", categoria="Comida"):
+    return client.post("/movimientos", json={
+        "cuenta_id": cuenta_id, "descripcion": "Cena", "monto": monto, "tipo": tipo, "categoria": categoria, "confirmar_nuevo": True}).json()["id"]
+
+
+def test_compartir_un_movimiento_existente_toma_su_monto_y_no_crea_otro(gente):
+    hid, ana, beto = _hogar_de_a_y_b(gente)
+    como(gente["ana"])
+    cuenta = client.post("/cuentas", json={"nombre": "Mia", "saldo": 500_000, "moneda": "COP"}).json()
+    mov = _gasto_mio(cuenta["id"], 90_000)
+    saldo_antes = next(c["saldo"] for c in client.get("/cuentas").json() if c["id"] == cuenta["id"])
+    r = client.post(f"/hogares/{hid}/gastos", json={
+        "descripcion": "Cena", "total": 1, "movimiento_id": mov, "participantes": [{"id": ana}, {"id": beto}]})
+    assert r.status_code == 200 and r.json()["partes"] == {ana: 45_000, beto: 45_000}  # usa los 90.000 reales, no el «1»
+    assert next(c["saldo"] for c in client.get("/cuentas").json() if c["id"] == cuenta["id"]) == saldo_antes  # sin movimiento nuevo
+    d = client.get(f"/hogares/{hid}").json()
+    assert {m["id"]: m["saldo"] for m in d["miembros"]} == {ana: 45_000, beto: -45_000}  # Beto le debe su mitad a Ana
+    g = client.get(f"/hogares/{hid}/gastos").json()[0]
+    assert g["categoria"] == "Comida" and g["total"] == 90_000 and g["en_mis_gastos"] is True
+    de = client.get(f"/hogares/de-movimiento/{mov}").json()
+    assert [x["nombre"] for x in de] == ["Casa"] and de[0]["mi_parte"] == 45_000
+
+
+def test_un_movimiento_no_se_comparte_dos_veces_ni_si_es_ingreso_ni_si_no_es_mio(gente):
+    hid, ana, beto = _hogar_de_a_y_b(gente)
+    como(gente["ana"])
+    cuenta = client.post("/cuentas", json={"nombre": "Mia", "saldo": 500_000, "moneda": "COP"}).json()
+    mov = _gasto_mio(cuenta["id"])
+    cuerpo = {"descripcion": "Cena", "total": 1, "movimiento_id": mov, "participantes": [{"id": ana}, {"id": beto}]}
+    assert client.post(f"/hogares/{hid}/gastos", json=cuerpo).status_code == 200
+    assert client.post(f"/hogares/{hid}/gastos", json=cuerpo).status_code == 409  # ya está compartido
+    ingreso = _gasto_mio(cuenta["id"], 10_000, tipo="income", categoria="Ingresos")
+    assert client.post(f"/hogares/{hid}/gastos", json={**cuerpo, "movimiento_id": ingreso}).status_code == 400
+    como(gente["beto"])
+    cuenta_b = client.post("/cuentas", json={"nombre": "DeBeto", "saldo": 1, "moneda": "COP"}).json()
+    ajeno = _gasto_mio(cuenta_b["id"], 5_000)
+    como(gente["ana"])
+    assert client.post(f"/hogares/{hid}/gastos", json={**cuerpo, "movimiento_id": ajeno}).status_code == 404
+    assert client.get(f"/hogares/de-movimiento/{ajeno}").status_code == 404  # el movimiento de otro ni se consulta
+    assert client.post(f"/hogares/{hid}/gastos", json={**cuerpo, "movimiento_id": mov, "registrar_en_mi_cuenta": True}).status_code == 400
+
+
+def test_si_borro_el_gasto_del_parche_el_movimiento_se_puede_compartir_de_nuevo(gente):
+    hid, ana, beto = _hogar_de_a_y_b(gente)
+    como(gente["ana"])
+    cuenta = client.post("/cuentas", json={"nombre": "Mia", "saldo": 500_000, "moneda": "COP"}).json()
+    mov = _gasto_mio(cuenta["id"])
+    cuerpo = {"descripcion": "Cena", "total": 1, "movimiento_id": mov, "participantes": [{"id": ana}, {"id": beto}]}
+    gid = client.post(f"/hogares/{hid}/gastos", json=cuerpo).json()["id"]
+    assert client.delete(f"/hogares/{hid}/gastos/{gid}").status_code == 200
+    assert client.get(f"/hogares/de-movimiento/{mov}").json() == []
+    assert client.post(f"/hogares/{hid}/gastos", json=cuerpo).status_code == 200

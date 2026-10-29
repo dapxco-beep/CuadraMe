@@ -1,3 +1,4 @@
+import { api } from './api'
 import { formatMoneda } from './format'
 
 // Enlace de invitación (HashRouter, por eso lleva #). Se manda por WhatsApp o se copia.
@@ -42,4 +43,20 @@ export function tomarInvitacionPendiente() {
   } catch {
     return ''
   }
+}
+
+// Comparte un gasto que YA registraste: se divide en partes iguales entre quienes están hoy en el parche y tú figuras como
+// quien pagó. No crea otro movimiento ni toca tu saldo (el servidor toma el monto real del movimiento).
+export async function compartirMovimientoEnParche(parcheId, mov) {
+  const h = await api.hogar(parcheId)
+  const activos = (h.miembros || []).filter((m) => m.activo)
+  await api.crearGastoHogar(parcheId, {
+    descripcion: String(mov.descripcion || 'Gasto').slice(0, 120),
+    total: Number(mov.monto),
+    modo: 'iguales',
+    participantes: activos.map((m) => ({ id: m.id })),
+    movimiento_id: mov.id,
+    categoria: mov.categoria || undefined,
+  })
+  return { parche: h.nombre, personas: activos.length }
 }

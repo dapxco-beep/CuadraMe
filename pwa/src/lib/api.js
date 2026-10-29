@@ -780,6 +780,7 @@ export const api = {
   // Hogares (pareja, familia): libro común entre personas con cuenta
   hogares: () => request('/hogares'),
   hogar: (id) => request(`/hogares/${id}`),
+  parchesDeMovimiento: (movimientoId) => request(`/hogares/de-movimiento/${movimientoId}`),
   crearHogar: (data) => request('/hogares', { method: 'POST', body: data }),
   renombrarHogar: (id, nombre) => request(`/hogares/${id}`, { method: 'PATCH', body: { nombre } }),
   borrarHogar: (id) => request(`/hogares/${id}`, { method: 'DELETE' }),

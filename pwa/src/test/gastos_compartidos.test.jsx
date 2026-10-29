@@ -201,3 +201,43 @@ describe('Dividir gastos con amigos', () => {
     expect(await screen.findByText('Aún no dividiste gastos con amigos')).toBeInTheDocument()
   })
 })
+
+describe('Agregar: «¿Es de un parche?»', () => {
+  const llenar = async () => {
+    await userEvent.type(screen.getByPlaceholderText('0'), '50000')
+    await userEvent.type(screen.getByPlaceholderText(/¿En qué fue/), 'Cena')
+  }
+
+  it('sin parches no aparece la pregunta', async () => {
+    api.hogares = vi.fn().mockResolvedValue([])
+    montar()
+    await llenar()
+    expect(screen.queryByTestId('elegir-parche')).toBeNull()
+  })
+
+  it('con parches: se elige al crear el gasto y queda compartido sin crear otro movimiento', async () => {
+    api.hogares = vi.fn().mockResolvedValue([{ id: 'h1', nombre: 'Apartamento' }])
+    api.hogar = vi.fn().mockResolvedValue({ id: 'h1', nombre: 'Apartamento', miembros: [{ id: 'ma', activo: true }, { id: 'mb', activo: true }] })
+    api.crearGastoHogar = vi.fn().mockResolvedValue({ id: 'g1' })
+    api.crearMovimiento.mockResolvedValue({ id: 'm9' })
+    montar()
+    await llenar()
+    await userEvent.click(await screen.findByRole('radio', { name: 'Apartamento' }))
+    await userEvent.click(screen.getByText('Guardar movimiento'))
+    await waitFor(() => expect(api.crearGastoHogar).toHaveBeenCalledTimes(1))
+    expect(api.crearMovimiento).toHaveBeenCalledTimes(1)
+    expect(api.crearGastoHogar).toHaveBeenCalledWith('h1', expect.objectContaining({ movimiento_id: 'm9', total: 50000, participantes: [{ id: 'ma' }, { id: 'mb' }] }))
+  })
+
+  it('si no eliges parche («No») no se comparte nada', async () => {
+    api.hogares = vi.fn().mockResolvedValue([{ id: 'h1', nombre: 'Apartamento' }])
+    api.crearGastoHogar = vi.fn()
+    api.crearMovimiento.mockResolvedValue({ id: 'm9' })
+    montar()
+    await llenar()
+    await screen.findByTestId('elegir-parche')
+    await userEvent.click(screen.getByText('Guardar movimiento'))
+    await waitFor(() => expect(api.crearMovimiento).toHaveBeenCalled())
+    expect(api.crearGastoHogar).not.toHaveBeenCalled()
+  })
+})

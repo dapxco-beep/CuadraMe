@@ -14,11 +14,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
-from app.compartidos import cuenta_accesible
+from app.compartidos import cuenta_accesible, cuentas_ids_accesibles
 from app.database import get_db
 from app.division import DivisionInvalida, calcular_saldos, dividir, simplificar_deudas
 from app.limites import verificar_limite
-from app.models import Movimiento
+from app.models import Cuenta, Movimiento
 from app.models_hogares import GastoHogar, Hogar, InvitacionHogar, MiembroHogar, PagoHogar, ParteGastoHogar
 from app.push import enviar_push
 from app.routers.gastos_compartidos import decimales_de
@@ -77,6 +77,8 @@ class GastoIn(BaseModel):
     fecha: Optional[datetime] = None
     registrar_en_mi_cuenta: bool = False  # copia a una cuenta MÍA solo mi parte
     cuenta_id: Optional[str] = None
+    # Compartir un gasto que YA tengo como movimiento: el total, la categoría y la fecha salen de él y no se crea otro.
+    movimiento_id: Optional[str] = None
 
 
 class PagoIn(BaseModel):
@@ -199,6 +201,32 @@ def mis_invitaciones(db: Session = Depends(get_db), usuario: UsuarioActual = Dep
         if h:
             salida.append({"token": i.token, "hogar": h.nombre, "vence_en": i.vence_en})
     return salida
+
+
+@router.get("/de-movimiento/{movimiento_id}")
+def parches_de_un_movimiento(movimiento_id: str, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """En qué parches ya compartí este movimiento mío (solo lo mío; si el movimiento no es mío, 404)."""
+    _movimiento_mio_o_404(db, usuario, movimiento_id)
+    filas = (
+        db.query(ParteGastoHogar, GastoHogar, Hogar)
+        .join(GastoHogar, GastoHogar.id == ParteGastoHogar.gasto_id)
+        .join(Hogar, Hogar.id == GastoHogar.hogar_id)
+        .join(MiembroHogar, MiembroHogar.id == ParteGastoHogar.miembro_id)
+        .filter(ParteGastoHogar.movimiento_id == movimiento_id, MiembroHogar.usuario_id == usuario.id, MiembroHogar.activo.is_(True))
+        .all()
+    )
+    return [{"hogar_id": h.id, "nombre": h.nombre, "gasto_id": g.id, "mi_parte": pt.monto} for pt, g, h in filas]
+
+
+def _movimiento_mio_o_404(db: Session, usuario: UsuarioActual, movimiento_id: str) -> Movimiento:
+    mov = (
+        db.query(Movimiento)
+        .filter(Movimiento.id == movimiento_id, Movimiento.cuenta_id.in_(cuentas_ids_accesibles(db, usuario.id)))
+        .first()
+    )
+    if not mov:
+        raise HTTPException(status_code=404, detail="Movimiento no encontrado")
+    return mov
 
 
 def _invitacion_vigente(db: Session, usuario: UsuarioActual, token: str) -> InvitacionHogar:
@@ -454,8 +482,29 @@ def crear_gasto(hogar_id: str, data: GastoIn, db: Session = Depends(get_db), usu
         raise HTTPException(status_code=400, detail="Solo pueden participar miembros del hogar")
     if len({p.id for p in data.participantes}) != len(data.participantes):
         raise HTTPException(status_code=400, detail="Hay personas repetidas")
+    mov_origen = None
+    total = data.total
+    if data.movimiento_id:
+        if data.registrar_en_mi_cuenta:
+            raise HTTPException(status_code=400, detail="Este gasto ya está en tus movimientos: no se copia otra vez")
+        mov_origen = _movimiento_mio_o_404(db, usuario, data.movimiento_id)
+        if mov_origen.tipo != "expense":
+            raise HTTPException(status_code=400, detail="Solo se pueden compartir gastos")
+        cta = db.query(Cuenta).filter(Cuenta.id == mov_origen.cuenta_id).first()
+        if (getattr(cta, "moneda", None) or "COP").upper() != (h.moneda or "COP").upper():
+            raise HTTPException(status_code=400, detail="La cuenta de ese gasto debe estar en la misma moneda del parche")
+        ya = (
+            db.query(ParteGastoHogar.id)
+            .join(MiembroHogar, MiembroHogar.id == ParteGastoHogar.miembro_id)
+            .join(GastoHogar, GastoHogar.id == ParteGastoHogar.gasto_id)
+            .filter(ParteGastoHogar.movimiento_id == mov_origen.id, MiembroHogar.usuario_id == usuario.id)
+            .first()
+        )
+        if ya:
+            raise HTTPException(status_code=409, detail="Este gasto ya está compartido en un parche")
+        total = mov_origen.monto  # lo que de verdad pagué
     try:
-        partes = dividir(data.total, data.modo, [{"id": p.id, "valor": p.valor} for p in data.participantes], decimales_de(h.moneda))
+        partes = dividir(total, data.modo, [{"id": p.id, "valor": p.valor} for p in data.participantes], decimales_de(h.moneda))
     except DivisionInvalida as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -469,9 +518,9 @@ def crear_gasto(hogar_id: str, data: GastoIn, db: Session = Depends(get_db), usu
         if (cuenta.moneda or "COP").upper() != (h.moneda or "COP").upper():
             raise HTTPException(status_code=400, detail="La cuenta debe estar en la misma moneda del hogar")
 
-    fecha = data.fecha or ahora_co()
+    fecha = data.fecha or (mov_origen.fecha if mov_origen is not None and mov_origen.fecha else None) or ahora_co()
     g = GastoHogar(
-        hogar_id=h.id, descripcion=data.descripcion.strip(), categoria=data.categoria, total=data.total, moneda=h.moneda,
+        hogar_id=h.id, descripcion=data.descripcion.strip(), categoria=data.categoria or (mov_origen.categoria if mov_origen is not None else None), total=total, moneda=h.moneda,
         modo=data.modo, pagador_id=pagador, creado_por_id=yo.id, fecha=fecha,
     )
     db.add(g)
@@ -479,6 +528,8 @@ def crear_gasto(hogar_id: str, data: GastoIn, db: Session = Depends(get_db), usu
     filas_partes = {mid: ParteGastoHogar(gasto_id=g.id, miembro_id=mid, monto=monto) for mid, monto in partes.items()}
     db.add_all(filas_partes.values())
     mi_parte = partes.get(yo.id, 0.0)
+    if mov_origen is not None and yo.id in filas_partes:
+        filas_partes[yo.id].movimiento_id = mov_origen.id  # vínculo: este gasto es el movimiento que ya tenía
     if cuenta is not None and mi_parte > 0:  # solo MI parte, en MI cuenta (nada de otros miembros)
         mov = crear_movimiento(
             MovimientoCreate(

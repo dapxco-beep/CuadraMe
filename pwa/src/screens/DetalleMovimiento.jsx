@@ -23,6 +23,7 @@ import { BotonLapiz, EditorNombre, PistaBanco } from '../components/NombreEditab
 import { limpiarNombre, MIN_REPETICIONES_NOMBRE, nombreDe, tieneNombrePropio } from '../lib/tituloMovimiento'
 import { parchearEnCaches, quitarDeCaches } from '../lib/useEstadoLista'
 import InputMonto from '../components/InputMonto'
+import CompartirEnParche from '../components/CompartirEnParche'
 import {
   candidatosContraparte,
   esPosibleTraslado,
@@ -699,6 +700,10 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
             )
           }}
         />
+      )}
+
+      {!editando && !esTransferencia && (
+        <CompartirEnParche movimiento={movimiento} className="mx-5 mt-5" />
       )}
 
       {!editando && (
