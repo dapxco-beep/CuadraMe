@@ -1,0 +1,62 @@
+# Blueprint de Render para el servidor (API) de CuadraMe. Plan gratis.
+# Los valores con `sync: false` son secretos: se cargan en el panel o por API, nunca en este archivo.
+# Pasos y notas: docs/MIGRACION_RENDER.md
+services:
+  - type: web
+    name: cuadrame-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: virginia            # la más cercana a Colombia entre las de Render
+    healthCheckPath: /health
+    autoDeploy: false           # se despliega a mano, como en Railway
+    envVars:
+      # --- No secretas ---
+      - key: ENVIRONMENT
+        value: production
+      - key: PWA_URL
+        value: https://cuadrame.dapx.shop
+      - key: API_BASE_URL
+        value: https://api.cuadrame.dapx.shop
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: PYTHON_VERSION
+        value: "3.12"
+      # --- Secretas (cargar con los mismos valores que hoy tiene Railway) ---
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FERNET_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: BACKUP_PASSPHRASE
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY_PEM
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: CORS_ORIGINS_EXTRA
+        sync: false

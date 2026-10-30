@@ -14,7 +14,7 @@ import sys
 import httpx
 
 API = "https://api.cron-job.org"
-URL = "https://backend-production-aeab.up.railway.app/correos/cron/sincronizar"
+URL = os.environ.get("CUADRAME_API_BASE", "https://backend-production-aeab.up.railway.app").rstrip("/") + "/correos/cron/sincronizar"
 TITULO = "CuadraMe - leer correos de los bancos"
 
 
