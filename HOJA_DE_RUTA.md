@@ -1,8 +1,10 @@
 # CuadraMe — Hoja de ruta
 
-Última actualización: 2026-10-18. Estado: backend y frontend desplegados y estables en producción (Railway + Vercel). Todo lo marcado ✅ ya está en producción; lo marcado ⏳ necesita algo de ti antes de activarse; lo marcado 🔲 es trabajo pendiente de construir.
+Última actualización: 2026-11-05. Estado: backend y frontend desplegados y estables en producción (Render Oregón + Vercel; Railway ya no se usa). Todo lo marcado ✅ ya está en producción; lo marcado ⏳ necesita algo de ti antes de activarse; lo marcado 🔲 es trabajo pendiente de construir.
 
 ---
+
+> **Cambio de hosting (2026-11-05).** El API corre en Render plan gratis, región Oregón (junto a Supabase us-west-2), en `https://api.cuadrame.dapx.shop`; se despliega desde la rama `infra/render` (push + Deploy en Render). Donde este documento diga «Railway», léase «Render». Se duerme a los 15 min: la tarea de cron-job.org «mantener despierto» llama /health cada 10 min y la web avisa «Despertando el servidor…» si tarda. Detalle en `docs/MIGRACION_RENDER.md`.
 
 ## 🆕 Operación estándar y corpus de regresión (2026-10-18) — pendiente de tu aprobación
 

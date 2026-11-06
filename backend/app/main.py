@@ -223,7 +223,8 @@ def version():
     """Pública y sin datos sensibles: sirve para saber qué compilación del servidor responde.
     (/health no cambia: los monitores esperan {"ok": true}.)"""
     commit = (
-        os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+        os.environ.get("RENDER_GIT_COMMIT")  # Render lo pone solo en cada deploy
+        or os.environ.get("RAILWAY_GIT_COMMIT_SHA")
         or os.environ.get("GIT_COMMIT_SHA")
         or os.environ.get("SOURCE_COMMIT")
         or ""
