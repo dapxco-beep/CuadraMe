@@ -4,8 +4,8 @@ import { useDialogos } from '../lib/DialogosContext'
 
 // Caja de la clave del Atajo, pensada para personas no técnicas. Tres casos:
 //  1) Hay clave visible (recién creada o clave antigua en claro): se muestra con botón Copiar;
-//     si es nueva, aviso de que no se vuelve a mostrar.
-//  2) Ya existe pero guardada de forma segura: solo «empieza por cdm_ab12…» + «Crear una clave nueva».
+//     si es nueva, aviso de que la guarde (igual podrá volver a verla aquí).
+//  2) Existe pero de antes de poder verla: solo «empieza por cdm_ab12…» + «Crear una clave nueva».
 //  3) Aún no hay estado (cargando) o no hay clave.
 export default function ClaveAtajo({ clave, cargando, tieneClave, prefijo, recienCreada, crearNueva, grande = false, android = false }) {
   const { confirmar, avisar } = useDialogos()
@@ -26,8 +26,8 @@ export default function ClaveAtajo({ clave, cargando, tieneClave, prefijo, recie
     if (tieneClave) {
       const ok = await confirmar(
         android
-          ? 'La app de tu Android dejará de funcionar hasta que pegues la clave nueva en ella. Te mostraremos la clave nueva una sola vez para que la copies.'
-          : 'Tu Atajo del iPhone dejará de funcionar hasta que pegues la clave nueva en él. Te mostraremos la clave nueva una sola vez para que la copies.',
+          ? 'La app de tu Android dejará de funcionar hasta que pegues la clave nueva en ella. Te mostraremos la clave nueva para que la copies.'
+          : 'Tu Atajo del iPhone dejará de funcionar hasta que pegues la clave nueva en él. Te mostraremos la clave nueva para que la copies.',
         { titulo: '¿Crear una clave nueva?', confirmarTexto: 'Sí, crear clave nueva', peligro: true }
       )
       if (!ok) return
@@ -53,8 +53,8 @@ export default function ClaveAtajo({ clave, cargando, tieneClave, prefijo, recie
           <div role="alert" className="rounded-xl bg-warn-soft px-3 py-2.5 mb-2 flex items-start gap-2">
             <AlertTriangle size={16} className="shrink-0 mt-0.5" />
             <p className="text-xs leading-relaxed">
-              <strong>Cópiala ahora.</strong> Por tu seguridad, esta clave no se vuelve a mostrar. Si la pierdes,
-              podrás crear otra.
+              <strong>Esta es tu clave nueva.</strong> Cópiala y pégala en tu Atajo. Podrás volver a verla aquí
+              cuando quieras.
             </p>
           </div>
         )}
@@ -99,7 +99,7 @@ export default function ClaveAtajo({ clave, cargando, tieneClave, prefijo, recie
     <div data-testid="clave-guardada">
       {tieneClave ? (
         <p className="text-sm">
-          Tu clave empieza por <strong>{prefijo || 'cdm_…'}</strong>. Por seguridad ya no se puede mostrar completa.
+          Tu clave empieza por <strong>{prefijo || 'cdm_…'}</strong>. Si tu Atajo ya funciona, aparecerá completa aquí en cuanto se use una vez; si no, crea una nueva y desde ahí podrás verla siempre.
         </p>
       ) : (
         <p className="text-sm">Aún no tienes una clave para conectar {android ? 'la app' : 'tu Atajo'}.</p>
