@@ -245,3 +245,18 @@ describe('Débito vs crédito en la app', () => {
     expect(screen.getByTestId('aviso-pago-tarjeta')).toHaveTextContent('Esto no es un gasto nuevo, es pagar lo que ya compraste')
   })
 })
+
+describe('Aprende: el glosario va plegado', () => {
+  it('empieza cerrado, se abre con un toque y al buscar se abre solo', async () => {
+    montar(<Aprende />)
+    expect(screen.queryByTestId('glosario')).toBeNull()
+    const abrir = screen.getByRole('button', { name: /Glosario/ })
+    expect(abrir).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(abrir)
+    expect(screen.getByTestId('glosario')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /Glosario/ }))
+    expect(screen.queryByTestId('glosario')).toBeNull()
+    await userEvent.type(screen.getByLabelText('Buscar una lección o un término'), 'cupo')
+    expect(screen.getByTestId('glosario')).toBeInTheDocument()
+  })
+})

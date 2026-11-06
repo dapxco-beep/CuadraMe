@@ -41,7 +41,9 @@ def detectar_recurrentes(movimientos: list[dict]) -> list[dict]:
             if INTERVALO_MIN_DIAS <= dias <= INTERVALO_MAX_DIAS and monto_ok:
                 pares_validos += 1
 
-        if pares_validos == 0:
+        # Un pago fijo se repite con regularidad: al menos la mitad de los intervalos seguidos deben ser mensuales.
+        # (Antes bastaba UN par: un café que compras 20 veces con montos parecidos salía como «pago fijo».)
+        if pares_validos == 0 or pares_validos / (len(items_ordenados) - 1) < 0.5:
             continue
 
         ultimo = items_ordenados[-1]

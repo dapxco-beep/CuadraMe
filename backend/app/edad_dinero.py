@@ -66,9 +66,9 @@ def tendencia_edad(edad_actual: int, edad_anterior: int) -> str:
 def mensaje_edad(edad: int, tendencia: str) -> str:
     if edad == 0:
         return "Aún no hay suficiente historial para calcular esto."
-    base = f"Tu dinero dura en promedio {edad} días antes de gastarse."
+    base = f"Tu plata pasa en promedio {edad} días en tus cuentas antes de gastarse."
     if tendencia == "subiendo":
-        return base + " Vas mejorando tu colchón."
+        return base + " Cada vez rinde más."
     if tendencia == "bajando":
-        return base + " Está bajando, vale la pena revisar tus gastos."
+        return base + " Se está gastando más rápido que antes; vale la pena revisar tus gastos."
     return base + " Se mantiene estable."

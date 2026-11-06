@@ -17,6 +17,10 @@ def calc_health_score(ingresos: float, gastos: float, ahorro: float, num_movimie
     elif tasa_ahorro > 0:
         score += 10
         tips.append("Tu tasa de ahorro es muy baja, revisa tus gastos fijos")
+    elif ingresos == 0 and gastos == 0:
+        pass  # mes sin movimientos: no hay nada que alarmar (abajo se pide registrar más)
+    elif ingresos == 0:
+        tips.append("Este mes aún no registras ingresos")
     else:
         tips.append("¡Tus gastos superan tus ingresos! Revisa urgente")
 
@@ -28,6 +32,8 @@ def calc_health_score(ingresos: float, gastos: float, ahorro: float, num_movimie
     elif burn_rate <= 0.9:
         score += 10
         tips.append("Tu burn rate es alto, considera reducir gastos variables")
+    elif ingresos == 0 and gastos == 0:
+        pass
     else:
         tips.append("Burn rate crítico: estás usando más del 90% de tus ingresos")
 

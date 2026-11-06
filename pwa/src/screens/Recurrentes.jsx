@@ -104,13 +104,13 @@ export default function Recurrentes() {
         </button>
       </header>
 
-      <p className="mx-5 mt-1 text-xs text-ink-soft">Lo que pagas o recibes cada mes, como el arriendo, una suscripción o la nómina. Anótalo una vez y no se te olvida.</p>
+      <p className="mx-5 mt-1 text-xs text-ink-soft">Lo que pagas o recibes cada mes: arriendo, suscripciones, nómina.</p>
 
       {!cargando && sugerencias.length > 0 && (
         <section className="mx-5 mt-4">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles size={16} className="text-accent" />
-            <h2 className="text-sm font-semibold">Parece que estos se repiten cada mes</h2>
+            <h2 className="text-sm font-semibold">Detectamos estos pagos fijos</h2>
           </div>
           <div className="flex flex-col gap-2">
             {sugerencias.map((s) => (
@@ -118,7 +118,7 @@ export default function Recurrentes() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{s.descripcion}</p>
                   <p className="text-xs text-ink-soft">
-                    {formatCOP(s.monto_promedio)} · {formatVeces(s.ocurrencias)} detectado
+                    {formatCOP(s.monto_promedio)} · {formatVeces(s.ocurrencias)} detectado{s.tipo === 'income' ? ' · ingreso' : ''}
                   </p>
                 </div>
                 <button
@@ -148,6 +148,9 @@ export default function Recurrentes() {
             Reintentar
           </button>
         </div>
+      ) : recs.length === 0 && sugerencias.length > 0 ? (
+        // Con sugerencias a la vista no se muestra el vacío grande: bastan las sugerencias y un botón.
+        <div className="mx-5 mt-4"><button onClick={() => setMostrarForm(true)} className="btn btn-sm">Agregar otro pago fijo</button></div>
       ) : recs.length === 0 ? (
         <EstadoVacio icono={Repeat} titulo="Aún no tienes pagos fijos" texto="Arriendo, suscripciones, nómina: anótalos una vez y te avisamos cuando se acerquen." className="mx-5 mt-6">
           <button onClick={() => setMostrarForm(true)} className="btn btn-primario btn-sm mt-4">Agregar un pago fijo</button>

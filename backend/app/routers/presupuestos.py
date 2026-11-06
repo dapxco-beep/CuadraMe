@@ -140,6 +140,9 @@ def en_mi_bolsillo(
     # ?incluir_cuotas=true también se restan del disponible (para quien prefiere verlo así).
     cuotas_tarjeta = comprometido_cuotas(db, usuario.id, ahora.year, ahora.month, ahora.date(), conv)
     disponible_real = saldo_total - recurrentes_pendientes - aportes_comprometidos
+    # Lo que de verdad se puede GASTAR: sin las inversiones (CDT, fondos), que no se tocan para el día a día.
+    inversiones = sum(conv.contar(c.saldo, c.moneda) for c in cuentas if c.tipo == "inversion")
+    disponible_liquido = disponible_real - inversiones
     if incluir_cuotas:
         disponible_real -= cuotas_tarjeta
 
@@ -152,6 +155,9 @@ def en_mi_bolsillo(
         cuotas_tarjeta_mes=cuotas_tarjeta,
         disponible_real=round(disponible_real),
         disponible_real_por_dia=round(disponible_real / dias_restantes),
+        inversiones=round(inversiones),
+        disponible_liquido=round(disponible_liquido),
+        disponible_liquido_por_dia=round(disponible_liquido / dias_restantes),
         dias_restantes_mes=dias_restantes,
     )
 

@@ -128,7 +128,7 @@ export default function Insights() {
 
           {edadDinero && edadDinero.dias > 0 && (
             <section className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
-              <p className="text-xs text-ink-soft">Tu colchón te alcanza para</p>
+              <p className="text-xs text-ink-soft">Edad de tu plata</p>
               <div className="flex items-center gap-4 mt-1">
                 <div className="w-14 h-14 rounded-full bg-accent-soft flex items-center justify-center shrink-0">
                   <Clock size={20} className="text-accent" />
@@ -138,9 +138,8 @@ export default function Insights() {
                   <p className="text-xs text-ink-soft mt-0.5">{edadDinero.mensaje}</p>
                 </div>
               </div>
-              <p className="text-[11px] text-ink-soft mt-3 pt-3 border-t border-line">
-                Son los días que podrías vivir con lo que tienes hoy si dejaras de recibir ingresos.
-                Entre más días, más tranquilo ante un imprevisto.
+              <p className="text-xs text-ink-soft mt-3 pt-3 border-t border-line">
+                Cuántos días, en promedio, espera un peso en tus cuentas antes de gastarse. Más días = más margen.
               </p>
             </section>
           )}

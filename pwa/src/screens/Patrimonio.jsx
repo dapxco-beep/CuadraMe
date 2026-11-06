@@ -236,16 +236,16 @@ function TarjetaNeto({ datos }) {
           <p className="opacity-90">Cuentas</p>
           <p className="font-semibold tabular-nums">{formatCOP(datos.total_cuentas)}</p>
           {datos.deudas_tarjeta > 0 && (
-            <p className="opacity-80 text-[10px]" data-testid="nota-tarjetas">
-              incluye {formatCOP(datos.deudas_tarjeta)} de tarjetas
+            <p className="opacity-80 text-xs" data-testid="nota-tarjetas">
+              ya resta {formatCOP(datos.deudas_tarjeta)} de tarjetas
             </p>
           )}
         </div>
         <div>
           <p className="opacity-90">Deudas</p>
-          <p className="font-semibold tabular-nums">-{formatCOP(datos.total_deudas)}</p>
+          <p className="font-semibold tabular-nums">{datos.total_deudas > 0 ? '-' : ''}{formatCOP(datos.total_deudas)}</p>
           {datos.pasivos_duplicados?.length > 0 && (
-            <p className="opacity-80 text-[10px]" data-testid="nota-duplicadas">
+            <p className="opacity-80 text-xs" data-testid="nota-duplicadas">
               «{datos.pasivos_duplicados[0].nombre}» no se suma dos veces
             </p>
           )}

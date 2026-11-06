@@ -113,6 +113,7 @@ export default function Aprende() {
   const [params] = useSearchParams()
   const inicial = params.get('l')
   const [consulta, setConsulta] = useState('')
+  const [verGlosario, setVerGlosario] = useState(false) // plegado: son ~20 definiciones y alargaban mucho la pantalla
   const [abierta, setAbierta] = useState(LECCIONES.some((l) => l.id === inicial) ? inicial : null)
 
   // Un enlace directo (/aprende?l=tarjeta-de-credito) deja esa lección abierta y a la vista.
@@ -141,7 +142,7 @@ export default function Aprende() {
       </header>
 
       <p className="mx-5 mt-1 t-cuerpo text-ink-soft">
-        Lecciones de un minuto y un glosario para entender tu plata, con ejemplos en pesos colombianos.
+        Lecciones de 1 minuto y un glosario.
       </p>
 
       <div className="mx-5 mt-3">
@@ -188,9 +189,18 @@ export default function Aprende() {
 
       {terminos.length > 0 && (
         <section className="mx-5 mt-6" aria-labelledby="aprende-glosario">
-          <h2 id="aprende-glosario" className="t-kicker mb-2 flex items-center gap-2">
-            <Icono icono={Wallet} tam="sm" /> Glosario
+          <h2 id="aprende-glosario" className="t-kicker mb-2">
+            <button
+              type="button"
+              onClick={() => setVerGlosario((v) => !v)}
+              aria-expanded={verGlosario || buscando}
+              className="w-full min-h-11 flex items-center gap-2 text-left"
+            >
+              <Icono icono={Wallet} tam="sm" /> Glosario
+              <span className="ml-auto font-normal normal-case text-ink-soft">{buscando ? '' : verGlosario ? 'Ocultar' : `Ver los ${GLOSARIO.length} términos`}</span>
+            </button>
           </h2>
+          {(verGlosario || buscando) && (
           <dl className="tarjeta-lista divide-y divide-line" data-testid="glosario">
             {terminos.map((t) => (
               <div key={t.id} id={`termino-${t.id}`} className="px-4 py-3">
@@ -199,8 +209,6 @@ export default function Aprende() {
               </div>
             ))}
           </dl>
-          {!buscando && GLOSARIO.length > 0 && (
-            <p className="t-apoyo mt-2">{GLOSARIO.length} términos.</p>
           )}
         </section>
       )}

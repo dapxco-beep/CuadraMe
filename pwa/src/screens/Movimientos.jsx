@@ -147,7 +147,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
                 type="button"
                 onClick={() => (modoSel ? onToggle(m.id) : onChip(m))}
                 aria-label={`Cambiar categoría de ${m.descripcion}`}
-                className="relative before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-[''] inline-flex items-center gap-1 text-xs text-ink-soft rounded-full border border-line px-2.5 min-h-[32px] hover:border-accent hover:text-ink"
+                className="relative before:absolute before:-inset-y-2 before:inset-x-0 before:content-[''] inline-flex items-center gap-1 text-xs text-ink-soft rounded-full border border-line px-2.5 min-h-[32px] hover:border-accent hover:text-ink"
               >
                 <span aria-hidden="true">{icono}</span> {m.categoria}{m.subcategoria ? ` · ${m.subcategoria}` : ''}
                 <ChevronDown size={16} aria-hidden="true" />

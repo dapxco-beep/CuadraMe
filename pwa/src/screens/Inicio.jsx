@@ -231,7 +231,8 @@ export default function Inicio() {
   const diferencia = bolsillo ? estadoCu.diferencia : null
   // Solo «falta» pinta el isotipo roto; sin datos o parcial no se afirma ni se niega nada.
   const cuadra = estadoCu.estado === 'cuadra' ? true : estadoCu.estado === 'falta' ? false : null
-  const gastarHoy = bolsillo ? bolsillo.disponible_real_por_dia : null
+  // Lo que se puede gastar por día NO cuenta las inversiones (CDT, fondos): son plata que no se toca para el día a día.
+  const gastarHoy = bolsillo ? (bolsillo.disponible_liquido_por_dia ?? bolsillo.disponible_real_por_dia) : null
   const antiguo = (() => {
     const t = Date.parse(session?.user?.created_at || '')
     return Number.isFinite(t) && Date.now() - t > DIAS_CUENTA_NUEVA * 86_400_000

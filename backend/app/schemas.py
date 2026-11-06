@@ -524,6 +524,10 @@ class EnMiBolsillo(BaseModel):
     cuotas_tarjeta_mes: float = 0
     disponible_real: float
     disponible_real_por_dia: float
+    # Igual que disponible_real, pero SIN inversiones (lo que se puede gastar hoy). Los de arriba se conservan.
+    inversiones: float = 0
+    disponible_liquido: float | None = None
+    disponible_liquido_por_dia: float | None = None
     dias_restantes_mes: int
     moneda_base: str = "COP"  # los montos de arriba vienen en esta moneda
     monedas_sin_tasa: list[str] = []  # cuentas en estas monedas NO están sumadas
