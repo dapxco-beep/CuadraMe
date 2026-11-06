@@ -149,6 +149,10 @@ SECCIONES: dict[str, dict[str, str]] = {
         "xbox": "Ocio", "epic games": "Ocio", "riot games": "Ocio", "tinder": "Ocio", "bumble": "Ocio",
         "duolingo": "Ocio", "libreria": "Ocio", "panamericana": "Ocio",
         "ticketmaster": "Ocio", "roblox": "Ocio", "salitre magico": "Ocio", "cerveceria": "Ocio", "estanquillo": "Ocio",
+        # Lo que la gente escribe al enviar plata a mano («parche con Laura»): el atajo de notificaciones lo pregunta.
+        "parche": "Ocio", "parchar": "Ocio", "rumba": "Ocio", "rumbear": "Ocio", "farra": "Ocio", "trago": "Ocio",
+        "tragos": "Ocio", "birra": "Ocio", "birras": "Ocio", "cerveza": "Ocio", "cervezas": "Ocio", "guaro": "Ocio",
+        "aguardiente": "Ocio", "paseo": "Ocio", "fiesta": "Ocio",
     },
     "Suscripciones": {
         "netflix": "Suscripciones", "spotify": "Suscripciones", "disney": "Suscripciones",

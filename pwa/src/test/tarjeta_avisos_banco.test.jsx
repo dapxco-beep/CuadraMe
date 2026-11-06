@@ -1,10 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const api = vi.hoisted(() => ({
   conexionesEstado: vi.fn(),
   estadoNotificaciones: vi.fn(),
+  reglasNotificacion: vi.fn(),
+  borrarReglaNotificacion: vi.fn(),
 }))
 vi.mock('../lib/api', () => ({ api }))
 vi.mock('../lib/push', () => ({ pushSoportado: () => false, estadoPermiso: async () => 'default', activarPush: vi.fn() }))
@@ -31,6 +34,8 @@ function montar() {
 }
 
 describe('Tarjeta «Registro automático desde el banco»', () => {
+  beforeEach(() => api.reglasNotificacion.mockResolvedValue([]))
+
   it('marca qué bancos faltan por conectar y enlaza el atajo', async () => {
     api.conexionesEstado.mockResolvedValue(ESTADO)
     api.estadoNotificaciones.mockResolvedValue([
@@ -69,4 +74,23 @@ describe('Tarjeta «Registro automático desde el banco»', () => {
     await screen.findByTestId('tarjeta-atajo')
     expect(screen.queryByTestId('tarjeta-avisos-banco')).toBeNull()
   })
+
+  it('muestra lo que aprendió el atajo y deja olvidarlo', async () => {
+    api.conexionesEstado.mockResolvedValue(ESTADO)
+    api.estadoNotificaciones.mockResolvedValue([
+      { cuenta_id: 'a', cuenta: 'Nequi', app: 'Nequi', ultimo_aviso: new Date().toISOString(), avisos_30d: 1 },
+    ])
+    api.reglasNotificacion.mockResolvedValue([
+      { id: 'r1', app: 'Nequi', plantilla: '* tu plata *', significado: 'el aviso no trae monto: te lo pregunto', usos: 2 },
+    ])
+    api.borrarReglaNotificacion.mockResolvedValue({ ok: true })
+    montar()
+    const lista = await screen.findByTestId('reglas-aprendidas')
+    expect(lista).toHaveTextContent('Lo que aprendió tu atajo (1)')
+    expect(lista).toHaveTextContent('el aviso no trae monto')
+    await userEvent.click(screen.getByRole('button', { name: /Olvidar lo aprendido de Nequi/ }))
+    expect(api.borrarReglaNotificacion).toHaveBeenCalledWith('r1')
+    await waitFor(() => expect(screen.queryByTestId('reglas-aprendidas')).toBeNull())
+  })
 })
+

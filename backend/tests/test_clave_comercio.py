@@ -126,7 +126,7 @@ def test_hay_al_menos_80_casos():
 
 def test_palabra_completa_no_prefijo():
     # 'ara' (tiendas Ara) no se activa dentro de 'para' / 'paraguas'; 'pan' no dentro de 'japan'
-    assert clasificar_por_diccionario("PAGO PARA LA FIESTA") is None
+    assert clasificar_por_diccionario("PAGO PARA LA OFICINA") is None
     assert clasificar_por_diccionario("TOURS JAPAN") is None
 
 
