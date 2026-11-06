@@ -251,14 +251,28 @@ function TarjetaAtajo({ a, recargar }) {
 // leer. «Conectado» = ya llegó algún aviso de esa cuenta; si no, «Falta conectar». Sin cuentas reconocidas no se muestra.
 function TarjetaAvisosBanco() {
   const [filas, setFilas] = useState(null)
+  const [reglas, setReglas] = useState([])
   useEffect(() => {
     let vivo = true
     Promise.resolve()
       .then(() => api.estadoNotificaciones())
       .then((r) => vivo && setFilas(Array.isArray(r) ? r : []))
       .catch(() => vivo && setFilas([]))
+    Promise.resolve()
+      .then(() => api.reglasNotificacion())
+      .then((r) => vivo && setReglas(Array.isArray(r) ? r : []))
+      .catch(() => {})
     return () => { vivo = false }
   }, [])
+
+  async function olvidar(id) {
+    try {
+      await api.borrarReglaNotificacion(id)
+      setReglas((rs) => rs.filter((r) => r.id !== id))
+    } catch {
+      /* si falla, la regla sigue en la lista y se puede reintentar */
+    }
+  }
   if (!filas || filas.length === 0) return null
   const faltan = filas.filter((f) => !f.ultimo_aviso)
   const semaforo = faltan.length === 0 ? 'verde' : 'ambar'
@@ -285,6 +299,26 @@ function TarjetaAvisosBanco() {
       >
         <Smartphone size={16} /> Instalar el atajo en mi iPhone
       </a>
+      {reglas.length > 0 && (
+        <details className="mt-3 text-xs text-ink-soft" data-testid="reglas-aprendidas">
+          <summary className="cursor-pointer font-semibold text-ink">Lo que aprendió tu atajo ({reglas.length})</summary>
+          <p className="mt-2 leading-relaxed">
+            Cuando respondes una pregunta del atajo, CuadraMe recuerda la forma del aviso (sin guardar el texto, nombres ni montos) para no volver a preguntar.
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {reglas.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2">
+                <span className="min-w-0">
+                  <span className="font-semibold text-ink">{r.app}</span>: {r.significado}
+                </span>
+                <button onClick={() => olvidar(r.id)} className="shrink-0 underline font-semibold text-ink" aria-label={`Olvidar lo aprendido de ${r.app}`}>
+                  Olvidar
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       <details className="mt-3 text-xs text-ink-soft">
         <summary className="cursor-pointer font-semibold text-ink">Cómo conectar cada banco (3 minutos)</summary>
         <ol className="list-decimal pl-5 mt-2 space-y-1.5 leading-relaxed">

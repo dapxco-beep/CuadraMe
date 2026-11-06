@@ -52,3 +52,11 @@ def test_ruido_no_se_registra_ni_pregunta(titulo, texto):
 def test_android_no_cambia():
     n = interpretar("com.nequi.MobileApp", "Envío", "DANIEL PARRADO te envió 1, ¡lo mejor!")
     assert n.tipo == "income" and n.app == "Nequi"
+
+
+@pytest.mark.parametrize("nota", ["parche con Laura", "rumba con amigos", "birras del viernes", "trago con el parche"])
+def test_la_nota_del_atajo_con_jerga_cae_en_ocio(nota):
+    from app.comercios_conocidos import clasificar_por_diccionario
+
+    r = clasificar_por_diccionario(nota)
+    assert r and r["categoria"] == "Ocio"

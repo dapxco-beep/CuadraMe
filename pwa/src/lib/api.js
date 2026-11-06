@@ -617,6 +617,9 @@ export const api = {
   conexionesEstado: () => request('/conexiones/estado'),
   // Por cada cuenta tuya que el atajo de notificaciones sabe leer: si ya llegó algún aviso y cuándo.
   estadoNotificaciones: () => request('/movimientos/estado-notificaciones'),
+  // Lo que el atajo aprendió de cómo avisa tu banco (plantillas anónimas, nunca el texto del aviso).
+  reglasNotificacion: () => request('/movimientos/reglas-notificacion'),
+  borrarReglaNotificacion: (id) => request(`/movimientos/reglas-notificacion/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   // Pantalla Sincronización: grilla cuentas x meses, tareas y cola de categorías por preguntar.
   // `hasta` ('YYYY-MM') desplaza la ventana de meses; el backend actual la ignora (siempre los últimos 6).
   sincronizacionEstado: (hasta) => request(`/sincronizacion/estado${hasta ? `?hasta=${hasta}` : ''}`),
