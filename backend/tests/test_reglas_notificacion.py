@@ -93,3 +93,19 @@ def test_reglas_son_personales_y_se_pueden_borrar():
     USUARIO["actual"] = UsuarioActual(id="rn-5", email="rn-5@test.com", nombre="rn-5")
     assert client.delete(f"/movimientos/reglas-notificacion/{regla['id']}").status_code == 200
     assert client.get("/movimientos/reglas-notificacion").json() == []
+
+
+def test_migracion_crea_la_tabla_sin_errores_de_sintaxis():
+    """Los tests usan create_all; esto ejecuta el SQL REAL de la migración (un `DEFAULT ''` mal escapado tumbó un despliegue)."""
+    from sqlalchemy import create_engine, text
+
+    from app.migraciones import MIGRACIONES
+
+    sentencias = next(s for nombre, s in MIGRACIONES if nombre == "0013_reglas_notificacion")
+    motor = create_engine("sqlite://")
+    with motor.begin() as conn:
+        for sql in sentencias:
+            conn.execute(text(sql))
+        conn.execute(text("INSERT INTO reglas_notificacion (id, usuario_id) VALUES ('1', 'u')"))
+        fila = conn.execute(text("SELECT app, esqueleto FROM reglas_notificacion")).one()
+    assert tuple(fila) == ("", "")
