@@ -99,7 +99,7 @@ Antes de un despliegue que cambie la base de datos o variables nuevas, revisa `d
 ## 5. Crons de cron-job.org (los crea el dueño)
 
 El backend no programa nada solo. Sin estos crons, los correos solo entran al abrir la app y no salen avisos.
-Todos son `POST` a `https://backend-production-aeab.up.railway.app<ruta>` con la cabecera `X-Cron-Secret`
+Todos son `POST` a `https://api.cuadrame.dapx.shop<ruta>` con la cabecera `X-Cron-Secret`
 (el mismo valor que `CRON_SECRET` en Railway; **nunca va en el repo**), zona horaria `America/Bogota`.
 
 Se crean con los scripts (muestran qué harían y solo crean con `--aplicar`; las llaves se pasan por variable de

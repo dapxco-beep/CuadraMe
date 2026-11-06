@@ -13,7 +13,7 @@
 // a la que quieres que se asignen estos movimientos (ej. "Nequi", "Bancolombia").
 // Si lo dejas vacío, usa la primera cuenta del usuario.
 
-const API_URL = "https://backend-production-aeab.up.railway.app/movimientos/rapido";
+const API_URL = "https://api.cuadrame.dapx.shop/movimientos/rapido";
 const API_KEY = "PEGA_AQUI_TU_API_KEY";
 const CUENTA = ""; // ej: "Nequi"
 

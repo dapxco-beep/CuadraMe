@@ -11,7 +11,7 @@ iOS no le dice al atajo qué app se cerró. Por eso el atajo de cierre le pregun
 
 En todos los casos el movimiento queda **por confirmar**. Al abrir la app, el cliente lo confirma, lo edita o lo descarta. Con el extracto, la conciliación lo cruza por fecha, hora y monto y lo completa con el destinatario real.
 
-URL del servidor: `https://backend-production-aeab.up.railway.app/movimientos/rapido`
+URL del servidor: `https://api.cuadrame.dapx.shop/movimientos/rapido`
 
 ## Atajo 1 · CuadraMe Apple Pay
 

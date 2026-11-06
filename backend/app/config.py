@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
     fernet_key: str = ""
-    api_base_url: str = "https://backend-production-aeab.up.railway.app"
+    api_base_url: str = "https://api.cuadrame.dapx.shop"
     pwa_url: str = "https://cuadrame.dapx.shop"
     vapid_public_key: str = ""
     vapid_private_key_pem: str = ""

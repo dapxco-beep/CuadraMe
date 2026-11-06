@@ -1,7 +1,7 @@
 // Textos largos de la sección «Avanzado» del registro automático (Android con Tasker, Siri, armado a mano).
 // Viven aquí para que la pantalla principal quede corta y sin jerga. Sin React.
-export const API_URL = 'https://backend-production-aeab.up.railway.app/movimientos/rapido'
-export const API_URL_VOZ = 'https://backend-production-aeab.up.railway.app/movimientos/rapido-voz'
+export const API_URL = 'https://api.cuadrame.dapx.shop/movimientos/rapido'
+export const API_URL_VOZ = 'https://api.cuadrame.dapx.shop/movimientos/rapido-voz'
 
 export const JSON_DEL_ATAJO = `{
   "comercio": "<Comercio de la transacción>",

@@ -11,7 +11,7 @@
 // 3. Agrega después una acción "HTTP Request" (POST) — o deja que este mismo
 //    JavaScriptlet haga el POST con XMLHttpRequest (Tasker lo soporta).
 
-var API_URL = "https://backend-production-aeab.up.railway.app/movimientos/rapido";
+var API_URL = "https://api.cuadrame.dapx.shop/movimientos/rapido";
 var API_KEY = "PEGA_AQUI_TU_API_KEY";
 var CUENTA = ""; // ej: "Bancolombia" — vacío usa la primera cuenta del usuario
 

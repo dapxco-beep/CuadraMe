@@ -66,7 +66,7 @@ CuadraMe <hola@cuadrame.dapx.shop>
 3. Ejecuta el cron a mano (en PowerShell, con el secreto en una variable de entorno de tu equipo, no pegado en chat):
 
 ```
-curl.exe -X POST https://backend-production-aeab.up.railway.app/resumen/cron/semanal -H "X-Cron-Secret: $env:CRON_SECRET"
+curl.exe -X POST https://api.cuadrame.dapx.shop/resumen/cron/semanal -H "X-Cron-Secret: $env:CRON_SECRET"
 ```
 
 4. Respuesta esperada: `{"ok": true, "enviados": 1, ...}`. Repetirlo da `ya_enviados: 1` (no duplica). Llega «Tu semana en CuadraMe».

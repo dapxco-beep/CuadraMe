@@ -17,7 +17,7 @@ import sys
 
 import httpx
 
-BASE = "https://backend-production-aeab.up.railway.app"
+BASE = "https://api.cuadrame.dapx.shop"
 TZ = "America/Bogota"
 
 # (título, ruta, horas, minutos, días-de-semana [-1 = todos; 0=domingo])

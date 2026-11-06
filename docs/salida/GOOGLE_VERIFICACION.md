@@ -65,7 +65,7 @@ Otros puntos a verificar (no son brechas de código):
 | Términos y condiciones públicos | `https://cuadrame.dapx.shop/#/legal/terminos` | Incógnito |
 | Nombre de la app en el consentimiento = el de la web («CuadraMe»); logo 120×120 px | Cargado | Branding |
 | Correo de soporte y de contacto del desarrollador (idealmente de dominio propio) | Definido | Branding |
-| URI de redirección autorizada = `{API_BASE_URL}/correos/oauth/callback` (hoy `https://backend-production-aeab.up.railway.app/correos/oauth/callback`) | Igual al código | Credentials → cliente OAuth |
+| URI de redirección autorizada = `{API_BASE_URL}/correos/oauth/callback` (hoy `https://api.cuadrame.dapx.shop/correos/oauth/callback`) | Igual al código | Credentials → cliente OAuth |
 | El dominio del callback es de Railway, no tuyo: Google puede pedir dominio verificado. Mejor: apuntar `api.cuadrame.dapx.shop` a Railway y cambiar `API_BASE_URL` y el URI | Recomendado | n/a |
 | Video de demostración en YouTube (**no listado**) | Pendiente | Sección 4 |
 | Justificación del scope (en inglés) | Lista abajo | Sección 3 |
