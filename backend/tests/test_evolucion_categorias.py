@@ -46,6 +46,8 @@ def datos():
 
     def mv(cuenta, usuario, tipo, monto, desc, n, cat, sub=None, dia=10):
         a, m = _mes_atras(n)
+        if n == 0:
+            dia = min(dia, ahora_co().day)  # el mes actual nunca cae en el futuro (si no, falla los primeros 9 dias del mes)
         db.add(Movimiento(usuario_id=usuario.id, cuenta_id=cuenta.id, fecha=datetime(a, m, dia, 12), descripcion=desc,
                           categoria=cat, subcategoria=sub, tipo=tipo, monto=monto, fuente="manual", notas=""))
 
