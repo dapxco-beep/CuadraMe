@@ -1,0 +1,160 @@
+"""Genera «CuadraMe Notificaciones.shortcut» (sin firmar) para el disparador «Notificación» de iOS 27.
+
+Uso:   python tools/generar_atajo_notificaciones.py [--base URL] [--salida archivo]
+Firma (en el Mac, basta el Apple ID gratis):
+       shortcuts sign -m anyone -i "CuadraMe Notificaciones.shortcut" -o "CuadraMe Notificaciones firmado.shortcut"
+
+Qué hace el atajo: manda el texto de la notificación a /movimientos/rapido-notificacion (el mismo
+endpoint de Android; el servidor lee cada banco). Según `motivo` de la respuesta (y el servidor APRENDE la respuesta de cada persona; ver reglas_notificacion.py):
+  - pedir_monto            -> plata ENVIADA (el banco no dice cuánto): pregunta monto y «¿para qué o para quién?»
+                              y lo registra (misma ruta, con la respuesta); ese texto es lo que categoriza el gasto.
+  - pedir_tipo             -> hay monto pero no se sabe si entró o salió: pregunta «¿Entró o salió plata?».
+  - no_parece_un_movimiento -> no hace nada (ofertas, códigos...).
+  - (sin motivo)           -> se registró: muestra el aviso («Ingreso de $X de Laura. Confírmalo en CuadraMe»).
+El banco se elige al instalar (o con --banco): el mismo archivo sirve para todos. Un banco nuevo no necesita cambios aquí.
+
+La clave API NO va dentro del archivo: se pide al instalar el atajo (preguntas de importación), así el
+mismo enlace de iCloud sirve para todos los usuarios.
+
+OJO: escrito sin poder probarlo en un iPhone. Los identificadores de acción son los clásicos de Atajos;
+la entrada del atajo («Entrada del atajo») es lo que el disparador le pasa. Si iOS 27 cambia algo,
+abre el archivo en Atajos y corrige esa acción a mano."""
+import argparse
+import plistlib
+import uuid
+
+OBJ = "￼"  # marcador de «aquí va una variable» en los textos de Atajos
+
+
+def _texto(s: str) -> dict:
+    return {"Value": {"string": s}, "WFSerializationType": "WFTextTokenString"}
+
+
+def _con_variable(prefijo: str, variable: dict, sufijo: str = "") -> dict:
+    """Texto con UNA variable incrustada: `prefijo` + variable + `sufijo`."""
+    return {
+        "Value": {"string": f"{prefijo}{OBJ}{sufijo}", "attachmentsByRange": {f"{{{len(prefijo)}, 1}}": variable}},
+        "WFSerializationType": "WFTextTokenString",
+    }
+
+
+ENTRADA = {"Type": "ExtensionInput"}  # «Entrada del atajo»: lo que manda la automatización
+
+
+def _salida(uid: str, nombre: str) -> dict:
+    return {"Type": "ActionOutput", "OutputUUID": uid, "OutputName": nombre}
+
+
+def _dic(pares: list[tuple[str, dict]]) -> dict:
+    return {
+        "Value": {"WFDictionaryFieldValueItems": [
+            {"WFItemType": 0, "WFKey": _texto(k), "WFValue": v} for k, v in pares]},
+        "WFSerializationType": "WFDictionaryFieldValue",
+    }
+
+
+def _accion(identificador: str, **parametros) -> dict:
+    return {"WFWorkflowActionIdentifier": f"is.workflow.actions.{identificador}",
+            "WFWorkflowActionParameters": parametros}
+
+
+def _post(url: str, clave: dict, cuerpo: list[tuple[str, dict]], uid: str) -> dict:
+    return _accion(
+        "downloadurl", UUID=uid, WFURL=url, WFHTTPMethod="POST", WFHTTPBodyType="JSON",
+        WFHTTPHeaders=_dic([("X-Api-Key", clave)]), WFJSONValues=_dic(cuerpo))
+
+
+def _valor(clave: str, de: str, uid: str) -> dict:
+    return _accion("getvalueforkey", UUID=uid, WFDictionaryKey=clave,
+                   WFInput={"Value": _salida(de, "Contenido de la URL"), "WFSerializationType": "WFTextTokenAttachment"})
+
+
+def _si_igual(grupo: str, variable_uid: str, nombre: str, valor: str, dentro: list[dict], si_no: list[dict] | None = None):
+    inicio = _accion(
+        "conditional", GroupingIdentifier=grupo, WFControlFlowMode=0, WFCondition="Equals", WFConditionalActionString=valor,
+        WFInput={"Type": "Variable", "Variable": {"Value": _salida(variable_uid, nombre), "WFSerializationType": "WFTextTokenAttachment"}})
+    medio = _accion("conditional", GroupingIdentifier=grupo, WFControlFlowMode=1)
+    fin = _accion("conditional", GroupingIdentifier=grupo, WFControlFlowMode=2, UUID=str(uuid.uuid4()).upper())
+    return [inicio, *dentro, medio, *(si_no or []), fin]
+
+
+def construir(base: str, banco: str = "Nequi") -> dict:
+    u = lambda: str(uuid.uuid4()).upper()  # noqa: E731
+    id_clave, id_banco, id_post, id_motivo, id_msg = u(), u(), u(), u(), u()
+    id_monto, id_para, id_rapido, id_resp = u(), u(), u(), u()
+    id_monto2, id_com2, id_tipo, id_rapido2, id_resp2 = u(), u(), u(), u(), u()
+    clave = _con_variable("", _salida(id_clave, "Texto"))
+    nombre_banco = _con_variable("", _salida(id_banco, "Texto"))
+    entrada_texto = lambda uid, n="Entrada proporcionada": _con_variable("", _salida(uid, n))  # noqa: E731
+    aviso = lambda uid: _accion("notification", WFNotificationActionTitle="CuadraMe",  # noqa: E731
+                                WFNotificationActionBody=_con_variable("", _salida(uid, "Valor del diccionario")))
+
+    acciones = [
+        # 0: la clave API y 1: el banco (las dos se preguntan al instalar el atajo)
+        _accion("gettext", UUID=id_clave, WFTextActionText=""),
+        _accion("gettext", UUID=id_banco, WFTextActionText=banco),
+        # El texto crudo de la notificación (título y cuerpo juntos): el servidor lo lee, no el atajo
+        _post(f"{base}/movimientos/rapido-notificacion", clave,
+              [("paquete", nombre_banco), ("titulo", _texto("")), ("texto", _con_variable("", ENTRADA))], id_post),
+        _valor("motivo", id_post, id_motivo),
+        _valor("mensaje", id_post, id_msg),
+    ]
+    # Segunda llamada con el MISMO texto + la respuesta de la persona: el servidor registra y aprende la forma del
+    # aviso, así la próxima vez de este banco ya no pregunta.
+    def responder(uid, monto_v, tipo_v, nota_v):
+        return _post(f"{base}/movimientos/rapido-notificacion", clave,
+                     [("paquete", nombre_banco), ("titulo", _texto("")), ("texto", _con_variable("", ENTRADA)),
+                      ("monto", monto_v), ("tipo", tipo_v), ("nota", nota_v)], uid)
+
+    # Salió plata y el aviso no dice cuánto: se pregunta monto y para qué (eso categoriza el gasto)
+    pide_monto = [
+        _accion("ask", UUID=id_monto, WFAskActionPrompt="¿Cuánto enviaste?", WFInputType="Number"),
+        _accion("ask", UUID=id_para, WFAskActionPrompt="¿Para qué o para quién? (ej. parche con Laura)", WFInputType="Text"),
+        responder(id_rapido, entrada_texto(id_monto), _texto("gasto"), entrada_texto(id_para)),
+        _valor("mensaje", id_rapido, id_resp),
+        aviso(id_resp),
+    ]
+    # Hay monto pero el texto no dice si entró o salió: se pregunta (el servidor entiende «Gasto»/«Ingreso»)
+    pide_tipo = [
+        _valor("monto", id_post, id_monto2),
+        _valor("comercio", id_post, id_com2),
+        _accion("choosefromlist", UUID=id_tipo, WFChooseFromListActionPrompt="¿Entró o salió plata?",
+                WFChooseFromListActionList=["Gasto", "Ingreso"]),
+        responder(id_rapido2, entrada_texto(id_monto2, "Valor del diccionario"),
+                  entrada_texto(id_tipo, "Elemento elegido"), entrada_texto(id_com2, "Valor del diccionario")),
+        _valor("mensaje", id_rapido2, id_resp2),
+        aviso(id_resp2),
+    ]
+    nada = _si_igual(u(), id_motivo, "Valor del diccionario", "no_parece_un_movimiento", [], [aviso(id_msg)])
+    tipo = _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_tipo", pide_tipo, nada)
+    acciones += _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_monto", pide_monto, tipo)
+
+    return {
+        "WFWorkflowClientVersion": "2700",
+        "WFWorkflowMinimumClientVersion": 900,
+        "WFWorkflowIcon": {"WFWorkflowIconStartColor": 4282601983, "WFWorkflowIconGlyphNumber": 59511},
+        "WFWorkflowTypes": [],
+        "WFWorkflowInputContentItemClasses": ["WFStringContentItem", "WFGenericFileContentItem"],
+        "WFWorkflowActions": acciones,
+        "WFWorkflowImportQuestions": [
+            {"ActionIndex": 0, "Category": "Parameter", "ParameterKey": "WFTextActionText", "DefaultValue": "",
+             "Text": "Pega tu clave de CuadraMe (App > Conectar > Clave del atajo)"},
+            {"ActionIndex": 1, "Category": "Parameter", "ParameterKey": "WFTextActionText", "DefaultValue": banco,
+             "Text": "¿De qué banco o app es? (Nequi, Nu, Bancolombia, Davivienda, Daviplata...)"},
+        ],
+    }
+
+
+def main() -> None:
+    p = argparse.ArgumentParser()
+    p.add_argument("--base", default="https://api.cuadrame.dapx.shop")
+    p.add_argument("--banco", default="Nequi")
+    p.add_argument("--salida", default="CuadraMe Notificaciones.shortcut")
+    a = p.parse_args()
+    with open(a.salida, "wb") as f:
+        plistlib.dump(construir(a.base.rstrip("/"), a.banco), f, fmt=plistlib.FMT_BINARY)
+    print(f"Listo: {a.salida} (sin firmar). Fírmalo en el Mac con `shortcuts sign -m anyone -i ... -o ...`.")
+
+
+if __name__ == "__main__":
+    main()

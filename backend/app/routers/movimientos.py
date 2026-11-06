@@ -1,4 +1,5 @@
 ﻿import re
+import dataclasses
 import hashlib
 import uuid
 from datetime import datetime, timedelta
@@ -13,6 +14,7 @@ from sqlalchemy import and_, or_
 
 from app import duplicados as dup
 from app import notificaciones as notif
+from app import reglas_notificacion as rn
 from app import pendientes
 from app import saldo_inicial_auto
 from app import subcategorias as subcat
@@ -47,7 +49,7 @@ from app.wallet import (
     mapear_cuenta_ex,
     parse_fecha,
 )
-from app.models import Categoria, Cuenta, Meta, Movimiento, ReglaCategoria, ReglaTitulo
+from app.models import Categoria, Cuenta, Meta, Movimiento, ReglaCategoria, ReglaNotificacion, ReglaTitulo
 from app.rachas import registrar_actividad_hoy
 from app.schemas import (
     ClasificarRequest,
@@ -320,6 +322,25 @@ def apps_de_notificaciones(usuario: UsuarioActual = Depends(get_current_user_by_
         "version": 1,
         "paquetes": [{"paquete": p, "nombre": n, "clase": c} for p, (n, c) in sorted(notif.APPS.items())],
     }
+
+
+@router.get("/reglas-notificacion")
+def listar_reglas_notificacion(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """Lo que el atajo de iPhone aprendió de cómo avisa tu banco: solo plantillas anónimas, nunca el texto del aviso."""
+    filas = (db.query(ReglaNotificacion).filter(ReglaNotificacion.usuario_id == usuario.id)
+             .order_by(ReglaNotificacion.creado_en.desc()).all())
+    return [{"id": r.id, "app": r.app, "plantilla": r.esqueleto, "significado": rn.significado(r), "usos": r.usos or 0}
+            for r in filas]
+
+
+@router.delete("/reglas-notificacion/{regla_id}")
+def borrar_regla_notificacion(regla_id: str, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    regla = db.query(ReglaNotificacion).filter(ReglaNotificacion.id == regla_id, ReglaNotificacion.usuario_id == usuario.id).first()
+    if not regla:
+        raise HTTPException(status_code=404, detail="Regla no encontrada")
+    db.delete(regla)
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/{movimiento_id}", response_model=MovimientoOut)
@@ -1095,15 +1116,46 @@ def crear_movimiento_desde_notificacion(
     el teléfono no debe reintentar. Un reintento de la MISMA notificación jamás crea un segundo movimiento."""
     verificar_limite(f"notificacion:{usuario.id}", 600, 3600, "Demasiadas notificaciones seguidas. Intenta en un rato.")
     n = notif.interpretar(data.paquete, data.titulo, data.texto)
-    if n is None:
-        # iPhone/Nequi: plata ENVIADA, el aviso no trae monto. El atajo pregunta cuánto y para qué y llama a /rapido.
-        if notif.pide_monto(data.paquete, data.titulo, data.texto):
-            return {"ok": True, "registrado": False, "motivo": "pedir_monto"}
-        return {"ok": True, "registrado": False, "motivo": "no_parece_un_movimiento"}
+    app_nombre = notif.nombre_app(data.paquete)
+    ios = notif.es_ios(data.paquete)
+    esq = rn.esqueleto(data.titulo, data.texto)
+    regla = rn.buscar(db, usuario.id, app_nombre, esq)
     # Android manda la hora de publicación; el atajo de iPhone no: sin ella, el mismo texto de otro minuto es otro aviso
     # (si no, un segundo «X te envió 1» nunca se registraría).
     marca = data.publicado_ms or ahora_co().strftime("%Y%m%d%H%M")
     huella = hashlib.sha256(f"{data.paquete}|{data.titulo}|{data.texto}|{marca}".encode()).hexdigest()[:40]
+
+    # La persona respondió una pregunta del atajo (segunda llamada, mismo texto): se registra con SU respuesta y se
+    # aprende la forma de este aviso para no volver a preguntar.
+    if data.monto is not None:
+        tipo = (rn.tipo_normal(data.tipo) or (n.tipo if n and not n.tipo_incierto else None)
+                or (regla.tipo if regla else None) or "expense")
+        aprendido = False
+        if data.aprender:
+            aprendido = rn.aprender(db, usuario.id, app_nombre, esq,
+                                    tipo=tipo if (n is None or n.tipo_incierto) else None, sin_cifra=n is None)
+        out = crear_movimiento_rapido(MovimientoRapidoCreate(
+            monto=data.monto, tipo=tipo, descripcion=(data.nota or "").strip() or (n.comercio if n else f"Movimiento {app_nombre}"),
+            cuenta=app_nombre, fuente="notificacion", id_transaccion=huella), db, usuario)
+        return {"ok": True, "registrado": not out.duplicado, "duplicado": out.duplicado, "movimiento_id": out.id,
+                "mensaje": out.mensaje, "por_confirmar": out.por_confirmar, "aprendido": aprendido}
+
+    if n is None:
+        # iPhone: salió plata y el aviso no trae monto (o así lo enseñó la persona). El atajo pregunta cuánto y para qué.
+        if notif.pide_monto(data.paquete, data.titulo, data.texto) or (regla is not None and regla.sin_cifra):
+            if regla is not None:
+                regla.usos = (regla.usos or 0) + 1
+                db.commit()
+            return {"ok": True, "registrado": False, "motivo": "pedir_monto"}
+        return {"ok": True, "registrado": False, "motivo": "no_parece_un_movimiento"}
+    # Si la persona ya enseñó hacia dónde van los avisos con esta forma, no se le vuelve a preguntar.
+    if n.tipo_incierto and regla is not None and regla.tipo:
+        n = dataclasses.replace(n, tipo=regla.tipo, tipo_incierto=False)
+        regla.usos = (regla.usos or 0) + 1
+        db.commit()
+    # iPhone: hay monto pero el texto no dice si entró o salió. En vez de adivinar, el atajo pregunta.
+    if n.tipo_incierto and n.clase != "wallet" and ios:
+        return {"ok": True, "registrado": False, "motivo": "pedir_tipo", "monto": n.monto, "comercio": n.comercio}
     fecha = None
     if data.publicado_ms:
         try:
@@ -1118,7 +1170,7 @@ def crear_movimiento_desde_notificacion(
         comercio=n.comercio if n.clase == "wallet" else None,
         descripcion=n.comercio,
         tarjeta=n.tarjeta if n.clase == "wallet" else None,
-        cuenta=n.app if n.clase == "banco" else None,
+        cuenta=(n.app or (app_nombre if ios else None)) if n.clase == "banco" else None,
         fecha=fecha,
         fuente=n.fuente,
         id_transaccion=huella,
