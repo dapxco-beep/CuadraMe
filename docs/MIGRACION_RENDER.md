@@ -32,3 +32,14 @@ solo se cambia el DNS. El dominio está en Hostinger (cuenta dapx).
 - 750 h/mes = justo un servicio encendido todo el mes.
 - Si Render prohíbe ese truco o cambia las reglas: plan B Google Cloud Run (pide tarjeta, tiene capa gratis).
 - Con clientes de pago, pasar a un plan de pago.
+
+## Que el servidor no se duerma (plan gratis)
+
+Render duerme el servicio gratis tras 15 minutos sin tráfico y despertarlo tarda 30-60 s. Se evita con DOS seguros:
+
+1. **cron-job.org**, tarea «CuadraMe - mantener despierto»: `GET /health` cada 10 minutos, tiempo de espera 30 s, aviso por correo si se desactiva.
+2. **Auto-ping interno** (`backend/app/autoping.py`): mientras el servidor está despierto se llama a sí mismo cada 8 minutos. Se activa con la variable de entorno `AUTOPING_URL=https://api.cuadrame.dapx.shop/health` (ya puesta en Render).
+
+**Qué pasó el 2026-11-06:** cron-job.org desactivó sola la tarea (falló tras un arranque en frío) y el servidor estuvo durmiendo días: la app tardaba un minuto en abrir y casi todas las tareas programadas (backup, avisos, sincronizar Gmail) fallaban sin llegar al servidor.
+
+**Cómo comprobarlo:** en cron-job.org (API: `GET https://api.cron-job.org/jobs`) cada tarea debe estar `enabled` y con `lastStatus` 1 (OK; 4/5/6 son fallos). En los registros de Render no debe haber huecos de más de ~15 minutos sin peticiones a `/health`.

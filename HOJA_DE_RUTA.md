@@ -4,7 +4,7 @@
 
 ---
 
-> **Cambio de hosting (2026-11-05).** El API corre en Render plan gratis, región Oregón (junto a Supabase us-west-2), en `https://api.cuadrame.dapx.shop`; se despliega desde la rama `infra/render` (push + Deploy en Render). Donde este documento diga «Railway», léase «Render». Se duerme a los 15 min: la tarea de cron-job.org «mantener despierto» llama /health cada 10 min y la web avisa «Despertando el servidor…» si tarda. Detalle en `docs/MIGRACION_RENDER.md`.
+> **Cambio de hosting (2026-11-05).** El API corre en Render plan gratis, región Oregón (junto a Supabase us-west-2), en `https://api.cuadrame.dapx.shop`; se despliega desde la rama `infra/render` (push + Deploy en Render). Donde este documento diga «Railway», léase «Render». Se duerme a los 15 min: lo evitan la tarea de cron-job.org «mantener despierto» (cada 10 min) y un auto-ping interno (`AUTOPING_URL`); si aun así tarda, la web avisa «Despertando el servidor…». Revisar que esa tarea siga activa (cron-job.org la desactiva sola si falla). Detalle en `docs/MIGRACION_RENDER.md`.
 
 ## 🆕 Operación estándar y corpus de regresión (2026-10-18) — pendiente de tu aprobación
 
