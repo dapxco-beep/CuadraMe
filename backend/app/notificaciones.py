@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass
 
 from app import gmail_extract as ge
+from app.wallet import parse_monto_co
 
 # Apps cuyas notificaciones se leen. El teléfono pide esta lista al servidor (GET /movimientos/notificaciones-apps):
 # agregar una app aquí no requiere reinstalar el APK. `clase`: 'wallet' (la notificación trae comercio y tarjeta)
@@ -29,6 +30,42 @@ APPS: dict[str, tuple[str, str]] = {
     "com.davivienda.daviplataapp": ("Daviplata", "banco"),
     "com.davivienda.mobile": ("Davivienda", "banco"),
 }
+
+# iOS (Atajos) no manda un paquete de Android sino el NOMBRE de la app que puso quien armó el atajo.
+ALIAS_IOS: dict[str, tuple[str, str]] = {
+    "nequi": ("Nequi", "banco"), "nu": ("Nu", "banco"), "bancolombia": ("Bancolombia", "banco"),
+    "davivienda": ("Davivienda", "banco"), "daviplata": ("Daviplata", "banco"),
+}
+
+# Nequi, textos reales vistos en iPhone:
+#  «Envío» / «DANIEL PARRADO te envió 1, ¡lo mejor!»  -> te llegó plata (trae monto y quién; a veces sin «$»).
+#  «Tu plata llegó con éxito» / «Envío exitoso, la plata ya está en el Nequi destino…» -> TÚ enviaste plata,
+#  pero el aviso NO trae monto ni a quién: el atajo debe preguntarlo (ver `pide_monto`).
+_NEQUI_RECIBIDO = re.compile(r"(?P<quien>[^.\n]+?)\s+te\s+envi[oó]\s+\$?\s*(?P<monto>\d[\d.,]*\d|\d)", re.IGNORECASE)
+_NEQUI_ENVIASTE = re.compile(r"plata\s+lleg[oó]\s+con\s+[eé]xito|env[ií]o\s+exitoso", re.IGNORECASE)
+
+
+def _es_nequi(paquete: str) -> bool:
+    return APPS.get(paquete or "", ("", ""))[0] == "Nequi" or (paquete or "").strip().lower() in ("nequi",)
+
+
+def _nequi_recibido(titulo: str, texto: str) -> "Notificacion | None":
+    m = _NEQUI_RECIBIDO.search(f"{titulo}. {texto}")
+    if not m:
+        return None
+    try:
+        monto = parse_monto_co(m.group("monto"))
+    except ValueError:
+        return None
+    quien = _limpiar(m.group("quien").split(". ")[-1])
+    return Notificacion(monto=monto, tipo="income", comercio=f"De {quien}" if quien else "Plata recibida",
+                        clase="banco", fuente="notificacion", app="Nequi", tarjeta=None, traslado_propio=False)
+
+
+def pide_monto(paquete: str, titulo: str, texto: str) -> bool:
+    """Plata ENVIADA por Nequi: el aviso no trae monto, así que el atajo de iPhone se lo pregunta a la persona."""
+    return _es_nequi(paquete) and bool(_NEQUI_ENVIASTE.search(f"{titulo}. {texto}")) and not _NEQUI_RECIBIDO.search(f"{titulo}. {texto}")
+
 
 # Notificaciones que NUNCA son un movimiento: códigos, claves, promociones, avisos de seguridad.
 _RUIDO = re.compile(
@@ -87,7 +124,11 @@ def interpretar(paquete: str, titulo: str, texto: str) -> Notificacion | None:
     cuerpo = f"{titulo}. {texto}".strip(". ")
     if len(cuerpo) < 8 or _RUIDO.search(cuerpo):
         return None
-    app, clase = APPS.get(paquete or "", (None, "banco"))
+    app, clase = APPS.get(paquete or "") or ALIAS_IOS.get((paquete or "").strip().lower(), (None, "banco"))
+    if _es_nequi(paquete):
+        recibido = _nequi_recibido(titulo, texto)
+        if recibido or pide_monto(paquete, titulo, texto):
+            return recibido  # None = plata enviada sin monto: el endpoint responde «pedir_monto»
     monto = ge.extraer_monto(cuerpo)
     if not monto or monto <= 0:
         return None
