@@ -159,6 +159,20 @@ def nombre_app(paquete: str) -> str:
     return (APPS.get(p) or ALIAS_IOS.get(p.lower()) or (p[:40], ""))[0]
 
 
+def banco_de_cuenta(nombre_cuenta: str) -> str | None:
+    """Banco/billetera que el atajo sabe leer según el nombre de la cuenta («Nu Colombia» -> Nu), o None."""
+    palabras = set(re.findall(r"[a-z0-9]+", _sin_tildes(nombre_cuenta)))
+    for clave, (nombre, _clase) in ALIAS_IOS.items():
+        if clave in palabras:
+            return nombre
+    return None
+
+
+def _sin_tildes(texto: str) -> str:
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", (texto or "").lower()) if unicodedata.category(c) != "Mn")
+
+
 def es_ios(paquete: str) -> bool:
     """El atajo de iPhone manda el NOMBRE de la app (Nequi, Nu...), no un paquete de Android (com.x.y)."""
     p = (paquete or "").strip()

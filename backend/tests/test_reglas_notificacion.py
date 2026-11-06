@@ -109,3 +109,18 @@ def test_migracion_crea_la_tabla_sin_errores_de_sintaxis():
         conn.execute(text("INSERT INTO reglas_notificacion (id, usuario_id) VALUES ('1', 'u')"))
         fila = conn.execute(text("SELECT app, esqueleto FROM reglas_notificacion")).one()
     assert tuple(fila) == ("", "")
+
+
+def test_estado_notificaciones_dice_que_bancos_faltan_por_conectar():
+    from app.notificaciones import banco_de_cuenta
+
+    assert banco_de_cuenta("Nu Colombia") == "Nu" and banco_de_cuenta("Nequi") == "Nequi"
+    assert banco_de_cuenta("Efectivo") is None and banco_de_cuenta("Nueva billetera") is None  # «nu» no es «nueva»
+    h = _usuario("rn-7")
+    assert client.post("/cuentas", json={"nombre": "Nu Colombia", "saldo": 0}).status_code == 200
+    assert client.post("/cuentas", json={"nombre": "Efectivo", "saldo": 0}).status_code == 200
+    antes = {e["app"]: e for e in client.get("/movimientos/estado-notificaciones").json()}
+    assert set(antes) == {"Nequi", "Nu"} and antes["Nequi"]["ultimo_aviso"] is None and antes["Nequi"]["avisos_30d"] == 0
+    assert _aviso(h, RECIBO)["registrado"]
+    despues = {e["app"]: e for e in client.get("/movimientos/estado-notificaciones").json()}
+    assert despues["Nequi"]["avisos_30d"] == 1 and despues["Nequi"]["ultimo_aviso"] and despues["Nu"]["avisos_30d"] == 0

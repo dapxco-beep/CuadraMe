@@ -324,6 +324,28 @@ def apps_de_notificaciones(usuario: UsuarioActual = Depends(get_current_user_by_
     }
 
 
+@router.get("/estado-notificaciones")
+def estado_notificaciones(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """Para la tarjeta «Registro automático desde el iPhone»: por cada cuenta tuya que el atajo sabe leer, si ya llegó
+    algún aviso y cuándo fue el último. Sale de los movimientos que ya tienes (fuente «notificacion»); no guarda nada."""
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).order_by(Cuenta.nombre).all()
+    desde = ahora_co() - timedelta(days=30)
+    salida = []
+    for c in cuentas:
+        banco = notif.banco_de_cuenta(c.nombre)
+        if not banco:
+            continue
+        base = db.query(Movimiento).filter(Movimiento.usuario_id == usuario.id, Movimiento.cuenta_id == c.id,
+                                           Movimiento.fuente == "notificacion")
+        ultimo = base.with_entities(func.max(Movimiento.fecha)).scalar()
+        salida.append({
+            "cuenta_id": c.id, "cuenta": c.nombre, "app": banco,
+            "ultimo_aviso": ultimo.isoformat() if ultimo else None,
+            "avisos_30d": base.filter(Movimiento.fecha >= desde).count(),
+        })
+    return salida
+
+
 @router.get("/reglas-notificacion")
 def listar_reglas_notificacion(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
     """Lo que el atajo de iPhone aprendió de cómo avisa tu banco: solo plantillas anónimas, nunca el texto del aviso."""
