@@ -123,7 +123,7 @@ export default function AtajoAvanzado({ claveAtajo }) {
             <pre className="text-[11px] leading-relaxed overflow-x-auto whitespace-pre text-ink-soft max-h-64 overflow-y-auto">
               {scriptAndroid || (claveAtajo.cargando
                 ? <span className="skeleton inline-block h-3.5 w-48 align-middle" role="status" aria-label="Preparando tu script" />
-                : 'Tu clave guardada ya no se puede mostrar, así que el script no se puede armar. Crea una clave nueva aquí abajo y aparecerá listo para copiar.')}
+                : 'Tu clave guardada es de antes de poder volver a verla, así que el script no se puede armar todavía. Crea una clave nueva aquí abajo y aparecerá listo para copiar.')}
             </pre>
           </div>
           {!scriptAndroid && !claveAtajo.cargando && (

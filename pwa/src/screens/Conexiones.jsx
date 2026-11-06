@@ -191,7 +191,7 @@ function TarjetaAtajo({ a, recargar }) {
     try {
       const r = await api.regenerarApiKey()
       setClaveNueva(r.api_key || null)
-      setAviso('Clave nueva lista. Cópiala ahora: no se vuelve a mostrar. La anterior ya no sirve.')
+      setAviso('Clave nueva lista. Cópiala y pégala en tu Atajo; podrás volver a verla aquí. La anterior ya no sirve.')
       recargar()
     } catch (err) {
       setError(textoError(err, 'generar la clave'))

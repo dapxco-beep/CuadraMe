@@ -2,12 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from './api'
 
 // Estado de la clave del Atajo, según el contrato del backend:
-//  - GET /perfil/api-key devuelve `api_key` completa solo si es nueva o si aún está en claro
-//    (clave antigua sin migrar: sigue funcionando igual que siempre).
-//  - Si ya está guardada como hash devuelve `api_key: null` + `prefijo` ("cdm_ab12…").
-//  - POST /perfil/api-key/regenerar siempre devuelve la clave completa, UNA sola vez.
-// `clave` solo existe mientras la pantalla esté abierta; `recienCreada` activa el aviso
-// «cópiala ahora, no se vuelve a mostrar».
+//  - GET /perfil/api-key devuelve `api_key` completa si se guardó cifrada (siempre visible para su dueño) o si aún
+//    está en claro. Las claves de antes del cifrado quedan visibles solas cuando el Atajo las usa una vez.
+//  - Si solo existe el hash devuelve `api_key: null` + `prefijo` ("cdm_ab12…").
+//  - POST /perfil/api-key/regenerar devuelve la clave nueva completa.
+// `clave` solo existe mientras la pantalla esté abierta; `recienCreada` activa el aviso «esta es tu clave nueva».
 export function useClaveAtajo() {
   const [estado, setEstado] = useState({ cargando: true, clave: null, tieneClave: false, prefijo: '', recienCreada: false })
 

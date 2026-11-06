@@ -46,8 +46,8 @@ describe('Clave del Atajo', () => {
     await userEvent.click(screen.getByRole('button', { name: /Sí, crear clave nueva/ }))
 
     expect(await screen.findByText('cdm_ab12NUEVA')).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent(/Cópiala ahora/)
-    expect(screen.getByRole('alert')).toHaveTextContent(/no se vuelve a mostrar/)
+    expect(screen.getByRole('alert')).toHaveTextContent(/Esta es tu clave nueva/)
+    expect(screen.getByRole('alert')).toHaveTextContent(/volver a verla/)
     expect(screen.getByRole('button', { name: 'Copiar clave' })).toBeInTheDocument()
   })
 
@@ -64,7 +64,7 @@ describe('Clave del Atajo', () => {
     expect(api.pagoDePrueba).toHaveBeenCalledWith(null)
   })
 
-  it('clave antigua en claro (columnas aún sin crear): se ve y se copia como siempre, sin aviso de "no se vuelve a mostrar"', async () => {
+  it('clave antigua en claro (columnas aún sin crear): se ve y se copia como siempre, sin aviso de «clave nueva»', async () => {
     api.apiKey.mockResolvedValue({ api_key: 'cdm_vieja_en_claro' })
     montar()
     expect(await screen.findByText('cdm_vieja_en_claro')).toBeInTheDocument()
@@ -76,6 +76,6 @@ describe('Clave del Atajo', () => {
     api.apiKey.mockResolvedValue({ api_key: 'cdm_primera', tiene_clave: true, nueva: true })
     montar()
     expect(await screen.findByText('cdm_primera')).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/Cópiala ahora/))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/Esta es tu clave nueva/))
   })
 })

@@ -46,7 +46,7 @@ TABLAS_INTERNAS = {"marcas_cron", "importaciones_respaldo", "tasas_referencia", 
 TABLAS_PUBLICAS = {"tasas_referencia", "cotizaciones_inversion", "consultas_precio", "formas_asunto_fallidas"}
 # Columnas que NO se entregan: son credenciales del sistema, no datos del titular.
 # Entregarlas no le sirve al usuario y, si alguien interceptara el archivo, le daría acceso.
-COLUMNAS_SECRETAS = {"api_key", "api_key_hash", "gmail_refresh_token_enc", "clave_enc", "p256dh", "auth", "endpoint"}
+COLUMNAS_SECRETAS = {"api_key", "api_key_hash", "api_key_enc", "gmail_refresh_token_enc", "clave_enc", "p256dh", "auth", "endpoint"}
 
 LEEME = """CUADRAME - COPIA DE TUS DATOS
 Generada el {fecha} (hora de Colombia) para {correo}.
