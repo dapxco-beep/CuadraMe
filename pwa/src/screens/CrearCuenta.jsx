@@ -58,7 +58,7 @@ function Bienvenida({ onContinuar }) {
       >
         Empezar — crea tu primera cuenta
       </button>
-      <p className="text-xs text-ink-soft text-center mt-3">Toma 1 minuto. Nunca te pedimos la clave de tu banco.</p>
+      <p className="text-xs text-ink-soft text-center mt-3">Gratis por ahora. Toma 1 minuto. Nunca te pedimos la clave de tu banco.</p>
     </div>
   )
 }

@@ -11,6 +11,7 @@ import { useCuentas } from '../lib/CuentasContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { contextoDeCuentas, tiposEfectivos, totalesConTipos } from '../lib/contabilidad'
+import { rangoPeriodo } from '../lib/informe'
 import { direccionDe, etiquetaTraslado, signoDe } from '../lib/traslados'
 import { esAuto, claveComercio } from '../lib/comercio'
 import { useModoPantalla } from '../lib/useAncho'
@@ -1123,6 +1124,28 @@ export default function Movimientos() {
                   </button>
                 </div>
               )}
+
+              {/* Periodo siempre a la vista: los totales de abajo suman lo que se ve, y esto dice de qué mes es. */}
+              <div className="px-5 mb-2 flex gap-2" role="group" aria-label="Periodo" data-testid="chips-periodo">
+                {[
+                  { id: 'todo', texto: 'Todo', r: { desde: '', hasta: '' } },
+                  { id: 'este_mes', texto: 'Este mes', r: rangoPeriodo('este_mes') },
+                  { id: 'mes_pasado', texto: 'Mes pasado', r: rangoPeriodo('mes_pasado') },
+                ].map((p) => {
+                  const activo = (f.desde || '') === (p.r.desde || '') && (f.hasta || '') === (p.r.hasta || '')
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      aria-pressed={activo}
+                      onClick={() => cambiarParams({ desde: p.r.desde, hasta: p.r.hasta })}
+                      className={`min-h-11 px-4 rounded-full text-sm font-semibold border ${activo ? 'bg-ink text-paper border-ink' : 'bg-paper-raised text-ink border-line'}`}
+                    >
+                      {p.texto}
+                    </button>
+                  )
+                })}
+              </div>
 
               {filtrados.length > 0 && (
                 <div className="px-5 mb-3 flex flex-wrap gap-2" data-testid="resumen-lista">

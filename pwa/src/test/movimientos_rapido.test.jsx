@@ -322,3 +322,20 @@ describe('volver respeta filtros y scroll', () => {
     expect(container.querySelector('.screen-enter').scrollTop).toBe(900)
   })
 })
+
+describe('Movimientos: periodo siempre a la vista', () => {
+  it('«Este mes» y «Mes pasado» piden al servidor solo ese periodo; «Todo» lo quita', async () => {
+    const user = userEvent.setup()
+    montar()
+    const grupo = await screen.findByTestId('chips-periodo')
+    expect(grupo).toHaveTextContent('Todo')
+    await user.click(screen.getByRole('button', { name: 'Este mes' }))
+    await waitFor(() => {
+      const ultimo = api.movimientos.mock.calls.at(-1)
+      expect(ultimo[2]).toMatchObject({ desde: expect.stringMatching(/^\d{4}-\d{2}-01$/) })
+    })
+    expect(screen.getByRole('button', { name: 'Este mes' })).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('button', { name: 'Todo' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Todo' })).toHaveAttribute('aria-pressed', 'true'))
+  })
+})
