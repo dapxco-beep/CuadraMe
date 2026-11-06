@@ -36,7 +36,7 @@ class ColectaIn(BaseModel):
     nombre: str = Field(min_length=1, max_length=80)
     descripcion: str = Field(default="", max_length=300)
     modo: Literal["por_persona", "meta_total"] = "por_persona"
-    valor: float = Field(gt=0)  # por persona, o la meta total según `modo`
+    valor: float = Field(gt=0, le=1e12, allow_inf_nan=False)  # por persona, o la meta total según `modo`
     participantes: list[str] = Field(default_factory=list, max_length=MAX_PARTICIPANTES)  # ids de contacto
     incluirme: bool = False  # el organizador también pone
     moneda: str = Field(default="COP", max_length=3)
@@ -56,11 +56,11 @@ class ColectaPatch(BaseModel):
 
 class ParticipanteIn(BaseModel):
     contacto_id: str
-    debe: Optional[float] = Field(default=None, ge=0)  # por defecto, lo mismo que los demás
+    debe: Optional[float] = Field(default=None, ge=0, le=1e12, allow_inf_nan=False)  # por defecto, lo mismo que los demás
 
 
 class PagoIn(BaseModel):
-    monto: Optional[float] = Field(default=None, gt=0)  # por defecto, lo que le falta
+    monto: Optional[float] = Field(default=None, gt=0, le=1e12, allow_inf_nan=False)  # por defecto, lo que le falta
     registrar_ingreso: bool = False
     cuenta_id: Optional[str] = None  # si no, la de la colecta
 

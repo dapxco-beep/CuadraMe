@@ -11,7 +11,17 @@ export { MSG_ERROR_SERVIDOR, MSG_SESION_VENCIDA, MSG_SIN_CONEXION }
 
 // fetch() falla con un TypeError ("Failed to fetch", "Load failed", "NetworkError...")
 // cuando no hay red o el servidor no responde. Ese texto en inglés no le sirve a nadie.
+// Si el servidor (plan gratis) estaba dormido, la primera petición tarda 30-60 s: tras 6 s sin respuesta
+// se avisa «Despertando el servidor…» (máximo una vez por minuto). Solo avisa: NO cancela ni reintenta,
+// porque repetir un POST podría duplicar un gasto.
+const ESPERA_AVISO_LENTO_MS = 6000
+let ultimoAvisoLento = 0
 async function fetchSeguro(url, opciones) {
+  const aviso = typeof window !== 'undefined' ? setTimeout(() => {
+    if (Date.now() - ultimoAvisoLento < 60000) return
+    ultimoAvisoLento = Date.now()
+    window.dispatchEvent(new CustomEvent('cuadrame:aviso', { detail: { mensaje: 'Despertando el servidor, un momento…', tipo: 'info' } }))
+  }, ESPERA_AVISO_LENTO_MS) : null
   try {
     return await fetch(url, opciones)
   } catch (e) {
@@ -19,6 +29,8 @@ async function fetchSeguro(url, opciones) {
     const err = new Error(MSG_SIN_CONEXION)
     err.sinConexion = true
     throw err
+  } finally {
+    clearTimeout(aviso)
   }
 }
 

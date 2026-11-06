@@ -57,8 +57,8 @@ class ParticipanteIn(BaseModel):
 
 
 class DivisionIn(BaseModel):
-    total: float = Field(gt=0)
-    moneda: str = "COP"
+    total: float = Field(gt=0, le=1e12, allow_inf_nan=False)
+    moneda: str = Field(default="COP", min_length=3, max_length=3)
     modo: Literal["iguales", "montos", "porcentajes", "partes"]
     participantes: list[ParticipanteIn] = Field(min_length=1, max_length=MAX_PARTICIPANTES)
 
@@ -78,8 +78,8 @@ class GastoIn(DivisionIn):
 class LiquidacionIn(BaseModel):
     de_id: str
     a_id: str
-    monto: float = Field(gt=0)
-    moneda: str = "COP"
+    monto: float = Field(gt=0, le=1e12, allow_inf_nan=False)
+    moneda: str = Field(default="COP", min_length=3, max_length=3)
     grupo_id: Optional[str] = None
     nota: str = Field(default="", max_length=120)
 

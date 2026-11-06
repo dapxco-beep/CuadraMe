@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.auth import UsuarioActual, get_current_user
-from app.compartidos import cuenta_accesible, cuentas_ids_accesibles
+from app.compartidos import cuenta_accesible, cuentas_ids_accesibles, puede_editar_cuenta, reclamar_estado
 from app.database import get_db
 from app.division import DivisionInvalida, calcular_saldos, dividir, simplificar_deudas
 from app.limites import verificar_limite
@@ -69,7 +69,7 @@ class ParticipanteIn(BaseModel):
 
 class GastoIn(BaseModel):
     descripcion: str = Field(min_length=1, max_length=120)
-    total: float = Field(gt=0)
+    total: float = Field(gt=0, le=1e12, allow_inf_nan=False)
     modo: Literal["iguales", "montos", "porcentajes", "partes"] = "iguales"
     participantes: list[ParticipanteIn] = Field(min_length=1, max_length=MAX_MIEMBROS)
     pagador_id: Optional[str] = None  # por defecto, quien lo registra
@@ -84,7 +84,7 @@ class GastoIn(BaseModel):
 class PagoIn(BaseModel):
     de_id: str
     a_id: str
-    monto: float = Field(gt=0)
+    monto: float = Field(gt=0, le=1e12, allow_inf_nan=False)
     nota: str = Field(default="", max_length=120)
 
 
@@ -218,13 +218,16 @@ def parches_de_un_movimiento(movimiento_id: str, db: Session = Depends(get_db), 
     return [{"hogar_id": h.id, "nombre": h.nombre, "gasto_id": g.id, "mi_parte": pt.monto} for pt, g, h in filas]
 
 
-def _movimiento_mio_o_404(db: Session, usuario: UsuarioActual, movimiento_id: str) -> Movimiento:
+def _movimiento_mio_o_404(db: Session, usuario: UsuarioActual, movimiento_id: str, editar: bool = False) -> Movimiento:
     mov = (
         db.query(Movimiento)
         .filter(Movimiento.id == movimiento_id, Movimiento.cuenta_id.in_(cuentas_ids_accesibles(db, usuario.id)))
         .first()
     )
     if not mov:
+        raise HTTPException(status_code=404, detail="Movimiento no encontrado")
+    if editar and not puede_editar_cuenta(db, usuario.id, db.query(Cuenta).filter(Cuenta.id == mov.cuenta_id).first()):
+        # un lector de una cuenta compartida puede VER el movimiento pero no ponerlo a la vista de un parche
         raise HTTPException(status_code=404, detail="Movimiento no encontrado")
     return mov
 
@@ -262,7 +265,10 @@ def aceptar(
         previo.activo, previo.apodo = True, apodo  # volvió: conserva su historial
     else:
         db.add(MiembroHogar(hogar_id=h.id, usuario_id=usuario.id, apodo=apodo, rol="miembro"))
-    inv.estado = "aceptada"  # un solo uso
+    # un solo uso, ATÓMICO: si dos peticiones llegan a la vez con el mismo enlace, solo una lo reclama
+    if not reclamar_estado(db, InvitacionHogar, inv.id, "pendiente", "aceptada"):
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Esta invitación ya fue usada")
     db.commit()
     return {"id": h.id}
 
@@ -487,7 +493,7 @@ def crear_gasto(hogar_id: str, data: GastoIn, db: Session = Depends(get_db), usu
     if data.movimiento_id:
         if data.registrar_en_mi_cuenta:
             raise HTTPException(status_code=400, detail="Este gasto ya está en tus movimientos: no se copia otra vez")
-        mov_origen = _movimiento_mio_o_404(db, usuario, data.movimiento_id)
+        mov_origen = _movimiento_mio_o_404(db, usuario, data.movimiento_id, editar=True)
         if mov_origen.tipo != "expense":
             raise HTTPException(status_code=400, detail="Solo se pueden compartir gastos")
         cta = db.query(Cuenta).filter(Cuenta.id == mov_origen.cuenta_id).first()

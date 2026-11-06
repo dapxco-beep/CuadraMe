@@ -166,10 +166,13 @@ export default function Inicio() {
   }
   useEffect(() => {
     let activo = true
-    Promise.resolve().then(() => api.cuadreResumen?.()).then((r) => {
-      if (activo) setResumenCuadre(r || null)
-    }).catch(() => {})
-    return () => { activo = false }
+    // Es solo un aviso: espera a que lo principal ya esté pintado (el servidor calcula el cuadre cuenta por cuenta).
+    const t = setTimeout(() => {
+      Promise.resolve().then(() => api.cuadreResumen?.()).then((r) => {
+        if (activo) setResumenCuadre(r || null)
+      }).catch(() => {})
+    }, 1200)
+    return () => { activo = false; clearTimeout(t) }
   }, [])
 
   useEffect(() => {
@@ -186,9 +189,9 @@ export default function Inicio() {
       .catch((err) => activo && setErrorCarga(err.message || 'No se pudo cargar tu información. Revisa tu conexión e intenta de nuevo.'))
       .finally(() => activo && setCargando(false))
     // Gastos de la semana (opcional: sin dato, el bloque muestra un guion)
-    Promise.resolve().then(() => api.movimientos(200, 0, { desde: fechaHace(6) })).then((l) => activo && Array.isArray(l) && setMovsSemana(l)).catch(() => {})
     // Lo secundario (solo se ve en «Ver más» o es un aviso raro) espera a que lo principal ya esté pintado.
     const despues = (fn) => timers.push(setTimeout(() => activo && fn(), 1200))
+    despues(() => Promise.resolve().then(() => api.movimientos(200, 0, { desde: fechaHace(6) })).then((l) => activo && Array.isArray(l) && setMovsSemana(l)).catch(() => {}))
     despues(() => Promise.resolve().then(() => api.disponibleHoy()).then((d) => activo && (setDisponible(d), setFalloDisponible(false))).catch(() => activo && setFalloDisponible(true)))
     Promise.resolve().then(() => api.enMiBolsillo()).then((b) => activo && (setBolsillo(b), setFalloBolsillo(false))).catch(() => activo && setFalloBolsillo(true))
     // Desglose del saldo (disponible / tarjetas / por moneda y tipo). Si falla, el héroe sigue con el saldo de las cuentas y avisa.
@@ -197,7 +200,7 @@ export default function Inicio() {
     // Aviso solo si algo se rompió (semáforo rojo); si el tablero falla, no se muestra nada.
     despues(() => Promise.resolve().then(() => api.conexionesEstado?.()).then((c) => activo && setConexionFalla(!!c?.hay_falla)).catch(() => {}))
     // Cuántas cosas esperan en «Traer extractos» y «Movimientos del correo» (si falla, el acceso se muestra sin número).
-    Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && (setTareasSync(s?.tareas ? s.tareas.filter((t) => !t.opcional).length : null), setLineaCorreo(resumenCarriles(s?.tareas)), setAMedias(extractosAMedias(s)), setSinCategorizar((s?.tareas || []).find((t) => t.id === 'movimientos_por_categorizar')?.cantidad || 0))).catch(() => {})
+    despues(() => Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && (setTareasSync(s?.tareas ? s.tareas.filter((t) => !t.opcional).length : null), setLineaCorreo(resumenCarriles(s?.tareas)), setAMedias(extractosAMedias(s)), setSinCategorizar((s?.tareas || []).find((t) => t.id === 'movimientos_por_categorizar')?.cantidad || 0))).catch(() => {}))
     // Tendencia del gasto de los últimos meses para la mini gráfica (opcional: sin datos no se dibuja).
     despues(() => Promise.resolve().then(() => api.tendencias?.(6)).then((t) => activo && setTendencia(t?.meses ?? null)).catch(() => {}))
     return () => {
