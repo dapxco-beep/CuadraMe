@@ -18,7 +18,7 @@ from app.database import get_db
 from app.derechos_titular import armar_json, armar_zip, borrar_todo, recopilar
 from app.limites import verificar_limite
 from app.models import Cuenta, Perfil
-from app.claves_api import asignar_clave_nueva, tiene_clave
+from app.claves_api import asignar_clave_nueva, clave_visible, tiene_clave
 from app.nombre import NombreInvalido, nombre_de_pila, nombre_para_mostrar, nombre_titular_limpio, validar_nombre
 from app.utiles import ahora_co
 from app.schemas import ConfianzaAutoimportUpdate, EliminarCuentaRequest
@@ -103,12 +103,17 @@ def obtener_api_key(
     if not tiene_clave(db, perfil):
         # Primera vez: se crea y se muestra completa (única ocasión, junto con regenerar).
         return {"api_key": asignar_clave_nueva(db, perfil), "tiene_clave": True, "nueva": True}
+    verificar_limite(f"ver-clave:{usuario.id}", 60, 3600, "Demasiadas consultas seguidas. Intenta en un rato.")
     if perfil.api_key:
         # Clave antigua aún en claro (se migra a hash la primera vez que el Atajo la use).
         return {"api_key": perfil.api_key, "tiene_clave": True, "nueva": False}
-    # Ya guardada como hash: no se puede mostrar. Solo el prefijo para reconocerla.
+    visible = clave_visible(db, perfil)
+    if visible:
+        return {"api_key": visible, "tiene_clave": True, "nueva": False, "visible": True}
+    # Clave de antes del cifrado: solo existe su hash, no se puede mostrar. Solo el prefijo para reconocerla.
     return {"api_key": None, "tiene_clave": True, "nueva": False, "prefijo": perfil.api_key_prefijo,
-            "mensaje": "Por seguridad tu clave ya no se puede mostrar. Si la perdiste, genera una nueva."}
+            "mensaje": "Esta clave se creó antes de poder volver a verla. Genera una nueva una sola vez y desde ahí "
+                       "siempre podrás verla aquí."}
 
 
 class RecordatorioUpdate(BaseModel):

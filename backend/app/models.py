@@ -30,6 +30,9 @@ class Perfil(Base):
     # aún no exista en la base (script supabase/migraciones/api_key_hash.sql).
     api_key_hash = deferred(Column(String, unique=True, index=True, nullable=True))
     api_key_prefijo = deferred(Column(String, nullable=True))
+    # La misma clave cifrada con Fernet, SOLO para que su dueño pueda volver a verla en la app. El acceso por API
+    # sigue verificándose con el hash. `deferred` por la misma razón que api_key_hash (la columna puede faltar un rato).
+    api_key_enc = deferred(Column(String, nullable=True))
     gmail_conectado = Column(Boolean, default=False)
     gmail_refresh_token_enc = Column(String, nullable=True)  # cifrado con Fernet
     gmail_email = Column(String, nullable=True)

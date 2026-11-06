@@ -218,6 +218,13 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
             'CREATE INDEX IF NOT EXISTS ix_reglas_notificacion_usuario ON reglas_notificacion (usuario_id)',
         ],
     ),
+    (
+        # La clave del Atajo cifrada (Fernet) para que su dueño pueda volver a verla; el acceso sigue siendo por hash.
+        "0014_api_key_enc",
+        [
+            'ALTER TABLE perfiles ADD COLUMN IF NOT EXISTS api_key_enc VARCHAR NULL',
+        ],
+    ),
 ]
 
 
