@@ -20,7 +20,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$backend = 'https://backend-production-aeab.up.railway.app'
+$backend = 'https://api.cuadrame.dapx.shop'
 $pwa = 'https://cuadrame.dapx.shop'
 $raiz = Split-Path -Parent $PSScriptRoot
 $problemas = @()

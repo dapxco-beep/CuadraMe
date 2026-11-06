@@ -1,5 +1,5 @@
 // Estado de Gmail y de la lectura de extractos: línea, avisos de extracto faltante, «aprendiendo». Datos inventados.
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 
 const api = vi.hoisted(() => ({}))
@@ -58,6 +58,9 @@ describe('lib/estadoGmail', () => {
 })
 
 describe('<EstadoGmail>', () => {
+  // El componente usa la fecha real; se fija solo el reloj (no los temporizadores) para que no dependa de cuándo se corra.
+  beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(HOY) })
+  afterEach(() => { vi.useRealTimers() })
   it('muestra la línea, el aviso amable y que estamos aprendiendo', async () => {
     api.historialExtractos = vi.fn().mockResolvedValue([...HIST, { banco_detectado: 'Davivienda', estado_aprendizaje: 'aprendiendo' }])
     render(<EstadoGmail gmail={{ conectado: true }} cuentas={CUENTAS} />)

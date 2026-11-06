@@ -5,7 +5,7 @@
 set -u
 ESPERADO="${1:-}"
 VENTANA="${2:-1h}"
-BACKEND="https://backend-production-aeab.up.railway.app"
+BACKEND="https://api.cuadrame.dapx.shop"
 PWA="https://cuadrame.dapx.shop"
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROBLEMAS=()

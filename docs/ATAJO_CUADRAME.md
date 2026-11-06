@@ -31,6 +31,9 @@ URL del servidor: `https://api.cuadrame.dapx.shop/movimientos/rapido`
 
 ```
 1  Texto                           tu clave (queda VACÍA al compartir; pregunta de importación)
+1b Obtener contenido de URL        GET …/movimientos/cierre-pregunta?horas=3   (X-Api-Key = Texto del paso 1)
+1c Obtener valor del diccionario   preguntar
+1d Si  (Valor del diccionario)  no es  "si"   →   Detener este atajo      (así no pregunta en cada cierre)
 2  Elegir del menú                 "¿Hiciste algún movimiento?"  →  Gasto · Ingreso · No
    │  Gasto:   Texto  gasto
    │  Ingreso: Texto  ingreso
@@ -51,7 +54,7 @@ URL del servidor: `https://api.cuadrame.dapx.shop/movimientos/rapido`
 9  Mostrar notificación
 ```
 
-**Para que no pregunte en cada cierre (recomendado).** iOS dispara la automatización cada vez que se cierra la app, aunque solo hayas ido a mirar un saldo. Se arregla con cuatro pasos al INICIO del atajo, justo después del paso 1 (Texto con la clave):
+**Por qué están los pasos 1b–1d (ya incluidos arriba).** iOS dispara la automatización cada vez que se cierra la app, aunque solo hayas ido a mirar un saldo. Se arregla con cuatro pasos al INICIO del atajo, justo después del paso 1 (Texto con la clave):
 
 ```
 1b  Obtener contenido de URL        GET …/movimientos/cierre-pregunta?horas=3
@@ -73,6 +76,16 @@ El servidor responde "si" como máximo una vez cada 3 horas (cambia `horas`, de 
 **Cierre de una app (una por app).** Atajos → Automatización → **+** → **App** → la app → marca **Se cierra**, desmarca **Se abre** → **Siguiente** → una sola acción: **Ejecutar atajo** `CuadraMe Cierre`. Desactiva "Preguntar antes de ejecutar". El atajo pregunta la cuenta en el momento.
 
 Si en CuadraMe no existe la cuenta que el cliente elige, no aparece en la lista: se crea en Cuentas → Nueva cuenta.
+
+## Si el servidor tarda o falla
+
+El servidor gratis puede tardar unos segundos si estuvo dormido. En los pasos "Obtener contenido de URL" deja el tiempo de espera largo y, después del POST final, el paso 8 (`mensaje`) ya muestra el aviso del servidor. Si la respuesta no trae `mensaje` (error de red o clave mala), agrega al final:
+
+```
+9b Si  (Valor del diccionario)  no tiene valor  →  Mostrar notificación "CuadraMe no respondió; abre la app y registra a mano"
+```
+
+Así nunca falla en silencio.
 
 ## Cómo probarlo
 

@@ -4,7 +4,7 @@ import android.content.Context
 
 /** Ajustes guardados en este teléfono: dirección del servidor y la clave de conexión de CuadraMe. */
 object Config {
-    const val SERVIDOR_POR_DEFECTO = "https://backend-production-aeab.up.railway.app"
+    const val SERVIDOR_POR_DEFECTO = "https://api.cuadrame.dapx.shop"
     private const val PREFS = "cuadrame_captura"
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
