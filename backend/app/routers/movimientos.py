@@ -1096,8 +1096,14 @@ def crear_movimiento_desde_notificacion(
     verificar_limite(f"notificacion:{usuario.id}", 600, 3600, "Demasiadas notificaciones seguidas. Intenta en un rato.")
     n = notif.interpretar(data.paquete, data.titulo, data.texto)
     if n is None:
+        # iPhone/Nequi: plata ENVIADA, el aviso no trae monto. El atajo pregunta cuánto y para qué y llama a /rapido.
+        if notif.pide_monto(data.paquete, data.titulo, data.texto):
+            return {"ok": True, "registrado": False, "motivo": "pedir_monto"}
         return {"ok": True, "registrado": False, "motivo": "no_parece_un_movimiento"}
-    huella = hashlib.sha256(f"{data.paquete}|{data.titulo}|{data.texto}|{data.publicado_ms or ''}".encode()).hexdigest()[:40]
+    # Android manda la hora de publicación; el atajo de iPhone no: sin ella, el mismo texto de otro minuto es otro aviso
+    # (si no, un segundo «X te envió 1» nunca se registraría).
+    marca = data.publicado_ms or ahora_co().strftime("%Y%m%d%H%M")
+    huella = hashlib.sha256(f"{data.paquete}|{data.titulo}|{data.texto}|{marca}".encode()).hexdigest()[:40]
     fecha = None
     if data.publicado_ms:
         try:
