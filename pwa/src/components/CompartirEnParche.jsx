@@ -22,6 +22,7 @@ export default function CompartirEnParche({ movimiento, className = '' }) {
   const { avisar } = useDialogos() || {}
   const [parches, setParches] = useState(null) // null = cargando
   const [compartidoEn, setCompartidoEn] = useState([])
+  const [falloCarga, setFalloCarga] = useState(false) // un error al cargar NO debe parecer «no tienes parches»
   const [elegido, setElegido] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [detalle, setDetalle] = useState(null) // miembros del parche elegido
@@ -36,10 +37,12 @@ export default function CompartirEnParche({ movimiento, className = '' }) {
         Promise.resolve(api.hogares?.()).then((x) => x || []),
         Promise.resolve(api.parchesDeMovimiento?.(movimiento.id)).then((x) => x || []).catch(() => []),
       ])
+      setFalloCarga(false)
       setParches(ps)
       setCompartidoEn(ya)
       setElegido((e) => e || (ps.length === 1 ? ps[0].id : ''))
     } catch {
+      setFalloCarga(true)
       setParches([])
     }
   }, [movimiento.id])
@@ -92,6 +95,15 @@ export default function CompartirEnParche({ movimiento, className = '' }) {
         <p className="text-sm font-semibold flex items-center gap-2"><Users size={16} aria-hidden="true" /> Compartido en {compartidoEn.map((x) => x.nombre).join(', ')}</p>
         <p className="text-xs text-ink-soft mt-1">Pagaste tú. En el parche ves lo que te debe cada uno.</p>
         <Link to={`/hogares/${compartidoEn[0].hogar_id}`} className="mt-2 inline-block text-sm font-semibold text-accent min-h-11 leading-[44px]">Ver el parche</Link>
+      </section>
+    )
+  }
+
+  if (falloCarga) {
+    return (
+      <section className={`rounded-2xl border border-dashed border-line p-4 ${className}`} aria-label="Compartir en un parche">
+        <p className="text-sm font-semibold flex items-center gap-2"><Users size={16} aria-hidden="true" /> No pudimos cargar tus parches</p>
+        <button type="button" onClick={cargar} className="mt-2 text-sm font-semibold text-accent min-h-11">Reintentar</button>
       </section>
     )
   }

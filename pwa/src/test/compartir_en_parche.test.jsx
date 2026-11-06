@@ -164,3 +164,15 @@ describe('cambiar cómo se divide', () => {
     expect(screen.getByRole('button', { name: 'Compartir' })).toBeDisabled()
   })
 })
+
+describe('si falla la carga de parches', () => {
+  it('avisa del error con «Reintentar» y no lo confunde con «no tienes parches»', async () => {
+    const user = userEvent.setup()
+    api.hogares = vi.fn().mockRejectedValueOnce(new Error('sin red')).mockResolvedValue([{ id: 'h1', nombre: 'Apartamento' }])
+    montar()
+    expect(await screen.findByText('No pudimos cargar tus parches')).toBeInTheDocument()
+    expect(screen.queryByText('Crear un parche')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }))
+    await waitFor(() => expect(screen.queryByText('No pudimos cargar tus parches')).not.toBeInTheDocument())
+  })
+})

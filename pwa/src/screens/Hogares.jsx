@@ -32,13 +32,16 @@ export default function Hogares() {
     cargar()
   }, [cargar])
 
+  const [creando, setCreando] = useState(false) // evita crear dos parches con un doble toque
   async function crear() {
-    if (!nuevo?.nombre.trim()) return
+    if (!nuevo?.nombre.trim() || creando) return
+    setCreando(true)
     try {
       const r = await api.crearHogar({ nombre: nuevo.nombre.trim() })
       navigate(`/hogares/${r.id}`, { state: { recienCreado: true } })
     } catch (e) {
       avisar(e.message || 'No se pudo crear el parche. Intenta de nuevo.')
+      setCreando(false)
     }
   }
 
@@ -73,7 +76,7 @@ export default function Hogares() {
           <div className="rounded-2xl border border-line bg-paper-raised p-3 flex flex-col gap-2">
             <input aria-label="Nombre del parche" autoFocus value={nuevo.nombre} onChange={(e) => setNuevo({ nombre: e.target.value })} placeholder="Nombre (ej. Casa, Apartamento, Viaje)" maxLength={60} className={campo} />
             <div className="flex gap-2">
-              <button onClick={crear} disabled={!nuevo.nombre.trim()} className="flex-1 bg-ink text-paper rounded-2xl py-2.5 text-sm font-semibold disabled:opacity-40">Crear parche</button>
+              <button onClick={crear} disabled={!nuevo.nombre.trim() || creando} className="flex-1 bg-ink text-paper rounded-2xl py-2.5 text-sm font-semibold disabled:opacity-40">{creando ? 'Creando…' : 'Crear parche'}</button>
               <button onClick={() => setNuevo(null)} className="px-4 text-sm text-ink-soft">Cancelar</button>
             </div>
           </div>
