@@ -212,7 +212,9 @@ export default function Informe() {
             <p className="t-kicker text-ink-soft capitalize">Gastaste en {informe.etiqueta}</p>
             <p className="text-[32px] t-display mt-1">{fmt(informe.total)}</p>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              <Variacion pct={informe.variacion_pct} anteriorLabel={informe.anterior.etiqueta} />
+              {valor.periodo === 'este_mes' && informe.variacion_pct === -100 && !informe.total
+                ? <span className="text-xs text-ink-soft">El mes apenas empieza</span>
+                : <Variacion pct={informe.variacion_pct} anteriorLabel={informe.anterior.etiqueta} />}
               <span className="text-xs text-ink-soft">
                 frente a {informe.anterior.etiqueta} ({fmt(informe.total_anterior)})
               </span>

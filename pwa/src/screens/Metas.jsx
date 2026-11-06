@@ -183,7 +183,7 @@ function TarjetaMeta({ meta: m, plan, consejo, indice, onAportar }) {
     <div className="rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': indice }} data-testid={`meta-${m.id}`}>
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm font-semibold">{m.nombre}</p>
-        <p className="text-xs text-ink-soft">{m.progreso_pct}%</p>
+        <p className="text-xs text-ink-soft">{String(m.progreso_pct).replace('.', ',')} %</p>
       </div>
       <BarraProgreso pct={m.progreso_pct} label={`Progreso de ${m.nombre}`} className="h-2 rounded-full bg-line overflow-hidden mb-2" />
       <div className="flex items-center justify-between text-xs text-ink-soft mb-3">

@@ -16,6 +16,7 @@ export const TEMAS = {
   empezar: 'Para empezar',
   traer: 'Traer extractos',
   entender: 'Entender mis números',
+  compartir: 'Compartir plata con otros',
   privacidad: 'Privacidad y seguridad',
 }
 
@@ -167,6 +168,94 @@ export const PREGUNTAS = [
     ],
     palabras: 'cuadran cuadrar puedes gastar hoy disponible alcanza falta',
     accion: { texto: 'Ver mi presupuesto', to: '/presupuesto' },
+  },
+  {
+    id: 'gasto-tarjeta',
+    tema: 'entender',
+    pregunta: '¿Cómo registro un gasto con mi tarjeta de crédito?',
+    respuesta: [
+      'Anota el gasto como cualquier otro y elige tu tarjeta como la cuenta. Así queda lo que debes en la tarjeta.',
+      'Cuando le pagues a la tarjeta, no lo anotes como gasto: mira la pregunta de «pagar la tarjeta».',
+    ],
+    palabras: 'tarjeta credito gasto compra visa deuda cupo',
+    accion: { texto: 'Ver mis cuentas', to: '/cuentas' },
+  },
+  {
+    id: 'pagar-tarjeta',
+    tema: 'entender',
+    pregunta: '¿Cómo registro el pago de mi tarjeta sin que cuente como gasto?',
+    respuesta: [
+      'Usa **Pasar plata**: elige la cuenta con la que pagas y, como destino, tu tarjeta. Así baja lo que debes y no cuenta como un gasto nuevo, porque ese gasto ya lo anotaste cuando compraste.',
+    ],
+    palabras: 'pagar tarjeta pago tarjeta abono no cuente gasto doble',
+    accion: { texto: 'Ver mis cuentas', to: '/cuentas' },
+  },
+  {
+    id: 'dividir-casa-vaca',
+    tema: 'compartir',
+    pregunta: '¿Cuál es la diferencia entre Dividir, Parche y Vaca?',
+    respuesta: [
+      '- **Dividir**: una cuenta que ya se pagó (una cena, un viaje). Repartes y ves quién te debe.',
+      '- **Parche**: gastos que se repiten con las mismas personas (la casa, la pareja). Cada quien con su cuenta y un libro común.',
+      '- **Vaca**: poner plata entre varios para algo puntual (un regalo, una inscripción) y ver quién ya puso.',
+    ],
+    palabras: 'dividir parche vaca colecta amigos diferencia casa pareja regalo',
+    accion: { texto: 'Ver mi parche', to: '/hogares' },
+  },
+  {
+    id: 'amigo-sin-cuenta',
+    tema: 'compartir',
+    pregunta: '¿Mi amigo necesita tener CuadraMe?',
+    respuesta: [
+      '**Para dividir un gasto, no**: lo agregas con su nombre (y su celular si quieres cobrarle por WhatsApp).',
+      '**Para una vaca, no**: abre el enlace que le mandas y marca «Ya pagué».',
+      '**Para un parche, sí**: cada persona entra con su cuenta de CuadraMe.',
+    ],
+    palabras: 'amigo invitar sin cuenta enlace whatsapp registrar necesita',
+    accion: { texto: 'Ver mis vacas', to: '/colectas' },
+  },
+  {
+    id: 'cobrar-amigos',
+    tema: 'compartir',
+    pregunta: '¿Cómo le cobro a quien me debe?',
+    respuesta: [
+      'Lo que te deben queda en **Me deben / Debo**. Ahí tocas «Cobrar por WhatsApp» y se abre el mensaje listo para enviar.',
+      'CuadraMe no mueve plata: solo lleva la cuenta. El pago lo hacen entre ustedes por su banco.',
+    ],
+    palabras: 'cobrar deben deuda amigo whatsapp recordar prestar',
+    accion: { texto: 'Ver quién me debe', to: '/amigos' },
+  },
+  {
+    id: 'que-ve-el-otro',
+    tema: 'compartir',
+    pregunta: '¿Qué ve la otra persona de mis cuentas?',
+    respuesta: [
+      'Solo las cuentas que tú le compartes, y tú eliges si solo las ve o si también puede anotar. Nada más.',
+      'Las puedes dejar de compartir cuando quieras desde Compartir con mi pareja o familia.',
+    ],
+    palabras: 'compartir cuentas pareja familia acceso ver privacidad',
+    accion: { texto: 'Ver Compartir', to: '/compartir' },
+  },
+  {
+    id: 'corregir-movimiento',
+    tema: 'entender',
+    pregunta: '¿Cómo corrijo o borro un movimiento?',
+    respuesta: [
+      'Entra a **Movimientos** y toca el que quieres cambiar: ahí lo puedes editar, cambiarle la categoría o borrarlo.',
+      'Si lo acabas de guardar, en el aviso de abajo aparece **Deshacer**.',
+    ],
+    palabras: 'corregir editar borrar eliminar movimiento error categoria cambiar',
+    accion: { texto: 'Ir a Movimientos', to: '/movimientos' },
+  },
+  {
+    id: 'salir-de-parche',
+    tema: 'compartir',
+    pregunta: '¿Puedo salir de un parche?',
+    respuesta: [
+      'Sí. Entra al parche y toca **Salir**. Ya no verás nada de ese parche; lo que aportaste se conserva para los demás.',
+    ],
+    palabras: 'salir parche grupo abandonar casa',
+    accion: { texto: 'Ver mis parches', to: '/hogares' },
   },
 ]
 

@@ -300,3 +300,14 @@ describe('Mensajes en lenguaje llano', () => {
     }
   })
 })
+
+describe('Centro de ayuda: compartir y tarjeta', () => {
+  it('las preguntas nuevas se encuentran con las palabras que la gente escribe', () => {
+    const quien = (q) => buscarPreguntas(q).map((p) => p.id)
+    expect(quien('parche vaca')).toContain('dividir-casa-vaca')
+    expect(quien('cobrar')).toContain('cobrar-amigos')
+    expect(quien('pagar tarjeta')).toContain('pagar-tarjeta')
+    expect(quien('borrar movimiento')).toContain('corregir-movimiento')
+    expect(TEMAS.compartir).toBeTruthy()
+  })
+})

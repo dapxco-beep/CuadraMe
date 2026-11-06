@@ -221,7 +221,7 @@ function TarjetaAtajo({ a, recargar }) {
   }
 
   return (
-    <Tarjeta icono={Smartphone} titulo="Atajo de iPhone y clave API" semaforo={a.semaforo} mensaje={a.mensaje} testid="tarjeta-atajo">
+    <Tarjeta icono={Smartphone} titulo="Conecta tu iPhone (Apple Pay)" semaforo={a.semaforo} mensaje={a.mensaje} testid="tarjeta-atajo">
       <div className="grid grid-cols-2 gap-2 mt-3">
         <Dato etiqueta="último uso" valor={haceCuanto(a.ultimo_uso) || 'nunca'} />
         <Dato etiqueta="movimientos en 7 días" valor={a.movimientos_7d} />

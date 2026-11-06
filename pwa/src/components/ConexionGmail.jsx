@@ -114,7 +114,7 @@ export default function ConexionGmail({ estado, onCambio }) {
         <div className="rounded-2xl bg-paper border border-line p-4">
           <p className="text-sm font-semibold">Conecta tu Gmail</p>
           <p className="text-xs text-ink-soft mt-1 mb-3">
-            Busco solo los correos de tus bancos y billeteras. Tú apruebas cada movimiento.
+            Solo leo los correos de tus bancos y billeteras (compras, transferencias, extractos). No leo tus correos personales ni envío nada. Tú apruebas cada movimiento y lo desconectas cuando quieras desde aquí.
           </p>
           <button onClick={() => conectar()} className="w-full bg-ink text-paper font-semibold rounded-xl py-3 text-sm">
             Conectar Gmail
@@ -124,7 +124,7 @@ export default function ConexionGmail({ estado, onCambio }) {
 
       {error && <p className="text-xs text-danger mt-2" role="alert">{error}</p>}
 
-      <p className="flex items-start gap-1.5 text-[11px] text-ink-soft mt-3">
+      <p className="flex items-start gap-1.5 text-xs text-ink-soft mt-3">
         <ShieldCheck size={16} className="shrink-0 mt-0.5 text-accent" aria-hidden="true" />
         <span>
           Solo tengo permiso de <b>lectura</b>: no envío, borro ni modifico correos. No guardo tus correos ni los PDF, solo

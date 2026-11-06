@@ -77,7 +77,7 @@ export default function CuentasAmigos() {
           >
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-2xl font-semibold">Dividir gastos con amigos</h1>
+          <h1 className="text-2xl font-semibold">Me deben / Debo</h1>
         </div>
         <button
           onClick={() => navigate('/dividir')}

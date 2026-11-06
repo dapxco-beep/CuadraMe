@@ -145,7 +145,7 @@ export default function Cuentas() {
           <p className="text-sm text-danger mb-3">{error}</p>
         </div>
       ) : cuentas.length === 0 ? (
-        <EstadoVacio icono={Wallet} titulo="Aún no tienes cuentas" texto="Agrega la primera con el botón +." className="mx-6 mt-6" />
+        <EstadoVacio icono={Wallet} titulo="Aún no tienes cuentas" texto="Una cuenta es un lugar donde tienes o debes plata: tu banco, Nequi, el efectivo o una tarjeta. Agrega la primera con el botón +." className="mx-6 mt-6" />
       ) : (
         <div className="mx-6 mt-4 space-y-3">
           {cuentas.map((c, i) => (

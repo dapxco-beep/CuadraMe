@@ -130,7 +130,7 @@ export default function ReglasCategoria() {
               />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">"{r.patron}"{r.activa === false && <span className="ml-2 text-[11px] font-semibold text-ink-soft">En pausa</span>}</p>
-                <p className="text-xs text-ink-soft">→ {r.categoria}{r.tipo ? ` · ${r.tipo}` : ''}</p>
+                <p className="text-xs text-ink-soft">→ {r.categoria}{r.tipo ? ` · ${{ expense: 'gasto', income: 'ingreso', transfer: 'traslado' }[r.tipo] || r.tipo}` : ''}</p>
               </div>
               <button onClick={() => eliminar(r.id)} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-danger shrink-0" aria-label="Eliminar">
                 <Trash2 size={16} />

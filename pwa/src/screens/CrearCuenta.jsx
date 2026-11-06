@@ -58,6 +58,7 @@ function Bienvenida({ onContinuar }) {
       >
         Empezar — crea tu primera cuenta
       </button>
+      <p className="text-xs text-ink-soft text-center mt-3">Toma 1 minuto. Nunca te pedimos la clave de tu banco.</p>
     </div>
   )
 }
@@ -147,7 +148,7 @@ export default function CrearCuenta({ onCreada }) {
     <div className="flex-1 overflow-y-auto flex flex-col px-6 py-10 screen-enter">
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold">Crea tu primera cuenta</h1>
-        <p className="text-sm text-ink-soft mt-1">Empieza con la que más uses. Luego agregas las demás.</p>
+        <p className="text-sm text-ink-soft mt-1">Una cuenta es cualquier lugar donde guardas plata: tu banco, Nequi o el efectivo del bolsillo. Empieza por la que más uses; luego agregas las demás.</p>
       </div>
 
       <div className="mb-4">

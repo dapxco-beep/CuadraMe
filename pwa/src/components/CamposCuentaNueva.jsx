@@ -13,7 +13,7 @@ export default function CamposCuentaNueva({ tipo, valores, onCambio }) {
   if (tipo !== 'credito') {
     return (
       <div className="mb-4">
-        <p className="text-xs text-ink-soft mb-1.5">¿Cuánta plata tienes hoy en esta cuenta? Si no sabes, déjalo vacío.</p>
+        <p className="text-xs text-ink-soft mb-1.5">¿Cuánta plata tiene HOY esta cuenta? Míralo en la app de tu banco: es el punto de partida para que todo cuadre. Si no lo sabes, déjalo vacío y lo ajustas después.</p>
         <InputMonto
           value={valores.saldo}
           onValor={(v) => set('saldo', v)}

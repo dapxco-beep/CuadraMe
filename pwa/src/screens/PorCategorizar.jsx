@@ -323,7 +323,7 @@ export default function PorCategorizar() {
 
           <section className="mx-6 mt-5" aria-label="Comercios por categorizar">
             <div className="flex items-center justify-between gap-2 mb-2">
-              <h2 className="text-sm font-semibold">{verTodos ? 'Todos los comercios' : `Los ${Math.min(LIMITE_VISIBLE, datos.total_grupos)} que más pesan`}</h2>
+              <h2 className="text-sm font-semibold">{verTodos ? 'Todos los comercios' : (Math.min(LIMITE_VISIBLE, datos.total_grupos) === 1 ? 'El que más pesa' : `Los ${Math.min(LIMITE_VISIBLE, datos.total_grupos)} que más pesan`)}</h2>
               <div className="flex gap-1">
                 <button onClick={() => setSel(seleccionarVisibles(grupos))} className="text-xs font-medium underline min-h-[44px] px-2">
                   Seleccionar los visibles
