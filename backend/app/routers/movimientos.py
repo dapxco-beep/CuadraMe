@@ -15,6 +15,7 @@ from sqlalchemy import and_, or_
 from app import duplicados as dup
 from app import notificaciones as notif
 from app import reglas_notificacion as rn
+from app.formas_asunto import registrar_aviso
 from app import pendientes
 from app import saldo_inicial_auto
 from app import subcategorias as subcat
@@ -1169,6 +1170,11 @@ def crear_movimiento_desde_notificacion(
                 regla.usos = (regla.usos or 0) + 1
                 db.commit()
             return {"ok": True, "registrado": False, "motivo": "pedir_monto"}
+        if ios and not notif.es_ruido(data.titulo, data.texto):
+            # Un aviso de banco que no entendimos: se anota SOLO su forma anónima (si la persona aceptó estadísticas
+            # anónimas) para mejorar el lector con lo que ven todos los clientes, sin guardar texto ni datos.
+            if registrar_aviso(db, usuario.id, app_nombre, data.titulo, data.texto):
+                db.commit()
         return {"ok": True, "registrado": False, "motivo": "no_parece_un_movimiento"}
     # Si la persona ya enseñó hacia dónde van los avisos con esta forma, no se le vuelve a preguntar.
     if n.tipo_incierto and regla is not None and regla.tipo:
@@ -1177,6 +1183,8 @@ def crear_movimiento_desde_notificacion(
         db.commit()
     # iPhone: hay monto pero el texto no dice si entró o salió. En vez de adivinar, el atajo pregunta.
     if n.tipo_incierto and n.clase != "wallet" and ios:
+        if registrar_aviso(db, usuario.id, app_nombre, data.titulo, data.texto):
+            db.commit()
         return {"ok": True, "registrado": False, "motivo": "pedir_tipo", "monto": n.monto, "comercio": n.comercio}
     fecha = None
     if data.publicado_ms:

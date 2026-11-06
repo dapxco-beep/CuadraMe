@@ -9,6 +9,7 @@ import { useDialogos } from '../lib/DialogosContext'
 import { activarPush, estadoPermiso, pushSoportado } from '../lib/push'
 import { haceCuanto, resumenSync, sincronizarTodo } from '../lib/sincronizarGmail'
 import { mensajeAmable } from '../lib/mensajes'
+import { ATAJO_NOTIFICACIONES_URL } from './ConectarDispositivo'
 
 // Semáforo: color + texto (no solo color, para que se entienda sin distinguirlos).
 const SEMAFORO = {
@@ -170,7 +171,7 @@ function TarjetaAtajo({ a, recargar }) {
         clave = r.api_key
       }
       if (!clave) {
-        setError('Por seguridad tu clave ya no se puede copiar. Si la perdiste, pulsa «Clave nueva».')
+        setError('Tu clave es de antes de poder volver a verla. Aparecerá aquí sola en cuanto uno de tus atajos la use una vez; si no, pulsa «Clave nueva».')
         return
       }
       await navigator.clipboard.writeText(clave)
@@ -242,6 +243,61 @@ function TarjetaAtajo({ a, recargar }) {
           <Send size={16} /> {probando ? 'Probando...' : 'Probar conexión'}
         </Boton>
       </div>
+    </Tarjeta>
+  )
+}
+
+// Registro automático desde las notificaciones del banco (iPhone, iOS 27): una fila por cada cuenta tuya que el atajo sabe
+// leer. «Conectado» = ya llegó algún aviso de esa cuenta; si no, «Falta conectar». Sin cuentas reconocidas no se muestra.
+function TarjetaAvisosBanco() {
+  const [filas, setFilas] = useState(null)
+  useEffect(() => {
+    let vivo = true
+    Promise.resolve()
+      .then(() => api.estadoNotificaciones())
+      .then((r) => vivo && setFilas(Array.isArray(r) ? r : []))
+      .catch(() => vivo && setFilas([]))
+    return () => { vivo = false }
+  }, [])
+  if (!filas || filas.length === 0) return null
+  const faltan = filas.filter((f) => !f.ultimo_aviso)
+  const semaforo = faltan.length === 0 ? 'verde' : 'ambar'
+  const mensaje = faltan.length === 0
+    ? 'Tus bancos avisan solos: cada movimiento llega a CuadraMe apenas lo notifica la app del banco.'
+    : `Falta conectar: ${[...new Set(faltan.map((f) => f.app))].join(', ')}. Así CuadraMe registra cada movimiento apenas el banco te avisa.`
+  return (
+    <Tarjeta icono={Bell} titulo="Registro automático desde el banco" semaforo={semaforo} mensaje={mensaje} testid="tarjeta-avisos-banco">
+      <ul className="mt-3 space-y-1.5">
+        {filas.map((f) => (
+          <li key={f.cuenta_id} className="flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2 text-sm">
+            <span className="font-semibold truncate">{f.cuenta}</span>
+            <span className="text-xs text-ink-soft shrink-0">
+              {f.ultimo_aviso ? `Conectado · último aviso ${haceCuanto(f.ultimo_aviso) || ''}` : 'Falta conectar'}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <a
+        href={ATAJO_NOTIFICACIONES_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-3 text-sm font-semibold bg-accent text-paper-raised mt-3"
+      >
+        <Smartphone size={16} /> Instalar el atajo en mi iPhone
+      </a>
+      <details className="mt-3 text-xs text-ink-soft">
+        <summary className="cursor-pointer font-semibold text-ink">Cómo conectar cada banco (3 minutos)</summary>
+        <ol className="list-decimal pl-5 mt-2 space-y-1.5 leading-relaxed">
+          <li>Toca «Instalar el atajo», pulsa «Agregar atajo», pega tu clave de CuadraMe y escribe el banco (por ejemplo Nequi).</li>
+          <li>En la app Atajos ve a Automatización, toca + y elige «Cuando recibo una notificación».</li>
+          <li>Elige la app del banco y marca «Ejecutar inmediatamente».</li>
+          <li>Elige «Ejecutar atajo» y escoge CuadraMe Notificaciones. Repite estos pasos con cada banco.</li>
+        </ol>
+        <p className="mt-2 leading-relaxed">
+          Necesitas iOS 27 y activar la automatización en tu iPhone. Si el aviso no dice cuánto fue, el atajo te lo pregunta
+          y aprende para no volver a preguntar. Todo queda «por confirmar» hasta que lo revises.
+        </p>
+      </details>
     </Tarjeta>
   )
 }
@@ -395,6 +451,7 @@ export default function Conexiones({ embebido = false, alIr }) {
         <>
           <TarjetaGmail g={estado.gmail} ir={ir} recargar={recargar} />
           <TarjetaAtajo a={estado.atajo} recargar={recargar} />
+          <TarjetaAvisosBanco />
           <TarjetaConciliacion c={estado.conciliacion} ir={ir} />
           <TarjetaPush p={estado.push} />
         </>

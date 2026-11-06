@@ -18,7 +18,12 @@ RECIBO = ("Envío", "DANIEL PARRADO te envió 1, ¡lo mejor!")
 
 
 @pytest.fixture(autouse=True)
-def _ambiente():
+def _ambiente(monkeypatch):
+    from cryptography.fernet import Fernet
+
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "fernet_key", Fernet.generate_key().decode())
     app.dependency_overrides[get_current_user] = lambda: USUARIO["actual"]
     yield
 
@@ -124,3 +129,41 @@ def test_estado_notificaciones_dice_que_bancos_faltan_por_conectar():
     assert _aviso(h, RECIBO)["registrado"]
     despues = {e["app"]: e for e in client.get("/movimientos/estado-notificaciones").json()}
     assert despues["Nequi"]["avisos_30d"] == 1 and despues["Nequi"]["ultimo_aviso"] and despues["Nu"]["avisos_30d"] == 0
+
+
+def _formas_de_aviso():
+    from app.database import SessionLocal
+    from app.models import FormaAsuntoFallida
+
+    db = SessionLocal()
+    try:
+        return [(f.esqueleto, f.dominio, f.conteo) for f in db.query(FormaAsuntoFallida).filter(FormaAsuntoFallida.dominio.like("aviso:%")).all()]
+    finally:
+        db.close()
+
+
+def _consentir(si):
+    from app.routers import consentimientos as consent
+
+    r = client.post("/consentimientos", json={"version": consent.VERSION_TEXTOS,
+                                              "items": [{"finalidad": "estadisticas_anonimas", "aceptado": si}]})
+    assert r.status_code == 200, r.text
+
+
+def test_avisos_que_no_se_entienden_se_cuentan_solo_con_estadisticas_anonimas_y_sin_datos():
+    h = _usuario("rn-8")
+    raro = ("Nequi", "Tu saldo cambió, revisa tu movimiento reciente con DANIEL PARRADO en tu cuenta")
+    antes = len(_formas_de_aviso())
+    assert _aviso(h, raro)["motivo"] == "no_parece_un_movimiento"
+    assert len(_formas_de_aviso()) == antes  # sin autorización no se anota nada
+    _consentir(True)
+    assert _aviso(h, raro)["motivo"] == "no_parece_un_movimiento"
+    assert _aviso(h, raro)["motivo"] == "no_parece_un_movimiento"
+    formas = [f for f in _formas_de_aviso() if f[1] == "aviso:nequi"]
+    assert formas and formas[-1][2] == 2
+    assert "daniel" not in str(formas).lower() and "parrado" not in str(formas).lower()
+    # El ruido (promociones, códigos) no se cuenta como «aviso no entendido».
+    n = len(_formas_de_aviso())
+    _aviso(h, ("Nequi", "Ofertas", "Todos piden OFERTA a solo $14.968"))
+    assert len(_formas_de_aviso()) == n
+    _consentir(False)

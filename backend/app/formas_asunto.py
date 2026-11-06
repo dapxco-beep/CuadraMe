@@ -50,6 +50,33 @@ def registrar_forma(db: Session, usuario_id: str, remitente: str, asunto: str) -
         return False
 
 
+def registrar_aviso(db: Session, usuario_id: str, app: str, titulo: str, texto: str) -> bool:
+    """Igual que `registrar_forma` pero para NOTIFICACIONES de apps de bancos (atajo de iPhone): suma 1 a la forma
+    del aviso que el lector no entendió, con dominio «aviso:<app>». Solo el esqueleto de vocabulario fijo; nunca el
+    texto, montos ni nombres. Solo cuenta si la persona aceptó las estadísticas anónimas. No hace commit."""
+    try:
+        from app.routers.consentimientos import tiene_consentimiento  # import tardío: evita un ciclo de módulos
+
+        if not tiene_consentimiento(db, usuario_id, FINALIDAD):
+            return False
+        esq = esqueleto_anonimo(f"{titulo or ''}. {texto or ''}")
+        if not esq:
+            return False
+        dominio = f"aviso:{(app or '')[:30].strip().lower()}"
+        fila = db.query(FormaAsuntoFallida).filter(FormaAsuntoFallida.esqueleto == esq, FormaAsuntoFallida.dominio == dominio).first()
+        ahora = datetime.utcnow()
+        if fila is None:
+            db.add(FormaAsuntoFallida(esqueleto=esq, dominio=dominio, conteo=1, primera_vez=ahora, ultima_vez=ahora))
+        else:
+            fila.conteo = (fila.conteo or 0) + 1
+            fila.ultima_vez = ahora
+        db.flush()
+        return True
+    except Exception:  # noqa: BLE001
+        logger.exception("No se pudo anotar la forma de aviso (se ignora)")
+        return False
+
+
 def mas_frecuentes(db: Session, limite: int = 50) -> list[dict]:
     filas = (db.query(FormaAsuntoFallida).order_by(FormaAsuntoFallida.conteo.desc(), FormaAsuntoFallida.ultima_vez.desc())
              .limit(max(1, min(limite, 200))).all())
