@@ -39,6 +39,27 @@ def _monto_cop(m: Movimiento, monedas: dict[str, str], conv: ConvertidorBase) ->
     return conv.contar(m.monto, monedas.get(m.cuenta_id, "COP"))
 
 
+# El emparejamiento de traslados mira hasta 4 días (festivos): se trae un margen mayor a cada lado del periodo para que
+# el tipo efectivo de los movimientos de los bordes salga igual que con TODO el historial.
+_MARGEN_EMPAREJAR = timedelta(days=5)
+
+
+def _limites_del_periodo(mes: str | None, desde: str | None, hasta: str | None):
+    """(inicio, fin) del periodo pedido, o None si no se puede acotar (entonces se lee todo, como antes)."""
+    try:
+        if desde or hasta:
+            if not (desde and hasta):
+                return None
+            return datetime.fromisoformat(desde), datetime.fromisoformat(hasta)
+        objetivo = mes or ahora_co().strftime("%Y-%m")
+        a, m = int(objetivo[:4]), int(objetivo[5:7])
+        if objetivo[4] != "-" or not (1 <= m <= 12):
+            return None
+        return datetime(a, m, 1), (datetime(a + 1, 1, 1) if m == 12 else datetime(a, m + 1, 1))
+    except (ValueError, IndexError):
+        return None
+
+
 @router.get("/mensual", response_model=ReporteMensual)
 def reporte_mensual(
     mes: str | None = None,
@@ -61,7 +82,12 @@ def reporte_mensual(
     monedas = _monedas_por_cuenta(db, ids_accesibles)
     conv = ConvertidorBase.de_usuario(db, usuario.id)
 
-    movimientos = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids_accesibles)).all()
+    consulta = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids_accesibles))
+    limites = _limites_del_periodo(mes, desde, hasta)
+    if limites:
+        # Antes se leía TODO el historial y se filtraba en Python: con muchos años de datos era lo más lento del Inicio.
+        consulta = consulta.filter(Movimiento.fecha >= limites[0] - _MARGEN_EMPAREJAR, Movimiento.fecha <= limites[1] + _MARGEN_EMPAREJAR)
+    movimientos = consulta.all()
 
     if desde or hasta:
         desde_dt = datetime.fromisoformat(desde) if desde else datetime.min
