@@ -211,8 +211,8 @@ MIGRACIONES: list[tuple[str, list[str]]] = [
         "0013_reglas_notificacion",
         [
             'CREATE TABLE IF NOT EXISTS reglas_notificacion ('
-            'id VARCHAR PRIMARY KEY, usuario_id VARCHAR NOT NULL, app VARCHAR NOT NULL DEFAULT '', '
-            'esqueleto VARCHAR NOT NULL DEFAULT '', tipo VARCHAR NULL, sin_cifra BOOLEAN DEFAULT FALSE, '
+            'id VARCHAR PRIMARY KEY, usuario_id VARCHAR NOT NULL, app VARCHAR NOT NULL DEFAULT \'\', '
+            'esqueleto VARCHAR NOT NULL DEFAULT \'\', tipo VARCHAR NULL, sin_cifra BOOLEAN DEFAULT FALSE, '
             'creado_en TIMESTAMP, usos INTEGER DEFAULT 0, '
             'CONSTRAINT uq_regla_notificacion UNIQUE (usuario_id, app, esqueleto))',
             'CREATE INDEX IF NOT EXISTS ix_reglas_notificacion_usuario ON reglas_notificacion (usuario_id)',
