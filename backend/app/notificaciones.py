@@ -153,6 +153,18 @@ def _tarjeta(texto: str) -> str | None:
     return f"{marca.group(0).title() if marca else ''} {m.group('ult')}".strip()
 
 
+def nombre_app(paquete: str) -> str:
+    """Nombre legible de la app: de la lista de Android, del alias de iPhone o, si es una app nueva, el texto tal cual."""
+    p = (paquete or "").strip()
+    return (APPS.get(p) or ALIAS_IOS.get(p.lower()) or (p[:40], ""))[0]
+
+
+def es_ios(paquete: str) -> bool:
+    """El atajo de iPhone manda el NOMBRE de la app (Nequi, Nu...), no un paquete de Android (com.x.y)."""
+    p = (paquete or "").strip()
+    return bool(p) and p not in APPS and "." not in p
+
+
 def interpretar(paquete: str, titulo: str, texto: str) -> Notificacion | None:
     """Devuelve el movimiento que insinúa la notificación, o None si no parece uno."""
     titulo, texto = (titulo or "").strip(), (texto or "").strip()

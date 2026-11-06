@@ -295,6 +295,11 @@ class NotificacionAndroid(BaseModel):
     titulo: str = Field(default="", max_length=300)
     texto: str = Field(default="", max_length=2000)
     publicado_ms: Optional[int] = None  # cuándo la mostró Android (milisegundos Unix); sirve para la hora y para no repetirla
+    # Solo iPhone, cuando la persona responde una pregunta del atajo (segunda llamada con el MISMO texto):
+    monto: Optional[float] = Field(default=None, gt=0)
+    tipo: Optional[str] = Field(default=None, max_length=20)  # 'gasto' | 'ingreso' (o expense | income)
+    nota: Optional[str] = Field(default=None, max_length=150)  # «parche con Laura»: de aquí sale la categoría
+    aprender: bool = True  # guardar la plantilla anónima para no volver a preguntar
 
 
 class MovimientoRapidoCreate(BaseModel):

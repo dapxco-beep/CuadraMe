@@ -192,6 +192,24 @@ class ReglaCorreo(Base):
     usos = Column(Integer, default=0)
 
 
+class ReglaNotificacion(Base):
+    """«Aprende» cómo avisa TU banco: regla PERSONAL para notificaciones con la misma forma (app + esqueleto).
+    Nace cuando respondes una pregunta del atajo de iPhone («¿cuánto enviaste?», «¿entró o salió?»), para no volver
+    a preguntar. Guarda solo la plantilla anónima (palabras fijas del banco; montos y nombres quedan como «*»),
+    NUNCA el texto del aviso. Ver app/reglas_notificacion.py."""
+    __tablename__ = "reglas_notificacion"
+    __table_args__ = (UniqueConstraint("usuario_id", "app", "esqueleto", name="uq_regla_notificacion"),)
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    usuario_id = Column(String, nullable=False, index=True)
+    app = Column(String, nullable=False, default="")
+    esqueleto = Column(String, nullable=False, default="")
+    tipo = Column(String, nullable=True)  # income | expense: hacia dónde fue la plata en avisos con esta forma
+    sin_cifra = Column(Boolean, default=False)  # el aviso de esta forma nunca trae monto: el atajo lo pregunta
+    creado_en = Column(DateTime, default=datetime.utcnow)
+    usos = Column(Integer, default=0)
+
+
 class FormaAsuntoFallida(Base):
     """Contador GLOBAL y anónimo de «formas de asunto» que el lector no supo leer: solo el esqueleto hecho de
     palabras de un vocabulario fijo (sin dígitos, montos, comercios ni nombres) y el dominio del remitente. SIN usuario_id

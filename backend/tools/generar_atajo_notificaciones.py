@@ -5,9 +5,9 @@ Firma (en el Mac, basta el Apple ID gratis):
        shortcuts sign -m anyone -i "CuadraMe Notificaciones.shortcut" -o "CuadraMe Notificaciones firmado.shortcut"
 
 Qué hace el atajo: manda el texto de la notificación a /movimientos/rapido-notificacion (el mismo
-endpoint de Android; el servidor lee cada banco). Según `motivo` de la respuesta:
+endpoint de Android; el servidor lee cada banco). Según `motivo` de la respuesta (y el servidor APRENDE la respuesta de cada persona; ver reglas_notificacion.py):
   - pedir_monto            -> plata ENVIADA (el banco no dice cuánto): pregunta monto y «¿para qué o para quién?»
-                              y lo registra en /movimientos/rapido; ese texto es lo que categoriza el gasto.
+                              y lo registra (misma ruta, con la respuesta); ese texto es lo que categoriza el gasto.
   - pedir_tipo             -> hay monto pero no se sabe si entró o salió: pregunta «¿Entró o salió plata?».
   - no_parece_un_movimiento -> no hace nada (ofertas, códigos...).
   - (sin motivo)           -> se registró: muestra el aviso («Ingreso de $X de Laura. Confírmalo en CuadraMe»).
@@ -99,13 +99,18 @@ def construir(base: str, banco: str = "Nequi") -> dict:
         _valor("motivo", id_post, id_motivo),
         _valor("mensaje", id_post, id_msg),
     ]
+    # Segunda llamada con el MISMO texto + la respuesta de la persona: el servidor registra y aprende la forma del
+    # aviso, así la próxima vez de este banco ya no pregunta.
+    def responder(uid, monto_v, tipo_v, nota_v):
+        return _post(f"{base}/movimientos/rapido-notificacion", clave,
+                     [("paquete", nombre_banco), ("titulo", _texto("")), ("texto", _con_variable("", ENTRADA)),
+                      ("monto", monto_v), ("tipo", tipo_v), ("nota", nota_v)], uid)
+
     # Salió plata y el aviso no dice cuánto: se pregunta monto y para qué (eso categoriza el gasto)
     pide_monto = [
         _accion("ask", UUID=id_monto, WFAskActionPrompt="¿Cuánto enviaste?", WFInputType="Number"),
         _accion("ask", UUID=id_para, WFAskActionPrompt="¿Para qué o para quién? (ej. parche con Laura)", WFInputType="Text"),
-        _post(f"{base}/movimientos/rapido", clave,
-              [("monto", entrada_texto(id_monto)), ("tipo", _texto("expense")), ("cuenta", nombre_banco),
-               ("fuente", _texto("shortcut")), ("descripcion", entrada_texto(id_para))], id_rapido),
+        responder(id_rapido, entrada_texto(id_monto), _texto("gasto"), entrada_texto(id_para)),
         _valor("mensaje", id_rapido, id_resp),
         aviso(id_resp),
     ]
@@ -115,10 +120,8 @@ def construir(base: str, banco: str = "Nequi") -> dict:
         _valor("comercio", id_post, id_com2),
         _accion("choosefromlist", UUID=id_tipo, WFChooseFromListActionPrompt="¿Entró o salió plata?",
                 WFChooseFromListActionList=["Gasto", "Ingreso"]),
-        _post(f"{base}/movimientos/rapido", clave,
-              [("monto", entrada_texto(id_monto2, "Valor del diccionario")), ("tipo", entrada_texto(id_tipo, "Elemento elegido")),
-               ("cuenta", nombre_banco), ("fuente", _texto("shortcut")),
-               ("descripcion", entrada_texto(id_com2, "Valor del diccionario"))], id_rapido2),
+        responder(id_rapido2, entrada_texto(id_monto2, "Valor del diccionario"),
+                  entrada_texto(id_tipo, "Elemento elegido"), entrada_texto(id_com2, "Valor del diccionario")),
         _valor("mensaje", id_rapido2, id_resp2),
         aviso(id_resp2),
     ]

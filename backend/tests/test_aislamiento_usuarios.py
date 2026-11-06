@@ -29,7 +29,7 @@ import app.routers as paquete_routers  # noqa: E402
 from app.auth import UsuarioActual, get_current_user  # noqa: E402
 from app.database import Base, SessionLocal  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import CorreoGasto, ExtractoCorreo, HistorialExtracto, PushSubscription, ReglaCorreo  # noqa: E402
+from app.models import CorreoGasto, ExtractoCorreo, HistorialExtracto, PushSubscription, ReglaCorreo, ReglaNotificacion  # noqa: E402
 
 client = TestClient(app)
 A = UsuarioActual(id="aisl-a", email="a-aisl@test.com", nombre="Dueña A")
@@ -167,14 +167,15 @@ def _sembrar():
         p = PushSubscription(usuario_id=A.id, endpoint=f"https://push.example/{MARCA}", p256dh="k", auth="a")
         rg = ReglaCorreo(usuario_id=A.id, remitente_dominio="banco.com", esqueleto_asunto=f"{MARCA.lower()} compra",
                          etiqueta_monto="la cantidad de:", tipo="expense")
+        rn = ReglaNotificacion(usuario_id=A.id, app="Nequi", esqueleto=f"{MARCA.lower()} envio", sin_cifra=True)
         from app.models_autoarreglo import ArregloAuto
 
         lote = ArregloAuto(usuario_id=A.id, lote_id="lote-aisl-a", tipo="crear_linea", entidad_id="mov-aisl-a",
                            despues=json.dumps({"cuenta_id": banco["id"], "descripcion": f"{MARCA} compra auto", "monto": 5,
                                                "tipo": "expense", "fecha": "2026-01-01T00:00:00", "_paso": "importar"}))
-        db.add_all([c, ex, h, p, rg, lote])
+        db.add_all([c, ex, h, p, rg, rn, lote])
         db.commit()
-        I.update(correo=c.id, extracto=ex.id, historial=h.id, regla_correo=rg.id, lote_auto="lote-aisl-a", mov_auto="mov-aisl-a")
+        I.update(correo=c.id, extracto=ex.id, historial=h.id, regla_correo=rg.id, regla_notif=rn.id, lote_auto="lote-aisl-a", mov_auto="mov-aisl-a")
     finally:
         db.close()
 
@@ -398,6 +399,7 @@ ATAQUES = [
     ("POST", "/correos/{correo}/descartar", None),
     # «Enséñale a leer este correo»: reglas personales de lectura de A
     ("DELETE", "/reglas-correo/{regla_correo}", None),
+    ("DELETE", "/movimientos/reglas-notificacion/{regla_notif}", None),
     ("POST", "/reglas-correo/{regla_correo}/aplicar-anteriores", None),
     ("POST", "/reglas-correo/vista", {"correo_id": "{correo}"}),
     ("POST", "/reglas-correo", {"correo_id": "{correo}", "monto_texto": "1", "tipo": "expense"}),
