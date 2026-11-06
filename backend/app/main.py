@@ -11,7 +11,7 @@ from app.database import Base, engine
 from app.rls import asegurar_rls
 from app.compresion import GZipSelectivo
 from app.seguridad import SeguridadMiddleware, limpiar_evento_sentry
-from app import migraciones
+from app import autoping, migraciones
 from app import models_asistente  # noqa: F401  (registra la tabla uso_asistente para create_all)
 from app import limites_diarios  # noqa: F401  (registra la tabla uso_diario para create_all)
 from app import models_pendientes  # noqa: F401  (registra comercios_silenciados para create_all)
@@ -81,6 +81,8 @@ if engine.dialect.name == "postgresql":
     # Las tablas recién creadas por create_all nacen sin RLS: se activa aquí
     # (tolerante a fallos; ver app/rls.py).
     asegurar_rls(engine)
+
+autoping.iniciar()  # solo si existe AUTOPING_URL (Render gratis): evita que el servidor se duerma
 
 if settings.sentry_dsn:
     sentry_sdk.init(
