@@ -11,8 +11,8 @@ android {
         applicationId = "co.dapx.cuadrame.captura"
         minSdk = 26 // Android 8.0 en adelante
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
     }
 
     // La llave de firma vive FUERA del repositorio (DAPX/.secretos). Se pasa por variables de entorno:
