@@ -615,6 +615,8 @@ export const api = {
   correosLista: (filtro = 'nuevos', offset = 0, limite = 30) =>
     request(`/correos/lista?filtro=${filtro}&limite=${limite}&offset=${offset}`),
   conexionesEstado: () => request('/conexiones/estado'),
+  // Por cada cuenta tuya que el atajo de notificaciones sabe leer: si ya llegó algún aviso y cuándo.
+  estadoNotificaciones: () => request('/movimientos/estado-notificaciones'),
   // Pantalla Sincronización: grilla cuentas x meses, tareas y cola de categorías por preguntar.
   // `hasta` ('YYYY-MM') desplaza la ventana de meses; el backend actual la ignora (siempre los últimos 6).
   sincronizacionEstado: (hasta) => request(`/sincronizacion/estado${hasta ? `?hasta=${hasta}` : ''}`),

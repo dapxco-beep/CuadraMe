@@ -153,6 +153,11 @@ def _tarjeta(texto: str) -> str | None:
     return f"{marca.group(0).title() if marca else ''} {m.group('ult')}".strip()
 
 
+def es_ruido(titulo: str, texto: str) -> bool:
+    """Códigos, promociones y avisos de seguridad: nunca son un movimiento ni merecen contarse como «no entendido»."""
+    return bool(_RUIDO.search(f"{titulo or ''}. {texto or ''}"))
+
+
 def nombre_app(paquete: str) -> str:
     """Nombre legible de la app: de la lista de Android, del alias de iPhone o, si es una app nueva, el texto tal cual."""
     p = (paquete or "").strip()
