@@ -1100,6 +1100,9 @@ def crear_movimiento_desde_notificacion(
         if notif.pide_monto(data.paquete, data.titulo, data.texto):
             return {"ok": True, "registrado": False, "motivo": "pedir_monto"}
         return {"ok": True, "registrado": False, "motivo": "no_parece_un_movimiento"}
+    # iPhone: hay monto pero el texto no dice si entró o salió. En vez de adivinar, el atajo pregunta.
+    if n.tipo_incierto and n.clase != "wallet" and (data.paquete or "").strip().lower() in notif.ALIAS_IOS:
+        return {"ok": True, "registrado": False, "motivo": "pedir_tipo", "monto": n.monto, "comercio": n.comercio}
     # Android manda la hora de publicación; el atajo de iPhone no: sin ella, el mismo texto de otro minuto es otro aviso
     # (si no, un segundo «X te envió 1» nunca se registraría).
     marca = data.publicado_ms or ahora_co().strftime("%Y%m%d%H%M")

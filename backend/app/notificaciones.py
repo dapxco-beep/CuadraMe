@@ -37,34 +37,68 @@ ALIAS_IOS: dict[str, tuple[str, str]] = {
     "davivienda": ("Davivienda", "banco"), "daviplata": ("Daviplata", "banco"),
 }
 
+# --- Lectura general, para cualquier banco o billetera (iPhone y Android) ---------------------------------------
 # Nequi, textos reales vistos en iPhone:
 #  «Envío» / «DANIEL PARRADO te envió 1, ¡lo mejor!»  -> te llegó plata (trae monto y quién; a veces sin «$»).
 #  «Tu plata llegó con éxito» / «Envío exitoso, la plata ya está en el Nequi destino…» -> TÚ enviaste plata,
-#  pero el aviso NO trae monto ni a quién: el atajo debe preguntarlo (ver `pide_monto`).
-_NEQUI_RECIBIDO = re.compile(r"(?P<quien>[^.\n]+?)\s+te\s+envi[oó]\s+\$?\s*(?P<monto>\d[\d.,]*\d|\d)", re.IGNORECASE)
-_NEQUI_ENVIASTE = re.compile(r"plata\s+lleg[oó]\s+con\s+[eé]xito|env[ií]o\s+exitoso", re.IGNORECASE)
+#  pero el aviso NO trae monto ni a quién. Otros bancos dirán cosas parecidas, por eso se lee por VERBOS y no
+#  por banco; lo que no se entiende se le pregunta a la persona (ver `pide_monto` y `Notificacion.tipo_incierto`).
+_ENTRA = re.compile(
+    r"te\s+(?:envi[oó]|enviaron|lleg[oó]|llegaron|consign\w+|deposit\w+|transfiri\w+|abon\w+|pag[oó]|pagaron|"
+    r"mand[oó]|giraron|gir[oó])|recibiste|has\s+recibido|te\s+han\s+(?:enviado|transferido|consignado|pagado|abonado)|"
+    r"transferencia\s+recibida|dep[oó]sito\s+recibido|abono\s+(?:a|en)\s+tu|pix\s+recebido|n[oó]mina",
+    re.IGNORECASE,
+)
+_SALE = re.compile(
+    r"enviaste|transferiste|pagaste|compraste|retiraste|giraste|recargaste|"
+    r"compra\s+(?:aprobada|exitosa)|pago\s+(?:exitoso|aprobado|realizado)|d[eé]bito|se\s+(?:debit|cobr)",
+    re.IGNORECASE,
+)
+# Aviso de que SALIÓ plata pero sin cifra: «envío exitoso», «transferencia exitosa», «tu plata llegó con éxito»...
+_SIN_CIFRA = re.compile(
+    r"plata\s+lleg[oó]\s+con\s+[eé]xito|env[ií]o\s+exitoso|transferencia\s+exitosa|pago\s+exitoso|"
+    r"enviaste\s+(?:la\s+)?(?:plata|dinero)|ya\s+le\s+lleg[oó]",
+    re.IGNORECASE,
+)
+# «X te envió 1» sin signo de pesos: el número va pegado al verbo
+_CIFRA_TRAS_VERBO = re.compile(
+    r"(?:envi[oó]|enviaron|recibiste|consign\w+|deposit\w+|transfiri\w+|abon\w+|pag[oó]|enviaste|pagaste|transferiste)"
+    r"\s+\$?\s*(\d[\d.,]*\d|\d)(?![\d.,]*\s*(?:%|d[ií]as|veces))",
+    re.IGNORECASE,
+)
+_QUIEN = re.compile(r"(?P<q>[^.\n!¡]{2,60}?)\s+te\s+(?:envi[oó]|enviaron|mand[oó]|transfiri\w+|consign\w+|pag[oó])", re.IGNORECASE)
 
 
-def _es_nequi(paquete: str) -> bool:
-    return APPS.get(paquete or "", ("", ""))[0] == "Nequi" or (paquete or "").strip().lower() in ("nequi",)
+def _direccion(cuerpo: str) -> str | None:
+    """'income' | 'expense' | None si el texto no dice hacia dónde fue la plata. Gana la señal que aparece primero."""
+    e, s = _ENTRA.search(cuerpo), _SALE.search(cuerpo)
+    if e and (not s or e.start() <= s.start()):
+        return "income"
+    return "expense" if s else None
 
 
-def _nequi_recibido(titulo: str, texto: str) -> "Notificacion | None":
-    m = _NEQUI_RECIBIDO.search(f"{titulo}. {texto}")
+def _monto_sin_signo(cuerpo: str) -> float:
+    m = _CIFRA_TRAS_VERBO.search(cuerpo)
     if not m:
-        return None
+        return 0.0
     try:
-        monto = parse_monto_co(m.group("monto"))
+        return parse_monto_co(m.group(1))
     except ValueError:
-        return None
-    quien = _limpiar(m.group("quien").split(". ")[-1])
-    return Notificacion(monto=monto, tipo="income", comercio=f"De {quien}" if quien else "Plata recibida",
-                        clase="banco", fuente="notificacion", app="Nequi", tarjeta=None, traslado_propio=False)
+        return 0.0
+
+
+def _quien(cuerpo: str) -> str:
+    m = _QUIEN.search(cuerpo)
+    return _limpiar(m.group("q").split(". ")[-1]) if m else ""
 
 
 def pide_monto(paquete: str, titulo: str, texto: str) -> bool:
-    """Plata ENVIADA por Nequi: el aviso no trae monto, así que el atajo de iPhone se lo pregunta a la persona."""
-    return _es_nequi(paquete) and bool(_NEQUI_ENVIASTE.search(f"{titulo}. {texto}")) and not _NEQUI_RECIBIDO.search(f"{titulo}. {texto}")
+    """Salió plata pero el aviso no trae cifra (Nequi: «Tu plata llegó con éxito»): el atajo de iPhone le pregunta
+    a la persona cuánto fue y para qué. Cualquier banco que avise así queda cubierto."""
+    cuerpo = f"{titulo}. {texto}"
+    if _RUIDO.search(cuerpo) or ge.extraer_monto(cuerpo) or _monto_sin_signo(cuerpo) or _ENTRA.search(cuerpo):
+        return False
+    return bool(_SIN_CIFRA.search(cuerpo))
 
 
 # Notificaciones que NUNCA son un movimiento: códigos, claves, promociones, avisos de seguridad.
@@ -101,6 +135,7 @@ class Notificacion:
     app: str | None  # nombre de la app/banco, si se conoce
     tarjeta: str | None  # «Visa 1234» para que Wallet mapee la cuenta por su alias
     traslado_propio: bool
+    tipo_incierto: bool = False  # hay monto pero el texto no dice si entró o salió: iPhone pregunta, Android asume gasto
 
 
 def _limpiar(c: str) -> str:
@@ -125,18 +160,20 @@ def interpretar(paquete: str, titulo: str, texto: str) -> Notificacion | None:
     if len(cuerpo) < 8 or _RUIDO.search(cuerpo):
         return None
     app, clase = APPS.get(paquete or "") or ALIAS_IOS.get((paquete or "").strip().lower(), (None, "banco"))
-    if _es_nequi(paquete):
-        recibido = _nequi_recibido(titulo, texto)
-        if recibido or pide_monto(paquete, titulo, texto):
-            return recibido  # None = plata enviada sin monto: el endpoint responde «pedir_monto»
-    monto = ge.extraer_monto(cuerpo)
+    monto = ge.extraer_monto(cuerpo) or _monto_sin_signo(cuerpo)
     if not monto or monto <= 0:
         return None
-    tipo = ge.detectar_tipo(cuerpo)
+    direccion = _direccion(cuerpo)
+    tipo = direccion or ge.detectar_tipo(cuerpo)
+    incierto = direccion is None and not (ge._INGRESO_RE.search(cuerpo) or ge._EGRESO_RE.search(cuerpo))
 
     comercio = ""
+    if tipo == "income" and direccion == "income":
+        quien = _quien(cuerpo)  # «ANA PEREZ te envió $45.000» -> «De Ana Perez»
+        if quien:
+            comercio = f"De {quien}"
     m = _TITULO_WALLET.match(titulo)
-    if m:  # título de Wallet: «$20.000 COP a JUMBO»
+    if m and not comercio:  # título de Wallet: «$20.000 COP a JUMBO»
         comercio = _limpiar(m.group(1))
         clase = "wallet"
     if not comercio:
@@ -149,7 +186,7 @@ def interpretar(paquete: str, titulo: str, texto: str) -> Notificacion | None:
         if m:
             comercio = _limpiar(m.group("c"))
     if not comercio:
-        comercio = "Movimiento sin detalle"
+        comercio = "Plata recibida" if tipo == "income" else "Movimiento sin detalle"
 
     es_wallet = clase == "wallet"
     return Notificacion(
@@ -161,4 +198,5 @@ def interpretar(paquete: str, titulo: str, texto: str) -> Notificacion | None:
         app=app,
         tarjeta=_tarjeta(cuerpo),
         traslado_propio=ge.es_posible_traslado_propio(cuerpo),
+        tipo_incierto=incierto,
     )
