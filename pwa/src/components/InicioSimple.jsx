@@ -16,7 +16,7 @@ import QueSePuedeHacer from './QueSePuedeHacer'
 //   - UNA sola guía a la vez: el camino de 3 pasos (lo pinta Inicio) o, sin camino, el siguiente paso o «¿Qué puedes hacer?».
 //   - Con `mas` (el «Ver más» de Inicio) se suman lo reciente, el gasto por día, el consejo y las tarjetas informativas.
 //   - `conAviso`: Inicio ya pinta los avisos (solo el más importante); sin él, esta pantalla muestra el de saldo negativo.
-export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null, falloSaldo = false, onReintentar, mas = true, conAviso = true }) {
+export default function InicioSimple({ saldo, notaSaldo = '', gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null, falloSaldo = false, onReintentar, mas = true, conAviso = true }) {
   const nuevo = recientes.length === 0
   const hayGuia = enCamino || !!siguiente
   return (
@@ -35,13 +35,14 @@ export default function InicioSimple({ saldo, gastosSemana, recientes, siguiente
           <p className="text-[40px] t-display mt-2">
             <Monto texto={fmt(saldo)} />
           </p>
+          {notaSaldo && <p className="text-xs opacity-90 mt-1" data-testid="nota-disponible">{notaSaldo}</p>}
           <div className="mt-3 pt-3 border-t border-white/20">
             {porDia > 0 && (
-              <p className="text-[11px] opacity-90 mb-2" data-testid="por-dia">
+              <p className="text-xs opacity-90 mb-2" data-testid="por-dia">
                 Puedes gastar unos <b>{fmt(porDia)}</b> al día lo que queda del mes
               </p>
             )}
-            <p className="text-[11px] opacity-90">Gastaste esta semana</p>
+            <p className="text-xs opacity-90">Gastaste esta semana</p>
             <p className="text-lg font-bold t-cifra mt-0.5" data-testid="gastos-semana">
               {gastosSemana === null ? '—' : fmt(gastosSemana)}
             </p>

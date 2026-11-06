@@ -239,7 +239,13 @@ export default function Inicio() {
   // «Mira tu resumen» cuenta como hecho si ya lo abrió (se recuerda en el celular) o si la cuenta no es nueva.
   const resumenVisto = antiguo || leerEstado(usuario?.id || 'anon').resumenVisto
   // Disponible = lo que hay en cuentas de ahorro y efectivo (sin tarjetas); mientras llega, el saldo total.
-  const gastarSaldo = resumen?.disponible_cop ?? saldoTotal
+  const gastarSaldo = resumen?.disponible_neto_cop ?? resumen?.disponible_cop ?? saldoTotal
+  // Aclara de dónde sale la cifra grande: ahorros y efectivo, menos tarjetas; las inversiones no cuentan.
+  const notaDisponible = resumen?.disponible_neto_cop === undefined ? '' : [
+    'Ahorros y efectivo',
+    resumen.deudas_tarjeta_cop > 0 ? `menos ${fmt(resumen.deudas_tarjeta_cop)} que debes en tarjetas` : '',
+    resumen.inversiones_cop > 0 ? `No incluye tus inversiones (${fmt(resumen.inversiones_cop)})` : '',
+  ].filter(Boolean).join(' · ').replace(' · No incluye', '. No incluye')
   // Mientras el camino de 3 pasos esté en pantalla, él es el «siguiente paso» (no se repite otro).
   const enCamino = armarCamino({ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }).some((p) => !p.hecho)
   // Modo simple con datos ya cargados: el saldo va primero y los pasos del camino bajan (ver el render).
@@ -354,6 +360,7 @@ export default function Inicio() {
         <>
           <InicioSimple
             saldo={gastarSaldo}
+            notaSaldo={notaDisponible}
             gastosSemana={semana}
             recientes={movimientos.slice(0, 3)}
             siguiente={enCamino ? null : siguienteInicio}

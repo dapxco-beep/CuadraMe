@@ -152,7 +152,7 @@ def resumen_saldos(
     ultimos = _ultimos_movs(db, ids) if ids else {}
 
     conv = ConvertidorBase.de_usuario(db, usuario.id)  # moneda base del perfil (fase 2)
-    total = disponible = deudas = 0.0
+    total = disponible = deudas = liquido = inversiones = 0.0
     por_moneda: dict[str, float] = {}
     por_tipo: dict[str, float] = {}
     for c in cuentas:
@@ -163,6 +163,11 @@ def resumen_saldos(
             deudas += max(0.0, -cop)
         else:
             disponible += cop
+            # «Líquido» = plata que puedes gastar hoy: ahorros y efectivo. Las inversiones (CDT, fondos) van aparte.
+            if c.tipo == "inversion":
+                inversiones += cop
+            else:
+                liquido += cop
         por_moneda[moneda] = por_moneda.get(moneda, 0.0) + (c.saldo or 0)
         por_tipo[c.tipo] = por_tipo.get(c.tipo, 0.0) + cop
     ultimo = max(ultimos.values()) if ultimos else None
@@ -172,6 +177,10 @@ def resumen_saldos(
         "monedas_sin_tasa": sorted(conv.sin_tasa),
         "total_cop": round(total, 2),
         "disponible_cop": round(disponible, 2),
+        "liquido_cop": round(liquido, 2),
+        "inversiones_cop": round(inversiones, 2),
+        # Lo que muestra el Inicio como «Tienes disponible»: ahorros y efectivo menos lo que debes en tarjetas (sin inversiones).
+        "disponible_neto_cop": round(liquido - deudas, 2),
         "deudas_tarjeta_cop": round(deudas, 2),
         "por_moneda": {k: round(v, 2) for k, v in por_moneda.items()},
         "por_tipo": {k: round(v, 2) for k, v in por_tipo.items()},

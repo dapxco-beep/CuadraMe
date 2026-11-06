@@ -40,7 +40,8 @@ export default function ResumenSaldo({ resumen, bolsillo, className = '' }) {
       <div className="mt-3 rounded-2xl bg-[color-mix(in_srgb,currentColor_9%,transparent)] px-3.5 py-3 space-y-1.5 text-xs" data-testid="desglose-saldo">
         {modo === 'total' ? (
           <>
-            <Fila k="Disponible hoy (en tus cuentas, sin contar tarjetas)" v={fmt(resumen.disponible_cop)} />
+            <Fila k="Disponible hoy (ahorros y efectivo)" v={fmt(resumen.liquido_cop ?? resumen.disponible_cop)} />
+            {resumen.inversiones_cop > 0 && <Fila k="Inversiones (aparte, no cuentan como disponible)" v={fmt(resumen.inversiones_cop)} />}
             {comprometido !== null && <Fila k="Comprometido este mes (pagos fijos y metas)" v={`− ${fmt(comprometido)}`} />}
             <Fila k="Lo que debes en tarjetas de crédito" v={`− ${fmt(resumen.deudas_tarjeta_cop)}`} />
             {bolsillo?.cuotas_tarjeta_mes > 0 && (

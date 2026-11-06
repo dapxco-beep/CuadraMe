@@ -1,5 +1,6 @@
 import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { useVolver } from '../lib/useVolver'
 import { useEstadoLista } from '../lib/useEstadoLista'
@@ -23,7 +24,10 @@ const urgenciaColor = {
 
 export default function Deudas() {
   const volver = useVolver('/perfil')
-  const { recargar: recargarCuentas } = useCuentas()
+  const { recargar: recargarCuentas, cuentas: todasLasCuentas = [] } = useCuentas()
+  // Las tarjetas de crédito con saldo en contra también son deuda, aunque no se hayan anotado como préstamo.
+  const tarjetasConDeuda = todasLasCuentas.filter((c) => c.tipo === 'credito' && (c.moneda || 'COP') === 'COP' && c.saldo < 0)
+  const deudaTarjetas = tarjetasConDeuda.reduce((s, c) => s - c.saldo, 0)
   const [deudas, setDeudas] = useState([])
   const [cargando, setCargando] = useState(true)
   const raiz = useRef(null)
@@ -69,11 +73,23 @@ export default function Deudas() {
         </button>
       </header>
 
-      {deudas.length > 0 && (
+      {(deudas.length > 0 || tarjetasConDeuda.length > 0) && (
         <div className="mx-5 mt-3 rounded-2xl bg-danger-soft p-4">
-          <p className="text-xs text-ink-soft mb-0.5">Lo que debes en total</p>
-          <p className="text-2xl font-bold text-danger">{formatCOP(totalDeuda)}</p>
+          <p className="text-xs text-ink-soft mb-0.5">Lo que debes en total{tarjetasConDeuda.length > 0 ? ' (préstamos y tarjetas)' : ''}</p>
+          <p className="text-2xl font-bold text-danger" data-testid="deuda-total">{formatCOP(totalDeuda + deudaTarjetas)}</p>
         </div>
+      )}
+
+      {tarjetasConDeuda.length > 0 && (
+        <section className="mx-5 mt-3" aria-label="Tus tarjetas de crédito" data-testid="deudas-tarjetas">
+          <p className="text-xs font-semibold text-ink-soft mb-1.5">Tus tarjetas de crédito</p>
+          {tarjetasConDeuda.map((c) => (
+            <Link key={c.id} to="/cuentas" className="flex items-center justify-between rounded-2xl bg-paper-raised border border-line p-4 mb-2 min-h-[56px]">
+              <span className="text-sm font-semibold">{c.nombre}</span>
+              <span className="text-sm font-bold">Debes {formatCOP(-c.saldo)}</span>
+            </Link>
+          ))}
+        </section>
       )}
 
       {cargando ? (
@@ -88,7 +104,7 @@ export default function Deudas() {
       ) : deudas.length === 0 ? (
         <EstadoVacio
           icono={Landmark}
-          titulo="No tienes deudas registradas"
+          titulo={tarjetasConDeuda.length > 0 ? 'No tienes otros préstamos registrados' : 'No tienes deudas registradas'}
           texto="Si debes un crédito o un préstamo, anótalo y te ayudo a planear cómo pagarlo."
           className="mx-5 mt-6"
         >

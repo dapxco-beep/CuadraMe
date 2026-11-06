@@ -141,7 +141,7 @@ describe('Simulador de estrategia en Deudas', () => {
   it('no aparece si no hay deudas', async () => {
     api.deudas.mockResolvedValueOnce([])
     montar(<Deudas />)
-    await screen.findByText('No tienes deudas registradas')
+    await screen.findByText('No tienes otros préstamos registrados')
     expect(screen.queryByText(/Simular/)).toBeNull()
   })
 
@@ -151,5 +151,24 @@ describe('Simulador de estrategia en Deudas', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Ver cómo pagar más rápido/ }))
     await userEvent.click(await screen.findByRole('button', { name: 'Simular' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Sin conexión')
+  })
+})
+
+describe('Deudas incluye las tarjetas de crédito', () => {
+  it('sin préstamos anotados, igual muestra la tarjeta con lo que debes y suma al total', async () => {
+    api.deudas = vi.fn().mockResolvedValue([])
+    montar(<Deudas />)
+    const seccion = await screen.findByTestId('deudas-tarjetas')
+    expect(seccion).toHaveTextContent('Visa Bancolombia')
+    expect(seccion).toHaveTextContent(/Debes\s*\$\s*1\.700\.000/)
+    expect(screen.getByTestId('deuda-total')).toHaveTextContent(/1\.700\.000/)
+    expect(screen.getByText('No tienes otros préstamos registrados')).toBeInTheDocument()
+    expect(screen.queryByText('No tienes deudas registradas')).not.toBeInTheDocument()
+  })
+  it('una tarjeta en cero no cuenta como deuda', async () => {
+    api.deudas = vi.fn().mockResolvedValue([DEUDA])
+    montar(<Deudas />)
+    await screen.findByText('Préstamo')
+    expect(screen.getByTestId('deudas-tarjetas')).not.toHaveTextContent('Nu')
   })
 })

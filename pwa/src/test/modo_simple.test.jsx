@@ -414,3 +414,21 @@ describe('inicioSimple: reglas puras', () => {
     expect(gastosDeLaSemana(movs, ahora)).toBe(150)
   })
 })
+
+describe('«Tienes disponible»: aclara de dónde sale la cifra', () => {
+  const fmt = (n) => `$${Number(n).toLocaleString('es-CO')}`
+  const montar = (nota) => render(
+    <MemoryRouter>
+      <InicioSimple saldo={3700000} notaSaldo={nota} gastosSemana={0} recientes={[]} fmt={fmt} iconoDe={() => '💳'} />
+    </MemoryRouter>
+  )
+  it('muestra la nota bajo la cifra grande', () => {
+    montar('Ahorros y efectivo, menos $800.000 que debes en tarjetas. No incluye tus inversiones ($5.000.000)')
+    expect(screen.getByTestId('nota-disponible')).toHaveTextContent('menos $800.000 que debes en tarjetas')
+    expect(screen.getByTestId('nota-disponible')).toHaveTextContent('No incluye tus inversiones')
+  })
+  it('sin nota (mientras carga) no pinta nada extra', () => {
+    montar('')
+    expect(screen.queryByTestId('nota-disponible')).not.toBeInTheDocument()
+  })
+})
