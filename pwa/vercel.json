@@ -40,7 +40,12 @@
     },
     {
       "source": "/version.json",
-      "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
     },
     {
       "source": "/sw.js",
@@ -50,6 +55,12 @@
           "value": "public, max-age=0, must-revalidate"
         }
       ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
