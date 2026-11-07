@@ -62,11 +62,11 @@ export default function PasoGuiado({
       {estado.alDia || estado.casi ? (
         <>
           <div className="flex items-center gap-3.5">
-            <span className="w-12 h-12 rounded-full bg-cuadra-soft text-cuadra flex items-center justify-center shrink-0">
-              <CheckCircle2 size={24} aria-hidden="true" />
+            <span className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${estado.casi && estado.titulo === 'Faltan extractos' ? 'bg-accent-soft text-accent' : 'bg-cuadra-soft text-cuadra'}`}>
+              {estado.casi && estado.titulo === 'Faltan extractos' ? <FileClock size={24} aria-hidden="true" /> : <CheckCircle2 size={24} aria-hidden="true" />}
             </span>
             <div className="min-w-0">
-              <h2 className="text-2xl font-bold leading-tight" data-testid={estado.casi ? 'casi-todo-al-dia' : 'todo-al-dia'}>{estado.casi ? 'Casi todo al día' : 'Todo al día'}</h2>
+              <h2 className="text-2xl font-bold leading-tight" data-testid={estado.casi ? 'casi-todo-al-dia' : 'todo-al-dia'}>{estado.casi ? estado.titulo : 'Todo al día'}</h2>
               <p className="text-sm text-ink-soft mt-0.5" data-testid="resumen-tareas">
                 {estado.casi
                   ? `Solo queda: ${estado.pendiente}`

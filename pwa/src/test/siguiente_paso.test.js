@@ -116,7 +116,7 @@ describe('meses sin extracto', () => {
     const p = pasos.find((x) => x.id === 'faltan_extractos')
     expect(p).toMatchObject({ opcional: true, cantidad: 2, titulo: 'Faltan extractos de 2 cuentas', boton: 'Subir extractos' })
     expect(obligatorios(pasos)).toHaveLength(0)
-    expect(estadoGeneral(pasos)).toMatchObject({ alDia: false, casi: true, titulo: 'Casi todo al día', pendiente: 'subir los extractos de 2 cuentas' })
+    expect(estadoGeneral(pasos)).toMatchObject({ alDia: false, casi: true, titulo: 'Faltan extractos', pendiente: 'subir los extractos de 2 cuentas' })
   })
   it('uno solo usa el singular y sin faltantes sí es «Todo al día»', () => {
     expect(construirPasos({ conectado: true, faltantes: [{ cuenta: 'Nu', mes: '2026-09' }] })[0].titulo).toBe('Falta el extracto de Nu')

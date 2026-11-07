@@ -184,11 +184,12 @@ describe('pantalla Sincronización', () => {
     expect(screen.queryByTestId('progreso-pasos')).toBeNull()
   })
 
-  it('con meses sin extracto NO dice «Todo al día»: queda «Casi todo al día» y ofrece subir los extractos', async () => {
+  it('con meses sin extracto NO dice «Todo al día» ni «Casi todo al día»: dice «Faltan extractos» y ofrece subirlos', async () => {
     // Antes decía «Todo al día» con cada mes marcado «Falta el extracto»: una contradicción que confundía.
     api.sincronizacionEstado.mockResolvedValue({ ...ESTADO, tareas: [], sin_cuenta: [] })
     montar()
-    expect(await screen.findByText('Casi todo al día')).toBeTruthy()
+    expect(await screen.findByText('Faltan extractos')).toBeTruthy()
+    expect(screen.queryByText('Casi todo al día')).toBeNull()
     expect(screen.queryByTestId('todo-al-dia')).toBeNull()
     expect(screen.getByText(/subir (el extracto que falta|los \d+ extractos que faltan)/)).toBeTruthy()
   })

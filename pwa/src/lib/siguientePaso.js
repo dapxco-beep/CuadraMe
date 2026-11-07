@@ -163,7 +163,9 @@ export function estadoGeneral(pasos) {
   if (k > 0) return { alDia: false, titulo: k === 1 ? 'Tienes 1 cosa por hacer' : `Tienes ${k} cosas por hacer` }
   const opcionales = (pasos || []).filter((p) => p.opcional)
   if (opcionales.length === 0) return { alDia: true, titulo: 'Todo al día' }
-  return { alDia: false, casi: true, titulo: 'Casi todo al día', pendiente: opcionales.map(nombrePendienteOpcional).join(' y ') }
+  // Si lo que falta son extractos, no se dice «Casi todo al día»: hay meses sin comprobar con el banco y se dice tal cual.
+  const titulo = opcionales.some((p) => p.id === 'faltan_extractos') ? 'Faltan extractos' : 'Casi todo al día'
+  return { alDia: false, casi: true, titulo, pendiente: opcionales.map(nombrePendienteOpcional).join(' y ') }
 }
 
 /**
