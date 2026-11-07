@@ -51,7 +51,9 @@ _ENTRA = re.compile(
 )
 _SALE = re.compile(
     r"enviaste|transferiste|pagaste|compraste|retiraste|giraste|recargaste|"
-    r"compra\s+(?:aprobada|exitosa)|pago\s+(?:exitoso|aprobado|realizado)|d[eé]bito|se\s+(?:debit|cobr)",
+    r"compra\s+(?:aprobada|exitosa)|pago\s+(?:exitoso|aprobado|realizado)|d[eé]bito|se\s+(?:debit|cobr)|"
+    # Comprobantes que el atajo lee de una captura de pantalla (Nu no avisa al enviar plata): con monto, salió plata
+    r"transferencia\s+exitosa|env[ií]o\s+exitoso|comprobante\s+de\s+(?:transferencia|env[ií]o|pago)|enviado\s+a|le\s+enviaste",
     re.IGNORECASE,
 )
 # Aviso de que SALIÓ plata pero sin cifra: «envío exitoso», «transferencia exitosa», «tu plata llegó con éxito»...
@@ -66,6 +68,8 @@ _CIFRA_TRAS_VERBO = re.compile(
     r"\s+\$?\s*(\d[\d.,]*\d|\d)(?![\d.,]*\s*(?:%|d[ií]as|veces))",
     re.IGNORECASE,
 )
+# «... Para LAURA GOMEZ Banco ...»: en un comprobante el destinatario va en mayúsculas tras «Para»
+_PARA_QUIEN = re.compile(r"\bPara\s+(?P<q>[A-ZÁÉÍÓÚÑ]{2,}(?:\s+[A-ZÁÉÍÓÚÑ]{2,}){0,3})\b")
 _QUIEN = re.compile(r"(?P<q>[^.\n!¡]{2,60}?)\s+te\s+(?:envi[oó]|enviaron|mand[oó]|transfiri\w+|consign\w+|pag[oó])", re.IGNORECASE)
 
 
@@ -212,6 +216,10 @@ def interpretar(paquete: str, titulo: str, texto: str) -> Notificacion | None:
         c0 = ge.extraer_comercio(app or paquete or "", titulo, texto)
         if c0 and not c0.lower().endswith("sin detalle") and c0.lower() not in _NOMBRES_DE_APP and c0.lower() != (app or "").lower():
             comercio = c0
+    if not comercio and tipo == "expense":  # comprobante de envío: «Para LAURA GOMEZ» -> «Envío a Laura Gomez»
+        m = _PARA_QUIEN.search(cuerpo)
+        if m:
+            comercio = f"Envío a {_limpiar(m.group('q'))}"
     if not comercio:  # ...y si no dice nada concreto, los formatos propios de una notificación
         m = _PAGO_EN.search(cuerpo) or _EN_FINAL.search(texto)
         if m:

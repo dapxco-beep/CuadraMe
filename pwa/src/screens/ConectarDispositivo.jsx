@@ -27,6 +27,9 @@ import {
 export const ATAJO_ICLOUD_URL = 'https://www.icloud.com/shortcuts/8b2de178aff84465a938df4a5ef9c0dc'
 // Atajo «CuadraMe Notificaciones» (iOS 27, disparador «Cuando recibo una notificación»): lee los avisos de Nequi, Nu, etc.
 export const ATAJO_NOTIFICACIONES_URL = 'https://www.icloud.com/shortcuts/9384f07580fa4c9389ad907b5fdc73a5'
+// Atajo «CuadraMe Registrar» (modo pantalla): un gesto toma un pantallazo del comprobante y lo lee (Nu no avisa al enviar).
+// Vacío = la tarjeta de gestos no se muestra. Se llena con el enlace de iCloud cuando el atajo está firmado y compartido.
+export const ATAJO_REGISTRAR_URL = ''
 export const ATAJO_CIERRE_URL = 'https://www.icloud.com/shortcuts/d34fa153ac844631baf36d8e158f7bf4'
 // La app de Android («CuadraMe Captura») se descarga de aquí mismo, sin tiendas ni terceros.
 export const APK_URL = '/descargas/cuadrame-captura.apk'
