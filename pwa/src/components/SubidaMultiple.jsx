@@ -15,6 +15,7 @@ import BarraProgreso from './BarraProgreso'
 import PropuestaTarjeta from './PropuestaTarjeta'
 import RecordarRegla, { RECORDAR_INICIAL } from './RecordarRegla'
 import ZonaSubida from './ZonaSubida'
+import SobrantesExtracto from './SobrantesExtracto'
 import { opcionesCategoria } from '../lib/importar'
 import { claveComercio, huellaPeligrosa } from '../lib/comercio'
 import { EMOJI_DEFECTO, estadoCategoria, resumirCategorias } from '../lib/estadoCategoria'
@@ -763,19 +764,11 @@ export default function SubidaMultiple({
                     </div>
                   )}
                   {a.sobrantes?.length > 0 && (
-                    <details className="mt-2 rounded-2xl border border-line bg-paper px-3.5 py-2.5">
-                      <summary className="text-xs font-semibold cursor-pointer">
-                        {a.sobrantes.length} {a.sobrantes.length === 1 ? 'registrado no aparece' : 'registrados no aparecen'} en el extracto
-                      </summary>
-                      <ul className="mt-2 space-y-1">
-                        {a.sobrantes.map((s, i) => (
-                          <li key={i} className="text-xs text-ink-soft flex justify-between gap-2">
-                            <span className="truncate">{s.fecha} · {s.descripcion}</span>
-                            <span className="shrink-0">{formatCOP(s.monto)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
+                    <SobrantesExtracto
+                      historialId={a.historialId}
+                      sobrantes={a.sobrantes}
+                      onCambio={(lista) => parchar(a.id, { sobrantes: lista })}
+                    />
                   )}
                 </div>
               )

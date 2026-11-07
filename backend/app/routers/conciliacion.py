@@ -937,6 +937,56 @@ class CambiarCuentaIn(BaseModel):
     confirmar: bool = False
 
 
+class SobranteAccionRequest(BaseModel):
+    accion: str  # «dejar» (es real, solo cayó en otro extracto) | «borrar» (no existe o lo anotaste dos veces)
+    motivo: str = "no_va"  # al borrar: duplicado | error | no_va
+
+
+@router.post("/historial/{historial_id}/sobrantes/{movimiento_id}")
+def resolver_sobrante(
+    historial_id: str,
+    movimiento_id: str,
+    data: SobranteAccionRequest,
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Un movimiento TUYO que el extracto no trae («sobrante»). Antes solo se listaba y no había cómo arreglarlo.
+    «dejar»: es real (p. ej. cae en otro corte o el banco aún no lo procesa); queda como está y deja de avisar.
+    «borrar»: no existe o está repetido; se borra como cualquier movimiento (con el motivo, para que no vuelva a
+    entrar por el correo o el atajo). La decisión queda guardada en la revisión del extracto. Idempotente."""
+    if data.accion not in ("dejar", "borrar"):
+        raise HTTPException(status_code=422, detail="La acción es «dejar» o «borrar»")
+    if data.motivo not in ("duplicado", "error", "no_va"):
+        raise HTTPException(status_code=422, detail="El motivo es duplicado, error o no_va")
+    historial = (
+        db.query(HistorialExtracto)
+        .filter(HistorialExtracto.id == historial_id, HistorialExtracto.usuario_id == usuario.id)
+        .first()
+    )
+    if not historial:
+        raise HTTPException(status_code=404, detail="Historial no encontrado")
+    cuenta = cuenta_accesible(db, usuario.id, historial.cuenta_id)
+    if not cuenta or not puede_editar_cuenta(db, usuario.id, cuenta):
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    review = json.loads(historial.review_json or "[]")
+    item = next((i for i in review if i.get("match_id") == movimiento_id and i.get("estado") in ("sobrante", "sobrante_resuelto")), None)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Ese movimiento no está entre los que el extracto no trae")
+    if data.accion == "borrar" and item.get("estado") == "sobrante":
+        from app.routers.movimientos import eliminar_movimiento
+
+        try:
+            eliminar_movimiento(movimiento_id, data.motivo, db, usuario)
+        except HTTPException as e:
+            if e.status_code != 404:  # si ya no existe, igual queda resuelto
+                raise
+    item["estado"] = "sobrante_resuelto"
+    item["resuelto"] = "borrado" if data.accion == "borrar" else "dejado"
+    historial.review_json = json.dumps(review, default=str)
+    db.commit()
+    return {"ok": True, "resuelto": item["resuelto"], "restantes": sum(1 for i in review if i.get("estado") == "sobrante")}
+
+
 @router.get("/historial/{historial_id}/cambiar-cuenta/previa")
 def cambiar_cuenta_previa(
     historial_id: str, cuenta_id: str,

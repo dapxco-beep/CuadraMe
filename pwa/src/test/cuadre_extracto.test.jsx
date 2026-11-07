@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 
 const api = vi.hoisted(() => ({
   cuadreEvaluar: vi.fn(), cuadreQueFalta: vi.fn(), cuadreAjuste: vi.fn(), cuadreSaldoInicial: vi.fn(),
-  cuadreSaldos: vi.fn(), cuadreDeshacer: vi.fn(), cuadreCuenta: vi.fn(),
+  cuadreSaldos: vi.fn(), cuadreDeshacer: vi.fn(), cuadreCuenta: vi.fn(), eliminarMovimiento: vi.fn(),
 }))
 vi.mock('../lib/api', () => ({ api }))
 
@@ -105,6 +105,24 @@ describe('CuadreExtracto', () => {
     await u.click(await screen.findByRole('button', { name: /Ver qué puede faltar/ }))
     expect(await screen.findByText(/Cobro del banco/)).toBeInTheDocument()
     expect(screen.getByText(/Restaurante/)).toBeInTheDocument()
+  })
+
+  it('un movimiento que el extracto no respalda se puede borrar desde ahí y el cuadre se recalcula', async () => {
+    api.cuadreEvaluar.mockResolvedValue(dif())
+    api.eliminarMovimiento.mockResolvedValue({ ok: true })
+    api.cuadreQueFalta.mockResolvedValue({
+      sin_pareja_en_tus_movimientos: [],
+      sin_respaldo_en_el_extracto: [{ fecha: '2026-09-10', descripcion: 'Restaurante', monto: 100000, tipo: 'expense', movimiento_id: 'm9' }],
+    })
+    const u = userEvent.setup()
+    montar(<CuadreExtracto cuentaId="c1" historialId="h1" />)
+    await u.click(await screen.findByRole('button', { name: /Ver qué puede faltar/ }))
+    expect(await screen.findByRole('link', { name: 'Ver' })).toHaveAttribute('href', '#/movimientos/m9')
+    const llamadasAntes = api.cuadreEvaluar.mock.calls.length
+    await u.click(screen.getByRole('button', { name: 'Borrar' }))
+    await waitFor(() => expect(api.eliminarMovimiento).toHaveBeenCalledWith('m9', 'no_va'))
+    await waitFor(() => expect(screen.queryByText(/Restaurante/)).toBeNull())
+    await waitFor(() => expect(api.cuadreEvaluar.mock.calls.length).toBeGreaterThan(llamadasAntes))
   })
 
   it('sin saldo en el extracto pide escribirlo y lo guarda con confirmación', async () => {

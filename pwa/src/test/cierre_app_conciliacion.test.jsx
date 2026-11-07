@@ -60,7 +60,7 @@ describe('revisión de conciliación con tres listas', () => {
     montar(<SubidaMultiple revisionInicial={{ historialId: 'h1' }} />)
     expect(await screen.findByText('Completé 1 movimiento con tu extracto')).toBeInTheDocument()
     expect(screen.getByText('Netflix')).toBeInTheDocument() // lo que falta
-    const sobran = screen.getByText('1 registrado no aparece en el extracto').closest('details')
+    const sobran = screen.getByText('1 movimiento tuyo no está en el extracto').closest('details')
     expect(within(sobran).getByText(/Movimiento en Nequi/)).toBeInTheDocument()
     expect(within(sobran).queryByText(/Netflix/)).toBeNull()
   })

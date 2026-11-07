@@ -522,6 +522,9 @@ export const api = {
   registrarRendimientos: ({ maximo = 12, excluir = [], continuar = false } = {}) =>
     request('/conciliacion/ajustes-extracto/registrar', { method: 'POST', body: { confirmar: true, maximo, excluir, continuar } }),
   obtenerReviewExtracto: (id) => request(`/conciliacion/historial/${id}`),
+  // Un movimiento tuyo que el extracto no trae: accion = 'dejar' | 'borrar' (motivo al borrar: duplicado | error | no_va).
+  resolverSobrante: (historialId, movimientoId, accion, motivo = 'no_va') =>
+    request(`/conciliacion/historial/${historialId}/sobrantes/${movimientoId}`, { method: 'POST', body: { accion, motivo } }),
   resolverDudosos: (id, mismos, distintos) =>
     request(`/conciliacion/historial/${id}/resolver-dudosos`, { method: 'POST', body: { mismos, distintos } }),
   // `aprender` (opcional): { recordar: [fingerprint], aplicar_anteriores: [fingerprint] }

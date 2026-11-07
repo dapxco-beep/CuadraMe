@@ -6,6 +6,7 @@ import { leerMonto } from '../lib/cuentaNueva'
 import { codigoError, cuerpoEvaluar, mensajeError, ORIENTACION } from '../lib/cuadreExtracto'
 import InputMonto from './InputMonto'
 import { diaCorto } from '../lib/fechaMovimiento'
+import { useDialogos } from '../lib/DialogosContext'
 
 // «Cuadre con el banco»: compara el saldo que dice el extracto con lo que suman tus movimientos.
 // Nunca cambia nada sin tu permiso: el ajuste y el saldo inicial piden confirmación y se pueden deshacer.
@@ -15,6 +16,7 @@ import { diaCorto } from '../lib/fechaMovimiento'
 export default function CuadreExtracto({
   cuentaId, historialId = null, saldos = null, porImportar = [], avisoCuenta = null, despues = false, onCambio, className = '',
 }) {
+  const { confirmar } = useDialogos() || {}
   const [ev, setEv] = useState(null)
   const [manual, setManual] = useState(null)
   const [oculto, setOculto] = useState(false)
@@ -65,6 +67,20 @@ export default function CuadreExtracto({
       setError(mensajeError(err))
     } finally {
       setOcupado(false)
+    }
+  }
+
+  // Un movimiento tuyo que el extracto no respalda: si no existe o está repetido, se borra aquí mismo y el cuadre se recalcula.
+  async function borrarSinRespaldo(fila) {
+    if (confirmar && !(await confirmar(`¿Borrar «${fila.descripcion}» (${f(fila.monto)})?`, { confirmarTexto: 'Borrar', peligro: true }))) return
+    setError('')
+    try {
+      await api.eliminarMovimiento(fila.movimiento_id, 'no_va')
+      setFalta((p) => (p ? { ...p, sin_respaldo_en_el_extracto: p.sin_respaldo_en_el_extracto.filter((x) => x.movimiento_id !== fila.movimiento_id) } : p))
+      await cargar()
+      onCambio?.()
+    } catch (err) {
+      setError(mensajeError(err))
     }
   }
 
@@ -184,7 +200,8 @@ export default function CuadreExtracto({
                   <p className="font-semibold">En el extracto, sin pareja en tus movimientos</p>
                   <Lista filas={falta.sin_pareja_en_tus_movimientos} vacio="Nada: todas las líneas tienen pareja." f={f} />
                   <p className="font-semibold mt-2">En tus movimientos, que el extracto no respalda</p>
-                  <Lista filas={falta.sin_respaldo_en_el_extracto} vacio="Nada: todo lo tuyo aparece en el extracto." f={f} />
+                  <p className="text-ink-soft mb-1">Si es real (puede salir en otro extracto), déjalo. Si no existe o está repetido, bórralo.</p>
+                  <Lista filas={falta.sin_respaldo_en_el_extracto} vacio="Nada: todo lo tuyo aparece en el extracto." f={f} onBorrar={borrarSinRespaldo} />
                 </>
               )}
             </div>
@@ -253,7 +270,7 @@ export default function CuadreExtracto({
   )
 }
 
-function Lista({ filas = [], vacio, f }) {
+function Lista({ filas = [], vacio, f, onBorrar }) {
   if (!filas.length) return <p className="text-ink-soft">{vacio}</p>
   return (
     <ul className="divide-y divide-line">
@@ -261,6 +278,12 @@ function Lista({ filas = [], vacio, f }) {
         <li key={`${x.fecha}-${i}`} className="py-1.5 flex items-start justify-between gap-2">
           <span className="min-w-0 break-words">{diaCorto(x.fecha) || String(x.fecha || '').slice(0, 10)} · {x.descripcion}</span>
           <span className="shrink-0 whitespace-nowrap tabular-nums">{x.tipo === 'income' ? '+' : '-'}{f(x.monto)}</span>
+          {onBorrar && x.movimiento_id && (
+            <span className="shrink-0 flex gap-1">
+              <a href={`#/movimientos/${x.movimiento_id}`} className="min-h-11 px-2 inline-flex items-center underline">Ver</a>
+              <button type="button" onClick={() => onBorrar(x)} className="min-h-11 px-2 text-danger font-semibold">Borrar</button>
+            </span>
+          )}
         </li>
       ))}
     </ul>

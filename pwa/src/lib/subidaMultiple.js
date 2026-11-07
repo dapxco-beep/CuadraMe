@@ -121,6 +121,7 @@ export function normalizarPdf(r) {
       apagada: m.marcar_por_defecto === false, // sin certeza: la casilla queda apagada hasta que la persona confirme
     }))
   const filaInfo = (m) => ({
+    id: m.match_id || null, // el movimiento tuyo al que se refiere (para dejarlo o borrarlo)
     descripcion: m.descripcion,
     fecha: m.fecha,
     monto: m.monto,
