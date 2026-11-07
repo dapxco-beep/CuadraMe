@@ -24,7 +24,7 @@ import {
 //  - Pagos con Apple Pay (la automatización «Transacción» le entrega comercio, monto y tarjeta).
 //  - Cierre de la app del banco (opcional: pregunta «¿Hiciste algún movimiento?»).
 // Si un enlace cambia, quien ya instaló el atajo conserva su versión: hay que pegar el nuevo aquí.
-export const ATAJO_ICLOUD_URL = 'https://www.icloud.com/shortcuts/8b2de178aff84465a938df4a5ef9c0dc'
+export const ATAJO_ICLOUD_URL = 'https://www.icloud.com/shortcuts/002171858328481ab9b3d58718192c73'
 // Atajo «CuadraMe Notificaciones» (iOS 27, disparador «Cuando recibo una notificación»): lee los avisos de Nequi, Nu, etc.
 export const ATAJO_NOTIFICACIONES_URL = 'https://www.icloud.com/shortcuts/1286c4417c524945809f6dd419538d7f'
 // Atajo «CuadraMe Registrar» (modo pantalla): un gesto toma un pantallazo del comprobante y lo lee (Nu no avisa al enviar).
