@@ -200,7 +200,7 @@ export const PREGUNTAS = [
       '- **Vaca**: poner plata entre varios para algo puntual (un regalo, una inscripción) y ver quién ya puso.',
     ],
     palabras: 'dividir parche vaca colecta amigos diferencia casa pareja regalo',
-    accion: { texto: 'Ver mi parche', to: '/hogares' },
+    accion: { texto: 'Plata con otros', to: '/otros' },
   },
   {
     id: 'amigo-sin-cuenta',
@@ -212,7 +212,7 @@ export const PREGUNTAS = [
       '**Para un parche, sí**: cada persona entra con su cuenta de CuadraMe.',
     ],
     palabras: 'amigo invitar sin cuenta enlace whatsapp registrar necesita',
-    accion: { texto: 'Ver mis vacas', to: '/colectas' },
+    accion: { texto: 'Plata con otros', to: '/otros' },
   },
   {
     id: 'cobrar-amigos',
@@ -223,7 +223,7 @@ export const PREGUNTAS = [
       'CuadraMe no mueve plata: solo lleva la cuenta. El pago lo hacen entre ustedes por su banco.',
     ],
     palabras: 'cobrar deben deuda amigo whatsapp recordar prestar',
-    accion: { texto: 'Ver quién me debe', to: '/amigos' },
+    accion: { texto: 'Plata con otros', to: '/otros' },
   },
   {
     id: 'que-ve-el-otro',
@@ -231,10 +231,10 @@ export const PREGUNTAS = [
     pregunta: '¿Qué ve la otra persona de mis cuentas?',
     respuesta: [
       'Solo las cuentas que tú le compartes, y tú eliges si solo las ve o si también puede anotar. Nada más.',
-      'Las puedes dejar de compartir cuando quieras desde Compartir con mi pareja o familia.',
+      'Las puedes dejar de compartir cuando quieras desde Perfil, en «Dar acceso a mis cuentas».',
     ],
     palabras: 'compartir cuentas pareja familia acceso ver privacidad',
-    accion: { texto: 'Ver Compartir', to: '/compartir' },
+    accion: { texto: 'Ir a mi perfil', to: '/perfil' },
   },
   {
     id: 'corregir-movimiento',
@@ -255,7 +255,7 @@ export const PREGUNTAS = [
       'Sí. Entra al parche y toca **Salir**. Ya no verás nada de ese parche; lo que aportaste se conserva para los demás.',
     ],
     palabras: 'salir parche grupo abandonar casa',
-    accion: { texto: 'Ver mis parches', to: '/hogares' },
+    accion: { texto: 'Plata con otros', to: '/otros' },
   },
 ]
 

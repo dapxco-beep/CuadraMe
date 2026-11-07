@@ -145,7 +145,7 @@ export default function Impuestos() {
         <>
           <section className="px-5 mt-5">
             <h2 className="text-[15px] font-semibold mb-1">4x1000 (GMF)</h2>
-            <p className="text-xs text-ink-soft mb-3">Es un impuesto de $4 por cada $1.000 que sacas de tu cuenta del banco. Aquí ves cuánto llevas, según lo que ha salido de tus cuentas de ahorro.</p>
+            <p className="text-xs text-ink-soft mb-3">Cuánto llevas de 4x1000 según lo que ha salido de tus cuentas de ahorro.</p>
             <div className="rounded-2xl bg-paper-raised border border-line p-4">
               <p className="text-xs text-ink-soft">Aproximado {anio}</p>
               <p className="text-2xl font-bold">{formatCOP(gmf.total_estimado)}</p>

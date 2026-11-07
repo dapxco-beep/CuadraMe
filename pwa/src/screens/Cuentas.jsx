@@ -119,8 +119,7 @@ export default function Cuentas() {
       </header>
 
       <p className="mx-6 mt-2 text-xs text-ink-soft">
-        Aquí está cada lugar donde tienes o debes plata. Toca una cuenta para ver el detalle o
-        arreglar su saldo si no coincide con tu banco.
+        Toca una cuenta para ver el detalle o arreglar su saldo si no coincide con tu banco.
       </p>
 
       {resumen && cuentas.length > 0 && (
@@ -171,9 +170,11 @@ export default function Cuentas() {
                 </div>
               </div>
               {/* Qué significa el número de esta cuenta: saldo disponible (tuyo) vs lo que debes (tarjeta) */}
-              <p className="mt-1.5 px-1 text-[11px] text-ink-soft" data-testid="significado-saldo">
-                {etiquetaCuenta(c).significado} <Ayudita termino={etiquetaCuenta(c).termino} />
-              </p>
+              {(c.tipo === 'credito' || c.tipo === 'inversion') && (
+                <p className="mt-1.5 px-1 text-xs text-ink-soft" data-testid="significado-saldo">
+                  {etiquetaCuenta(c).significado} <Ayudita termino={etiquetaCuenta(c).termino} />
+                </p>
+              )}
               <Link to={`/movimientos?cuenta=${c.id}`} className="inline-flex items-center gap-1 text-xs text-accent font-semibold min-h-11 px-1">
                 Ver sus movimientos
               </Link>
@@ -195,7 +196,7 @@ export default function Cuentas() {
             to="/compartir"
             className="flex items-center justify-center gap-2 text-sm text-accent font-medium py-2 min-h-[44px]"
           >
-            <Users size={16} /> Compartir con mi pareja o familia
+            <Users size={16} /> Dar acceso a mis cuentas (pareja o familia)
           </Link>
         </div>
       )}

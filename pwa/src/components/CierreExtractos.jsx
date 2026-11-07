@@ -226,10 +226,9 @@ function BloqueCuenta({ c, mostrarNombre, onCambio }) {
       {c.ajuste_inicial && (
         <SaldoInicialAutomatico cuentaId={c.cuenta_id} moneda={m} info={c.ajuste_inicial} onCambio={() => onCambio?.()} />
       )}
-      {c.tarjeta && <p className="text-[11px] text-ink-soft mt-1">En una tarjeta, lo que ves es lo que debes.</p>}
       {c.estado === 'sin_extracto' && (
-        <p className="text-[11px] text-ink-soft mt-1">
-          {c.motivo_sin_extracto || 'Sin el extracto de este mes no puedo comprobar el saldo; te muestro lo que calculé.'}
+        <p className="text-xs text-ink-soft mt-1">
+          {c.motivo_sin_extracto || (c.tipo === 'efectivo' ? 'El efectivo no tiene extracto: el saldo es el que calcula CuadraMe.' : 'Sin extracto no se puede comprobar con el banco.')}
         </p>
       )}
 

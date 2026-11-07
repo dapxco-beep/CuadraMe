@@ -125,7 +125,7 @@ export default function TarjetaRenta() {
             Ir a la DIAN <Icono icono={ExternalLink} tam="sm" />
           </a>
         </div>
-        <p className="text-[11px] text-ink-soft mt-1">{r.aviso} Es una guía para orientarte: no es asesoría tributaria ni reemplaza a un contador.</p>
+        <p className="text-xs text-ink-soft mt-1">{r.aviso} Es una guía para orientarte: no es asesoría tributaria ni reemplaza a un contador.</p>
       </div>
     </section>
   )

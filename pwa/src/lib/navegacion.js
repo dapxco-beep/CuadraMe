@@ -50,10 +50,7 @@ export const GRUPOS = [
     titulo: 'Con otras personas',
     icon: Users,
     items: [
-      { to: '/amigos', icon: Split, label: 'Dividir gastos con amigos', palabras: 'dividir gastos amigos cuenta compartida cena viaje deben me deben' },
-      { to: '/hogares', icon: UsersRound, label: 'Parche (pareja, casa, amigos)', palabras: 'parche hogar pareja familia casa compañeros apartamento gastos juntos quien debe a quien arriendo mercado servicios' },
-      { to: '/colectas', icon: HandCoins, label: 'Vacas', palabras: 'vaca colecta vaquita inscripcion equipo futbol torneo paseo regalo cuota aporte quien puso falta' },
-      { to: '/compartir', icon: Share2, label: 'Compartir con mi pareja o familia', palabras: 'compartir cuenta pareja familia hogar invitar pareja esposo esposa ver anotar acceso' },
+      { to: '/otros', icon: Users, label: 'Plata con otros', palabras: 'plata con otros dividir gastos amigos cuenta compartida cena viaje deben me deben parche hogar pareja familia casa companeros apartamento gastos juntos quien debe a quien arriendo mercado servicios vaca colecta vaquita inscripcion equipo futbol torneo paseo regalo cuota aporte quien puso falta' },
     ],
   },
   {

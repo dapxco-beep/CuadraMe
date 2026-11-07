@@ -46,7 +46,7 @@ export function textoPeriodo(p) {
 
 /** De dónde sale el «Empecé con». */
 export function origenEmpece(c) {
-  return c?.empece_origen === 'extracto' ? 'según tu extracto' : 'lo que calculó la app'
+  return c?.empece_origen === 'extracto' ? 'según tu extracto' : 'calculado por CuadraMe'
 }
 
 /** «Incluye $9.000 de rendimientos y $4.000 de impuesto 4x1000». undefined si no hay nada que decir.

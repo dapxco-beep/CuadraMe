@@ -61,7 +61,7 @@ export default function TarjetaGmfMes() {
             <li key={t}>{t}</li>
           ))}
         </ul>
-        <p className="text-[11px] text-ink-soft mt-2">{g.nota} Orientación educativa, no es asesoría tributaria.</p>
+        <p className="text-xs text-ink-soft mt-2">{g.nota} Orientación educativa, no es asesoría tributaria.</p>
       </div>
     </section>
   )

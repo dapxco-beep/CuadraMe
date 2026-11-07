@@ -58,7 +58,7 @@ describe('navegacion.js (fuente única)', () => {
     expect(ITEMS_MAS.find((i) => i.label === 'Traer extractos').to).toBe('/sincronizacion')
     expect(etiquetas('ajustes')).toEqual(['Perfil', 'Aprende', 'Ayuda', 'Privacidad'])
     // Dividir, hogar y colectas ya no se esconden: viven en un grupo a la vista
-    expect(GRUPOS.find((g) => g.id === 'juntos').items.map((i) => i.to)).toEqual(['/amigos', '/hogares', '/colectas', '/compartir'])
+    expect(GRUPOS.find((g) => g.id === 'juntos').items.map((i) => i.to)).toEqual(['/otros'])
   })
 
   it('la búsqueda tolera acentos y mayúsculas, y encuentra por palabras clave', () => {

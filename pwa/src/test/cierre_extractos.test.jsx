@@ -91,7 +91,7 @@ describe('pantalla del cierre por banco', () => {
     montar(datos([{ banco: 'Alfa', estado: 'sin_extracto', diferencia: null, cuentas: [c] }]))
     expect(screen.getAllByText('Sin extracto').length).toBeGreaterThan(0)
     expect(screen.queryByText('Según tu extracto')).toBeNull()
-    expect(screen.getByText(/lo que calculó la app/)).toBeInTheDocument()
+    expect(screen.getByText(/calculado por CuadraMe/)).toBeInTheDocument()
   })
 
   it('«Otros movimientos» se despliega con el detalle', () => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, ShieldCheck, User, Flag, Mail, Receipt, Check, ChevronDown, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, MessageCircle, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
+import { UsersRound, Bell, ShieldCheck, User, Flag, Mail, Receipt, Check, ChevronDown, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, MessageCircle, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
 import { useTheme, THEMES } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -276,6 +276,11 @@ export default function Perfil() {
       <section className="mx-6 mt-6">
         <h2 className="text-[15px] font-semibold mb-3">Legal</h2>
         <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
+          <Link to="/compartir" className="flex items-center gap-3 px-4 py-3.5" data-testid="dar-acceso">
+            <UsersRound size={20} className="text-ink-soft shrink-0" />
+            <p className="flex-1 text-sm font-medium">Dar acceso a mis cuentas (pareja o familia)</p>
+            <ChevronRight size={16} className="text-ink-soft" />
+          </Link>
           <Link to="/legal/terminos" className="flex items-center gap-3 px-4 py-3.5">
             <FileText size={20} className="text-ink-soft shrink-0" />
             <p className="flex-1 text-sm font-medium">Términos y Condiciones</p>

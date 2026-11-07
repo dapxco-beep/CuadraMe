@@ -68,7 +68,7 @@ describe('navegacion: grupos según el modo', () => {
     expect(g.map((x) => x.id)).toEqual(['datos', 'dinero', 'juntos', 'ahorro', 'entender', 'ajustes', MAS_FUNCIONES_ID])
     const visibles = g.slice(0, -1).flatMap((x) => x.items.map((i) => i.to))
     // lo de cada día está a la vista
-    for (const ruta of ['/sincronizacion', '/movimientos-correo', '/cuentas', '/deudas', '/recurrentes', '/amigos', '/hogares', '/colectas', '/metas', '/informes', '/asistente', '/perfil', '/ayuda']) {
+    for (const ruta of ['/sincronizacion', '/movimientos-correo', '/cuentas', '/deudas', '/recurrentes', '/otros', '/metas', '/informes', '/asistente', '/perfil', '/ayuda']) {
       expect(visibles, ruta).toContain(ruta)
     }
     // lo avanzado está aparte, plegado y explicado
