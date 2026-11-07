@@ -428,6 +428,7 @@ ATAQUES = [
     ("POST", "/conciliacion/historial/{historial}/cambiar-cuenta", {"cuenta_id": "{cuenta}", "confirmar": True}),
     ("GET", "/conciliacion/historial/{historial}/cambiar-cuenta/previa?cuenta_id={cuenta}", None),
     ("POST", "/conciliacion/historial/{historial}/resolver-dudosos", {"mismos": ["zz"]}),
+    ("POST", "/conciliacion/historial/{historial}/sobrantes/{movimiento}", {"accion": "borrar"}),
     ("POST", "/conciliacion/historial/{historial}/importar", {"fingerprints": ["zz"]}),
     ("DELETE", "/conciliacion/historial/{historial}", None),
     # extractos en error: B no reintenta ni quita el extracto (en error o no) de A
