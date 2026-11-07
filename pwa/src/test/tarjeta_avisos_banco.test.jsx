@@ -94,3 +94,18 @@ describe('Tarjeta «Registro automático desde el banco»', () => {
   })
 })
 
+
+describe('Enlaces de los atajos nuevos', () => {
+  it('ambos apuntan a iCloud y la guía de gestos queda visible en Conexiones', async () => {
+    const { ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL } = await import('../screens/ConectarDispositivo')
+    expect(ATAJO_NOTIFICACIONES_URL).toMatch(/^https:\/\/www\.icloud\.com\/shortcuts\/[0-9a-f]{32}$/)
+    expect(ATAJO_REGISTRAR_URL).toMatch(/^https:\/\/www\.icloud\.com\/shortcuts\/[0-9a-f]{32}$/)
+    expect(ATAJO_NOTIFICACIONES_URL).not.toBe(ATAJO_REGISTRAR_URL)
+    api.conexionesEstado.mockResolvedValue(ESTADO)
+    api.estadoNotificaciones.mockResolvedValue([])
+    api.reglasNotificacion.mockResolvedValue([])
+    montar()
+    expect(await screen.findByTestId('tarjeta-gesto-registro')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Instalar «CuadraMe Registrar»/ })).toHaveAttribute('href', ATAJO_REGISTRAR_URL)
+  })
+})
