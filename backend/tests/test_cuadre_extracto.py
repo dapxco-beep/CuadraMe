@@ -407,9 +407,11 @@ def test_que_falta_lista_las_dos_puntas():
     h = _historial("cu-qf", cuenta)
     db = SessionLocal()
     try:
+        # el sobrante debe ser un movimiento REAL de esta cuenta (si no existe, ya no cuenta como sobrante)
+        mid = db.query(Movimiento).filter(Movimiento.cuenta_id == cuenta, Movimiento.descripcion == "Restaurante").first().id
         db.query(HistorialExtracto).filter(HistorialExtracto.id == h).update({"review_json": json.dumps([
             {"fecha": "2026-09-25", "descripcion": "Cobro del banco", "monto": 50_000, "tipo": "expense", "fingerprint": "a", "estado": "faltante"},
-            {"fecha": "2026-09-10", "descripcion": "Restaurante", "monto": 100_000, "tipo": "expense", "fingerprint": "b", "estado": "sobrante", "match_id": "m1"}])})
+            {"fecha": "2026-09-10", "descripcion": "Restaurante", "monto": 100_000, "tipo": "expense", "fingerprint": "b", "estado": "sobrante", "match_id": mid}])})
         db.commit()
     finally:
         db.close()

@@ -95,3 +95,58 @@ def test_otra_persona_no_puede_tocar_mi_extracto(caso):
     r = client.post(f"/conciliacion/historial/{caso['hid']}/sobrantes/{caso['ids'][0]}", json={"accion": "borrar"})
     assert r.status_code == 404
     assert _existe(caso["ids"][0])
+
+
+# ── revalidación: lo que ya no aplica deja de avisar ──────────────────────────────────────────────────
+def _mover_a_otra_cuenta(mid, uid):
+    db = SessionLocal()
+    otra = Cuenta(usuario_id=uid, nombre="Tarjeta", tipo="credito", saldo=0, moneda="COP")
+    db.add(otra)
+    db.flush()
+    db.get(Movimiento, mid).cuenta_id = otra.id
+    db.commit()
+    db.close()
+
+
+def test_un_movimiento_que_se_paso_a_otra_cuenta_deja_de_ser_sobrante(caso):
+    _mover_a_otra_cuenta(caso["ids"][0], caso["u"].id)
+    r = client.get(f"/conciliacion/historial/{caso['hid']}").json()
+    assert r["sobrantes"] == 2
+    est = {i["match_id"]: (i["estado"], i.get("resuelto")) for i in _revision(caso["hid"])}
+    assert est[caso["ids"][0]] == ("sobrante_resuelto", "ya_no_aplica") and est[caso["ids"][1]][0] == "sobrante"
+
+
+def test_borrado_o_conciliado_tampoco_cuentan_y_que_falta_lo_refleja(caso):
+    db = SessionLocal()
+    db.delete(db.get(Movimiento, caso["ids"][0]))
+    db.get(Movimiento, caso["ids"][1]).conciliado_en = datetime(2026, 11, 1)
+    db.commit()
+    cuenta_id = db.get(Movimiento, caso["ids"][2]).cuenta_id
+    db.close()
+    d = client.get(f"/conciliacion/cuadre/que-falta?cuenta_id={cuenta_id}&historial_id={caso['hid']}").json()
+    assert [x["movimiento_id"] for x in d["sin_respaldo_en_el_extracto"]] == [caso["ids"][2]]
+
+
+def test_sin_cambios_no_se_toca_nada(caso):
+    r = client.get(f"/conciliacion/historial/{caso['hid']}").json()
+    assert r["sobrantes"] == 3
+
+
+# ── redondeo: unos pesos no son «no cuadra» ──────────────────────────────────────────────────────────
+def test_una_diferencia_de_unos_pesos_cuadra_con_nota_de_redondeo():
+    from datetime import date
+    from app import cuadre_encadenado as ce
+    def fila(mes, dif, arr=0.0):
+        return {"estado": None, "etiqueta": f"{mes} 2026", "mes": mes, "diferencia": dif, "arrastre": arr, "acumulada": arr + dif,
+                "cadena_rota": False, "causas": [], "acciones": []}
+    class C:
+        tipo = "ahorro"
+    chico, grande = [fila("Agosto", 18.0), fila("Septiembre", 0.0, 18.0)], [fila("Agosto", 150.0)]
+    ce._clasificar(chico, C(), "COP")
+    ce._clasificar(grande, C(), "COP")
+    assert chico[0]["estado"] == "cuadra" and "redondeo" in chico[0]["texto"]
+    assert chico[1]["estado"] == "cuadra"  # el mes siguiente tampoco «arrastra» $18
+    assert grande[0]["estado"] == "diferencia"  # $150 sí es una diferencia real
+    usd = [fila("Agosto", 18.0)]
+    ce._clasificar(usd, C(), "USD")
+    assert usd[0]["estado"] == "diferencia"  # en otras monedas $18 no es redondeo

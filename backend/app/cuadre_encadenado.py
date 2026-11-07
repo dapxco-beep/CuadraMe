@@ -35,6 +35,9 @@ from app.models import Cuenta, HistorialExtracto
 from app.utiles import ahora_co
 
 TOL = cx.TOLERANCIA
+# Para el VEREDICTO del mes (no para los demás cálculos): una diferencia de unos pocos pesos es redondeo o centavos del banco, no un
+# error que la persona deba perseguir. En pesos colombianos se tolera menos de $100.
+TOL_VEREDICTO_COP = 100.0
 MAX_LINEAS_SUBCONJUNTO = 24  # tope para la búsqueda de subconjuntos (combinaciones de hasta 3)
 MAX_MESES = 48
 
@@ -343,10 +346,11 @@ def _clasificar(filas_mes: list[dict], cuenta: Cuenta, moneda: str) -> None:
         if f["estado"] == "falta_extracto":
             continue
         dif, arr = f["diferencia"], f["arrastre"]
+        tol = TOL_VEREDICTO_COP if moneda == "COP" else TOL
         etq = f["etiqueta"].split(" ")[0].lower()
         mas_menos = "más" if dif > 0 else "menos"
         tarjeta = cuenta.tipo == "credito"
-        if abs(dif) >= TOL:
+        if abs(dif) >= tol:
             f["estado"] = "diferencia"
             causa = next((c for c in f["causas"] if c.get("probable")), None)
             f["texto"] = (f"{_con_tono(etq)} no cuadra: el banco registró {cx.pesos(dif)} {mas_menos} que tu app."
@@ -358,7 +362,7 @@ def _clasificar(filas_mes: list[dict], cuenta: Cuenta, moneda: str) -> None:
             f["estado"] = "cadena_rota"
             f["texto"] = _hueco(filas_mes, i, f)
             culpable_previo = culpable_previo or f
-        elif abs(arr) >= TOL and (primera_con_extracto or abs(f["acumulada"]) >= TOL):
+        elif abs(arr) >= tol and (primera_con_extracto or abs(f["acumulada"]) >= tol):
             if primera_con_extracto and any(c["codigo"] == "saldo_inicial" for c in f["causas"]):
                 f["estado"] = "solo_saldo_inicial"
                 f["texto"] = (f"{_con_tono(etq)}: solo falta el saldo inicial de {cx.pesos(arr)}; los movimientos del mes cuadran.")
@@ -376,6 +380,8 @@ def _clasificar(filas_mes: list[dict], cuenta: Cuenta, moneda: str) -> None:
         else:
             f["estado"] = "cuadra"
             f["texto"] = f"{_con_tono(etq)} cuadra con tu banco."
+            if 0 < abs(dif) + abs(arr) and max(abs(dif), abs(arr)) >= TOL:  # diferencia de redondeo: se dice, sin pedir nada
+                f["texto"] = f"{_con_tono(etq)} cuadra con tu banco (hay {cx.pesos(max(abs(dif), abs(arr)))} de diferencia: es redondeo)."
         if tarjeta and f["estado"] == "diferencia":
             f["texto"] = f["texto"].replace("registró", "registró (en la deuda)")
         primera_con_extracto = False

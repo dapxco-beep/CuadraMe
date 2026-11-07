@@ -6,6 +6,9 @@ import { useState } from 'react'
 
 const api = vi.hoisted(() => ({}))
 vi.mock('../lib/api', () => ({ api }))
+vi.mock('../lib/CuentasContext', () => ({
+  useCuentas: () => ({ cuentas: [{ id: 'ahorros', nombre: 'Nu Colombia' }, { id: 'credito', nombre: 'Nu Crédito' }] }),
+}))
 
 import SobrantesExtracto from '../components/SobrantesExtracto'
 
@@ -19,11 +22,12 @@ const LISTA = [
 // El padre guarda la lista, como hace SubidaMultiple con «parchar».
 function Caja({ inicial = LISTA }) {
   const [lista, setLista] = useState(inicial)
-  return <MemoryRouter><SobrantesExtracto historialId="h1" sobrantes={lista} onCambio={setLista} /></MemoryRouter>
+  return <MemoryRouter><SobrantesExtracto historialId="h1" cuentaId="ahorros" sobrantes={lista} onCambio={setLista} /></MemoryRouter>
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  api.editarMovimiento = vi.fn().mockResolvedValue({})
   api.resolverSobrante = vi.fn().mockImplementation(async (_h, _m, accion) => ({ ok: true, resuelto: accion === 'borrar' ? 'borrado' : 'dejado' }))
 })
 
@@ -62,6 +66,20 @@ describe('Movimientos tuyos que el extracto no trae', () => {
     await waitFor(() => expect(api.resolverSobrante).toHaveBeenCalledTimes(4))
     expect(await screen.findByText('Revisaste los movimientos que el extracto no trae')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Dejar todos' })).toBeNull()
+  })
+
+  it('«Otra cuenta» mueve el movimiento a la cuenta correcta (la actual no se ofrece) y lo marca resuelto', async () => {
+    const user = userEvent.setup()
+    render(<Caja />)
+    const fila = screen.getAllByTestId('sobrante')[1]
+    await user.click(within(fila).getByRole('button', { name: 'Otra cuenta' }))
+    const lista = within(fila).getByRole('combobox')
+    expect(within(lista).queryByRole('option', { name: 'Nu Colombia' })).toBeNull()
+    await user.selectOptions(lista, 'credito')
+    await user.click(within(fila).getByRole('button', { name: 'Mover' }))
+    await waitFor(() => expect(api.editarMovimiento).toHaveBeenCalledWith('m2', { cuenta_id: 'credito' }))
+    expect(await within(fila).findByText('Movido a Nu Crédito')).toBeInTheDocument()
+    expect(await screen.findByText('3 movimientos tuyos no están en el extracto')).toBeInTheDocument()
   })
 
   it('si falla el servidor no marca nada como resuelto', async () => {

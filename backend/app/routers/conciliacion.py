@@ -21,6 +21,7 @@ from app import autoarreglo
 from app import corregir_pago, corregir_tipo
 from app import reasignar_extracto
 from app import estado_traer
+from app import sobrantes as sobrantes_mod
 from app.extractos_vista import clasificar_motivo
 from app import punto_partida, saldo_inicial_auto
 from app import titulo as tit
@@ -534,6 +535,8 @@ def obtener_review(
         raise HTTPException(status_code=404, detail="Historial no encontrado")
 
     review = json.loads(historial.review_json or "[]")
+    if sobrantes_mod.revalidar(db, historial, review):  # lo que ya se movió, se borró o se concilió deja de avisar
+        db.commit()
     _enriquecer_dudosas(db, usuario.id, review)
     completados, sobrantes = _contar_review(review)
     return ProcesarExtractoResponse(

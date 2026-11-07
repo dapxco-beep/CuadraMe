@@ -766,6 +766,7 @@ export default function SubidaMultiple({
                   {a.sobrantes?.length > 0 && (
                     <SobrantesExtracto
                       historialId={a.historialId}
+                      cuentaId={g.cuentaId}
                       sobrantes={a.sobrantes}
                       onCambio={(lista) => parchar(a.id, { sobrantes: lista })}
                     />

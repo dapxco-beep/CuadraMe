@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app import cuadre_encadenado, guardia_coherencia
 from app import cuadre_extracto as cx
 from app import punto_partida, saldo_inicial_auto
+from app import sobrantes as sobrantes_mod
 from app.auth import UsuarioActual, get_current_user
 from app.compartidos import bloquear_cuenta, cuenta_accesible, puede_editar_cuenta
 from app.database import get_db
@@ -216,6 +217,8 @@ def que_puede_faltar(
             review = json.loads(h.review_json or "[]")
         except ValueError:
             review = []
+        if sobrantes_mod.revalidar(db, h, review):  # solo lo que sigue siendo cierto
+            db.commit()
         sin_pareja = [{"fecha": i.get("fecha"), "descripcion": i.get("descripcion"), "monto": i.get("monto"), "tipo": i.get("tipo"),
                        "estado": i.get("estado")} for i in review if i.get("estado") in ("faltante", "dudoso", "anterior")]
         sin_respaldo = [{"fecha": i.get("fecha"), "descripcion": i.get("descripcion"), "monto": i.get("monto"), "tipo": i.get("tipo"),
