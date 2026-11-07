@@ -1,6 +1,6 @@
 """Genera «CuadraMe Notificaciones.shortcut» (sin firmar) para el disparador «Notificación» de iOS 27.
 
-Uso:   python tools/generar_atajo_notificaciones.py [--base URL] [--banco Nequi] [--modo notificacion|pantalla|captura] [--salida archivo]
+Uso:   python tools/generar_atajo_notificaciones.py [--base URL] [--modo notificacion|pantalla|captura|wallet] [--salida archivo]
 Firma (en el Mac, basta el Apple ID gratis):
        shortcuts sign -m anyone -i "CuadraMe Notificaciones.shortcut" -o "CuadraMe Notificaciones firmado.shortcut"
 
@@ -24,6 +24,9 @@ Modos (de dónde sale el texto que se le manda al servidor):
                   respuesta. Solo pide la clave al instalarlo.
   captura      -> igual, pero la imagen es la captura que dispara la automatización «Cuando se guarde una captura».
 La imagen nunca sale del teléfono; el servidor recibe texto y lo lee con el mismo lector de avisos.
+  wallet       -> «CuadraMe Apple Pay»: lo llama la automatización «Transacción» de iOS (Apple Pay/Wallet). Manda
+                  Comercio, Importe y Tarjeta o pase a /movimientos/rapido (fuente wallet) y muestra el resultado. No
+                  pregunta nada: el pago llega completo. Mismo diseño que docs/ATAJO_CUADRAME.md (atajo 1).
 
 La clave API NO va dentro del archivo: se pide al instalar el atajo (preguntas de importación), así el
 mismo enlace de iCloud sirve para todos los usuarios.
@@ -191,15 +194,54 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
     }
 
 
+# Propiedades de la «Entrada del atajo» que entrega la automatización «Transacción» (Wallet). Los nombres son los que
+# muestra iOS: si en tu idioma o versión no resuelven, en Atajos toca la burbuja y elige la propiedad (ver docs/ATAJO_CUADRAME.md).
+PROPIEDADES_WALLET = {"comercio": "Merchant", "monto": "Amount", "tarjeta": "Card or Pass"}
+
+
+def _propiedad_de_entrada(nombre: str) -> dict:
+    """«Entrada del atajo › <propiedad>»: la entrada con la propiedad pedida."""
+    return {**ENTRADA, "Aggrandizements": [{"Type": "WFPropertyVariableAggrandizement", "PropertyName": nombre}]}
+
+
+def construir_wallet(base: str) -> dict:
+    """«CuadraMe Apple Pay»: automatización Transacción -> /movimientos/rapido, sin preguntar nada."""
+    u = lambda: str(uuid.uuid4()).upper()  # noqa: E731
+    id_clave, id_post, id_msg = u(), u(), u()
+    clave = _con_variable("", _salida(id_clave, "Texto"))
+    cuerpo = [(campo, _con_variable("", _propiedad_de_entrada(prop))) for campo, prop in PROPIEDADES_WALLET.items()]
+    cuerpo.append(("fuente", _texto("wallet")))
+    acciones = [
+        _accion("gettext", UUID=id_clave, WFTextActionText=""),
+        _post(f"{base}/movimientos/rapido", clave, cuerpo, id_post),
+        _valor("mensaje", id_post, id_msg),
+        _accion("notification", WFNotificationActionTitle="CuadraMe",
+                WFNotificationActionBody=_con_variable("", _salida(id_msg, "Valor del diccionario"))),
+    ]
+    return {
+        "WFWorkflowClientVersion": "2700",
+        "WFWorkflowMinimumClientVersion": 900,
+        "WFWorkflowIcon": {"WFWorkflowIconStartColor": 4282601983, "WFWorkflowIconGlyphNumber": 59511},
+        "WFWorkflowTypes": [],
+        "WFWorkflowInputContentItemClasses": ["WFStringContentItem", "WFGenericFileContentItem"],
+        "WFWorkflowActions": acciones,
+        "WFWorkflowImportQuestions": [
+            {"ActionIndex": 0, "Category": "Parameter", "ParameterKey": "WFTextActionText", "DefaultValue": "",
+             "Text": "Pega tu clave de CuadraMe (App > Conectar > Clave del atajo)"},
+        ],
+    }
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--base", default="https://api.cuadrame.dapx.shop")
     p.add_argument("--banco", default="Nequi")
-    p.add_argument("--modo", choices=["notificacion", "pantalla", "captura"], default="notificacion")
+    p.add_argument("--modo", choices=["notificacion", "pantalla", "captura", "wallet"], default="notificacion")
     p.add_argument("--salida", default="CuadraMe Notificaciones.shortcut")
     a = p.parse_args()
     with open(a.salida, "wb") as f:
-        plistlib.dump(construir(a.base.rstrip("/"), a.banco, a.modo), f, fmt=plistlib.FMT_BINARY)
+        datos = construir_wallet(a.base.rstrip("/")) if a.modo == "wallet" else construir(a.base.rstrip("/"), a.banco, a.modo)
+        plistlib.dump(datos, f, fmt=plistlib.FMT_BINARY)
     print(f"Listo: {a.salida} (sin firmar). Fírmalo en el Mac con `shortcuts sign -m anyone -i ... -o ...`.")
 
 
