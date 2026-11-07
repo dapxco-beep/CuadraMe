@@ -1138,15 +1138,32 @@ def crear_movimiento_desde_notificacion(
     Lo que no parece un movimiento (códigos, promociones, avisos sin monto) se ignora con 200 y registrado=false:
     el teléfono no debe reintentar. Un reintento de la MISMA notificación jamás crea un segundo movimiento."""
     verificar_limite(f"notificacion:{usuario.id}", 600, 3600, "Demasiadas notificaciones seguidas. Intenta en un rato.")
-    n = notif.interpretar(data.paquete, data.titulo, data.texto)
-    app_nombre = notif.nombre_app(data.paquete)
-    ios = notif.es_ios(data.paquete)
+    paquete = data.paquete
+    # Atajo «CuadraMe Registrar» (pantallazo): no dice de qué banco es; se deduce del propio texto, de lo que ya enseñó
+    # la persona o de sus cuentas. Solo si no hay forma de saberlo se le pregunta (y se aprende para la próxima).
+    auto = (paquete or "").strip().lower() in ("auto", "pantalla")
+    cuenta_auto = None
+    if auto:
+        cuenta_auto, cuentas_nombres = rn.inferir_cuenta(db, usuario.id, data.titulo, data.texto, data.cuenta)
+        if cuenta_auto is None:
+            n0 = notif.interpretar("", data.titulo, data.texto)
+            if n0 is not None or notif.pide_monto("", data.titulo, data.texto):
+                return {"ok": True, "registrado": False, "motivo": "pedir_cuenta", "cuentas": cuentas_nombres}
+            return {"ok": True, "registrado": False, "motivo": "no_parece_un_movimiento"}
+        if data.cuenta and data.aprender:
+            esq0 = rn.esqueleto(data.titulo, data.texto)
+            if rn.aprender(db, usuario.id, rn.PREFIJO_CUENTA + cuenta_auto, esq0, tipo=None, sin_cifra=False):
+                pass
+        paquete = notif.banco_de_cuenta(cuenta_auto) or cuenta_auto
+    n = notif.interpretar(paquete, data.titulo, data.texto)
+    app_nombre = cuenta_auto if auto else notif.nombre_app(paquete)
+    ios = True if auto else notif.es_ios(paquete)
     esq = rn.esqueleto(data.titulo, data.texto)
     regla = rn.buscar(db, usuario.id, app_nombre, esq)
     # Android manda la hora de publicación; el atajo de iPhone no: sin ella, el mismo texto de otro minuto es otro aviso
     # (si no, un segundo «X te envió 1» nunca se registraría).
     marca = data.publicado_ms or ahora_co().strftime("%Y%m%d%H%M")
-    huella = hashlib.sha256(f"{data.paquete}|{data.titulo}|{data.texto}|{marca}".encode()).hexdigest()[:40]
+    huella = hashlib.sha256(f"{paquete}|{data.titulo}|{data.texto}|{marca}".encode()).hexdigest()[:40]
 
     # La persona respondió una pregunta del atajo (segunda llamada, mismo texto): se registra con SU respuesta y se
     # aprende la forma de este aviso para no volver a preguntar.
@@ -1158,14 +1175,16 @@ def crear_movimiento_desde_notificacion(
             aprendido = rn.aprender(db, usuario.id, app_nombre, esq,
                                     tipo=tipo if (n is None or n.tipo_incierto) else None, sin_cifra=n is None)
         out = crear_movimiento_rapido(MovimientoRapidoCreate(
-            monto=data.monto, tipo=tipo, descripcion=(data.nota or "").strip() or (n.comercio if n else f"Movimiento {app_nombre}"),
+            monto=data.monto, tipo=tipo,
+            descripcion=(data.nota or "").strip() or (n.comercio if n else (
+                f"Plata recibida en {app_nombre}" if tipo == "income" else f"Envío por {app_nombre}")),
             cuenta=app_nombre, fuente="notificacion", id_transaccion=huella), db, usuario)
         return {"ok": True, "registrado": not out.duplicado, "duplicado": out.duplicado, "movimiento_id": out.id,
                 "mensaje": out.mensaje, "por_confirmar": out.por_confirmar, "aprendido": aprendido}
 
     if n is None:
         # iPhone: salió plata y el aviso no trae monto (o así lo enseñó la persona). El atajo pregunta cuánto y para qué.
-        if notif.pide_monto(data.paquete, data.titulo, data.texto) or (regla is not None and regla.sin_cifra):
+        if notif.pide_monto(paquete, data.titulo, data.texto) or (regla is not None and regla.sin_cifra):
             if regla is not None:
                 regla.usos = (regla.usos or 0) + 1
                 db.commit()
@@ -1200,7 +1219,7 @@ def crear_movimiento_desde_notificacion(
         comercio=n.comercio if n.clase == "wallet" else None,
         descripcion=n.comercio,
         tarjeta=n.tarjeta if n.clase == "wallet" else None,
-        cuenta=(n.app or (app_nombre if ios else None)) if n.clase == "banco" else None,
+        cuenta=app_nombre if auto else ((n.app or (app_nombre if ios else None)) if n.clase == "banco" else None),
         fecha=fecha,
         fuente=n.fuente,
         id_transaccion=huella,

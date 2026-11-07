@@ -11,14 +11,17 @@ endpoint de Android; el servidor lee cada banco). Según `motivo` de la respuest
   - pedir_tipo             -> hay monto pero no se sabe si entró o salió: pregunta «¿Entró o salió plata?».
   - no_parece_un_movimiento -> no hace nada (ofertas, códigos...).
   - (sin motivo)           -> se registró: muestra el aviso («Ingreso de $X de Laura. Confírmalo en CuadraMe»).
-El banco se elige al instalar (o con --banco): el mismo archivo sirve para todos. Un banco nuevo no necesita cambios aquí.
+El banco NO se pregunta al instalar (salvo en el modo «captura»): el servidor lo deduce, así que un solo atajo sirve para todos los
+bancos y una sola copia basta. Cada banco necesita su propia AUTOMATIZACIÓN (iOS vigila una app por automatización), todas apuntando a este atajo.
 
 Modos (de dónde sale el texto que se le manda al servidor):
   notificacion -> la notificación que dispara la automatización de iOS 27 (Nequi avisa al recibir plata).
   pantalla     -> para bancos que NO avisan al enviar plata (Nu): un gesto que ELIGE cada persona (Toque atrás, Botón de
                   acción, Centro de control, Siri...) toma un pantallazo, el teléfono saca el texto y manda SOLO el texto.
-                  El mismo atajo sirve para cualquier banco: al usarlo pregunta «¿De qué cuenta es?» con tus cuentas de
-                  CuadraMe (así no hay que instalar uno por banco). Solo pide la clave al instalarlo.
+                  El mismo atajo sirve para cualquier banco y NO pregunta nada en el caso normal: el servidor deduce la
+                  cuenta del propio texto (o de lo que la persona ya le enseñó), el monto y el destinatario. Solo pregunta
+                  si de verdad no puede saberlo (cuenta dudosa la primera vez, monto que el aviso no trae) y APRENDE la
+                  respuesta. Solo pide la clave al instalarlo.
   captura      -> igual, pero la imagen es la captura que dispara la automatización «Cuando se guarde una captura».
 La imagen nunca sale del teléfono; el servidor recibe texto y lo lee con el mismo lector de avisos.
 
@@ -106,11 +109,12 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
     id_monto, id_para, id_rapido, id_resp = u(), u(), u(), u()
     id_monto2, id_com2, id_tipo, id_rapido2, id_resp2 = u(), u(), u(), u(), u()
     id_shot, id_ocr, id_cuentas = u(), u(), u()
-    elegir = modo == "pantalla"  # el banco se elige AL USAR el atajo (lista de tus cuentas), no al instalarlo
+    elegir = modo in ("pantalla", "notificacion")  # no se pregunta el banco: el servidor lo deduce del texto o de lo aprendido
+    id_rapido3, id_resp3, id_cuentas_resp = u(), u(), u()
     # De dónde sale el texto: la notificación misma o el texto leído de una imagen (pantallazo / captura)
     texto_var = ENTRADA if modo == "notificacion" else _salida(id_ocr, "Texto de la imagen")
     clave = _con_variable("", _salida(id_clave, "Texto"))
-    nombre_banco = _con_variable("", _salida(id_banco, "Elemento elegido" if elegir else "Texto"))
+    nombre_banco = _texto("auto") if elegir else _con_variable("", _salida(id_banco, "Texto"))
     entrada_texto = lambda uid, n="Entrada proporcionada": _con_variable("", _salida(uid, n))  # noqa: E731
     aviso = lambda uid: _accion("notification", WFNotificationActionTitle="CuadraMe",  # noqa: E731
                                 WFNotificationActionBody=_con_variable("", _salida(uid, "Valor del diccionario")))
@@ -120,13 +124,6 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
         _accion("gettext", UUID=id_clave, WFTextActionText=""),
         *([] if elegir else [_accion("gettext", UUID=id_banco, WFTextActionText=banco)]),
         *_leer_imagen(modo, id_shot, id_ocr),
-        # El pantallazo ya está tomado: ahora sí se puede mostrar la lista de cuentas sin taparlo
-        *([
-            _accion("downloadurl", UUID=id_cuentas, WFURL=f"{base}/movimientos/cuentas-rapido", WFHTTPMethod="GET",
-                    WFHTTPHeaders=_dic([("X-Api-Key", clave)])),
-            _accion("choosefromlist", UUID=id_banco, WFChooseFromListActionPrompt="¿De qué cuenta es?",
-                    WFInput={"Value": _salida(id_cuentas, "Contenido de la URL"), "WFSerializationType": "WFTextTokenAttachment"}),
-        ] if elegir else []),
         # El texto crudo (de la notificación o del pantallazo): el servidor lo lee, no el atajo
         _post(f"{base}/movimientos/rapido-notificacion", clave,
               [("paquete", nombre_banco), ("titulo", _texto("")), ("texto", _con_variable("", texto_var))], id_post),
@@ -135,16 +132,17 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
     ]
     # Segunda llamada con el MISMO texto + la respuesta de la persona: el servidor registra y aprende la forma del
     # aviso, así la próxima vez de este banco ya no pregunta.
-    def responder(uid, monto_v, tipo_v, nota_v):
-        return _post(f"{base}/movimientos/rapido-notificacion", clave,
-                     [("paquete", nombre_banco), ("titulo", _texto("")), ("texto", _con_variable("", texto_var)),
-                      ("monto", monto_v), ("tipo", tipo_v), ("nota", nota_v)], uid)
+    def responder(uid, monto_v, tipo_v, nota_v=None):
+        campos = [("paquete", nombre_banco), ("titulo", _texto("")), ("texto", _con_variable("", texto_var)),
+                  ("monto", monto_v), ("tipo", tipo_v)]
+        if nota_v is not None:
+            campos.append(("nota", nota_v))
+        return _post(f"{base}/movimientos/rapido-notificacion", clave, campos, uid)
 
-    # Salió plata y el aviso no dice cuánto: se pregunta monto y para qué (eso categoriza el gasto)
+    # Salió plata y el aviso no dice cuánto (único dato que no se puede deducir): se pregunta SOLO el monto
     pide_monto = [
         _accion("ask", UUID=id_monto, WFAskActionPrompt="¿Cuánto enviaste?", WFInputType="Number"),
-        _accion("ask", UUID=id_para, WFAskActionPrompt="¿Para qué o para quién? (ej. parche con Laura)", WFInputType="Text"),
-        responder(id_rapido, entrada_texto(id_monto), _texto("gasto"), entrada_texto(id_para)),
+        responder(id_rapido, entrada_texto(id_monto), _texto("gasto")),
         _valor("mensaje", id_rapido, id_resp),
         aviso(id_resp),
     ]
@@ -159,9 +157,21 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
         _valor("mensaje", id_rapido2, id_resp2),
         aviso(id_resp2),
     ]
+    # El servidor no pudo deducir de qué cuenta es el pantallazo: se pregunta UNA vez y lo aprende
+    pide_cuenta = [
+        _valor("cuentas", id_post, id_cuentas_resp),
+        _accion("choosefromlist", UUID=id_banco, WFChooseFromListActionPrompt="¿De qué cuenta es?",
+                WFInput={"Value": _salida(id_cuentas_resp, "Valor del diccionario"), "WFSerializationType": "WFTextTokenAttachment"}),
+        _post(f"{base}/movimientos/rapido-notificacion", clave,
+              [("paquete", _texto("auto")), ("titulo", _texto("")), ("texto", _con_variable("", texto_var)),
+               ("cuenta", entrada_texto(id_banco, "Elemento elegido"))], id_rapido3),
+        _valor("mensaje", id_rapido3, id_resp3),
+        aviso(id_resp3),
+    ]
     nada = _si_igual(u(), id_motivo, "Valor del diccionario", "no_parece_un_movimiento", [], [aviso(id_msg)])
     tipo = _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_tipo", pide_tipo, nada)
-    acciones += _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_monto", pide_monto, tipo)
+    monto = _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_monto", pide_monto, tipo)
+    acciones += _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_cuenta", pide_cuenta, monto) if elegir else monto
 
     return {
         "WFWorkflowClientVersion": "2700",

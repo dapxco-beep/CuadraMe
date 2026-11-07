@@ -110,7 +110,7 @@ export default function TarjetaGestoRegistro({ url }) {
                   </span>
                   <span className="block text-xs text-ink-soft">{g.nota}</span>
                 </span>
-                {id === g.id && <Check size={18} className="text-accent shrink-0" aria-hidden="true" />}
+                {id === g.id && <Check size={20} className="text-accent shrink-0" aria-hidden="true" />}
               </button>
             ))}
           </div>
@@ -123,8 +123,8 @@ export default function TarjetaGestoRegistro({ url }) {
         <li>
           <p className="font-semibold">3. Úsalo</p>
           <p className="text-xs text-ink-soft mt-1 leading-relaxed" data-testid="uso-gesto">
-            {gesto.uso} Elige la cuenta del banco y listo: el movimiento queda «por confirmar». Si el comprobante no dice algo,
-            el atajo te lo pregunta una vez y aprende.
+            {gesto.uso} CuadraMe reconoce solo el banco, el valor y a quién le enviaste, y deja el movimiento «por confirmar».
+            Solo te pregunta si no está seguro de algo, y aprende para no volver a preguntar.
           </p>
         </li>
       </ol>

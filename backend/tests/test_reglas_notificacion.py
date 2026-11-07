@@ -167,3 +167,62 @@ def test_avisos_que_no_se_entienden_se_cuentan_solo_con_estadisticas_anonimas_y_
     _aviso(h, ("Nequi", "Ofertas", "Todos piden OFERTA a solo $14.968"))
     assert len(_formas_de_aviso()) == n
     _consentir(False)
+
+
+# ---- Atajo «CuadraMe Registrar» (pantallazo): deduce la cuenta y solo pregunta si no hay forma de saberla ----------
+
+def _pantallazo(h, texto, **extra):
+    r = client.post("/movimientos/rapido-notificacion", headers=h,
+                    json={"paquete": "auto", "titulo": "", "texto": texto, **extra})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def _cuentas_nu_nequi(uid):
+    h = _usuario(uid)  # crea «Nequi»
+    assert client.post("/cuentas", json={"nombre": "Nu Colombia", "saldo": 500000}).status_code == 200
+    return h
+
+
+def _movimiento_mas_reciente():
+    movs = client.get("/movimientos").json()
+    return movs[0] if isinstance(movs, list) else movs["items"][0]
+
+
+def test_pantallazo_deduce_la_cuenta_del_propio_texto_y_el_destinatario_sin_preguntar():
+    h = _cuentas_nu_nequi("rn-a1")
+    r = _pantallazo(h, "11:03 Nu Comprobante Transferencia exitosa $ 45.000 Para LAURA GOMEZ Banco Nequi Compartir")
+    assert r["registrado"] and "motivo" not in r
+    mov = _movimiento_mas_reciente()
+    cuentas = {c["id"]: c["nombre"] for c in client.get("/cuentas").json()}
+    assert cuentas[mov["cuenta_id"]] == "Nu Colombia"
+    assert mov["monto"] == 45000 and mov["tipo"] == "expense" and mov["descripcion"] == "Envío a Laura Gomez"
+
+
+def test_pantallazo_sin_banco_en_el_texto_pregunta_una_vez_y_aprende():
+    h = _cuentas_nu_nequi("rn-a2")
+    texto = "Transferencia exitosa $ 20.000 Para CARLOS RUIZ Compartir Descargar"
+    r = _pantallazo(h, texto)
+    assert r["motivo"] == "pedir_cuenta" and set(r["cuentas"]) == {"Nequi", "Nu Colombia"}
+    r2 = _pantallazo(h, texto, cuenta="Nu Colombia")
+    assert r2["registrado"]
+    # La próxima vez con la misma forma de pantallazo (otro monto y otra persona) ya no pregunta
+    r3 = _pantallazo(h, "Transferencia exitosa $ 35.000 Para ANA TORRES Compartir Descargar")
+    assert r3["registrado"] and "motivo" not in r3
+    cuentas = {c["id"]: c["nombre"] for c in client.get("/cuentas").json()}
+    assert cuentas[_movimiento_mas_reciente()["cuenta_id"]] == "Nu Colombia"
+    regla = [x for x in client.get("/movimientos/reglas-notificacion").json() if x["app"].startswith("pantalla:")]
+    assert regla and "Nu Colombia" in regla[0]["significado"] and "carlos" not in str(regla).lower()
+
+
+def test_pantallazo_que_no_es_un_movimiento_no_pregunta_nada():
+    h = _cuentas_nu_nequi("rn-a3")
+    assert _pantallazo(h, "Mensajes Hoy Mamá: ¿vienes a almorzar? Fotos Cámara")["motivo"] == "no_parece_un_movimiento"
+
+
+def test_pantallazo_con_dos_bancos_en_el_texto_gana_el_primero_el_de_origen():
+    h = _cuentas_nu_nequi("rn-a4")
+    r = _pantallazo(h, "Transferencia exitosa $ 9.000 de Nu a Nequi")
+    assert r["registrado"] and "motivo" not in r
+    cuentas = {c["id"]: c["nombre"] for c in client.get("/cuentas").json()}
+    assert cuentas[_movimiento_mas_reciente()["cuenta_id"]] == "Nu Colombia"
