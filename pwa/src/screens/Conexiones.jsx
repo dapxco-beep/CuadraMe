@@ -323,14 +323,14 @@ function TarjetaAvisosBanco() {
       <details className="mt-3 text-xs text-ink-soft">
         <summary className="cursor-pointer font-semibold text-ink">Cómo conectar cada banco (3 minutos)</summary>
         <ol className="list-decimal pl-5 mt-2 space-y-1.5 leading-relaxed">
-          <li>Toca «Instalar el atajo», pulsa «Agregar atajo», pega tu clave de CuadraMe y escribe el banco (por ejemplo Nequi).</li>
+          <li>Toca «Instalar el atajo», pulsa «Agregar atajo» y pega tu clave de CuadraMe. Se instala una sola vez, sirve para todos tus bancos.</li>
           <li>En la app Atajos ve a Automatización, toca + y elige «Cuando recibo una notificación».</li>
           <li>Elige la app del banco y marca «Ejecutar inmediatamente».</li>
           <li>Elige «Ejecutar atajo» y escoge CuadraMe Notificaciones. Repite estos pasos con cada banco.</li>
         </ol>
         <p className="mt-2 leading-relaxed">
-          Necesitas iOS 27 y activar la automatización en tu iPhone. Si el aviso no dice cuánto fue, el atajo te lo pregunta
-          y aprende para no volver a preguntar. Todo queda «por confirmar» hasta que lo revises.
+          Necesitas iOS 27 y activar la automatización en tu iPhone. CuadraMe reconoce solo el banco y el valor; si el aviso
+          no dice algo, te lo pregunta una vez y aprende para no volver a preguntar. Todo queda «por confirmar» hasta que lo revises.
         </p>
       </details>
     </Tarjeta>
