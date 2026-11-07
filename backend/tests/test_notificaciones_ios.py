@@ -60,3 +60,17 @@ def test_la_nota_del_atajo_con_jerga_cae_en_ocio(nota):
 
     r = clasificar_por_diccionario(nota)
     assert r and r["categoria"] == "Ocio"
+
+
+def test_comprobante_leido_de_una_captura_con_ruido_se_registra_como_gasto():
+    # Nu no avisa al enviar plata: el atajo saca el texto de un pantallazo del comprobante (texto inventado, con ruido de pantalla).
+    texto = ("11:03 Nu < Comprobante Transferencia exitosa $ 45.000 Para LAURA GOMEZ Banco Nequi "
+             "Fecha 5 nov. 2026 Compartir Descargar")
+    n = interpretar("Nu", "", texto)
+    assert n is not None and n.monto == 45000 and n.tipo == "expense" and not n.tipo_incierto
+
+
+def test_comprobante_largo_no_se_rechaza_por_tamano():
+    from app.schemas import NotificacionAndroid
+
+    assert len(NotificacionAndroid(paquete="Nu", titulo="", texto="x " * 2500).texto) == 5000

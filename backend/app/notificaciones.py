@@ -51,7 +51,9 @@ _ENTRA = re.compile(
 )
 _SALE = re.compile(
     r"enviaste|transferiste|pagaste|compraste|retiraste|giraste|recargaste|"
-    r"compra\s+(?:aprobada|exitosa)|pago\s+(?:exitoso|aprobado|realizado)|d[eé]bito|se\s+(?:debit|cobr)",
+    r"compra\s+(?:aprobada|exitosa)|pago\s+(?:exitoso|aprobado|realizado)|d[eé]bito|se\s+(?:debit|cobr)|"
+    # Comprobantes que el atajo lee de una captura de pantalla (Nu no avisa al enviar plata): con monto, salió plata
+    r"transferencia\s+exitosa|env[ií]o\s+exitoso|comprobante\s+de\s+(?:transferencia|env[ií]o|pago)|enviado\s+a|le\s+enviaste",
     re.IGNORECASE,
 )
 # Aviso de que SALIÓ plata pero sin cifra: «envío exitoso», «transferencia exitosa», «tu plata llegó con éxito»...

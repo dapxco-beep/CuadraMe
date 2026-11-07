@@ -293,7 +293,7 @@ class NotificacionAndroid(BaseModel):
     """Una notificación del teléfono (Android) tal cual: el servidor decide si es un movimiento de dinero."""
     paquete: str = Field(default="", max_length=120)  # nombre del paquete de la app que la mostró
     titulo: str = Field(default="", max_length=300)
-    texto: str = Field(default="", max_length=2000)
+    texto: str = Field(default="", max_length=6000)  # un aviso es corto; el texto leído de una captura (comprobante) es largo
     publicado_ms: Optional[int] = None  # cuándo la mostró Android (milisegundos Unix); sirve para la hora y para no repetirla
     # Solo iPhone, cuando la persona responde una pregunta del atajo (segunda llamada con el MISMO texto):
     monto: Optional[float] = Field(default=None, gt=0)

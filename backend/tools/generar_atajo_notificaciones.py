@@ -1,6 +1,6 @@
 """Genera «CuadraMe Notificaciones.shortcut» (sin firmar) para el disparador «Notificación» de iOS 27.
 
-Uso:   python tools/generar_atajo_notificaciones.py [--base URL] [--salida archivo]
+Uso:   python tools/generar_atajo_notificaciones.py [--base URL] [--banco Nequi] [--modo notificacion|pantalla|captura] [--salida archivo]
 Firma (en el Mac, basta el Apple ID gratis):
        shortcuts sign -m anyone -i "CuadraMe Notificaciones.shortcut" -o "CuadraMe Notificaciones firmado.shortcut"
 
@@ -12,6 +12,15 @@ endpoint de Android; el servidor lee cada banco). Según `motivo` de la respuest
   - no_parece_un_movimiento -> no hace nada (ofertas, códigos...).
   - (sin motivo)           -> se registró: muestra el aviso («Ingreso de $X de Laura. Confírmalo en CuadraMe»).
 El banco se elige al instalar (o con --banco): el mismo archivo sirve para todos. Un banco nuevo no necesita cambios aquí.
+
+Modos (de dónde sale el texto que se le manda al servidor):
+  notificacion -> la notificación que dispara la automatización de iOS 27 (Nequi avisa al recibir plata).
+  pantalla     -> para bancos que NO avisan al enviar plata (Nu): un gesto que ELIGE cada persona (Toque atrás, Botón de
+                  acción, Centro de control, Siri...) toma un pantallazo, el teléfono saca el texto y manda SOLO el texto.
+                  El mismo atajo sirve para cualquier banco: al usarlo pregunta «¿De qué cuenta es?» con tus cuentas de
+                  CuadraMe (así no hay que instalar uno por banco). Solo pide la clave al instalarlo.
+  captura      -> igual, pero la imagen es la captura que dispara la automatización «Cuando se guarde una captura».
+La imagen nunca sale del teléfono; el servidor recibe texto y lo lee con el mismo lector de avisos.
 
 La clave API NO va dentro del archivo: se pide al instalar el atajo (preguntas de importación), así el
 mismo enlace de iCloud sirve para todos los usuarios.
@@ -78,24 +87,49 @@ def _si_igual(grupo: str, variable_uid: str, nombre: str, valor: str, dentro: li
     return [inicio, *dentro, medio, *(si_no or []), fin]
 
 
-def construir(base: str, banco: str = "Nequi") -> dict:
+def _leer_imagen(modo: str, id_shot: str, id_ocr: str) -> list[dict]:
+    """Acciones que sacan el texto de una imagen (OCR del propio iPhone, sin enviarla a ningún lado)."""
+    if modo == "notificacion":
+        return []
+    if modo == "pantalla":
+        origen = {"Value": _salida(id_shot, "Captura de pantalla"), "WFSerializationType": "WFTextTokenAttachment"}
+        previo = [_accion("takescreenshot", UUID=id_shot)]
+    else:  # captura: la imagen es la entrada del atajo
+        origen = {"Value": ENTRADA, "WFSerializationType": "WFTextTokenAttachment"}
+        previo = []
+    return [*previo, _accion("extracttextfromimage", UUID=id_ocr, WFImage=origen)]
+
+
+def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> dict:
     u = lambda: str(uuid.uuid4()).upper()  # noqa: E731
     id_clave, id_banco, id_post, id_motivo, id_msg = u(), u(), u(), u(), u()
     id_monto, id_para, id_rapido, id_resp = u(), u(), u(), u()
     id_monto2, id_com2, id_tipo, id_rapido2, id_resp2 = u(), u(), u(), u(), u()
+    id_shot, id_ocr, id_cuentas = u(), u(), u()
+    elegir = modo == "pantalla"  # el banco se elige AL USAR el atajo (lista de tus cuentas), no al instalarlo
+    # De dónde sale el texto: la notificación misma o el texto leído de una imagen (pantallazo / captura)
+    texto_var = ENTRADA if modo == "notificacion" else _salida(id_ocr, "Texto de la imagen")
     clave = _con_variable("", _salida(id_clave, "Texto"))
-    nombre_banco = _con_variable("", _salida(id_banco, "Texto"))
+    nombre_banco = _con_variable("", _salida(id_banco, "Elemento elegido" if elegir else "Texto"))
     entrada_texto = lambda uid, n="Entrada proporcionada": _con_variable("", _salida(uid, n))  # noqa: E731
     aviso = lambda uid: _accion("notification", WFNotificationActionTitle="CuadraMe",  # noqa: E731
                                 WFNotificationActionBody=_con_variable("", _salida(uid, "Valor del diccionario")))
 
     acciones = [
-        # 0: la clave API y 1: el banco (las dos se preguntan al instalar el atajo)
+        # 0: la clave API (se pregunta al instalar) y, salvo en «pantalla», 1: el banco (también al instalar)
         _accion("gettext", UUID=id_clave, WFTextActionText=""),
-        _accion("gettext", UUID=id_banco, WFTextActionText=banco),
-        # El texto crudo de la notificación (título y cuerpo juntos): el servidor lo lee, no el atajo
+        *([] if elegir else [_accion("gettext", UUID=id_banco, WFTextActionText=banco)]),
+        *_leer_imagen(modo, id_shot, id_ocr),
+        # El pantallazo ya está tomado: ahora sí se puede mostrar la lista de cuentas sin taparlo
+        *([
+            _accion("downloadurl", UUID=id_cuentas, WFURL=f"{base}/movimientos/cuentas-rapido", WFHTTPMethod="GET",
+                    WFHTTPHeaders=_dic([("X-Api-Key", clave)])),
+            _accion("choosefromlist", UUID=id_banco, WFChooseFromListActionPrompt="¿De qué cuenta es?",
+                    WFInput={"Value": _salida(id_cuentas, "Contenido de la URL"), "WFSerializationType": "WFTextTokenAttachment"}),
+        ] if elegir else []),
+        # El texto crudo (de la notificación o del pantallazo): el servidor lo lee, no el atajo
         _post(f"{base}/movimientos/rapido-notificacion", clave,
-              [("paquete", nombre_banco), ("titulo", _texto("")), ("texto", _con_variable("", ENTRADA))], id_post),
+              [("paquete", nombre_banco), ("titulo", _texto("")), ("texto", _con_variable("", texto_var))], id_post),
         _valor("motivo", id_post, id_motivo),
         _valor("mensaje", id_post, id_msg),
     ]
@@ -103,7 +137,7 @@ def construir(base: str, banco: str = "Nequi") -> dict:
     # aviso, así la próxima vez de este banco ya no pregunta.
     def responder(uid, monto_v, tipo_v, nota_v):
         return _post(f"{base}/movimientos/rapido-notificacion", clave,
-                     [("paquete", nombre_banco), ("titulo", _texto("")), ("texto", _con_variable("", ENTRADA)),
+                     [("paquete", nombre_banco), ("titulo", _texto("")), ("texto", _con_variable("", texto_var)),
                       ("monto", monto_v), ("tipo", tipo_v), ("nota", nota_v)], uid)
 
     # Salió plata y el aviso no dice cuánto: se pregunta monto y para qué (eso categoriza el gasto)
@@ -134,14 +168,16 @@ def construir(base: str, banco: str = "Nequi") -> dict:
         "WFWorkflowMinimumClientVersion": 900,
         "WFWorkflowIcon": {"WFWorkflowIconStartColor": 4282601983, "WFWorkflowIconGlyphNumber": 59511},
         "WFWorkflowTypes": [],
-        "WFWorkflowInputContentItemClasses": ["WFStringContentItem", "WFGenericFileContentItem"],
+        "WFWorkflowInputContentItemClasses": ["WFStringContentItem", "WFGenericFileContentItem"]
+        + (["WFImageContentItem"] if modo == "captura" else []),
         "WFWorkflowActions": acciones,
         "WFWorkflowImportQuestions": [
             {"ActionIndex": 0, "Category": "Parameter", "ParameterKey": "WFTextActionText", "DefaultValue": "",
              "Text": "Pega tu clave de CuadraMe (App > Conectar > Clave del atajo)"},
+        ] + ([] if elegir else [
             {"ActionIndex": 1, "Category": "Parameter", "ParameterKey": "WFTextActionText", "DefaultValue": banco,
              "Text": "¿De qué banco o app es? (Nequi, Nu, Bancolombia, Davivienda, Daviplata...)"},
-        ],
+        ]),
     }
 
 
@@ -149,10 +185,11 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--base", default="https://api.cuadrame.dapx.shop")
     p.add_argument("--banco", default="Nequi")
+    p.add_argument("--modo", choices=["notificacion", "pantalla", "captura"], default="notificacion")
     p.add_argument("--salida", default="CuadraMe Notificaciones.shortcut")
     a = p.parse_args()
     with open(a.salida, "wb") as f:
-        plistlib.dump(construir(a.base.rstrip("/"), a.banco), f, fmt=plistlib.FMT_BINARY)
+        plistlib.dump(construir(a.base.rstrip("/"), a.banco, a.modo), f, fmt=plistlib.FMT_BINARY)
     print(f"Listo: {a.salida} (sin firmar). Fírmalo en el Mac con `shortcuts sign -m anyone -i ... -o ...`.")
 
 

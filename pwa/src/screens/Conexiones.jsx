@@ -9,7 +9,8 @@ import { useDialogos } from '../lib/DialogosContext'
 import { activarPush, estadoPermiso, pushSoportado } from '../lib/push'
 import { haceCuanto, resumenSync, sincronizarTodo } from '../lib/sincronizarGmail'
 import { mensajeAmable } from '../lib/mensajes'
-import { ATAJO_NOTIFICACIONES_URL } from './ConectarDispositivo'
+import { ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL } from './ConectarDispositivo'
+import TarjetaGestoRegistro from '../components/TarjetaGestoRegistro'
 
 // Semáforo: color + texto (no solo color, para que se entienda sin distinguirlos).
 const SEMAFORO = {
@@ -486,6 +487,7 @@ export default function Conexiones({ embebido = false, alIr }) {
           <TarjetaGmail g={estado.gmail} ir={ir} recargar={recargar} />
           <TarjetaAtajo a={estado.atajo} recargar={recargar} />
           <TarjetaAvisosBanco />
+          {ATAJO_REGISTRAR_URL && <TarjetaGestoRegistro url={ATAJO_REGISTRAR_URL} />}
           <TarjetaConciliacion c={estado.conciliacion} ir={ir} />
           <TarjetaPush p={estado.push} />
         </>
