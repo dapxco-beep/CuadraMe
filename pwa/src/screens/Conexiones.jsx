@@ -9,7 +9,7 @@ import { useDialogos } from '../lib/DialogosContext'
 import { activarPush, estadoPermiso, pushSoportado } from '../lib/push'
 import { haceCuanto, resumenSync, sincronizarTodo } from '../lib/sincronizarGmail'
 import { mensajeAmable } from '../lib/mensajes'
-import { ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL } from './ConectarDispositivo'
+import { ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL } from '../lib/atajosEnlaces'
 import TarjetaGestoRegistro from '../components/TarjetaGestoRegistro'
 
 // Semáforo: color + texto (no solo color, para que se entienda sin distinguirlos).

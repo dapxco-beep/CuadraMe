@@ -6,6 +6,8 @@ import {
 } from 'lucide-react'
 import { api } from '../lib/api'
 import ClaveAtajo from '../components/ClaveAtajo'
+import CatalogoAtajos from '../components/CatalogoAtajos'
+import { APK_URL, ATAJO_CIERRE_URL, ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL } from '../lib/atajosEnlaces'
 import AtajoAvanzado from '../components/AtajoAvanzado'
 import Icono from '../components/Icono'
 import Cuadri from '../brand/Cuadri'
@@ -19,20 +21,8 @@ import {
   explicarErrorPrueba, fechaLegible, guardarPaso, leerPaso, PASOS_TOTAL, SI_NO_LLEGA,
 } from '../lib/atajoPrueba'
 
-// Enlaces de iCloud de los dos atajos ya armados: la persona NO construye nada, solo los instala
-// y, cuando iOS le pregunta «Pega tu clave de Cuádrame», pega la clave del paso 1.
-//  - Pagos con Apple Pay (la automatización «Transacción» le entrega comercio, monto y tarjeta).
-//  - Cierre de la app del banco (opcional: pregunta «¿Hiciste algún movimiento?»).
-// Si un enlace cambia, quien ya instaló el atajo conserva su versión: hay que pegar el nuevo aquí.
-export const ATAJO_ICLOUD_URL = 'https://www.icloud.com/shortcuts/8b2de178aff84465a938df4a5ef9c0dc'
-// Atajo «CuadraMe Notificaciones» (iOS 27, disparador «Cuando recibo una notificación»): lee los avisos de Nequi, Nu, etc.
-export const ATAJO_NOTIFICACIONES_URL = 'https://www.icloud.com/shortcuts/1286c4417c524945809f6dd419538d7f'
-// Atajo «CuadraMe Registrar» (modo pantalla): un gesto toma un pantallazo del comprobante y lo lee (Nu no avisa al enviar).
-// Vacío = la tarjeta de gestos no se muestra. El nombre del atajo compartido debe ser exactamente «CuadraMe Registrar».
-export const ATAJO_REGISTRAR_URL = 'https://www.icloud.com/shortcuts/b2889ed78b8348f39568ec4258b3ebfd'
-export const ATAJO_CIERRE_URL = 'https://www.icloud.com/shortcuts/d34fa153ac844631baf36d8e158f7bf4'
-// La app de Android («CuadraMe Captura») se descarga de aquí mismo, sin tiendas ni terceros.
-export const APK_URL = '/descargas/cuadrame-captura.apk'
+// Los enlaces viven en lib/atajosEnlaces.js (los usan esta pantalla, el catálogo y Conexiones); se reexportan aquí.
+export { APK_URL, ATAJO_CIERRE_URL, ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL }
 
 const INTERVALO_REVISION_MS = 6000
 const PASOS_ANDROID_TOTAL = 5
@@ -148,6 +138,7 @@ export default function ConectarDispositivo() {
         />
       )}
 
+      {plataforma === 'ios' && (paso < 0 || yaFunciona) && <CatalogoAtajos claveAtajo={claveAtajo} />}
       {plataforma === 'ios' && <AtajoAvanzado claveAtajo={claveAtajo} />}
 
       <details className="mx-6 mt-4 rounded-2xl bg-paper-raised border border-line p-4" aria-label="Privacidad">

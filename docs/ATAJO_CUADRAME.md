@@ -123,7 +123,7 @@ El paso se recuerda en el celular (`localStorage`, clave `cuadrame:atajo-paso`) 
 
 | Atajo | Constante | Enlace |
 |---|---|---|
-| CuadraMe Apple Pay | `ATAJO_ICLOUD_URL` | https://www.icloud.com/shortcuts/8b2de178aff84465a938df4a5ef9c0dc |
+| CuadraMe Apple Pay | `ATAJO_ICLOUD_URL` | https://www.icloud.com/shortcuts/002171858328481ab9b3d58718192c73 |
 | CuadraMe Cierre | `ATAJO_CIERRE_URL` | https://www.icloud.com/shortcuts/d34fa153ac844631baf36d8e158f7bf4 |
 
 ## Verificación en vivo
