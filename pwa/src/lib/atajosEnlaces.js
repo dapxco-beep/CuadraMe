@@ -8,7 +8,5 @@ export const ATAJO_ICLOUD_URL = 'https://www.icloud.com/shortcuts/00217185832848
 export const ATAJO_NOTIFICACIONES_URL = 'https://www.icloud.com/shortcuts/1286c4417c524945809f6dd419538d7f'
 // «CuadraMe Registrar»: un gesto toma un pantallazo del comprobante y lee su texto (para bancos que no avisan al enviar).
 export const ATAJO_REGISTRAR_URL = 'https://www.icloud.com/shortcuts/b2889ed78b8348f39568ec4258b3ebfd'
-// «CuadraMe Cierre» (opcional): al cerrar la app del banco pregunta «¿Hiciste algún movimiento?».
-export const ATAJO_CIERRE_URL = 'https://www.icloud.com/shortcuts/d34fa153ac844631baf36d8e158f7bf4'
 // La app de Android («CuadraMe Captura») se descarga de aquí mismo, sin tiendas ni terceros.
 export const APK_URL = '/descargas/cuadrame-captura.apk'

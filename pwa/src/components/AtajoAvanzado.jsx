@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Check, Copy, Download, ExternalLink } from 'lucide-react'
 import ClaveAtajo from './ClaveAtajo'
 import {
-  API_URL, API_URL_VOZ, JSON_CIERRE_APP, JSON_DEL_ATAJO, PASOS_ANDROID, PASOS_VOZ, SCRIPT_ANDROID,
+  API_URL, API_URL_VOZ, JSON_DEL_ATAJO, PASOS_ANDROID, PASOS_VOZ, SCRIPT_ANDROID,
 } from '../lib/scriptAndroid'
 
 // Todo lo que NO necesita una persona normal, plegado bajo «Avanzado»: armar los atajos a mano,
@@ -103,18 +103,6 @@ export default function AtajoAvanzado({ claveAtajo }) {
               ese valor.
             </li>
           </ol>
-        </Bloque>
-
-        <Bloque titulo="Armar a mano el atajo de cierre de app">
-          <p className="text-sm text-ink-soft mt-2">
-            Lleva: un <b>Texto</b> con tu clave; <b>Elegir del menú</b> «¿Hiciste algún movimiento?» con Gasto / Ingreso
-            / No (en «No» pon <b>Detener este atajo</b>; en «Gasto» un <b>Texto</b> «gasto» y en «Ingreso» un{' '}
-            <b>Texto</b> «ingreso»); <b>Obtener contenido de URL</b> (método GET, dirección terminada en{' '}
-            <b>/movimientos/cuentas-rapido</b>, encabezado X-Api-Key) y <b>Elegir de la lista</b>; dos{' '}
-            <b>Solicitar entrada</b> (monto y nota); y un <b>Obtener contenido de URL</b> igual al de arriba con este
-            cuerpo:
-          </p>
-          <pre className="mt-1.5 text-[11px] leading-relaxed whitespace-pre-wrap rounded-lg bg-paper p-2.5 border border-line text-ink">{JSON_CIERRE_APP}</pre>
         </Bloque>
 
         <Bloque titulo="Android (con la app Tasker)">

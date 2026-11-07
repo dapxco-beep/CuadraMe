@@ -67,16 +67,6 @@ export function CapturaAutomatizacion() {
   )
 }
 
-export function CapturaCierreApp() {
-  return (
-    <Pantalla titulo="Dibujo: automatización con el disparador App, marcando Se cierra">
-      <text x="14" y="18" fontSize="10" fontWeight="700" className="fill-ink">Nueva automatización</text>
-      <Fila y={30} n="1" resaltada etiqueta="App: la de tu banco" />
-      <Fila y={62} n="2" etiqueta="Se cierra" />
-      <Fila y={94} n="3" etiqueta="Ejecutar atajo: CuadraMe Cierre" />
-    </Pantalla>
-  )
-}
 
 export function CapturaNotificacion() {
   return (

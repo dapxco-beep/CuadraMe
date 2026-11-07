@@ -11,14 +11,6 @@ export const JSON_DEL_ATAJO = `{
   "moneda": "COP"
 }`
 
-export const JSON_CIERRE_APP = `{
-  "tipo": "<Resultado del menú: gasto o ingreso>",
-  "monto": "<variable monto>",
-  "descripcion": "<variable nota (puede ir vacía)>",
-  "cuenta": "<Elemento elegido: la cuenta que tocaste en la lista>",
-  "fuente": "cierre_app"
-}`
-
 export const SCRIPT_ANDROID = (apiKey) => `// CuadraMe — registro automático de movimientos desde notificaciones bancarias
 // o de Google Pay, para Android vía Tasker.
 //

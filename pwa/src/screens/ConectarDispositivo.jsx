@@ -7,11 +7,11 @@ import {
 import { api } from '../lib/api'
 import ClaveAtajo from '../components/ClaveAtajo'
 import CatalogoAtajos from '../components/CatalogoAtajos'
-import { APK_URL, ATAJO_CIERRE_URL, ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL } from '../lib/atajosEnlaces'
+import { APK_URL, ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL } from '../lib/atajosEnlaces'
 import AtajoAvanzado from '../components/AtajoAvanzado'
 import Icono from '../components/Icono'
 import Cuadri from '../brand/Cuadri'
-import { CapturaAutomatizacion, CapturaCierreApp, CapturaClave, CapturaPegarClave } from '../components/AtajoIlustraciones'
+import { CapturaAutomatizacion, CapturaClave, CapturaPegarClave } from '../components/AtajoIlustraciones'
 import {
   AndroidAccesoNotificaciones, AndroidDescarga, AndroidPegarClave, AndroidPermitirInstalar, AndroidProbar, FlujoAutomatico,
 } from '../components/IlustracionesGuia'
@@ -22,7 +22,7 @@ import {
 } from '../lib/atajoPrueba'
 
 // Los enlaces viven en lib/atajosEnlaces.js (los usan esta pantalla, el catálogo y Conexiones); se reexportan aquí.
-export { APK_URL, ATAJO_CIERRE_URL, ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL }
+export { APK_URL, ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL }
 
 const INTERVALO_REVISION_MS = 6000
 const PASOS_ANDROID_TOTAL = 5
@@ -314,30 +314,6 @@ function PasoWallet() {
       <a href="shortcuts://" className="text-accent font-semibold text-sm inline-flex items-center gap-1 min-h-11">
         Abrir Atajos <Icono icono={ExternalLink} tam="sm" />
       </a>
-      <details className="rounded-xl border border-line p-3" data-testid="opcional-efectivo">
-        <summary className="text-sm font-semibold text-ink cursor-pointer min-h-6">
-          <span className="text-xs font-bold uppercase text-accent mr-1.5">Opcional</span>
-          Para registrar pagos en efectivo o en cuentas sin Apple Pay
-        </summary>
-        <div className="mt-2 space-y-3">
-          <p>
-            Este segundo atajo te pregunta «¿Hiciste algún movimiento?» cada vez que cierras la app de tu banco o de
-            Nequi, y tú escribes el monto. Instálalo igual que el anterior y pega la misma clave.
-          </p>
-          <a
-            href={ATAJO_CIERRE_URL}
-            className="btn btn-suave btn-bloque inline-flex items-center justify-center gap-2"
-          >
-            <Icono icono={Download} tam="md" /> Instalar el atajo de efectivo y otras cuentas
-          </a>
-          <div className="max-w-[280px]"><CapturaCierreApp /></div>
-          <ol className="list-decimal pl-5 space-y-1.5">
-            <li>En <b>Automatización</b> toca <b>+</b> → <b>App</b>, elige la app de tu banco y marca <b>Se cierra</b> (desmarca «Se abre»).</li>
-            <li>Toca <b>Siguiente</b> → <b>Ejecutar atajo</b> → «CuadraMe Cierre» y marca <b>Ejecutar inmediatamente</b>.</li>
-            <li>Repite por cada app que quieras vigilar. Si un día no hiciste nada, toca «No».</li>
-          </ol>
-        </div>
-      </details>
       <MasInfo resumen="¿Tu tarjeta cae en otra cuenta?">
         <p>
           Si tu tarjeta de Wallet se llama distinto a tu cuenta, ponle un «alias de tarjeta» a la cuenta (Perfil →

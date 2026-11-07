@@ -1,5 +1,9 @@
 # Atajos de CuadraMe para iPhone
 
+> **2026-11-07:** el atajo «CuadraMe Cierre» (App › Se cierra) ya NO se ofrece en la app. Se quitó del catálogo, del paso de Wallet y del panel
+> avanzado. El servidor conserva `/movimientos/cierre-pregunta` y `/movimientos/cuentas-rapido` por si alguien ya lo tenía instalado.
+> Hoy los atajos que se ofrecen son: CuadraMe Apple Pay, CuadraMe Notificaciones y CuadraMe Registrar (ver `pwa/src/components/CatalogoAtajos.jsx`).
+
 Dos atajos pequeños, en lugar de uno grande. Los clientes los instalan por enlace de iCloud (no los arman). La versión paso a paso con maquetas está en `docs/crear-atajos-cuadrame.html`.
 
 | Atajo | Lo llama | Qué recibe | Qué hace |

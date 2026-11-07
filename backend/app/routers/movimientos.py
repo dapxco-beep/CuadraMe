@@ -1164,6 +1164,8 @@ def crear_movimiento_desde_notificacion(
     # (si no, un segundo «X te envió 1» nunca se registraría).
     marca = data.publicado_ms or ahora_co().strftime("%Y%m%d%H%M")
     huella = hashlib.sha256(f"{paquete}|{data.titulo}|{data.texto}|{marca}".encode()).hexdigest()[:40]
+    if n is not None and n.id_externo:
+        huella = f"cmp:{n.id_externo}"[:80]  # el MISMO comprobante leído dos veces nunca crea dos movimientos
 
     # La persona respondió una pregunta del atajo (segunda llamada, mismo texto): se registra con SU respuesta y se
     # aprende la forma de este aviso para no volver a preguntar.
@@ -1212,6 +1214,8 @@ def crear_movimiento_desde_notificacion(
             fecha = (datetime.utcfromtimestamp(data.publicado_ms / 1000) - timedelta(hours=5)).isoformat()
         except (OverflowError, OSError, ValueError):
             fecha = None
+    if fecha is None and n.fecha:
+        fecha = n.fecha  # la que imprime el comprobante (puede ser de otro día)
     rapido = MovimientoRapidoCreate(
         monto=n.monto,
         tipo=n.tipo,

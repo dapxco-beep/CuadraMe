@@ -1,12 +1,12 @@
-import { Bell, CreditCard, Download, Hand, Lock } from 'lucide-react'
+import { Bell, CreditCard, Download, Hand } from 'lucide-react'
 import ClaveAtajo from './ClaveAtajo'
 import Icono from './Icono'
 import {
-  CapturaAutomatizacion, CapturaCierreApp, CapturaGesto, CapturaNotificacion, CapturaPegarClave,
+  CapturaAutomatizacion, CapturaGesto, CapturaNotificacion, CapturaPegarClave,
 } from './AtajoIlustraciones'
 import { CAPTURAS_REALES } from '../lib/capturasGuia'
 import {
-  ATAJO_CIERRE_URL, ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL,
+  ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL,
 } from '../lib/atajosEnlaces'
 
 // Los atajos de CuadraMe para iPhone en un solo lugar: qué hace cada uno, para qué banco sirve, el botón para instalarlo
@@ -61,22 +61,6 @@ export const ATAJOS = [
     ],
     dibujos: [<CapturaGesto key="a" />],
     leyendas: ['Así eliges tu gesto en Ajustes'],
-  },
-  {
-    id: 'cierre',
-    nombre: 'CuadraMe Cierre',
-    icono: Lock,
-    paraQuien: 'Quieres que te pregunte al salir de la app del banco',
-    queHace: 'Al cerrar la app de tu banco te pregunta «¿Hiciste algún movimiento?» y lo registra con lo que contestes. Es opcional.',
-    url: ATAJO_CIERRE_URL,
-    pasos: [
-      'Toca «Instalar», luego «Agregar atajo» y pega tu clave de CuadraMe.',
-      'En la app Atajos ve a «Automatización», toca + y elige «App».',
-      'Elige la app de tu banco, marca «Se cierra», toca «Siguiente» y escoge «Ejecutar atajo» › «CuadraMe Cierre».',
-      'Activa «Ejecutar inmediatamente». Repite con cada banco que quieras.',
-    ],
-    dibujos: [<CapturaCierreApp key="a" />],
-    leyendas: ['Así queda la automatización'],
   },
 ]
 

@@ -15,7 +15,7 @@ const api = vi.hoisted(() => ({
 vi.mock('../lib/api', () => ({ api }))
 
 import { DialogosProvider } from '../lib/DialogosContext'
-import ConectarDispositivo, { ATAJO_CIERRE_URL, ATAJO_ICLOUD_URL } from '../screens/ConectarDispositivo'
+import ConectarDispositivo, { ATAJO_ICLOUD_URL } from '../screens/ConectarDispositivo'
 import { explicarErrorPrueba, leerPaso, CLAVE_PASO } from '../lib/atajoPrueba'
 
 const UA_IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
@@ -143,16 +143,6 @@ describe('Flujo en pasos', () => {
     montar()
     expect(screen.getByText('Paso 2 de 3')).toBeInTheDocument()
     expect(localStorage.getItem(CLAVE_PASO)).toBe('1')
-  })
-
-  it('el segundo atajo (cierre de app) es opcional y está plegado dentro del paso 3', async () => {
-    localStorage.setItem(CLAVE_PASO, '2')
-    montar()
-    const opcional = screen.getByTestId('opcional-efectivo')
-    expect(opcional.tagName).toBe('DETAILS')
-    expect(opcional).not.toHaveAttribute('open')
-    expect(opcional).toHaveTextContent(/Para registrar pagos en efectivo o en cuentas sin Apple Pay/)
-    expect(within(opcional).getByRole('link', { hidden: true, name: /atajo de efectivo/ })).toHaveAttribute('href', ATAJO_CIERRE_URL)
   })
 
   it('todo lo avanzado queda plegado bajo «Avanzado»', async () => {

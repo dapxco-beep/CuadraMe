@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Cuenta, ReglaNotificacion
 from app.notificaciones import banco_de_cuenta, _sin_tildes
+from app.wallet import alias_de
 from app.reglas_correo import esqueleto_anonimo
 
 MAX_REGLAS = 200
@@ -55,6 +56,18 @@ def aprender(db: Session, usuario_id: str, app: str, esq: str, *, tipo: str | No
     return True
 
 
+# Frases que SOLO salen en la pantalla de ese banco (vistas en capturas reales; sin tildes, minúsculas). El logo no se lee
+# como texto, por eso no basta con buscar el nombre del banco.
+HUELLAS_BANCO = {
+    "nequi": ("escanea este qr con nequi", "numero nequi", "de donde salio la plata"),
+    "nu": ("abrir comprobante", "id mol", "reportar un problema", "reportar problema"),
+    # «Producto origen / Producto destino / Datos de la transferencia» (comprobante de transferencia de Bancolombia)
+    "bancolombia": ("producto origen", "producto destino", "datos de la transferencia"),
+}
+# «Entidad Nequi S.A.», «a su cuenta de Bancolombia», «Banco Nequi»: ahí el banco es el DESTINO; «Institución de origen Nu» es
+# el banco de quien TE ENVIÓ. En ningún caso es la cuenta de la persona.
+_DESTINO = re.compile(r"\b(?:entidad|banco|cuenta de|a su cuenta de|destino|institucion de origen)\s+[a-z0-9.]+(?:\s+[a-z0-9.]+){0,2}")
+
 PREFIJO_CUENTA = "pantalla:"  # regla «esta forma de pantallazo es de ESTA cuenta» (app = «pantalla:<cuenta>»)
 
 
@@ -72,7 +85,8 @@ def inferir_cuenta(db: Session, usuario_id: str, titulo: str, texto: str, elegid
     el banco de origen y el de destino: gana el que aparece PRIMERO (el encabezado es el origen); si se equivoca, la
     persona lo corrige una vez y se aprende. Devuelve
     (cuenta o None si no hay forma de saberlo, nombres de todas sus cuentas para preguntar sólo en ese caso)."""
-    nombres = [c.nombre for c in db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).order_by(Cuenta.nombre).all()]
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).order_by(Cuenta.nombre).all()
+    nombres = [c.nombre for c in cuentas]
     if elegida:
         return (next((n for n in nombres if n.lower() == elegida.strip().lower()), None), nombres)
     esq = esqueleto(titulo, texto)
@@ -84,7 +98,20 @@ def inferir_cuenta(db: Session, usuario_id: str, titulo: str, texto: str, elegid
             nombre = regla.app[len(PREFIJO_CUENTA):]
             if nombre in nombres:
                 return nombre, nombres
+    # Últimos 4 dígitos de la cuenta de origen («*8223»): si coinciden con el alias de UNA cuenta suya, esa es
+    ultimos = set(re.findall(r"[*•·]\s*(\d{4})\b", f"{titulo or ''} {texto or ''}"))
+    if ultimos:
+        con_alias = [c.nombre for c in cuentas if any(d in a for d in ultimos for a in alias_de(c))]
+        if len(con_alias) == 1:
+            return con_alias[0], nombres
     plano = _sin_tildes(f"{titulo or ''} {texto or ''}")
+    # Huella de pantalla: si la forma de la pantalla es inconfundible de un banco y la persona tiene UNA cuenta de ese banco
+    for banco, frases in HUELLAS_BANCO.items():
+        if any(f in plano for f in frases):
+            suyas = [n for n in nombres if (banco_de_cuenta(n) or "").lower() == banco]
+            if len(suyas) == 1:
+                return suyas[0], nombres
+    plano = _DESTINO.sub(" ", plano)
     halladas = []  # (posición en el texto, nombre)
     for nombre in nombres:
         claves = {_sin_tildes(nombre).strip()}
