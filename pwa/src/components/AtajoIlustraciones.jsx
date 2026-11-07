@@ -77,3 +77,26 @@ export function CapturaCierreApp() {
     </Pantalla>
   )
 }
+
+export function CapturaNotificacion() {
+  return (
+    <Pantalla titulo="Dibujo: nueva automatización en Atajos con el disparador Cuando recibo una notificación, la app de tu banco y Ejecutar atajo CuadraMe Notificaciones">
+      <text x="14" y="18" fontSize="10" fontWeight="700" className="fill-ink">Nueva automatización</text>
+      <Fila y={26} n="1" resaltada etiqueta="Cuando recibo una notificación" />
+      <Fila y={54} n="2" etiqueta="App: la de tu banco (Nequi…)" />
+      <Fila y={82} n="3" etiqueta="Ejecutar atajo: CuadraMe Notif…" />
+      <Fila y={108} n="4" etiqueta="Ejecutar inmediatamente" ancho={40} />
+    </Pantalla>
+  )
+}
+
+export function CapturaGesto() {
+  return (
+    <Pantalla titulo="Dibujo: en Ajustes, Accesibilidad, Tocar, Tocar atrás, el Doble toque ejecuta el atajo CuadraMe Registrar">
+      <text x="14" y="18" fontSize="10" fontWeight="700" className="fill-ink">Ajustes › Accesibilidad › Tocar atrás</text>
+      <Fila y={30} n="1" etiqueta="Doble toque" />
+      <Fila y={58} n="2" resaltada etiqueta="Atajos › CuadraMe Registrar" />
+      <Fila y={90} etiqueta="Triple toque: sin usar" ancho={20} />
+    </Pantalla>
+  )
+}
