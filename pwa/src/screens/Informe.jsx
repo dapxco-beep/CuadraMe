@@ -1,4 +1,5 @@
 import { textoError } from '../lib/textoError'
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { useEffect, useMemo, useState } from 'react'
 import { EsqueletoGrafica, EsqueletoLista } from '../components/Esqueletos'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
@@ -83,6 +84,7 @@ function Variacion({ pct, anteriorLabel }) {
 }
 
 export default function Informe() {
+  const embebido = useEmbebido()
   const volver = useVolver('/')
   const { fmt } = useBloqueo()
   const { iconoDe } = useCategorias()
@@ -161,12 +163,14 @@ export default function Informe() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-8 screen-enter pantalla-ancha">
+      {!embebido && (
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">En qué gasto mi plata</h1>
       </header>
+      )}
 
       <section className="px-6 mt-2">
         <SelectorPeriodo

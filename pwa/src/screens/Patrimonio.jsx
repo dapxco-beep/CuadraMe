@@ -1,4 +1,5 @@
 import { hoyISO } from '../lib/fechaLocal'
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -35,6 +36,7 @@ function fechaCorta(iso) {
 }
 
 export default function Patrimonio() {
+  const embebido = useEmbebido()
   const [datos, setDatos] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
@@ -63,7 +65,7 @@ export default function Patrimonio() {
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
       <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Patrimonio</h1>
+        {embebido ? <span /> : <h1 className="text-xl font-semibold">Patrimonio</h1>}
         <button
           onClick={() => setFormulario({})}
           className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { ArrowLeft, ArrowLeftRight } from 'lucide-react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
@@ -11,6 +12,7 @@ import { useBloqueo } from '../lib/BloqueoContext'
 // «Revisar posibles traslados»: la app NO aplica nada sola. Aquí la persona marca las sugerencias
 // que sí son plata entre sus cuentas (no cuenta como ingreso ni gasto) o dice que no lo son.
 export default function RevisarTraslados() {
+  const embebido = useEmbebido()
   const volver = useVolver('/movimientos')
   const { fmt } = useBloqueo()
   const [items, setItems] = useState(null)
@@ -64,12 +66,14 @@ export default function RevisarTraslados() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-8 screen-enter pantalla-ancha">
+      {!embebido && (
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Plata que pasé entre mis cuentas</h1>
       </header>
+      )}
       <p className="px-6 text-sm text-ink-soft">
         Un traslado es plata que pasas entre tus cuentas: no cuenta como ingreso ni gasto. <Ayudita termino="traslado" /> Tú decides; no cambiamos nada solos.
       </p>

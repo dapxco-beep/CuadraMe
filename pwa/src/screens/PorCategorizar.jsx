@@ -1,4 +1,5 @@
 import { textoError } from '../lib/textoError'
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ChevronDown, ChevronUp, EyeOff, Flag, Hand, ListChecks, Tag, Undo2, Zap } from 'lucide-react'
 import { EsqueletoLista } from '../components/Esqueletos'
@@ -107,6 +108,7 @@ function FilaComercio({ g, marcado, ids, onComercio, onMovimiento, onVer }) {
 }
 
 export default function PorCategorizar() {
+  const embebido = useEmbebido()
   const volver = useVolver('/movimientos')
   const { nombres } = useCategorias()
   const [datos, setDatos] = useState(null)
@@ -206,12 +208,14 @@ export default function PorCategorizar() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-28 screen-enter">
+      {!embebido && (
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Por categorizar</h1>
       </header>
+      )}
 
       <p className="mx-6 mt-1 text-sm text-ink-soft">
         Lo importante son los comercios que se repiten o pesan; el resto puede quedarse como está. Nada es obligatorio.

@@ -1,4 +1,5 @@
 import { textoError } from '../lib/textoError'
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { useEffect, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
@@ -10,6 +11,7 @@ import { useCategorias } from '../lib/CategoriasContext'
 import Hoja from '../components/Hoja'
 
 export default function ReglasCategoria() {
+  const embebido = useEmbebido()
   const volver = useVolver('/perfil')
   const [reglas, setReglas] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -65,12 +67,12 @@ export default function ReglasCategoria() {
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        {embebido ? <span /> : <div className="flex items-center gap-3">
           <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-bold">Reglas automáticas</h1>
-        </div>
+        </div>}
         <button
           onClick={() => setMostrarForm(true)}
           className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"

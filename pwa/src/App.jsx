@@ -16,6 +16,8 @@ import ShellApp from './components/ShellApp'
 import LimiteRuta from './components/LimiteRuta'
 import BandejaPorConfirmar from './components/BandejaPorConfirmar'
 import RedirigirAlCentro from './components/RedirigirAlCentro'
+import AInformes from './components/AInformes'
+import ATab from './components/ATab'
 import SplashMarca, { splashPendiente } from './brand/SplashMarca'
 import { CargandoMarca } from './brand/Marca'
 import { EsqueletoPantalla } from './components/Esqueletos'
@@ -42,7 +44,6 @@ const Movimientos = lazy(() => import('./screens/Movimientos'))
 const DetalleMovimiento = lazy(() => import('./screens/DetalleMovimiento'))
 const Agregar = lazy(() => import('./screens/Agregar'))
 const Presupuesto = lazy(() => import('./screens/Presupuesto'))
-const Patrimonio = lazy(() => import('./screens/Patrimonio'))
 const Inversiones = lazy(() => import('./screens/Inversiones'))
 const Metas = lazy(() => import('./screens/Metas'))
 const Recurrentes = lazy(() => import('./screens/Recurrentes'))
@@ -51,21 +52,14 @@ const Ahorcado = lazy(() => import('./screens/Ahorcado'))
 const Compartir = lazy(() => import('./screens/Compartir'))
 const ConectarDispositivo = lazy(() => import('./screens/ConectarDispositivo'))
 const Sincronizacion = lazy(() => import('./screens/Sincronizacion'))
-const Insights = lazy(() => import('./screens/Insights'))
 const Asistente = lazy(() => import('./screens/Asistente'))
-const ReglasCategoria = lazy(() => import('./screens/ReglasCategoria'))
-const PorCategorizar = lazy(() => import('./screens/PorCategorizar'))
-const MiCuentaCuadra = lazy(() => import('./screens/MiCuentaCuadra'))
-const RevisarTraslados = lazy(() => import('./screens/RevisarTraslados'))
 const EntrenarCategorias = lazy(() => import('./screens/EntrenarCategorias'))
-const Categorias = lazy(() => import('./screens/Categorias'))
 const Impuestos = lazy(() => import('./screens/Impuestos'))
-const CierreMes = lazy(() => import('./screens/CierreMes'))
-const Wrapped = lazy(() => import('./screens/Wrapped'))
-const Informe = lazy(() => import('./screens/Informe'))
+const Informes = lazy(() => import('./screens/Informes'))
+const OrdenarCategorias = lazy(() => import('./screens/OrdenarCategorias'))
+const RevisarMovimientos = lazy(() => import('./screens/RevisarMovimientos'))
 const Costos = lazy(() => import('./screens/Costos'))
 const Perfil = lazy(() => import('./screens/Perfil'))
-const BuscarDuplicados = lazy(() => import('./screens/BuscarDuplicados'))
 const Ayuda = lazy(() => import('./screens/Ayuda'))
 const Aprende = lazy(() => import('./screens/Aprende'))
 const SaludNegocio = lazy(() => import('./screens/SaludNegocio'))
@@ -192,7 +186,7 @@ function AppGate() {
         <Route path="/colectas/:id" element={<DetalleColecta />} />
         <Route path="/c/:token" element={<ColectaPublica />} />
         <Route path="/presupuesto" element={<Presupuesto />} />
-        <Route path="/patrimonio" element={<Patrimonio />} />
+        <Route path="/patrimonio" element={<AInformes tab="patrimonio" />} />
         <Route path="/inversiones" element={<Inversiones />} />
         <Route path="/metas" element={<Metas />} />
         <Route path="/recurrentes" element={<Recurrentes />} />
@@ -202,25 +196,27 @@ function AppGate() {
         <Route path="/conexiones" element={<RedirigirAlCentro ruta="/conexiones" />} />
         <Route path="/sincronizacion" element={<Sincronizacion />} />
         <Route path="/movimientos-correo" element={<Sincronizacion modo="correo" />} />
-        <Route path="/mi-cuenta-cuadra" element={<MiCuentaCuadra />} />
-        <Route path="/insights" element={<Insights />} />
+        <Route path="/mi-cuenta-cuadra" element={<AInformes tab="cierre" />} />
+        <Route path="/insights" element={<AInformes tab="dias" />} />
         <Route path="/asistente" element={<Asistente />} />
         <Route path="/compartir" element={<Compartir />} />
         <Route path="/conectar-dispositivo" element={<ConectarDispositivo />} />
         <Route path="/ahorcado" element={<Ahorcado />} />
-        <Route path="/reglas-categoria" element={<ReglasCategoria />} />
-        <Route path="/categorizar" element={<PorCategorizar />} />
-        <Route path="/traslados" element={<RevisarTraslados />} />
+        <Route path="/reglas-categoria" element={<ATab a="/categorias" tab="reglas" />} />
+        <Route path="/categorizar" element={<ATab a="/categorias" tab="pendientes" />} />
+        <Route path="/traslados" element={<ATab a="/revisar" tab="traslados" />} />
+        <Route path="/revisar" element={<RevisarMovimientos />} />
         <Route path="/entrenar-categorias" element={<EntrenarCategorias />} />
-        <Route path="/categorias" element={<Categorias />} />
-        <Route path="/resumen" element={<Wrapped />} />
-        <Route path="/informe" element={<Informe />} />
+        <Route path="/categorias" element={<OrdenarCategorias />} />
+        <Route path="/resumen" element={<AInformes tab="resumen" />} />
+        <Route path="/informe" element={<AInformes tab="gastos" />} />
+        <Route path="/informes" element={<Informes />} />
         <Route path="/costos" element={<Costos />} />
         <Route path="/importar" element={<RedirigirAlCentro ruta="/importar" />} />
         <Route path="/impuestos" element={<Impuestos />} />
-        <Route path="/cierre-mes" element={<CierreMes />} />
+        <Route path="/cierre-mes" element={<AInformes tab="cierre" />} />
         <Route path="/perfil" element={<Perfil />} />
-        <Route path="/buscar-duplicados" element={<BuscarDuplicados />} />
+        <Route path="/buscar-duplicados" element={<ATab a="/revisar" tab="repetidos" />} />
         <Route path="/ayuda" element={<Ayuda />} />
         <Route path="/aprende" element={<Aprende />} />
         <Route path="/salud-negocio" element={<SaludNegocio />} />

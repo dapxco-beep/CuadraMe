@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { Link } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { AlertTriangle, ArrowLeft, ChevronRight, Clock, PieChart, Send, Sparkles, TrendingUp, Zap } from 'lucide-react'
@@ -25,6 +26,7 @@ const PREGUNTAS_SUGERIDAS = [
 ]
 
 export default function Insights() {
+  const embebido = useEmbebido()
   const volver = useVolver('/')
   const [resumen, setResumen] = useState(null)
   const [edadDinero, setEdadDinero] = useState(null)
@@ -80,12 +82,14 @@ export default function Insights() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 flex flex-col">
+      {!embebido && (
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Cosas raras en mis gastos</h1>
       </header>
+      )}
 
       <Link
         to="/informe"

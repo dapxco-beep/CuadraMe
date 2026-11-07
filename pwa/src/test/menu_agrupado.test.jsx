@@ -71,8 +71,8 @@ describe('navegacion.js (fuente única)', () => {
   })
 
   it('recuerda los últimos 4 destinos, sin repetir, el más reciente primero', () => {
-    for (const r of ['/cuentas', '/deudas', '/metas', '/impuestos', '/deudas', '/informe', '/']) registrarReciente(r)
-    expect(leerRecientes().map((d) => d.to)).toEqual(['/informe', '/deudas', '/impuestos', '/metas'])
+    for (const r of ['/cuentas', '/deudas', '/metas', '/impuestos', '/deudas', '/informes', '/']) registrarReciente(r)
+    expect(leerRecientes().map((d) => d.to)).toEqual(['/informes', '/deudas', '/impuestos', '/metas'])
   })
 })
 
@@ -173,7 +173,7 @@ describe('Barra lateral de escritorio', () => {
     const buscador = within(nav).getByRole('searchbox', { name: 'Buscar en el menú' })
     expect(buscador).toHaveFocus()
     await userEvent.keyboard('inversion')
-    expect(within(nav).getByRole('link', { name: 'Patrimonio' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'Informes' })).toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: 'Cuentas' })).toBeNull()
   })
 

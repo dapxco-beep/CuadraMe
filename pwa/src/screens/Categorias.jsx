@@ -1,4 +1,5 @@
 import { textoError } from '../lib/textoError'
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { useVolver } from '../lib/useVolver'
@@ -20,6 +21,7 @@ const ETIQUETA_TIPO = { gasto: 'Gasto', ingreso: 'Ingreso', ambos: 'Gasto e ingr
 const COLORES = ['#d9622b', '#d9a441', '#2f6b3f', '#2f7f9a', '#6a5acd', '#b0447a', '#7a6a55']
 
 export default function Categorias() {
+  const embebido = useEmbebido()
   const volver = useVolver('/perfil')
   const { categorias, cargando, recargar } = useCategorias()
   const [mostrarOcultas, setMostrarOcultas] = useState(true)
@@ -56,12 +58,12 @@ export default function Categorias() {
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        {embebido ? <span /> : <div className="flex items-center gap-3">
           <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-bold">Categorías</h1>
-        </div>
+        </div>}
         <button
           onClick={() => setMostrarForm(true)}
           className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"

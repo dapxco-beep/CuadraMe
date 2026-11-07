@@ -68,7 +68,7 @@ describe('navegacion: grupos según el modo', () => {
     expect(g.map((x) => x.id)).toEqual(['datos', 'dinero', 'juntos', 'ahorro', 'entender', 'ajustes', MAS_FUNCIONES_ID])
     const visibles = g.slice(0, -1).flatMap((x) => x.items.map((i) => i.to))
     // lo de cada día está a la vista
-    for (const ruta of ['/sincronizacion', '/movimientos-correo', '/cuentas', '/deudas', '/recurrentes', '/amigos', '/hogares', '/colectas', '/metas', '/informe', '/cierre-mes', '/asistente', '/perfil', '/ayuda']) {
+    for (const ruta of ['/sincronizacion', '/movimientos-correo', '/cuentas', '/deudas', '/recurrentes', '/amigos', '/hogares', '/colectas', '/metas', '/informes', '/asistente', '/perfil', '/ayuda']) {
       expect(visibles, ruta).toContain(ruta)
     }
     // lo avanzado está aparte, plegado y explicado
@@ -82,11 +82,11 @@ describe('navegacion: grupos según el modo', () => {
   })
 
   it('una función avanzada que la persona ya usa deja de ser avanzada: vuelve a su tema', () => {
-    const g = gruposSegunModo({ completo: false, enUso: ['/patrimonio', '/impuestos'] })
+    const g = gruposSegunModo({ completo: false, enUso: ['/inversiones', '/impuestos'] })
     const ahorro = g.find((x) => x.id === 'ahorro').items.map((i) => i.to)
-    expect(ahorro).toContain('/patrimonio')
+    expect(ahorro).toContain('/inversiones')
     expect(g.find((x) => x.id === 'dinero').items.map((i) => i.to)).toContain('/impuestos')
-    expect(g[g.length - 1].items.map((i) => i.to)).not.toContain('/patrimonio')
+    expect(g[g.length - 1].items.map((i) => i.to)).not.toContain('/inversiones')
   })
 
   it('el buscador sigue encontrando todo, aunque esté plegado', () => {
@@ -96,7 +96,7 @@ describe('navegacion: grupos según el modo', () => {
 
   it('el riel solo suma «Traer extractos» en modo simple', () => {
     expect(extrasRiel({ completo: false }).map((i) => i.to)).toEqual(['/sincronizacion'])
-    expect(extrasRiel({ completo: true }).map((i) => i.to)).toEqual(['/patrimonio', '/sincronizacion'])
+    expect(extrasRiel({ completo: true }).map((i) => i.to)).toEqual(['/informes', '/sincronizacion'])
   })
 })
 

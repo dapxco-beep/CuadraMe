@@ -85,7 +85,7 @@ describe('Barra de navegación', () => {
     for (const { label, to } of ITEMS_MAS) {
       expect(within(hoja).getByRole('link', { name: label })).toHaveAttribute('href', to)
     }
-    expect(within(hoja).getByRole('link', { name: 'Patrimonio' })).toBeInTheDocument()
+    expect(within(hoja).getByRole('link', { name: 'Informes' })).toBeInTheDocument()
     expect(within(hoja).getByRole('link', { name: 'Perfil' })).toBeInTheDocument()
   })
 
@@ -98,7 +98,7 @@ describe('Barra de navegación', () => {
   })
 
   it('"Más" se ve activo en pantallas que viven dentro de él', () => {
-    montar(<BottomNav />, '/patrimonio')
+    montar(<BottomNav />, '/informes')
     expect(screen.getByRole('button', { name: 'Más' }).className).toMatch(/text-accent/)
   })
 })

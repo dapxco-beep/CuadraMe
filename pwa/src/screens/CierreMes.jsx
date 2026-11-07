@@ -1,4 +1,5 @@
 import { textoError } from '../lib/textoError'
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
@@ -75,6 +76,7 @@ function CabeceraPaso({ paso, indice, pasos }) {
 }
 
 export default function CierreMes() {
+  const embebido = useEmbebido()
   const volver = useVolver('/')
   const navigate = useNavigate()
   const { avisar } = useDialogos()
@@ -209,12 +211,14 @@ export default function CierreMes() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-8 screen-enter">
+      {!embebido && (
       <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-semibold flex-1">Cierre de mes</h1>
       </header>
+      )}
 
       {mes && (
         <div className="px-5 mt-1">

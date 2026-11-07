@@ -30,9 +30,8 @@ export const GRUPOS = [
       { to: '/movimientos-correo', icon: Mail, label: 'Movimientos del correo', corta: 'Correo', palabras: 'correo gmail avisos notificaciones banco compras transferencias movimientos del dia revisar aprobar leer' },
       { to: '/sincronizacion', icon: RefreshCw, label: 'Traer extractos', corta: 'Extractos', palabras: 'sincronizar sincronizacion importar correo correos gmail extracto conciliar pdf excel csv archivo conexiones estado falla' },
       { to: '/conectar-dispositivo', icon: Smartphone, label: 'Registro automático', palabras: 'conectar dispositivo atajo iphone android wallet celular' },
-      { to: '/categorias', icon: Tag, label: 'Categorías', palabras: 'etiquetas iconos' },
+      { to: '/categorias', icon: Tag, label: 'Categorías', palabras: 'etiquetas iconos reglas automaticas comercio categoria por categorizar sin categoria' },
       { to: '/entrenar-categorias', icon: GraduationCap, label: 'Enseñar categorías', palabras: 'entrenar aprender clasificar' },
-      { to: '/reglas-categoria', icon: SlidersHorizontal, label: 'Reglas automáticas', palabras: 'reglas automatico comercio categoria' },
     ],
   },
   {
@@ -63,7 +62,6 @@ export const GRUPOS = [
     icon: TrendingUp,
     items: [
       { to: '/metas', icon: PiggyBank, label: 'Metas', palabras: 'ahorro objetivo meta' },
-      { to: '/patrimonio', icon: Landmark, label: 'Patrimonio', corta: 'Patrim.', palabras: 'inversion activos neto cdt acciones' },
       { to: '/inversiones', icon: TrendingUp, label: 'Inversiones', corta: 'Invers.', palabras: 'acciones etf fondos broker portafolio ticker trii bolsa cripto rentabilidad' },
     ],
   },
@@ -72,12 +70,8 @@ export const GRUPOS = [
     titulo: 'Cómo voy',
     icon: Lightbulb,
     items: [
-      { to: '/informe', icon: PieChart, label: 'En qué gasto mi plata', palabras: 'informe en que gasto mi plata categoria comercios reporte' },
-      { to: '/cierre-mes', icon: CalendarCheck, label: 'Cierre de mes', palabras: 'balance mes informe' },
-      { to: '/resumen', icon: Gift, label: 'Resumen del mes', palabras: 'wrapped diapositivas compartir' },
-      { to: '/mi-cuenta-cuadra', icon: Scale, label: 'Mi cuenta cuadra', palabras: 'cuadre cuadra extracto banco tarjeta semaforo diferencia' },
-      { to: '/traslados', icon: ArrowLeftRight, label: 'Plata que pasé entre mis cuentas', palabras: 'traslado entre mis cuentas nequi nu bancolombia no cuenta' },
-      { to: '/insights', icon: Sparkles, label: 'Cosas raras en mis gastos', palabras: 'hallazgos insights consejos descubrimientos' },
+      { to: '/informes', icon: PieChart, label: 'Informes', palabras: 'informe informes en que gasto mi plata categoria comercios reporte cierre de mes balance resumen del mes wrapped compartir mi cuenta cuadra cuadre extracto banco insights hallazgos cosas raras consejos patrimonio inversion activos neto cdt acciones' },
+      { to: '/revisar', icon: ArrowLeftRight, label: 'Revisar movimientos', palabras: 'traslado entre mis cuentas nequi nu bancolombia no cuenta duplicados repetidos repetido' },
       { to: '/ahorcado', icon: Sprout, label: 'Qué tan sana va mi plata', palabras: 'arbol financiero salud puntaje ahorcado vidas' },
       { to: '/asistente', icon: Bot, label: 'Asistente', palabras: 'cuadrame ai ia pregunta chat' },
     ],
@@ -118,7 +112,7 @@ export const ITEMS_MAS = GRUPOS.flatMap((g) => g.items.map((i) => ({ ...i, grupo
 // por enlace directo y por el buscador.
 export const MAS_FUNCIONES_ID = 'mas-funciones'
 export const RUTAS_AVANZADAS = [
-  '/reglas-categoria', '/entrenar-categorias', '/conectar-dispositivo', '/traslados', '/impuestos', '/patrimonio', '/inversiones', '/ahorcado',
+  '/entrenar-categorias', '/conectar-dispositivo', '/revisar', '/impuestos', '/inversiones', '/ahorcado',
 ]
 
 export const EXPLICACION = {
@@ -127,19 +121,14 @@ export const EXPLICACION = {
   '/recurrentes': 'Lo que pagas o recibes cada mes: arriendo, suscripciones, nómina.',
   '/impuestos': 'Cuánto te cobran por el 4x1000 y qué te sirve para la renta.',
   '/metas': 'Guarda plata poco a poco para algo que quieres.',
-  '/patrimonio': 'Tu patrimonio: todo lo que tienes menos todo lo que debes.',
   '/inversiones': 'Tus acciones, fondos o cripto con el precio al día y cuánto vas ganando (opcional).',
-  '/cierre-mes': 'Un balance de cómo te fue en el mes.',
-  '/resumen': 'Tu mes contado en diapositivas para compartir.',
-  '/informe': 'Cuánto entra y cuánto sale, y en qué gastas más.',
+  '/informes': 'En qué gastas, tu resumen del mes, cosas raras, patrimonio y el cierre de mes.',
   '/mi-cuenta-cuadra': 'Si cada banco y tarjeta cuadra con sus extractos, mes a mes.',
-  '/traslados': 'Cuando pasas plata de una cuenta tuya a otra, no es un gasto. Aquí lo confirmas.',
-  '/insights': 'Gastos que subieron, cobros repetidos y otras cosas que conviene mirar.',
+  '/revisar': 'Plata que pasaste entre tus cuentas (no es un gasto) y movimientos que parecen repetidos.',
   '/asistente': 'Pregúntale a CuadraMe cosas sobre tu plata.',
   '/ahorcado': 'Un puntaje de 0 a 100 de qué tan sana va tu plata.',
   '/categorias': 'Los tipos de gasto: comida, transporte, salud…',
   '/entrenar-categorias': 'Enséñale a CuadraMe en qué categoría va cada gasto.',
-  '/reglas-categoria': 'Si un lugar siempre es del mismo tipo de gasto, que se ponga solo.',
   '/aprende': 'Lecciones cortas, de un minuto, sobre plata.',
   '/sincronizacion': 'Trae el extracto de tu banco (PDF o Excel) y mira si cada cuenta cuadra, mes a mes.',
   '/movimientos-correo': 'Los avisos de compras y transferencias de tu banco llegan a tu correo; aquí los apruebas.',
@@ -170,7 +159,7 @@ export function gruposSegunModo({ completo = false, enUso = [] } = {}) {
 /** Destinos extra del riel (iPad vertical) junto a los principales. */
 export function extrasRiel({ completo = false } = {}) {
   const por = Object.fromEntries(ITEMS_MAS.map((i) => [i.to, i]))
-  return completo ? [por['/patrimonio'], por['/sincronizacion']] : [por['/sincronizacion']]
+  return completo ? [por['/informes'], por['/sincronizacion']] : [por['/sincronizacion']]
 }
 
 // Todo lo que el buscador puede encontrar (incluye las pantallas principales)

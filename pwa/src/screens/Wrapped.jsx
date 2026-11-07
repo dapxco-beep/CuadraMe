@@ -1,4 +1,5 @@
 import { textoError } from '../lib/textoError'
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { useEffect, useState } from 'react'
 import { DUR, EASE } from '../lib/tokens'
 import { EsqueletoTarjeta } from '../components/Esqueletos'
@@ -64,6 +65,7 @@ function mesRelativo(delta) {
 }
 
 export default function Wrapped() {
+  const embebido = useEmbebido()
   const navigate = useNavigate()
   const volver = useVolver('/')
   const { fmt } = useBloqueo()
@@ -153,12 +155,14 @@ export default function Wrapped() {
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto screen-enter pantalla-ancha">
+      {!embebido && (
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold flex-1">Tu resumen</h1>
             </header>
+      )}
 
       {mes && (
         <div className="px-6 pb-1 flex items-center gap-2" role="group" aria-label="Mes del resumen">

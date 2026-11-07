@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { ArrowLeft, CheckCircle2, CopyCheck } from 'lucide-react'
 import { api } from '../lib/api'
 import { useVolver } from '../lib/useVolver'
@@ -13,6 +14,7 @@ import { useDialogos } from '../lib/DialogosContext'
 // llegado por canales distintos (a mano, atajo, correo, extracto). Tú eliges cuál conservar y se
 // unen; nada se borra solo. Si eran compras iguales de verdad, «No es duplicado» y no vuelven a salir.
 export default function BuscarDuplicados() {
+  const embebido = useEmbebido()
   const volver = useVolver('/perfil')
   const { cuentas = [], recargar } = useCuentas() || {}
   const { confirmar, avisar } = useDialogos()
@@ -81,6 +83,7 @@ export default function BuscarDuplicados() {
 
   return (
     <div className="flex-1 flex flex-col pb-10">
+      {!embebido && (
       <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
         <button
           onClick={volver}
@@ -91,6 +94,7 @@ export default function BuscarDuplicados() {
         </button>
         <h1 className="text-xl font-semibold">Movimientos repetidos</h1>
       </header>
+      )}
 
       <p className="px-5 text-sm text-ink-soft mt-1">
         A veces el mismo gasto entra por varios caminos (el atajo, el correo del banco, el extracto o lo que escribiste).
