@@ -1206,6 +1206,7 @@ def _cargar_ledger(db: Session, usuario_id: str, cuenta_id: str) -> list[dict]:
         .all()
     )
     canales = dup.canales_de(db, usuario_id, [m.id for m in movimientos])
+    lineas_ya_cruzadas = _lineas_de_extracto_ya_cruzadas(db, usuario_id, [m.id for m in movimientos])
     ledger = []
     for m in movimientos:
         fp = compute_fingerprint(m.fecha, m.monto, cuenta_id, m.descripcion, m.tipo)
@@ -1228,7 +1229,30 @@ def _cargar_ledger(db: Session, usuario_id: str, cuenta_id: str) -> list[dict]:
             "flexible": "Original:" in (m.notas or ""),
             "emparejable": dup.es_emparejable(m),
         })
+        # Si una línea de extracto ya se concilió con ESTE movimiento (que venía del correo, del atajo o de a mano y conserva SU
+        # descripción), la huella de esa línea apunta aquí: así, al procesar otra vez el mismo extracto, se reconoce como la misma
+        # y no se crea de nuevo (antes la 2.ª pasada le daba ordinal 2 y se duplicaba: $450.000 repetidos en Nequi de Juliana).
+        for fp_linea in lineas_ya_cruzadas.get(m.id, ()):
+            if fp_linea != fp:
+                ledger.append({**ledger[-1], "fingerprint": fp_linea})
     return ledger
+
+
+def _lineas_de_extracto_ya_cruzadas(db: Session, usuario_id: str, movimiento_ids: list[str]) -> dict[str, list[str]]:
+    """{movimiento_id: [fingerprint de línea de extracto ya cruzada con él]} a partir de HuellaOrigen («ext:<fp>#<n>»)."""
+    from app.models import HuellaOrigen
+
+    salida: dict[str, list[str]] = {}
+    for i in range(0, len(movimiento_ids), 500):
+        filas = db.query(HuellaOrigen.movimiento_id, HuellaOrigen.huella).filter(
+            HuellaOrigen.usuario_id == usuario_id, HuellaOrigen.estado == dup.ESTADO_VIGENTE,
+            HuellaOrigen.movimiento_id.in_(movimiento_ids[i:i + 500]), HuellaOrigen.huella.like("ext:%#%"),
+        )
+        for mid, huella in filas:
+            fp = huella[len("ext:"):].rsplit("#", 1)[0]
+            if fp and not fp.startswith("previo:"):
+                salida.setdefault(mid, []).append(fp)
+    return salida
 
 
 def _completar_con_extracto(db: Session, mov: Movimiento, item: dict, historial_id: str, modelo, usuario_id: str,
