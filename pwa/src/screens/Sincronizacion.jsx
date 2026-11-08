@@ -51,6 +51,7 @@ import { mensajeAmable } from '../lib/mensajes'
 import SelectorCuentaBanco from '../components/SelectorCuentaBanco'
 import { cuentaRecordada, productoDeTexto } from '../lib/cuentasBanco'
 import { posponerPuntoDePartida, puntoDePartidaPospuesto } from '../lib/puntoPartida'
+import { EsqueletoPantalla } from '../components/Esqueletos'
 
 // «Traer movimientos»: un asistente, no un tablero. La pantalla muestra UN estado y UNA acción principal
 // (lib/siguientePaso.js escoge cuál por prioridad) y, al resolverla, pasa sola a la siguiente. Al abrir, lee
@@ -840,13 +841,7 @@ export default function Sincronizacion({ modo = 'extractos' }) {
   }, [hoja, faltaClave, pruebaClave.resultado])
 
   // ── Render ─────────────────────────────────────────────────────────
-  if (cargando) {
-    return (
-      <div className="flex-1 flex items-center justify-center" role="status" aria-live="polite">
-        <p className="text-sm text-ink-soft">Cargando...</p>
-      </div>
-    )
-  }
+  if (cargando) return <EsqueletoPantalla etiqueta="Cargando" />
 
   if (error && !estado) {
     return (
