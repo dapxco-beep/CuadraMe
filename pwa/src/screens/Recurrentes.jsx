@@ -80,6 +80,20 @@ export default function Recurrentes() {
     cargar()
   }
 
+  // Un solo toque para aceptar todas las detectadas: pide lo mínimo cuando son muchas.
+  async function aceptarTodas() {
+    const lista = [...sugerencias]
+    try {
+      for (const s of lista) {
+        await api.crearRecurrente({ nombre: s.descripcion, monto: s.monto_promedio, tipo: s.tipo, categoria: s.categoria, cuenta_id: s.cuenta_id, dia_del_mes: s.dia_del_mes })
+      }
+      avisar?.(`Agregamos ${lista.length} pagos fijos.`, 'ok')
+    } catch {
+      avisar?.('No pudimos agregar todos. Revisa los que quedaron.', 'error')
+    }
+    cargar()
+  }
+
   function descartarSugerencia(s) {
     setSugerencias((prev) => prev.filter((x) => x.descripcion !== s.descripcion))
   }
@@ -111,6 +125,9 @@ export default function Recurrentes() {
           <div className="flex items-center gap-2 mb-2">
             <Sparkles size={16} className="text-accent" />
             <h2 className="text-sm font-semibold">Detectamos estos pagos fijos</h2>
+            {sugerencias.length > 2 && (
+              <button onClick={aceptarTodas} className="ml-auto min-h-11 px-2 text-sm font-semibold text-accent">Agregar todos</button>
+            )}
           </div>
           <div className="flex flex-col gap-2">
             {sugerencias.map((s) => (

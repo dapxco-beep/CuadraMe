@@ -583,14 +583,8 @@ export default function Agregar() {
         <button onClick={() => navigate('/recurrentes')} className="w-full text-center text-sm text-accent font-medium min-h-11">
           Registrar un pago fijo (cada mes)
         </button>
-        <button onClick={() => navigate('/amigos')} className="w-full text-center text-sm text-accent font-medium min-h-11">
-          Dividir gastos con amigos
-        </button>
-        <button onClick={() => navigate('/colectas')} className="w-full text-center text-sm text-accent font-medium min-h-11">
-          Vacas: inscripción, paseo, regalo
-        </button>
-        <button onClick={() => navigate('/hogares')} className="w-full text-center text-sm text-accent font-medium min-h-11">
-          Parche: gastos juntos (pareja, casa, amigos)
+        <button onClick={() => navigate('/otros')} className="w-full text-center text-sm text-accent font-medium min-h-11">
+          Compartir con otros (dividir, vaca, parche)
         </button>
       </div>
     </div>

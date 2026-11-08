@@ -139,3 +139,13 @@ describe('Metas', () => {
     expect(await screen.findByLabelText('¿Cuánta plata necesitas en total?')).toBeInTheDocument()
   })
 })
+
+describe('Pagos fijos: sugerencias', () => {
+  it('con varias detectadas, «Agregar todos» las crea de una vez', async () => {
+    const mk = (n) => ({ descripcion: n, monto_promedio: 10000, tipo: 'expense', categoria: 'Hogar', cuenta_id: 'c1', dia_del_mes: 5, ocurrencias: 4 })
+    api.sugerenciasRecurrentes.mockResolvedValue([mk('Netflix'), mk('Spotify'), mk('Arriendo')])
+    montar(<Recurrentes />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Agregar todos' }))
+    await waitFor(() => expect(api.crearRecurrente).toHaveBeenCalledTimes(3))
+  })
+})
