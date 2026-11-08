@@ -196,7 +196,13 @@ export default function Perfil() {
         <SelectorPais />
       </div>
 
-      <section className="mx-6 mt-8" id="punto-de-partida" aria-labelledby="titulo-punto-de-partida">
+        </div>
+      </SeccionPlegable>
+
+      {/* Lo que casi nadie cambia va plegado: así «Mi cuenta» muestra solo el nombre y el país. */}
+      <SeccionPlegable id="perfil-preferencias" titulo="Punto de partida y apariencia" icono={Palette} className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
+        <div className="-mx-4 -mt-1">
+      <section className="mx-6 mt-4" id="punto-de-partida" aria-labelledby="titulo-punto-de-partida">
         <div className="flex items-center gap-2 mb-3">
           <Flag size={16} className="text-ink-soft" aria-hidden="true" />
           <h2 id="titulo-punto-de-partida" className="text-[15px] font-semibold">Punto de partida</h2>
@@ -206,9 +212,9 @@ export default function Perfil() {
 
       {/* El interruptor «Mostrar todas las funciones» vive ahora en el menú «Más»; aquí queda un enlace corto para no perder la función */}
       <p className="mx-6 mt-4 text-xs text-ink-soft">
-        {completo ? 'Lo avanzado se ve en su tema.' : 'Lo avanzado está aparte, en «Avanzadas».'}{' '}
+        {completo ? 'Estás viendo todas las funciones.' : 'Estás viendo lo esencial.'}{' '}
         <button type="button" onClick={() => setCompleto(!completo)} data-testid="enlace-todas-funciones" className="min-h-11 font-semibold text-accent">
-          {completo ? 'Volver a separarlo' : 'Mostrarlo todo'}
+          {completo ? 'Mostrar solo lo esencial' : 'Mostrar todas las funciones'}
         </button>
         .
       </p>
@@ -243,7 +249,7 @@ export default function Perfil() {
           <Cuadri pose="feliz" size={52} siempre animar={false} />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium" id="etq-mostrar-cuadri">Mostrar a Cuadri</p>
-            <p className="text-xs text-ink-soft mt-0.5">La mascota de CuadraMe acompaña el recorrido, los consejos y las celebraciones. Se guarda en este dispositivo.</p>
+            <p className="text-xs text-ink-soft mt-0.5">La mascota de CuadraMe.</p>
           </div>
           <button
             type="button"

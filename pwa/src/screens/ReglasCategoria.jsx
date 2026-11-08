@@ -82,8 +82,7 @@ export default function ReglasCategoria() {
       </header>
 
       <p className="mx-6 mt-2 text-xs text-ink-soft">
-        Cuando un movimiento contenga este texto, se categoriza automáticamente al instante.
-        Tienen prioridad sobre la categorización que aprende de tu historial.
+        Si el comercio contiene este texto, va a esta categoría.
       </p>
       <Link
         to="/entrenar-categorias"

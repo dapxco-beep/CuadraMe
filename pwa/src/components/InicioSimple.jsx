@@ -43,8 +43,9 @@ export default function InicioSimple({ saldo, notaSaldo = '', gastosSemana, reci
               </p>
             )}
             <p className="text-xs opacity-90">Gastaste esta semana</p>
-            <p className="text-lg font-bold t-cifra mt-0.5" data-testid="gastos-semana">
-              {gastosSemana === null ? '—' : fmt(gastosSemana)}
+            {/* Un «$ 0» parece un error: si aún no hay gastos esta semana se dice con palabras */}
+            <p className={gastosSemana === 0 ? 'text-sm mt-0.5 opacity-90' : 'text-lg font-bold t-cifra mt-0.5'} data-testid="gastos-semana">
+              {gastosSemana === null ? '—' : gastosSemana === 0 ? 'Nada anotado todavía' : fmt(gastosSemana)}
             </p>
             {mas && <SemanaMini />}
           </div>

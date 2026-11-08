@@ -90,7 +90,7 @@ describe('lógica de selección (pura)', () => {
 describe('pantalla Por categorizar', () => {
   it('muestra el mensaje de ritmo y los comercios con casillas etiquetadas', async () => {
     montar()
-    expect(await screen.findByText(/Lo importante son los comercios que se repiten o pesan/)).toBeInTheDocument()
+    expect(await screen.findByText(/Primero los que más se repiten o pesan/)).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: /Seleccionar kopi zebra, 3 movimientos/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Categorizar lo que más pesa en 1 minuto/ })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: /Acciones sobre lo seleccionado/ })).toBeNull() // nada obligatorio

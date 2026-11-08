@@ -218,7 +218,7 @@ export default function PorCategorizar() {
       )}
 
       <p className="mx-6 mt-1 text-sm text-ink-soft">
-        Lo importante son los comercios que se repiten o pesan; el resto puede quedarse como está. Nada es obligatorio.
+        Primero los que más se repiten o pesan; el resto puede quedarse así.
       </p>
 
       {!datos && !error && <EsqueletoLista filas={5} className="mx-6 mt-6" etiqueta="Cargando lo que falta por categorizar" />}

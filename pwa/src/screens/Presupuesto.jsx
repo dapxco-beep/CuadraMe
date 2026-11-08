@@ -156,10 +156,6 @@ export default function Presupuesto() {
         </div>
       </header>
 
-      <p className="mx-6 mt-1 text-xs text-ink-soft">
-        Un presupuesto es lo máximo que quieres gastar en algo. Cada barra muestra cuánto llevas.
-      </p>
-
       {/* ≥1024 px: resumen/proyección a la izquierda, categorías a la derecha */}
       <div className="dos-col dos-col-6-5">
       <div className="col lg:col-start-2 lg:row-start-1">

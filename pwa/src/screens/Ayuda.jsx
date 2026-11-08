@@ -188,18 +188,6 @@ export default function Ayuda() {
           Escribir
         </a>
       </section>
-      <section className="mx-5 mt-3 tarjeta p-4 flex items-center gap-3">
-        <span className="w-9 h-9 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
-          <Icono icono={MessageCircle} tam="md" />
-        </span>
-        <div className="flex-1 min-w-0">
-          <p className="t-cuerpo font-semibold">¿Algo no se entiende o tienes una idea?</p>
-          <p className="t-apoyo">Cuéntanos, leemos todo.</p>
-        </div>
-        <Link to="/opinion?desde=/ayuda" className="btn btn-secundario btn-sm">
-          Contarnos
-        </Link>
-      </section>
       <p className="mx-5 mt-4 t-apoyo text-center">
         <Link to="/legal/privacidad" className="underline inline-block py-3">
           Política de privacidad

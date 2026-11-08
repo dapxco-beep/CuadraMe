@@ -110,8 +110,6 @@ export default function Opinion() {
           </Tarjeta>
         ) : (
           <form onSubmit={enviar} className="mx-5 mt-3 space-y-4" noValidate>
-            <p className="t-cuerpo text-ink-soft">Una idea, una duda o algo que no funcionó: cuéntanos y lo miramos.</p>
-
             <div>
               <p id="tipo-op" className="campo-etiqueta">
                 ¿Qué quieres contarnos?
@@ -156,7 +154,7 @@ export default function Opinion() {
                 onChange={(e) => setPuedeContactar(e.target.checked)}
                 className="mt-1 w-5 h-5 accent-[var(--c-accent)] shrink-0"
               />
-              <span>Puedes escribirme a mi correo si necesitas aclarar.</span>
+              <span>Quiero respuesta por correo.</span>
             </label>
 
             <Boton type="submit" bloque cargando={enviando} disabled={vacio}>

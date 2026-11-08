@@ -74,8 +74,7 @@ export default function Categorias() {
       </header>
 
       <p className="mx-6 mt-2 text-xs text-ink-soft">
-        Crea las tuyas con el nombre y el emoji que quieras, cámbialas de orden o escóndelas si no las usas.
-        Ocultar no borra nada: tus movimientos conservan su categoría y puedes reactivarla cuando quieras.
+        Toca una categoría para editarla. Ocultar no borra nada.
       </p>
 
       <div className="mx-6 mt-4 flex items-center justify-between gap-3">
@@ -83,7 +82,7 @@ export default function Categorias() {
           {activas.length} {activas.length === 1 ? 'activa' : 'activas'} · {ocultas.length}{' '}
           {ocultas.length === 1 ? 'oculta' : 'ocultas'}
         </p>
-        <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
+        <label className={`flex items-center gap-2 text-xs font-medium text-ink cursor-pointer ${ocultas.length === 0 ? 'hidden' : ''}`}>
           Mostrar ocultas
           <button
             type="button"

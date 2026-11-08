@@ -109,7 +109,7 @@ export const ITEMS_MAS = GRUPOS.flatMap((g) => g.items.map((i) => ({ ...i, grupo
 // por enlace directo y por el buscador.
 export const MAS_FUNCIONES_ID = 'mas-funciones'
 export const RUTAS_AVANZADAS = [
-  '/entrenar-categorias', '/conectar-dispositivo', '/revisar', '/impuestos', '/inversiones', '/ahorcado',
+  '/entrenar-categorias', '/conectar-dispositivo', '/revisar', '/deudas', '/recurrentes', '/impuestos', '/inversiones', '/ahorcado',
 ]
 
 export const EXPLICACION = {

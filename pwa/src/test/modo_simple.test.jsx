@@ -68,7 +68,7 @@ describe('navegacion: grupos según el modo', () => {
     expect(g.map((x) => x.id)).toEqual(['datos', 'dinero', 'juntos', 'ahorro', 'entender', 'ajustes', MAS_FUNCIONES_ID])
     const visibles = g.slice(0, -1).flatMap((x) => x.items.map((i) => i.to))
     // lo de cada día está a la vista
-    for (const ruta of ['/sincronizacion', '/movimientos-correo', '/cuentas', '/deudas', '/recurrentes', '/otros', '/metas', '/informes', '/asistente', '/perfil', '/ayuda']) {
+    for (const ruta of ['/sincronizacion', '/movimientos-correo', '/cuentas', '/otros', '/metas', '/informes', '/asistente', '/perfil', '/ayuda']) {
       expect(visibles, ruta).toContain(ruta)
     }
     // lo avanzado está aparte, plegado y explicado
@@ -137,10 +137,12 @@ describe('Menú «Más» (teléfono) en modo simple', () => {
   it('lo de todos los días está a la vista; lo avanzado, plegado en «Avanzadas» y con su frase', async () => {
     await abrirMas()
     const hoja = await screen.findByRole('dialog', { name: 'Más opciones' })
-    for (const nombre of ['Traer extractos', 'Movimientos del correo', 'Cuentas', 'Deudas', 'Metas', 'Perfil', 'Ayuda']) {
+    for (const nombre of ['Traer extractos', 'Movimientos del correo', 'Cuentas', 'Plata con otros', 'Metas', 'Perfil', 'Ayuda']) {
       expect(within(hoja).getByRole('link', { name: new RegExp('^' + nombre) }), nombre).toBeInTheDocument()
     }
     expect(within(hoja).queryByRole('link', { name: /Impuestos/ })).toBeNull()
+    expect(within(hoja).queryByRole('link', { name: /^Deudas/ })).toBeNull() // Deudas y Pagos fijos vuelven solos cuando ya hay datos
+    expect(within(hoja).queryByRole('link', { name: /^Pagos fijos/ })).toBeNull()
     const boton = within(hoja).getByRole('button', { name: /Avanzadas/ })
     expect(boton).toHaveAttribute('aria-expanded', 'false')
 
@@ -149,6 +151,8 @@ describe('Menú «Más» (teléfono) en modo simple', () => {
     const impuestos = within(hoja).getByRole('link', { name: /Impuestos/ })
     expect(impuestos).toHaveAttribute('href', '/impuestos')
     expect(impuestos).toHaveTextContent('Cuánto te cobran por el 4x1000')
+    expect(within(hoja).getByRole('link', { name: /^Deudas/ })).toBeInTheDocument()
+    expect(within(hoja).getByRole('link', { name: /^Pagos fijos/ })).toBeInTheDocument()
   })
 
   it('con «Mostrar todas las funciones» vuelve el menú completo por grupos', async () => {
@@ -189,7 +193,7 @@ describe('Barras de pantalla ancha en modo simple', () => {
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
     expect(within(nav).getByRole('link', { name: /^Traer extractos/ })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: 'Perfil' })).toBeInTheDocument()
-    expect(within(nav).getByRole('link', { name: /Deudas/ })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: /Plata con otros/ })).toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: /Impuestos/ })).toBeNull()
     const boton = within(nav).getByRole('button', { name: 'Avanzadas' })
     expect(boton).toHaveAttribute('aria-expanded', 'false')
@@ -226,6 +230,8 @@ describe('«Mostrar todas las funciones» vive en el menú «Más»', () => {
         </DialogosProvider>
       </ThemeProvider>
     )
+    // Esa parte vive en una sección plegada («Punto de partida y apariencia»): se abre primero.
+    await userEvent.click(await screen.findByRole('button', { name: /Punto de partida y apariencia/ }))
     const enlace = await screen.findByTestId('enlace-todas-funciones')
     expect(screen.queryByRole('switch', { name: 'Mostrar todas las funciones' })).toBeNull()
     expect(screen.queryByText('Planeación')).toBeNull()
