@@ -226,3 +226,170 @@ def test_pantallazo_con_dos_bancos_en_el_texto_gana_el_primero_el_de_origen():
     assert r["registrado"] and "motivo" not in r
     cuentas = {c["id"]: c["nombre"] for c in client.get("/cuentas").json()}
     assert cuentas[_movimiento_mas_reciente()["cuenta_id"]] == "Nu Colombia"
+
+
+# ---- Pantallas reales de Nu y Nequi (misma estructura que las capturas; nombres, llaves y referencias INVENTADOS) -------------
+# Las fechas son las de AYER: el servidor solo acepta la fecha de un comprobante si es de los últimos 7 días (si no, usa «ahora»).
+from datetime import timedelta  # noqa: E402
+
+from app.utiles import ahora_co  # noqa: E402
+
+_ABR = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+_MES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+
+
+def _ayer():
+    return ahora_co() - timedelta(days=1)
+
+
+def _nu_comprobante(d):
+    return (f"8:10 48 Comprobante de transferencia {d.day:02d} {_ABR[d.month - 1].upper()} {d.year} - 20:08:29 "
+            "Monto total $24.000,00 Monto $24.000,00 Impuesto 4x1.000 $0,00 Vía Bre-B "
+            "Número de comprobante (ID MOL) 20269999999999999ENT111111111111111 "
+            "Para Nombre ANA PEREZ Entidad Nequi S.A. CF Llave 3001112233")
+
+
+def _nu_detalle(d):
+    return (f"8:10 47 CARLOS RUIZ $23.000,00 {d.day:02d} de {_MES[d.month - 1]} de {d.year}, 12:52 "
+            "Transferencia inmediata Bre-B Reportar un problema Abrir comprobante Monto total $23.000,00 "
+            "Impuesto 4x1.000 $0,00 Enviaste a su cuenta de Bancolombia Llave 12345678")
+
+
+def _nequi_detalle(d):
+    return ("8:11 47 Detalle del movimiento Envío Realizado ¡Escanea este QR con Nequi para verificar tu envío al "
+            "instante! Para Maria De La Torre ¿Cuánto? $ 1,00 Número Nequi 300 111 2233 "
+            f"Fecha {d.day:02d} de {_MES[d.month - 1]} de {d.year} a las 10:52 p. m. Referencia M99999999 "
+            "¿De dónde salió la plata? Disponible ¿Algún problema con este movimiento?")
+
+
+def _cuenta_nombre(mov):
+    return {c["id"]: c["nombre"] for c in client.get("/cuentas").json()}[mov["cuenta_id"]]
+
+
+@pytest.mark.parametrize("construir,cuenta,monto,descripcion,hora", [
+    (_nu_comprobante, "Nu Colombia", 24000, "Envío a Ana Perez", "T20:08:29"),
+    (_nu_detalle, "Nu Colombia", 23000, "Envío a Carlos Ruiz", "T12:52:00"),
+    (_nequi_detalle, "Nequi", 1, "Envío a Maria De La Torre", "T22:52:00"),
+])
+def test_pantallas_reales_se_registran_completas_sin_preguntar(construir, cuenta, monto, descripcion, hora):
+    h = _cuentas_nu_nequi(f"rn-r{monto}")
+    d = _ayer()
+    r = _pantallazo(h, construir(d))
+    assert r["registrado"] and "motivo" not in r, r
+    mov = _movimiento_mas_reciente()
+    assert _cuenta_nombre(mov) == cuenta  # el «Entidad Nequi» del comprobante de Nu es el DESTINO, no la cuenta de origen
+    assert (mov["monto"], mov["tipo"], mov["descripcion"]) == (monto, "expense", descripcion)
+    assert mov["fecha"].startswith(f"{d:%Y-%m-%d}{hora}")
+
+
+def test_leer_dos_veces_el_mismo_comprobante_no_duplica():
+    h = _cuentas_nu_nequi("rn-dup")
+    texto = _nu_comprobante(_ayer())
+    assert _pantallazo(h, texto)["registrado"]
+    antes = len(client.get("/movimientos").json())
+    r2 = _pantallazo(h, texto)
+    assert r2["duplicado"] is True and not r2["registrado"]
+    assert len(client.get("/movimientos").json()) == antes
+
+
+def test_fecha_destinatario_e_id_de_los_comprobantes():
+    from app.notificaciones import _destinatario, _fecha_en_texto, _id_comprobante
+
+    assert _fecha_en_texto("05 NOV 2026 - 20:08:29") == "2026-11-05T20:08:29"
+    assert _fecha_en_texto("06 de noviembre de 2026, 12:52") == "2026-11-06T12:52:00"
+    assert _fecha_en_texto("05 de noviembre de 2026 a las 12:05 a. m.") == "2026-11-05T00:05:00"
+    assert _fecha_en_texto("05 de noviembre de 2026 a las 1:05 p. m.") == "2026-11-05T13:05:00"
+    assert _fecha_en_texto("Tu pago de $5.000 fue exitoso") is None
+    assert _destinatario("Para Nombre ANA PEREZ Entidad Nequi S.A. CF Llave 1") == "Ana Perez"
+    assert _destinatario("Para Maria De La Torre ¿Cuánto? $ 1,00") == "Maria De La Torre"
+    assert _destinatario("LUIS GOMEZ $5.000,00 06 de noviembre") == "Luis Gomez"
+    assert _destinatario("Pagaste en JUMBO para toda la familia") == ""
+    assert _id_comprobante("(ID MOL) 20269999ENT1234567890") == "20269999ENT1234567890"
+    assert _id_comprobante("Referencia M99999999 ¿De dónde") == "M99999999"
+
+
+# ---- Comprobante de transferencia de Bancolombia (misma estructura que la captura; datos INVENTADOS) -------------------------
+def _bancolombia(d):
+    return (f"¡Transferencia exitosa! Comprobante No. 7J9WA127VQ {d.day:02d} {_ABR[d.month - 1].capitalize()} {d.year} - 11:50 a. m. "
+            "Datos de la transferencia Valor de la transferencia $ 25.000 Producto destino Nequi 3001112233 "
+            "Producto origen Cuenta de Ahorros Ahorros *4321")
+
+
+def _cuentas_con_bancolombia(uid, alias=None):
+    h = _cuentas_nu_nequi(uid)
+    cuerpo = {"nombre": "Bancolombia Ahorros", "saldo": 800000}
+    if alias:
+        cuerpo["alias_tarjeta"] = alias
+    assert client.post("/cuentas", json=cuerpo).status_code == 200
+    return h
+
+
+def test_comprobante_de_bancolombia_sin_nombre_usa_el_producto_destino_y_la_cuenta_por_su_huella():
+    h = _cuentas_con_bancolombia("rn-bc1")
+    d = _ayer()
+    r = _pantallazo(h, _bancolombia(d))
+    assert r["registrado"] and "motivo" not in r, r
+    mov = _movimiento_mas_reciente()
+    assert _cuenta_nombre(mov) == "Bancolombia Ahorros"  # «Producto origen/destino» es de Bancolombia; Nequi es solo el destino
+    assert (mov["monto"], mov["tipo"], mov["descripcion"]) == (25000, "expense", "Envío a Nequi ·2233")
+    assert mov["fecha"].startswith(f"{d:%Y-%m-%d}T11:50")
+
+
+def test_los_ultimos_digitos_de_la_cuenta_de_origen_la_identifican_por_su_alias():
+    h = _cuentas_con_bancolombia("rn-bc2", alias="4321")
+    assert client.post("/cuentas", json={"nombre": "Bancolombia Corriente", "saldo": 1, "alias_tarjeta": "9999"}).status_code == 200
+    r = _pantallazo(h, _bancolombia(_ayer()))  # dos cuentas Bancolombia: solo el *4321 del comprobante decide cuál es
+    assert r["registrado"] and "motivo" not in r, r
+    assert _cuenta_nombre(_movimiento_mas_reciente()) == "Bancolombia Ahorros"
+
+
+def test_pantalla_de_compra_con_tarjeta_es_un_gasto_sin_preguntar():
+    from app.notificaciones import interpretar
+
+    n = interpretar("auto", "", "Jumbo Calle 80 $45.900,00 COP Hoy 8:15 a. m. Visa ••1234 Apple Pay")
+    assert n is not None and (n.monto, n.tipo) == (45900, "expense") and not n.tipo_incierto
+
+
+@pytest.mark.parametrize("crudo,esperado", [
+    ("$45,900.00", 45900), ("$45.900,00", 45900), ("45900", 45900), ("COP 45.900,00", 45900), ("$ 1,00", 1),
+])
+def test_wallet_acepta_el_importe_en_cualquier_formato_que_entregue_ios(crudo, esperado):
+    h = _usuario(f"rn-w{abs(hash(crudo)) % 9999}")
+    r = client.post("/movimientos/rapido", headers=h, json={"comercio": "JUMBO", "monto": crudo, "tarjeta": "Visa 1234", "fuente": "wallet"})
+    assert r.status_code == 200, r.text
+    assert r.json()["monto"] == esperado
+
+
+# ---- Ingresos: «Recibiste de…» (Nu) y «Envío Recibido» (Nequi). Misma estructura que las capturas; datos INVENTADOS ----------
+
+def _nu_recibido(d):
+    return (f"8:25 45 Recibiste de Ana Perez $6.400,00 {d.day:02d} {_ABR[d.month - 1]} {d.year}, 16:31 Aceptada "
+            "Transferencia Bre-B Reportar problema Llave @ABC123 Institución de origen Nu")
+
+
+def _nequi_recibido(d):
+    return ("8:26 44 Detalle del movimiento Envío Recibido ¡Escanea este QR con Nequi para verificar tu envío al instante! "
+            f"De Maria De La Torre ¿Cuánto? $ 1,00 Fecha {d.day:02d} de {_MES[d.month - 1]} de {d.year} a las 10:51 p. m. "
+            "Referencia M88888888")
+
+
+@pytest.mark.parametrize("construir,cuenta,monto,descripcion,hora", [
+    (_nu_recibido, "Nu Colombia", 6400, "De Ana Perez", "T16:31:00"),
+    (_nequi_recibido, "Nequi", 1, "De Maria De La Torre", "T22:51:00"),
+])
+def test_ingresos_se_registran_completos_sin_preguntar(construir, cuenta, monto, descripcion, hora):
+    h = _cuentas_nu_nequi(f"rn-i{monto}")
+    d = _ayer()
+    r = _pantallazo(h, construir(d))
+    assert r["registrado"] and "motivo" not in r, r
+    mov = _movimiento_mas_reciente()
+    assert _cuenta_nombre(mov) == cuenta
+    assert (mov["monto"], mov["tipo"], mov["descripcion"]) == (monto, "income", descripcion)
+    assert mov["fecha"].startswith(f"{d:%Y-%m-%d}{hora}")
+
+
+def test_la_institucion_de_origen_es_la_de_quien_te_envio_no_tu_cuenta():
+    # «Institución de origen Nu» = el banco del que ENVIÓ. Sin otra pista de cuál es tu cuenta, no se adivina: se pregunta.
+    h = _cuentas_nu_nequi("rn-io")
+    r = _pantallazo(h, "Recibiste de Ana Perez $5.000,00 Aceptada Llave @ABC Institución de origen Nu")
+    assert r["motivo"] == "pedir_cuenta"

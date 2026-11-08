@@ -16,7 +16,7 @@ import { DialogosProvider } from '../lib/DialogosContext'
 import CatalogoAtajos, { ATAJOS } from '../components/CatalogoAtajos'
 import ConectarDispositivo from '../screens/ConectarDispositivo'
 import {
-  ATAJO_CIERRE_URL, ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL,
+  ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL,
 } from '../lib/atajosEnlaces'
 
 const CLAVE = { clave: 'cdm_demo', cargando: false, tieneClave: true, prefijo: '', recienCreada: false, crearNueva: vi.fn() }
@@ -37,13 +37,12 @@ beforeEach(() => {
 })
 
 describe('Catálogo de atajos', () => {
-  it('muestra los 4 atajos, cada uno con su botón de instalar al enlace correcto', () => {
+  it('muestra los 3 atajos, cada uno con su botón de instalar al enlace correcto', () => {
     montarCatalogo()
     const esperados = {
       'apple-pay': ATAJO_ICLOUD_URL,
       notificaciones: ATAJO_NOTIFICACIONES_URL,
       registrar: ATAJO_REGISTRAR_URL,
-      cierre: ATAJO_CIERRE_URL,
     }
     expect(ATAJOS.map((a) => a.id)).toEqual(Object.keys(esperados))
     for (const [id, url] of Object.entries(esperados)) {
@@ -102,5 +101,6 @@ describe('Catálogo de atajos', () => {
     expect(await screen.findByTestId('catalogo-atajos')).toBeInTheDocument()
     expect(screen.getByTestId('atajo-notificaciones')).toBeInTheDocument()
     expect(screen.getByTestId('atajo-registrar')).toBeInTheDocument()
+    expect(screen.queryByTestId('atajo-cierre')).toBeNull() // el atajo de cierre de app ya no se ofrece
   })
 })
