@@ -9,7 +9,9 @@ import { nombreDe } from '../lib/tituloMovimiento'
 
 // Comparación Ingresos vs Gastos del periodo. Los números salen del servidor (regla única de
 // contabilidad.py): los traslados entre tus cuentas, pagos de tarjeta y ajustes no suman ni restan.
-function Cambio({ pct, mejorSube }) {
+function Cambio({ pct, mejorSube, actual }) {
+  // Mes recién empezado (valor en 0): «-100 %» es ruido, no una mala noticia.
+  if (actual === 0 && pct !== null && pct !== undefined) return null
   if (pct === null || pct === undefined) return <span className="text-[11px] text-ink-soft">sin base para comparar</span>
   const Icono = pct >= 0 ? ArrowUpRight : ArrowDownRight
   const bueno = pct === 0 ? null : pct > 0 === mejorSube
@@ -69,17 +71,17 @@ export default function IngresosGastos({ params, fmt, className = '', seleccion 
             <div>
               <dt className="text-xs text-ink-soft">Ingresos</dt>
               <dd className="text-lg font-bold text-accent t-cifra">{fmt(d.ingresos)}</dd>
-              <Cambio pct={d.variacion.ingresos_pct} mejorSube />
+              <Cambio pct={d.variacion.ingresos_pct} actual={d.ingresos} mejorSube />
             </div>
             <div>
               <dt className="text-xs text-ink-soft">Gastos</dt>
               <dd className="text-lg font-bold text-ink t-cifra">{fmt(d.gastos)}</dd>
-              <Cambio pct={d.variacion.gastos_pct} mejorSube={false} />
+              <Cambio pct={d.variacion.gastos_pct} actual={d.gastos} mejorSube={false} />
             </div>
             <div>
               <dt className="text-xs text-ink-soft">Balance</dt>
               <dd className={`text-lg font-bold t-cifra ${colorBalance}`}>{signo}{fmt(Math.abs(d.balance))}</dd>
-              <Cambio pct={d.variacion.balance_pct} mejorSube />
+              <Cambio pct={d.variacion.balance_pct} actual={d.balance} mejorSube />
             </div>
             <div>
               <dt className="text-xs text-ink-soft">Tasa de ahorro</dt>

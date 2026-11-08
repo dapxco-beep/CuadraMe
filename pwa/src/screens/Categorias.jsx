@@ -176,7 +176,7 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
   return (
     <>
     <div className={`flex flex-wrap items-center gap-x-1 pl-4 pr-2 py-3 ${!c.activa ? 'opacity-70' : ''}`}>
-      <button onClick={onEditar} className="flex items-center gap-3 flex-1 min-w-[10rem] text-left" aria-label={`Editar ${c.nombre}`}>
+      <button onClick={onEditar} className="flex items-center gap-3 flex-1 min-w-[8.5rem] text-left" aria-label={`Editar ${c.nombre}`}>
         <span
           className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-xl bg-accent-soft"
           style={c.color ? { backgroundColor: `${c.color}26`, boxShadow: `inset 0 0 0 1.5px ${c.color}` } : undefined}
@@ -199,7 +199,7 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
         <button
           onClick={() => setAbierta((v) => !v)}
           aria-expanded={abierta}
-          className="shrink-0 h-11 min-w-[44px] px-1 flex items-center justify-center gap-0.5 text-xs text-ink-soft"
+          className="shrink-0 h-11 min-w-[36px] px-1 flex items-center justify-center gap-0.5 text-xs text-ink-soft"
           aria-label={`Subcategorías de ${c.nombre}`}
         >
           {nSubs > 0 && <span>{nSubs}</span>}
@@ -211,7 +211,7 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
           <button
             onClick={onSubir || undefined}
             disabled={!onSubir}
-            className="w-11 h-11 flex items-center justify-center text-ink-soft disabled:opacity-25"
+            className="w-9 h-11 flex items-center justify-center text-ink-soft disabled:opacity-25"
             aria-label={`Subir ${c.nombre}`}
           >
             <ArrowUp size={16} />
@@ -219,7 +219,7 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
           <button
             onClick={onBajar || undefined}
             disabled={!onBajar}
-            className="w-11 h-11 flex items-center justify-center text-ink-soft disabled:opacity-25"
+            className="w-9 h-11 flex items-center justify-center text-ink-soft disabled:opacity-25"
             aria-label={`Bajar ${c.nombre}`}
           >
             <ArrowDown size={16} />
@@ -229,7 +229,7 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
       {c.activa ? (
         <button
           onClick={onToggle}
-          className="w-11 h-11 shrink-0 flex items-center justify-center text-ink-soft"
+          className="w-10 h-11 shrink-0 flex items-center justify-center text-ink-soft"
           aria-label={`Ocultar ${c.nombre}`}
         >
           <Eye size={16} />

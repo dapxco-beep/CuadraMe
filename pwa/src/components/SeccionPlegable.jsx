@@ -63,7 +63,7 @@ export default function SeccionPlegable({ id, titulo, icono, resumen, aviso = fa
             </span>
           )}
           <span className="flex-1 min-w-0 t-h2 flex items-center gap-2">
-            <span className="truncate">{titulo}</span>
+            <span className="min-w-0 text-left">{titulo}</span>
             {aviso && <span className="w-2 h-2 rounded-full bg-accent shrink-0" aria-label="Hay algo por resolver" role="img" />}
           </span>
           {resumen && <span className="t-apoyo t-cifra shrink-0 max-w-[45%] truncate">{resumen}</span>}

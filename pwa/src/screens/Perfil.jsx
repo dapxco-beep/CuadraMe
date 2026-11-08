@@ -181,7 +181,7 @@ export default function Perfil() {
         </div>
       </section>
 
-      <SeccionPlegable id="perfil-cuenta" titulo="Mi cuenta" icono={User} abiertaPorDefecto className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
+      <SeccionPlegable id="perfil-cuenta" titulo="Mi cuenta" icono={User} className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
         <div className="-mx-4 -mt-1">
       {/* Cómo te llamamos: solo el nombre; el correo de la cuenta no se edita aquí */}
       <section className="mx-6 mt-4" aria-label="Cómo te llamamos">
