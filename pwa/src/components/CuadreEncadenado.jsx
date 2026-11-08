@@ -189,9 +189,9 @@ export default function CuadreEncadenado({ cuentaId, moneda = 'COP', datos = nul
   const hecho = () => { cargar(); onCambio?.() }
 
   return (
-    <section id={id} className={`rounded-2xl bg-paper p-4 ${className}`} aria-label="Cuadre mes a mes" data-testid="cuadre-encadenado">
+    <section id={id} className={`rounded-2xl bg-paper p-4 ${className}`} aria-label="Mes a mes contra tu banco" data-testid="cuadre-encadenado">
       <h3 className="text-sm font-semibold flex items-center gap-1.5">
-        <Scale size={16} aria-hidden="true" /> Cuadre mes a mes{d.cuenta ? ` · ${d.cuenta}` : ''}
+        <Scale size={16} aria-hidden="true" /> Mes a mes contra tu banco{d.cuenta ? ` · ${d.cuenta}` : ''}
       </h3>
       {d.resumen && <p className="text-sm mt-1.5 font-medium" data-testid="cuadre-resumen">{d.resumen}</p>}
       {d.cuadra && <p className="text-xs mt-1.5 flex items-center gap-1.5"><CheckCircle2 size={16} className="text-cuadra shrink-0" aria-hidden="true" /> Todos los meses con extracto cuadran con tu banco.</p>}
@@ -267,7 +267,11 @@ export default function CuadreEncadenado({ cuentaId, moneda = 'COP', datos = nul
 
       {d.impacto && <p className="mt-3 text-xs font-medium" data-testid="cuadre-impacto">{d.impacto}</p>}
       {d.saldo_corregido?.texto && <p className="mt-1 text-xs text-ink-soft" data-testid="cuadre-saldo-corregido">{d.saldo_corregido.texto}</p>}
-      <p className="mt-2 text-[11px] text-ink-soft">{ORIENTACION}</p>
+      {/* La aclaración queda plegada: no hace falta para actuar. */}
+      <details className="mt-2 text-[11px] text-ink-soft">
+        <summary className="min-h-11 flex items-center cursor-pointer font-medium text-ink">Cómo leerlo</summary>
+        <p>{ORIENTACION}</p>
+      </details>
     </section>
   )
 }

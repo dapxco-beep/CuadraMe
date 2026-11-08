@@ -122,7 +122,7 @@ export default function CatalogoAtajos({ claveAtajo }) {
     <section className="mx-6 mt-6" aria-label="Todos los atajos de CuadraMe" data-testid="catalogo-atajos">
       <h2 className="text-lg font-bold">Atajos de CuadraMe para tu iPhone</h2>
       <p className="text-sm text-ink-soft mt-1 leading-relaxed">
-        Se instalan una sola vez y cada uno sirve para todos tus bancos. Lo que registran queda «por confirmar» hasta que lo revises.
+        Se instalan una vez y sirven para todos tus bancos. Lo que registran queda «por confirmar».
       </p>
 
       <div className="mt-3 rounded-2xl bg-paper-raised border border-line p-4" data-testid="cual-instalo">
@@ -132,12 +132,12 @@ export default function CatalogoAtajos({ claveAtajo }) {
           <li><b className="text-ink">Tu banco te avisa</b> cuando pagas o recibes → CuadraMe Notificaciones</li>
           <li><b className="text-ink">Tu banco no avisa</b> al enviar plata (Nu) → CuadraMe Registrar</li>
         </ul>
-        <p className="text-xs text-ink-soft mt-2">Puedes instalar los que quieras: no se estorban entre sí.</p>
+        <p className="text-xs text-ink-soft mt-2">Puedes instalar varios: no se estorban.</p>
       </div>
 
       <div className="mt-3 rounded-2xl bg-paper-raised border border-line p-4" data-testid="clave-catalogo">
         <h3 className="text-sm font-bold">Tu clave de conexión</h3>
-        <p className="text-xs text-ink-soft mt-1 mb-2">Cada atajo te la pide al instalarlo. Cópiala aquí y pégala.</p>
+        <p className="text-xs text-ink-soft mt-1 mb-2">Cada atajo te la pide al instalar. Cópiala aquí.</p>
         <ClaveAtajo {...claveAtajo} />
       </div>
 

@@ -227,8 +227,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
       {!analisis && !resultado && (
         <div className="px-5 mt-4">
           <p className="text-sm text-ink-soft mb-4">
-            Sube el Excel o CSV que te da tu banco, o uno tuyo. Detectamos las columnas, tú las revisas y
-            confirmas antes de guardar. No se guarda nada hasta que presiones Importar.
+            Sube el Excel o CSV de tu banco. Revisas todo antes de guardar.
           </p>
 
           {cuentas.length > 1 && (
@@ -259,11 +258,15 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
             ariaLabel="Archivo a importar"
           />
 
-          <ul className="text-xs text-ink-soft mt-4 space-y-1 list-disc pl-4">
-            <li>Entendemos montos como 1.234.567,89 o 1,234,567.89 y fechas dd/mm/aaaa.</li>
-            <li>Funciona con una columna de monto con signo o con columnas separadas de débito y crédito.</li>
-            <li>Si algún movimiento ya existe, te lo marcamos para que no se duplique.</li>
-          </ul>
+          {/* Los detalles de formato quedan plegados con <details> (patrón del proyecto). */}
+          <details className="text-xs text-ink-soft mt-3">
+            <summary className="min-h-11 flex items-center cursor-pointer font-medium text-ink">Qué archivos entendemos</summary>
+            <ul className="space-y-1 list-disc pl-4">
+              <li>Montos como 1.234.567,89 o 1,234,567.89 y fechas dd/mm/aaaa.</li>
+              <li>Una columna de monto con signo, o débito y crédito separados.</li>
+              <li>Si un movimiento ya existe, lo marcamos para no repetirlo.</li>
+            </ul>
+          </details>
 
           {error && <p className="text-sm text-danger mt-4" role="alert">{error}</p>}
         </div>
@@ -278,7 +281,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
 
           <section className="rounded-2xl bg-paper-raised border border-line p-4 mb-4">
             <h2 className="text-sm font-semibold mb-1">1. Revisa las columnas</h2>
-            <p className="text-xs text-ink-soft mb-3">Cambia lo que no esté bien. Si el banco separa débito y crédito, deja "Monto" sin usar.</p>
+            <p className="text-xs text-ink-soft mb-3">Cambia lo que no esté bien. Si hay débito y crédito, deja «Monto» sin usar.</p>
             <div className="grid grid-cols-1 gap-2">
               {CAMPOS_MAPEO.map((campo) => (
                 <label key={campo.id} className="flex items-center gap-3">
@@ -334,7 +337,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
                 onChange={(e) => cambiarOpcion('invertir_signo', e.target.checked)}
                 className="w-4 h-4 mt-0.5 accent-accent"
               />
-              <span>Las compras vienen en positivo (típico de extractos de tarjeta de crédito): invertir el signo</span>
+              <span>Las compras vienen en positivo (tarjeta de crédito): invertir el signo</span>
             </label>
 
             {analisis.muestra.length > 0 && (
@@ -471,7 +474,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
               {filas.length > 0 && (
                 <> ({efectoSaldo(filas) >= 0 ? '+' : '-'}{formatCOP(Math.abs(efectoSaldo(filas)))})</>
               )}
-              . Desmárcalo si el saldo de la cuenta ya incluye estos movimientos.
+              . Desmárcalo si el saldo ya los incluye.
             </span>
           </label>
 

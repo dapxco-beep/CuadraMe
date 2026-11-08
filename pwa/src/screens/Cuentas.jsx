@@ -119,13 +119,12 @@ export default function Cuentas() {
       </header>
 
       <p className="mx-6 mt-2 text-xs text-ink-soft">
-        Toca una cuenta para ver el detalle o arreglar su saldo si no coincide con tu banco.
+        Toca una cuenta para ver su detalle.
       </p>
 
       {resumen && cuentas.length > 0 && (
         <section className="mx-6 mt-3 hero-marca card-marca p-4" aria-label="Saldo actual total">
           <p className="t-kicker">Saldo actual total</p>
-          <p className="text-xs mt-0.5 opacity-85">La plata que tienes hoy en todas tus cuentas.</p>
           <p className="text-3xl t-display mt-1.5">{fmt(resumen.total_cop)}</p>
           <p className="text-xs mt-1 opacity-85">{resumen.moneda_base && resumen.moneda_base !== 'COP' ? `En ${resumen.moneda_base}` : 'En pesos'} · {textoActualizado(resumen.ultimo_movimiento)}</p>
           <DesplegableMas etiqueta="De dónde sale este número" className="mt-2">
@@ -144,7 +143,7 @@ export default function Cuentas() {
           <p className="text-sm text-danger mb-3">{error}</p>
         </div>
       ) : cuentas.length === 0 ? (
-        <EstadoVacio icono={Wallet} titulo="Aún no tienes cuentas" texto="Una cuenta es un lugar donde tienes o debes plata: tu banco, Nequi, el efectivo o una tarjeta. Agrega la primera con el botón +." className="mx-6 mt-6" />
+        <EstadoVacio icono={Wallet} titulo="Aún no tienes cuentas" texto="Tu banco, Nequi, el efectivo o una tarjeta. Agrega la primera con el botón +." className="mx-6 mt-6" />
       ) : (
         <div className="mx-6 mt-4 space-y-3">
           {cuentas.map((c, i) => (
@@ -175,11 +174,12 @@ export default function Cuentas() {
                   {etiquetaCuenta(c).significado} <Ayudita termino={etiquetaCuenta(c).termino} />
                 </p>
               )}
-              <Link to={`/movimientos?cuenta=${c.id}`} className="inline-flex items-center gap-1 text-xs text-accent font-semibold min-h-11 px-1">
-                Ver sus movimientos
-              </Link>
-              {/* Lo secundario queda plegado: si coincide con el banco y, en ahorros, cuánto rinde */}
+              {/* Un solo enlace por tarjeta: «Ver sus movimientos» vive dentro del desplegable
+                  (antes eran dos enlaces seguidos). Lo demás: si coincide con el banco y cuánto rinde. */}
               <DesplegableMas etiqueta="Más de esta cuenta" className="px-1">
+                <Link to={`/movimientos?cuenta=${c.id}`} className="flex items-center gap-1 text-xs text-accent font-semibold min-h-11">
+                  Ver sus movimientos
+                </Link>
                 {/* Estado de cuadre con el banco, sin ir a buscarlo a «Traer movimientos» */}
                 <LineaCuadre item={cuadrePorCuenta[c.id]} className="mt-2" />
                 {/* Cuentas de ahorros: cuánto rinde (estimado) y cajitas */}
