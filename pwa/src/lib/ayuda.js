@@ -219,7 +219,7 @@ export const PREGUNTAS = [
     tema: 'compartir',
     pregunta: '¿Cómo le cobro a quien me debe?',
     respuesta: [
-      'Lo que te deben queda en **Me deben / Debo**. Ahí tocas «Cobrar por WhatsApp» y se abre el mensaje listo para enviar.',
+      'Lo que te deben queda en **Dividir gastos**. Ahí tocas «Cobrar por WhatsApp» y se abre el mensaje listo para enviar.',
       'CuadraMe no mueve plata: solo lleva la cuenta. El pago lo hacen entre ustedes por su banco.',
     ],
     palabras: 'cobrar deben deuda amigo whatsapp recordar prestar',
