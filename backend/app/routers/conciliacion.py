@@ -1267,9 +1267,11 @@ def _completar_con_extracto(db: Session, mov: Movimiento, item: dict, historial_
       un texto críptico); solo se concilia.
     - Fecha: si la que había era aproximada (a mano, sin hora) se corrige con la del banco. Una hora
       real (atajo/correo) se respeta.
-    - Monto: si difiere solo por redondeo (≤ $1) se corrige al exacto del banco y el saldo de la
-      cuenta se ajusta por esa diferencia. Una diferencia mayor (propina, conversión de moneda) NO
-      se toca: se informa en la revisión.
+    - Monto: EL BANCO MANDA. Si difiere (redondeo, propina, conversión de moneda, o el monto estimado
+      del aviso del atajo/correo), el movimiento pasa al monto exacto del banco y el saldo de la cuenta se
+      ajusta por esa diferencia; lo que se había anotado queda en las notas y en la revisión
+      (`monto_registrado`). Antes una diferencia mayor a $1 se dejaba tal cual y la cuenta no cuadraba
+      nunca, sin que la persona supiera dónde estaba el desajuste (ej. Uber anotado $11.280, banco $10.791).
     - Queda conciliado (no se vuelve a emparejar) y anota 'extracto' como canal que lo confirmó."""
     propia = (mov.descripcion or "").strip()
     monto_antes = mov.monto
@@ -1301,8 +1303,11 @@ def _completar_con_extracto(db: Session, mov: Movimiento, item: dict, historial_
             mov.fecha = fecha_banco.replace(hour=mov.fecha.hour, minute=mov.fecha.minute, second=mov.fecha.second)
     dif = float(item.get("monto") or 0) - float(mov.monto or 0)
     moneda = ((cuenta.moneda if cuenta is not None else None) or "COP").upper()
-    if dif and abs(dif) <= (dup.TOLERANCIA_REDONDEO_COP if moneda == "COP" else dup.TOLERANCIA_REDONDEO_OTRA):
+    if dif:
         antes = delta_saldo(mov)
+        if abs(dif) > (dup.TOLERANCIA_REDONDEO_COP if moneda == "COP" else dup.TOLERANCIA_REDONDEO_OTRA):
+            nota = f"Lo anotado era {cuadre_extracto.pesos(monto_antes)}; el banco cobró {cuadre_extracto.pesos(item['monto'])}"
+            mov.notas = ((mov.notas + " · ") if mov.notas else "") + nota
         mov.monto = float(item["monto"])
         if cuenta is not None:
             cuenta.saldo += delta_saldo(mov) - antes

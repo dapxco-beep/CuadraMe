@@ -72,3 +72,53 @@ def test_sin_huella_previa_el_comportamiento_no_cambia(db):
     assert len(ledger) == 1  # no se inventan filas
     r = auditar_movimientos([{**LINEA, "cuenta": cu.id}], ledger, cruzar_rapidos=True)
     assert r["review"][0]["estado"] != "exacto"
+
+
+# ── el banco manda: el monto de una línea conciliada pasa a ser el del extracto ─────────────────────────
+class _SinClasificador:
+    def clasificar(self, _descripcion):
+        return None
+
+
+def _wallet(db, monto_anotado, saldo_inicial=1_000_000.0):
+    uid = f"bm-{uuid.uuid4().hex[:8]}"
+    cu = Cuenta(usuario_id=uid, nombre="Nu", tipo="ahorro", saldo=saldo_inicial - monto_anotado, moneda="COP")
+    db.add(cu)
+    db.flush()
+    mov = Movimiento(usuario_id=uid, cuenta_id=cu.id, fecha=datetime(2026, 10, 18, 9, 30), descripcion="Compra en UBER RIDES",
+                     categoria="Transporte", tipo="expense", monto=monto_anotado, fuente="wallet", notas="")
+    db.add(mov)
+    db.flush()
+    return uid, cu, mov
+
+
+def test_uber_anotado_11280_y_cobrado_10791_queda_en_lo_que_cobro_el_banco(db):
+    from app.routers.conciliacion import _completar_con_extracto
+
+    uid, cu, mov = _wallet(db, 11_280.0)
+    item = {"fecha": "2026-10-18", "descripcion": "UBER RIDES", "monto": 10_791.0, "tipo": "expense"}
+    _completar_con_extracto(db, mov, item, "h1", _SinClasificador(), uid, cuenta=cu, huella="ext:x#1")
+    assert mov.monto == 10_791.0
+    assert cu.saldo == pytest.approx(1_000_000.0 - 10_791.0)  # el saldo sigue al banco
+    assert "$11.280" in mov.notas and "$10.791" in mov.notas  # lo anotado no se pierde
+    assert item["monto_registrado"] == 11_280.0 and mov.conciliado_en is not None
+
+
+def test_una_diferencia_de_redondeo_se_corrige_sin_ruido_en_las_notas(db):
+    from app.routers.conciliacion import _completar_con_extracto
+
+    uid, cu, mov = _wallet(db, 20_000.4)
+    item = {"fecha": "2026-10-18", "descripcion": "TIENDA", "monto": 20_000.0, "tipo": "expense"}
+    _completar_con_extracto(db, mov, item, "h1", _SinClasificador(), uid, cuenta=cu, huella="ext:y#1")
+    assert mov.monto == 20_000.0 and cu.saldo == pytest.approx(1_000_000.0 - 20_000.0)
+    assert "banco cobró" not in (mov.notas or "")
+
+
+def test_si_el_monto_ya_coincide_no_cambia_nada(db):
+    from app.routers.conciliacion import _completar_con_extracto
+
+    uid, cu, mov = _wallet(db, 15_000.0)
+    saldo = cu.saldo
+    item = {"fecha": "2026-10-18", "descripcion": "TIENDA", "monto": 15_000.0, "tipo": "expense"}
+    _completar_con_extracto(db, mov, item, "h1", _SinClasificador(), uid, cuenta=cu, huella="ext:z#1")
+    assert mov.monto == 15_000.0 and cu.saldo == saldo and not mov.notas
