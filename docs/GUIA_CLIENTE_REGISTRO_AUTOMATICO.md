@@ -21,20 +21,27 @@ Así recibes avisos de presupuesto, recordatorio de pago de tarjeta y tu cierre 
 
 ## 3. Registro al instante (opcional, 3 minutos, solo iPhone)
 
-Cada pago con Apple Pay se registra solo, y al cerrar Nequi la app te pregunta si hiciste algún movimiento.
+Cada pago con Apple Pay, cada aviso de tu banco y cada comprobante se registran solos. En **Perfil → Registro automático** están los atajos, con su botón **Instalar** y el paso a paso. Instala solo los que te sirvan; cada uno se instala una sola vez y sirve para todos tus bancos.
 
-1. En **Perfil → Conectar dispositivo** toca **Copiar mi clave**.
-2. Toca **Agregar atajo**. Cuando Atajos te pida la clave, pégala y pulsa **Agregar atajo**.
-3. Crea dos automatizaciones, la app te muestra dónde tocar:
+- **CuadraMe Apple Pay:** si pagas con Apple Pay.
+- **CuadraMe Notificaciones:** si tu banco te avisa cuando pagas o recibes (Nequi, Nu…). Necesita iOS 27.
+- **CuadraMe Registrar:** si tu banco **no** avisa al enviar plata (Nu…). Con un gesto que tú eliges (tocar atrás, botón de acción o Siri) lee el comprobante que tienes en pantalla. La foto no sale de tu iPhone: solo viaja el texto.
+
+1. En **Registro automático** copia **Tu clave** y toca **Instalar** en el atajo que quieras.
+2. Toca **Agregar atajo**. Cuando Atajos te pida la clave, pégala.
+3. Crea la automatización o elige tu gesto: la app te muestra dónde tocar.
    - **Apple Pay:** Atajos → Automatización → Transacción → tus tarjetas → Ejecutar inmediatamente.
-   - **Cierre de Nequi:** Atajos → Automatización → App → Nequi → Se cierra → Ejecutar inmediatamente.
-4. Toca **Enviar un pago de prueba** para comprobar que funciona.
+   - **Notificaciones:** Atajos → Automatización → Cuando recibo una notificación → la app de tu banco → Ejecutar inmediatamente. Una por banco.
+   - **Registrar:** Ajustes → Accesibilidad → Tocar → Tocar atrás → Doble toque → CuadraMe Registrar.
+4. Haz un pago pequeño para comprobar que funciona.
+
+Todo queda **por confirmar** hasta que lo revises. El atajo casi nunca pregunta: reconoce el banco, el valor y a quién le enviaste. Si no está seguro de algo, te lo pregunta una vez y aprende; lo aprendido lo ves y lo borras en **Registro automático**.
 
 ## Qué verás cada día
 
 - **Un aviso** como "Registré $45.000 en Juan Valdez. ¿Es tuyo?" apenas pagas.
 - **Una hoja al abrir la app:** "Detectamos 2 movimientos: ¿son tuyos?". Confirma, edita o descarta.
-- **Una pregunta al cerrar Nequi:** "¿Hiciste algún movimiento?". Si dices Sí, escribes el monto y listo.
+- **Casi ninguna pregunta:** solo si el aviso no trae el monto (por ejemplo, cuando envías por Nequi) o no se sabe de qué cuenta es. Se pregunta una vez y se aprende.
 
 ## A fin de mes
 

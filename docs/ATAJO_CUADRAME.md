@@ -4,6 +4,40 @@
 > avanzado. El servidor conserva `/movimientos/cierre-pregunta` y `/movimientos/cuentas-rapido` por si alguien ya lo tenía instalado.
 > Hoy los atajos que se ofrecen son: CuadraMe Apple Pay, CuadraMe Notificaciones y CuadraMe Registrar (ver `pwa/src/components/CatalogoAtajos.jsx`).
 
+## Atajos vigentes (noviembre de 2026)
+
+| Atajo | Lo llama | Qué manda | Qué hace el servidor |
+|---|---|---|---|
+| **CuadraMe Apple Pay** | Automatización **Transacción** | Comercio, importe y tarjeta (`fuente=wallet`) a `/movimientos/rapido` | Registra el pago; la tarjeta decide la cuenta por su alias |
+| **CuadraMe Notificaciones** | Una automatización **«Cuando recibo una notificación»** (iOS 27) por cada app de banco | El texto del aviso, `paquete=auto` a `/movimientos/rapido-notificacion` | Lee por verbos (no por banco), deduce la cuenta y registra; pregunta solo lo que no puede saber |
+| **CuadraMe Registrar** | Un gesto que elige cada persona (Tocar atrás, Botón de acción, Siri) | El texto leído de un pantallazo (OCR en el iPhone; la imagen no sale del teléfono), `paquete=auto` | Igual que Notificaciones, con lector de comprobantes de Nu, Nequi y Bancolombia |
+
+Cómo responde `/movimientos/rapido-notificacion` (campo `motivo`): sin motivo = registrado «por confirmar»; `pedir_monto` (salió plata y el aviso no trae cifra);
+`pedir_tipo` (hay monto pero no se sabe si entró o salió); `pedir_cuenta` (no se pudo deducir de qué cuenta es); `no_parece_un_movimiento`.
+Cada respuesta de la persona se aprende como regla personal (`reglas_notificacion`): plantilla anónima, sin texto, nombres ni montos; se ve y se borra en Conexiones.
+
+**Cuenta de un pantallazo**, en orden: lo que la persona enseñó → últimos 4 dígitos («*8223») contra el alias de sus cuentas → huellas por banco
+(`HUELLAS_BANCO` en `backend/app/reglas_notificacion.py`) → nombre del banco en el texto, SIN contar destinos («Entidad», «Producto destino»,
+«a su cuenta de», «Institución de origen»). **Para enseñarle un banco nuevo** hace falta una captura real de su comprobante: se agrega su huella y su prueba
+(con datos inventados: el repositorio es público).
+
+### Cómo se (re)generan y se publican los atajos
+
+Los archivos salen de `backend/tools/generar_atajo_notificaciones.py` (`--modo notificacion|pantalla|captura|wallet`). iOS exige que estén firmados, y eso se hace
+en un Mac (basta el Apple ID gratis):
+
+```
+python3 backend/tools/generar_atajo_notificaciones.py --modo pantalla --salida sinfirmar.shortcut
+shortcuts sign -m anyone -i sinfirmar.shortcut -o "CuadraMe Registrar.shortcut"
+```
+
+1. El nombre del archivo firmado es el nombre con el que se comparte: debe ser EXACTAMENTE «CuadraMe Apple Pay», «CuadraMe Notificaciones» o «CuadraMe Registrar» (sin «firmado»).
+2. Se importa en la app Atajos, y se usa Compartir › Copiar enlace de iCloud.
+3. Se comprueba el nombre con `https://www.icloud.com/shortcuts/api/records/<id>` (campo `name`).
+4. El enlace se pega en `pwa/src/lib/atajosEnlaces.js` y se despliega la web. Quien ya instaló un atajo conserva su versión: hay que avisarle si cambia.
+
+La clave de cada persona NO va dentro del archivo: iOS la pide al instalar. «Registrar» ya se usó en un iPhone real y llega al servidor; «Notificaciones» y «Apple Pay» siguen pendientes de prueba en un iPhone real.
+
 Dos atajos pequeños, en lugar de uno grande. Los clientes los instalan por enlace de iCloud (no los arman). La versión paso a paso con maquetas está en `docs/crear-atajos-cuadrame.html`.
 
 | Atajo | Lo llama | Qué recibe | Qué hace |

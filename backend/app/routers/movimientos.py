@@ -1,6 +1,7 @@
 ﻿import re
 import dataclasses
 import hashlib
+import logging
 import uuid
 from datetime import datetime, timedelta
 
@@ -73,6 +74,8 @@ from app.schemas import (
     TransferenciaCreate,
 )
 from app.voz_parser import interpretar_frase
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/movimientos", tags=["movimientos"])
 
@@ -1067,6 +1070,7 @@ def crear_movimiento_rapido(
     Tasker y reglas de correo. El movimiento se crea al instante pero queda
     'por confirmar': la app le pregunta al usuario si es suyo. Un reintento del
     mismo pago (±2 min) responde 200 con el movimiento que ya existía."""
+    logger.info("atajo rapido fuente=%s con_comercio=%s con_tarjeta=%s", data.fuente, bool(data.comercio), bool(data.tarjeta))
     es_cierre = data.fuente == "cierre_app" and not data.comercio and not data.tarjeta
     es_wallet = not es_cierre and (bool(data.comercio or data.tarjeta) or data.fuente in ("wallet", "apple_pay", "google_pay"))
     descripcion = data.comercio or data.descripcion  # en cierre_app puede ser None: la nota es opcional
@@ -1132,6 +1136,22 @@ def crear_movimiento_desde_notificacion(
     data: NotificacionAndroid,
     db: Session = Depends(get_db),
     usuario: UsuarioActual = Depends(get_current_user_by_api_key),
+):
+    """Ver `_procesar_notificacion`. Deja UNA línea de diagnóstico para poder ver por qué un atajo «no funcionó»:
+    solo qué pasó (motivo, si registró, cuánto texto llegó). Nunca el texto, nombres, montos ni la clave."""
+    resultado = _procesar_notificacion(data, db, usuario)
+    logger.info(
+        "atajo paquete=%s texto_len=%d respuesta_de_la_persona=%s motivo=%s registrado=%s duplicado=%s aprendido=%s",
+        (data.paquete or "")[:30], len(data.texto or ""), data.monto is not None, resultado.get("motivo", "-"),
+        resultado.get("registrado"), resultado.get("duplicado", False), resultado.get("aprendido", False),
+    )
+    return resultado
+
+
+def _procesar_notificacion(
+    data: NotificacionAndroid,
+    db: Session,
+    usuario: UsuarioActual,
 ):
     """Android: la app manda el texto crudo de una notificación (Google Wallet, Nequi, Nu, bancos...) y el servidor
     lo convierte en un movimiento «por confirmar», igual que los Atajos de iOS. Autenticado por API key.

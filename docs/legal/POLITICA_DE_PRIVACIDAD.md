@@ -19,8 +19,12 @@ Contacto para consultas, reclamos y ejercicio de derechos: dapxco@gmail.com. Sit
 | Clave del PDF de tus extractos | La que decides guardar. Se almacena cifrada y no va a copias de seguridad ni correos | No |
 | Tokens de acceso a Gmail | Google, al conectar. Se almacenan cifrados | No |
 | Datos de terceros: nombres de contactos en gastos compartidos | Los que tú registras | No |
+| Texto de avisos y comprobantes que envía un atajo de iPhone o la app de Android (comercio, monto, fecha, banco o producto, nombre de quien envía o recibe). **No se guarda completo**: con él se crea el movimiento | Tu celular, solo cuando tú instalas y usas el atajo | No |
+| Plantillas anónimas de avisos que «enseñas» al responder una pregunta del atajo (palabras fijas; sin nombres ni montos) | Se generan al responder; las ves y borras en Conexiones | No |
 | Datos técnicos: dirección IP, dispositivo, uso básico, errores | Automático | Sí |
 | Autorizaciones otorgadas y su historial (finalidad, versión, fecha) | Pantalla de autorización | Sí |
+
+**Registro automático desde tu celular (nov. 2026).** Con un atajo de iPhone (CuadraMe Apple Pay, Notificaciones o Registrar) o la app de Android, el celular envía a CuadraMe, con tu clave personal, el texto de un pago, aviso o comprobante. Con el gesto de pantallazo, el iPhone lee el texto de la imagen en el propio teléfono: **la imagen no sale del teléfono**. CuadraMe crea con ese texto un movimiento «por confirmar» (monto, descripción, fecha, cuenta) y guarda el número del comprobante para no duplicarlo; no conserva el texto completo. Si respondes una pregunta del atajo se guarda una **plantilla anónima** (solo palabras fijas, sin nombres ni montos) que vale solo para ti, evita volver a preguntar y puedes ver y borrar en Conexiones; con la finalidad opcional «estadísticas anónimas», esa plantilla se suma, sin usuario, a un contador interno. [El abogado debe validar la base legal, la mención de datos de terceros (nombre de quien envía o recibe) y si este cambio exige nueva autorización.]
 
 No tratamos datos sensibles ni de menores de edad de forma intencional. CuadraMe es solo para mayores de 18 años. Si en un movimiento o nota escribes algo sensible (por ejemplo, un gasto médico), es tu decisión y se trata como parte de tu información financiera.
 
@@ -58,7 +62,7 @@ Tratamos tus datos con tu autorización previa, expresa e informada. La app la p
 Varios proveedores (Supabase, Railway, Vercel, Google, OpenRouter, Resend, Sentry) pueden procesar datos en servidores fuera de Colombia. Actuamos con proveedores que ofrecen medidas de seguridad razonables y los tratamos como encargados bajo nuestras instrucciones. [El abogado debe confirmar si aplican contratos de transmisión de datos (Art. 25 Decreto 1377) y si algún país receptor no ofrece nivel adecuado de protección (Art. 26 Ley 1581), y registrar las ubicaciones reales de cada proveedor.]
 
 ## 7. Seguridad
-Conexiones cifradas (HTTPS); tokens de Gmail y clave de PDF cifrados en la base; las contraseñas las gestiona Supabase Auth; el PIN y la biometría se verifican en tu dispositivo y no llegan a nuestros servidores; la clave personal de la API (atajos) se guarda como huella (hash) y solo se muestra completa al crearla; los datos están separados por usuario. Ningún sistema es infalible: ante un incidente que afecte tus datos, te lo informaremos y lo reportaremos a la autoridad cuando corresponda.
+Conexiones cifradas (HTTPS); tokens de Gmail y clave de PDF cifrados en la base; las contraseñas las gestiona Supabase Auth; el PIN y la biometría se verifican en tu dispositivo y no llegan a nuestros servidores; la clave personal de la API (atajos) se verifica con una huella (hash) y, además, se guarda cifrada para que solo tú puedas volver a verla en la app; los datos están separados por usuario. Ningún sistema es infalible: ante un incidente que afecte tus datos, te lo informaremos y lo reportaremos a la autoridad cuando corresponda.
 
 ## 8. Tus derechos
 Como titular puedes: conocer, actualizar y rectificar tus datos; pedir prueba de la autorización; ser informado del uso que se les da; presentar quejas ante la Superintendencia de Industria y Comercio (SIC); revocar la autorización y/o pedir la supresión cuando no haya un deber legal o contractual de conservar; y acceder gratuitamente a tus datos.
