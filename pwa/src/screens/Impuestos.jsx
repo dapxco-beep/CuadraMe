@@ -11,6 +11,7 @@ import TarjetaGmfMes from '../components/TarjetaGmfMes'
 import ImpuestosInformativo from '../components/ImpuestosInformativo'
 import { usePais } from '../lib/pais'
 import EnlacesRelacionados from '../components/EnlacesRelacionados'
+import { EsqueletoLista } from '../components/Esqueletos'
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
@@ -139,7 +140,7 @@ export default function Impuestos() {
       <TarjetaGmfMes />
 
       {error && <p className="px-5 mt-4 text-sm text-danger">{error}</p>}
-      {!datos && !error && <p className="px-5 mt-6 text-sm text-ink-soft">Calculando...</p>}
+      {!datos && !error && <EsqueletoLista filas={4} className="px-5 mt-6" etiqueta="Calculando" />}
 
       {datos && (
         <>

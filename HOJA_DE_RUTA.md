@@ -6,6 +6,15 @@
 
 > **Cambio de hosting (2026-11-05).** El API corre en Render plan gratis, región Oregón (junto a Supabase us-west-2), en `https://api.cuadrame.dapx.shop`; se despliega desde la rama `infra/render` (push + Deploy en Render). Donde este documento diga «Railway», léase «Render». Se duerme a los 15 min: lo evitan la tarea de cron-job.org «mantener despierto» (cada 10 min) y un auto-ping interno (`AUTOPING_URL`); si aun así tarda, la web avisa «Despertando el servidor…». Revisar que esa tarea siga activa (cron-job.org la desactiva sola si falla). Detalle en `docs/MIGRACION_RENDER.md`.
 
+## 🆕 Plan de mejoras de flujos, botones e interfaz (2026-11-08)
+
+Estado tras revisar el código y las 42 pantallas con capturas reales:
+
+- ✅ Hecho y desplegado: filas de Categorías en una línea; sin «−100 %» con el mes vacío; Perfil con «Mi cuenta» plegada; esqueleto en Traer movimientos e Impuestos; Agregar con un solo enlace de compartir; Pagos fijos con «Agregar todos»; textos más cortos en Presupuesto y renta; «Dividir gastos» como título único.
+- ✅ Ya existía (no hubo que hacer): centro único «Traer movimientos» con bloque «Por revisar» (centro.js), Agregar recuerda la última cuenta, frecuentes y categoría sugerida, «Confirmar todos» en la bandeja, avisos de cuenta en negativo y gasto raro.
+- ➖ Revisado y descartado: selector de periodo común en Informes (cada pestaña usa periodos distintos a propósito: Gastos/Mi mes vs actividad en Días); plegar el 4x1000 anual de Impuestos (contiene el selector de cuenta exenta que otra tarjeta señala); homogeneizar encabezados (los 40 se ven iguales; solo difiere 4 px de margen); contraste de la tarjeta Nequi (cumple, ~5,8:1).
+- ⏳ Requiere a Daniel o a usuarios reales: prueba con 5 personas (cronometrar anotar un gasto, traer un extracto, ver a dónde se va la plata); configuración inicial de 2 minutos (depende de lo que muestren esas pruebas); renombrar jerga («Traer extractos», «Pasar plata») solo si las pruebas muestran confusión.
+
 ## 🆕 Operación estándar y corpus de regresión (2026-10-18) — pendiente de tu aprobación
 
 - **Corpus de casos reales** (`backend/tests/casos_reales/`, 86 pruebas con guardianes, ~7 s, datos 100 % sintéticos): una prueba por cada falla que ya ocurrió (NIT/cuenta como monto, ×100 por punto final, montos sin «$», avisos que no son transacciones, comercio vacío, extracto Nu, extracto de tarjeta en ahorros, correo descartado/recuperar, ventana de correos con huecos, migraciones congeladas, 500 sin CORS, importar doble, traslados propios, cambio de cuenta de extracto). Su `README.md` tiene la tabla caso → archivo → qué rompería y el estándar para agregar uno nuevo. Hallazgo al escribirlo: «Compraste en:» vacío tomaba «La cantidad de» como comercio; corregido en `gmail_extract.py`.
