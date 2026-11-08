@@ -245,10 +245,9 @@ describe('Primer uso: el camino de 3 pasos', () => {
   it('la meta es explícita y los pasos son crear cuenta, traer movimientos y ver el resumen', () => {
     expect(META_CAMINO).toBe('Ver a dónde se va tu plata en 5 minutos')
     expect(CAMINO.map((p) => p.titulo)).toEqual(['Crea tu cuenta', 'Trae tus movimientos', 'Mira tu resumen'])
-    // el atajo no es obligatorio: el paso 2 habla de correo, extracto y Excel
-    expect(CAMINO[1].apoyo).toMatch(/correo/)
+    // el atajo no es obligatorio: el paso 2 ofrece extracto, Gmail o anotar a mano
     expect(CAMINO[1].apoyo).toMatch(/extracto/)
-    expect(CAMINO[1].apoyo).toMatch(/Excel/)
+    expect(CAMINO[1].apoyo).toMatch(/Gmail/)
     expect(JSON.stringify(CAMINO)).not.toMatch(/atajo/i)
   })
 
@@ -317,6 +316,16 @@ describe('Inicio simplificado', () => {
     expect(within(camino).getByTestId('progreso-camino')).toHaveTextContent('1 de 3 pasos')
     expect(within(camino).getByRole('link', { name: /^Traer extractos/ })).toHaveAttribute('href', '/sincronizacion')
     expect(camino).not.toHaveTextContent(/atajo/i)
+  })
+
+  it('paso 2: ofrece extracto, Gmail y anotar uno a mano, cada uno directo a su acción y con texto corto', async () => {
+    mocksInicio({ cuentas: 1, movs: [] })
+    montarInicio()
+    const camino = await screen.findByTestId('camino-primer-uso')
+    expect(within(camino).getByRole('link', { name: 'Conectar Gmail' })).toHaveAttribute('href', '/sincronizacion')
+    expect(within(camino).getByRole('link', { name: 'Anotar uno' })).toHaveAttribute('href', '/agregar')
+    // ningún paso pasa de ~10 palabras de apoyo
+    for (const p of CAMINO) expect(p.apoyo.split(/s+/).length).toBeLessThanOrEqual(10)
   })
 
   it('bloque 1: saldo disponible, gastos de la semana y 3 últimos movimientos; bloque 3: un consejo', async () => {

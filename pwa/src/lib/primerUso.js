@@ -87,14 +87,20 @@ export const CAMINO = [
   {
     id: 'movimientos',
     titulo: 'Trae tus movimientos',
-    apoyo: 'Con el extracto de tu banco (PDF o Excel) o con los avisos de tu correo. No necesitas instalar nada más.',
+    apoyo: 'Elige una: extracto, Gmail o anotar uno.',
     ruta: '/sincronizacion',
     accion: 'Traer extractos',
+    // Alternativas directas (sin pantallas intermedias): cada una abre la acción, no un menú.
+    // Gmail y extracto viven en la misma pantalla; anotar a mano abre el formulario de Agregar.
+    otras: [
+      { texto: 'Conectar Gmail', ruta: '/sincronizacion' },
+      { texto: 'Anotar uno', ruta: '/agregar' },
+    ],
   },
   {
     id: 'resumen',
     titulo: 'Mira tu resumen',
-    apoyo: 'Verás en qué se va tu plata, por tipo de gasto.',
+    apoyo: 'Mira en qué se va tu plata.',
     ruta: '/informe',
     accion: 'Ver mi resumen',
   },

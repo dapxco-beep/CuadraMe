@@ -129,10 +129,15 @@ function CaminoDeTres({ pasos, onResumen }) {
                   {esSiguiente && (
                     <>
                       <p className="t-apoyo mt-0.5">{paso.apoyo}</p>
-                      <div className="mt-2">
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
                         <Boton tam="sm" to={paso.ruta} onClick={paso.id === 'resumen' ? onResumen : undefined}>
                           {paso.accion}
                         </Boton>
+                        {(paso.otras || []).map((o) => (
+                          <Boton key={o.texto} tam="sm" variante="secundario" to={o.ruta}>
+                            {o.texto}
+                          </Boton>
+                        ))}
                       </div>
                     </>
                   )}
