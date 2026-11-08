@@ -393,3 +393,18 @@ def test_la_institucion_de_origen_es_la_de_quien_te_envio_no_tu_cuenta():
     h = _cuentas_nu_nequi("rn-io")
     r = _pantallazo(h, "Recibiste de Ana Perez $5.000,00 Aceptada Llave @ABC Institución de origen Nu")
     assert r["motivo"] == "pedir_cuenta"
+
+
+def test_cada_uso_deja_una_linea_de_diagnostico_sin_datos_personales(caplog):
+    import logging
+
+    h = _cuentas_nu_nequi("rn-log")
+    texto = "Transferencia exitosa $ 20.000 Para CARLOS RUIZ Compartir Descargar"  # sin banco: pregunta la cuenta
+    with caplog.at_level(logging.INFO, logger="app.routers.movimientos"):
+        assert _pantallazo(h, texto)["motivo"] == "pedir_cuenta"
+        client.post("/movimientos/rapido", headers=h, json={"comercio": "JUMBO", "monto": "5.000", "tarjeta": "Visa 1", "fuente": "wallet"})
+    lineas = [r.getMessage() for r in caplog.records if r.getMessage().startswith("atajo")]
+    assert any("paquete=auto" in l and "motivo=pedir_cuenta" in l and f"texto_len={len(texto)}" in l for l in lineas)
+    assert any("atajo rapido fuente=wallet con_comercio=True con_tarjeta=True" in l for l in lineas)
+    todo = " ".join(lineas).lower()
+    assert "carlos" not in todo and "20.000" not in todo and "ruiz" not in todo and "cdm_" not in todo

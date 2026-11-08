@@ -14,7 +14,7 @@ export default function PoliticaPrivacidad() {
       </header>
 
       <div className="px-6 mt-4 text-sm leading-relaxed text-ink space-y-5">
-        <p className="text-xs text-ink-soft">Versión 1.2 (borrador) · Última actualización: 9 de octubre de 2026</p>
+        <p className="text-xs text-ink-soft">Versión 1.2 (borrador) · Última actualización: 7 de noviembre de 2026</p>
 
         <section>
           <h2 className="font-semibold mb-1.5">1. Responsable del tratamiento</h2>
@@ -129,6 +129,25 @@ export default function PoliticaPrivacidad() {
           </p>
           <p>
             Importación de archivos: los CSV/Excel que subas se leen en el momento para proponerte movimientos; el archivo no se almacena.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="font-semibold mb-1.5">Registro automático desde tu celular (noviembre de 2026)</h2>
+          <p>
+            Si instalas un atajo de iPhone (CuadraMe Apple Pay, Notificaciones o Registrar) o la app de Android, ese atajo envía a CuadraMe, con tu clave personal, el texto de un pago, de un aviso del banco o de un comprobante: por ejemplo el comercio, el monto, la fecha, el banco o producto y el nombre de la persona a quien enviaste o de quien recibiste. Solo ocurre cuando tú instalas el atajo y lo activas o lo usas.
+          </p>
+          <p>
+            Con el gesto de pantallazo, tu iPhone saca el texto de la imagen en el propio teléfono: la imagen no sale del teléfono, solo viaja el texto.
+          </p>
+          <p>
+            CuadraMe no guarda ese texto completo. Con él crea un movimiento (queda «por confirmar» para que lo revises) con el monto, la descripción, la fecha y la cuenta, y guarda el número del comprobante para no registrar dos veces el mismo.
+          </p>
+          <p>
+            Cuando respondes una pregunta del atajo, guardamos una plantilla anónima de ese tipo de aviso (solo palabras fijas del banco; sin nombres ni montos) que sirve únicamente para ti y evita volver a preguntarte. La ves y la borras en Conexiones. Si además activaste las «estadísticas anónimas», sumamos esa plantilla, sin tu usuario, a un contador interno para mejorar la lectura de cada banco.
+          </p>
+          <p>
+            Tu clave personal de los atajos se usa para verificar cada envío con una huella (hash) y, además, se guarda cifrada para que solo tú puedas volver a verla en la app. Puedes cortar el acceso en cualquier momento creando una clave nueva.
           </p>
         </section>
 
