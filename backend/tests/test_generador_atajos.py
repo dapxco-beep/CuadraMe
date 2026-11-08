@@ -76,3 +76,24 @@ def test_pantalla_y_notificacion_no_preguntan_el_banco_al_instalar():
     for modo in ("pantalla", "notificacion"):
         assert len(_atajo(modo)["WFWorkflowImportQuestions"]) == 1  # solo la clave
     assert len(_atajo("captura")["WFWorkflowImportQuestions"]) == 2  # captura sí conserva la pregunta del banco
+
+
+def test_en_pantallazo_el_atajo_nunca_se_queda_mudo_y_en_notificaciones_ignora_en_silencio():
+    def avisos_en_rama_sin_pago(modo):
+        acciones = _atajo(modo)["WFWorkflowActions"]
+        # Rama «no_parece_un_movimiento»: las acciones entre su Si y su Otherwise
+        for i, a in enumerate(acciones):
+            p = a["WFWorkflowActionParameters"]
+            if a["WFWorkflowActionIdentifier"].endswith(".conditional") and p.get("WFConditionalActionString") == "no_parece_un_movimiento":
+                grupo = p["GroupingIdentifier"]
+                dentro = []
+                for b in acciones[i + 1:]:
+                    q = b["WFWorkflowActionParameters"]
+                    if b["WFWorkflowActionIdentifier"].endswith(".conditional") and q.get("GroupingIdentifier") == grupo:
+                        break
+                    dentro.append(b["WFWorkflowActionIdentifier"].split(".")[-1])
+                return dentro.count("notification")
+        raise AssertionError("no hay rama no_parece_un_movimiento")
+
+    assert avisos_en_rama_sin_pago("pantalla") == 1
+    assert avisos_en_rama_sin_pago("notificacion") == 0

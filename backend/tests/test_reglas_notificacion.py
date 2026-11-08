@@ -217,7 +217,9 @@ def test_pantallazo_sin_banco_en_el_texto_pregunta_una_vez_y_aprende():
 
 def test_pantallazo_que_no_es_un_movimiento_no_pregunta_nada():
     h = _cuentas_nu_nequi("rn-a3")
-    assert _pantallazo(h, "Mensajes Hoy Mamá: ¿vienes a almorzar? Fotos Cámara")["motivo"] == "no_parece_un_movimiento"
+    r = _pantallazo(h, "Mensajes Hoy Mamá: ¿vienes a almorzar? Fotos Cámara")
+    assert r["motivo"] == "no_parece_un_movimiento"
+    assert "No encontré un pago en esta pantalla" in r["mensaje"]  # el atajo de pantallazo no puede quedarse mudo
 
 
 def test_pantallazo_con_dos_bancos_en_el_texto_gana_el_primero_el_de_origen():
@@ -400,7 +402,7 @@ def test_cada_uso_deja_una_linea_de_diagnostico_sin_datos_personales(caplog):
 
     h = _cuentas_nu_nequi("rn-log")
     texto = "Transferencia exitosa $ 20.000 Para CARLOS RUIZ Compartir Descargar"  # sin banco: pregunta la cuenta
-    with caplog.at_level(logging.INFO, logger="app.routers.movimientos"):
+    with caplog.at_level(logging.INFO, logger="cuadrame.atajo"):
         assert _pantallazo(h, texto)["motivo"] == "pedir_cuenta"
         client.post("/movimientos/rapido", headers=h, json={"comercio": "JUMBO", "monto": "5.000", "tarjeta": "Visa 1", "fuente": "wallet"})
     lineas = [r.getMessage() for r in caplog.records if r.getMessage().startswith("atajo")]

@@ -171,7 +171,10 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
         _valor("mensaje", id_rapido3, id_resp3),
         aviso(id_resp3),
     ]
-    nada = _si_igual(u(), id_motivo, "Valor del diccionario", "no_parece_un_movimiento", [], [aviso(id_msg)])
+    # En «pantalla» la persona acaba de hacer un gesto: nunca puede quedarse sin respuesta. En notificaciones, lo que no es un
+    # pago (ofertas, códigos) se ignora en silencio.
+    nada = _si_igual(u(), id_motivo, "Valor del diccionario", "no_parece_un_movimiento",
+                     [aviso(id_msg)] if modo == "pantalla" else [], [aviso(id_msg)])
     tipo = _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_tipo", pide_tipo, nada)
     monto = _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_monto", pide_monto, tipo)
     acciones += _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_cuenta", pide_cuenta, monto) if elegir else monto
