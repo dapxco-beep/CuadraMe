@@ -36,6 +36,8 @@ export default function Perfil() {
   const [resumenCorreo, setResumenCorreo] = useState({ activo: false, email: '', cargando: false })
   const [confianza, setConfianza] = useState(0.75)
   const [guardandoConfianza, setGuardandoConfianza] = useState(false)
+  const [autoImportar, setAutoImportar] = useState(null) // null = cargando
+  const [guardandoAuto, setGuardandoAuto] = useState(false)
   const [eliminandoCuenta, setEliminandoCuenta] = useState(false)
   const { nombre: nombreGuardado, sugerido, guardar: guardarNombre } = useNombre()
   const [nombreEdit, setNombreEdit] = useState(null) // null = sin tocar (muestra el guardado)
@@ -74,7 +76,7 @@ export default function Perfil() {
 
   useEffect(() => {
     estadoPermiso().then(setPermisoPush)
-    api.confianzaAutoimport().then((r) => setConfianza(r.confianza_autoimport)).catch(() => {})
+    api.confianzaAutoimport().then((r) => { setConfianza(r.confianza_autoimport); setAutoImportar(!!r.activo) }).catch(() => setAutoImportar(false))
     Promise.resolve().then(() => api.recordatorioDiario()).then((r) => setRecordatorio(!!r.activo)).catch(() => {})
     Promise.resolve().then(() => api.resumenPreferencias?.())
       .then((r) => r && setResumenCorreo({ activo: !!r.correo, email: r.email || '', cargando: false }))
@@ -108,6 +110,19 @@ export default function Perfil() {
         setRecordatorio(!nuevo)
       }
       avisar(err.message || 'No pudimos cambiar el recordatorio. Intenta de nuevo.')
+    }
+  }
+
+  async function cambiarAutoImportar() {
+    const nuevo = !autoImportar
+    setAutoImportar(nuevo)
+    setGuardandoAuto(true)
+    try {
+      await api.actualizarAutoimportarExtractos(nuevo)
+    } catch {
+      setAutoImportar(!nuevo) // no se pudo guardar: vuelve a como estaba
+    } finally {
+      setGuardandoAuto(false)
     }
   }
 
@@ -515,9 +530,30 @@ export default function Perfil() {
         </div>
 
         <div className="rounded-2xl bg-paper-raised border border-line p-4 mt-3">
-          <p className="text-sm font-medium" id="etq-confianza">¿Cuándo registro movimientos sin preguntarte?</p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium" id="etq-autoimportar">Anotar solo lo que reconozco con seguridad</p>
+              <p className="text-xs text-ink-soft mt-0.5">Al leer un extracto, lo que tengo claro lo anoto sin preguntarte. Lo puedes deshacer.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={!!autoImportar}
+              aria-labelledby="etq-autoimportar"
+              data-testid="switch-autoimportar"
+              disabled={autoImportar === null || guardandoAuto}
+              onClick={cambiarAutoImportar}
+              className="shrink-0 min-h-11 w-14 flex items-center justify-center disabled:opacity-60"
+            >
+              <span className={`block w-12 h-7 rounded-full transition-colors relative ${autoImportar ? 'bg-accent' : 'bg-line'}`}>
+                <span className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${autoImportar ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </span>
+            </button>
+          </div>
+          {autoImportar && (
+          <div className="mt-3 pt-3 border-t border-line">
+          <p className="text-sm font-medium" id="etq-confianza">¿Qué tan seguro debo estar?</p>
           <p className="text-xs text-ink-soft mt-0.5 mb-3">
-            Cuando leo un extracto y estoy muy seguro de la categoría, lo anoto sin preguntarte.
             Si prefieres que te pregunte más, sube el porcentaje.
           </p>
           <input
@@ -536,6 +572,8 @@ export default function Perfil() {
             <span className="font-semibold text-ink">{Math.round(confianza * 100)}%{guardandoConfianza ? ' · guardando...' : ''}</span>
             <span>Pregunto más</span>
           </div>
+          </div>
+          )}
         </div>
       </section>
 

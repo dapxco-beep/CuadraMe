@@ -108,3 +108,10 @@ def test_deshacer_respeta_lo_que_el_usuario_ya_confirmo(entorno):
     assert d["conservados"] + d["deshechos"] == len(autos)
     ids = [m["id"] for m in client.get("/movimientos").json()]
     assert (mid in ids) == (d["conservados"] == 1)
+
+
+def test_confianza_trae_tambien_si_esta_activo_para_que_perfil_use_una_sola_peticion(entorno):
+    r = client.get("/perfil/confianza-autoimport").json()
+    assert r["activo"] is False and r["confianza_autoimport"] == 0.75
+    client.put("/perfil/autoimportar-extractos", json={"activo": True})
+    assert client.get("/perfil/confianza-autoimport").json()["activo"] is True

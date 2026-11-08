@@ -155,7 +155,8 @@ def obtener_confianza_autoimport(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
     perfil = _get_or_create_perfil(db, usuario.id)
-    return {"confianza_autoimport": perfil.confianza_autoimport or 0.75}
+    # `activo` viaja aquí también para que Perfil muestre el interruptor con UNA sola petición.
+    return {"confianza_autoimport": perfil.confianza_autoimport or 0.75, "activo": bool(perfil.autoimportar_extractos)}
 
 
 @router.put("/confianza-autoimport")

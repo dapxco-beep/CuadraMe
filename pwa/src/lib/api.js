@@ -595,6 +595,9 @@ export const api = {
   deshacerImportacionRespaldo: () => request('/perfil/importar-respaldo/deshacer', { method: 'POST' }),
   apiKey: () => request('/perfil/api-key'),
   regenerarApiKey: () => request('/perfil/api-key/regenerar', { method: 'POST' }),
+  // Interruptor general de «anotar solo lo que reconozco con seguridad» al leer un extracto (se puede deshacer).
+  autoimportarExtractos: () => request('/perfil/autoimportar-extractos', { sinCache: true }),
+  actualizarAutoimportarExtractos: (activo) => request('/perfil/autoimportar-extractos', { method: 'PUT', body: { activo } }),
   confianzaAutoimport: () => request('/perfil/confianza-autoimport'),
   actualizarConfianzaAutoimport: (valor) =>
     request('/perfil/confianza-autoimport', { method: 'PUT', body: { confianza_autoimport: valor } }),
