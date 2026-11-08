@@ -93,7 +93,7 @@ def test_proyeccion_sin_gastos_dice_que_viene_de_meses_anteriores():
     base = {"categoria": "Comida", "pct_usado": 0, "dias_restantes": 24, "gastado": 0, "limite": 1_100_000,
             "proyectado": 645_824, "estado": "bien"}
     m = mensaje_proyeccion(base)
-    assert "Aún no hay gastos en Comida este mes" in m and "meses anteriores" in m and "Llevas 0%" not in m
+    assert "Sin gastos en Comida este mes" in m and "meses anteriores" in m and "Llevas 0%" not in m
     assert "por encima del límite" in mensaje_proyeccion({**base, "proyectado": 1_300_000, "estado": "en_riesgo"})
     con_gasto = mensaje_proyeccion({**base, "gastado": 100_000, "pct_usado": 9})
     assert con_gasto.startswith("Vas bien en Comida")  # con gastos reales, el mensaje de siempre

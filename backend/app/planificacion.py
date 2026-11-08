@@ -197,7 +197,7 @@ def mensaje_proyeccion(p: dict) -> str:
         return f"Hoy cierra {nombre}: llevas {pct}% del límite."
     if p["gastado"] == 0 and p["proyectado"] > 0:
         # Sin gastos aún: la cifra viene de tus meses anteriores y se dice, para que no parezca un error.
-        base = f"Aún no hay gastos en {nombre} este mes. Según tus meses anteriores, cerrarías en {formato_cop(p['proyectado'])}"
+        base = f"Sin gastos en {nombre} este mes. Por tus meses anteriores cerrarías en {formato_cop(p['proyectado'])}"
         if p["estado"] == "en_riesgo":
             return base + f", {formato_cop(p['proyectado'] - p['limite'])} por encima del límite."
         return base + f" de {formato_cop(p['limite'])}."

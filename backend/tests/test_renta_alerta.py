@@ -140,7 +140,7 @@ def test_anio_parcial_lejos_es_sin_datos_pero_superado_se_mantiene():
     r = ra.calcular_renta(datos(movs, inicio_datos=date(2025, 8, 1)), 2025, HOY)
     assert r["cobertura"]["parcial"]
     assert crit(r, "ingresos_brutos")["estado"] == "sin_datos"
-    assert r["resultado"]["clave"] == "no_se_sabe" and "faltan datos de" in r["resultado"]["titulo"]
+    assert r["resultado"]["clave"] == "no_se_sabe" and "Faltan datos de" in r["resultado"]["detalle"]
     r = ra.calcular_renta(datos([mov(round(TOPE_1400 * 1.1), fecha=datetime(2025, 9, 1))], inicio_datos=date(2025, 8, 1)), 2025, HOY)
     assert crit(r, "ingresos_brutos")["estado"] == "superado" and r["resultado"]["clave"] == "si"
 

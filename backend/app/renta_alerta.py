@@ -222,8 +222,6 @@ def calcular_renta(datos: dict, anio: int, hoy: date) -> dict:
         detalle = "Con lo que cargaste, ningún criterio se acerca a su tope."
     if clave in ("si", "cerca") and sin:
         detalle += " Además faltan datos de: " + ", ".join(n.lower() for n in sin) + "."
-    if clave == "no_se_sabe":
-        titulo = "No podemos saberlo (faltan datos de " + ", ".join(n.lower() for n in sin) + ")"
 
     return {
         "anio": anio, "uvt": uvt,
