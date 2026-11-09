@@ -29,8 +29,8 @@ const ESTADO = {
 function montar() {
   return render(
     <DialogosProvider>
-      <MemoryRouter initialEntries={['/sincronizacion']}>
-        <Routes><Route path="/sincronizacion" element={<Sincronizacion />} /></Routes>
+      <MemoryRouter initialEntries={['/movimientos-correo']}>
+        <Routes><Route path="/movimientos-correo" element={<Sincronizacion modo="correo" />} /></Routes>
       </MemoryRouter>
     </DialogosProvider>,
   )
@@ -73,7 +73,7 @@ describe('Traer movimientos: orden de las llamadas', () => {
     expect(api.releerPendientes).toHaveBeenCalledTimes(1)
     expect(api.tarjetasVista).toHaveBeenCalledTimes(1)
     expect(api.sincronizacionPorCategorizar).not.toHaveBeenCalled()
-    fireEvent.click(await screen.findByText('Movimientos por categorizar'))
+    fireEvent.click(await screen.findByTestId('tarea-movimientos_por_categorizar'))
     expect(await screen.findByTestId('cat-m1')).toBeInTheDocument()
     expect(api.sincronizacionPorCategorizar).toHaveBeenCalledTimes(1)
   })
