@@ -91,9 +91,9 @@ export const CAMINO = [
     ruta: '/sincronizacion',
     accion: 'Traer extractos',
     // Alternativas directas (sin pantallas intermedias): cada una abre la acción, no un menú.
-    // Gmail y extracto viven en la misma pantalla; anotar a mano abre el formulario de Agregar.
+    // Gmail abre la hoja de conexión; extracto, el centro; anotar a mano, el formulario de Agregar.
     otras: [
-      { texto: 'Conectar Gmail', ruta: '/sincronizacion' },
+      { texto: 'Conectar Gmail', ruta: '/sincronizacion?conexiones=1' },
       { texto: 'Anotar uno', ruta: '/agregar' },
     ],
   },

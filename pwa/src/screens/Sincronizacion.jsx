@@ -110,7 +110,8 @@ export default function Sincronizacion({ modo = 'extractos' }) {
   const { nombres = [], iconoDe = () => '💳' } = useCategorias() || {}
   const { fmt } = useBloqueo()
   const { confirmar, avisar } = useDialogos() || {}
-  const llegada = location.state || null
+  // «?conexiones=1» (desde los primeros pasos de Inicio) abre directo la hoja de conexión de Gmail.
+  const llegada = location.state || (new URLSearchParams(location.search).get('conexiones') ? { abrir: 'estado' } : null)
   // Un enlace viejo que pide la otra cara (p. ej. «correos descartados» a /sincronizacion) se lleva a la que corresponde.
   useEffect(() => {
     const pideOtraCara = esCorreo ? ['extractos', 'subir'].includes(llegada?.abrir) : seccionDeRuta(llegada?.abrir) === 'movimientos'

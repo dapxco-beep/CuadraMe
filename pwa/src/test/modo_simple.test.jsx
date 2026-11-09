@@ -322,7 +322,7 @@ describe('Inicio simplificado', () => {
     mocksInicio({ cuentas: 1, movs: [] })
     montarInicio()
     const camino = await screen.findByTestId('camino-primer-uso')
-    expect(within(camino).getByRole('link', { name: 'Conectar Gmail' })).toHaveAttribute('href', '/sincronizacion')
+    expect(within(camino).getByRole('link', { name: 'Conectar Gmail' })).toHaveAttribute('href', '/sincronizacion?conexiones=1')
     expect(within(camino).getByRole('link', { name: 'Anotar uno' })).toHaveAttribute('href', '/agregar')
     // ningún paso pasa de ~10 palabras de apoyo
     for (const p of CAMINO) expect(p.apoyo.split(/\s+/).length).toBeLessThanOrEqual(10)

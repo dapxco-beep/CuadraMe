@@ -190,12 +190,12 @@ export default function Cuentas() {
                   {etiquetaCuenta(c).significado} <Ayudita termino={etiquetaCuenta(c).termino} />
                 </p>
               )}
-              {/* Un solo enlace por tarjeta: «Ver sus movimientos» vive dentro del desplegable
-                  (antes eran dos enlaces seguidos). Lo demás: si coincide con el banco y cuánto rinde. */}
+              {/* La acción principal (ver movimientos) queda a la vista; lo demás (si coincide con el banco y
+                  cuánto rinde) va plegado y solo pide datos al abrirse. */}
+              <Link to={`/movimientos?cuenta=${c.id}`} className="inline-flex items-center gap-1 text-xs text-accent font-semibold min-h-11 px-1">
+                Ver sus movimientos
+              </Link>
               <DesplegableMas etiqueta="Más de esta cuenta" className="px-1" alAbrir={() => setVerCuadre(true)}>
-                <Link to={`/movimientos?cuenta=${c.id}`} className="flex items-center gap-1 text-xs text-accent font-semibold min-h-11">
-                  Ver sus movimientos
-                </Link>
                 {/* Estado de cuadre con el banco, sin ir a buscarlo a «Traer movimientos» */}
                 <LineaCuadre item={cuadrePorCuenta[c.id]} className="mt-2" />
                 {/* Cuentas de ahorros: cuánto rinde (estimado) y cajitas */}
