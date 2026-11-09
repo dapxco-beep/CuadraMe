@@ -232,7 +232,7 @@ export default function Impuestos() {
                   </div>
                   {/* La ayuda de cada categoría es larga y se repite: plegada para no empujar los gastos. */}
                   <details className="text-[11px] text-ink-soft mb-2">
-                    <summary className="min-h-11 flex items-center cursor-pointer font-medium text-ink">¿Qué entra aquí?</summary>
+                    <summary aria-label={`¿Qué entra en ${cat.etiqueta}?`} className="min-h-11 flex items-center cursor-pointer font-medium text-ink">¿Qué entra aquí?</summary>
                     <p>{cat.ayuda}</p>
                   </details>
                   <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">

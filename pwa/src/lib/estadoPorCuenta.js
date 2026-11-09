@@ -24,7 +24,7 @@ export function vistaCelda(celda, { esMesActual = false } = {}) {
     case 'anterior':
       return { clave: 'anterior', texto: 'Antes de tu inicio', detalle: '', accion: 'ninguna' }
     case 'conciliado':
-      return { clave: 'conciliado', texto: 'Cuadra con tu banco', detalle: c.movimientos ? `${plural(c.movimientos, 'mov.', 'mov.')}` : '', accion: 'ver' }
+      return { clave: 'conciliado', texto: 'Coincide con tu banco', detalle: c.movimientos ? `${plural(c.movimientos, 'mov.', 'mov.')}` : '', accion: 'ver' }
     case 'parcial':
       return {
         clave: 'falta_importar',

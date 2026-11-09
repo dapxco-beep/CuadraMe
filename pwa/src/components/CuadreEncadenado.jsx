@@ -194,7 +194,7 @@ export default function CuadreEncadenado({ cuentaId, moneda = 'COP', datos = nul
         <Scale size={16} aria-hidden="true" /> Mes a mes contra tu banco{d.cuenta ? ` · ${d.cuenta}` : ''}
       </h3>
       {d.resumen && <p className="text-sm mt-1.5 font-medium" data-testid="cuadre-resumen">{d.resumen}</p>}
-      {d.cuadra && <p className="text-xs mt-1.5 flex items-center gap-1.5"><CheckCircle2 size={16} className="text-cuadra shrink-0" aria-hidden="true" /> Todos los meses con extracto cuadran con tu banco.</p>}
+      {d.cuadra && <p className="text-xs mt-1.5 flex items-center gap-1.5"><CheckCircle2 size={16} className="text-cuadra shrink-0" aria-hidden="true" /> Todos los meses con extracto coinciden con tu banco.</p>}
 
       {d.sin_saldo?.length > 0 && (
         <div className="mt-2 flex flex-col gap-2">

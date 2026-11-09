@@ -7,7 +7,7 @@ import { nombreCompleto, resumenMeses, vistaCelda } from '../lib/estadoPorCuenta
 
 describe('vistaCelda', () => {
   it('conciliado: dice cuántos movimientos', () => {
-    expect(vistaCelda({ estado: 'conciliado', movimientos: 14 })).toMatchObject({ clave: 'conciliado', texto: 'Cuadra con tu banco', detalle: '14 mov.', accion: 'ver' })
+    expect(vistaCelda({ estado: 'conciliado', movimientos: 14 })).toMatchObject({ clave: 'conciliado', texto: 'Coincide con tu banco', detalle: '14 mov.', accion: 'ver' })
   })
   it('a medias: cuántos faltan importar y abre la revisión', () => {
     expect(vistaCelda({ estado: 'parcial', por_revisar: 3 })).toMatchObject({ clave: 'falta_importar', texto: 'Faltan 3 por agregar', accion: 'importar' })

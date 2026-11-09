@@ -325,7 +325,7 @@ describe('Inicio simplificado', () => {
     expect(within(camino).getByRole('link', { name: 'Conectar Gmail' })).toHaveAttribute('href', '/sincronizacion')
     expect(within(camino).getByRole('link', { name: 'Anotar uno' })).toHaveAttribute('href', '/agregar')
     // ningún paso pasa de ~10 palabras de apoyo
-    for (const p of CAMINO) expect(p.apoyo.split(/s+/).length).toBeLessThanOrEqual(10)
+    for (const p of CAMINO) expect(p.apoyo.split(/\s+/).length).toBeLessThanOrEqual(10)
   })
 
   it('bloque 1: saldo disponible, gastos de la semana y 3 últimos movimientos; bloque 3: un consejo', async () => {
