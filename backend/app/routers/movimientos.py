@@ -75,7 +75,14 @@ from app.schemas import (
 )
 from app.voz_parser import interpretar_frase
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("cuadrame.atajo")  # diagnóstico de los atajos (sin datos personales)
+if not logger.handlers:  # el servidor no configura INFO: sin su propio canal esta línea nunca llegaría a los logs
+    _canal = logging.StreamHandler()
+    _canal.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+    logger.addHandler(_canal)
+    logger.setLevel(logging.INFO)
+
+MENSAJE_SIN_PAGO = "No encontré un pago en esta pantalla. Abre el comprobante de tu banco y repite el gesto."
 
 router = APIRouter(prefix="/movimientos", tags=["movimientos"])
 
@@ -1169,7 +1176,7 @@ def _procesar_notificacion(
             n0 = notif.interpretar("", data.titulo, data.texto)
             if n0 is not None or notif.pide_monto("", data.titulo, data.texto):
                 return {"ok": True, "registrado": False, "motivo": "pedir_cuenta", "cuentas": cuentas_nombres}
-            return {"ok": True, "registrado": False, "motivo": "no_parece_un_movimiento"}
+            return {"ok": True, "registrado": False, "motivo": "no_parece_un_movimiento", "mensaje": MENSAJE_SIN_PAGO}
         if data.cuenta and data.aprender:
             esq0 = rn.esqueleto(data.titulo, data.texto)
             if rn.aprender(db, usuario.id, rn.PREFIJO_CUENTA + cuenta_auto, esq0, tipo=None, sin_cifra=False):
@@ -1216,7 +1223,8 @@ def _procesar_notificacion(
             # anónimas) para mejorar el lector con lo que ven todos los clientes, sin guardar texto ni datos.
             if registrar_aviso(db, usuario.id, app_nombre, data.titulo, data.texto):
                 db.commit()
-        return {"ok": True, "registrado": False, "motivo": "no_parece_un_movimiento"}
+        # Solo los atajos de iPhone muestran el mensaje (hay un gesto detrás); la respuesta de Android no cambia.
+        return {"ok": True, "registrado": False, "motivo": "no_parece_un_movimiento", **({"mensaje": MENSAJE_SIN_PAGO} if ios else {})}
     # Si la persona ya enseñó hacia dónde van los avisos con esta forma, no se le vuelve a preguntar.
     if n.tipo_incierto and regla is not None and regla.tipo:
         n = dataclasses.replace(n, tipo=regla.tipo, tipo_incierto=False)
