@@ -47,7 +47,7 @@ export default function TarjetaRenta() {
   return (
     <section className="px-5 mt-5" aria-label="¿Tengo que declarar renta?" data-testid="tarjeta-renta">
       <h2 className="text-[15px] font-semibold mb-1">¿Tengo que declarar renta?</h2>
-      <p className="text-xs text-ink-soft mb-3">La renta es el impuesto que se paga sobre lo que ganas en el año. Para {r.anio}, la DIAN mira estos cinco topes.</p>
+      <p className="text-xs text-ink-soft mb-3">La DIAN mira estos cinco topes para {r.anio}.</p>
       <div className="rounded-2xl bg-paper-raised border border-line p-4">
         <div className="flex items-start gap-3">
           <span className="w-10 h-10 rounded-xl bg-accent-soft text-accent flex items-center justify-center shrink-0">
@@ -88,7 +88,6 @@ export default function TarjetaRenta() {
                 <p className="text-xs text-ink-soft mt-1">
                   {formatCOP(c.valor)} de {formatCOP(c.tope)} ({String(c.pct).replace('.', ',')} %)
                 </p>
-                {c.nota && <p className="text-[11px] text-ink-soft mt-0.5">{c.nota}</p>}
               </li>
             )
           })}
@@ -97,10 +96,15 @@ export default function TarjetaRenta() {
         <details className="mt-4 text-xs text-ink-soft">
           <summary className="min-h-11 flex items-center cursor-pointer font-medium text-ink">Qué cuenta y qué no ve CuadraMe</summary>
           <p className="mb-1.5">
-            Los topes se miden en UVT, una unidad que usa la DIAN (en {r.anio} una UVT vale {formatCOP(r.uvt)}). Si superas <b>cualquiera</b> de los cinco,
-            probablemente te toca declarar. Las consignaciones incluyen la plata que pasas entre tus propias cuentas, por eso
-            pueden ser más que tus ingresos.
+            Los topes se miden en UVT, una unidad de la DIAN (en {r.anio} vale {formatCOP(r.uvt)}). Si superas <b>cualquiera</b>,
+            probablemente te toca declarar. Las consignaciones incluyen la plata entre tus cuentas.
           </p>
+          {/* Las notas de cada tope viven aquí, plegadas: antes iban debajo de cada barra. */}
+          <ul className="list-disc pl-4 space-y-0.5 mb-1.5">
+            {r.criterios.filter((c) => c.nota).map((c) => (
+              <li key={c.id}><b>{c.nombre}:</b> {c.nota}</li>
+            ))}
+          </ul>
           <ul className="list-disc pl-4 space-y-0.5">
             {r.limites.map((l) => (
               <li key={l}>{l}</li>

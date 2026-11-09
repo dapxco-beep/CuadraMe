@@ -53,15 +53,20 @@ export default function TarjetaGmfMes() {
         )}
         {!g.tiene_cuenta_exenta && (
           <p className="mt-3 text-xs text-ink-soft flex items-start gap-2">
-            <Icono icono={Info} tam="sm" className="mt-0.5" /> Aún no marcas tu cuenta exenta aquí abajo: así podemos avisarte cuando te acerques al tope.
+            <Icono icono={Info} tam="sm" className="mt-0.5" /> Marca abajo tu cuenta sin 4x1000 y te avisamos cerca del tope.
           </p>
         )}
-        <ul className="list-disc pl-4 mt-3 space-y-0.5 text-[11px] text-ink-soft">
-          {g.recordatorio.map((t) => (
-            <li key={t}>{t}</li>
-          ))}
-        </ul>
-        <p className="text-xs text-ink-soft mt-2">{g.nota} Orientación educativa, no es asesoría tributaria.</p>
+        {/* Recordatorios y nota plegados (patrón <details>); el aviso de «no es asesoría» queda siempre visible. */}
+        <details className="mt-3 text-xs text-ink-soft">
+          <summary className="min-h-11 flex items-center cursor-pointer font-medium text-ink">Qué debes saber</summary>
+          <ul className="list-disc pl-4 space-y-0.5 text-[11px]">
+            {g.recordatorio.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+          <p className="mt-2">{g.nota}</p>
+        </details>
+        <p className="text-xs text-ink-soft mt-2">Orientación educativa, no es asesoría tributaria.</p>
       </div>
     </section>
   )

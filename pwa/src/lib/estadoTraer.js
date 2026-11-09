@@ -29,7 +29,7 @@ export function textoOrigenes(origenes) {
 
 // Leyenda de la cobertura por mes: el color nunca va solo.
 export const LEYENDA_COBERTURA = [
-  { clave: 'conciliado', texto: 'Cuadra con tu banco' },
+  { clave: 'conciliado', texto: 'Coincide con tu banco' },
   { clave: 'parcial', texto: 'Por revisar' },
   { clave: 'extracto_pendiente', texto: 'Sin abrir' },
   { clave: 'falta_clave', texto: 'Necesita clave' },

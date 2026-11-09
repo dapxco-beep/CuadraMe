@@ -146,7 +146,7 @@ export default function Impuestos() {
         <>
           <section className="px-5 mt-5">
             <h2 className="text-[15px] font-semibold mb-1">4x1000 (GMF)</h2>
-            <p className="text-xs text-ink-soft mb-3">Cuánto llevas de 4x1000 según lo que ha salido de tus cuentas de ahorro.</p>
+            <p className="text-xs text-ink-soft mb-3">Lo que llevas del año.</p>
             <div className="rounded-2xl bg-paper-raised border border-line p-4">
               <p className="text-xs text-ink-soft">Aproximado {anio}</p>
               <p className="text-2xl font-bold">{formatCOP(gmf.total_estimado)}</p>
@@ -183,7 +183,7 @@ export default function Impuestos() {
               )}
 
               <label className="block mt-4 text-xs no-print">
-                <span className="block text-ink-soft mb-1">Mi cuenta que no paga este impuesto (la ley deja una por persona, hasta ${gmf.tope_exento_mensual.toLocaleString('es-CO')} al mes)</span>
+                <span className="block text-ink-soft mb-1">Mi cuenta sin 4x1000 (una por persona, hasta ${gmf.tope_exento_mensual.toLocaleString('es-CO')} al mes)</span>
                 <select
                   aria-label="Cuenta exenta del 4x1000"
                   value={datos.cuenta_exenta_gmf_id || ''}
@@ -196,14 +196,18 @@ export default function Impuestos() {
                   ))}
                 </select>
               </label>
-              <p className="text-[11px] text-ink-soft mt-3">{gmf.nota}</p>
+              {/* La nota larga queda plegada con el patrón <details> que ya usa TarjetaRenta. */}
+              <details className="mt-3 text-xs text-ink-soft">
+                <summary className="min-h-11 flex items-center cursor-pointer font-medium text-ink">Más sobre el 4x1000</summary>
+                <p>{gmf.nota}</p>
+              </details>
             </div>
           </section>
 
           <section className="px-5 mt-6">
             <h2 className="text-[15px] font-semibold mb-1">Gastos que podrían bajar tu impuesto de renta</h2>
             <p className="text-xs text-ink-soft mb-3">
-              Los buscamos por su nombre o categoría. Que salgan aquí no asegura que sirvan: confírmalos, anota dónde está la factura y revísalos con tu contador.
+              Que salgan aquí no asegura que sirvan. Confírmalos y revísalos con tu contador.
             </p>
 
             <div className="rounded-2xl bg-paper-raised border border-line p-4 mb-3 grid grid-cols-2 gap-3 text-center">
@@ -226,7 +230,11 @@ export default function Impuestos() {
                     <p className="text-sm font-semibold">{cat.etiqueta}</p>
                     <p className="text-xs text-ink-soft">{cat.cantidad} · {formatCOP(cat.confirmado + cat.sugerido)}</p>
                   </div>
-                  <p className="text-[11px] text-ink-soft mb-2">{cat.ayuda}</p>
+                  {/* La ayuda de cada categoría es larga y se repite: plegada para no empujar los gastos. */}
+                  <details className="text-[11px] text-ink-soft mb-2">
+                    <summary className="min-h-11 flex items-center cursor-pointer font-medium text-ink">¿Qué entra aquí?</summary>
+                    <p>{cat.ayuda}</p>
+                  </details>
                   <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">
                     {ded.items
                       .filter((i) => i.categoria_fiscal === cat.categoria_fiscal)
@@ -311,7 +319,7 @@ export default function Impuestos() {
             </div>
             <p className="text-[11px] text-ink-soft mt-2 flex items-start gap-1.5">
               <FileText size={16} className="shrink-0 mt-0.5" />
-              Para el PDF, elige "Guardar como PDF" en la ventana de impresión de tu dispositivo.
+              Para el PDF, elige «Guardar como PDF» al imprimir.
             </p>
           </section>
           <EnlacesRelacionados enlaces={[

@@ -181,8 +181,8 @@ export default function PuntoDePartida({ variante = 'perfil', inicial = null, on
         </p>
         <p className="text-xs text-ink-soft mt-1">
           {pp.modo === 'hoy'
-            ? 'Informes y consejos cuentan desde esa fecha. Los correos y extractos anteriores no se muestran.'
-            : 'Informes y consejos cuentan desde esa fecha. Pídele a tu banco los extractos que falten y súbelos.'}
+            ? 'Contamos desde esa fecha. Lo anterior no se muestra.'
+            : 'Contamos desde esa fecha. Sube los extractos que falten.'}
         </p>
         {aviso && <p className="text-xs font-medium text-cuadra mt-2" role="status">{aviso}</p>}
         {(pp.anteriores?.correos > 0 || pp.anteriores?.extractos > 0) && (
@@ -223,7 +223,7 @@ export default function PuntoDePartida({ variante = 'perfil', inicial = null, on
 
             {filas.length > 0 && (
               <div data-testid="saldo-reconstruido">
-                <p className="text-xs font-semibold mb-1">Saldo reconstruido frente a tu saldo actual</p>
+                <p className="text-xs font-semibold mb-1">Saldo calculado frente a tu saldo actual</p>
                 <ul className="space-y-1">
                   {filas.map((f) => (
                     <li key={f.cuenta_id} className="flex items-start justify-between gap-2 text-xs">
@@ -237,7 +237,7 @@ export default function PuntoDePartida({ variante = 'perfil', inicial = null, on
                 {desajustes.length > 0 ? (
                   <div className="mt-2">
                     <p className="text-xs text-ink-soft">
-                      Si crees que tu saldo real es el que declaraste, puedo hacer un «ajuste de saldo». No cuenta como gasto ni como ingreso.
+                      Si tu saldo real es el que dijiste, lo ajusto. No cuenta como gasto ni ingreso.
                     </p>
                     <button
                       onClick={ajustar}
@@ -249,7 +249,7 @@ export default function PuntoDePartida({ variante = 'perfil', inicial = null, on
                   </div>
                 ) : (
                   <p className="flex items-center gap-1.5 text-xs font-medium text-cuadra mt-2">
-                    <CheckCircle2 size={16} aria-hidden="true" /> Tu saldo reconstruido coincide con el actual.
+                    <CheckCircle2 size={16} aria-hidden="true" /> Tu saldo calculado coincide con el actual.
                   </p>
                 )}
               </div>
@@ -345,7 +345,7 @@ export default function PuntoDePartida({ variante = 'perfil', inicial = null, on
             </label>
           )}
           <p className="text-xs text-ink-soft mt-2">
-            Empezaremos el {fechaLarga(fechaNueva) || '…'}. Te mostraré qué extractos tienes y cuáles faltan.
+            Empezamos el {fechaLarga(fechaNueva) || '…'}.
           </p>
         </fieldset>
       )}
@@ -389,7 +389,7 @@ export default function PuntoDePartida({ variante = 'perfil', inicial = null, on
           </div>
           {modo === 'hoy' && (
             <p className="text-xs text-ink-soft mt-2">
-              Si cambias un saldo, la cuenta se ajusta con un «ajuste de saldo» que no cuenta como gasto ni ingreso.
+              Si cambias un saldo, se ajusta sin contarlo como gasto ni ingreso.
             </p>
           )}
         </div>

@@ -1250,11 +1250,15 @@ export default function Sincronizacion({ modo = 'extractos' }) {
                 ))}
               </div>
 
-              <ul className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-[11px] text-ink-soft" aria-label="Leyenda">
-                {LEYENDA_COBERTURA.map(({ clave, texto }) => (
-                  <li key={clave}><span aria-hidden="true">{ESTADOS_CELDA[clave].simbolo}</span> {texto}</li>
-                ))}
-              </ul>
+              {/* Leyenda plegada: los símbolos ya se leen en el detalle al tocar una casilla. */}
+              <details className="mt-3 text-[11px] text-ink-soft">
+                <summary className="min-h-11 flex items-center cursor-pointer font-medium text-ink">¿Qué significa cada símbolo?</summary>
+                <ul className="flex flex-wrap gap-x-3 gap-y-1" aria-label="Leyenda">
+                  {LEYENDA_COBERTURA.map(({ clave, texto }) => (
+                    <li key={clave}><span aria-hidden="true">{ESTADOS_CELDA[clave].simbolo}</span> {texto}</li>
+                  ))}
+                </ul>
+              </details>
 
               {celdaDetalle && cuentaDetalle && (
                 <div className="mt-3 rounded-xl bg-paper-raised ring-1 ring-line/60 p-3" role="region" aria-label="Detalle del mes">

@@ -85,7 +85,7 @@ describe('TarjetaGmfMes', () => {
     montar(<TarjetaGmfMes />)
     expect(await screen.findByText('Te acercas al tope de tu cuenta exenta')).toBeTruthy()
     expect(screen.getByText(/pedir en tu banco/)).toBeTruthy()
-    expect(screen.getByText(/Aún no marcas tu cuenta exenta/)).toBeTruthy()
+    expect(screen.getByText(/Marca abajo tu cuenta sin 4x1000/)).toBeTruthy()
   })
   it('sin alerta no muestra el aviso', async () => {
     api.gmfEstimado.mockResolvedValue({ ...GMF, alerta: false, uso_pct: 10, tiene_cuenta_exenta: true, debitos_cuenta_exenta: 1000 })
