@@ -322,21 +322,13 @@ def estado(
     n_categorizar = _cola_categorizar(db, usuario.id, ids_accesibles, desde_bandeja).count()
     n_confirmar = db.query(func.count(Movimiento.id)).filter(_cond_bandeja(ids_accesibles, desde_bandeja)).scalar() or 0
     absorber_correos(db, usuario.id)  # lo que ya tiene su movimiento no cuenta como «por revisar»
-    n_ya_registrados = (
-        db.query(func.count(CorreoGasto.id))
-        .filter(CorreoGasto.usuario_id == usuario.id, CorreoGasto.estado == "ya_registrado")
-        .scalar() or 0
-    )
-    n_descartados = (
-        db.query(func.count(CorreoGasto.id))
-        .filter(CorreoGasto.usuario_id == usuario.id, CorreoGasto.estado == "descartado", CorreoGasto.monto > 0)
-        .scalar() or 0
-    )
-    n_correos = (
-        db.query(func.count(CorreoGasto.id))
-        .filter(CorreoGasto.usuario_id == usuario.id, CorreoGasto.estado == "pendiente", CorreoGasto.monto > 0,
-                _desde_inicio(inicio_pp))
-        .scalar() or 0
+    # Las tres cuentas de correos salen de UNA consulta (antes eran tres).
+    n_ya_registrados, n_descartados, n_correos = (
+        int(v or 0) for v in db.query(
+            func.sum(case((CorreoGasto.estado == "ya_registrado", 1), else_=0)),
+            func.sum(case((and_(CorreoGasto.estado == "descartado", CorreoGasto.monto > 0), 1), else_=0)),
+            func.sum(case((and_(CorreoGasto.estado == "pendiente", CorreoGasto.monto > 0, _desde_inicio(inicio_pp)), 1), else_=0)),
+        ).filter(CorreoGasto.usuario_id == usuario.id).one()
     )
     candidatas = [
         ("falta_clave", "Falta la clave del PDF", "Guárdala y abro estos extractos por ti.", n_falta_clave, "/sincronizacion#clave"),
