@@ -126,6 +126,7 @@ export default function Sincronizacion({ modo = 'extractos' }) {
   // Filtros de «Todos los extractos» (los abren «Por hacer» y la cobertura por mes).
   const [filtroExt, setFiltroExt] = useState({ estados: [], cuenta: '', mes: '', texto: '' })
   const [cola, setCola] = useState({ items: [], total: 0 })
+  const [colaLista, setColaLista] = useState(false) // la cola se pide al abrir «Poner categorías»
   const [cargando, setCargando] = useState(true)
   const raiz = useRef(null)
   useEstadoLista(esCorreo ? '/movimientos-correo' : '/sincronizacion', { contenedorRef: raiz, listo: !cargando }) // al volver, misma posición
@@ -184,18 +185,30 @@ export default function Sincronizacion({ modo = 'extractos' }) {
   const [deudasTarjeta, setDeudasTarjeta] = useState({})
   const hastaRef = useRef(null)
 
+  // Lo que decide qué se ve primero (estado, Gmail, extractos, clave) sale en una sola tanda y pinta la pantalla.
+  // Lo accesorio NO la frena: las deudas de tarjeta llegan justo después y la cola «Poner categorías» solo se pide
+  // cuando se abre esa hoja (ver `colaPedida`). Con el servidor gratis (0,1 CPU) cada consulta en paralelo la retrasa.
+  const colaPedida = useRef(false)
+  const traerCola = useCallback(() => {
+    colaPedida.current = true
+    return Promise.resolve(api.sincronizacionPorCategorizar(0))
+      .catch(() => ({ items: [], total: 0 }))
+      .then((porCat) => {
+        if (!montado.current) return
+        setCola({ items: porCat?.items || [], total: porCat?.total || 0 })
+        setColaLista(true)
+      })
+  }, [])
+
   const cargar = useCallback(async () => {
     try {
-      const [est, gm, ex, clave, porCat, deudas] = await Promise.all([
+      const [est, gm, ex, clave] = await Promise.all([
         api.sincronizacionEstado(hastaRef.current),
         api.gmailEstado().catch(() => null),
         api.extractosCorreo().catch(() => []),
         api.clavePdfEstado().catch(() => ({})),
-        api.sincronizacionPorCategorizar(0).catch(() => ({ items: [], total: 0 })),
-        Promise.resolve(api.tarjetasVista?.()).catch(() => ({})), // «Debes · Cupo · Disponible» de cada tarjeta (extra)
       ])
       if (!montado.current) return
-      setDeudasTarjeta(deudas && typeof deudas === 'object' ? deudas : {})
       const ultimoMes = est?.meses?.[est.meses.length - 1]?.clave
       if (hastaRef.current && ultimoMes && ultimoMes !== hastaRef.current) {
         // el servidor ignoró la ventana pedida: no se puede desplazar
@@ -208,18 +221,30 @@ export default function Sincronizacion({ modo = 'extractos' }) {
       setGmail(gm)
       setExtractos(Array.isArray(ex) ? ex : [])
       setClaveInfo(clave && typeof clave === 'object' ? clave : {})
-      setCola({ items: porCat?.items || [], total: porCat?.total || 0 })
       setError('')
+      // Accesorios: después de pintar, sin bloquear.
+      Promise.resolve(api.tarjetasVista?.()).catch(() => ({})).then((deudas) => {
+        if (montado.current) setDeudasTarjeta(deudas && typeof deudas === 'object' ? deudas : {})
+      })
+      if (colaPedida.current) traerCola() // la hoja de categorías está (o estuvo) abierta: se mantiene al día
     } catch (err) {
       if (montado.current) setError(textoError(err, 'cargar'))
     } finally {
       if (montado.current) setCargando(false)
     }
-  }, [])
+  }, [traerCola])
+
+  // Los tres arreglos automáticos de abajo esperan al primer pintado: antes salían a la vez que la carga y
+  // le quitaban CPU al servidor justo cuando la persona espera ver su pantalla.
+  const [primerPintado, setPrimerPintado] = useState(false)
+  useEffect(() => {
+    if (!cargando) setPrimerPintado(true)
+  }, [cargando])
 
   // Una vez al abrir: la app registra o RECALCULA con cuánto empezó cada cuenta según su extracto más antiguo
   // (idempotente en el servidor, solo informa lo que cambió) y lo avisa con «Deshacer» si quedó un movimiento.
   useEffect(() => {
+    if (!primerPintado) return
     Promise.resolve(api.cuadreSaldoInicialAuto?.())
       .then((r) => {
         const hechos = r?.registrados || []
@@ -235,10 +260,14 @@ export default function Sincronizacion({ modo = 'extractos' }) {
       })
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [primerPintado])
 
   useEffect(() => {
     cargar()
+  }, [cargar])
+
+  useEffect(() => {
+    if (!primerPintado) return
     // Al abrir «Traer movimientos»: los extractos en error por clave que vinieron de un correo se reintentan solos.
     Promise.resolve(api.reintentarErroresExtractos?.())
       .then((r) => { if (r?.leidos && montado.current) cargar() })
@@ -247,7 +276,12 @@ export default function Sincronizacion({ modo = 'extractos' }) {
     Promise.resolve(api.releerPendientes?.())
       .then((r) => { if (r?.cambiados && montado.current) cargar() })
       .catch(() => {})
-  }, [cargar])
+  }, [primerPintado, cargar])
+
+  // La cola de «Poner categorías» se trae la primera vez que se abre esa hoja.
+  useEffect(() => {
+    if (hoja === 'categorizar' && !colaPedida.current) traerCola()
+  }, [hoja, traerCola])
 
   function moverVentana(delta) {
     const hoy = new Date()
@@ -1414,7 +1448,9 @@ export default function Sincronizacion({ modo = 'extractos' }) {
               <h2 className="text-lg font-bold">Poner categorías</h2>
               <p className="text-xs text-ink-soft mt-1">Elige una vez y la recuerdo para ese comercio.</p>
               <div id="sinc-categorizar" className="mt-3">
-          {cola.items.length === 0 ? (
+          {!colaLista ? (
+            <p className="text-xs text-ink-soft p-3" role="status">Buscando lo que falta categorizar…</p>
+          ) : cola.items.length === 0 ? (
             <AlDia texto="Nada por categorizar" />
           ) : (
             <div className="flex flex-col gap-2.5">

@@ -1,5 +1,5 @@
 import { textoError } from '../lib/textoError'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
@@ -31,13 +31,13 @@ import Hoja from '../components/Hoja'
 import { useAlertaVisible } from '../lib/useAlertaVisible'
 
 // Botón pequeño que muestra u oculta contenido secundario (se monta solo al abrir).
-function DesplegableMas({ etiqueta, className = '', children }) {
+function DesplegableMas({ etiqueta, className = '', alAbrir, children }) {
   const [abierto, setAbierto] = useState(false)
   return (
     <div className={className}>
       <button
         type="button"
-        onClick={() => setAbierto((v) => !v)}
+        onClick={() => { if (!abierto) alAbrir?.(); setAbierto((v) => !v) }}
         aria-expanded={abierto}
         className="inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-2 min-h-11"
       >
@@ -70,19 +70,35 @@ export default function Cuentas() {
     Promise.resolve().then(() => api.resumenCuentas()).then(setResumen).catch(() => {})
   }
   const [cuadrePorCuenta, setCuadrePorCuenta] = useState({})
+  // El cuadre con el banco es el cálculo más caro del servidor (recorre los movimientos de cada cuenta)
+  // y solo se ve dentro de «Más de esta cuenta»: se pide la primera vez que alguien lo abre, no al pintar.
+  const [verCuadre, setVerCuadre] = useState(false)
   useEffect(() => {
-    if (cargando) return
+    if (cargando || !verCuadre) return
     let activo = true
     Promise.resolve().then(() => api.cuadreResumen?.()).then((r) => {
       if (!activo || !r?.cuentas) return
       setCuadrePorCuenta(Object.fromEntries(r.cuentas.map((x) => [x.cuenta_id, x])))
     }).catch(() => {})
     return () => { activo = false }
-  }, [cuentas, cargando])
+  }, [cuentas, cargando, verCuadre])
   // El encabezado (saldo total / deudas de tarjeta) se vuelve a pedir cada vez que el contexto
   // recarga las cuentas: crear, editar, eliminar o ajustar un saldo lo refresca sin recargar la página.
+  // Al abrir NO espera a que lleguen las cuentas: las dos peticiones salen a la vez (antes iban en cascada);
+  // cuando las cuentas terminan de llegar no se repite lo que ya se pidió al montar.
+  const resumenAlMontar = useRef(false)
   useEffect(() => {
-    if (!cargando) cargarResumen()
+    if (cargando && !resumenAlMontar.current && cuentas.length === 0) {
+      resumenAlMontar.current = true
+      cargarResumen()
+      return
+    }
+    if (cargando) return
+    if (resumenAlMontar.current) {
+      resumenAlMontar.current = false
+      return
+    }
+    cargarResumen()
   }, [cuentas, cargando])
 
   // Abrir el detalle desde la lista agrega una entrada de historial (atrás lo cierra, como
@@ -176,7 +192,7 @@ export default function Cuentas() {
               )}
               {/* Un solo enlace por tarjeta: «Ver sus movimientos» vive dentro del desplegable
                   (antes eran dos enlaces seguidos). Lo demás: si coincide con el banco y cuánto rinde. */}
-              <DesplegableMas etiqueta="Más de esta cuenta" className="px-1">
+              <DesplegableMas etiqueta="Más de esta cuenta" className="px-1" alAbrir={() => setVerCuadre(true)}>
                 <Link to={`/movimientos?cuenta=${c.id}`} className="flex items-center gap-1 text-xs text-accent font-semibold min-h-11">
                   Ver sus movimientos
                 </Link>
