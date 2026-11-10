@@ -206,12 +206,12 @@ def test_pantallazo_sin_pista_del_banco_va_a_la_cuenta_que_mas_usa_sin_preguntar
     sin_banco = "Transferencia exitosa $ 20.000 Para CARLOS RUIZ Compartir Descargar"
     r = _pantallazo(h, sin_banco)
     assert r["registrado"] and "motivo" not in r, r
-    assert r["cuenta_adivinada"] == "Nu Colombia" and "no pude saber de qué banco" in r["mensaje"]
+    assert r["cuenta_adivinada"] == "Nu Colombia" and "¿Era Nu Colombia?" in r["mensaje"]
     # Si era de Nequi, lo corrige UNA vez (la app manda la cuenta) y esa forma de pantallazo queda aprendida
     r2 = _pantallazo(h, "Transferencia exitosa $ 35.000 Para ANA TORRES Compartir Descargar", cuenta="Nequi")
     assert r2["registrado"]
     r3 = _pantallazo(h, "Transferencia exitosa $ 41.000 Para LUIS GOMEZ Compartir Descargar")
-    assert r3["registrado"] and r3["cuenta_adivinada"] is None and "Ojo" not in r3["mensaje"]
+    assert r3["registrado"] and r3["cuenta_adivinada"] is None and "¿Era" not in r3["mensaje"]
     assert _cuenta_nombre(_movimiento_mas_reciente()) == "Nequi"
     regla = [x for x in client.get("/movimientos/reglas-notificacion").json() if x["app"].startswith("pantalla:")]
     assert regla and "Nequi" in regla[0]["significado"] and "carlos" not in str(regla).lower()
@@ -397,7 +397,7 @@ def test_la_institucion_de_origen_es_la_de_quien_te_envio_no_tu_cuenta():
     # primera por nombre), no Nu, y se avisa para que la corrijas si era otra.
     h = _cuentas_nu_nequi("rn-io")
     r = _pantallazo(h, "Recibiste de Ana Perez $5.000,00 Aceptada Llave @ABC Institución de origen Nu")
-    assert r["registrado"] and r["cuenta_adivinada"] == "Nequi" and "Ojo" in r["mensaje"]
+    assert r["registrado"] and r["cuenta_adivinada"] == "Nequi" and "¿Era Nequi?" in r["mensaje"]
 
 
 def test_cada_uso_deja_una_linea_de_diagnostico_sin_datos_personales(caplog):
@@ -420,19 +420,80 @@ def test_el_atajo_anterior_recibe_una_vez_al_dia_como_actualizarse_y_el_nuevo_nu
     h = _usuario("rn-viejo")
     # Atajo anterior: manda el nombre del banco («Nequi»), no «auto»
     r = _aviso(h, RECIBO)
-    assert r["registrado"] and "Hay una versión nueva de este atajo" in r["mensaje"]
-    assert "Perfil › Registro automático" in r["mensaje"] and "Instalar" in r["mensaje"] and "Agregar atajo" in r["mensaje"]
+    assert r["registrado"] and "Hay un atajo nuevo" in r["mensaje"]
+    assert "Perfil › Registro automático › Instalar" in r["mensaje"]
     # Solo una vez al día: no se repite en cada uso
     r2 = _aviso(h, ("Envío", "ANA PEREZ te envió 2, ¡lo mejor!"))
-    assert r2["registrado"] and "versión nueva" not in r2["mensaje"]
+    assert r2["registrado"] and "atajo nuevo" not in r2["mensaje"]
     # El atajo nuevo (paquete «auto») no recibe el aviso nunca
     h2 = _cuentas_nu_nequi("rn-nuevo")
     r3 = _pantallazo(h2, _nu_comprobante(_ayer()))
-    assert r3["registrado"] and "versión nueva" not in r3["mensaje"]
+    assert r3["registrado"] and "atajo nuevo" not in r3["mensaje"]
 
 
 def test_android_no_recibe_el_aviso_de_atajo_viejo():
     h = _usuario("rn-android")
     r = client.post("/movimientos/rapido-notificacion", headers=h,
                     json={"paquete": "com.nequi.MobileApp", "titulo": "Envío", "texto": "ANA PEREZ te envió 3, ¡lo mejor!"})
-    assert r.status_code == 200 and r.json()["registrado"] and "versión nueva" not in r.json()["mensaje"]
+    assert r.status_code == 200 and r.json()["registrado"] and "atajo nuevo" not in r.json()["mensaje"]
+
+
+def test_el_mensaje_de_la_notificacion_es_corto_para_que_ios_no_lo_corte():
+    # iOS corta los mensajes largos de una notificación: un registro normal cabe en ~2 líneas y, aun con todas las notas, en ~4.
+    h = _cuentas_nu_nequi("rn-corto")
+    normal = _pantallazo(h, _nu_comprobante(_ayer()))
+    assert normal["registrado"] and len(normal["mensaje"]) <= 90, normal["mensaje"]
+    adivinado = _pantallazo(h, "Transferencia exitosa $ 20.000 Para CARLOS RUIZ Compartir Descargar")
+    assert adivinado["cuenta_adivinada"] and len(adivinado["mensaje"]) <= 130, adivinado["mensaje"]
+    viejo = _aviso(_usuario("rn-corto2"), RECIBO)  # atajo anterior: además lleva el aviso de actualización
+    assert viejo["registrado"] and len(viejo["mensaje"]) <= 150, viejo["mensaje"]
+    # Una descripción larga se recorta, no estira la notificación
+    larga = _pantallazo(h, "Transferencia exitosa $ 9.000 Para MARIA DEL PILAR RODRIGUEZ DE LA HOZ SEGURA Nu")
+    assert larga["registrado"] and len(larga["mensaje"]) <= 130, larga["mensaje"]
+
+
+# ---- Varias cuentas del MISMO banco (ahorros y tarjeta de Nu): el servidor ya no se rinde ni cae en otro banco ------------------
+
+def _con_dos_nu(uid):
+    h = _usuario(uid)  # crea «Nequi»
+    assert client.post("/cuentas", json={"nombre": "Nu Colombia", "saldo": 500000, "tipo": "ahorro"}).status_code == 200
+    assert client.post("/cuentas", json={"nombre": "Nu Tarjeta", "saldo": 0, "tipo": "credito"}).status_code == 200
+    return h
+
+
+def test_con_ahorros_y_tarjeta_de_nu_una_transferencia_va_a_ahorros_aunque_lo_ultimo_fuera_nequi():
+    h = _con_dos_nu("rn-dosnu")
+    assert _aviso(h, RECIBO)["registrado"]  # lo más reciente de la persona es Nequi (así fallaba: caía ahí)
+    r = _pantallazo(h, _nu_detalle(_ayer()))
+    assert r["registrado"] and r["cuenta_adivinada"] is None, r  # reconoció Nu, no adivinó
+    movs = client.get("/movimientos").json()
+    mov = next(m for m in (movs if isinstance(movs, list) else movs["items"]) if m["descripcion"] == "Envío a Carlos Ruiz")
+    assert _cuenta_nombre(mov) == "Nu Colombia"  # una transferencia no sale de la tarjeta de crédito
+
+
+def test_entre_dos_cuentas_de_nu_gana_la_mas_reciente_si_no_es_una_transferencia():
+    h = _con_dos_nu("rn-dosnu2")
+    assert _pantallazo(h, _nu_detalle(_ayer()))["registrado"]
+    # Compra con tarjeta: la huella de Nu no basta para saber cuál; se elige la más reciente entre las de Nu (nunca Nequi)
+    r = _pantallazo(h, "Nu Compra aprobada $ 12.000 CAFE LA ESTACION Visa ••1234 Reportar problema")
+    assert r["registrado"]
+    assert _cuenta_nombre(_movimiento_mas_reciente()) in {"Nu Colombia", "Nu Tarjeta"}
+
+
+def test_la_cuenta_que_se_llama_nubank_tambien_es_nu():
+    from app.notificaciones import banco_de_cuenta
+
+    assert banco_de_cuenta("Nubank") == "Nu" and banco_de_cuenta("Mi Nubank ahorros") == "Nu"
+    assert banco_de_cuenta("Nueva billetera") is None
+
+
+def test_si_la_cuenta_de_nu_no_se_llama_nu_la_huella_la_encuentra_entre_las_que_no_son_de_otro_banco():
+    h = _usuario("rn-sinnombre")  # crea «Nequi»
+    assert client.post("/cuentas", json={"nombre": "Mis ahorros", "saldo": 100000, "tipo": "ahorro"}).status_code == 200
+    assert client.post("/cuentas", json={"nombre": "Efectivo", "saldo": 5000, "tipo": "efectivo"}).status_code == 200
+    assert _aviso(h, RECIBO)["registrado"]  # lo último es Nequi: antes caía ahí
+    r = _pantallazo(h, _nu_detalle(_ayer()))
+    assert r["registrado"] and r["cuenta_adivinada"] is None, r
+    movs = client.get("/movimientos").json()
+    mov = next(m for m in (movs if isinstance(movs, list) else movs["items"]) if m["descripcion"] == "Envío a Carlos Ruiz")
+    assert _cuenta_nombre(mov) == "Mis ahorros"  # ni Nequi (otro banco) ni Efectivo

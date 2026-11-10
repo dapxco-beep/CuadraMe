@@ -84,10 +84,7 @@ if not logger.handlers:  # el servidor no configura INFO: sin su propio canal es
 
 # iOS no actualiza los atajos instalados: quien tiene uno anterior solo se entera por lo que el propio atajo le muestra. Los atajos
 # nuevos mandan `paquete="auto"`; los anteriores mandaban el nombre de un banco. A estos se les agrega, UNA vez al día, cómo cambiarlo.
-AVISO_ATAJO_VIEJO = (
-    " Hay una versión nueva de este atajo, que casi no pregunta y siempre te dice qué pasó. Para cambiarla abre CuadraMe › Perfil › "
-    "Registro automático, toca «Instalar» y luego «Agregar atajo» (pega tu clave otra vez). Si queda uno con «2», borra el viejo."
-)
+AVISO_ATAJO_VIEJO = " Hay un atajo nuevo: CuadraMe › Perfil › Registro automático › Instalar."
 _AVISADO_HOY: dict[str, str] = {}  # usuario -> día en que ya se le avisó (en memoria: se pierde al reiniciar, no importa)
 
 
@@ -1183,6 +1180,18 @@ def crear_movimiento_desde_notificacion(
     return resultado
 
 
+def _mensaje_corto(out) -> str:
+    """El texto que muestra la notificación del atajo. iOS CORTA los mensajes largos (el banner enseña ~2 líneas), así que va lo
+    esencial: qué se registró, en qué cuenta y que hay que confirmarlo. Las notas de ayuda largas se quitaron a propósito."""
+    signo = "Ingreso" if out.tipo == "income" else "Gasto"
+    descripcion = (out.descripcion or "").strip()
+    if len(descripcion) > 38:
+        descripcion = descripcion[:37].rstrip() + "…"
+    if out.duplicado:
+        return f"Ya lo tenías: {signo.lower()} de {formato_cop(out.monto)} en {descripcion}."
+    return f"{signo} de {formato_cop(out.monto)} en {descripcion} ({out.cuenta_nombre}). Confírmalo en CuadraMe."
+
+
 def _procesar_notificacion(
     data: NotificacionAndroid,
     db: Session,
@@ -1212,8 +1221,7 @@ def _procesar_notificacion(
             if cuenta_auto is None:
                 raise HTTPException(status_code=404, detail="El usuario no tiene ninguna cuenta creada")
             adivinada = True
-            nota_cuenta = (f" Ojo: no pude saber de qué banco era este comprobante y lo guardé en {cuenta_auto} (la que más usas). "
-                           "Si era otra, cámbialo al confirmar.")
+            nota_cuenta = f" ¿Era {cuenta_auto}? Si no, cámbialo."
         if data.cuenta and data.aprender:
             esq0 = rn.esqueleto(data.titulo, data.texto)
             if rn.aprender(db, usuario.id, rn.PREFIJO_CUENTA + cuenta_auto, esq0, tipo=None, sin_cifra=False):
@@ -1246,7 +1254,7 @@ def _procesar_notificacion(
                 f"Plata recibida en {app_nombre}" if tipo == "income" else f"Envío por {app_nombre}")),
             cuenta=app_nombre, fuente="notificacion", id_transaccion=huella), db, usuario)
         return {"ok": True, "registrado": not out.duplicado, "duplicado": out.duplicado, "movimiento_id": out.id,
-                "mensaje": out.mensaje + nota_cuenta, "por_confirmar": out.por_confirmar, "aprendido": aprendido,
+                "mensaje": _mensaje_corto(out) + nota_cuenta, "por_confirmar": out.por_confirmar, "aprendido": aprendido,
                 "cuenta_adivinada": cuenta_auto if adivinada else None}
 
     if n is None:
@@ -1297,7 +1305,7 @@ def _procesar_notificacion(
     out = crear_movimiento_rapido(rapido, db, usuario)
     return {
         "ok": True, "registrado": not out.duplicado, "duplicado": out.duplicado, "movimiento_id": out.id,
-        "mensaje": out.mensaje + nota_cuenta, "por_confirmar": out.por_confirmar, "traslado_propio": n.traslado_propio,
+        "mensaje": _mensaje_corto(out) + nota_cuenta, "por_confirmar": out.por_confirmar, "traslado_propio": n.traslado_propio,
         "cuenta_adivinada": cuenta_auto if adivinada else None,
     }
 
