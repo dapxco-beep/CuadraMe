@@ -237,7 +237,9 @@ export default function Agregar() {
       } : {})
       // Un ingreso abre la sugerencia de reparto (fijos, ahorro, gasto libre); el
       // usuario la acepta o la descarta, y de ahí vuelve al inicio.
-      if (tipo === 'income') {
+      let sinSugerencia = false
+      try { sinSugerencia = localStorage.getItem('cuadrame:sin-sugerencia-ingreso') === '1' } catch { /* sin almacenamiento */ }
+      if (tipo === 'income' && !sinSugerencia) {
         setSugerirIngreso({ monto: Number(monto), cuentaId })
         return
       }

@@ -122,8 +122,14 @@ export default function SugerenciaIngreso({ monto: montoInicial, cuentaId, onClo
               Aún no tienes metas a las que apartar. <Link to="/metas" onClick={onClose} className="text-accent font-medium">Crear una meta</Link>
             </p>
           )}
-          <button onClick={onClose} className="w-full text-sm text-ink-soft font-medium py-2">
+          <button onClick={onClose} className="w-full text-sm text-ink-soft font-medium py-2 min-h-11">
             Ahora no
+          </button>
+          <button
+            onClick={() => { try { localStorage.setItem('cuadrame:sin-sugerencia-ingreso', '1') } catch { /* sin almacenamiento */ } onClose() }}
+            className="w-full t-apoyo py-2 min-h-11"
+          >
+            No volver a mostrar
           </button>
         </div>
       )}
