@@ -52,9 +52,9 @@ describe('elegirSabias', () => {
     expect(elegirSabias({ enUso: [], descartados: ['metas'] }).id).toBe('fijos')
     expect(elegirSabias({ enUso: ['/metas', '/recurrentes', '/deudas'], descartados: SABIAS.map((s) => s.id) })).toBeNull()
   })
-  it('la tarjeta de voz no menciona solo a Siri', () => {
+  it('la tarjeta de voz habla del asistente de voz del celular', () => {
     const voz = SABIAS.find((s) => s.id === 'voz')
-    expect(voz.texto).toMatch(/Android/)
+    expect(voz.texto).toMatch(/asistente de voz de tu celular/)
   })
 })
 

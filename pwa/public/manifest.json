@@ -47,7 +47,7 @@
       "name": "Registrar un gasto",
       "short_name": "Gasto",
       "description": "Anota un gasto con el teclado listo",
-      "url": "/agregar?foco=monto",
+      "url": "/#/agregar?foco=monto",
       "icons": [
         {
           "src": "/icons/icon-192.png",
@@ -60,7 +60,7 @@
       "name": "Traer movimientos",
       "short_name": "Traer",
       "description": "Revisa lo que llegó del correo o los extractos",
-      "url": "/sincronizacion",
+      "url": "/#/sincronizacion",
       "icons": [
         {
           "src": "/icons/icon-192.png",
@@ -72,7 +72,7 @@
     {
       "name": "Mi presupuesto",
       "short_name": "Presupuesto",
-      "url": "/presupuesto",
+      "url": "/#/presupuesto",
       "icons": [
         {
           "src": "/icons/icon-192.png",
