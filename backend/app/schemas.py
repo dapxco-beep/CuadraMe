@@ -299,7 +299,8 @@ class NotificacionAndroid(BaseModel):
     monto: Optional[float] = Field(default=None, gt=0)
     tipo: Optional[str] = Field(default=None, max_length=20)  # 'gasto' | 'ingreso' (o expense | income)
     nota: Optional[str] = Field(default=None, max_length=150)  # «parche con Laura»: de aquí sale la categoría
-    cuenta: Optional[str] = Field(default=None, max_length=120)  # solo si el servidor no pudo deducir la cuenta y se la preguntó
+    cuenta: Optional[str] = Field(default=None, max_length=120)  # la cuenta que la persona eligió cuando el servidor no supo cuál era
+    movimiento_id: Optional[str] = Field(default=None, max_length=64)  # con `cuenta`: el movimiento que el atajo acaba de registrar
     aprender: bool = True  # guardar la plantilla anónima para no volver a preguntar
 
 

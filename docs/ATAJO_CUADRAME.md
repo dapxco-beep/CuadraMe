@@ -13,7 +13,9 @@
 | **CuadraMe Registrar** | Un gesto que elige cada persona (Tocar atrás, Botón de acción, Siri) | El texto leído de un pantallazo (OCR en el iPhone; la imagen no sale del teléfono), `paquete=auto` | Igual que Notificaciones, con lector de comprobantes de Nu, Nequi y Bancolombia |
 
 Cómo responde `/movimientos/rapido-notificacion` (campo `motivo`): sin motivo = registrado «por confirmar»; `pedir_monto` (salió plata y el aviso no trae cifra);
-`pedir_tipo` (hay monto pero no se sabe si entró o salió); `pedir_cuenta` (no se pudo deducir de qué cuenta es); `no_parece_un_movimiento`.
+`pedir_tipo` (hay monto pero no se sabe si entró o salió); `confirmar_cuenta` (no se supo de qué cuenta era: YA se registró en la más probable y el atajo
+pregunta «¿De qué cuenta es?» con `GET /movimientos/cuentas-rapido`; la respuesta vuelve con `movimiento_id` + `cuenta` y el servidor MUEVE ese movimiento con
+`mover_masivo` —saldos ajustados— y aprende esa pantalla; solo mueve movimientos propios creados por un atajo); `no_parece_un_movimiento`.
 Cada respuesta de la persona se aprende como regla personal (`reglas_notificacion`): plantilla anónima, sin texto, nombres ni montos; se ve y se borra en Conexiones.
 
 **Cuenta de un pantallazo**, en orden: lo que la persona enseñó → últimos 4 dígitos («*8223») contra el alias de sus cuentas → huellas por banco
@@ -35,6 +37,15 @@ shortcuts sign -m anyone -i sinfirmar.shortcut -o "CuadraMe Registrar.shortcut"
 2. Se importa en la app Atajos, y se usa Compartir › Copiar enlace de iCloud.
 3. Se comprueba el nombre con `https://www.icloud.com/shortcuts/api/records/<id>` (campo `name`).
 4. El enlace se pega en `pwa/src/lib/atajosEnlaces.js` y se despliega la web. Quien ya instaló un atajo conserva su versión: hay que avisarle si cambia.
+
+### Cómo aprende la app de dónde viene cada pantalla
+
+El atajo NO sabe qué app está abierta (iOS no se lo dice), así que el servidor lo deduce del texto. Y **aprende de lo que la persona hace**:
+al crear un movimiento por pantallazo se anota, sin el texto, la «forma» de esa pantalla (`reglas_notificacion.forma_estable`: palabras fijas; nombres,
+montos y bancos tapados) en una fila `mov:<id>` de `reglas_notificacion`. Si la persona **mueve ese movimiento a otra cuenta** (editar o mover varios)
+o lo **confirma**, esa forma pasa a ser una regla `pantalla:<cuenta>`, y la próxima pantalla PARECIDA (`_parecida`: mismas palabras fijas) va directo a esa
+cuenta sin adivinar. Si se corrige, gana lo último que enseñó (una sola regla por pantalla). Solo se guardan las últimas 100 formas pendientes por persona.
+Orden de decisión de la cuenta: regla aprendida › últimos 4 dígitos › huella de banco › nombre del banco en el texto (sin contar destinos) › la cuenta que más usa.
 
 ### Quien ya tiene un atajo anterior
 

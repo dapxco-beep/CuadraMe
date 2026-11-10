@@ -80,7 +80,7 @@ def _post(url: str, clave: dict, cuerpo: list[tuple[str, dict]], uid: str) -> di
 
 
 def _valor(clave: str, de: str, uid: str) -> dict:
-    return _accion("getvalueforkey", UUID=uid, WFDictionaryKey=clave,
+    return _accion("getvalueforkey", UUID=uid, WFDictionaryKey=clave, WFGetDictionaryValueType="Value",
                    WFInput={"Value": _salida(de, "Contenido de la URL"), "WFSerializationType": "WFTextTokenAttachment"})
 
 
@@ -113,7 +113,7 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
     id_monto2, id_com2, id_tipo, id_rapido2, id_resp2 = u(), u(), u(), u(), u()
     id_shot, id_ocr, id_cuentas = u(), u(), u()
     elegir = modo in ("pantalla", "notificacion")  # no se pregunta el banco: el servidor lo deduce del texto o de lo aprendido
-    id_rapido3, id_resp3, id_cuentas_resp = u(), u(), u()
+    id_rapido3, id_resp3, id_movid = u(), u(), u()
     # De dónde sale el texto: la notificación misma o el texto leído de una imagen (pantallazo / captura)
     texto_var = ENTRADA if modo == "notificacion" else _salida(id_ocr, "Texto de la imagen")
     clave = _con_variable("", _salida(id_clave, "Texto"))
@@ -130,8 +130,10 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
         # El texto crudo (de la notificación o del pantallazo): el servidor lo lee, no el atajo
         _post(f"{base}/movimientos/rapido-notificacion", clave,
               [("paquete", nombre_banco), ("titulo", _texto("")), ("texto", _con_variable("", texto_var))], id_post),
-        _valor("motivo", id_post, id_motivo),
         _valor("mensaje", id_post, id_msg),
+        # Va de ÚLTIMO: la entrada de un «Si» es, por defecto, la salida de la acción inmediatamente anterior; así es «motivo» incluso si
+        # iOS ignora la entrada explícita que también se le pone.
+        _valor("motivo", id_post, id_motivo),
     ]
     # Segunda llamada con el MISMO texto + la respuesta de la persona: el servidor registra y aprende la forma del
     # aviso, así la próxima vez de este banco ya no pregunta.
@@ -153,20 +155,27 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
     pide_tipo = [
         _valor("monto", id_post, id_monto2),
         _valor("comercio", id_post, id_com2),
-        _accion("choosefromlist", UUID=id_tipo, WFChooseFromListActionPrompt="¿Entró o salió plata?",
-                WFChooseFromListActionList=["Gasto", "Ingreso"]),
+        # Una lista fija se arma con la acción «Lista» y «Elegir de la lista» la toma como entrada (no es un parámetro de ésta)
+        _accion("list", WFItems=["Gasto", "Ingreso"]),
+        _accion("choosefromlist", UUID=id_tipo, WFChooseFromListActionPrompt="¿Entró o salió plata?"),
         responder(id_rapido2, entrada_texto(id_monto2, "Valor del diccionario"),
                   entrada_texto(id_tipo, "Elemento elegido"), entrada_texto(id_com2, "Valor del diccionario")),
         _valor("mensaje", id_rapido2, id_resp2),
         aviso(id_resp2),
     ]
-    # El servidor no pudo deducir de qué cuenta es el pantallazo: se pregunta UNA vez y lo aprende
-    pide_cuenta = [
-        _valor("cuentas", id_post, id_cuentas_resp),
+    # El servidor no supo de qué cuenta era: YA lo registró en la más probable y lo dice (primero el aviso, para que nunca se quede
+    # mudo). Después pregunta «¿De qué cuenta es?» entre las cuentas registradas (las pide al servidor y elige de esa lista, igual que
+    # el atajo de cierre que ya funciona) y, si la persona elige otra, el servidor mueve el movimiento y aprende esa pantalla.
+    confirma_cuenta = [
+        aviso(id_msg),
+        _valor("movimiento_id", id_post, id_movid),
+        _accion("downloadurl", UUID=id_cuentas, WFURL=f"{base}/movimientos/cuentas-rapido", WFHTTPMethod="GET",
+                WFHTTPHeaders=_dic([("X-Api-Key", clave)])),
         _accion("choosefromlist", UUID=id_banco, WFChooseFromListActionPrompt="¿De qué cuenta es?",
-                WFInput={"Value": _salida(id_cuentas_resp, "Valor del diccionario"), "WFSerializationType": "WFTextTokenAttachment"}),
+                WFInput={"Value": _salida(id_cuentas, "Contenido de la URL"), "WFSerializationType": "WFTextTokenAttachment"}),
         _post(f"{base}/movimientos/rapido-notificacion", clave,
               [("paquete", _texto("auto")), ("titulo", _texto("")), ("texto", _con_variable("", texto_var)),
+               ("movimiento_id", entrada_texto(id_movid, "Valor del diccionario")),
                ("cuenta", entrada_texto(id_banco, "Elemento elegido"))], id_rapido3),
         _valor("mensaje", id_rapido3, id_resp3),
         aviso(id_resp3),
@@ -177,7 +186,7 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
                      [aviso(id_msg)] if modo == "pantalla" else [], [aviso(id_msg)])
     tipo = _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_tipo", pide_tipo, nada)
     monto = _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_monto", pide_monto, tipo)
-    acciones += _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_cuenta", pide_cuenta, monto) if elegir else monto
+    acciones += _si_igual(u(), id_motivo, "Valor del diccionario", "confirmar_cuenta", confirma_cuenta, monto) if elegir else monto
 
     return {
         "WFWorkflowClientVersion": "2700",
