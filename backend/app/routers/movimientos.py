@@ -82,6 +82,26 @@ if not logger.handlers:  # el servidor no configura INFO: sin su propio canal es
     logger.addHandler(_canal)
     logger.setLevel(logging.INFO)
 
+# iOS no actualiza los atajos instalados: quien tiene uno anterior solo se entera por lo que el propio atajo le muestra. Los atajos
+# nuevos mandan `paquete="auto"`; los anteriores mandaban el nombre de un banco. A estos se les agrega, UNA vez al día, cómo cambiarlo.
+AVISO_ATAJO_VIEJO = (
+    " Hay una versión nueva de este atajo, que casi no pregunta y siempre te dice qué pasó. Para cambiarla abre CuadraMe › Perfil › "
+    "Registro automático, toca «Instalar» y luego «Agregar atajo» (pega tu clave otra vez). Si queda uno con «2», borra el viejo."
+)
+_AVISADO_HOY: dict[str, str] = {}  # usuario -> día en que ya se le avisó (en memoria: se pierde al reiniciar, no importa)
+
+
+def _aviso_atajo_viejo(usuario_id: str, paquete: str) -> str:
+    """El aviso de actualización si el atajo es de una versión anterior y hoy no se le ha dado; si no, ''."""
+    if (paquete or "").strip().lower() in ("auto", "pantalla") or not notif.es_ios(paquete):
+        return ""
+    hoy = ahora_co().strftime("%Y-%m-%d")
+    if _AVISADO_HOY.get(usuario_id) == hoy:
+        return ""
+    _AVISADO_HOY[usuario_id] = hoy
+    return AVISO_ATAJO_VIEJO
+
+
 MENSAJE_SIN_PAGO = "No encontré un pago en esta pantalla. Abre el comprobante de tu banco y repite el gesto."
 
 router = APIRouter(prefix="/movimientos", tags=["movimientos"])
@@ -1158,6 +1178,8 @@ def crear_movimiento_desde_notificacion(
         resultado.get("registrado"), resultado.get("duplicado", False), resultado.get("aprendido", False),
         adivinada, forma or "-",
     )
+    if resultado.get("mensaje") is not None:
+        resultado["mensaje"] += _aviso_atajo_viejo(usuario.id, data.paquete)
     return resultado
 
 

@@ -413,3 +413,26 @@ def test_cada_uso_deja_una_linea_de_diagnostico_sin_datos_personales(caplog):
     assert any("atajo rapido fuente=wallet con_comercio=True con_tarjeta=True" in l for l in lineas)
     todo = " ".join(lineas).lower()
     assert "carlos" not in todo and "20.000" not in todo and "ruiz" not in todo and "cdm_" not in todo  # la forma es anónima
+
+# ---- Atajos de versiones anteriores: iOS no los actualiza, así que el propio atajo les explica cómo cambiarlo -----------------
+
+def test_el_atajo_anterior_recibe_una_vez_al_dia_como_actualizarse_y_el_nuevo_nunca():
+    h = _usuario("rn-viejo")
+    # Atajo anterior: manda el nombre del banco («Nequi»), no «auto»
+    r = _aviso(h, RECIBO)
+    assert r["registrado"] and "Hay una versión nueva de este atajo" in r["mensaje"]
+    assert "Perfil › Registro automático" in r["mensaje"] and "Instalar" in r["mensaje"] and "Agregar atajo" in r["mensaje"]
+    # Solo una vez al día: no se repite en cada uso
+    r2 = _aviso(h, ("Envío", "ANA PEREZ te envió 2, ¡lo mejor!"))
+    assert r2["registrado"] and "versión nueva" not in r2["mensaje"]
+    # El atajo nuevo (paquete «auto») no recibe el aviso nunca
+    h2 = _cuentas_nu_nequi("rn-nuevo")
+    r3 = _pantallazo(h2, _nu_comprobante(_ayer()))
+    assert r3["registrado"] and "versión nueva" not in r3["mensaje"]
+
+
+def test_android_no_recibe_el_aviso_de_atajo_viejo():
+    h = _usuario("rn-android")
+    r = client.post("/movimientos/rapido-notificacion", headers=h,
+                    json={"paquete": "com.nequi.MobileApp", "titulo": "Envío", "texto": "ANA PEREZ te envió 3, ¡lo mejor!"})
+    assert r.status_code == 200 and r.json()["registrado"] and "versión nueva" not in r.json()["mensaje"]
