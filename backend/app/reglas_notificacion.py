@@ -107,23 +107,57 @@ def inferir_cuenta(db: Session, usuario_id: str, titulo: str, texto: str, elegid
         if len(con_alias) == 1:
             return con_alias[0], nombres
     plano = _sin_tildes(f"{titulo or ''} {texto or ''}")
-    # Huella de pantalla: si la forma de la pantalla es inconfundible de un banco y la persona tiene UNA cuenta de ese banco
+    # Huella de pantalla: si la forma de la pantalla es inconfundible de un banco, es una cuenta de ese banco; si la persona
+    # tiene varias (ahorros y tarjeta de Nu, por ejemplo), se elige la que corresponde al tipo de movimiento.
     for banco, frases in HUELLAS_BANCO.items():
         if any(f in plano for f in frases):
-            suyas = [n for n in nombres if (banco_de_cuenta(n) or "").lower() == banco]
-            if len(suyas) == 1:
-                return suyas[0], nombres
+            suyas = [c for c in cuentas if (banco_de_cuenta(c.nombre) or "").lower() == banco]
+            if suyas:
+                return _elegir_de_un_banco(db, usuario_id, suyas, plano), nombres
     plano = _DESTINO.sub(" ", plano)
-    halladas = []  # (posición en el texto, nombre)
-    for nombre in nombres:
-        claves = {_sin_tildes(nombre).strip()}
-        banco = banco_de_cuenta(nombre)
-        if banco:
-            claves.add(banco.lower())
-        pos = [p for p in (_posicion(k, plano) for k in claves) if p is not None]
-        if pos:
-            halladas.append((min(pos), nombre))
-    return (min(halladas)[1] if halladas else None), nombres
+    # Todas las pistas del texto, por su posición: gana la que aparece PRIMERO (el encabezado es el origen). Si empatan, el nombre
+    # completo de la cuenta pesa más que solo el banco.
+    pistas = []  # (posición, 0 = nombre de la cuenta / 1 = solo el banco, nombre de cuenta o banco)
+    for c in cuentas:
+        pos = _posicion(_sin_tildes(c.nombre).strip(), plano)
+        if pos is not None:
+            pistas.append((pos, 0, c.nombre))
+        banco = banco_de_cuenta(c.nombre)
+        pos_b = _posicion(banco.lower(), plano) if banco else None
+        if pos_b is not None:
+            pistas.append((pos_b, 1, banco))
+    if pistas:
+        _pos, clase, valor = min(pistas)
+        if clase == 0:
+            return valor, nombres
+        mismas = [c for c in cuentas if banco_de_cuenta(c.nombre) == valor]
+        return _elegir_de_un_banco(db, usuario_id, mismas, plano), nombres
+    return None, nombres
+
+
+def _mas_reciente(db: Session, usuario_id: str, cuentas: list) -> str:
+    """De estas cuentas, la del movimiento más reciente (si ninguna tiene, la primera por nombre)."""
+    ultimos = dict(
+        db.query(Movimiento.cuenta_id, func.max(Movimiento.fecha))
+        .filter(Movimiento.usuario_id == usuario_id)
+        .group_by(Movimiento.cuenta_id)
+        .all()
+    )
+    con_uso = [(ultimos[c.id], c.nombre) for c in cuentas if ultimos.get(c.id) is not None]
+    return max(con_uso)[1] if con_uso else sorted(cuentas, key=lambda c: c.nombre)[0].nombre
+
+
+def _elegir_de_un_banco(db: Session, usuario_id: str, cuentas_banco: list, plano: str) -> str:
+    """Ya se sabe el BANCO pero la persona tiene varias cuentas ahí (ahorros y tarjeta de crédito, por ejemplo). Una transferencia,
+    un envío o un pago por llave no sale de una tarjeta de crédito: se prefiere la que no es de crédito; entre las que quedan,
+    la que se usó más recientemente."""
+    if len(cuentas_banco) == 1:
+        return cuentas_banco[0].nombre
+    es_transferencia = re.search(r"transferencia|enviaste|enviado a|bre ?-?b|llave|envio realizado", plano) is not None
+    candidatas = cuentas_banco
+    if es_transferencia:
+        candidatas = [c for c in cuentas_banco if (c.tipo or "ahorro") != "credito"] or cuentas_banco
+    return _mas_reciente(db, usuario_id, candidatas)
 
 
 def cuenta_mas_reciente(db: Session, usuario_id: str) -> str | None:
@@ -132,14 +166,7 @@ def cuenta_mas_reciente(db: Session, usuario_id: str) -> str | None:
     cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).order_by(Cuenta.nombre).all()
     if not cuentas:
         return None
-    ultimos = dict(
-        db.query(Movimiento.cuenta_id, func.max(Movimiento.fecha))
-        .filter(Movimiento.usuario_id == usuario_id)
-        .group_by(Movimiento.cuenta_id)
-        .all()
-    )
-    con_uso = [(ultimos[c.id], c.nombre) for c in cuentas if ultimos.get(c.id) is not None]
-    return max(con_uso)[1] if con_uso else cuentas[0].nombre
+    return _mas_reciente(db, usuario_id, cuentas)
 
 
 def significado(r: ReglaNotificacion) -> str:

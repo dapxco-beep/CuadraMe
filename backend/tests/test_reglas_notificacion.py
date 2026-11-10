@@ -450,3 +450,38 @@ def test_el_mensaje_de_la_notificacion_es_corto_para_que_ios_no_lo_corte():
     # Una descripción larga se recorta, no estira la notificación
     larga = _pantallazo(h, "Transferencia exitosa $ 9.000 Para MARIA DEL PILAR RODRIGUEZ DE LA HOZ SEGURA Nu")
     assert larga["registrado"] and len(larga["mensaje"]) <= 130, larga["mensaje"]
+
+
+# ---- Varias cuentas del MISMO banco (ahorros y tarjeta de Nu): el servidor ya no se rinde ni cae en otro banco ------------------
+
+def _con_dos_nu(uid):
+    h = _usuario(uid)  # crea «Nequi»
+    assert client.post("/cuentas", json={"nombre": "Nu Colombia", "saldo": 500000, "tipo": "ahorro"}).status_code == 200
+    assert client.post("/cuentas", json={"nombre": "Nu Tarjeta", "saldo": 0, "tipo": "credito"}).status_code == 200
+    return h
+
+
+def test_con_ahorros_y_tarjeta_de_nu_una_transferencia_va_a_ahorros_aunque_lo_ultimo_fuera_nequi():
+    h = _con_dos_nu("rn-dosnu")
+    assert _aviso(h, RECIBO)["registrado"]  # lo más reciente de la persona es Nequi (así fallaba: caía ahí)
+    r = _pantallazo(h, _nu_detalle(_ayer()))
+    assert r["registrado"] and r["cuenta_adivinada"] is None, r  # reconoció Nu, no adivinó
+    movs = client.get("/movimientos").json()
+    mov = next(m for m in (movs if isinstance(movs, list) else movs["items"]) if m["descripcion"] == "Envío a Carlos Ruiz")
+    assert _cuenta_nombre(mov) == "Nu Colombia"  # una transferencia no sale de la tarjeta de crédito
+
+
+def test_entre_dos_cuentas_de_nu_gana_la_mas_reciente_si_no_es_una_transferencia():
+    h = _con_dos_nu("rn-dosnu2")
+    assert _pantallazo(h, _nu_detalle(_ayer()))["registrado"]
+    # Compra con tarjeta: la huella de Nu no basta para saber cuál; se elige la más reciente entre las de Nu (nunca Nequi)
+    r = _pantallazo(h, "Nu Compra aprobada $ 12.000 CAFE LA ESTACION Visa ••1234 Reportar problema")
+    assert r["registrado"]
+    assert _cuenta_nombre(_movimiento_mas_reciente()) in {"Nu Colombia", "Nu Tarjeta"}
+
+
+def test_la_cuenta_que_se_llama_nubank_tambien_es_nu():
+    from app.notificaciones import banco_de_cuenta
+
+    assert banco_de_cuenta("Nubank") == "Nu" and banco_de_cuenta("Mi Nubank ahorros") == "Nu"
+    assert banco_de_cuenta("Nueva billetera") is None

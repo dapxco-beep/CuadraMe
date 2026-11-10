@@ -297,6 +297,8 @@ def nombre_app(paquete: str) -> str:
 def banco_de_cuenta(nombre_cuenta: str) -> str | None:
     """Banco/billetera que el atajo sabe leer según el nombre de la cuenta («Nu Colombia» -> Nu), o None."""
     palabras = set(re.findall(r"[a-z0-9]+", _sin_tildes(nombre_cuenta)))
+    if "nubank" in palabras:  # así le dice mucha gente a la cuenta de Nu
+        palabras.add("nu")
     for clave, (nombre, _clase) in ALIAS_IOS.items():
         if clave in palabras:
             return nombre
