@@ -443,6 +443,7 @@ def crear_movimiento(
                            f"en {nombre_cuenta}, registrado desde {dup.ETIQUETA_CANAL[dup.origen_de_movimiento(m)]}: "
                            f"«{m.descripcion}». ¿Es otro igual o es el mismo?",
                 "movimiento_id": m.id,
+                "cuenta_id": m.cuenta_id,
                 "canal": dup.origen_de_movimiento(m),
                 "tipo": data.tipo,
                 "notas_existentes": m.notas or "",
