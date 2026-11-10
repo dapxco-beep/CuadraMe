@@ -4,6 +4,7 @@
 import { claveComercio } from './comercio'
 import { cuentaRecordada, esCredito, marcaDe, productoDeTexto } from './cuentasBanco'
 import { formatCOP } from './format'
+import { mensajeDeError } from './mensajes'
 
 export const MAX_ARCHIVOS = 10
 export const MAX_BYTES_PDF = 15 * 1024 * 1024 // igual que el servidor (~15 MB decodificado)
@@ -288,7 +289,7 @@ export async function procesarCola(archivos, procesarUno, { onCambio = () => {},
       const parche = await procesarUno(a)
       onCambio(a.id, parche)
     } catch (err) {
-      onCambio(a.id, { estado: 'error', error: err?.message || 'No se pudo procesar el archivo' })
+      onCambio(a.id, { estado: 'error', error: mensajeDeError(err, MSG_ARCHIVO_ILEGIBLE) })
     }
   }
   onProgreso({ actual: 0, total: pendientes.length })
@@ -344,6 +345,16 @@ export function agruparPorCuenta(archivos) {
     mapa.get(a.cuentaId).push(a)
   }
   return [...mapa.entries()].map(([cuentaId, lista]) => ({ cuentaId, archivos: lista }))
+}
+
+// Cuando un archivo falla sin una razón clara: dice qué hacer ahora.
+export const MSG_ARCHIVO_ILEGIBLE = 'No pudimos leer este archivo. Revisa que sea el PDF del banco, no una foto, y toca Reintentar.'
+
+/** Etiqueta de un archivo en la cola; en PDF avisa que puede tardar. */
+export function etiquetaArchivo(a) {
+  const base = ETIQUETA_ARCHIVO[a.estado] || ''
+  if (a.tipo === 'pdf' && (a.estado === 'pendiente' || a.estado === 'procesando')) return `${base} · puede tardar hasta 1 minuto`
+  return base
 }
 
 /** Texto de estado de un archivo para la lista de la cola. */

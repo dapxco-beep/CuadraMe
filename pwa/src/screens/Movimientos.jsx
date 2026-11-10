@@ -1,3 +1,5 @@
+import { error as hapticoError, exito } from '../lib/haptico'
+import { mensajeDeError } from '../lib/mensajes'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
@@ -846,9 +848,11 @@ export default function Movimientos() {
       recargarCuentas?.()
       recargarConteo()
       avisar('Movimiento eliminado', 'ok')
+      exito()
     } catch (err) {
       setMovimientos(previa)
-      avisar(err.message || 'No se pudo eliminar. Revisa tu conexión e intenta de nuevo.')
+      hapticoError()
+      avisar(mensajeDeError(err, 'No se pudo eliminar. Revisa tu conexión e intenta de nuevo.'))
     }
   }
 

@@ -1,5 +1,6 @@
 import { fechaLocalISO, hoyISO } from '../lib/fechaLocal'
 import { textoError } from '../lib/textoError'
+import { error as hapticoError, exito } from '../lib/haptico'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
@@ -204,7 +205,7 @@ export default function Agregar() {
       })
       guardarUltimaCuenta(auth?.usuario?.id, cuentaId)
       await recargarCuentas()
-      navigator.vibrate?.(12) // confirmación táctil corta (donde el celular la soporta)
+      exito() // confirmación táctil corta (donde el celular la soporta)
       // Si eligió un parche, el gasto ya guardado se comparte ahí (sin crear otro movimiento). Si falla, el gasto igual quedó.
       let compartidoEn = ''
       let falloCompartir = ''
@@ -271,9 +272,13 @@ export default function Agregar() {
       // Ya lo tienes por otro canal (atajo, correo, extracto): se pregunta en vez de duplicarlo.
       if (err.status === 409 && err.detalle?.codigo === 'posible_duplicado') {
         setPosibleDuplicado(err.detalle.mensaje || err.message)
+      } else if (err.sinConexion && esTransferencia) {
+        // Los datos del formulario se quedan: solo se avisa y se puede reintentar.
+        setError('Pasar plata necesita internet; inténtalo cuando tengas señal.')
       } else {
         setError(textoError(err, 'guardarlo'))
       }
+      hapticoError()
     } finally {
       setGuardando(false)
     }
@@ -597,6 +602,9 @@ export default function Agregar() {
           className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
         >
           {guardando ? 'Guardando...' : esTransferencia ? (destinosPosibles.find((c) => c.id === destinoId)?.tipo === 'credito' ? 'Pagar la tarjeta' : 'Pasar la plata') : 'Guardar movimiento'}
+        </button>
+        <button onClick={() => volver()} className="w-full text-center text-sm text-ink-soft font-medium min-h-11">
+          Cancelar
         </button>
         <p className="text-xs text-ink-soft text-center mt-5">¿Lo pagas cada mes o lo compartes con otros?</p>
         <button onClick={() => navigate('/recurrentes')} className="w-full text-center text-sm text-accent font-medium min-h-11">

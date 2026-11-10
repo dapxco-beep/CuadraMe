@@ -14,6 +14,10 @@ import { reportar } from './lib/reportarError'
 import { iniciarInstalacion } from './lib/instalarPwa'
 import LineaVersion from './components/LineaVersion'
 import { bloquearZoomPellizco } from './lib/estabilidadVista'
+import { iniciarLetraGrande } from './lib/letraGrande'
+
+// Antes de pintar nada, para que «Letra grande» no parpadee.
+iniciarLetraGrande()
 
 function PantallaError() {
   return (
