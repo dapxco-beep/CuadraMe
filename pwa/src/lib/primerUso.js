@@ -89,7 +89,7 @@ export const CAMINO = [
     titulo: 'Trae tus movimientos',
     apoyo: 'Elige una: extracto, Gmail o anotar uno.',
     ruta: '/sincronizacion',
-    accion: 'Traer extractos',
+    accion: 'Traer mis movimientos',
     // Alternativas directas (sin pantallas intermedias): cada una abre la acción, no un menú.
     // Gmail abre la hoja de conexión; extracto, el centro; anotar a mano, el formulario de Agregar.
     otras: [

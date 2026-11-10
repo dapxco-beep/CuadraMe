@@ -5,6 +5,13 @@ const VERSION = 'v4'
 const CACHE_SHELL = `cuadrame-shell-${VERSION}`
 const CACHE_ASSETS = `cuadrame-assets-${VERSION}`
 
+// Cada despliegue deja archivos con hash nuevo: se conservan solo los últimos MAX_ASSETS (los más viejos salen primero).
+const MAX_ASSETS = 120
+async function recortar(cache) {
+  const claves = await cache.keys()
+  await Promise.all(claves.slice(0, Math.max(0, claves.length - MAX_ASSETS)).map((k) => cache.delete(k)))
+}
+
 self.addEventListener('install', () => {
   self.skipWaiting()
 })
@@ -67,7 +74,7 @@ self.addEventListener('fetch', (event) => {
           fetch(request).then((resp) => {
             if (resp.ok) {
               const copia = resp.clone()
-              caches.open(CACHE_ASSETS).then((c) => c.put(request, copia))
+              caches.open(CACHE_ASSETS).then((c) => c.put(request, copia).then(() => recortar(c)))
             }
             return resp
           })

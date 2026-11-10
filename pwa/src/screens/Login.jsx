@@ -109,6 +109,7 @@ export default function Login() {
             minLength={6}
             className="rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-center text-xl tracking-[0.3em] outline-none focus:border-accent"
           />
+          <p className="t-apoyo text-center">Te lo enviamos por correo. Si no llega, mira en spam.</p>
           {error && <p role="alert" className="text-sm text-danger">{error}</p>}
           {mensaje && <p role="status" className="text-sm text-accent">{mensaje}</p>}
           <button

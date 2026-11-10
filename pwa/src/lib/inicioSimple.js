@@ -23,7 +23,7 @@ export function siguientePasoInicio({ cuentas = 0, movimientos = 0, sinCategoriz
       titulo: 'Trae tus movimientos',
       apoyo: 'Sube el extracto de tu banco o anota un gasto.',
       ruta: '/sincronizacion',
-      accion: 'Traer extractos',
+      accion: 'Traer mis movimientos',
     }
   }
   if (sinCategorizar > 0) {

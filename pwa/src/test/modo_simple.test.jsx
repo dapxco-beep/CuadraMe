@@ -301,7 +301,7 @@ describe('Inicio simplificado', () => {
     expect(within(camino).getAllByRole('listitem')).toHaveLength(3)
     expect(within(camino).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
     expect(within(camino).getByRole('link', { name: 'Crear mi cuenta' })).toHaveAttribute('href', '/cuentas')
-    expect(within(camino).queryByRole('link', { name: /^Traer extractos/ })).toBeNull()
+    expect(within(camino).queryByRole('link', { name: /^Traer mis movimientos/ })).toBeNull()
     // el recorrido largo no se abre solo y, mientras el camino de 3 pasos está a la vista, tampoco compite con él
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.queryByRole('button', { name: /Conoce CuadraMe en 1 minuto/ })).toBeNull()
@@ -314,7 +314,7 @@ describe('Inicio simplificado', () => {
     montarInicio()
     const camino = await screen.findByTestId('camino-primer-uso')
     expect(within(camino).getByTestId('progreso-camino')).toHaveTextContent('1 de 3 pasos')
-    expect(within(camino).getByRole('link', { name: /^Traer extractos/ })).toHaveAttribute('href', '/sincronizacion')
+    expect(within(camino).getByRole('link', { name: /^Traer mis movimientos/ })).toHaveAttribute('href', '/sincronizacion')
     expect(camino).not.toHaveTextContent(/atajo/i)
   })
 

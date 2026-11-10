@@ -721,3 +721,6 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [role='button']:fo
 @media (prefers-reduced-motion: reduce) {
   .guia-pulso { animation: none; opacity: 0.35; }
 }
+
+/* Letra mínima de lectura: 12 px. Los textos de apoyo escritos con text-[11px] suben sin tocar cada pantalla. */
+.text-\[11px\] { font-size: 0.75rem; line-height: 1.125rem; }
