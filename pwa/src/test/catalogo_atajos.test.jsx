@@ -1,6 +1,7 @@
 // Catálogo de atajos en «Registro automático»: los 4 atajos con su botón de instalar, para quién sirven y sus pasos.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
+import userEvent from './userEvent.js'
 import { MemoryRouter } from 'react-router-dom'
 
 const api = vi.hoisted(() => ({
@@ -115,5 +116,22 @@ describe('Catálogo de atajos', () => {
     for (const tema of ['sin gesto', 'clave no válida', 'automatización no corre', 'Ejecutar inmediatamente', 'Tocar atrás', 'iOS 27', 'No encontré un pago']) {
       expect(falla).toHaveTextContent(tema)
     }
+  })
+
+  it('avisa que los atajos se actualizaron, y el aviso se cierra y no vuelve hasta la próxima versión', async () => {
+    const { ATAJOS_ACTUALIZADOS } = await import('../lib/atajosEnlaces')
+    const primera = montarCatalogo()
+    const aviso = screen.getByTestId('aviso-atajos-actualizados')
+    expect(aviso).toHaveTextContent(`Actualizamos los atajos (${ATAJOS_ACTUALIZADOS.fecha})`)
+    expect(aviso).toHaveTextContent('vuelve a tocar «Instalar»')
+    await userEvent.click(within(aviso).getByRole('button', { name: 'Entendido' }))
+    expect(screen.queryByTestId('aviso-atajos-actualizados')).toBeNull()
+    primera.unmount()
+    const segunda = montarCatalogo() // otra visita: ya lo cerró
+    expect(screen.queryByTestId('aviso-atajos-actualizados')).toBeNull()
+    segunda.unmount()
+    localStorage.setItem('cuadrame:atajos-aviso', '2000-01-01') // lo que vio era una versión anterior: con una nueva vuelve a salir
+    montarCatalogo()
+    expect(screen.getByTestId('aviso-atajos-actualizados')).toBeInTheDocument()
   })
 })

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Bell, CreditCard, Download, Hand } from 'lucide-react'
 import ClaveAtajo from './ClaveAtajo'
 import Icono from './Icono'
@@ -6,7 +7,7 @@ import {
 } from './AtajoIlustraciones'
 import { CAPTURAS_REALES } from '../lib/capturasGuia'
 import {
-  ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL,
+  ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL, ATAJOS_ACTUALIZADOS,
 } from '../lib/atajosEnlaces'
 
 // Los atajos de CuadraMe para iPhone en un solo lugar: qué hace cada uno, para qué banco sirve, el botón para instalarlo
@@ -117,6 +118,42 @@ function TarjetaAtajo({ a }) {
   )
 }
 
+const CLAVE_AVISO = 'cuadrame:atajos-aviso'
+
+// «Actualizamos los atajos»: iOS no los actualiza solo y la app no sabe qué versión tiene cada persona, así que se avisa a todos
+// hasta que cada quien lo cierre. Vuelve a salir cuando cambia ATAJOS_ACTUALIZADOS.version.
+function AvisoActualizados() {
+  const [visto, setVisto] = useState(() => {
+    try {
+      return localStorage.getItem(CLAVE_AVISO) === ATAJOS_ACTUALIZADOS.version
+    } catch {
+      return false
+    }
+  })
+  if (visto) return null
+  function cerrar() {
+    setVisto(true)
+    try {
+      localStorage.setItem(CLAVE_AVISO, ATAJOS_ACTUALIZADOS.version)
+    } catch {
+      /* sin almacenamiento el aviso reaparece la próxima vez: no pasa nada */
+    }
+  }
+  return (
+    <div role="status" className="mt-3 rounded-2xl bg-accent-soft p-4" data-testid="aviso-atajos-actualizados">
+      <p className="text-sm font-bold">Actualizamos los atajos ({ATAJOS_ACTUALIZADOS.fecha})</p>
+      <p className="text-sm mt-1 leading-relaxed">
+        Si los instalaste antes de esa fecha, vuelve a tocar «Instalar» en cada uno para tener la versión nueva: ahora casi no preguntan,
+        reconocen solo el banco y siempre te dicen qué pasó. Los anteriores siguen funcionando, pero sin esas mejoras. Al instalar, pega
+        tu clave otra vez y cambia el atajo en tus automatizaciones (abajo está explicado).
+      </p>
+      <button onClick={cerrar} className="mt-2 min-h-11 text-sm font-semibold underline">
+        Entendido
+      </button>
+    </div>
+  )
+}
+
 export default function CatalogoAtajos({ claveAtajo }) {
   return (
     <section className="mx-6 mt-6" aria-label="Todos los atajos de CuadraMe" data-testid="catalogo-atajos">
@@ -124,6 +161,7 @@ export default function CatalogoAtajos({ claveAtajo }) {
       <p className="text-sm text-ink-soft mt-1 leading-relaxed">
         Se instalan una vez y sirven para todos tus bancos. Lo que registran queda «por confirmar».
       </p>
+      <AvisoActualizados />
 
       <div className="mt-3 rounded-2xl bg-paper-raised border border-line p-4" data-testid="cual-instalo">
         <h3 className="text-sm font-bold">¿Cuál instalo?</h3>
