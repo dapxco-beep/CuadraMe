@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ChevronDown, Clock, Search, SearchX, X } from 'lucide-react'
 import Hoja from './Hoja'
@@ -31,7 +31,8 @@ function Destino({ item, pathname, onIr, compacto = false }) {
   )
 }
 
-export function HojaMas({ onCerrar, pathname }) {
+export function HojaMas({ onCerrar, pathname, enfocarBuscador = false }) {
+  const buscador = useRef(null)
   const navigate = useNavigate()
   const admin = esAdminVisible(useAuth()?.usuario?.email)
   const { completo, enUso, setCompleto } = useModoMenu()
@@ -59,6 +60,11 @@ export function HojaMas({ onCerrar, pathname }) {
       navigate(to)
     }
   }
+
+  // Abierta desde la lupa del Inicio: el buscador queda listo para escribir
+  useEffect(() => {
+    if (enfocarBuscador) buscador.current?.focus({ preventScroll: true })
+  }, [enfocarBuscador])
 
   function alTeclearBuscador(e) {
     if (e.key === 'Escape' && consulta) {
@@ -95,6 +101,7 @@ export function HojaMas({ onCerrar, pathname }) {
           <div className="relative mb-4">
             <Icono icono={Search} tam="sm" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-soft pointer-events-none" />
             <input
+              ref={buscador}
               type="search"
               value={consulta}
               onChange={(e) => setConsulta(e.target.value)}
