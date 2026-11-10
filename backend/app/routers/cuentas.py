@@ -12,7 +12,7 @@ from app.database import get_db
 from app.models import Cuenta, Movimiento
 from app.schemas import AjusteSaldoRequest, CuentaCreate, CuentaOut, CuentaUpdate
 from app.utiles import ahora_co
-from app.tarjetas import calc_tarjeta, extractos_guardados, movimientos_tras_corte, sin_historial_al_corte
+from app.tarjetas import calc_tarjeta, extractos_guardados, precalcular_tarjetas, movimientos_tras_corte, sin_historial_al_corte
 
 router = APIRouter(prefix="/cuentas", tags=["cuentas"])
 
@@ -26,11 +26,14 @@ def vista_de_tarjetas(db: Session = Depends(get_db), usuario: UsuarioActual = De
     return {c.id: deuda_tarjeta.vista(db, c) for c in cuentas}
 
 
-def _serializar(cuenta: Cuenta, db: Session | None = None) -> dict:
+def _serializar(cuenta: Cuenta, db: Session | None = None, pre: dict | None = None) -> dict:
     """Cuenta + (si es tarjeta de crédito) los cálculos de cupo y fechas. Con `db`
     también el extracto (total a pagar al corte, pagado, falta)."""
     tarjeta = None
-    if cuenta.tipo == "credito":
+    if cuenta.tipo == "credito" and pre is not None and cuenta.id in pre:
+        p = pre[cuenta.id]  # precalculado en lote (ver precalcular_tarjetas)
+        tarjeta = calc_tarjeta(cuenta, None, p["movs"], p["guardado"], p["declarado"])
+    elif cuenta.tipo == "credito":
         movs = movimientos_tras_corte(db, cuenta) if db is not None and cuenta.dia_corte else None
         guardado = extractos_guardados(db, [cuenta.id]).get(cuenta.id) if db is not None else None
         declarado = bool(movs is not None and sin_historial_al_corte(db, cuenta))
@@ -56,7 +59,9 @@ def listar_cuentas(
     db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)
 ):
     ids = cuentas_ids_accesibles(db, usuario.id)
-    return [_serializar(c, db) for c in db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()]
+    cuentas = db.query(Cuenta).filter(Cuenta.id.in_(ids)).all()
+    pre = precalcular_tarjetas(db, cuentas)  # 3 consultas en total, no 3 por tarjeta
+    return [_serializar(c, db, pre) for c in cuentas]
 
 
 @router.post("", response_model=CuentaOut)

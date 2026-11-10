@@ -49,15 +49,20 @@ export function guardarDescartados(ids) {
  * en un carrusel descartable. Si falla la carga o no hay consejos, no pinta nada.
  * Orientación educativa: no recomienda productos ni inversiones.
  */
-export default function ConsejoParaTi({ max = MAX_VISIBLES }) {
-  const [lista, setLista] = useState([])
-  const [aviso, setAviso] = useState(AVISO_EDUCATIVO)
+// datos: respuesta de /consejos ya pedida por el padre (Inicio la pide UNA vez); si no se pasa, el componente la pide solo.
+export default function ConsejoParaTi({ max = MAX_VISIBLES, datos }) {
+  const [propia, setLista] = useState([])
+  const [avisoPropio, setAviso] = useState(AVISO_EDUCATIVO)
+  const delPadre = datos !== undefined
+  const lista = delPadre ? (Array.isArray(datos) ? datos : Array.isArray(datos?.consejos) ? datos.consejos : []) : propia
+  const aviso = delPadre ? (datos?.aviso || AVISO_EDUCATIVO) : avisoPropio
   const [descartados, setDescartados] = useState(leerDescartados)
   const [indice, setIndice] = useState(0)
   const toque = useRef(null)
   const [conCuadri] = useMostrarCuadri()
 
   useEffect(() => {
+    if (delPadre) return undefined
     let activo = true
     Promise.resolve()
       .then(() => api.consejos?.())

@@ -84,7 +84,7 @@
           var desde = d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate())
           var rutas = ['/consentimientos', '/cuentas', '/categorias?incluir_inactivas=true', '/movimientos?limit=4&offset=0',
             '/reportes/mensual', '/movimientos?limit=200&offset=0&desde=' + desde, '/presupuestos/disponible-hoy',
-            '/presupuestos/en-mi-bolsillo', '/cuentas/resumen', '/correos/gmail/estado', '/conexiones/estado',
+            '/presupuestos/en-mi-bolsillo', '/cuentas/resumen', '/conexiones/estado',
             '/sincronizacion/estado', '/reportes/tendencias?meses=6']
           var cab = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }
           var a = (window.__arranque = { t: t, en: Date.now(), p: {} })

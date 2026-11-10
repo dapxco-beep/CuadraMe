@@ -54,6 +54,8 @@ export default defineConfig({
           if (!id.includes('node_modules')) return undefined
           if (/node_modules[\/](react|react-dom|scheduler|react-router|react-router-dom|@remix-run)[\/]/.test(id)) return 'vendor-react'
           if (/node_modules[\/]@supabase[\/]/.test(id)) return 'vendor-auth'
+          if (/node_modules[/](framer-motion|motion-dom|motion-utils|motion)[/]/.test(id)) return 'vendor-motion'
+          if (/node_modules[/](@sentry|@sentry-internal)[/]/.test(id)) return 'vendor-sentry'
           return undefined
         },
       },

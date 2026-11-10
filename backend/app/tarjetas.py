@@ -116,6 +116,47 @@ def sin_historial_al_corte(db, cuenta, hoy: datetime | None = None) -> bool:
     return previo is None
 
 
+def precalcular_tarjetas(db, cuentas, hoy: datetime | None = None) -> dict[str, dict]:
+    """Lo mismo que movimientos_tras_corte + extractos_guardados + sin_historial_al_corte
+    para varias tarjetas, pero con 3 consultas EN TOTAL (cuenta_id IN (...)) en vez de 3 por tarjeta.
+    Devuelve {cuenta_id: {"movs", "guardado", "declarado"}}; "movs" es None si no hay día de corte
+    (igual que _serializar). Los resultados son idénticos al cálculo por tarjeta."""
+    from sqlalchemy import func
+
+    from app.models import Movimiento  # import local: evita ciclos al cargar el módulo
+
+    tarjetas = [c for c in cuentas if c.tipo == "credito"]
+    if not tarjetas:
+        return {}
+    desdes = {c.id: inicio_despues_corte(c.dia_corte, hoy) for c in tarjetas}
+    con_corte = [c.id for c in tarjetas if desdes[c.id] is not None]
+    movs: dict[str, list] = {i: [] for i in con_corte}
+    primer_real: dict[str, datetime] = {}
+    if con_corte:
+        minimo = min(desdes[i] for i in con_corte)
+        for m in db.query(Movimiento).filter(Movimiento.cuenta_id.in_(con_corte), Movimiento.fecha >= minimo).all():
+            if m.fecha >= desdes[m.cuenta_id]:
+                movs[m.cuenta_id].append(m)
+        filas = (
+            db.query(Movimiento.cuenta_id, func.min(Movimiento.fecha))
+            .filter(Movimiento.cuenta_id.in_(con_corte), Movimiento.fuente != FUENTE_AJUSTE)
+            .group_by(Movimiento.cuenta_id)
+            .all()
+        )
+        primer_real = {cid: f for cid, f in filas}
+    guardados = extractos_guardados(db, [c.id for c in tarjetas])
+    out = {}
+    for c in tarjetas:
+        d = desdes[c.id]
+        out[c.id] = {
+            "movs": movs[c.id] if d is not None else None,
+            "guardado": guardados.get(c.id),
+            # sin historial = ningún movimiento real anterior al corte (min(fecha) < desde ⇔ existe uno)
+            "declarado": d is not None and not (c.id in primer_real and primer_real[c.id] < d),
+        }
+    return out
+
+
 def delta_saldo_movimiento(m) -> float:
     """Cuánto movió el saldo de la tarjeta este movimiento (compra < 0, abono > 0).
     Misma regla que el módulo de movimientos: los importados 'sin saldo' y los

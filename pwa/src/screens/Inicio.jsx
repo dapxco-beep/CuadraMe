@@ -135,6 +135,9 @@ export default function Inicio() {
   const [tendencia, setTendencia] = useState(previo.tendencia?.meses ?? null)
   const [gmailConectado, setGmailConectado] = useState(true)
   const [conexionFalla, setConexionFalla] = useState(false)
+  // /recordatorios y /consejos se piden UNA vez (diferidas) y se reparten por props; null = aún no llegan.
+  const [recordatorios, setRecordatorios] = useState(null)
+  const [consejos, setConsejos] = useState(null)
   const [tareasSync, setTareasSync] = useState(null)
   const [aMedias, setAMedias] = useState([]) // extractos con movimientos por importar
   const navigate = useNavigate()
@@ -199,9 +202,16 @@ export default function Inicio() {
     Promise.resolve().then(() => api.enMiBolsillo()).then((b) => activo && (setBolsillo(b), setFalloBolsillo(false))).catch(() => activo && setFalloBolsillo(true))
     // Desglose del saldo (disponible / tarjetas / por moneda y tipo). Si falla, el héroe sigue con el saldo de las cuentas y avisa.
     Promise.resolve().then(() => api.resumenCuentas()).then((r) => activo && (setResumen(r), setFalloResumen(false))).catch(() => activo && setFalloResumen(true))
-    despues(() => api.gmailEstado().then((e) => activo && setGmailConectado(!!e.conectado)).catch(() => {}))
-    // Aviso solo si algo se rompió (semáforo rojo); si el tablero falla, no se muestra nada.
-    despues(() => Promise.resolve().then(() => api.conexionesEstado?.()).then((c) => activo && setConexionFalla(!!c?.hay_falla)).catch(() => {}))
+    // Un solo tablero (/conexiones/estado) da las dos cosas: si Gmail está conectado y si algo se rompió (semáforo rojo).
+    // Si el tablero falla, no se muestra nada de eso.
+    despues(() => Promise.resolve().then(() => api.conexionesEstado?.()).then((c) => {
+      if (!activo) return
+      setConexionFalla(!!c?.hay_falla)
+      if (typeof c?.gmail?.conectado === 'boolean') setGmailConectado(c.gmail.conectado)
+    }).catch(() => {}))
+    // Recordatorios y consejos: una sola petición cada uno, después de lo principal.
+    despues(() => Promise.resolve().then(() => api.recordatorios?.()).then((r) => activo && Array.isArray(r) && setRecordatorios(r)).catch(() => {}))
+    despues(() => Promise.resolve().then(() => api.consejos?.()).then((r) => activo && r && setConsejos(r)).catch(() => {}))
     // Cuántas cosas esperan en «Traer extractos» y «Movimientos del correo» (si falla, el acceso se muestra sin número).
     despues(() => Promise.resolve().then(() => api.sincronizacionEstado?.()).then((s) => activo && (setTareasSync(s?.tareas ? s.tareas.filter((t) => !t.opcional).length : null), setLineaCorreo(resumenCarriles(s?.tareas)), setAMedias(extractosAMedias(s)), setSinCategorizar((s?.tareas || []).find((t) => t.id === 'movimientos_por_categorizar')?.cantidad || 0))).catch(() => {}))
     // Tendencia del gasto de los últimos meses para la mini gráfica (opcional: sin datos no se dibuja).
@@ -398,9 +408,10 @@ export default function Inicio() {
             mas={verMas}
             conAviso={false}
             gmailConectado={gmailConectado}
+            consejos={consejos}
           />
           {/* Lo urgente (pago de tarjeta cerca, gasto fuera de lo normal): si no hay otro aviso, uno solo a la vista; si lo hay, va dentro de «Ver más» */}
-          {avisos.length === 0 && <Recordatorios soloTipos={TIPOS_URGENTES} max={1} />}
+          {avisos.length === 0 && <Recordatorios soloTipos={TIPOS_URGENTES} max={1} datos={recordatorios} />}
           <div className="mx-6 mt-3">
             <button
               type="button"
@@ -418,7 +429,7 @@ export default function Inicio() {
               </Link>
             )}
           </div>
-          {verMas && avisos.length > 0 && <Recordatorios soloTipos={TIPOS_URGENTES} max={2} />}
+          {verMas && avisos.length > 0 && <Recordatorios soloTipos={TIPOS_URGENTES} max={2} datos={recordatorios} />}
           {esperarSaldo && <AsistentePrimerUso variante="inicio" soloCamino camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />}
         </>
       )}
@@ -524,8 +535,8 @@ export default function Inicio() {
           <PreguntaMovimiento ultimaFecha={movimientos[0]?.fecha} />
 
           {/* Recordatorios útiles: pago de tarjeta, presupuesto al 80 % y extractos por revisar (descartables) */}
-          <Recordatorios omitirExtractos={tareasSync > 0} omitirTipos={completo ? [] : TIPOS_URGENTES} />
-          {completo && <ConsejoParaTi />}
+          <Recordatorios omitirExtractos={tareasSync > 0} omitirTipos={completo ? [] : TIPOS_URGENTES} datos={recordatorios} />
+          {completo && <ConsejoParaTi datos={consejos} />}
           <TarjetaTuPlata />
           <TarjetaCostos />
         </div>
