@@ -199,20 +199,22 @@ def test_pantallazo_deduce_la_cuenta_del_propio_texto_y_el_destinatario_sin_preg
     assert mov["monto"] == 45000 and mov["tipo"] == "expense" and mov["descripcion"] == "Envío a Laura Gomez"
 
 
-def test_pantallazo_sin_banco_en_el_texto_pregunta_una_vez_y_aprende():
+def test_pantallazo_sin_pista_del_banco_va_a_la_cuenta_que_mas_usa_sin_preguntar_y_se_corrige_una_vez():
     h = _cuentas_nu_nequi("rn-a2")
-    texto = "Transferencia exitosa $ 20.000 Para CARLOS RUIZ Compartir Descargar"
-    r = _pantallazo(h, texto)
-    assert r["motivo"] == "pedir_cuenta" and set(r["cuentas"]) == {"Nequi", "Nu Colombia"}
-    r2 = _pantallazo(h, texto, cuenta="Nu Colombia")
+    # La persona ya usa Nu: un comprobante sin el nombre del banco cae ahí, SIN preguntar nada, y se lo dice
+    assert _pantallazo(h, _nu_comprobante(_ayer()))["registrado"]
+    sin_banco = "Transferencia exitosa $ 20.000 Para CARLOS RUIZ Compartir Descargar"
+    r = _pantallazo(h, sin_banco)
+    assert r["registrado"] and "motivo" not in r, r
+    assert r["cuenta_adivinada"] == "Nu Colombia" and "no pude saber de qué banco" in r["mensaje"]
+    # Si era de Nequi, lo corrige UNA vez (la app manda la cuenta) y esa forma de pantallazo queda aprendida
+    r2 = _pantallazo(h, "Transferencia exitosa $ 35.000 Para ANA TORRES Compartir Descargar", cuenta="Nequi")
     assert r2["registrado"]
-    # La próxima vez con la misma forma de pantallazo (otro monto y otra persona) ya no pregunta
-    r3 = _pantallazo(h, "Transferencia exitosa $ 35.000 Para ANA TORRES Compartir Descargar")
-    assert r3["registrado"] and "motivo" not in r3
-    cuentas = {c["id"]: c["nombre"] for c in client.get("/cuentas").json()}
-    assert cuentas[_movimiento_mas_reciente()["cuenta_id"]] == "Nu Colombia"
+    r3 = _pantallazo(h, "Transferencia exitosa $ 41.000 Para LUIS GOMEZ Compartir Descargar")
+    assert r3["registrado"] and r3["cuenta_adivinada"] is None and "Ojo" not in r3["mensaje"]
+    assert _cuenta_nombre(_movimiento_mas_reciente()) == "Nequi"
     regla = [x for x in client.get("/movimientos/reglas-notificacion").json() if x["app"].startswith("pantalla:")]
-    assert regla and "Nu Colombia" in regla[0]["significado"] and "carlos" not in str(regla).lower()
+    assert regla and "Nequi" in regla[0]["significado"] and "carlos" not in str(regla).lower()
 
 
 def test_pantallazo_que_no_es_un_movimiento_no_pregunta_nada():
@@ -391,22 +393,23 @@ def test_ingresos_se_registran_completos_sin_preguntar(construir, cuenta, monto,
 
 
 def test_la_institucion_de_origen_es_la_de_quien_te_envio_no_tu_cuenta():
-    # «Institución de origen Nu» = el banco del que ENVIÓ. Sin otra pista de cuál es tu cuenta, no se adivina: se pregunta.
+    # «Institución de origen Nu» = el banco del que ENVIÓ. No es pista de tu cuenta: se usa la apuesta por uso (aquí «Nequi», la
+    # primera por nombre), no Nu, y se avisa para que la corrijas si era otra.
     h = _cuentas_nu_nequi("rn-io")
     r = _pantallazo(h, "Recibiste de Ana Perez $5.000,00 Aceptada Llave @ABC Institución de origen Nu")
-    assert r["motivo"] == "pedir_cuenta"
+    assert r["registrado"] and r["cuenta_adivinada"] == "Nequi" and "Ojo" in r["mensaje"]
 
 
 def test_cada_uso_deja_una_linea_de_diagnostico_sin_datos_personales(caplog):
     import logging
 
     h = _cuentas_nu_nequi("rn-log")
-    texto = "Transferencia exitosa $ 20.000 Para CARLOS RUIZ Compartir Descargar"  # sin banco: pregunta la cuenta
+    texto = "Transferencia exitosa $ 20.000 Para CARLOS RUIZ Compartir Descargar"  # sin banco: se adivina la cuenta
     with caplog.at_level(logging.INFO, logger="cuadrame.atajo"):
-        assert _pantallazo(h, texto)["motivo"] == "pedir_cuenta"
+        assert _pantallazo(h, texto)["registrado"]
         client.post("/movimientos/rapido", headers=h, json={"comercio": "JUMBO", "monto": "5.000", "tarjeta": "Visa 1", "fuente": "wallet"})
     lineas = [r.getMessage() for r in caplog.records if r.getMessage().startswith("atajo")]
-    assert any("paquete=auto" in l and "motivo=pedir_cuenta" in l and f"texto_len={len(texto)}" in l for l in lineas)
+    assert any("paquete=auto" in l and "cuenta_adivinada=True" in l and f"texto_len={len(texto)}" in l and "forma=" in l for l in lineas)
     assert any("atajo rapido fuente=wallet con_comercio=True con_tarjeta=True" in l for l in lineas)
     todo = " ".join(lineas).lower()
-    assert "carlos" not in todo and "20.000" not in todo and "ruiz" not in todo and "cdm_" not in todo
+    assert "carlos" not in todo and "20.000" not in todo and "ruiz" not in todo and "cdm_" not in todo  # la forma es anónima
