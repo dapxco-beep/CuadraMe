@@ -82,6 +82,26 @@ if not logger.handlers:  # el servidor no configura INFO: sin su propio canal es
     logger.addHandler(_canal)
     logger.setLevel(logging.INFO)
 
+# iOS no actualiza los atajos instalados: quien tiene uno anterior solo se entera por lo que el propio atajo le muestra. Los atajos
+# nuevos mandan `paquete="auto"`; los anteriores mandaban el nombre de un banco. A estos se les agrega, UNA vez al día, cómo cambiarlo.
+AVISO_ATAJO_VIEJO = (
+    " Hay una versión nueva de este atajo, que casi no pregunta y siempre te dice qué pasó. Para cambiarla abre CuadraMe › Perfil › "
+    "Registro automático, toca «Instalar» y luego «Agregar atajo» (pega tu clave otra vez). Si queda uno con «2», borra el viejo."
+)
+_AVISADO_HOY: dict[str, str] = {}  # usuario -> día en que ya se le avisó (en memoria: se pierde al reiniciar, no importa)
+
+
+def _aviso_atajo_viejo(usuario_id: str, paquete: str) -> str:
+    """El aviso de actualización si el atajo es de una versión anterior y hoy no se le ha dado; si no, ''."""
+    if (paquete or "").strip().lower() in ("auto", "pantalla") or not notif.es_ios(paquete):
+        return ""
+    hoy = ahora_co().strftime("%Y-%m-%d")
+    if _AVISADO_HOY.get(usuario_id) == hoy:
+        return ""
+    _AVISADO_HOY[usuario_id] = hoy
+    return AVISO_ATAJO_VIEJO
+
+
 MENSAJE_SIN_PAGO = "No encontré un pago en esta pantalla. Abre el comprobante de tu banco y repite el gesto."
 
 router = APIRouter(prefix="/movimientos", tags=["movimientos"])
@@ -1147,11 +1167,19 @@ def crear_movimiento_desde_notificacion(
     """Ver `_procesar_notificacion`. Deja UNA línea de diagnóstico para poder ver por qué un atajo «no funcionó»:
     solo qué pasó (motivo, si registró, cuánto texto llegó). Nunca el texto, nombres, montos ni la clave."""
     resultado = _procesar_notificacion(data, db, usuario)
+    adivinada = bool(resultado.get("cuenta_adivinada"))
+    # La «forma» es la plantilla anónima (vocabulario fijo; nombres y montos quedan en «*»): sirve para ver QUÉ pantalla no se
+    # entendió sin ver datos de nadie.
+    forma = rn.esqueleto(data.titulo, data.texto) if (resultado.get("motivo") or adivinada) else "-"
     logger.info(
-        "atajo paquete=%s texto_len=%d respuesta_de_la_persona=%s motivo=%s registrado=%s duplicado=%s aprendido=%s",
+        "atajo paquete=%s texto_len=%d respuesta_de_la_persona=%s motivo=%s registrado=%s duplicado=%s aprendido=%s "
+        "cuenta_adivinada=%s forma=%s",
         (data.paquete or "")[:30], len(data.texto or ""), data.monto is not None, resultado.get("motivo", "-"),
         resultado.get("registrado"), resultado.get("duplicado", False), resultado.get("aprendido", False),
+        adivinada, forma or "-",
     )
+    if resultado.get("mensaje") is not None:
+        resultado["mensaje"] += _aviso_atajo_viejo(usuario.id, data.paquete)
     return resultado
 
 
@@ -1170,13 +1198,22 @@ def _procesar_notificacion(
     # la persona o de sus cuentas. Solo si no hay forma de saberlo se le pregunta (y se aprende para la próxima).
     auto = (paquete or "").strip().lower() in ("auto", "pantalla")
     cuenta_auto = None
+    adivinada = False  # no hubo pista de qué banco era: se usó la cuenta que más se usa (queda «por confirmar»)
+    nota_cuenta = ""
     if auto:
         cuenta_auto, cuentas_nombres = rn.inferir_cuenta(db, usuario.id, data.titulo, data.texto, data.cuenta)
         if cuenta_auto is None:
             n0 = notif.interpretar("", data.titulo, data.texto)
-            if n0 is not None or notif.pide_monto("", data.titulo, data.texto):
-                return {"ok": True, "registrado": False, "motivo": "pedir_cuenta", "cuentas": cuentas_nombres}
-            return {"ok": True, "registrado": False, "motivo": "no_parece_un_movimiento", "mensaje": MENSAJE_SIN_PAGO}
+            if n0 is None and not notif.pide_monto("", data.titulo, data.texto):
+                return {"ok": True, "registrado": False, "motivo": "no_parece_un_movimiento", "mensaje": MENSAJE_SIN_PAGO}
+            # No se le pregunta nada a la persona (la pregunta en el iPhone fallaba y es justo lo que no quiere): se guarda en
+            # la cuenta que más usa y se le dice dónde quedó, para que lo cambie al confirmar si era otra.
+            cuenta_auto = rn.cuenta_mas_reciente(db, usuario.id)
+            if cuenta_auto is None:
+                raise HTTPException(status_code=404, detail="El usuario no tiene ninguna cuenta creada")
+            adivinada = True
+            nota_cuenta = (f" Ojo: no pude saber de qué banco era este comprobante y lo guardé en {cuenta_auto} (la que más usas). "
+                           "Si era otra, cámbialo al confirmar.")
         if data.cuenta and data.aprender:
             esq0 = rn.esqueleto(data.titulo, data.texto)
             if rn.aprender(db, usuario.id, rn.PREFIJO_CUENTA + cuenta_auto, esq0, tipo=None, sin_cifra=False):
@@ -1209,7 +1246,8 @@ def _procesar_notificacion(
                 f"Plata recibida en {app_nombre}" if tipo == "income" else f"Envío por {app_nombre}")),
             cuenta=app_nombre, fuente="notificacion", id_transaccion=huella), db, usuario)
         return {"ok": True, "registrado": not out.duplicado, "duplicado": out.duplicado, "movimiento_id": out.id,
-                "mensaje": out.mensaje, "por_confirmar": out.por_confirmar, "aprendido": aprendido}
+                "mensaje": out.mensaje + nota_cuenta, "por_confirmar": out.por_confirmar, "aprendido": aprendido,
+                "cuenta_adivinada": cuenta_auto if adivinada else None}
 
     if n is None:
         # iPhone: salió plata y el aviso no trae monto (o así lo enseñó la persona). El atajo pregunta cuánto y para qué.
@@ -1259,7 +1297,8 @@ def _procesar_notificacion(
     out = crear_movimiento_rapido(rapido, db, usuario)
     return {
         "ok": True, "registrado": not out.duplicado, "duplicado": out.duplicado, "movimiento_id": out.id,
-        "mensaje": out.mensaje, "por_confirmar": out.por_confirmar, "traslado_propio": n.traslado_propio,
+        "mensaje": out.mensaje + nota_cuenta, "por_confirmar": out.por_confirmar, "traslado_propio": n.traslado_propio,
+        "cuenta_adivinada": cuenta_auto if adivinada else None,
     }
 
 

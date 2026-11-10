@@ -144,6 +144,34 @@ export default function CatalogoAtajos({ claveAtajo }) {
       {ATAJOS.map((a) => (
         <TarjetaAtajo key={a.id} a={a} />
       ))}
+
+      <details className="mt-4 rounded-2xl bg-paper-raised border border-line p-4" data-testid="ya-lo-tenias">
+        <summary className="text-sm font-bold cursor-pointer min-h-6">¿Ya tenías un atajo instalado?</summary>
+        <p className="text-sm text-ink-soft mt-2 leading-relaxed">
+          iOS no actualiza los atajos solo. Si instalaste uno hace tiempo, conviene cambiarlo por el nuevo: casi no pregunta,
+          reconoce solo el banco y siempre te dice qué pasó. Los anteriores siguen funcionando, pero sin esas mejoras.
+        </p>
+        <ol className="list-decimal pl-5 mt-2 space-y-2 text-sm text-ink-soft leading-relaxed">
+          <li>Toca «Instalar» en el atajo de arriba y luego «Agregar atajo». Pega tu clave otra vez.</li>
+          <li>Si iOS lo agrega con un «2» al final, ese es el nuevo: en la app Atajos mantén presionado el viejo y toca «Eliminar».</li>
+          <li>Abre «Automatización» y, en cada automatización que usaba el viejo, cambia «Ejecutar atajo» al nuevo.</li>
+        </ol>
+      </details>
+
+      <details className="mt-3 rounded-2xl bg-paper-raised border border-line p-4" data-testid="no-funciona">
+        <summary className="text-sm font-bold cursor-pointer min-h-6">¿No funciona? Revisa esto</summary>
+        <ul className="list-disc pl-5 mt-2 space-y-2 text-sm text-ink-soft leading-relaxed">
+          <li><b className="text-ink">Pruébalo sin gesto:</b> en la app Atajos toca el botón de reproducir (el triángulo) del atajo. Debe salir una notificación de CuadraMe. Con «CuadraMe Registrar», abre antes un comprobante.</li>
+          <li><b className="text-ink">Dice «clave no válida»:</b> copia tu clave aquí arriba y pégala en el primer cuadro de texto del atajo (en Atajos, toca el atajo y busca la primera acción «Texto»).</li>
+          <li><b className="text-ink">La automatización no corre:</b> en Atajos › Automatización debe estar activada y con «Ejecutar inmediatamente». Los atajos instalados por enlace suelen traerla apagada.</li>
+          <li><b className="text-ink">El gesto no hace nada:</b> en Ajustes › Accesibilidad › Tocar › Tocar atrás revisa que el «Doble toque» tenga «CuadraMe Registrar».</li>
+          <li><b className="text-ink">No llegan los avisos del banco:</b> la app del banco debe tener las notificaciones activadas en los Ajustes de iOS, y esta función necesita iOS 27.</li>
+          <li><b className="text-ink">Dice «No encontré un pago»:</b> deja el comprobante completo en pantalla antes de hacer el gesto.</li>
+        </ul>
+        <p className="text-xs text-ink-soft mt-3 leading-relaxed">
+          Para ver si CuadraMe está recibiendo avisos, mira la tarjeta «Registro automático desde el banco» en Conexiones: dice cuándo llegó el último de cada banco.
+        </p>
+      </details>
     </section>
   )
 }

@@ -11,7 +11,9 @@ import re
 
 from sqlalchemy.orm import Session
 
-from app.models import Cuenta, ReglaNotificacion
+from sqlalchemy import func
+
+from app.models import Cuenta, Movimiento, ReglaNotificacion
 from app.notificaciones import banco_de_cuenta, _sin_tildes
 from app.wallet import alias_de
 from app.reglas_correo import esqueleto_anonimo
@@ -122,6 +124,22 @@ def inferir_cuenta(db: Session, usuario_id: str, titulo: str, texto: str, elegid
         if pos:
             halladas.append((min(pos), nombre))
     return (min(halladas)[1] if halladas else None), nombres
+
+
+def cuenta_mas_reciente(db: Session, usuario_id: str) -> str | None:
+    """Cuenta con el movimiento más reciente (si ninguna tiene, la primera por nombre): la apuesta cuando un comprobante no
+    deja saber de qué banco es. Es la misma regla que ya usa el Wallet para desempatar entre cuentas del mismo banco."""
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).order_by(Cuenta.nombre).all()
+    if not cuentas:
+        return None
+    ultimos = dict(
+        db.query(Movimiento.cuenta_id, func.max(Movimiento.fecha))
+        .filter(Movimiento.usuario_id == usuario_id)
+        .group_by(Movimiento.cuenta_id)
+        .all()
+    )
+    con_uso = [(ultimos[c.id], c.nombre) for c in cuentas if ultimos.get(c.id) is not None]
+    return max(con_uso)[1] if con_uso else cuentas[0].nombre
 
 
 def significado(r: ReglaNotificacion) -> str:

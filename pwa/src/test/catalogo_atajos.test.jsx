@@ -103,4 +103,17 @@ describe('Catálogo de atajos', () => {
     expect(screen.getByTestId('atajo-registrar')).toBeInTheDocument()
     expect(screen.queryByTestId('atajo-cierre')).toBeNull() // el atajo de cierre de app ya no se ofrece
   })
+
+  it('explica cómo cambiar un atajo anterior y qué revisar si algo falla', () => {
+    montarCatalogo()
+    const viejo = screen.getByTestId('ya-lo-tenias')
+    expect(viejo).toHaveTextContent('iOS no actualiza los atajos solo')
+    expect(viejo).toHaveTextContent('Agregar atajo')
+    expect(viejo).toHaveTextContent('«2» al final')
+    expect(viejo).toHaveTextContent('Automatización')
+    const falla = screen.getByTestId('no-funciona')
+    for (const tema of ['sin gesto', 'clave no válida', 'automatización no corre', 'Ejecutar inmediatamente', 'Tocar atrás', 'iOS 27', 'No encontré un pago']) {
+      expect(falla).toHaveTextContent(tema)
+    }
+  })
 })

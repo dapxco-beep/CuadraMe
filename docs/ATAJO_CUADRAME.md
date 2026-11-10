@@ -36,6 +36,16 @@ shortcuts sign -m anyone -i sinfirmar.shortcut -o "CuadraMe Registrar.shortcut"
 3. Se comprueba el nombre con `https://www.icloud.com/shortcuts/api/records/<id>` (campo `name`).
 4. El enlace se pega en `pwa/src/lib/atajosEnlaces.js` y se despliega la web. Quien ya instaló un atajo conserva su versión: hay que avisarle si cambia.
 
+### Quien ya tiene un atajo anterior
+
+iOS NO actualiza los atajos instalados desde un enlace: cada persona guarda una copia. Por eso el aviso viaja dentro del propio atajo:
+`backend/app/routers/movimientos.py` (`_aviso_atajo_viejo`) detecta los atajos anteriores (los nuevos mandan `paquete="auto"`; los anteriores mandaban el
+nombre de un banco) y agrega a su `mensaje`, una vez al día por persona, cómo cambiarlo (Perfil › Registro automático › Instalar). Los atajos anteriores
+siguen funcionando: el servidor conserva sus nombres de banco y respuestas. La app lo explica en el catálogo («¿Ya tenías un atajo instalado?» y «¿No funciona?»).
+
+**Cuando una versión futura exija reinstalar:** hacer que el generador mande un campo `version` en el JSON, subir una constante en el servidor y comparar en
+`_aviso_atajo_viejo` (hoy la heurística es solo «auto» o no). Cambiar el enlace de iCloud no avisa a nadie por sí solo.
+
 La clave de cada persona NO va dentro del archivo: iOS la pide al instalar. «Registrar» ya se usó en un iPhone real y llega al servidor; «Notificaciones» y «Apple Pay» siguen pendientes de prueba en un iPhone real.
 
 Dos atajos pequeños, en lugar de uno grande. Los clientes los instalan por enlace de iCloud (no los arman). La versión paso a paso con maquetas está en `docs/crear-atajos-cuadrame.html`.

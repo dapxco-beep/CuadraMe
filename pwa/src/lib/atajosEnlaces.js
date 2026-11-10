@@ -7,6 +7,6 @@ export const ATAJO_ICLOUD_URL = 'https://www.icloud.com/shortcuts/00217185832848
 // «CuadraMe Notificaciones» (iOS 27, disparador «Cuando recibo una notificación»): lee los avisos de Nequi, Nu, etc.
 export const ATAJO_NOTIFICACIONES_URL = 'https://www.icloud.com/shortcuts/1286c4417c524945809f6dd419538d7f'
 // «CuadraMe Registrar»: un gesto toma un pantallazo del comprobante y lee su texto (para bancos que no avisan al enviar).
-export const ATAJO_REGISTRAR_URL = 'https://www.icloud.com/shortcuts/b2889ed78b8348f39568ec4258b3ebfd'
+export const ATAJO_REGISTRAR_URL = 'https://www.icloud.com/shortcuts/145fc78e5f2d4fc1b1b8fe1ad2c94be3'
 // La app de Android («CuadraMe Captura») se descarga de aquí mismo, sin tiendas ni terceros.
 export const APK_URL = '/descargas/cuadrame-captura.apk'
