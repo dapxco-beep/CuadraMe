@@ -112,6 +112,10 @@ def inferir_cuenta(db: Session, usuario_id: str, titulo: str, texto: str, elegid
     for banco, frases in HUELLAS_BANCO.items():
         if any(f in plano for f in frases):
             suyas = [c for c in cuentas if (banco_de_cuenta(c.nombre) or "").lower() == banco]
+            if not suyas:
+                # Ninguna cuenta se llama como el banco («Ahorros», «Mi cuenta»...): la pantalla es de ESTE banco, así que es una de las
+                # cuentas que no se llaman como OTRO banco ni son efectivo o inversión. Nunca la de Nequi, Bancolombia, etc.
+                suyas = [c for c in cuentas if banco_de_cuenta(c.nombre) is None and (c.tipo or "ahorro") not in ("efectivo", "inversion")]
             if suyas:
                 return _elegir_de_un_banco(db, usuario_id, suyas, plano), nombres
     plano = _DESTINO.sub(" ", plano)

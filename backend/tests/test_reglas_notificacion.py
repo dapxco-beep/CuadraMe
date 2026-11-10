@@ -485,3 +485,15 @@ def test_la_cuenta_que_se_llama_nubank_tambien_es_nu():
 
     assert banco_de_cuenta("Nubank") == "Nu" and banco_de_cuenta("Mi Nubank ahorros") == "Nu"
     assert banco_de_cuenta("Nueva billetera") is None
+
+
+def test_si_la_cuenta_de_nu_no_se_llama_nu_la_huella_la_encuentra_entre_las_que_no_son_de_otro_banco():
+    h = _usuario("rn-sinnombre")  # crea «Nequi»
+    assert client.post("/cuentas", json={"nombre": "Mis ahorros", "saldo": 100000, "tipo": "ahorro"}).status_code == 200
+    assert client.post("/cuentas", json={"nombre": "Efectivo", "saldo": 5000, "tipo": "efectivo"}).status_code == 200
+    assert _aviso(h, RECIBO)["registrado"]  # lo último es Nequi: antes caía ahí
+    r = _pantallazo(h, _nu_detalle(_ayer()))
+    assert r["registrado"] and r["cuenta_adivinada"] is None, r
+    movs = client.get("/movimientos").json()
+    mov = next(m for m in (movs if isinstance(movs, list) else movs["items"]) if m["descripcion"] == "Envío a Carlos Ruiz")
+    assert _cuenta_nombre(mov) == "Mis ahorros"  # ni Nequi (otro banco) ni Efectivo
