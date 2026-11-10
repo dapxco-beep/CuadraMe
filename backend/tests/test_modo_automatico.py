@@ -375,3 +375,30 @@ def test_dos_lineas_para_el_mismo_movimiento_se_preguntan(uid, db):
     h = _hist_con(db, uid, cuenta, [_aprox(cuenta, m, fp="fp1"), _aprox(cuenta, m, fp="fp2")])
     _correr(db, uid)
     assert _estado_item(db, h, "fp1") == "aproximado" and _estado_item(db, h, "fp2") == "aproximado"
+
+
+def test_correo_con_arroba_falso_en_el_nombre_en_pantalla_no_se_registra(uid, db):
+    """Phishing: el nombre en pantalla trae un «@dominio» de banco, pero la dirección real es otra."""
+    _cuenta(db, uid, "Bancolombia Ahorros")
+    _correo(db, uid, remitente='"alertas@notificacionesbancolombia.com" <x@evil.example>', monto=9_999.0)
+    _correr(db, uid)
+    assert _movs(db, uid) == []
+    assert modo_automatico._dominio_de_banco('"alertas@notificacionesbancolombia.com" <x@evil.example>') is False
+    assert modo_automatico._dominio_de_banco("Bancolombia <alertas@notificacionesbancolombia.com>") is True
+
+
+def test_correo_con_monto_grande_no_se_registra_solo(uid, db):
+    _cuenta(db, uid, "Bancolombia Ahorros")
+    _correo(db, uid, monto=modo_automatico.TOPE_MONTO_CORREO + 1)
+    _correr(db, uid)
+    assert _movs(db, uid) == []
+
+
+def test_con_el_modo_apagado_no_se_ordena_nada_solo(uid, db):
+    from types import SimpleNamespace
+
+    from app import autoarreglo
+
+    modo_automatico.poner_activo(db, uid, False)
+    db.commit()
+    assert autoarreglo._arreglos_seguros(SimpleNamespace(db=db, uid=uid)) == {}

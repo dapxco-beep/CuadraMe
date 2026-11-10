@@ -344,3 +344,5 @@ def test_el_repetido_a_mano_se_une_solo_y_se_puede_deshacer(monkeypatch):
     r = client.post(f"/conciliacion/historial/{out['historial_id']}/sobrantes/{mano['id']}", json={"accion": "restaurar", "motivo": "no_va"})
     assert r.status_code == 200, r.text
     assert mano["id"] in [m["id"] for m in client.get("/movimientos").json()]
+    assert _saldos()["Nequi"] == 100_000 + 120_000  # vuelve a contar en el saldo (antes se perdía)
+    assert {m["id"]: m for m in client.get("/movimientos").json()}[mano["id"]]["fuente"] == "manual"

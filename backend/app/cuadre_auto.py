@@ -79,7 +79,7 @@ def _quitar_copia(ctx, h, f, cuenta):
         return None
     db = ctx.db
     ini, fin = _ventana(f)
-    movs = db.query(Movimiento).filter(Movimiento.cuenta_id == cuenta.id, Movimiento.fecha >= ini, Movimiento.fecha <= fin).all()
+    movs = db.query(Movimiento).filter(Movimiento.cuenta_id == cuenta.id, Movimiento.usuario_id == ctx.uid, Movimiento.fecha >= ini, Movimiento.fecha <= fin).all()
     grupos: dict[tuple, list[Movimiento]] = {}
     for m in movs:
         if delta_saldo(m) and m.tipo in ("income", "expense") and m.fecha:

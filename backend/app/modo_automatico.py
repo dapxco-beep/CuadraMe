@@ -159,12 +159,19 @@ def fase_unir(ctx) -> int:
 
 
 # ── 2. Correos bancarios ────────────────────────────────────────────────────────────────────────────
+TOPE_MONTO_CORREO = 2_000_000  # por encima, el correo no se registra solo
+
+
 def _dominio_de_banco(remitente: str) -> bool:
     """El remitente es de un banco por su DOMINIO (no basta el nombre en pantalla: «Bancolombia <x@gmail.com>» es phishing)."""
-    from app import paises
-    from app.extractos_gmail import DOMINIOS_BANCOS, dominio_de
+    from email.utils import parseaddr
 
-    d = dominio_de(remitente)
+    from app import paises
+    from app.extractos_gmail import DOMINIOS_BANCOS
+
+    # Solo la dirección REAL del From (el nombre en pantalla puede traer otro «@dominio» para engañar).
+    direccion = parseaddr(remitente or "")[1]
+    d = direccion.rsplit("@", 1)[1].lower().strip() if direccion.count("@") == 1 else ""
     if not d:
         return False
     bases = list(DOMINIOS_BANCOS) + list(paises.todos_los_dominios())
@@ -184,6 +191,8 @@ def correo_seguro(c: CorreoGasto, cuentas: list, pendientes: list[CorreoGasto]) 
 
     if c.estado != "pendiente" or (c.monto or 0) <= 0 or not _dominio_de_banco(c.remitente or ""):
         return None
+    if (c.monto or 0) > TOPE_MONTO_CORREO:
+        return None  # un monto grande lo mira la persona (también frena un correo falso con un monto enorme)
     if not es_notificacion_transaccion(c.asunto or "", c.snippet or ""):
         return None
     banco, sugerida, falta = inferir_cuenta_por_remitente(c.remitente, cuentas, f"{c.asunto} {c.snippet}")

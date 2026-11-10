@@ -971,7 +971,7 @@ class SobranteAccionRequest(BaseModel):
     motivo: str = "no_va"  # al borrar: duplicado | error | no_va
 
 
-_CAMPOS_RESTAURAR = ("cuenta_id", "fecha", "descripcion", "categoria", "subcategoria", "tipo", "monto", "notas", "cat_origen", "cat_confirmada")
+_CAMPOS_RESTAURAR = ("cuenta_id", "fuente", "fecha", "descripcion", "categoria", "subcategoria", "tipo", "monto", "notas", "cat_origen", "cat_confirmada")
 
 
 def _unir_gemelo(db: Session, usuario: UsuarioActual, movimiento_id: str, item: dict) -> bool:
@@ -1036,6 +1036,11 @@ def resolver_sobrante(
             db.add(nuevo)
             db.flush()
             dup.olvidar_movimiento(db, nuevo)
+            from app.contabilidad import delta_saldo as _delta
+            from app.compartidos import bloquear_cuenta as _bloquear
+            cta = _bloquear(db, nuevo.cuenta_id)
+            if cta is not None and cta.usuario_id == usuario.id:
+                cta.saldo = round((cta.saldo or 0) + _delta(nuevo), 2)  # el movimiento vuelve a contar en el saldo
             from app.routers.movimientos import _reajustar_saldo_inicial
             db.commit()
             _reajustar_saldo_inicial(db, usuario, foto["cuenta_id"])

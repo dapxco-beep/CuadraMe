@@ -829,6 +829,8 @@ def _arreglos_seguros(ctx: _Ctx) -> dict:
     from app import cuadre_auto, sobrantes_auto, traslados_auto
 
     hecho: dict = {}
+    if not modo_automatico.activo(ctx.db, ctx.uid):
+        return hecho  # «Modo automático» apagado: no se ordena nada solo (ni traslados, ni sobrantes, ni descuadres)
     for clave, paso in (("traslados", lambda: traslados_auto.marcar_seguros(ctx.db, ctx.uid)),
                         ("sobrantes", lambda: sobrantes_auto.mover_sobrantes(ctx.db, ctx.usuario, ctx.excluidos)),
                         ("causas", lambda: cuadre_auto.resolver(ctx))):
@@ -1111,6 +1113,13 @@ def _revertir_mov(db: Session, f: ArregloAuto, cuentas: dict[str, Cuenta]) -> No
             fila[k] = _fecha(fila.get(k))
         mov = Movimiento(**{k: v for k, v in fila.items() if k in Movimiento.__table__.c})
         db.add(mov)
+        db.flush()
+        # Quitarlo dejó un «fantasma» (huella descartada) y ocultó los correos que lo reconocían: al volver, se olvidan.
+        db.query(HuellaOrigen).filter(HuellaOrigen.movimiento_id == mov.id).delete(synchronize_session=False)
+        from app.models import CorreoGasto
+        for cg in db.query(CorreoGasto).filter(CorreoGasto.usuario_id == f.usuario_id, CorreoGasto.movimiento_id == mov.id,
+                                               CorreoGasto.estado == "descartado").all():
+            cg.estado = "ya_registrado"
         cuenta = cuentas.get(mov.cuenta_id) or bloquear_cuenta(db, mov.cuenta_id)
         if cuenta is None or cuenta.usuario_id != f.usuario_id:
             raise Inconsistente("La cuenta de un movimiento ya no existe")
@@ -1121,8 +1130,10 @@ def _revertir_mov(db: Session, f: ArregloAuto, cuentas: dict[str, Cuenta]) -> No
         c_ahora = cuentas.get(actual.cuenta_id) or bloquear_cuenta(db, actual.cuenta_id)
         c_ahora.saldo = round((c_ahora.saldo or 0) - delta_saldo(actual), 2)
         _restaurar_campos(actual, antes)
-        if despues.get("_paso") == "sobrantes":  # lo respaldaba el extracto de la cuenta nueva; vuelve a quedar sin respaldo
+        if despues.get("_paso") in ("sobrantes", "unir"):  # lo respaldaba el extracto; vuelve a quedar sin respaldo
             actual.conciliado_en = actual.extracto_id = None
+            if despues.get("_paso") == "unir":
+                db.query(HuellaOrigen).filter(HuellaOrigen.movimiento_id == actual.id, HuellaOrigen.origen == "extracto").delete(synchronize_session=False)
         c_antes = cuentas.get(actual.cuenta_id) or bloquear_cuenta(db, actual.cuenta_id)
         c_antes.saldo = round((c_antes.saldo or 0) + delta_saldo(actual), 2)
         if antes.get("cuenta_id") != despues.get("cuenta_id"):
