@@ -440,6 +440,20 @@ def crear_movimiento(
                 "canal": dup.origen_de_movimiento(m),
             })
 
+        # ¿Lo mismo ya está en otra cuenta del MISMO banco? (el atajo o el correo a veces eligen la hermana)
+        hermana = dup.igual_en_cuenta_hermana(db, usuario.id, cuenta, data.tipo, float(data.monto), data.fecha or ahora_co(),
+                                           sin_manuales=True)
+        if hermana is not None:
+            m, otra = hermana
+            raise HTTPException(status_code=409, detail={
+                "codigo": "posible_duplicado",
+                "mensaje": f"Tienes algo igual en tu otra cuenta de {otra.nombre}: «{m.descripcion}». "
+                           "¿Es otro igual o es el mismo?",
+                "movimiento_id": m.id,
+                "canal": dup.origen_de_movimiento(m),
+                "cuenta_id": otra.id,
+            })
+
     categoria = data.categoria
     auto = datos_auto(None)
     subcategoria = None
@@ -1031,8 +1045,20 @@ def _registrar_movimiento_rapido(
 
         # ¿Ya lo tienes por otro canal (escrito a mano, el correo del banco, el extracto)? Entonces el
         # atajo lo CONFIRMA y lo completa en vez de crear otro. El cierre de app no trae comercio:
-        # solo se deduplica contra sí mismo (arriba) y lo cruza luego el extracto.
-        if not es_cierre:
+        # se deduplica contra sí mismo (arriba) y contra una pareja única de otro canal (abajo).
+        if es_cierre:
+            # Sin comercio no se puede comparar texto, pero sí un ingreso/gasto del mismo monto, cuenta y día por
+            # OTRO canal: si es uno solo, el cierre se absorbe en él (el existente gana). Con 2 o con duda, no se une.
+            ya = dup.pareja_unica_de_cierre(db, usuario_id, cuenta.id, tipo, float(monto), momento,
+                                            cuenta.moneda or "COP")
+            if ya is not None:
+                dup.confirmar_por_canal(db, ya, dup.ORIGEN_ATAJO, huella)
+                db.commit()
+                db.refresh(ya)
+                if absorbido_out is not None:
+                    absorbido_out.append(dup.origen_de_movimiento(ya))
+                return ya, cuenta, True
+        else:
             ent = dup.Cand(
                 id="atajo", origen=dup.ORIGEN_ATAJO, tipo=tipo, monto=float(monto), fecha=momento,
                 cuentas=frozenset({cuenta.id} | {c.id for c in empate}), texto=descripcion or "",

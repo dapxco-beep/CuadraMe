@@ -943,17 +943,29 @@ def _auditar_con_cruce_rapido(movimientos_extracto: list[dict], ledger: list[dic
     sobrantes = []
     if fechas:
         desde, hasta = min(fechas), max(fechas)
+        respaldados = [r for r in ledger if r.get("id") in usados and r.get("fecha") and r.get("tipo") in ("income", "expense")]
+        gemelos_usados: set = set()  # cada respaldado absorbe UN solo gemelo rápido: dos iguales no se tragan de más
         for r in candidatos:
             if r.get("id") in usados or not r.get("fecha") or not (desde <= r["fecha"].date() <= hasta):
                 continue
-            sobrantes.append({
+            item = {
                 "id": r.get("id"), "fecha": r["fecha"].strftime("%Y-%m-%d %H:%M"),
                 "descripcion": r.get("descripcion", ""), "monto": abs(r.get("monto", 0)),
                 "tipo": r.get("tipo", "expense"),
-            })
+            }
+            # Un cierre de app (o un aviso de Wallet aún sin confirmar) con un gemelo que el extracto ya respaldó
+            # es el mismo pago avisado dos veces: se une solo (con Deshacer).
+            if r.get("gemelable"):
+                for g in respaldados:
+                    if (g.get("id") not in gemelos_usados and g.get("tipo") == r.get("tipo")
+                            and abs(abs(g.get("monto", 0)) - abs(r.get("monto", 0))) <= 1
+                            and abs((g["fecha"].date() - r["fecha"].date()).days) <= 3):
+                        gemelos_usados.add(g.get("id"))
+                        item["gemelo"] = True
+                        break
+            sobrantes.append(item)
         # Un movimiento anotado a mano (o de otro canal no rápido) que es GEMELO de uno que el extracto ya respaldó
         # (mismo tipo y monto, fechas cercanas) es el mismo pago registrado dos veces: el banco trae uno solo.
-        respaldados = [r for r in ledger if r.get("id") in usados and r.get("fecha") and r.get("tipo") in ("income", "expense")]
         ya_listados = {s["id"] for s in sobrantes}
         for r in ledger:
             if (r.get("rapido") or r.get("conciliado") or r.get("id") in usados or r.get("id") in ya_listados
