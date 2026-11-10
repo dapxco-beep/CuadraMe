@@ -951,6 +951,25 @@ def _auditar_con_cruce_rapido(movimientos_extracto: list[dict], ledger: list[dic
                 "descripcion": r.get("descripcion", ""), "monto": abs(r.get("monto", 0)),
                 "tipo": r.get("tipo", "expense"),
             })
+        # Un movimiento anotado a mano (o de otro canal no rápido) que es GEMELO de uno que el extracto ya respaldó
+        # (mismo tipo y monto, fechas cercanas) es el mismo pago registrado dos veces: el banco trae uno solo.
+        respaldados = [r for r in ledger if r.get("id") in usados and r.get("fecha") and r.get("tipo") in ("income", "expense")]
+        ya_listados = {s["id"] for s in sobrantes}
+        for r in ledger:
+            if (r.get("rapido") or r.get("conciliado") or r.get("id") in usados or r.get("id") in ya_listados
+                    or not r.get("fecha") or not r.get("emparejable", True) or r.get("tipo") not in ("income", "expense")
+                    or not (desde <= r["fecha"].date() <= hasta)):
+                continue
+            gemelo = any(
+                g.get("tipo") == r.get("tipo") and abs(abs(g.get("monto", 0)) - abs(r.get("monto", 0))) <= 1
+                and abs((g["fecha"].date() - r["fecha"].date()).days) <= 3
+                for g in respaldados)
+            if gemelo:
+                sobrantes.append({
+                    "id": r.get("id"), "fecha": r["fecha"].strftime("%Y-%m-%d %H:%M"),
+                    "descripcion": r.get("descripcion", ""), "monto": abs(r.get("monto", 0)),
+                    "tipo": r.get("tipo", "expense"),
+                })
     cuenta = lambda e: sum(1 for v in estados.values() if v == e)  # noqa: E731
     return {
         "review": review,

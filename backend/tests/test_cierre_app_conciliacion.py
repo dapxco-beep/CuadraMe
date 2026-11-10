@@ -192,7 +192,8 @@ def test_no_toca_conciliados_ni_los_que_no_son_rapidos_y_sobrantes_son_del_perio
     libre = fila("OK", (13, 0), 20_000)
     estados, r = cruce([ext(20_000)], [ya, manual, viejo, libre])
     assert estados == [("completado", "OK")]
-    assert r["sobrantes"] == []
+    # el manual de mismo tipo, monto y día es gemelo del que el extracto respaldó: sale como «sin respaldo»
+    assert [s["id"] for s in r["sobrantes"]] == ["MAN"]
     # sin 'libre': el conciliado se ignora. Regla central de duplicados: el movimiento escrito a mano
     # con el MISMO monto y día también se concilia con el banco (antes solo salía como «aproximado»).
     estados, r = cruce([ext(20_000)], [ya, manual, viejo])
@@ -302,3 +303,23 @@ def test_las_lineas_de_cero_pesos_no_aparecen_para_conciliar():
         assert descripciones == ["Compra Juan Valdez"], (cruzar, descripciones)
         assert r["ignorados_en_cero"] == 3
         assert all(abs(m["monto"]) >= 1 for m in r["review"])
+
+
+def test_un_movimiento_a_mano_gemelo_de_uno_ya_respaldado_se_marca_sobrante():
+    """Caso Nequi: el mismo ingreso anotado a mano y registrado por el atajo; el extracto trae UNO solo.
+    El que el extracto respalda queda emparejado y el otro (a mano) sale como «sin respaldo»."""
+    from datetime import datetime
+
+    from app import conciliacion as cc
+
+    base = {"monto": 1060000.0, "tipo": "income", "extracto_id": None, "origen": None, "canales": set(), "emparejable": True,
+            "conciliado": False, "fingerprint": ""}
+    ledger = [
+        {**base, "id": "mano", "fecha": datetime(2026, 10, 14, 12, 0), "descripcion": "Juliana", "rapido": False},
+        {**base, "id": "atajo", "fecha": datetime(2026, 10, 14, 22, 5), "descripcion": "De JOSE IGNACIO PARRADO", "rapido": True},
+    ]
+    linea = {"fecha": "2026-10-14", "monto": 1060000.0, "tipo": "income", "descripcion": "De JOSE IGNACIO PARRADO"}
+    r = cc._auditar_con_cruce_rapido([linea], ledger)
+    assert [s["id"] for s in r["sobrantes"]] == ["mano"]
+    # Sin gemelo respaldado (otro monto), un movimiento a mano NO se marca.
+    assert cc._auditar_con_cruce_rapido([{**linea, "monto": 5000.0}], [ledger[0]])["sobrantes"] == []
