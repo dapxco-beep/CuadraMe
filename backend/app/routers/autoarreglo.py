@@ -3,12 +3,14 @@
   POST /autoarreglo/correr                  un tramo acotado del orden automático (la PWA lo llama al abrir, sin bloquear)
   GET  /autoarreglo/lotes                   lo hecho por lote: cuántos cambios, saldos antes y después por cuenta
   POST /autoarreglo/lotes/{lote}/deshacer   revierte el lote completo (409 si algo posterior lo hizo inconsistente)
+  GET/PUT /autoarreglo/modo                 interruptor «Modo automático» (activado por defecto; app/modo_automatico.py)
   GET  /autoarreglo/movimientos/{id}/historia  línea de tiempo de lo que se le hizo a un movimiento (404 si no es tuyo)
 """
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app import autoarreglo
+from app import autoarreglo, modo_automatico
 from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
 from app.limites import verificar_limite
@@ -41,3 +43,19 @@ def deshacer(lote: str, db: Session = Depends(get_db), usuario: UsuarioActual = 
 def historia(movimiento_id: str, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
     """Qué le hizo el orden automático a UN movimiento (línea de tiempo en español, con fecha y lote). 404 si no es tuyo."""
     return autoarreglo.historia_de_movimiento(db, usuario.id, movimiento_id)
+
+
+class ModoIn(BaseModel):
+    activo: bool
+
+
+@router.get("/modo")
+def modo(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """¿Está activado el Modo automático? (por defecto sí)."""
+    return {"activo": modo_automatico.activo(db, usuario.id)}
+
+
+@router.put("/modo")
+def poner_modo(data: ModoIn, db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
+    """Enciende o apaga el Modo automático. Apagado, la app no registra, confirma, junta ni ajusta nada sola."""
+    return {"activo": modo_automatico.poner_activo(db, usuario.id, data.activo)}

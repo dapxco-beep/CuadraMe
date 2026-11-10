@@ -35,7 +35,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import estado_aprendizaje, guardia_coherencia, ingresos_sueltos
+from app import estado_aprendizaje, guardia_coherencia, ingresos_sueltos, modo_automatico
 from app import cierre_extractos, corregir_pago, deuda_tarjeta, corregir_tipo, extractos_error, punto_partida, reasignar_extracto, saldo_inicial_auto
 from app import arreglar_tarjetas as at
 from app import cuadre_extracto as cx
@@ -308,9 +308,12 @@ def _diferencias(a: dict, b: dict, paso: str) -> list[dict]:
     for hid, nuevo in b["hist"].items():
         viejo = a["hist"].get(hid)
         if viejo is not None and _huella_hist(viejo) != _huella_hist(nuevo):
-            fila("historial", hid, viejo, {"cuenta_id": nuevo["cuenta_id"], "estado": nuevo["estado"], "huella": _huella_hist(nuevo),
-                                           "fecha_corte": nuevo["fecha_corte"], "periodo_inicio": nuevo["periodo_inicio"],
-                                           "lectura_json": nuevo["lectura_json"]})
+            despues = {"cuenta_id": nuevo["cuenta_id"], "estado": nuevo["estado"], "huella": _huella_hist(nuevo),
+                       "fecha_corte": nuevo["fecha_corte"], "periodo_inicio": nuevo["periodo_inicio"],
+                       "lectura_json": nuevo["lectura_json"]}
+            if paso == "unir":  # modo automático: cuántas líneas «aproximadas» se juntaron con lo ya registrado
+                despues["unidos"] = (viejo["review_json"] or "").count('"estado": "aproximado"') - (nuevo["review_json"] or "").count('"estado": "aproximado"')
+            fila("historial", hid, viejo, despues)
     for cid, saldo in b["cuentas"].items():
         if cid in a["cuentas"] and abs(a["cuentas"][cid] - saldo) >= 0.005:
             fila("saldo", cid, {"saldo": a["cuentas"][cid]}, {"saldo": saldo})
@@ -355,6 +358,13 @@ class _Ctx:
 
     def decidir(self, clave: str, n: int = 1) -> None:
         self.decisiones[clave] = self.decisiones.get(clave, 0) + n
+
+    def anotar(self, tipo: str, entidad_id: str, antes: dict, despues: dict) -> None:
+        """Una fila a mano en el lote (para cambios que la foto no vigila, como confirmar un movimiento). Sin commit."""
+        self.reloj = max(_ahora(), self.reloj + timedelta(microseconds=1))
+        self.db.add(ArregloAuto(usuario_id=self.uid, lote_id=self.lote, tipo=tipo, entidad_id=entidad_id,
+                                antes=_json({**antes, "_paso": "bandeja"}), despues=_json({**despues, "_paso": "bandeja"}), creado_en=self.reloj))
+        self.cambios += 1
 
     def cerrar_fase(self, paso: str) -> int:
         """Compara con la foto anterior, guarda las diferencias en el lote y avanza la foto. Devuelve cuántas filas."""
@@ -787,12 +797,23 @@ def resumen_lote(db: Session, uid: str, lote: str) -> dict:
     filas = _filas_del_lote(db, uid, lote)
     c = {"extractos_movidos": 0, "compras_corregidas": 0, "pagos_corregidos": 0, "repetidos_quitados": 0,
          "rendimientos_registrados": 0, "monto_rendimientos": 0.0, "lineas_importadas": 0, "ajustes_iniciales": 0,
-         "extractos_releidos": 0, "fechas_arregladas": 0, "duplicados_marcados": 0}
+         "extractos_releidos": 0, "fechas_arregladas": 0, "duplicados_marcados": 0,
+         "correos_registrados": 0, "bandeja_confirmados": 0, "ajustes_pequenos": 0, "gastos_unidos": 0}
     saldos: dict[str, dict] = {}
     detalle = []
     for f in filas:
         antes, despues = _cargar(f.antes) or {}, _cargar(f.despues) or {}
-        if f.tipo == "historial":
+        paso = despues.get("_paso") or antes.get("_paso")
+        if f.tipo == "confirmar_auto":  # modo automático (docs/AUTOARREGLO.md)
+            c["bandeja_confirmados"] += 1
+            continue
+        if paso == "unir" and f.tipo != "historial":
+            continue  # lo unido se cuenta por la fila del extracto
+        if f.tipo == "crear_linea" and paso in ("correos", "ajuste_pequeno"):
+            c["correos_registrados" if paso == "correos" else "ajustes_pequenos"] += 1
+        elif f.tipo == "historial" and paso == "unir":
+            c["gastos_unidos"] += max(0, int(despues.get("unidos") or 0))
+        elif f.tipo == "historial":
             marca_antes = (_cargar(antes.get("lectura_json")) or {}).get(fe.CLAVE_DUPLICADO)
             marca_despues = (_cargar(despues.get("lectura_json")) or {}).get(fe.CLAVE_DUPLICADO)
             if antes.get("cuenta_id") != despues.get("cuenta_id"):
@@ -858,6 +879,14 @@ def texto_resumen(c: dict) -> str:
         partes.append(f"corregí las fechas de {_n(c['fechas_arregladas'], 'extracto', 'extractos')}")
     if c["duplicados_marcados"]:
         partes.append(f"aparté {_n(c['duplicados_marcados'], 'extracto repetido', 'extractos repetidos')} (no toqué tus movimientos)")
+    if c["gastos_unidos"]:
+        partes.append(f"junté {_n(c['gastos_unidos'], 'gasto que era el mismo', 'gastos que eran el mismo')} (mismo monto y fecha)")
+    if c["correos_registrados"]:
+        partes.append(f"registré {_n(c['correos_registrados'], 'movimiento', 'movimientos')} de tus correos")
+    if c["bandeja_confirmados"]:
+        partes.append(f"confirmé {_n(c['bandeja_confirmados'], 'movimiento', 'movimientos')} que ya reconocía")
+    if c["ajustes_pequenos"]:
+        partes.append(f"cuadré {_n(c['ajustes_pequenos'], 'diferencia de centavos', 'diferencias de centavos')} con un ajuste neutro")
     if c["ajustes_iniciales"] and not partes:
         partes.append("actualicé el saldo con el que empezaron tus cuentas")
     return ("Listo, ordené tus cuentas: " + ", ".join(partes) + ".") if partes else "Tus cuentas ya estaban ordenadas."
@@ -920,6 +949,7 @@ def correr(db: Session, usuario_id: str, max_pasos: int = MAX_PASOS_POR_LLAMADA,
                 pendiente = True
             elif r["estado"] == "ok" and not pendiente:
                 hecho += 1
+        auto = modo_automatico.correr(ctx)  # Modo automático: unir, correos, bandeja, ajuste pequeño ({} si está apagado)
         coherencia = _coherencia(db, uid)
         _poner(db, uid, CLAVE_ULTIMA, _ahora().isoformat())
         _quitar(db, uid, CLAVE_PEDIDO)
@@ -932,7 +962,7 @@ def correr(db: Session, usuario_id: str, max_pasos: int = MAX_PASOS_POR_LLAMADA,
             **base, "estado": "trabajando" if sigue else "listo", "lote_id": lote if resumen else None, "cambios": resumen["cambios"] if resumen else 0,
             "progreso": {"hecho": hecho if sigue else len(PASOS), "total": len(PASOS), "paso": actual},
             "resumen": resumen, "pasos": pasos, "decisiones": _decisiones(ctx.decisiones), "cuadre": ctx.cuadre, "coherencia": coherencia, "aprendizaje": _aprendizaje(db, uid),
-            "limite_alcanzado": ctx.limite_alcanzado, "quedan_por_hacer": pendiente and not sigue, "notas": ctx.notas}
+            "automatico": auto, "limite_alcanzado": ctx.limite_alcanzado, "quedan_por_hacer": pendiente and not sigue, "notas": ctx.notas}
     except Exception:  # noqa: BLE001 - jamás hacia la persona
         db.rollback()
         logger.exception("Autoarreglo falló (usuario %s)", uid[:8])
@@ -1055,7 +1085,14 @@ def deshacer_lote(db: Session, usuario_id: str, lote_id: str) -> dict:
             for f in sorted(pendientes, key=lambda x: (x.creado_en, x.id), reverse=True):
                 if f.tipo == "historial":
                     _revertir_historial(db, f)
+                elif f.tipo == "confirmar_auto":
+                    modo_automatico.revertir_confirmacion(db, usuario_id, f.entidad_id)
                 elif f.tipo in TIPOS_MOV:
+                    paso = (_cargar(f.despues) or {}).get("_paso")
+                    if f.tipo == "crear_linea" and paso == "correos":
+                        modo_automatico.revertir_correo(db, usuario_id, f.entidad_id)  # el correo vuelve a «por revisar»
+                    elif f.tipo == "crear_linea" and paso == "ajuste_pequeno":
+                        modo_automatico.marcar_no(db, usuario_id, (_cargar(f.despues) or {}).get("cuenta_id"))
                     _revertir_mov(db, f, cuentas)
                 f.revertido_en = _ahora()
             db.flush()

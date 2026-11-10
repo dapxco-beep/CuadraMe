@@ -21,6 +21,7 @@ import { useModoMenu } from '../lib/modoSimple'
 import { Boton } from '../components/ui'
 import { errorNombre, limpiarNombre, useNombre } from '../lib/nombre'
 import { guardarLetraGrande, leerLetraGrande } from '../lib/letraGrande'
+import { useModoAutomatico } from '../lib/modoAutomatico'
 import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../lib/push'
 
 export default function Perfil() {
@@ -28,6 +29,7 @@ export default function Perfil() {
   const { usuario, logout } = useAuth()
   const { avisar } = useDialogos()
   const claveAtajo = useClaveAtajo()
+  const modoAuto = useModoAutomatico()
   const { completo, setCompleto } = useModoMenu()
   const [verGuia, setVerGuia] = useState(false)
   const [letraGrande, setLetraGrande] = useState(leerLetraGrande)
@@ -348,6 +350,33 @@ export default function Perfil() {
 
         </div>
       </SeccionPlegable>
+
+      {/* Modo automático: un solo interruptor para todo lo que la app resuelve sola (activado por defecto) */}
+      <section className="mx-6 mt-6" data-testid="modo-automatico">
+        <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium" id="etq-modo-automatico">Modo automático</p>
+            <p className="text-sm text-ink-soft mt-0.5">
+              La app resuelve sola lo seguro (correos de tu banco, movimientos que reconoce, diferencias de centavos) y te dice qué hizo,
+              con «Deshacer». Lo dudoso te lo pregunta. Apágalo si prefieres aprobar todo tú.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => modoAuto.cambiar(!modoAuto.activo).catch((err) => avisar(err?.message || 'No pudimos cambiar el modo automático. Intenta de nuevo.'))}
+            disabled={modoAuto.activo === null}
+            role="switch"
+            aria-checked={modoAuto.activo === true}
+            aria-labelledby="etq-modo-automatico"
+            data-testid="switch-modo-automatico"
+            className="shrink-0 min-h-11 w-14 flex items-center justify-center disabled:opacity-60"
+          >
+            <span className={`block w-12 h-7 rounded-full transition-colors relative ${modoAuto.activo ? 'bg-accent' : 'bg-line'}`}>
+              <span className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${modoAuto.activo ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </span>
+          </button>
+        </div>
+      </section>
 
       <SeccionPlegable id="perfil-avisos" titulo="Avisos y conexiones" icono={Bell} className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
         <div className="-mx-4 -mt-1">
