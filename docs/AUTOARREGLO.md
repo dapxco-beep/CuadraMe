@@ -156,3 +156,20 @@ comprueba que el flujo genérico no asume Nu: A se lee, se importa y cuadra; B s
 lector de columnas corre el valor a Débito) y la red de seguridad lo frena porque no suma el saldo; C queda `aprendiendo` y sin
 tocar. **Hallazgo abierto:** el lector de columnas (`_parse_bancolombia`, también usado por el genérico) confunde Débito y Crédito
 cuando una celda queda vacía; hoy no daña nada (no suma ⇒ no se importa solo) pero conviene un lector verificado para ese formato.
+
+## Modo automático (`backend/app/modo_automatico.py`)
+
+Un solo interruptor por persona («Modo automático» en Perfil, **activado por defecto**; `GET/PUT /autoarreglo/modo`; se guarda
+como marca `modo_automatico_off` en `marcas_cron`, sin migración). Apagado, la app se comporta como antes. Corre dentro de
+`autoarreglo.correr` (después de los 6 pasos), así cada cambio queda en el lote y se puede «Deshacer». Respuesta: `automatico`.
+
+| Fase | Actúa solo cuando... | Si no, |
+|---|---|---|
+| `unir` («¿es el mismo gasto?») | monto idéntico (\|Δ\|<1), ≤3 días, 1:1 único y misma cuenta | queda la pregunta (monto distinto, dos candidatos, dos líneas para un movimiento) |
+| `correos` | remitente con **dominio** de banco (no basta el nombre), cuenta sugerida única, monto>0, sin `falta_cuenta`, sin pareja en otro canal (`duplicados.py`), no hay otro correo igual el mismo día; **máx. 20 por día**; origen `correo` | queda en «Por revisar» |
+| `bandeja` («¿son tuyos?») | Wallet/atajo con categoría por regla/comercio/aprendizaje (ya), o categoría sugerida clara tras 24 h | queda en la bandeja: montos atípicos (`cargos_inusuales` + 3× la mediana) y lo sin categoría clara |
+| `ajuste` | cuenta de ahorro, último extracto verificado, sin líneas pendientes ni causa probable, diferencia ≤ $2.000 o ≤ 0,05 % del saldo → ajuste neutro «Ajuste automático por redondeo/centavos» | diferencias mayores no se tocan |
+
+Deshacer: borra lo creado (y devuelve el correo a «por revisar»), des-confirma la bandeja o devuelve la línea a «aproximada»;
+lo deshecho no se vuelve a hacer solo (`modo_auto_no:<id>`) y el orden automático se pausa 24 h (como siempre).
+Front: `lib/modoAutomatico.js` (interruptor y regla pura `esMismoGastoSeguro`), `PrevioImportacion.jsx` (solo pregunta si el monto difiere).

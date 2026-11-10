@@ -9,6 +9,7 @@ import PrevioImportacion from './PrevioImportacion'
 import CuadreExtracto from './CuadreExtracto'
 import { lineasPorImportar } from '../lib/cuadreExtracto'
 import { useCuentas } from '../lib/CuentasContext'
+import { useModoAutomatico } from '../lib/modoAutomatico'
 import { useCategorias } from '../lib/CategoriasContext'
 import { AvisoCategorizados } from './CategorizacionAuto'
 import AvisoYaConciliado from './AvisoYaConciliado'
@@ -100,6 +101,7 @@ export default function SubidaMultiple({
   const navigate = useNavigate()
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const catsCtx = useCategorias()
+  const modoAuto = useModoAutomatico()
   const CATEGORIAS = catsCtx?.nombres || []
   const iconoDe = catsCtx?.iconoDe || (() => EMOJI_DEFECTO)
   const [avisoBloque, setAvisoBloque] = useState('')
@@ -325,7 +327,7 @@ export default function SubidaMultiple({
   }
 
   // «¿Es el mismo gasto?»: sí -> se junta con lo que ya tenías (no se duplica); no -> queda como nuevo.
-  async function decidirDudosos(a, lista, decision) {
+  async function decidirDudosos(a, lista, decision, auto = false) {
     const ks = new Set(lista.map((i) => i.k))
     if (a.tipo === 'pdf' && a.historialId) {
       const fps = lista.map((i) => i.fp)
@@ -333,7 +335,7 @@ export default function SubidaMultiple({
     }
     parchar(a.id, {
       items: a.items.map((it) => (ks.has(it.k) && it.estado === 'dudoso'
-        ? { ...it, estado: decision === 'mismo' ? 'ya' : 'nuevo', conciliarCon: decision === 'mismo' ? it.matchId : null }
+        ? { ...it, estado: decision === 'mismo' ? 'ya' : 'nuevo', conciliarCon: decision === 'mismo' ? it.matchId : null, autoUnida: auto && decision === 'mismo' }
         : it)),
     })
     if (decision === 'otro') {
@@ -343,6 +345,12 @@ export default function SubidaMultiple({
         return next
       })
     }
+  }
+
+  // Modo automático: «Deshacer» de lo que se juntó solo (antes de importar): vuelve a ser una pregunta y no se junta solo otra vez.
+  function separarUnion(a, lista) {
+    const ks = new Set(lista.map((i) => i.k))
+    parchar(a.id, { items: a.items.map((it) => (ks.has(it.k) && it.autoUnida ? { ...it, estado: 'dudoso', conciliarCon: null, autoUnida: false, noAuto: true } : it)) })
   }
 
   const totalJuntar = consolidado.archivos.reduce((n, a) => n + (a.estado === 'listo' && a.tipo !== 'pdf' ? a.items.filter((it) => it.conciliarCon).length : 0), 0)
@@ -602,7 +610,8 @@ export default function SubidaMultiple({
                     </p>
                   </div>
                   <AvisoYaConciliado info={a.yaConciliado} cuenta={nombreCuenta(a.cuentaId)} className="mb-2" />
-                  <PrevioImportacion items={a.items} onDecidir={(lista, d) => decidirDudosos(a, lista, d)} className="mb-2" />
+                  <PrevioImportacion items={a.items} onDecidir={(lista, d, auto) => decidirDudosos(a, lista, d, auto)} onDeshacerAuto={(lista) => separarUnion(a, lista)}
+                    automatico={modoAuto.activo === true} servidor={a.tipo === 'pdf' && Boolean(a.historialId)} className="mb-2" />
                   <CuadreExtracto cuentaId={a.cuentaId} historialId={a.historialId} saldos={a.saldosExtracto} avisoCuenta={a.avisoCuenta}
                     porImportar={lineasPorImportar(a.items.map((it) => ({ ...it, monto: montoDeLinea(it, montos[`${a.id}:${it.k}`]) })), seleccion, a.id)} className="mb-2" />
                   <PropuestaTarjeta propuesta={a.propuestaTarjeta} cuentaId={a.cuentaId} className="mb-2" />

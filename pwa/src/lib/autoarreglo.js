@@ -31,8 +31,13 @@ export function textoProgreso(progreso) {
 export const textoPaso = (progreso) => (typeof progreso?.paso === 'string' ? progreso.paso.trim() : '')
 
 /** Aviso al terminar: «Ordené tus cuentas: moví 4 extractos…» (sin repetir el «Listo, ordené tus cuentas:» del servidor). */
+const CONTEOS_AUTOMATICOS = ['gastos_unidos', 'correos_registrados', 'bandeja_confirmados', 'ajustes_pequenos']
 export function textoAviso(resumen) {
   const resto = (resumen?.texto || '').replace(/^\s*listo,?\s*ordené tus cuentas:?\s*/i, '').trim()
+  const c = resumen?.contadores || {}
+  // Si solo hizo cosas del Modo automático, la línea es directa: «Registré 3 movimientos de tus correos.»
+  const soloAuto = resto && CONTEOS_AUTOMATICOS.some((k) => c[k] > 0) && Object.entries(c).every(([k, v]) => CONTEOS_AUTOMATICOS.includes(k) || !(v > 0))
+  if (soloAuto) return resto.charAt(0).toUpperCase() + resto.slice(1)
   return resto ? `Ordené tus cuentas: ${resto}` : 'Ordené tus cuentas.'
 }
 
@@ -60,6 +65,10 @@ export function lineasConteo(c = {}) {
   if (c.rendimientos_registrados) l.push(`Registré ${plural(c.rendimientos_registrados, 'rendimiento o impuesto', 'rendimientos e impuestos')}`)
   if (c.lineas_importadas) l.push(`Traje ${plural(c.lineas_importadas, 'movimiento comprobado', 'movimientos comprobados')} de tus extractos`)
   if (c.ajustes_iniciales) l.push('Actualicé el saldo con el que empezaron tus cuentas')
+  if (c.gastos_unidos) l.push(`Junté ${plural(c.gastos_unidos, 'gasto que era el mismo', 'gastos que eran el mismo')} (mismo monto y fecha)`)
+  if (c.correos_registrados) l.push(`Registré ${plural(c.correos_registrados, 'movimiento', 'movimientos')} de tus correos`)
+  if (c.bandeja_confirmados) l.push(`Confirmé ${plural(c.bandeja_confirmados, 'movimiento', 'movimientos')} que ya reconocía`)
+  if (c.ajustes_pequenos) l.push(`Cuadré ${plural(c.ajustes_pequenos, 'diferencia de centavos', 'diferencias de centavos')} con un ajuste neutro`)
   return l
 }
 

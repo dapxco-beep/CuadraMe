@@ -554,6 +554,7 @@ SIN_ID_DE_RECURSO = {
     "/correos/{correo_id}/aprobar", "/movimientos/rapido-voz", "/resumen/preferencias",
     "/comentarios",  # POST: crea un comentario propio (no recibe ids)
     "/correos/extractos/buscar-asunto", "/correos/extractos/buscar-asunto/procesar",  # leen el Gmail PROPIO; ids de mensaje de su buzón
+    "/autoarreglo/modo",  # PUT: solo el interruptor propio (no recibe ids)
     "/autoarreglo/correr",  # POST: solo ordena las cuentas y extractos del propio usuario (no recibe ids)
     "/conciliacion/tarjetas/arreglar",  # POST: solo recorre extractos y cuentas del propio usuario (no recibe ids)
     "/conciliacion/rendimientos/registrar",  # POST: solo recorre extractos y cuentas del propio usuario (no recibe ids)

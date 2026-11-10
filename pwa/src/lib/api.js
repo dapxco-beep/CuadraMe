@@ -674,6 +674,9 @@ export const api = {
   correrAutoarreglo: () => request('/autoarreglo/correr', { method: 'POST', sinCache: true }),
   lotesAutoarreglo: () => request('/autoarreglo/lotes', { sinCache: true }),
   deshacerLoteAutoarreglo: (lote) => request(`/autoarreglo/lotes/${encodeURIComponent(lote)}/deshacer`, { method: 'POST' }),
+  // Modo automático (un interruptor, activado por defecto): la app resuelve sola lo seguro y deja «Deshacer».
+  modoAutomatico: () => request('/autoarreglo/modo'),
+  guardarModoAutomatico: (activo) => request('/autoarreglo/modo', { method: 'PUT', body: { activo } }),
   // Salud de datos (ver docs/SALUD_DE_DATOS.md): hallazgos de la persona y «Crear tu cuenta de tarjeta».
   salud: () => request('/salud'),
   saludCrearTarjeta: (banco) => request('/salud/crear-tarjeta', { method: 'POST', body: { banco } }),
