@@ -20,6 +20,7 @@ import { useMostrarCuadri } from '../lib/cuadri'
 import { useModoMenu } from '../lib/modoSimple'
 import { Boton } from '../components/ui'
 import { errorNombre, limpiarNombre, useNombre } from '../lib/nombre'
+import { guardarLetraGrande, leerLetraGrande } from '../lib/letraGrande'
 import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../lib/push'
 
 export default function Perfil() {
@@ -29,6 +30,7 @@ export default function Perfil() {
   const claveAtajo = useClaveAtajo()
   const { completo, setCompleto } = useModoMenu()
   const [verGuia, setVerGuia] = useState(false)
+  const [letraGrande, setLetraGrande] = useState(leerLetraGrande)
   const [mostrarCuadri, cambiarCuadri] = useMostrarCuadri()
   const [permisoPush, setPermisoPush] = useState('default')
   const [cargandoPush, setCargandoPush] = useState(false)
@@ -279,6 +281,30 @@ export default function Perfil() {
               <span
                 className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
                   mostrarCuadri ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </span>
+          </button>
+        </div>
+        {/* Letra grande: sube el tamaño base de toda la app; solo en este dispositivo */}
+        <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3 mt-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium" id="etq-letra-grande">Letra grande</p>
+            <p className="text-sm text-ink-soft mt-0.5">Hace más grande el texto de toda la app. Se guarda en este celular.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { const v = !letraGrande; setLetraGrande(v); guardarLetraGrande(v) }}
+            role="switch"
+            aria-checked={letraGrande}
+            aria-labelledby="etq-letra-grande"
+            data-testid="switch-letra-grande"
+            className="shrink-0 min-h-11 w-14 flex items-center justify-center"
+          >
+            <span className={`block w-12 h-7 rounded-full transition-colors relative ${letraGrande ? 'bg-accent' : 'bg-line'}`}>
+              <span
+                className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                  letraGrande ? 'translate-x-5' : 'translate-x-0.5'
                 }`}
               />
             </span>

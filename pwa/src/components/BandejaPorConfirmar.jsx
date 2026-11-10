@@ -1,3 +1,4 @@
+import { error as hapticoError, exito } from '../lib/haptico'
 import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Pencil, Smartphone, Trash2, X } from 'lucide-react'
@@ -95,7 +96,9 @@ export default function BandejaPorConfirmar() {
       await api.confirmarCategorias([m.id])
       quitar([m.id])
       avisarCambio()
+      exito()
     } catch (err) {
+      hapticoError()
       avisar(textoError(err, 'confirmar'))
     } finally {
       setOcupado(false)
@@ -108,7 +111,9 @@ export default function BandejaPorConfirmar() {
       await api.confirmarCategorias(pendientes.map((m) => m.id))
       quitar(pendientes.map((m) => m.id))
       avisarCambio()
+      exito()
     } catch (err) {
+      hapticoError()
       avisar(textoError(err, 'confirmar'))
     } finally {
       setOcupado(false)

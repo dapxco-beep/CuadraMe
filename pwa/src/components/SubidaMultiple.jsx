@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AlertTriangle, ArrowRightLeft, Check, FileSpreadsheet, FileText, Loader2, Pencil, X } from 'lucide-react'
 import { productoDeTexto, recordarCuenta, textoOpcionCuenta } from '../lib/cuentasBanco'
 import { api } from '../lib/api'
+import { mensajeAmable } from '../lib/mensajes'
 import { formatCOP } from '../lib/format'
 import PrevioImportacion from './PrevioImportacion'
 import CuadreExtracto from './CuadreExtracto'
@@ -28,7 +29,8 @@ import ResumenTarjeta from './ResumenTarjeta'
 import { BotonLapiz, EditorNombre, PistaBanco } from './NombreEditable'
 import { limpiarNombre, MIN_REPETICIONES_NOMBRE } from '../lib/tituloMovimiento'
 import {
-  ETIQUETA_ARCHIVO,
+  MSG_ARCHIVO_ILEGIBLE,
+  etiquetaArchivo,
   MAX_ARCHIVOS,
   TEXTO_PAGO_TARJETA,
   montoDeLinea,
@@ -63,11 +65,11 @@ const nuevoId = () => `arch-${Date.now()}-${(contador += 1)}`
 // El servidor devuelve para un PDF ilegible un mensaje técnico con texto del PDF: aquí se
 // reduce a algo que el usuario entienda.
 function errorLegible(msg) {
-  if (!msg) return 'No se pudo procesar el archivo.'
+  if (!msg) return MSG_ARCHIVO_ILEGIBLE
   if (msg.startsWith('No se pudieron extraer movimientos')) {
     return 'No encontramos movimientos en este PDF. Si es una foto o un escaneo, descarga el extracto digital desde tu banco.'
   }
-  return msg
+  return mensajeAmable(msg, { porDefecto: MSG_ARCHIVO_ILEGIBLE })
 }
 
 function periodoTexto(p) {
@@ -95,6 +97,7 @@ const TANDA_FILAS = 100
 export default function SubidaMultiple({
   archivosIniciales = [], cuentaInicial = '', revisionInicial = null, onCancelar, onImportado, onManual, onCambiarCuenta,
 }) {
+  const navigate = useNavigate()
   const { cuentas, recargar: recargarCuentas } = useCuentas()
   const catsCtx = useCategorias()
   const CATEGORIAS = catsCtx?.nombres || []
@@ -824,13 +827,13 @@ export default function SubidaMultiple({
                 <Icono size={20} className="text-accent shrink-0 mt-0.5" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{a.nombre}</p>
-                  <p className={`text-xs mt-0.5 flex items-center gap-1 ${a.estado === 'error' || a.estado === 'falta_clave' ? 'text-danger' : a.estado === 'listo' ? 'text-accent' : 'text-ink-soft'}`}>
+                  <p className={`text-sm mt-0.5 flex items-center gap-1 ${a.estado === 'error' || a.estado === 'falta_clave' ? 'text-danger' : a.estado === 'listo' ? 'text-accent' : 'text-ink-soft'}`}>
                     {a.estado === 'procesando' && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
                     {a.estado === 'error' || a.estado === 'falta_clave' ? <AlertTriangle size={16} aria-hidden="true" /> : null}
-                    {ETIQUETA_ARCHIVO[a.estado]}
+                    {etiquetaArchivo(a)}
                   </p>
                   {a.estado === 'listo' && (
-                    <p className="text-xs text-ink-soft mt-0.5">
+                    <p className="text-sm text-ink-soft mt-0.5">
                       {a.banco} · {periodoTexto(a.periodo)} · {a.nMov} {a.nMov === 1 ? 'movimiento' : 'movimientos'}
                     </p>
                   )}
@@ -839,7 +842,7 @@ export default function SubidaMultiple({
                   )}
                   {a.estado === 'listo' && <AvisoYaConciliado info={a.yaConciliado} cuenta={nombreCuenta(a.cuentaId)} className="mt-2" />}
                   {(a.estado === 'error' || a.estado === 'falta_clave') && a.error && (
-                    <p className="text-xs text-danger mt-1" role="alert">{a.error}</p>
+                    <p className="text-sm text-danger mt-1" role="alert">{a.error}</p>
                   )}
                 </div>
                 {a.estado !== 'procesando' && (
@@ -875,10 +878,15 @@ export default function SubidaMultiple({
                     autoComplete="off"
                     className="flex-1 min-w-0 rounded-xl border border-line bg-paper-raised px-3 py-2 text-base outline-none focus:border-accent"
                   />
-                  <button onClick={() => reintentar(a)} disabled={!a.password || corriendo} className="rounded-xl bg-accent text-paper-raised px-3 text-xs font-semibold disabled:opacity-60">
+                  <button onClick={() => reintentar(a)} disabled={!a.password || corriendo} className="rounded-xl bg-accent text-paper-raised px-3 min-h-[44px] text-sm font-semibold disabled:opacity-60">
                     Reintentar
                   </button>
                 </div>
+              )}
+              {a.estado === 'falta_clave' && (
+                <p className="mt-1.5 ml-8 text-sm text-ink-soft">
+                  Casi siempre es tu cédula, sin puntos{!a.password ? '. Escribe la clave para continuar' : ''}
+                </p>
               )}
               {a.estado === 'falta_clave' && claveConfigurada === false && (
                 <label className="flex items-start gap-2 mt-2 ml-8 text-xs text-ink-soft min-h-[32px]">
@@ -888,14 +896,17 @@ export default function SubidaMultiple({
               )}
               {a.estado === 'error' && (
                 <div className="mt-2 ml-8 flex flex-wrap gap-x-4 gap-y-1">
-                  <button onClick={() => reintentar(a)} disabled={corriendo} className="text-xs font-semibold text-accent underline disabled:opacity-60 min-h-[32px]">
+                  <button onClick={() => reintentar(a)} disabled={corriendo} className="text-sm font-semibold text-accent underline disabled:opacity-60 min-h-[44px]">
                     Reintentar
                   </button>
                   {a.tipo === 'tabular' && onManual && (
-                    <button onClick={onManual} className="text-xs font-semibold text-accent underline min-h-[32px]">
+                    <button onClick={onManual} className="text-sm font-semibold text-accent underline min-h-[44px]">
                       Elegir las columnas a mano
                     </button>
                   )}
+                  <button onClick={() => navigate('/agregar')} className="text-sm font-semibold text-accent underline min-h-[44px]">
+                    Anotar a mano
+                  </button>
                 </div>
               )}
             </li>
@@ -906,7 +917,7 @@ export default function SubidaMultiple({
       {rechazados.length > 0 && (
         <ul className="mb-4 space-y-1" role="alert">
           {rechazados.map((r, i) => (
-            <li key={i} className="text-xs text-danger">{r.nombre}: {r.motivo}</li>
+            <li key={i} className="text-sm text-danger">{r.nombre}: {r.motivo}</li>
           ))}
         </ul>
       )}
