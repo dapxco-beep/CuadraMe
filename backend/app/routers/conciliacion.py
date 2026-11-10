@@ -337,10 +337,13 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
 
     # Registrados que no aparecen en el extracto: se guardan en la revisión.
     for s in resultado.get("sobrantes", []):
-        resultado["review"].append({
+        item = {
             "fecha": s["fecha"], "descripcion": s["descripcion"], "monto": s["monto"], "tipo": s["tipo"],
             "referencia": "", "fingerprint": f"sobrante-{s['id']}", "estado": "sobrante", "match_id": s["id"],
-        })
+        }
+        if s.get("gemelo") and _unir_gemelo(db, usuario, s["id"], item):
+            item["estado"], item["resuelto"] = "sobrante_resuelto", "unido"
+        resultado["review"].append(item)
 
     _enriquecer_dudosas(db, usuario.id, resultado["review"])
     historial.review_json = json.dumps(resultado["review"], default=str)
@@ -945,6 +948,28 @@ class SobranteAccionRequest(BaseModel):
     motivo: str = "no_va"  # al borrar: duplicado | error | no_va
 
 
+_CAMPOS_RESTAURAR = ("cuenta_id", "fecha", "descripcion", "categoria", "subcategoria", "tipo", "monto", "notas", "cat_origen", "cat_confirmada")
+
+
+def _unir_gemelo(db: Session, usuario: UsuarioActual, movimiento_id: str, item: dict) -> bool:
+    """El mismo pago estaba registrado dos veces (a mano y por otro canal) y el extracto trae UNO: se quita el sobrante
+    solo, guardando una foto en la revisión para poder «Deshacer». Solo movimientos anotados a mano. True si lo unió."""
+    from app.routers.movimientos import eliminar_movimiento
+
+    mov = db.get(Movimiento, movimiento_id)
+    if mov is None or mov.usuario_id != usuario.id or mov.conciliado_en is not None or (mov.fuente or "manual") != "manual":
+        return False
+    foto = {k: getattr(mov, k) for k in _CAMPOS_RESTAURAR}
+    foto["fecha"] = foto["fecha"].isoformat() if foto["fecha"] else None
+    try:
+        eliminar_movimiento(movimiento_id, "duplicado", db, usuario)
+    except HTTPException:
+        db.rollback()
+        return False
+    item["restaurar"] = foto
+    return True
+
+
 @router.post("/historial/{historial_id}/sobrantes/{movimiento_id}")
 def resolver_sobrante(
     historial_id: str,
@@ -957,8 +982,8 @@ def resolver_sobrante(
     «dejar»: es real (p. ej. cae en otro corte o el banco aún no lo procesa); queda como está y deja de avisar.
     «borrar»: no existe o está repetido; se borra como cualquier movimiento (con el motivo, para que no vuelva a
     entrar por el correo o el atajo). La decisión queda guardada en la revisión del extracto. Idempotente."""
-    if data.accion not in ("dejar", "borrar"):
-        raise HTTPException(status_code=422, detail="La acción es «dejar» o «borrar»")
+    if data.accion not in ("dejar", "borrar", "restaurar"):
+        raise HTTPException(status_code=422, detail="La acción es «dejar», «borrar» o «restaurar»")
     if data.motivo not in ("duplicado", "error", "no_va"):
         raise HTTPException(status_code=422, detail="El motivo es duplicado, error o no_va")
     historial = (
@@ -975,6 +1000,24 @@ def resolver_sobrante(
     item = next((i for i in review if i.get("match_id") == movimiento_id and i.get("estado") in ("sobrante", "sobrante_resuelto")), None)
     if item is None:
         raise HTTPException(status_code=404, detail="Ese movimiento no está entre los que el extracto no trae")
+    if data.accion == "restaurar":  # «Deshacer» de una unión automática: vuelve el movimiento tal como estaba
+        foto = item.get("restaurar")
+        if item.get("resuelto") != "unido" or not foto:
+            raise HTTPException(status_code=409, detail="Ese movimiento no se unió automáticamente")
+        if db.get(Movimiento, movimiento_id) is None:
+            from datetime import datetime as _dt
+            nuevo = Movimiento(id=movimiento_id, usuario_id=usuario.id, **{**foto, "fecha": _dt.fromisoformat(foto["fecha"]) if foto.get("fecha") else None})
+            db.add(nuevo)
+            db.flush()
+            dup.olvidar_movimiento(db, nuevo)
+            from app.routers.movimientos import _reajustar_saldo_inicial
+            db.commit()
+            _reajustar_saldo_inicial(db, usuario, foto["cuenta_id"])
+        item["estado"], item["resuelto"] = "sobrante_resuelto", "dejado"
+        item.pop("restaurar", None)
+        historial.review_json = json.dumps(review, default=str)
+        db.commit()
+        return {"ok": True, "resuelto": "dejado", "restantes": sum(1 for i in review if i.get("estado") == "sobrante")}
     if data.accion == "borrar" and item.get("estado") == "sobrante":
         from app.routers.movimientos import eliminar_movimiento
 

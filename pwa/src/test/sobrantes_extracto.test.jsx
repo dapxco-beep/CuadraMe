@@ -96,3 +96,14 @@ describe('Movimientos tuyos que el extracto no trae', () => {
     expect(container.querySelector('[data-testid="sobrantes-extracto"]')).toBeNull()
   })
 })
+
+describe('Repetido que la app unió sola', () => {
+  it('avisa que lo unió y «Deshacer» lo devuelve', async () => {
+    render(<Caja inicial={[{ id: 'm9', fecha: '2026-10-14', descripcion: 'Juliana', monto: 1060000, resuelto: 'unido' }]} />)
+    expect(screen.getByText('Unimos un movimiento repetido')).toBeInTheDocument()
+    expect(screen.getByText(/lo unimos con el del banco/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
+    await waitFor(() => expect(api.resolverSobrante).toHaveBeenCalledWith('h1', 'm9', 'restaurar'))
+    await waitFor(() => expect(screen.getByText('Se queda como está')).toBeInTheDocument())
+  })
+})

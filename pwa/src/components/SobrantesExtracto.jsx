@@ -19,6 +19,18 @@ export default function SobrantesExtracto({ historialId, cuentaId = null, sobran
   const pendientes = sobrantes.filter((s) => !s.resuelto)
   if (sobrantes.length === 0) return null
 
+  // «Deshacer» una unión automática: el movimiento vuelve tal como estaba.
+  async function deshacerUnion(s) {
+    setOcupado('deshacer')
+    try {
+      await api.resolverSobrante(historialId, s.id, 'restaurar')
+      onCambio(sobrantes.map((x) => (x.id === s.id ? { ...x, resuelto: 'dejado' } : x)))
+    } catch (e) {
+      avisar?.(e.message || 'No se pudo deshacer. Intenta de nuevo.')
+    }
+    setOcupado('')
+  }
+
   async function resolver(s, accion) {
     return api.resolverSobrante(historialId, s.id, accion, 'no_va').then((r) => r?.resuelto || (accion === 'borrar' ? 'borrado' : 'dejado'))
   }
@@ -62,10 +74,10 @@ export default function SobrantesExtracto({ historialId, cuentaId = null, sobran
 
   const n = pendientes.length
   return (
-    <details className="mt-2 rounded-2xl border border-line bg-paper px-3.5 py-2.5" open={n > 0} data-testid="sobrantes-extracto">
+    <details className="mt-2 rounded-2xl border border-line bg-paper px-3.5 py-2.5" open={n > 0 || sobrantes.some((s) => s.resuelto === 'unido')} data-testid="sobrantes-extracto">
       <summary className="text-xs font-semibold cursor-pointer min-h-[32px] flex items-center">
         {n === 0
-          ? 'Revisaste los movimientos que el extracto no trae'
+          ? (sobrantes.some((s) => s.resuelto === 'unido') ? 'Unimos un movimiento repetido' : 'Revisaste los movimientos que el extracto no trae')
           : `${n} ${n === 1 ? 'movimiento tuyo no está' : 'movimientos tuyos no están'} en el extracto`}
       </summary>
       {n > 0 && (
@@ -82,7 +94,12 @@ export default function SobrantesExtracto({ historialId, cuentaId = null, sobran
               </span>
               <span className="shrink-0 font-semibold">{formatCOP(s.monto)}</span>
             </div>
-            {s.resuelto ? (
+            {s.resuelto === 'unido' ? (
+              <p className="mt-1 text-xs text-ink-soft flex items-center gap-1 flex-wrap">
+                <Check size={16} aria-hidden="true" /> Estaba repetido: lo unimos con el del banco.
+                <button type="button" disabled={!!ocupado} onClick={() => deshacerUnion(s)} className="min-h-11 px-2 font-semibold text-accent underline disabled:opacity-50">Deshacer</button>
+              </p>
+            ) : s.resuelto ? (
               <p className="mt-1 text-xs text-ink-soft flex items-center gap-1"><Check size={16} aria-hidden="true" /> {s.resuelto === 'borrado' ? 'Borrado' : s.resuelto?.startsWith('movido') ? `Movido a ${s.resuelto.slice("movido a ".length)}` : 'Se queda como está'}</p>
             ) : s.id ? (
               <div className="mt-1.5 flex gap-2">

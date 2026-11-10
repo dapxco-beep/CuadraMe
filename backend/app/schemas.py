@@ -983,6 +983,7 @@ class MovimientoReview(BaseModel):
     categoria_sugerida: Optional[str] = None
     descripcion_registrada: Optional[str] = None  # completado: lo que había registrado el usuario
     monto_registrado: Optional[float] = None  # completado: monto registrado (puede diferir del banco)
+    resuelto: Optional[str] = None  # sobrante ya atendido: borrado | dejado | unido (la app lo unió sola)
     razon_categoria: Optional[str] = None  # por qué se sugiere esa categoría
     confianza_categoria: Optional[float] = None  # 0..1: qué tan segura está la sugerencia (None = sin sugerencia)
     auto: bool = False  # importado solo (ajuste "importar lo que reconozco"): se puede deshacer

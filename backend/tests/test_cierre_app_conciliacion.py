@@ -323,3 +323,24 @@ def test_un_movimiento_a_mano_gemelo_de_uno_ya_respaldado_se_marca_sobrante():
     assert [s["id"] for s in r["sobrantes"]] == ["mano"]
     # Sin gemelo respaldado (otro monto), un movimiento a mano NO se marca.
     assert cc._auditar_con_cruce_rapido([{**linea, "monto": 5000.0}], [ledger[0]])["sobrantes"] == []
+
+
+def test_el_repetido_a_mano_se_une_solo_y_se_puede_deshacer(monkeypatch):
+    """Caso Nequi de punta a punta: el mismo ingreso a mano y por el atajo, el extracto trae UNO. La app lo une sola
+    (sin que la persona haga nada) y «Deshacer» devuelve el movimiento tal como estaba."""
+    key, ids = _usuario("c-gemelo", [("Nequi", 100_000)])
+    hoy = ahora_co().strftime("%Y-%m-%d")
+    client.post("/movimientos/rapido", headers={"X-Api-Key": key}, json={"tipo": "ingreso", "monto": "60.000", "descripcion": "De JOSE", "cuenta": "Nequi", "fuente": "cierre_app"})
+    items = [{"fecha": hoy, "descripcion": "De JOSE", "monto": 60_000, "tipo": "income", "referencia": ""}]
+    _procesar(monkeypatch, ids["Nequi"], items)  # el extracto respalda el del atajo
+    mano = client.post("/movimientos", json={"cuenta_id": ids["Nequi"], "tipo": "income", "monto": 60_000, "descripcion": "Juliana",
+                                             "categoria": "Otros", "fecha": f"{hoy}T12:00:00", "confirmar_nuevo": True}).json()
+    out = _procesar(monkeypatch, ids["Nequi"], items).json()  # se vuelve a subir el mismo extracto
+    unidos = [i for i in out["review"] if i["estado"] == "sobrante_resuelto" and i.get("resuelto") == "unido"]
+    assert [i["match_id"] for i in unidos] == [mano["id"]]
+    assert mano["id"] not in [m["id"] for m in client.get("/movimientos").json()]
+    assert _saldos()["Nequi"] == 100_000 + 60_000  # queda un solo ingreso
+
+    r = client.post(f"/conciliacion/historial/{out['historial_id']}/sobrantes/{mano['id']}", json={"accion": "restaurar", "motivo": "no_va"})
+    assert r.status_code == 200, r.text
+    assert mano["id"] in [m["id"] for m in client.get("/movimientos").json()]

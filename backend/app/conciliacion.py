@@ -968,7 +968,7 @@ def _auditar_con_cruce_rapido(movimientos_extracto: list[dict], ledger: list[dic
                 sobrantes.append({
                     "id": r.get("id"), "fecha": r["fecha"].strftime("%Y-%m-%d %H:%M"),
                     "descripcion": r.get("descripcion", ""), "monto": abs(r.get("monto", 0)),
-                    "tipo": r.get("tipo", "expense"),
+                    "tipo": r.get("tipo", "expense"), "gemelo": True,
                 })
     cuenta = lambda e: sum(1 for v in estados.values() if v == e)  # noqa: E731
     return {
