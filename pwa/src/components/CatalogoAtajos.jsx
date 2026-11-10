@@ -161,7 +161,7 @@ export default function CatalogoAtajos({ claveAtajo }) {
       <details className="mt-3 rounded-2xl bg-paper-raised border border-line p-4" data-testid="no-funciona">
         <summary className="text-sm font-bold cursor-pointer min-h-6">¿No funciona? Revisa esto</summary>
         <ul className="list-disc pl-5 mt-2 space-y-2 text-sm text-ink-soft leading-relaxed">
-          <li><b className="text-ink">Pruébalo sin gesto:</b> en la app Atajos toca el ▶ del atajo. Debe salir una notificación de CuadraMe. Con «CuadraMe Registrar», abre antes un comprobante.</li>
+          <li><b className="text-ink">Pruébalo sin gesto:</b> en la app Atajos toca el botón de reproducir (el triángulo) del atajo. Debe salir una notificación de CuadraMe. Con «CuadraMe Registrar», abre antes un comprobante.</li>
           <li><b className="text-ink">Dice «clave no válida»:</b> copia tu clave aquí arriba y pégala en el primer cuadro de texto del atajo (en Atajos, toca el atajo y busca la primera acción «Texto»).</li>
           <li><b className="text-ink">La automatización no corre:</b> en Atajos › Automatización debe estar activada y con «Ejecutar inmediatamente». Los atajos instalados por enlace suelen traerla apagada.</li>
           <li><b className="text-ink">El gesto no hace nada:</b> en Ajustes › Accesibilidad › Tocar › Tocar atrás revisa que el «Doble toque» tenga «CuadraMe Registrar».</li>
