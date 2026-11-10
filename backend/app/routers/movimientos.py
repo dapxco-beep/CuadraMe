@@ -248,8 +248,14 @@ def confirmar_categorias(
         # una regla o el diccionario ya categorizó con seguridad.
         q = q.filter(Movimiento.id.in_(
             [m.id for m, _ in pendientes.pendientes(db, usuario.id, ids_accesibles) if m.cat_confirmada is False] or ["-"]))
+    filas = q.with_entities(Movimiento.id, Movimiento.cuenta_id).all()
     n = q.update({"cat_confirmada": True}, synchronize_session=False)
     db.commit()
+    if filas:
+        # Confirmar un movimiento de un atajo es decir «sí, es de esta cuenta»: la pantalla con la que se creó se aprende.
+        nombres = {c.id: c.nombre for c in db.query(Cuenta).filter(Cuenta.id.in_({f[1] for f in filas})).all()}
+        for mov_id, cuenta_id in filas:
+            rn.aprender_de_movimiento(db, usuario.id, mov_id, nombres.get(cuenta_id))
     return {"ok": True, "confirmados": n}
 
 
@@ -377,7 +383,8 @@ def estado_notificaciones(db: Session = Depends(get_db), usuario: UsuarioActual 
 @router.get("/reglas-notificacion")
 def listar_reglas_notificacion(db: Session = Depends(get_db), usuario: UsuarioActual = Depends(get_current_user)):
     """Lo que el atajo de iPhone aprendió de cómo avisa tu banco: solo plantillas anónimas, nunca el texto del aviso."""
-    filas = (db.query(ReglaNotificacion).filter(ReglaNotificacion.usuario_id == usuario.id)
+    filas = (db.query(ReglaNotificacion)
+             .filter(ReglaNotificacion.usuario_id == usuario.id, ~ReglaNotificacion.app.like(rn.PREFIJO_MOV + "%"))
              .order_by(ReglaNotificacion.creado_en.desc()).all())
     return [{"id": r.id, "app": r.app, "plantilla": r.esqueleto, "significado": rn.significado(r), "usos": r.usos or 0}
             for r in filas]
@@ -668,6 +675,9 @@ def editar_movimiento(
     db.commit()
     _reajustar_saldo_inicial(db, usuario, cuenta_actual.id, cuenta_nueva.id)  # fecha, monto o cuenta pudieron mover el ajuste
     db.refresh(mov)
+    if cuenta_nueva.id != cuenta_actual.id:
+        # Si vino de un atajo, la persona acaba de enseñar de qué cuenta es esa pantalla: se aprende para la próxima.
+        rn.aprender_de_movimiento(db, usuario.id, mov.id, cuenta_nueva.nombre)
     return mov
 
 
@@ -736,6 +746,7 @@ def mover_masivo(
     cuentas = {cid: bloquear_cuenta(db, cid) for cid in sorted({m.cuenta_id for m in movs} | {destino.id})}
     destino = cuentas[destino.id]
     actualizados = 0
+    movidos: list[str] = []
     for mov in movs:
         origen = cuentas.get(mov.cuenta_id)
         if (
@@ -750,7 +761,10 @@ def mover_masivo(
         destino.saldo += _delta_de(mov)
         mov.cuenta_id = destino.id
         actualizados += 1
+        movidos.append(mov.id)
     db.commit()
+    for mov_id in movidos:
+        rn.aprender_de_movimiento(db, usuario.id, mov_id, destino.nombre)
     if actualizados:
         _reajustar_saldo_inicial(db, usuario, destino.id, *cuentas.keys())
     return MasivoResponse(ok=True, actualizados=actualizados, omitidos=len(pedidos) - actualizados)
@@ -1223,9 +1237,7 @@ def _procesar_notificacion(
             adivinada = True
             nota_cuenta = f" ¿Era {cuenta_auto}? Si no, cámbialo."
         if data.cuenta and data.aprender:
-            esq0 = rn.esqueleto(data.titulo, data.texto)
-            if rn.aprender(db, usuario.id, rn.PREFIJO_CUENTA + cuenta_auto, esq0, tipo=None, sin_cifra=False):
-                pass
+            rn.aprender_cuenta(db, usuario.id, cuenta_auto, rn.forma_estable(data.titulo, data.texto) or rn.esqueleto(data.titulo, data.texto))
         paquete = notif.banco_de_cuenta(cuenta_auto) or cuenta_auto
     n = notif.interpretar(paquete, data.titulo, data.texto)
     app_nombre = cuenta_auto if auto else notif.nombre_app(paquete)
@@ -1253,6 +1265,8 @@ def _procesar_notificacion(
             descripcion=(data.nota or "").strip() or (n.comercio if n else (
                 f"Plata recibida en {app_nombre}" if tipo == "income" else f"Envío por {app_nombre}")),
             cuenta=app_nombre, fuente="notificacion", id_transaccion=huella), db, usuario)
+        if auto and not out.duplicado:
+            rn.recordar_forma(db, usuario.id, out.id, rn.forma_estable(data.titulo, data.texto))
         return {"ok": True, "registrado": not out.duplicado, "duplicado": out.duplicado, "movimiento_id": out.id,
                 "mensaje": _mensaje_corto(out) + nota_cuenta, "por_confirmar": out.por_confirmar, "aprendido": aprendido,
                 "cuenta_adivinada": cuenta_auto if adivinada else None}
@@ -1303,6 +1317,8 @@ def _procesar_notificacion(
         id_transaccion=huella,
     )
     out = crear_movimiento_rapido(rapido, db, usuario)
+    if auto and not out.duplicado:
+        rn.recordar_forma(db, usuario.id, out.id, rn.forma_estable(data.titulo, data.texto))
     return {
         "ok": True, "registrado": not out.duplicado, "duplicado": out.duplicado, "movimiento_id": out.id,
         "mensaje": _mensaje_corto(out) + nota_cuenta, "por_confirmar": out.por_confirmar, "traslado_propio": n.traslado_propio,

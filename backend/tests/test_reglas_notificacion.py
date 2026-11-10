@@ -497,3 +497,90 @@ def test_si_la_cuenta_de_nu_no_se_llama_nu_la_huella_la_encuentra_entre_las_que_
     movs = client.get("/movimientos").json()
     mov = next(m for m in (movs if isinstance(movs, list) else movs["items"]) if m["descripcion"] == "Envío a Carlos Ruiz")
     assert _cuenta_nombre(mov) == "Mis ahorros"  # ni Nequi (otro banco) ni Efectivo
+
+
+# ---- La app APRENDE de lo que la persona hace: mover de cuenta o confirmar un movimiento del atajo enseña de qué cuenta es esa pantalla ----
+
+def _ids_de_cuentas():
+    return {c["nombre"]: c["id"] for c in client.get("/cuentas").json()}
+
+
+def _sin_pista(destino, nombre, monto):
+    # Pantalla sin ninguna pista del banco de origen (no hay «Nu», ni huella, ni dígitos de cuenta)
+    return f"Transferencia exitosa $ {monto} Para {nombre} Enviaste a su cuenta de {destino} Compartir Descargar"
+
+
+def _preparar_nu_mas_reciente(uid):
+    h = _cuentas_nu_nequi(uid)
+    assert _pantallazo(h, _nu_comprobante(_ayer()))["registrado"]  # lo más reciente de la persona es Nu
+    return h
+
+
+def test_forma_estable_no_cambia_con_el_banco_destino_ni_con_nombres_ni_montos():
+    from app.reglas_notificacion import forma_estable
+
+    a = forma_estable("", _sin_pista("Nequi", "ANA PEREZ", "20.000"))
+    b = forma_estable("", _sin_pista("Banco de Bogota", "LUIS GOMEZ", "35.500"))
+    c = forma_estable("", _sin_pista("Bancolombia", "MARIA TORRES", "9.000"))
+    assert a and a == b == c
+    assert "ana" not in a and "nequi" not in a and "bogota" not in a
+    assert forma_estable("", "hola") == ""  # muy poco texto reconocible: no se aprende nada
+
+
+def test_al_mover_un_movimiento_del_atajo_de_cuenta_la_app_aprende_esa_pantalla():
+    h = _preparar_nu_mas_reciente("rn-ap1")
+    r = _pantallazo(h, _sin_pista("Nequi", "ANA PEREZ", "20.000"))
+    assert r["cuenta_adivinada"] == "Nu Colombia"  # sin pista: la más reciente
+    ids = _ids_de_cuentas()
+    assert client.put(f"/movimientos/{r['movimiento_id']}", json={"cuenta_id": ids["Nequi"]}).status_code == 200  # «era de Nequi»
+    # Otra pantalla de la MISMA forma (otro nombre, otro monto, otro banco destino): ya la reconoce, sin adivinar
+    r2 = _pantallazo(h, _sin_pista("Bancolombia", "LUIS GOMEZ", "35.500"))
+    assert r2["registrado"] and r2["cuenta_adivinada"] is None, r2
+    movs = client.get("/movimientos").json()
+    mov = next(m for m in (movs if isinstance(movs, list) else movs["items"]) if m["id"] == r2["movimiento_id"])
+    assert _cuenta_nombre(mov) == "Nequi"
+
+
+def test_al_confirmar_un_movimiento_del_atajo_la_app_aprende_que_esa_cuenta_era_la_correcta():
+    h = _preparar_nu_mas_reciente("rn-ap2")
+    r = _pantallazo(h, _sin_pista("Nequi", "ANA PEREZ", "20.000"))
+    assert r["cuenta_adivinada"] == "Nu Colombia"
+    assert client.post("/movimientos/confirmar-categorias", json={"movimiento_ids": [r["movimiento_id"]]}).status_code == 200
+    assert _aviso(h, RECIBO)["registrado"]  # ahora lo más reciente es Nequi: sin lo aprendido, adivinaría Nequi
+    r2 = _pantallazo(h, _sin_pista("Bancolombia", "LUIS GOMEZ", "35.500"))
+    assert r2["cuenta_adivinada"] is None
+    movs = client.get("/movimientos").json()
+    mov = next(m for m in (movs if isinstance(movs, list) else movs["items"]) if m["id"] == r2["movimiento_id"])
+    assert _cuenta_nombre(mov) == "Nu Colombia"
+
+
+def test_al_mover_varios_a_la_vez_tambien_aprende():
+    h = _preparar_nu_mas_reciente("rn-ap3")
+    r = _pantallazo(h, _sin_pista("Nequi", "ANA PEREZ", "20.000"))
+    ids = _ids_de_cuentas()
+    assert client.post("/movimientos/mover-masivo", json={"movimiento_ids": [r["movimiento_id"]], "cuenta_id": ids["Nequi"]}).json()["actualizados"] == 1
+    r2 = _pantallazo(h, _sin_pista("Bancolombia", "LUIS GOMEZ", "35.500"))
+    assert r2["cuenta_adivinada"] is None
+
+
+def test_si_la_persona_se_corrige_gana_lo_ultimo_que_enseno():
+    h = _preparar_nu_mas_reciente("rn-ap4")
+    ids = _ids_de_cuentas()
+    r = _pantallazo(h, _sin_pista("Nequi", "ANA PEREZ", "20.000"))
+    client.put(f"/movimientos/{r['movimiento_id']}", json={"cuenta_id": ids["Nequi"]})  # enseñó: Nequi
+    r2 = _pantallazo(h, _sin_pista("Bancolombia", "LUIS GOMEZ", "35.500"))
+    client.put(f"/movimientos/{r2['movimiento_id']}", json={"cuenta_id": ids["Nu Colombia"]})  # se corrigió: Nu
+    r3 = _pantallazo(h, _sin_pista("Banco de Bogota", "MARIA TORRES", "9.000"))
+    movs = client.get("/movimientos").json()
+    mov = next(m for m in (movs if isinstance(movs, list) else movs["items"]) if m["id"] == r3["movimiento_id"])
+    assert _cuenta_nombre(mov) == "Nu Colombia" and r3["cuenta_adivinada"] is None
+    reglas = [x for x in client.get("/movimientos/reglas-notificacion").json() if x["app"].startswith("pantalla:")]
+    assert len(reglas) == 1 and "Nu Colombia" in reglas[0]["significado"]  # una sola regla por pantalla
+
+
+def test_lo_que_se_recuerda_de_cada_movimiento_no_aparece_ni_cuenta_como_regla_aprendida():
+    h = _preparar_nu_mas_reciente("rn-ap5")
+    _pantallazo(h, _sin_pista("Nequi", "ANA PEREZ", "20.000"))
+    reglas = client.get("/movimientos/reglas-notificacion").json()
+    assert not [x for x in reglas if x["app"].startswith("mov:")]
+    assert "ana" not in str(reglas).lower() and "20.000" not in str(reglas)

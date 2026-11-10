@@ -27,6 +27,30 @@ def tipo_normal(valor: str | None) -> str | None:
             "ingreso": "income", "income": "income"}.get(v)
 
 
+def forma_estable(titulo: str, texto: str) -> str:
+    """La «forma» de una pantalla para reconocerla otra vez: el esqueleto anónimo (palabras fijas; nombres y montos en «*») SIN los
+    bancos, porque el destino cambia en cada comprobante («...enviaste a su cuenta de Nequi» / «...de Bancolombia» es la misma pantalla)."""
+    esq = esqueleto(titulo, texto)
+    if not esq:
+        return ""
+    palabras = ["*" if p in _BANCOS_EN_FORMA else p for p in esq.split()]
+    forma = re.sub(r"\*( de \*)+", "*", " ".join(palabras))  # «banco de bogota» -> «* de *» -> «*»
+    forma = re.sub(r"(\* ?)+", "* ", forma).strip(" *")
+    return forma if sum(1 for p in forma.split() if p != "*") >= 2 else ""
+
+
+def _palabras(forma: str) -> set[str]:
+    return {p for p in forma.split() if p != "*"}
+
+
+def _parecida(a: str, b: str) -> bool:
+    """¿Es la misma pantalla? Compara las palabras fijas (no todo el texto, que trae ruido de pantalla distinto cada vez)."""
+    pa, pb = _palabras(a), _palabras(b)
+    if len(pa & pb) < 3:
+        return False
+    return len(pa & pb) / len(pa | pb) >= 0.75
+
+
 def esqueleto(titulo: str, texto: str) -> str:
     """'' si el aviso no tiene suficientes palabras fijas para reconocerlo después (entonces no se aprende)."""
     return esqueleto_anonimo(f"{titulo or ''}. {texto or ''}")
@@ -46,7 +70,8 @@ def aprender(db: Session, usuario_id: str, app: str, esq: str, *, tipo: str | No
         return False
     regla = buscar(db, usuario_id, app, esq)
     if regla is None:
-        if db.query(ReglaNotificacion).filter(ReglaNotificacion.usuario_id == usuario_id).count() >= MAX_REGLAS:
+        if db.query(ReglaNotificacion).filter(ReglaNotificacion.usuario_id == usuario_id,
+                                              ~ReglaNotificacion.app.like(PREFIJO_MOV + "%")).count() >= MAX_REGLAS:
             return False
         regla = ReglaNotificacion(usuario_id=usuario_id, app=app, esqueleto=esq, usos=0)
         db.add(regla)
@@ -70,6 +95,11 @@ HUELLAS_BANCO = {
 # el banco de quien TE ENVIÓ. En ningún caso es la cuenta de la persona.
 _DESTINO = re.compile(r"\b(?:entidad|banco|cuenta de|a su cuenta de|destino|institucion de origen)\s+[a-z0-9.]+(?:\s+[a-z0-9.]+){0,2}")
 
+PREFIJO_MOV = "mov:"  # «la forma de la pantalla con la que se creó ESTE movimiento»: queda pendiente hasta que la persona lo corrija o confirme
+MAX_PENDIENTES = 100  # por persona: las más viejas se borran
+# Palabras de banco: en la forma se tapan, porque el banco DESTINO cambia en cada comprobante y no debe cambiar la «forma» de la pantalla
+_BANCOS_EN_FORMA = {"nequi", "nu", "bancolombia", "davivienda", "daviplata", "bbva", "itau", "scotiabank", "colpatria", "occidente",
+                    "popular", "bogota", "avvillas", "falabella", "banco", "bancos"}
 PREFIJO_CUENTA = "pantalla:"  # regla «esta forma de pantallazo es de ESTA cuenta» (app = «pantalla:<cuenta>»)
 
 
@@ -92,14 +122,16 @@ def inferir_cuenta(db: Session, usuario_id: str, titulo: str, texto: str, elegid
     if elegida:
         return (next((n for n in nombres if n.lower() == elegida.strip().lower()), None), nombres)
     esq = esqueleto(titulo, texto)
-    if esq:
-        regla = (db.query(ReglaNotificacion)
-                 .filter(ReglaNotificacion.usuario_id == usuario_id, ReglaNotificacion.esqueleto == esq,
-                         ReglaNotificacion.app.like(PREFIJO_CUENTA + "%")).first())
-        if regla is not None:
-            nombre = regla.app[len(PREFIJO_CUENTA):]
-            if nombre in nombres:
-                return nombre, nombres
+    forma = forma_estable(titulo, texto)
+    if esq or forma:
+        reglas = (db.query(ReglaNotificacion)
+                  .filter(ReglaNotificacion.usuario_id == usuario_id, ReglaNotificacion.app.like(PREFIJO_CUENTA + "%"))
+                  .order_by(ReglaNotificacion.creado_en.desc()).all())
+        for regla in reglas:  # la más reciente primero: si la persona se corrigió, gana lo último que enseñó
+            if regla.esqueleto == esq or (forma and _parecida(regla.esqueleto, forma)):
+                nombre = regla.app[len(PREFIJO_CUENTA):]
+                if nombre in nombres:
+                    return nombre, nombres
     # Últimos 4 dígitos de la cuenta de origen («*8223»): si coinciden con el alias de UNA cuenta suya, esa es
     ultimos = set(re.findall(r"[*•·]\s*(\d{4})\b", f"{titulo or ''} {texto or ''}"))
     if ultimos:
@@ -171,6 +203,48 @@ def cuenta_mas_reciente(db: Session, usuario_id: str) -> str | None:
     if not cuentas:
         return None
     return _mas_reciente(db, usuario_id, cuentas)
+
+
+def aprender_cuenta(db: Session, usuario_id: str, cuenta_nombre: str, forma: str) -> bool:
+    """«Las pantallas con esta forma son de esta cuenta». Reemplaza lo que se sabía antes de esa misma forma (no pueden convivir dos)."""
+    if not forma:
+        return False
+    nuevo_app = PREFIJO_CUENTA + cuenta_nombre
+    previas = [r for r in db.query(ReglaNotificacion)
+               .filter(ReglaNotificacion.usuario_id == usuario_id, ReglaNotificacion.app.like(PREFIJO_CUENTA + "%")).all()
+               if r.app != nuevo_app and _parecida(r.esqueleto, forma)]
+    for r in previas:
+        db.delete(r)
+    db.flush()
+    return aprender(db, usuario_id, nuevo_app, forma, tipo=None, sin_cifra=False)
+
+
+def recordar_forma(db: Session, usuario_id: str, movimiento_id: str, forma: str) -> None:
+    """Deja anotada la forma de la pantalla con la que se creó un movimiento, SIN el texto. Si la persona lo mueve de cuenta o lo confirma,
+    de ahí se aprende. Se guardan solo las últimas MAX_PENDIENTES por persona."""
+    if not forma or not movimiento_id:
+        return
+    db.add(ReglaNotificacion(usuario_id=usuario_id, app=PREFIJO_MOV + movimiento_id, esqueleto=forma, usos=0))
+    db.flush()
+    pendientes = (db.query(ReglaNotificacion)
+                  .filter(ReglaNotificacion.usuario_id == usuario_id, ReglaNotificacion.app.like(PREFIJO_MOV + "%"))
+                  .order_by(ReglaNotificacion.creado_en.desc()).all())
+    for vieja in pendientes[MAX_PENDIENTES:]:
+        db.delete(vieja)
+    db.commit()
+
+
+def aprender_de_movimiento(db: Session, usuario_id: str, movimiento_id: str, cuenta_nombre: str | None) -> bool:
+    """La persona dejó (o movió) este movimiento en `cuenta_nombre`: la pantalla con la que se creó es de esa cuenta. False si ese
+    movimiento no vino de un atajo (no hay forma anotada)."""
+    fila = (db.query(ReglaNotificacion)
+            .filter(ReglaNotificacion.usuario_id == usuario_id, ReglaNotificacion.app == PREFIJO_MOV + movimiento_id).first())
+    if fila is None or not cuenta_nombre:
+        return False
+    forma = fila.esqueleto
+    db.delete(fila)
+    db.flush()
+    return aprender_cuenta(db, usuario_id, cuenta_nombre, forma)
 
 
 def significado(r: ReglaNotificacion) -> str:

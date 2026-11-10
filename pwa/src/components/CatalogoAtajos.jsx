@@ -80,7 +80,7 @@ export const ATAJOS = [
     paraQuien: 'Tu banco NO avisa al enviar plata (Nu…)',
     queHace: 'Con un gesto lee el comprobante que tienes en pantalla y lo registra. La foto no sale de tu iPhone: solo viaja el texto.',
     url: ATAJO_REGISTRAR_URL,
-    nota: 'Casi nunca pregunta nada: reconoce solo el banco, el valor y a quién le enviaste. Si no sabe de qué banco es, lo guarda en la cuenta que más usas y te lo dice.',
+    nota: 'Casi nunca pregunta nada: reconoce solo el banco, el valor y a quién le enviaste. Si no sabe de qué banco es, lo guarda en la cuenta que más usas y te lo dice. Cuando lo mueves de cuenta o lo confirmas, aprende: la próxima vez reconoce esa pantalla solo.',
     fases: [
       { id: 'instalar', titulo: 'Instalar', pasos: INSTALAR },
       {
