@@ -11,12 +11,13 @@ import { Boton } from './ui'
 import { nombreDe } from '../lib/tituloMovimiento'
 import { AccionesRapidas, AvisoNegativo, EsteMes, NoCargo } from './InicioExtras'
 import QueSePuedeHacer from './QueSePuedeHacer'
+import SabiasQue from './SabiasQue'
 
 // Inicio para quien llega sin saber de finanzas. A la vista: el saldo, los accesos y «Este mes».
 //   - UNA sola guía a la vez: el camino de 3 pasos (lo pinta Inicio) o, sin camino, el siguiente paso o «¿Qué puedes hacer?».
 //   - Con `mas` (el «Ver más» de Inicio) se suman lo reciente, el gasto por día, el consejo y las tarjetas informativas.
 //   - `conAviso`: Inicio ya pinta los avisos (solo el más importante); sin él, esta pantalla muestra el de saldo negativo.
-export default function InicioSimple({ saldo, notaSaldo = '', gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null, falloSaldo = false, onReintentar, mas = true, conAviso = true }) {
+export default function InicioSimple({ saldo, notaSaldo = '', gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null, falloSaldo = false, onReintentar, mas = true, conAviso = true, gmailConectado = true }) {
   const nuevo = recientes.length === 0
   const hayGuia = enCamino || !!siguiente
   return (
@@ -55,6 +56,8 @@ export default function InicioSimple({ saldo, notaSaldo = '', gastosSemana, reci
       {falloSaldo && <NoCargo onReintentar={onReintentar} className="mx-6 mt-2" />}
       {conAviso && <AvisoNegativo saldo={saldo} cuentas={cuentas} fmt={fmt} />}
       <AccionesRapidas />
+      {/* Una función por descubrir; con el camino de 3 pasos a la vista no se suma otra guía */}
+      {!enCamino && <SabiasQue cuentasCount={cuentas.length} gmailConectado={gmailConectado} />}
      </div>
      <div className="col">
       <EsteMes reporte={reporte} fmt={fmt} iconoDe={iconoDe} />

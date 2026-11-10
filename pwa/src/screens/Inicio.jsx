@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  ArrowLeftRight, Bot, ChevronDown, ChevronRight, CreditCard, Gift, HeartPulse, Landmark, LayoutGrid, Lightbulb, LineChart, PieChart,
-  PiggyBank, Plus, RefreshCw, Repeat, Sparkles, Users, Wallet, X,
+  ArrowLeftRight, Bot, ChevronDown, ChevronRight, CreditCard, Gift, HeartPulse, Landmark, LayoutGrid, LineChart, PieChart,
+  PiggyBank, Plus, RefreshCw, Repeat, Search, Sparkles, Users, Wallet, X,
 } from 'lucide-react'
 import { IlustracionVacia, Isotipo, Monto, SelloCuadre } from '../brand/Marca'
 import { api } from '../lib/api'
@@ -15,7 +15,8 @@ import { useAuth } from '../lib/AuthContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import MazoCuentas from '../components/MazoCuentas'
 import ArbolFinanciero from '../components/ArbolFinanciero'
-import CarruselDescubrir from '../components/CarruselDescubrir'
+import SabiasQue from '../components/SabiasQue'
+import { HojaMas } from '../components/MenuMas'
 import { useNombreParaSaludar } from '../lib/nombre'
 import AsistentePrimerUso from '../components/AsistentePrimerUso'
 import SugerenciaPais from '../components/SugerenciaPais'
@@ -137,6 +138,8 @@ export default function Inicio() {
   const [tareasSync, setTareasSync] = useState(null)
   const [aMedias, setAMedias] = useState([]) // extractos con movimientos por importar
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const [lupa, setLupa] = useState(false) // «Más» abierto desde la lupa, con el buscador enfocado
   const [lineaCorreo, setLineaCorreo] = useState('') // «3 movimientos por aprobar · 1 extracto por conciliar»
   const [cargando, setCargando] = useState(!hayPrevio)
   const [errorCarga, setErrorCarga] = useState('')
@@ -342,8 +345,14 @@ export default function Inicio() {
           <Isotipo size={30} cuadra={cuadra !== false} />
           <h1 className="t-title text-lg">{primerNombre ? `Hola, ${primerNombre}` : 'Hola'}</h1>
         </div>
-        <BotonOjo />
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => setLupa(true)} aria-label="Buscar en el menú" aria-haspopup="dialog" data-testid="lupa-inicio" className="w-11 h-11 rounded-full flex items-center justify-center text-ink-soft">
+            <Icono icono={Search} tam="md" />
+          </button>
+          <BotonOjo />
+        </div>
       </header>
+      {lupa && <HojaMas onCerrar={() => setLupa(false)} pathname={pathname} enfocarBuscador />}
 
       {errorCarga && (
         <div role="alert" className="mx-6 mt-2 rounded-2xl bg-danger-soft border border-danger/30 p-3 flex items-center justify-between gap-3">
@@ -388,6 +397,7 @@ export default function Inicio() {
             onReintentar={reintentar}
             mas={verMas}
             conAviso={false}
+            gmailConectado={gmailConectado}
           />
           {/* Lo urgente (pago de tarjeta cerca, gasto fuera de lo normal): si no hay otro aviso, uno solo a la vista; si lo hay, va dentro de «Ver más» */}
           {avisos.length === 0 && <Recordatorios soloTipos={TIPOS_URGENTES} max={1} />}
@@ -677,10 +687,8 @@ export default function Inicio() {
               </div>
             </SeccionPlegable>
 
-            <SeccionPlegable id="recomendaciones" titulo="Recomendaciones" icono={Lightbulb}>
-              {/* Funciones por descubrir: mismo patrón que la alerta de Gmail, rotando varias */}
-              <CarruselDescubrir gmailConectado={gmailConectado} cuentasCount={cuentas.length} embebida />
-            </SeccionPlegable>
+{/* Una función por descubrir (reemplaza a «Recomendaciones») */}
+            <SabiasQue cuentasCount={cuentas.length} gmailConectado={gmailConectado} />
           </div>
         </div>
       </div>

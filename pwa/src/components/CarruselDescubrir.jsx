@@ -21,7 +21,7 @@ const TARJETAS_BASE = [
     to: '/conectar-dispositivo',
     icon: Mic,
     titulo: 'Registra gastos hablando',
-    texto: 'Di "gasté 20 mil en el almuerzo" y Siri lo registra por ti',
+    texto: 'Di "gasté 20 mil en el almuerzo" al asistente de voz de tu celular (Siri u otro) y queda anotado',
     mostrarSi: () => true,
   },
   {
