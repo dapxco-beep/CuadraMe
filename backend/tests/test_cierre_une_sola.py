@@ -59,6 +59,8 @@ def test_cierre_se_absorbe_en_el_manual_del_mismo_dia():
     out = _cierre(key)
     assert out["duplicado"] is True and out["id"] == mano["id"] and out["ya_estaba_por"] == "manual"
     assert _n(ids["Nequi"]) == 1
+    nota = {m["id"]: m for m in client.get("/movimientos").json()}[mano["id"]]["notas"]
+    assert "Se unió con un aviso del atajo de cierre" in nota  # queda constancia de la unión
     assert client.get("/cuentas").json()[0]["saldo"] == 1_060_000  # un solo ingreso
 
 

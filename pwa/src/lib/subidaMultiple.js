@@ -114,6 +114,8 @@ export function normalizarPdf(r) {
       restante: typeof m.restante === 'number' && m.restante > 0 ? m.restante : null,
       cuotas: m.cuotas || null,
       avisoLinea: m.aviso_linea || null,
+      // Ya lo tienes en otra cuenta del mismo banco: se avisa y se puede pasar a esta cuenta (no se importa dos veces).
+      pistaHermana: m.pista_hermana || null,
       // Corrige un movimiento ya importado con la lectura vieja (el lector lo declara): no crea otro movimiento.
       correccion: m.estado === 'corregir_monto'
         ? { tipo: 'corregir', anterior: m.monto_anterior ?? null }

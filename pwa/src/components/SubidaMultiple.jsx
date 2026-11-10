@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { AlertTriangle, ArrowRightLeft, Check, FileSpreadsheet, FileText, Loader2, Pencil, X } from 'lucide-react'
 import { productoDeTexto, recordarCuenta, textoOpcionCuenta } from '../lib/cuentasBanco'
 import { api } from '../lib/api'
+import { useDialogos } from '../lib/DialogosContext'
 import { mensajeAmable } from '../lib/mensajes'
 import { formatCOP } from '../lib/format'
 import PrevioImportacion from './PrevioImportacion'
@@ -115,6 +116,7 @@ export default function SubidaMultiple({
   const [progreso, setProgreso] = useState({ actual: 0, total: 0 })
   const [corriendo, setCorriendo] = useState(false)
   const [fase, setFase] = useState(revisionInicial?.historialId ? 'abriendo' : 'cola') // abriendo | cola | revision | resultado
+  const { avisar } = useDialogos() || {}
   const [seleccion, setSeleccion] = useState(new Set())
   const [categorias, setCategorias] = useState({})
   const [aprender, setAprender] = useState({}) // clave -> { recordar, anteriores } (solo filas editadas)
@@ -330,6 +332,24 @@ export default function SubidaMultiple({
     }
     setMontos((m) => ({ ...m, [clave]: Number(valor) }))
     setSeleccion((prev) => new Set(prev).add(clave))
+  }
+
+  // «Pasarlo a esta cuenta»: el movimiento que ya tenías en la cuenta hermana se muda aquí y la línea deja de ser nueva.
+  async function pasarDeHermana(a, it, clave) {
+    const accion = it.pistaHermana?.accion
+    if (!accion) return
+    try {
+      await api.editarMovimiento(accion.movimiento_id, { cuenta_id: accion.cuenta_id })
+      setSeleccion((prev) => {
+        const n = new Set(prev)
+        n.delete(clave)
+        return n
+      })
+      parchar(a.id, { items: a.items.map((x) => (x.k === it.k ? { ...x, estado: 'ya', pistaHermana: null } : x)) })
+      avisar?.('Listo: lo pasé a esta cuenta. Esa línea ya no se importa.')
+    } catch (e) {
+      avisar?.(e.message || 'No se pudo pasar. Intenta de nuevo.')
+    }
   }
 
   function alternar(clave, it) {
@@ -754,6 +774,14 @@ export default function SubidaMultiple({
                             )}
                             {it.pagoDetalle && !repetido && !it.correccion && (
                               <PagoAplicado className="ml-8 mt-2" detalle={it.pagoDetalle} aviso={it.apagada ? it.avisoLinea : null} />
+                            )}
+                            {it.pistaHermana && !repetido && (
+                              <div className="ml-8 mt-2 rounded-xl bg-accent-soft px-3 py-2 text-xs" data-testid="pista-hermana">
+                                <p>{it.pistaHermana.mensaje}</p>
+                                <button type="button" onClick={() => pasarDeHermana(a, it, clave)} className="mt-1 min-h-11 font-semibold text-accent underline">
+                                  {it.pistaHermana.accion?.etiqueta || 'Pasarlo a esta cuenta'}
+                                </button>
+                              </div>
                             )}
                             {it.restante != null && !repetido && (
                               <p className="ml-8 mt-1.5 text-xs text-ink-soft" data-testid="restante-compra">

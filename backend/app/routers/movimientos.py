@@ -1077,6 +1077,10 @@ def _registrar_movimiento_rapido(
                                             cuenta.moneda or "COP")
             if ya is not None:
                 dup.confirmar_por_canal(db, ya, dup.ORIGEN_ATAJO, huella)
+                # Queda constancia en el movimiento: si era otro pago igual, la persona lo ve y puede anotarlo.
+                nota = "Se unió con un aviso del atajo de cierre (mismo monto y día). Si fueron dos pagos, anota el otro."
+                if nota not in (ya.notas or ""):
+                    ya.notas = (ya.notas + chr(10) + nota).strip() if ya.notas else nota
                 db.commit()
                 db.refresh(ya)
                 if absorbido_out is not None:
