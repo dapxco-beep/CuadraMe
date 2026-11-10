@@ -55,8 +55,9 @@ export const PREGUNTAS = [
       '- **En la app o la página de tu banco:** busca «Extractos», «Estados de cuenta» o «Certificados».',
       '- **En tu correo:** muchos bancos lo envían cada mes. Si conectas tu Gmail, CuadraMe lo encuentra solo.',
       'Descárgalo como **PDF** (no como foto ni captura de pantalla) y súbelo en «Traer extractos».',
+      'En Android puedes compartir un extracto desde otras apps; en iPhone no.',
     ],
-    palabras: 'extracto pdf banco estado de cuenta descargar resumen mensual subir conciliar',
+    palabras: 'extracto pdf banco estado de cuenta descargar resumen mensual subir conciliar compartir android',
     accion: { texto: 'Subir un extracto', to: '/sincronizacion' },
   },
   {

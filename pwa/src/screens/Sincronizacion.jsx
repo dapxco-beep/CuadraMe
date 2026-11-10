@@ -52,6 +52,7 @@ import SelectorCuentaBanco from '../components/SelectorCuentaBanco'
 import { cuentaRecordada, productoDeTexto } from '../lib/cuentasBanco'
 import { posponerPuntoDePartida, puntoDePartidaPospuesto } from '../lib/puntoPartida'
 import { EsqueletoPantalla } from '../components/Esqueletos'
+import { tomarCompartidos } from '../lib/compartirArchivo'
 
 // «Traer movimientos»: un asistente, no un tablero. La pantalla muestra UN estado y UNA acción principal
 // (lib/siguientePaso.js escoge cuál por prioridad) y, al resolverla, pasa sola a la siguiente. Al abrir, lee
@@ -333,6 +334,20 @@ export default function Sincronizacion({ modo = 'extractos' }) {
     abrirBloque(abrir, abrir === 'subir' ? 'sinc-subir' : undefined)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key])
+
+  // Llegó por «Compartir con CuadraMe» (Android): se precargan los archivos en la hoja de subida, sin enviarlos.
+  useEffect(() => {
+    const q = new URLSearchParams(location.search).get('compartido')
+    if (q === null) return
+    navigate('/sincronizacion', { replace: true })
+    if (q !== '1') return avisar?.('No pudimos recibir ese archivo. Sube un PDF, Excel o CSV de hasta 15 MB.', 'info')
+    tomarCompartidos().then(({ archivos, rechazados }) => {
+      if (!archivos.length) return avisar?.('No pudimos recibir ese archivo. Sube un PDF, Excel o CSV de hasta 15 MB.', 'info')
+      setSubir({ compartidos: archivos, n: Date.now() })
+      setHoja('subir')
+      if (rechazados.length) avisar?.(`${rechazados.length} archivo(s) no se pudieron usar.`, 'info')
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Al abrir, sin tocar nada: lee el correo (si no se leyó hace poco), prueba la clave guardada y relee saldos. Sin ruido si falla.
   useEffect(() => {

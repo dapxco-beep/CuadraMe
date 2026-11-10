@@ -80,6 +80,56 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "Registrar un ingreso",
+      "short_name": "Ingreso",
+      "description": "Anota plata que te entró",
+      "url": "/#/agregar?tipo=income&foco=monto",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Pasar plata",
+      "short_name": "Pasar plata",
+      "description": "Mueve plata entre tus cuentas",
+      "url": "/#/agregar?tipo=transfer",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/compartir-archivo",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "archivos",
+          "accept": [
+            "application/pdf",
+            ".pdf",
+            "text/csv",
+            ".csv",
+            "text/plain",
+            ".txt",
+            "application/vnd.ms-excel",
+            ".xls",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".xlsx"
+          ]
+        }
+      ]
+    }
+  }
 }

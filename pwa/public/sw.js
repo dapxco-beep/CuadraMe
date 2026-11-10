@@ -1,7 +1,9 @@
 // Service worker de CuadraMe: notificaciones push + caché del "shell" de la app
 // para que abra aunque no haya conexión. Los datos (API, Supabase) NUNCA se
 // cachean aquí: un saldo viejo mostrado como si fuera actual es peor que un error.
-const VERSION = 'v4'
+const VERSION = 'v5'
+importScripts('/compartido-logica.js') // reglas del «Compartir con CuadraMe»
+const CACHE_COMPARTIDO = 'cuadrame-compartido' // archivos recibidos de otras apps, hasta que la app los use
 const CACHE_SHELL = `cuadrame-shell-${VERSION}`
 const CACHE_ASSETS = `cuadrame-assets-${VERSION}`
 
@@ -22,7 +24,7 @@ self.addEventListener('activate', (event) => {
       const nombres = await caches.keys()
       await Promise.all(
         nombres
-          .filter((n) => n.startsWith('cuadrame-') && n !== CACHE_SHELL && n !== CACHE_ASSETS)
+          .filter((n) => n.startsWith('cuadrame-') && n !== CACHE_SHELL && n !== CACHE_ASSETS && n !== CACHE_COMPARTIDO)
           .map((n) => caches.delete(n))
       )
       await self.clients.claim()
@@ -30,8 +32,37 @@ self.addEventListener('activate', (event) => {
   )
 })
 
+// Compartir desde otra app (Android/Chrome): llega un POST multipart. Se validan y guardan en el caché
+// local (nada sale del teléfono) y se redirige a Sincronización; la app los precarga y el usuario confirma.
+async function recibirCompartido(request) {
+  const volver = (q) => Response.redirect(`/#/sincronizacion?compartido=${q}`, 303)
+  try {
+    if (!self.CompartidoLogica.origenPermitido(request.headers.get('origin'), self.location.origin)) return volver('0')
+    const form = await request.formData()
+    const files = form.getAll('archivos').filter((f) => f && typeof f === 'object' && 'name' in f)
+    const { aceptados } = self.CompartidoLogica.filtrar(files)
+    const cache = await caches.open(CACHE_COMPARTIDO)
+    for (const k of await cache.keys()) await cache.delete(k) // un solo envío pendiente a la vez
+    const ahora = Date.now()
+    for (let i = 0; i < aceptados.length; i++) {
+      const f = aceptados[i]
+      await cache.put(
+        new Request(`/__compartido/${i}`),
+        new Response(f, { headers: { 'x-nombre': encodeURIComponent(f.name), 'x-guardado': String(ahora), 'content-type': f.type || 'application/octet-stream' } })
+      )
+    }
+    return volver(aceptados.length ? '1' : '0')
+  } catch {
+    return volver('0')
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event
+  if (request.method === 'POST' && new URL(request.url).pathname === '/compartir-archivo') {
+    event.respondWith(recibirCompartido(request))
+    return
+  }
   if (request.method !== 'GET') return
 
   const url = new URL(request.url)

@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 const ThemeContext = createContext(null)
 
 export const THEMES = [
-  { id: 'auto', nombre: 'Automático', desc: 'Claro de día, oscuro de noche (7pm-6am)' },
+  { id: 'auto', nombre: 'Automático', desc: 'Sigue el modo claro u oscuro de tu celular' },
   { id: 'calido', nombre: 'Claro', desc: 'Crema cálido, para el día a día' },
   { id: 'dark', nombre: 'Oscuro', desc: 'Misma identidad, pensado para la noche' },
 ]
@@ -15,6 +15,19 @@ function esHoraNocturna() {
   return hora >= 19 || hora < 6
 }
 
+const CONSULTA_OSCURO = '(prefers-color-scheme: dark)'
+
+// En «auto» manda el sistema (matchMedia); la hora solo es respaldo si el navegador no lo sabe.
+export function sistemaPrefiereOscuro() {
+  try {
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      const mq = window.matchMedia(CONSULTA_OSCURO)
+      if (mq && mq.media !== 'not all') return mq.matches
+    }
+  } catch {}
+  return esHoraNocturna()
+}
+
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
     try {
@@ -23,8 +36,9 @@ export function ThemeProvider({ children }) {
       return 'auto'
     }
   })
+  const [oscuroSistema, setOscuroSistema] = useState(sistemaPrefiereOscuro)
 
-  const temaAplicado = theme === 'auto' ? (esHoraNocturna() ? 'dark' : 'calido') : theme
+  const temaAplicado = theme === 'auto' ? (oscuroSistema ? 'dark' : 'calido') : theme
 
   useEffect(() => {
     document.documentElement.dataset.theme = temaAplicado
@@ -33,11 +47,17 @@ export function ThemeProvider({ children }) {
     } catch {}
   }, [theme, temaAplicado])
 
+  // Sigue al sistema en vivo; sin matchMedia, revisa la hora cada 15 min.
   useEffect(() => {
     if (theme !== 'auto') return
-    const intervalo = setInterval(() => {
-      document.documentElement.dataset.theme = esHoraNocturna() ? 'dark' : 'calido'
-    }, 15 * 60 * 1000)
+    setOscuroSistema(sistemaPrefiereOscuro())
+    const mq = typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(CONSULTA_OSCURO) : null
+    if (mq && typeof mq.addEventListener === 'function') {
+      const alCambiar = (e) => setOscuroSistema(Boolean(e.matches))
+      mq.addEventListener('change', alCambiar)
+      return () => mq.removeEventListener('change', alCambiar)
+    }
+    const intervalo = setInterval(() => setOscuroSistema(sistemaPrefiereOscuro()), 15 * 60 * 1000)
     return () => clearInterval(intervalo)
   }, [theme])
 
