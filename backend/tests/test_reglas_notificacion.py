@@ -206,12 +206,12 @@ def test_pantallazo_sin_pista_del_banco_va_a_la_cuenta_que_mas_usa_sin_preguntar
     sin_banco = "Transferencia exitosa $ 20.000 Para CARLOS RUIZ Compartir Descargar"
     r = _pantallazo(h, sin_banco)
     assert r["registrado"] and "motivo" not in r, r
-    assert r["cuenta_adivinada"] == "Nu Colombia" and "no pude saber de qué banco" in r["mensaje"]
+    assert r["cuenta_adivinada"] == "Nu Colombia" and "¿Era Nu Colombia?" in r["mensaje"]
     # Si era de Nequi, lo corrige UNA vez (la app manda la cuenta) y esa forma de pantallazo queda aprendida
     r2 = _pantallazo(h, "Transferencia exitosa $ 35.000 Para ANA TORRES Compartir Descargar", cuenta="Nequi")
     assert r2["registrado"]
     r3 = _pantallazo(h, "Transferencia exitosa $ 41.000 Para LUIS GOMEZ Compartir Descargar")
-    assert r3["registrado"] and r3["cuenta_adivinada"] is None and "Ojo" not in r3["mensaje"]
+    assert r3["registrado"] and r3["cuenta_adivinada"] is None and "¿Era" not in r3["mensaje"]
     assert _cuenta_nombre(_movimiento_mas_reciente()) == "Nequi"
     regla = [x for x in client.get("/movimientos/reglas-notificacion").json() if x["app"].startswith("pantalla:")]
     assert regla and "Nequi" in regla[0]["significado"] and "carlos" not in str(regla).lower()
@@ -397,7 +397,7 @@ def test_la_institucion_de_origen_es_la_de_quien_te_envio_no_tu_cuenta():
     # primera por nombre), no Nu, y se avisa para que la corrijas si era otra.
     h = _cuentas_nu_nequi("rn-io")
     r = _pantallazo(h, "Recibiste de Ana Perez $5.000,00 Aceptada Llave @ABC Institución de origen Nu")
-    assert r["registrado"] and r["cuenta_adivinada"] == "Nequi" and "Ojo" in r["mensaje"]
+    assert r["registrado"] and r["cuenta_adivinada"] == "Nequi" and "¿Era Nequi?" in r["mensaje"]
 
 
 def test_cada_uso_deja_una_linea_de_diagnostico_sin_datos_personales(caplog):
@@ -420,19 +420,33 @@ def test_el_atajo_anterior_recibe_una_vez_al_dia_como_actualizarse_y_el_nuevo_nu
     h = _usuario("rn-viejo")
     # Atajo anterior: manda el nombre del banco («Nequi»), no «auto»
     r = _aviso(h, RECIBO)
-    assert r["registrado"] and "Hay una versión nueva de este atajo" in r["mensaje"]
-    assert "Perfil › Registro automático" in r["mensaje"] and "Instalar" in r["mensaje"] and "Agregar atajo" in r["mensaje"]
+    assert r["registrado"] and "Hay un atajo nuevo" in r["mensaje"]
+    assert "Perfil › Registro automático › Instalar" in r["mensaje"]
     # Solo una vez al día: no se repite en cada uso
     r2 = _aviso(h, ("Envío", "ANA PEREZ te envió 2, ¡lo mejor!"))
-    assert r2["registrado"] and "versión nueva" not in r2["mensaje"]
+    assert r2["registrado"] and "atajo nuevo" not in r2["mensaje"]
     # El atajo nuevo (paquete «auto») no recibe el aviso nunca
     h2 = _cuentas_nu_nequi("rn-nuevo")
     r3 = _pantallazo(h2, _nu_comprobante(_ayer()))
-    assert r3["registrado"] and "versión nueva" not in r3["mensaje"]
+    assert r3["registrado"] and "atajo nuevo" not in r3["mensaje"]
 
 
 def test_android_no_recibe_el_aviso_de_atajo_viejo():
     h = _usuario("rn-android")
     r = client.post("/movimientos/rapido-notificacion", headers=h,
                     json={"paquete": "com.nequi.MobileApp", "titulo": "Envío", "texto": "ANA PEREZ te envió 3, ¡lo mejor!"})
-    assert r.status_code == 200 and r.json()["registrado"] and "versión nueva" not in r.json()["mensaje"]
+    assert r.status_code == 200 and r.json()["registrado"] and "atajo nuevo" not in r.json()["mensaje"]
+
+
+def test_el_mensaje_de_la_notificacion_es_corto_para_que_ios_no_lo_corte():
+    # iOS corta los mensajes largos de una notificación: un registro normal cabe en ~2 líneas y, aun con todas las notas, en ~4.
+    h = _cuentas_nu_nequi("rn-corto")
+    normal = _pantallazo(h, _nu_comprobante(_ayer()))
+    assert normal["registrado"] and len(normal["mensaje"]) <= 90, normal["mensaje"]
+    adivinado = _pantallazo(h, "Transferencia exitosa $ 20.000 Para CARLOS RUIZ Compartir Descargar")
+    assert adivinado["cuenta_adivinada"] and len(adivinado["mensaje"]) <= 130, adivinado["mensaje"]
+    viejo = _aviso(_usuario("rn-corto2"), RECIBO)  # atajo anterior: además lleva el aviso de actualización
+    assert viejo["registrado"] and len(viejo["mensaje"]) <= 150, viejo["mensaje"]
+    # Una descripción larga se recorta, no estira la notificación
+    larga = _pantallazo(h, "Transferencia exitosa $ 9.000 Para MARIA DEL PILAR RODRIGUEZ DE LA HOZ SEGURA Nu")
+    assert larga["registrado"] and len(larga["mensaje"]) <= 130, larga["mensaje"]
