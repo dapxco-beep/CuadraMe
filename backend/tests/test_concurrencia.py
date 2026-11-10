@@ -58,6 +58,9 @@ def test_la_sesion_se_cierra_aunque_el_endpoint_falle():
     finally:
         app.dependency_overrides.pop(get_current_user, None)
     assert all(r.status_code == 404 for r in respuestas)
+    import gc
+
+    gc.collect()  # una sesión de OTRA prueba que solo espera al recolector no cuenta como fuga de esta
     assert database.engine.pool.checkedout() == 0, "quedaron conexiones sin devolver al pool"
 
 
