@@ -33,20 +33,28 @@ function guardarDescartados(claves) {
  */
 // omitirExtractos: Inicio ya muestra «N por resolver» en el botón Traer movimientos; decirlo dos veces confunde.
 // soloTipos / omitirTipos: el Inicio simple muestra arriba los urgentes y «Ver más» el resto, sin repetirlos.
-export default function Recordatorios({ omitirExtractos = false, soloTipos = null, omitirTipos = [], max = null }) {
-  const [lista, setLista] = useState([])
+// datos: lista ya pedida por el padre (Inicio la pide UNA vez y la reparte); si no se pasa, el componente la pide solo.
+export default function Recordatorios({ omitirExtractos = false, soloTipos = null, omitirTipos = [], max = null, datos }) {
+  const [propia, setLista] = useState([])
+  const lista = datos !== undefined ? (Array.isArray(datos) ? datos : []) : propia
   const [descartados, setDescartados] = useState(leerDescartados)
 
+  // Limpia claves viejas que ya no existen, para que la lista no crezca sin fin.
+  const limpiar = (r) => guardarDescartados(leerDescartados().filter((k) => r.some((x) => x.clave === k)))
+
   useEffect(() => {
+    if (Array.isArray(datos)) limpiar(datos)
+  }, [datos])
+
+  useEffect(() => {
+    if (datos !== undefined) return undefined
     let activo = true
     Promise.resolve()
       .then(() => api.recordatorios?.())
       .then((r) => {
         if (!activo || !Array.isArray(r)) return
         setLista(r)
-        // Limpia claves viejas que ya no existen, para que la lista no crezca sin fin.
-        const vigentes = leerDescartados().filter((k) => r.some((x) => x.clave === k))
-        guardarDescartados(vigentes)
+        limpiar(r)
       })
       .catch(() => {})
     return () => {

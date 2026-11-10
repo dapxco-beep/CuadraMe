@@ -16,7 +16,6 @@ export function precargarArranque() {
     () => api.disponibleHoy(),
     () => api.enMiBolsillo(),
     () => api.resumenCuentas(),
-    () => api.gmailEstado(),
     () => api.conexionesEstado(),
     () => api.sincronizacionEstado(),
     () => api.tendencias(6),

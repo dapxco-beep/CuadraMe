@@ -17,7 +17,7 @@ import SabiasQue from './SabiasQue'
 //   - UNA sola guía a la vez: el camino de 3 pasos (lo pinta Inicio) o, sin camino, el siguiente paso o «¿Qué puedes hacer?».
 //   - Con `mas` (el «Ver más» de Inicio) se suman lo reciente, el gasto por día, el consejo y las tarjetas informativas.
 //   - `conAviso`: Inicio ya pinta los avisos (solo el más importante); sin él, esta pantalla muestra el de saldo negativo.
-export default function InicioSimple({ saldo, notaSaldo = '', gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null, falloSaldo = false, onReintentar, mas = true, conAviso = true, gmailConectado = true }) {
+export default function InicioSimple({ saldo, notaSaldo = '', gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null, falloSaldo = false, onReintentar, mas = true, conAviso = true, gmailConectado = true, consejos }) {
   const nuevo = recientes.length === 0
   const hayGuia = enCamino || !!siguiente
   return (
@@ -124,7 +124,7 @@ export default function InicioSimple({ saldo, notaSaldo = '', gastosSemana, reci
 
       {/* Detrás de «Ver más»: cuánto ganó tu plata este mes, un consejo y la invitación a la primera meta */}
       {mas && !nuevo && <RenglonTuPlata />}
-      {mas && !nuevo && <ConsejoParaTi max={1} />}
+      {mas && !nuevo && <ConsejoParaTi max={1} datos={consejos} />}
       {mas && !enCamino && <OfrecerPrimeraMeta className="mx-6 mt-2 flex justify-center" />}
      </div>
     </div>
