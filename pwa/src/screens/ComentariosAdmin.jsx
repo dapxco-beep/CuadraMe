@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { EsqueletoLista } from '../components/Esqueletos'
 import { AlertTriangle, ArrowLeft, ChevronDown, Download, FileText, Lock, Search } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
 import Icono from '../components/Icono'
@@ -211,9 +212,7 @@ export default function ComentariosAdmin() {
     return (
       <div className="flex-1 overflow-y-auto pb-6 screen-enter">
         {encabezado}
-        <p className="mx-6 mt-4 t-apoyo" role="status">
-          Cargando…
-        </p>
+        <EsqueletoLista filas={4} className="mx-6 mt-4" etiqueta="Cargando comentarios" />
       </div>
     )
   }

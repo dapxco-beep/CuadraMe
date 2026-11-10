@@ -50,6 +50,21 @@ const FOCUSABLES =
 
 // Hojas abiertas, de abajo hacia arriba: Escape y la trampa de foco solo aplican a la de arriba.
 const pila = []
+// Contenido de fondo inerte mientras haya hojas modales (aria-modal no basta en varios lectores).
+// Contador para pilas de hojas: solo se quita el `inert` cuando se cierra la última.
+// Si el candado de la app ya lo puso, no lo toca al soltar.
+let inertes = 0
+function fondoApp() {
+  return document.querySelector('[data-arbol-app]') || document.getElementById('root')
+}
+function bloquearFondo() {
+  inertes += 1
+  if (inertes === 1) fondoApp()?.setAttribute('inert', '')
+}
+function soltarFondo() {
+  inertes = Math.max(0, inertes - 1)
+  if (inertes === 0 && !document.body.hasAttribute('data-bloqueado')) fondoApp()?.removeAttribute('inert')
+}
 // Retirada diferida del marcador de historial (así React StrictMode, que monta, desmonta
 // y vuelve a montar, no deja entradas duplicadas).
 const retiradas = new Map()
@@ -182,6 +197,13 @@ export default function Hoja({
       )
     }
   }, [abierta, id, cerrar, historial])
+
+  // Fondo inerte mientras la hoja esté abierta (foco y lectores quedan dentro)
+  useEffect(() => {
+    if (!abierta) return undefined
+    bloquearFondo()
+    return soltarFondo
+  }, [abierta])
 
   // Escape: solo la hoja de más arriba
   useEffect(() => {

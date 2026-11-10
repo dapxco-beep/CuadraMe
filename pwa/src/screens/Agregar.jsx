@@ -314,7 +314,7 @@ export default function Agregar() {
             onClick={() => setTipo(t.id)}
             aria-pressed={tipo === t.id}
             className={`flex-1 rounded-2xl py-2.5 min-h-[44px] text-sm font-semibold border ${
-              tipo === t.id ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
+              tipo === t.id ? 'bg-accent-soft text-accent border-accent' : 'border-line text-ink-soft'
             }`}
           >
             {t.label}

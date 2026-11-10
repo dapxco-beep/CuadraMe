@@ -1,4 +1,5 @@
 import { textoError } from '../lib/textoError'
+import { EsqueletoTexto } from '../components/Esqueletos'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -50,7 +51,7 @@ export default function ResumenHogar() {
       </div>
 
       {error && <p className="px-5 mt-6 text-sm text-danger" role="alert">{error}</p>}
-      {!r && !error && <p className="px-5 mt-6 text-sm text-ink-soft">Cargando…</p>}
+      {!r && !error && <EsqueletoTexto lineas={4} className="px-5 mt-6" etiqueta="Cargando el resumen del hogar" />}
       {r && (
         <>
           <section className="px-5 mt-4">

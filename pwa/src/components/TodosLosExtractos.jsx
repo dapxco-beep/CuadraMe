@@ -222,7 +222,7 @@ export default function TodosLosExtractos({ datos, filtro, onFiltro, onAccion, o
               type="button"
               aria-pressed={!filtro.estados.length}
               onClick={() => onFiltro({ ...filtro, estados: [] })}
-              className={`min-h-11 rounded-full border px-3.5 text-xs font-semibold ${!filtro.estados.length ? 'bg-ink text-paper-raised border-ink' : 'border-line text-ink-soft'}`}
+              className={`min-h-11 rounded-full border px-3.5 text-xs font-semibold ${!filtro.estados.length ? 'bg-accent-soft text-accent border-accent' : 'border-line text-ink-soft'}`}
             >
               Todos ({items.length})
             </button>
@@ -234,7 +234,7 @@ export default function TodosLosExtractos({ datos, filtro, onFiltro, onAccion, o
                   type="button"
                   aria-pressed={activo}
                   onClick={() => alternarEstado(e.id)}
-                  className={`min-h-11 inline-flex items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold ${activo ? 'bg-ink text-paper-raised border-ink' : `border-line ${e.clase}`}`}
+                  className={`min-h-11 inline-flex items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold ${activo ? 'bg-accent-soft text-accent border-accent' : `border-line ${e.clase}`}`}
                 >
                   <Icono icono={ICONO_ESTADO[e.id]} tam="sm" />
                   {e.texto} ({contadores[e.id]})

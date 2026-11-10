@@ -103,7 +103,7 @@ export function HojaCambiarCategoria({ movimiento, onClose, onHecho }) {
                 aria-pressed={categoria === c}
                 onClick={() => setCategoria(c)}
                 className={`text-sm px-3 py-2 rounded-full border ${
-                  categoria === c ? 'bg-ink text-paper border-ink' : 'border-accent text-accent'
+                  categoria === c ? 'bg-accent-soft text-accent border-accent' : 'border-accent text-accent'
                 }`}
               >
                 {etiqueta}
@@ -121,7 +121,7 @@ export function HojaCambiarCategoria({ movimiento, onClose, onHecho }) {
             aria-pressed={categoria === n}
             onClick={() => setCategoria(n)}
             className={`text-sm px-3 py-2 rounded-full border ${
-              categoria === n ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
+              categoria === n ? 'bg-accent-soft text-accent border-accent' : 'border-line text-ink-soft'
             }`}
           >
             <span aria-hidden="true">{iconoDe(n)}</span> {n}

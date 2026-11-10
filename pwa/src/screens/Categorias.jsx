@@ -90,7 +90,7 @@ export default function Categorias() {
             aria-checked={mostrarOcultas}
             aria-label="Mostrar ocultas"
             onClick={() => setMostrarOcultas((v) => !v)}
-            className={`relative w-10 h-6 rounded-full transition-colors ${mostrarOcultas ? 'bg-accent' : 'bg-ink-soft/35'}`}
+            className={`relative w-10 h-6 rounded-full transition-colors ${mostrarOcultas ? 'bg-accent' : 'bg-ink-soft/60 ring-1 ring-ink-soft'}`}
           >
             <span
               className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
@@ -395,7 +395,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
                 aria-pressed={tipo === t.id}
                 onClick={() => setTipo(t.id)}
                 className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border ${
-                  tipo === t.id ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
+                  tipo === t.id ? 'bg-accent-soft text-accent border-accent' : 'border-line text-ink-soft'
                 }`}
               >
                 {t.etiqueta}

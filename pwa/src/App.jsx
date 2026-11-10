@@ -302,7 +302,7 @@ export function ArbolConBloqueo({ bloqueado, children }) {
   if (bloqueado && !montado) return <PantallaBloqueo />
   return (
     <>
-      <div className="contents" inert={bloqueado} aria-hidden={bloqueado || undefined} data-testid="arbol-app">
+      <div className="contents" inert={bloqueado} aria-hidden={bloqueado || undefined} data-testid="arbol-app" data-arbol-app>
         {children}
       </div>
       {bloqueado && <PantallaBloqueo />}

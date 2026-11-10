@@ -135,7 +135,7 @@ export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, 
       aria-pressed={categoriaActual === n}
       onClick={() => tocar(n, cerrar)}
       className={`text-sm px-3 py-2 min-h-[40px] rounded-full border ${
-        categoriaActual === n ? 'bg-ink text-paper border-ink' : 'border-line text-ink'
+        categoriaActual === n ? 'bg-accent-soft text-accent border-accent' : 'border-line text-ink'
       }`}
     >
       <span aria-hidden="true">{iconoDe(n)}</span> {n}

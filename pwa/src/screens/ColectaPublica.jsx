@@ -1,4 +1,5 @@
 import { textoError } from '../lib/textoError'
+import { EsqueletoTexto } from '../components/Esqueletos'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Copy } from 'lucide-react'
@@ -65,7 +66,7 @@ export default function ColectaPublica() {
           {error}
         </p>
       )}
-      {!d && !error && <p className="px-5 mt-6 text-sm text-ink-soft">Cargando…</p>}
+      {!d && !error && <EsqueletoTexto lineas={4} className="px-5 mt-6" etiqueta="Cargando la colecta" />}
 
       {d && (
         <>

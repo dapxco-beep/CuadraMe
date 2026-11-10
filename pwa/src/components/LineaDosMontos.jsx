@@ -29,7 +29,7 @@ export default function LineaDosMontos({ it, valor, onElegir, className = '' }) 
                 setTexto(String(m).replace('.', ','))
                 onElegir(m)
               }}
-              className={`min-h-11 rounded-xl border px-3.5 text-xs font-semibold ${valor === m ? 'bg-ink text-paper border-ink' : 'bg-paper-raised border-line text-ink'}`}
+              className={`min-h-11 rounded-xl border px-3.5 text-xs font-semibold ${valor === m ? 'bg-accent-soft text-accent border-accent' : 'bg-paper-raised border-line text-ink'}`}
             >
               {formatCOP(m)}
             </button>

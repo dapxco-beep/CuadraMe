@@ -52,10 +52,12 @@ export default function UnirseHogar() {
             <p className="text-lg font-semibold break-words">{inv.hogar}</p>
             <p className="text-xs text-ink-soft mt-1">Verás los gastos del parche y lo que se debe cada uno. Nadie ve tus cuentas ni tus movimientos.</p>
           </div>
-          <label className="text-xs text-ink-soft font-medium uppercase tracking-wide">
-            ¿Cómo te verán los demás?
-            <input aria-label="Tu nombre o apodo" value={apodo} onChange={(e) => setApodo(e.target.value)} maxLength={40} placeholder="Tu nombre o apodo" className="mt-1 w-full rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm normal-case tracking-normal text-ink outline-none focus:border-accent" />
-          </label>
+          <div className="text-xs text-ink-soft font-medium uppercase tracking-wide">
+            <label htmlFor="apodo-hogar" className="block">
+              ¿Cómo te verán los demás?
+            </label>
+            <input id="apodo-hogar" value={apodo} onChange={(e) => setApodo(e.target.value)} maxLength={40} placeholder="Tu nombre o apodo" className="mt-1 w-full rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm normal-case tracking-normal text-ink outline-none focus:border-accent" />
+          </div>
           <button onClick={unirme} disabled={uniendo} className="w-full bg-ink text-paper rounded-2xl py-3.5 text-sm font-semibold disabled:opacity-40">
             {uniendo ? 'Uniéndote…' : 'Unirme al parche'}
           </button>

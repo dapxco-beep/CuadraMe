@@ -304,7 +304,7 @@ export default function DividirGasto() {
               onClick={() => setModo(m.id)}
               aria-pressed={modo === m.id}
               className={`flex-1 rounded-2xl py-2.5 text-sm font-semibold border ${
-                modo === m.id ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
+                modo === m.id ? 'bg-accent-soft text-accent border-accent' : 'border-line text-ink-soft'
               }`}
             >
               {m.label}

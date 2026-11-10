@@ -376,7 +376,7 @@ export default function Perfil() {
               aria-checked={permisoPush === 'granted'}
               aria-label="Alertas de presupuesto"
               className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${
-                permisoPush === 'granted' ? 'bg-accent' : 'bg-ink-soft/35'
+                permisoPush === 'granted' ? 'bg-accent' : 'bg-ink-soft/60 ring-1 ring-ink-soft'
               } disabled:opacity-60`}
             >
               <span
@@ -400,7 +400,7 @@ export default function Perfil() {
               role="switch"
               aria-checked={recordatorio}
               aria-label="Recordatorio diario"
-              className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${recordatorio ? 'bg-accent' : 'bg-ink-soft/35'}`}
+              className={`shrink-0 w-12 h-7 rounded-full transition-colors relative ${recordatorio ? 'bg-accent' : 'bg-ink-soft/60 ring-1 ring-ink-soft'}`}
             >
               <span
                 className={`absolute top-0.5 left-0 w-6 h-6 rounded-full bg-white shadow transition-transform ${

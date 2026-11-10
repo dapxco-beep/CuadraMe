@@ -68,3 +68,12 @@ describe('Esqueletos', () => {
     }
   })
 })
+
+describe('pantallas sin «Cargando…» de texto', () => {
+  it('ninguna de estas pantallas usa ya el párrafo de texto plano', async () => {
+    const { readFileSync } = await import('node:fs')
+    for (const f of ['ResumenHogar', 'ColectaPublica', 'PorCategorizar', 'ComentariosAdmin', 'Opinion', 'SaludNegocio']) {
+      expect(readFileSync(`src/screens/${f}.jsx`, 'utf8'), f).not.toMatch(/>\s*Cargando…\s*</)
+    }
+  })
+})

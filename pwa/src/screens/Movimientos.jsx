@@ -1170,7 +1170,7 @@ export default function Movimientos() {
                       type="button"
                       aria-pressed={activo}
                       onClick={() => cambiarParams({ desde: p.r.desde, hasta: p.r.hasta })}
-                      className={`min-h-11 px-4 rounded-full text-sm font-semibold border ${activo ? 'bg-ink text-paper border-ink' : 'bg-paper-raised text-ink border-line'}`}
+                      className={`min-h-11 px-4 rounded-full text-sm font-semibold border ${activo ? 'bg-accent-soft text-accent border-accent' : 'bg-paper-raised text-ink border-line'}`}
                     >
                       {p.texto}
                     </button>
@@ -1226,7 +1226,7 @@ export default function Movimientos() {
                       aria-pressed={vistaActiva === v.id}
                       onClick={() => cambiarParams({ vista: v.id === 'lista' ? '' : v.id })}
                       className={`text-sm px-4 min-h-[44px] rounded-full font-medium ${
-                        vistaActiva === v.id ? 'bg-ink text-paper' : 'text-ink-soft'
+                        vistaActiva === v.id ? 'bg-accent-soft text-accent' : 'text-ink-soft'
                       }`}
                     >
                       {v.texto}

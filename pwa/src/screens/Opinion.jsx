@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { EsqueletoTexto } from '../components/Esqueletos'
 import { useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Trash2 } from 'lucide-react'
 import Cuadri from '../brand/Cuadri'
@@ -171,9 +172,7 @@ export default function Opinion() {
             Tus comentarios
           </h2>
           {mios === null ? (
-            <p className="t-apoyo" role="status">
-              Cargando…
-            </p>
+            <EsqueletoTexto lineas={3} etiqueta="Cargando tus comentarios" />
           ) : errorMios ? (
             <p className="t-apoyo">No pudimos cargar tus comentarios ahora.</p>
           ) : mios.length === 0 ? (

@@ -96,7 +96,7 @@ export default function CuentasAmigos() {
               onClick={() => setGrupoId(g.id)}
               aria-pressed={grupoId === g.id}
               className={`shrink-0 rounded-2xl border px-3.5 py-2 text-xs font-semibold ${
-                grupoId === g.id ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
+                grupoId === g.id ? 'bg-accent-soft text-accent border-accent' : 'border-line text-ink-soft'
               }`}
             >
               {g.nombre}

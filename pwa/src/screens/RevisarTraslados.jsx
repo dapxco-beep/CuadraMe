@@ -104,7 +104,7 @@ export default function RevisarTraslados() {
                       checked={elegidas.has(k)}
                       onChange={() => alternar(k)}
                       className="mt-1 w-5 h-5 accent-[var(--color-accent)]"
-                      aria-label={s.tipo === 'par' ? 'Es un traslado entre mis cuentas' : '¿Fue entre tus cuentas?'}
+                      aria-label={`${s.tipo === 'par' ? 'Es un traslado entre mis cuentas' : '¿Fue entre tus cuentas?'}: ${s.movimientos.map((m) => `${m.descripcion} ${fmt(m.monto)}`).join(' y ')}`}
                     />
                     <span className="min-w-0 flex-1">
                       <span className="block text-[11px] font-semibold text-ink-soft">

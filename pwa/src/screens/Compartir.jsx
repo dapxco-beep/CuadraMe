@@ -261,7 +261,7 @@ export default function Compartir() {
                     aria-checked={rol === r.id}
                     onClick={() => setRol(r.id)}
                     className={`rounded-2xl border px-3 py-3 min-h-[52px] text-sm font-semibold flex items-center justify-center gap-2 ${
-                      rol === r.id ? 'bg-ink text-paper border-ink' : 'border-line bg-paper-raised text-ink-soft'
+                      rol === r.id ? 'bg-accent-soft text-accent border-accent' : 'border-line bg-paper-raised text-ink-soft'
                     }`}
                   >
                     <Icono icono={r.icono} tam="sm" /> {r.titulo}

@@ -189,3 +189,19 @@ describe('Hoja dentro de una pantalla animada', () => {
     }
   })
 })
+
+describe('Hoja: fondo inerte', () => {
+  it('pone inert en el contenedor de la app con hojas abiertas (pila) y lo quita al cerrar la última', () => {
+    const raiz = document.createElement('div')
+    raiz.id = 'root'
+    document.body.appendChild(raiz)
+    const a = render(<Hoja titulo="A" onCerrar={() => {}} historial={false}><p>a</p></Hoja>)
+    expect(raiz).toHaveAttribute('inert')
+    const b = render(<Hoja titulo="B" onCerrar={() => {}} historial={false}><p>b</p></Hoja>)
+    a.unmount()
+    expect(raiz).toHaveAttribute('inert') // queda una abierta
+    b.unmount()
+    expect(raiz).not.toHaveAttribute('inert')
+    raiz.remove()
+  })
+})

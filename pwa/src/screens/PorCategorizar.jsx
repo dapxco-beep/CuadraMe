@@ -2,7 +2,7 @@ import { textoError } from '../lib/textoError'
 import { useEmbebido } from '../lib/EmbebidoContext'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ChevronDown, ChevronUp, EyeOff, Flag, Hand, ListChecks, Tag, Undo2, Zap } from 'lucide-react'
-import { EsqueletoLista } from '../components/Esqueletos'
+import { EsqueletoLista, EsqueletoTexto } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import SelectorCategoria from '../components/SelectorCategoria'
 import { useVolver } from '../lib/useVolver'
@@ -83,7 +83,7 @@ function FilaComercio({ g, marcado, ids, onComercio, onMovimiento, onVer }) {
       </div>
       {abierto && (
         <ul className="mt-2 ml-8 space-y-1" aria-label={`Movimientos de ${nombre}`}>
-          {movs === null && <li className="text-xs text-ink-soft">Cargando…</li>}
+          {movs === null && <li><EsqueletoTexto lineas={2} etiqueta="Cargando movimientos" /></li>}
           {(movs || []).map((m) => (
             <li key={m.id} className="flex items-start gap-2 text-xs min-h-[44px] py-1">
               <input

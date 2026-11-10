@@ -455,7 +455,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                   aria-pressed={form.tipo === t}
                   onClick={() => setForm({ ...form, tipo: t })}
                   className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border ${
-                    form.tipo === t ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
+                    form.tipo === t ? 'bg-accent-soft text-accent border-accent' : 'border-line text-ink-soft'
                   }`}
                 >
                   {ETIQUETA_TIPO[t]}

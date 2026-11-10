@@ -274,7 +274,7 @@ function FormRecurrente({ onClose, onGuardado }) {
             key={t.id}
             onClick={() => setTipo(t.id)}
             className={`flex-1 rounded-2xl py-2.5 text-sm font-semibold border ${
-              tipo === t.id ? 'bg-ink text-paper border-ink' : 'border-line text-ink-soft'
+              tipo === t.id ? 'bg-accent-soft text-accent border-accent' : 'border-line text-ink-soft'
             }`}
           >
             {t.label}

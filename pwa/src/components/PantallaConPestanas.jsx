@@ -35,7 +35,7 @@ export default function PantallaConPestanas({ titulo, pestanas }) {
               role="tab"
               aria-selected={es}
               onClick={() => setParams({ tab: p.id }, { replace: true })}
-              className={`min-h-11 px-4 rounded-full text-sm font-semibold border whitespace-nowrap ${es ? 'bg-ink text-paper border-ink' : 'bg-paper-raised text-ink border-line'}`}
+              className={`min-h-11 px-4 rounded-full text-sm font-semibold border whitespace-nowrap ${es ? 'bg-accent-soft text-accent border-accent' : 'bg-paper-raised text-ink border-line'}`}
             >
               {p.texto}
             </button>

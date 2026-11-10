@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { EsqueletoTexto } from '../components/Esqueletos'
 import { Link } from 'react-router-dom'
 import { Activity, AlertTriangle, ArrowLeft, ChevronRight, Lock, MessageCircle, Users } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
@@ -143,9 +144,7 @@ export default function SaludNegocio() {
     return (
       <div className="flex-1 overflow-y-auto pb-6 screen-enter">
         {encabezado}
-        <p className="mx-6 mt-4 text-sm text-ink-soft" role="status">
-          Cargando…
-        </p>
+        <EsqueletoTexto lineas={4} className="mx-6 mt-4" etiqueta="Cargando la salud del negocio" />
       </div>
     )
   }
