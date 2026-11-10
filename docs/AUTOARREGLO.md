@@ -17,6 +17,22 @@ para cualquier cliente, de forma **segura, visible y reversible**. Los botones m
 | 5 | `inicial` | Recalcula el ajuste inicial por cuenta | Reglas de siempre: no toca tarjetas, ni saldo fijado a mano, ni el modo «hoy» |
 | 6 | `cuadre` | Solo lee: por cuenta, «Cuadra todos los meses» o el primer mes que no cuadra con su causa | Siempre (`cierre_extractos.cuadre_por_cuenta`, que reutiliza `cuadre_encadenado.calcular`) |
 
+### Fricción B: lo seguro que antes se preguntaba (dentro del paso 6, antes de medir el cuadre)
+
+Todo va en el mismo lote, con «Deshacer», y ante la duda (dos candidatos, pagos idénticos, algo ya conciliado) **no hace nada**:
+
+- **Traslados exactos** (`traslados_auto.py`, tipo `marcar_traslado`): egreso e ingreso del mismo monto (a $1), cuentas propias distintas,
+  misma moneda, <= 2 días y sin otro candidato del mismo monto en la ventana. Aviso «marqué N traslados entre tus cuentas».
+  Los ambiguos o con comisión siguen en «Revisar posibles traslados».
+- **Sobrantes en la cuenta equivocada** (`sobrantes_auto.py`): un sobrante cuya pareja exacta (tipo, monto, <= 2 días) es UNA línea sin cruzar
+  del extracto de otra cuenta tuya pasa a esa cuenta (`mover_cuenta`, paso `sobrantes`). Nunca si está conciliado, vino de un extracto,
+  hay un gemelo en el origen o ya hay uno igual en el destino.
+- **Descuadre con una causa exacta** (`cuadre_auto.py`): solo cuentas de ahorro y el primer mes que no cuadra. Si hay UNA causa probable
+  que explica la diferencia al peso (línea única que falta, copia repetida de otra fuente cuando la otra está respaldada por el extracto,
+  o extracto de otra cuenta con candidata única) se aplica y se recalcula; si el mes no cierra en 0 se revierte y se borra del lote.
+- **Varias tarjetas** (`_desempatar_tarjetas`): los últimos 4 dígitos del PDF (guardados como `ultimos4` en la lectura del extracto)
+  desempatan solo si coinciden con UNA tarjeta (alias o nombre).
+
 ## Qué es sugerido (queda para la persona)
 
 El aviso lo dice con una acción de un toque; nada de esto se decide solo:
