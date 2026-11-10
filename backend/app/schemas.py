@@ -1017,6 +1017,7 @@ class MovimientoReview(BaseModel):
     quita_por: Optional[str] = None  # quitar_repetido: "tipo" = es el ingreso repetido de una compra
     nuevo_movimiento_id: Optional[str] = None  # quitar_repetido por tipo: la compra buena que ya está
     corregido: bool = False
+    pista_hermana: Optional[dict] = None  # faltante que ya tienes en otra cuenta del mismo banco: {movimiento_id, cuenta_id, cuenta_nombre, mensaje, accion}
 
 
 class ProcesarExtractoResponse(BaseModel):

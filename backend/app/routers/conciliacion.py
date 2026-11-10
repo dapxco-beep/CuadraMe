@@ -286,6 +286,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
     _confirmar_pagos_de_tarjeta(db, usuario.id, cuenta, banco, resultado["review"])
     corregir_pago.marcar(db, usuario.id, cuenta.id, resultado["review"])  # pago ya importado con la lectura vieja: se corrige, no se duplica
     corregir_tipo.marcar(db, usuario.id, cuenta.id, resultado["review"])  # compra ya importada como ingreso: se corrige el tipo, no se duplica
+    _pista_cuenta_hermana(db, usuario.id, cuenta, resultado["review"])
 
     historial = HistorialExtracto(
         usuario_id=usuario.id,
@@ -940,6 +941,26 @@ def resolver_dudosos(
     return {"ok": True, "juntados": juntados, "separados": separados, "conteo": estado_traer.contar_review(review)}
 
 
+def _pista_cuenta_hermana(db: Session, usuario_id: str, cuenta, review: list[dict]) -> None:
+    """Una línea «faltante» que ya tienes en OTRA cuenta del mismo banco: solo se avisa (no se une sola), con la
+    acción «Pasarlo a esta cuenta». Si hay más de uno igual, no se adivina."""
+    for item in review:
+        if item.get("estado") != "faltante" or item.get("tipo") not in ("income", "expense"):
+            continue
+        fecha = parse_bank_date(item.get("fecha"))
+        if not fecha or not item.get("monto"):
+            continue
+        hallado = dup.igual_en_cuenta_hermana(db, usuario_id, cuenta, item["tipo"], abs(float(item["monto"])), fecha, dup.DIAS_EXTRACTO)
+        if hallado is None:
+            continue
+        mov, otra = hallado
+        item["pista_hermana"] = {
+            "movimiento_id": mov.id, "cuenta_id": otra.id, "cuenta_nombre": otra.nombre,
+            "mensaje": f"Tienes algo igual en tu otra cuenta de {otra.nombre}: «{mov.descripcion}».",
+            "accion": {"etiqueta": "Pasarlo a esta cuenta", "movimiento_id": mov.id, "cuenta_id": cuenta.id},
+        }
+
+
 class CambiarCuentaIn(BaseModel):
     cuenta_id: str
     confirmar: bool = False
@@ -959,7 +980,10 @@ def _unir_gemelo(db: Session, usuario: UsuarioActual, movimiento_id: str, item: 
     from app.routers.movimientos import eliminar_movimiento
 
     mov = db.get(Movimiento, movimiento_id)
-    if mov is None or mov.usuario_id != usuario.id or mov.conciliado_en is not None or (mov.fuente or "manual") != "manual":
+    if mov is None or mov.usuario_id != usuario.id or mov.conciliado_en is not None:
+        return False
+    # A mano, o un aviso rápido sin confirmar (cierre de app / Wallet): lo ya confirmado por la persona no se toca.
+    if (mov.fuente or "manual") != "manual" and not (es_movimiento_rapido(mov) and mov.cat_confirmada is False):
         return False
     foto = {k: getattr(mov, k) for k in _CAMPOS_RESTAURAR}
     foto["fecha"] = foto["fecha"].isoformat() if foto["fecha"] else None
@@ -1264,6 +1288,8 @@ def _cargar_ledger(db: Session, usuario_id: str, cuenta_id: str) -> list[dict]:
             "cuenta_origen": cuenta_id,
             "fingerprint": fp,
             "rapido": es_movimiento_rapido(m),
+            # cierre_app, o Wallet/atajo que la persona aún no confirmó: si el extracto respalda otro igual, es un repetido.
+            "gemelable": es_movimiento_rapido(m) and m.cat_confirmada is False,
             "conciliado": m.conciliado_en is not None,
             "extracto_id": m.extracto_id,
             "de_extracto": bool(m.extracto_id) or (m.fuente or "") in ("conciliacion_extracto", "conciliacion_auto"),

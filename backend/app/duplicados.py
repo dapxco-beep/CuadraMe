@@ -189,6 +189,7 @@ class Cand:
     canales: frozenset = frozenset()  # canales que ya confirmaron este movimiento
     fantasma: bool = False  # un movimiento que el usuario BORRÓ
     con_hora: bool = False  # la fecha trae hora real (no es solo un día)
+    cierre: bool = False  # nació del Atajo de cierre (cierre_app): comparte el canal «atajo» con Wallet
     ref: object = field(default=None, repr=False, compare=False)
 
     def hora_real(self) -> bool:
@@ -206,12 +207,14 @@ def tolerancia_monto(ent: Cand, ex: Cand) -> float:
     return TOLERANCIA_REDONDEO_COP if moneda == "COP" else TOLERANCIA_REDONDEO_OTRA
 
 
-def puntaje(ent: Cand, ex: Cand) -> float | None:
+def puntaje(ent: Cand, ex: Cand, entre_atajos: bool = False) -> float | None:
     """None si `ent` (lo que llega) NO puede ser el mismo gasto que `ex` (lo que ya hay);
-    si puede, un puntaje: menor = más parecido."""
+    si puede, un puntaje: menor = más parecido. `entre_atajos`: «Buscar duplicados» deja emparejar
+    un cierre_app con un registro de Wallet (mismo canal «atajo», pero dos avisos distintos)."""
     if ent.tipo != ex.tipo or ent.tipo not in ("income", "expense"):
         return None
-    if ent.origen == ex.origen or ent.origen in ex.canales:
+    distintos_atajo = entre_atajos and ent.origen == ex.origen == ORIGEN_ATAJO and ent.cierre != ex.cierre
+    if not distintos_atajo and (ent.origen == ex.origen or ent.origen in ex.canales):
         return None  # ese canal ya dijo lo suyo sobre este movimiento: otro igual es otro gasto
     if not (ent.cuentas & ex.cuentas):
         return None
@@ -219,6 +222,8 @@ def puntaje(ent: Cand, ex: Cand) -> float | None:
     if dif > tolerancia_monto(ent, ex):
         return None
     sim = similitud_comercio(ent.texto, ex.texto)
+    if (ent.cierre or ex.cierre) and (es_generica(ent.texto) or es_generica(ex.texto)):
+        sim = None  # el cierre no trae comercio («Movimiento en Nequi»): no hay con qué comparar, no se rechaza
     largo = {ent.origen, ex.origen} & {ORIGEN_EXTRACTO, ORIGEN_IMPORTACION}
     if largo:
         dias = abs((ent.fecha.date() - ex.fecha.date()).days)
@@ -229,7 +234,7 @@ def puntaje(ent: Cand, ex: Cand) -> float | None:
             else float(dias)
     elif ent.hora_real() and ex.hora_real():
         horas = abs((ent.fecha - ex.fecha).total_seconds()) / 3600
-        if horas > HORAS_CON_HORA:
+        if horas > HORAS_CON_HORA and not _mismo_pago_corrido_un_dia(ent, ex, sim):
             return None
         if sim == 0.0 and horas * 60 > MINUTOS_SIN_PARECIDO:
             return None  # dos compras distintas con el mismo valor, a horas distintas
@@ -242,6 +247,13 @@ def puntaje(ent: Cand, ex: Cand) -> float | None:
     # Un registro del atajo espera justamente al banco: a igualdad, el extracto prefiere completar ese.
     preferencia = 0.05 if (ent.origen == ORIGEN_EXTRACTO and ex.origen == ORIGEN_ATAJO) else 0.0
     return tiempo + 3 * dif / max(ent.monto, 1.0) - 0.4 * (sim or 0.0) - preferencia
+
+
+def _mismo_pago_corrido_un_dia(ent: Cand, ex: Cand, sim: float | None) -> bool:
+    """Un aviso con la MISMA hora del día pero un día corrido (24 h exactas: zona horaria o fecha del
+    correo) es el mismo pago si el comercio también coincide; sin comercio claro no se une."""
+    seg = abs((ent.fecha - ex.fecha).total_seconds())
+    return abs(seg - 86400) <= 60 and sim is not None and sim >= 0.75
 
 
 def emparejar(entrantes: list[Cand], existentes: list[Cand]) -> list[tuple[int, int, float]]:
@@ -378,6 +390,7 @@ def cand_de_movimiento(m, canales: set[str], moneda: str = "COP", cuentas=None) 
         cuentas=frozenset(cuentas or {m.cuenta_id}), texto=m.descripcion or "", moneda=moneda,
         flexible="Original:" in (m.notas or ""), canales=frozenset(canales | {origen_de_movimiento(m)}),
         con_hora=True, ref=m,
+        cierre="cierre_app" in (getattr(m, "fuente", None), getattr(m, "cat_origen", None)),
     )
 
 
@@ -461,6 +474,19 @@ def buscar_pareja(db: Session, usuario_id: str, ent: Cand, *, fantasmas: bool = 
     for i, j, _ in emparejar([ent], existentes):
         return existentes[j]
     return None
+
+
+def pareja_unica_de_cierre(db: Session, usuario_id: str, cuenta_id: str, tipo: str, monto: float,
+                           momento: datetime, moneda: str = "COP"):
+    """El movimiento de OTRO canal (a mano, extracto, importación, correo) que un registro de cierre_app
+    ya tiene: misma cuenta, tipo y monto, el mismo día. Solo si es UNO y el día no trae otro igual del
+    atajo (dos pagos reales idénticos no se unen). None si no hay pareja o hay duda."""
+    ini = datetime.combine(momento.date(), datetime.min.time())
+    iguales = [c for c in existentes_para(db, usuario_id, {cuenta_id}, ini, ini + timedelta(days=1) - timedelta(microseconds=1))
+               if c.tipo == tipo and abs(c.monto - float(monto)) <= (TOLERANCIA_REDONDEO_COP if moneda == "COP" else TOLERANCIA_REDONDEO_OTRA)]
+    if any(c.origen == ORIGEN_ATAJO or ORIGEN_ATAJO in c.canales for c in iguales):
+        return None  # el atajo ya dijo algo de este monto hoy: puede ser otro pago, no se adivina
+    return iguales[0].ref if len(iguales) == 1 else None
 
 
 def confirmar_por_canal(db: Session, mov, origen: str, huella: str | None, *, descripcion: str | None = None,
@@ -708,6 +734,29 @@ def _hermanas(cuentas: list) -> dict[str, frozenset]:
     }
 
 
+def igual_en_cuenta_hermana(db: Session, usuario_id: str, cuenta, tipo: str, monto: float, fecha: datetime,
+                            dias: int = DIAS_NORMAL, sin_manuales: bool = False):
+    """(movimiento, cuenta hermana) si hay UNO igual (tipo, monto, fecha cercana, sin conciliar con un extracto)
+    en otra cuenta del MISMO banco y moneda; None si no hay o hay varios (no se adivina). Solo informa.
+    `sin_manuales`: ignora lo anotado a mano (lo que la persona puso a propósito en cada cuenta)."""
+    from app.models import Cuenta, Movimiento
+
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario_id).all()
+    ids = _hermanas(cuentas).get(cuenta.id, frozenset()) - {cuenta.id}
+    if not ids:
+        return None
+    tol = TOLERANCIA_REDONDEO_COP if (cuenta.moneda or "COP") == "COP" else TOLERANCIA_REDONDEO_OTRA
+    movs = [m for m in db.query(Movimiento).filter(
+        Movimiento.usuario_id == usuario_id, Movimiento.cuenta_id.in_(list(ids)), Movimiento.tipo == tipo,
+        Movimiento.fecha >= fecha - timedelta(days=dias + 1), Movimiento.fecha <= fecha + timedelta(days=dias + 1),
+        Movimiento.conciliado_en.is_(None), ~Movimiento.fuente.in_(list(FUENTES_NO_EMPAREJABLES)),
+    ).all() if abs(float(m.monto or 0) - float(monto)) <= tol and abs((m.fecha.date() - fecha.date()).days) <= dias
+        and not (sin_manuales and origen_de_movimiento(m) == ORIGEN_MANUAL)]
+    if len(movs) != 1:
+        return None
+    return movs[0], next(c for c in cuentas if c.id == movs[0].cuenta_id)
+
+
 def grupos_posibles_duplicados(db: Session, usuario_id: str, dias: int = 120, limite: int = 100) -> list[dict]:
     """Grupos de movimientos que PARECEN el mismo gasto llegado por canales distintos. Solo
     sugiere (nada se borra solo). Cada grupo tiene como máximo un movimiento por canal; si hay
@@ -748,7 +797,7 @@ def grupos_posibles_duplicados(db: Session, usuario_id: str, dias: int = 120, li
                 i, j = idxs[a], idxs[b]
                 if cs[j].monto - cs[i].monto > max(500.0, cs[j].monto * 0.05):
                     break
-                p = puntaje(cs[i], cs[j])
+                p = puntaje(cs[i], cs[j], entre_atajos=True)
                 if p is not None and f"par:{':'.join(sorted((cs[i].id, cs[j].id)))}" not in excepciones:
                     aristas.append((p, i, j))
     aristas.sort()
