@@ -11,7 +11,7 @@ import { useBloqueo } from '../lib/BloqueoContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import { useCuentas } from '../lib/CuentasContext'
-import { haceCuanto, marcarSincronizado, resumenSync, sincronizarCarriles, sincronizarTodo, tocaSincronizar } from '../lib/sincronizarGmail'
+import { haceCuanto, marcarSincronizado, resumenSync, leerConReintento, sincronizarCarriles, sincronizarTodo, tocaSincronizar } from '../lib/sincronizarGmail'
 import { NOMBRE_CARRIL, resumenLectura, textoUltimaLectura } from '../lib/carriles'
 import {
   BANCO_SIN_IDENTIFICAR, agruparPorBanco, conciliarExtracto, estadoCelda, ESTADOS_CELDA, nombreMes,
@@ -475,12 +475,13 @@ export default function Sincronizacion({ modo = 'extractos' }) {
     setResultadosCarril((r) => ({ ...r, [tipo]: '' }))
     setLeyendo((l) => ({ ...l, [tipo]: { leidos: 0, total_estimado: 0 } }))
     try {
-      const r = await sincronizarTodo({
+      // Si falla, se reintenta una vez sola; si persiste, queda el botón «Intentar de nuevo».
+      const { r, error } = await leerConReintento(() => sincronizarTodo({
         tipo,
         onProgreso: (p) => montado.current && setLeyendo((l) => ({ ...l, [tipo]: { leidos: p.leidos, total_estimado: p.total_estimado } })),
-      })
+      }))
       if (!montado.current) return
-      if (!r?.ok) setErroresCarril((e) => ({ ...e, [tipo]: mensajeAmable(r?.error, { porDefecto: 'No pudimos leerlo. Intenta de nuevo.' }) }))
+      if (error) setErroresCarril((e) => ({ ...e, [tipo]: mensajeAmable(error, { porDefecto: 'No pudimos leerlo. Intenta de nuevo.' }) }))
       else {
         setResultadosCarril((x) => ({ ...x, [tipo]: resumenLectura(tipo, r) }))
         await cargar()
@@ -1404,7 +1405,17 @@ export default function Sincronizacion({ modo = 'extractos' }) {
                       <li data-testid="conexion-ultima-lectura">{textoUltimaLectura(estado.carriles.movimientos.ultima_lectura)}</li>
                     )}
                     {Object.keys(erroresCarril).filter((k) => erroresCarril[k]).map((k) => (
-                      <li key={k} className="text-danger">{NOMBRE_CARRIL[k]}: {erroresCarril[k]}</li>
+                      <li key={k} className="text-danger flex flex-wrap items-center gap-x-3">
+                        <span>{NOMBRE_CARRIL[k]}: {erroresCarril[k]}</span>
+                        <button
+                          type="button"
+                          onClick={() => traerCarril(k)}
+                          disabled={sincronizando || Boolean(leyendo[k])}
+                          className="min-h-11 font-semibold text-accent underline disabled:opacity-60"
+                        >
+                          Intentar de nuevo
+                        </button>
+                      </li>
                     ))}
                     {punto?.definido && punto?.fecha && (
                       <li data-testid="conexion-punto">

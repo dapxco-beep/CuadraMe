@@ -27,8 +27,11 @@ export default function CamposCuentaNueva({ tipo, valores, onCambio }) {
   const debes = leerMonto(valores.debes)
   return (
     <div className="mb-4" data-testid="campos-tarjeta">
+      <p className="text-xs text-ink-soft mb-3" data-testid="tarjeta-opcionales">
+        Todo esto es opcional: lo completamos con tu primer extracto.
+      </p>
       <label className="block mb-3">
-        <span className="text-xs text-ink-soft">Cupo total</span>
+        <span className="text-xs text-ink-soft">Cupo total (opcional)</span>
         <span className="block text-[11px] text-ink-soft">El máximo que el banco te deja gastar con la tarjeta. Lo encuentras en la app de tu banco, en el detalle de la tarjeta.</span>
         <InputMonto
           value={valores.cupo}
@@ -39,7 +42,7 @@ export default function CamposCuentaNueva({ tipo, valores, onCambio }) {
         />
       </label>
       <label className="block mb-3">
-        <span className="text-xs text-ink-soft">¿Cuánto debes hoy?</span>
+        <span className="text-xs text-ink-soft">¿Cuánto debes hoy? (opcional)</span>
         <InputMonto
           value={valores.debes}
           onValor={(v) => set('debes', v)}

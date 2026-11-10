@@ -1057,6 +1057,7 @@ class ProcesarExtractoResponse(BaseModel):
     propuesta_tarjeta: Optional[dict] = None
     # Aviso (no bloquea): el extracto parece de otro producto del mismo banco (tarjeta vs ahorros).
     aviso_cuenta: Optional[str] = None
+    aviso_cuenta_id: Optional[str] = None  # la cuenta candidata del aviso (para pasarla con un toque)
     # Qué pasó con cada línea leída (modelo único de app/estado_traer.py): leidas, ya_estaban,
     # nuevas_agregadas, por_revisar, descartadas, anteriores, duplicadas_detectadas, dudosas.
     conteo: Optional[dict] = None

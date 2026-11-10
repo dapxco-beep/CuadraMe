@@ -211,6 +211,7 @@ describe('Crear cuenta guiado', () => {
     await userEvent.click(within(screen.getByTestId('pregunta-producto')).getByRole('button', { name: /Mi tarjeta de crédito/ }))
     expect(screen.getByLabelText('Nombre de la cuenta')).toHaveValue('Nu Colombia Crédito')
     expect(screen.getByLabelText('Cupo total')).toBeInTheDocument()
+    expect(screen.getByTestId('tarjeta-opcionales')).toHaveTextContent('lo completamos con tu primer extracto')
     expect(screen.getByLabelText('Día de corte')).toBeInTheDocument()
     expect(screen.getByLabelText('Día de pago')).toBeInTheDocument()
     expect(screen.getAllByText(/app de tu banco/).length).toBeGreaterThanOrEqual(2)

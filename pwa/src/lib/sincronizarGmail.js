@@ -19,16 +19,27 @@ export async function sincronizarTodo({ completa = false, tipo = 'todo', dias, r
 // «Traer todo»: cada uso del correo corre POR SEPARADO (primero movimientos, luego extractos) y cada uno
 // devuelve su propio resultado o error: si uno falla, el otro igual se lee. `activos` = lo que el usuario
 // dejó encendido. Devuelve { movimientos?: {r}|{error}, extractos?: ... }; un carril apagado no aparece.
+/** Un fallo de lectura se reintenta UNA vez sola antes de molestar a la persona (`espera` ms entre intentos). */
+export async function leerConReintento(leer, espera = 1500) {
+  const intento = async () => {
+    try {
+      const r = await leer()
+      return r?.ok ? { r } : { error: r?.error || 'No se pudo leer. Intenta de nuevo.' }
+    } catch (err) {
+      return { error: err?.message || 'No se pudo leer. Intenta de nuevo.' }
+    }
+  }
+  const primero = await intento()
+  if (!primero.error) return primero
+  if (espera > 0) await new Promise((ok) => setTimeout(ok, espera))
+  return intento()
+}
+
 export async function sincronizarCarriles({ activos = {}, completa = false, onProgreso } = {}) {
   const salida = {}
   for (const tipo of ['movimientos', 'extractos']) {
     if (activos[tipo] === false) continue
-    try {
-      const r = await sincronizarTodo({ completa, tipo, onProgreso: (p) => onProgreso?.(tipo, p) })
-      salida[tipo] = r?.ok ? { r } : { error: r?.error || 'No se pudo leer. Intenta de nuevo.' }
-    } catch (err) {
-      salida[tipo] = { error: err?.message || 'No se pudo leer. Intenta de nuevo.' }
-    }
+    salida[tipo] = await leerConReintento(() => sincronizarTodo({ completa, tipo, onProgreso: (p) => onProgreso?.(tipo, p) }))
   }
   return salida
 }

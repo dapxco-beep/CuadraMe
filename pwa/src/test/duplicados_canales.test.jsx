@@ -104,6 +104,39 @@ describe('registrar a mano algo que ya está', () => {
     await waitFor(() => expect(api.crearMovimiento).toHaveBeenCalledTimes(2))
     expect(api.crearMovimiento.mock.calls[1][0]).toEqual(expect.objectContaining({ confirmar_nuevo: true, monto: 33000 }))
   })
+
+  it('en un ingreso dice «otro ingreso igual»', async () => {
+    api.crearMovimiento = vi.fn().mockRejectedValueOnce(Object.assign(new Error('x'), {
+      status: 409,
+      detalle: { codigo: 'posible_duplicado', tipo: 'income', mensaje: 'Ya tienes este ingreso: $33.000.', movimiento_id: 'm9', descripcion_existente: 'Nomina' },
+    }))
+    api.clasificar = vi.fn().mockResolvedValue({ categoria: 'Otros' })
+    api.movimientos = vi.fn().mockResolvedValue([])
+    montar(<Agregar />)
+    await userEvent.click(screen.getByText('Ingreso'))
+    await userEvent.type(screen.getByPlaceholderText('0'), '33000')
+    await userEvent.type(screen.getByPlaceholderText(/¿En qué fue|De dónde|ingres/i), 'Pago')
+    await userEvent.click(screen.getByText('Guardar movimiento'))
+    expect(await screen.findByText('Es otro ingreso igual, agrégalo')).toBeInTheDocument()
+  })
+
+  it('«Es el mismo» ofrece la descripción distinta como nota del existente', async () => {
+    api.crearMovimiento = vi.fn().mockRejectedValueOnce(Object.assign(new Error('x'), {
+      status: 409,
+      detalle: { codigo: 'posible_duplicado', tipo: 'expense', mensaje: 'Ya tienes este gasto.', movimiento_id: 'm9', descripcion_existente: 'Netflix', notas_existentes: '' },
+    }))
+    api.editarMovimiento = vi.fn().mockResolvedValue({})
+    api.clasificar = vi.fn().mockResolvedValue({ categoria: 'Otros' })
+    api.movimientos = vi.fn().mockResolvedValue([])
+    montar(<Agregar />)
+    await userEvent.type(screen.getByPlaceholderText('0'), '33000')
+    await userEvent.type(screen.getByPlaceholderText(/¿En qué fue/), 'Plan familiar')
+    await userEvent.click(screen.getByText('Guardar movimiento'))
+    await userEvent.click(await screen.findByText('Es el mismo, no lo agregues'))
+    expect(await screen.findByText('Listo, ya estaba. No lo duplicamos.')).toBeInTheDocument()
+    await userEvent.click(await screen.findByText(/como nota/))
+    await waitFor(() => expect(api.editarMovimiento).toHaveBeenCalledWith('m9', { notas: 'Plan familiar' }))
+  })
 })
 
 describe('correos que ya estaban registrados', () => {

@@ -77,6 +77,14 @@ export async function enviarPendientes(usuarioId, crear) {
         if (err?.sinConexion || (err?.status ?? 0) >= 500 || err?.status === 401) break // se reintenta luego
         // Ya estaba registrado (409) o el servidor lo rechazó (datos inválidos): no se reintenta.
         res.descartados++
+        if (err?.status === 409) {
+          // Ya existía en el servidor: se descarta, pero se le dice a la persona.
+          try {
+            window.dispatchEvent(new CustomEvent('cuadrame:aviso', {
+              detail: { mensaje: `«${item.datos?.descripcion || 'Un movimiento'}» ya estaba registrado, así que no lo duplicamos.`, tipo: 'info' },
+            }))
+          } catch { /* sin ventana (pruebas) */ }
+        }
       }
       escribir(leer().filter((p) => p.id !== item.id))
     }

@@ -69,6 +69,7 @@ export default function Agregar() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const [posibleDuplicado, setPosibleDuplicado] = useState(null) // mensaje del servidor si ya lo tiene por otro canal
+  const [dupInfo, setDupInfo] = useState(null) // el movimiento que ya existía (id, tipo, descripción, notas)
   const carruselRef = useRef(null)
   const montoRef = useRef(null)
   const [params] = useSearchParams()
@@ -166,9 +167,35 @@ export default function Agregar() {
     })
   }
 
+  // «Es el mismo»: no se duplica. Si escribió algo distinto, se ofrece como nota del que ya estaba.
+  function esElMismo() {
+    const escrito = descripcion.trim()
+    const distinto = escrito && dupInfo?.id && escrito.toLowerCase() !== (dupInfo.descripcion || '').trim().toLowerCase()
+    const yaEsta = distinto && (dupInfo.notas || '').toLowerCase().includes(escrito.toLowerCase())
+    avisar?.(
+      'Listo, ya estaba. No lo duplicamos.',
+      'ok',
+      distinto && !yaEsta ? {
+        accion: {
+          texto: `Guardar «${escrito.slice(0, 30)}» como nota`,
+          onClick: async () => {
+            try {
+              await api.editarMovimiento(dupInfo.id, { notas: [dupInfo.notas, escrito].filter(Boolean).join(' · ').slice(0, 1000) })
+              avisar?.('Listo, quedó como nota del movimiento que ya tenías.', 'ok')
+            } catch (e) {
+              avisar?.(e.message || 'No pudimos guardar la nota. Puedes agregarla desde el movimiento.')
+            }
+          },
+        },
+      } : {},
+    )
+    volver()
+  }
+
   async function guardar(confirmarNuevo = false) {
     setError('')
     setPosibleDuplicado(null)
+    setDupInfo(null)
     if (!cuentaId) return setError('Primero crea una cuenta en «Cuentas» para poder guardar movimientos.')
     if (!monto || Number(monto) <= 0) return setError('Escribe cuánto fue, solo números. Por ejemplo 25000.')
     if (!esTransferencia && !descripcion.trim()) return setError('Cuéntanos en qué fue, por ejemplo «Éxito» o «Uber».')
@@ -272,6 +299,12 @@ export default function Agregar() {
       // Ya lo tienes por otro canal (atajo, correo, extracto): se pregunta en vez de duplicarlo.
       if (err.status === 409 && err.detalle?.codigo === 'posible_duplicado') {
         setPosibleDuplicado(err.detalle.mensaje || err.message)
+        setDupInfo({
+          id: err.detalle.movimiento_id,
+          tipo: err.detalle.tipo || tipo,
+          descripcion: err.detalle.descripcion_existente || '',
+          notas: err.detalle.notas_existentes || '',
+        })
       } else if (err.sinConexion && esTransferencia) {
         // Los datos del formulario se quedan: solo se avisa y se puede reintentar.
         setError('Pasar plata necesita internet; inténtalo cuando tengas señal.')
@@ -579,7 +612,7 @@ export default function Agregar() {
           <p className="text-sm mt-1">{posibleDuplicado}</p>
           <div className="flex flex-col gap-2 mt-3">
             <button
-              onClick={volver}
+              onClick={esElMismo}
               className="rounded-xl bg-ink text-paper py-2.5 min-h-[44px] text-sm font-semibold"
             >
               Es el mismo, no lo agregues
@@ -589,7 +622,7 @@ export default function Agregar() {
               disabled={guardando}
               className="rounded-xl border border-line bg-paper-raised py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
             >
-              Es otro gasto igual, agrégalo
+              {dupInfo?.tipo === 'income' ? 'Es otro ingreso igual, agrégalo' : 'Es otro gasto igual, agrégalo'}
             </button>
           </div>
         </div>

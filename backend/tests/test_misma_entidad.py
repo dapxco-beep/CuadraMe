@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.auth import UsuarioActual, get_current_user  # noqa: E402
 from app.contabilidad import tipos_efectivos  # noqa: E402
-from app.cuentas_banco import aviso_cuenta_distinta, producto_de_texto  # noqa: E402
+from app.cuentas_banco import aviso_cuenta_distinta, candidata_cuenta_distinta, producto_de_texto  # noqa: E402
 from app.extractos_gmail import inferir_cuenta_por_remitente, sugerir_cuenta  # noqa: E402
 from app.main import app  # noqa: E402
 from app.wallet import mapear_cuenta, mapear_cuenta_ex  # noqa: E402
@@ -183,3 +183,8 @@ def test_la_compra_con_tarjeta_nu_sigue_siendo_gasto():
     assert te == {"c": "expense"}
     te = tipos_efectivos([_m("c2", "expense", 45_000, "Pago con tarjeta Nu en Éxito", "a")], TIPOS)
     assert te == {"c2": "expense"}
+
+
+def test_candidata_es_la_unica_cuenta_del_otro_producto():
+    assert candidata_cuenta_distinta(AHORRO, "tarjeta de crédito, cupo, pago mínimo", CUENTAS).id == TARJETA.id
+    assert candidata_cuenta_distinta(TARJETA, "tarjeta de crédito, cupo, pago mínimo", CUENTAS) is None

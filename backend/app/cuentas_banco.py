@@ -95,10 +95,8 @@ def pregunta_de_cuentas(cuentas: list) -> str:
     return "¿Es " + " o ".join(partes) + "?"
 
 
-def aviso_cuenta_distinta(cuenta, texto: str, cuentas: list) -> str | None:
-    """Aviso (no bloquea) cuando el extracto parece de OTRO producto del mismo banco:
-    p. ej. el PDF habla de cupo y pago mínimo pero se eligió la cuenta de ahorros, y la
-    persona tiene una tarjeta del mismo banco. Solo avisa si hay una candidata clara."""
+def candidata_cuenta_distinta(cuenta, texto: str, cuentas: list):
+    """La ÚNICA cuenta del mismo banco y del producto que parece el extracto (tarjeta vs ahorros), o None."""
     producto = producto_de_texto(texto)
     if not producto or producto_de_cuenta(cuenta) in (producto, None):
         return None
@@ -107,7 +105,15 @@ def aviso_cuenta_distinta(cuenta, texto: str, cuentas: list) -> str | None:
         c for c in cuentas
         if c.id != cuenta.id and producto_de_cuenta(c) == producto and marca & palabras_marca(getattr(c, "nombre", ""))
     ]
-    if len(otras) != 1:
+    return otras[0] if len(otras) == 1 else None
+
+
+def aviso_cuenta_distinta(cuenta, texto: str, cuentas: list) -> str | None:
+    """Aviso (no bloquea) cuando el extracto parece de OTRO producto del mismo banco:
+    p. ej. el PDF habla de cupo y pago mínimo pero se eligió la cuenta de ahorros, y la
+    persona tiene una tarjeta del mismo banco. Solo avisa si hay una candidata clara."""
+    otra = candidata_cuenta_distinta(cuenta, texto, cuentas)
+    if otra is None:
         return None
-    que = "una tarjeta de crédito" if producto == CREDITO else "una cuenta de ahorros o débito"
-    return f"Este extracto parece de {que}, pero lo vas a conciliar con «{cuenta.nombre}». ¿Será «{otras[0].nombre}»?"
+    que = "una tarjeta de crédito" if producto_de_texto(texto) == CREDITO else "una cuenta de ahorros o débito"
+    return f"Este extracto parece de {que}, pero lo vas a conciliar con «{cuenta.nombre}». ¿Será «{otra.nombre}»?"

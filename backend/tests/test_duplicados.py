@@ -801,3 +801,32 @@ def test_filtrar_movimientos_por_origen(e):
     assert montos("manual") == [10_000] and montos("atajo") == [20_000] and montos("correo") == [30_000]
     assert montos("extracto") == []
     assert client.get("/movimientos", params={"origen": "raro"}).status_code == 422
+
+
+# ═══ Aviso al registrar a mano: dice qué hay y mira cuentas hermanas ═══════════════════════════
+
+def test_aviso_manual_trae_monto_fecha_cuenta_canal_y_tipo(monkeypatch):
+    e = Escena(monkeypatch)
+    assert e.atajo().status_code == 200
+    r = e.manual()
+    assert r.status_code == 409, r.text
+    d = r.json()["detail"]
+    assert "45.000" in d["mensaje"] and "Bancolombia" in d["mensaje"] and "el atajo" in d["mensaje"]
+    assert d["tipo"] == "expense" and d["canal"] == "atajo" and d["movimiento_id"]
+
+
+def test_aviso_manual_en_ingreso_dice_ingreso(monkeypatch):
+    e = Escena(monkeypatch)
+    assert e.atajo(monto=2_000_000, comercio="NOMINA", tipo="income").status_code == 200
+    r = e.manual(monto=2_000_000, desc="Nomina", tipo="income")
+    assert r.status_code == 409 and r.json()["detail"]["tipo"] == "income"
+    assert "ingreso" in r.json()["detail"]["mensaje"]
+
+
+def test_aviso_manual_mira_la_cuenta_hermana_del_mismo_banco(monkeypatch):
+    e = Escena(monkeypatch, cuentas=(("Bancolombia Ahorros", 1_000_000), ("Bancolombia Tarjeta", 500_000)))
+    ahorros, tarjeta = e.cuentas["Bancolombia Ahorros"], e.cuentas["Bancolombia Tarjeta"]
+    assert e.atajo(tarjeta="Bancolombia Tarjeta").status_code == 200  # el atajo la dejó en la tarjeta
+    r = e.manual(cuenta=ahorros)  # ahora lo registra en ahorros
+    assert r.status_code == 409, r.text
+    assert "Bancolombia Tarjeta" in r.json()["detail"]["mensaje"]

@@ -425,19 +425,28 @@ def crear_movimiento(
     # ¿Ya lo tienes por el atajo, el correo, el extracto...? Se avisa en vez de duplicarlo
     # (otro gasto igual de verdad: se reenvía con confirmar_nuevo=true).
     if data.tipo in ("income", "expense") and not data.confirmar_nuevo:
+        # También cuentas hermanas (mismo banco y moneda): el atajo a veces guardó en otra tarjeta del banco.
+        todas = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
+        hermanas = dup._hermanas(todas).get(cuenta.id) or frozenset({cuenta.id})
         pareja = dup.buscar_pareja(db, usuario.id, dup.Cand(
             id="nuevo", origen=dup.ORIGEN_MANUAL, tipo=data.tipo, monto=float(data.monto),
-            fecha=data.fecha or ahora_co(), cuentas=frozenset({cuenta.id}), texto=data.descripcion,
+            fecha=data.fecha or ahora_co(), cuentas=hermanas, texto=data.descripcion,
             moneda=cuenta.moneda or "COP"))
         if pareja is not None and not pareja.fantasma:
             m = pareja.ref
+            nombre_cuenta = next((c.nombre for c in todas if c.id == m.cuenta_id), "otra cuenta")
+            monto_txt = f"${float(m.monto):,.0f}".replace(",", ".")
+            fecha_txt = m.fecha.strftime("%d/%m/%Y %H:%M") if m.fecha.time() != datetime.min.time()                 else m.fecha.strftime("%d/%m/%Y")
             raise HTTPException(status_code=409, detail={
                 "codigo": "posible_duplicado",
-                "mensaje": f"Ya tienes este {'ingreso' if data.tipo == 'income' else 'gasto'} registrado desde "
-                           f"{dup.ETIQUETA_CANAL[dup.origen_de_movimiento(m)]}: «{m.descripcion}». "
-                           "¿Es otro igual o es el mismo?",
+                "mensaje": f"Ya tienes este {'ingreso' if data.tipo == 'income' else 'gasto'}: {monto_txt} el {fecha_txt} "
+                           f"en {nombre_cuenta}, registrado desde {dup.ETIQUETA_CANAL[dup.origen_de_movimiento(m)]}: "
+                           f"«{m.descripcion}». ¿Es otro igual o es el mismo?",
                 "movimiento_id": m.id,
                 "canal": dup.origen_de_movimiento(m),
+                "tipo": data.tipo,
+                "notas_existentes": m.notas or "",
+                "descripcion_existente": m.descripcion or "",
             })
 
     categoria = data.categoria

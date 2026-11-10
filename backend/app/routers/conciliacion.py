@@ -48,7 +48,7 @@ from app.conciliacion import (
     parse_texto_con_regex,
 )
 from app.contabilidad import CATEGORIA_PAGO_TARJETA, con_marca_traslado, delta_saldo, tipo_con_direccion
-from app.cuentas_banco import aviso_cuenta_distinta
+from app.cuentas_banco import aviso_cuenta_distinta, candidata_cuenta_distinta
 from app.database import get_db
 from app.extractos_conciliados import evidencia_conciliado
 from app.models import Cuenta, ExtractoCorreo, HistorialExtracto, Movimiento, Perfil
@@ -353,6 +353,7 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
     dup.absorber_correos(db, usuario.id)  # correos de lo que acaba de entrar (o conciliarse) ya no salen por revisar
     completados, sobrantes = _contar_review(resultado["review"])
 
+    _cuentas_usuario = db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
     return ProcesarExtractoResponse(
         **(lectura or {}),
         autoimportar_activo=autoimportar,
@@ -360,7 +361,8 @@ def _procesar_extracto(data: ProcesarExtractoRequest, db: Session, usuario: Usua
         borrados_antes=resultado.get("borrados_antes", 0),
         propuesta_tarjeta=_propuesta_tarjeta(cuenta, texto_plano),
         saldos_extracto=saldos_extracto,
-        aviso_cuenta=aviso_cuenta_distinta(cuenta, texto_plano[:6000], db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()),
+        aviso_cuenta=aviso_cuenta_distinta(cuenta, texto_plano[:6000], _cuentas_usuario),
+        aviso_cuenta_id=getattr(candidata_cuenta_distinta(cuenta, texto_plano[:6000], _cuentas_usuario), "id", None),
         ok=True,
         historial_id=historial.id,
         banco_detectado=banco,

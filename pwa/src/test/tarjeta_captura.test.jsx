@@ -71,7 +71,7 @@ describe('Formulario de cuenta nueva con tarjeta de crédito', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Tarjeta de crédito/ }))
     expect(screen.queryByLabelText('Saldo actual')).not.toBeInTheDocument()
-    expect(screen.getByText('¿Cuánto debes hoy?')).toBeInTheDocument()
+    expect(screen.getByText('¿Cuánto debes hoy? (opcional)')).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Nombre de la cuenta'), { target: { value: 'Nu Crédito' } })
     fireEvent.change(screen.getByLabelText('Cupo total'), { target: { value: '5.000.000' } })

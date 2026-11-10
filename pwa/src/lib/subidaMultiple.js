@@ -151,6 +151,7 @@ export function normalizarPdf(r) {
       .map((m) => ({ ...filaInfo(m), ...(m.resuelto === 'unido' ? { resuelto: 'unido' } : {}), ...(m.resuelto === 'movido' ? { resuelto: `movido a ${m.movido_a || 'otra cuenta'}` } : {}) })),
     propuestaTarjeta: r.propuesta_tarjeta || null,
     saldosExtracto: r.saldos_extracto || null, // saldos que imprime el extracto (para cuadrar con el banco)
+    avisoCuentaId: r.aviso_cuenta_id || null, // la única candidata del mismo banco (se pasa sola)
     avisoCuenta: r.aviso_cuenta || null, // el PDF parece de otro producto del mismo banco (tarjeta vs ahorros)
     origen: r.origen || null, // de dónde salió el extracto y a qué cuenta quedó (al reabrir una revisión)
   }
@@ -432,4 +433,13 @@ export function textoPrevio({ coinciden, nuevos, dudosos }) {
   partes.push(nuevos === 1 ? '1 es nuevo' : `${nuevos} son nuevos`)
   if (dudosos > 0) partes.push(dudosos === 1 ? '1 parece repetido y necesita tu ayuda' : `${dudosos} parecen repetidos y necesitan tu ayuda`)
   return partes
+}
+
+/** Tras pasar el extracto a otra cuenta: lo leído del servidor reemplaza lo que se calculó contra la cuenta anterior. */
+export function conRevisionNueva(base, nueva) {
+  return {
+    ...base,
+    items: nueva.items, anteriores: nueva.anteriores, completados: nueva.completados,
+    sobrantes: nueva.sobrantes, yaConciliado: nueva.yaConciliado,
+  }
 }

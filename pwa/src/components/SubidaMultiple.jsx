@@ -40,6 +40,7 @@ import {
   clavesFaltantes,
   textoCorreccion,
   clavesUnicas,
+  conRevisionNueva,
   consolidar,
   gemelasNuevas,
   normalizarPdf,
@@ -264,7 +265,21 @@ export default function SubidaMultiple({
           /* no se pudo guardar: el extracto igual se leyó; se puede guardar luego en «Clave de tus PDF» */
         }
       }
-      return { estado: 'listo', error: '', claveGuardada, ...normalizarPdf(r), nMov: r.total_movimientos }
+      const base = normalizarPdf(r)
+      // El PDF es de otro producto del mismo banco (tarjeta vs ahorros) y hay UNA candidata clara: se pasa sola.
+      if (r.aviso_cuenta_id && r.historial_id && r.aviso_cuenta_id !== a.cuentaId) {
+        try {
+          await api.cambiarCuentaExtracto(r.historial_id, r.aviso_cuenta_id)
+          const nueva = normalizarPdf(await api.obtenerReviewExtracto(r.historial_id))
+          return {
+            estado: 'listo', error: '', claveGuardada, ...conRevisionNueva(base, nueva), nMov: r.total_movimientos,
+            cuentaId: r.aviso_cuenta_id, cambioAuto: { desde: a.cuentaId }, avisoCuenta: null,
+          }
+        } catch {
+          /* no se pudo pasar sola: queda el aviso con su botón «Cambiar» */
+        }
+      }
+      return { estado: 'listo', error: '', claveGuardada, ...base, nMov: r.total_movimientos }
     }
     const r = await api.importarVistaPrevia({ cuenta_id: a.cuentaId, nombre_archivo: a.nombre, archivo_base64: base64 })
     const n = normalizarTabular(r)
@@ -279,6 +294,17 @@ export default function SubidaMultiple({
     setError('')
     await procesarCola(archivosRef.current, procesarUno, { onCambio: parchar, onProgreso: setProgreso })
     if (montado.current) setCorriendo(false)
+  }
+
+  // Pasa el extracto ya leído a otra cuenta (la candidata del aviso o, al deshacer, la anterior) y vuelve a leer lo que cuadra.
+  async function pasarACuenta(a, destino, extra) {
+    try {
+      await api.cambiarCuentaExtracto(a.historialId, destino)
+      const nueva = normalizarPdf(await api.obtenerReviewExtracto(a.historialId))
+      parchar(a.id, { ...conRevisionNueva(a, nueva), cuentaId: destino, ...extra })
+    } catch (e) {
+      setError(e.message || 'No pudimos cambiar la cuenta. Intenta de nuevo.')
+    }
   }
 
   function reintentar(a) {
@@ -615,10 +641,31 @@ export default function SubidaMultiple({
                   <CuadreExtracto cuentaId={a.cuentaId} historialId={a.historialId} saldos={a.saldosExtracto} avisoCuenta={a.avisoCuenta}
                     porImportar={lineasPorImportar(a.items.map((it) => ({ ...it, monto: montoDeLinea(it, montos[`${a.id}:${it.k}`]) })), seleccion, a.id)} className="mb-2" />
                   <PropuestaTarjeta propuesta={a.propuestaTarjeta} cuentaId={a.cuentaId} className="mb-2" />
+                  {a.cambioAuto && (
+                    <p className="flex items-start gap-1.5 text-xs font-medium text-accent mb-2" role="status" data-testid="cambio-auto-cuenta">
+                      <span>Lo pasé a {nombreCuenta(a.cuentaId)}: el extracto parece de ese producto.</span>
+                      <button
+                        type="button"
+                        onClick={() => pasarACuenta(a, a.cambioAuto.desde, { cambioAuto: null })}
+                        className="min-h-11 -my-3 font-semibold underline shrink-0"
+                      >
+                        Deshacer
+                      </button>
+                    </p>
+                  )}
                   {a.avisoCuenta && (
                     <p className="flex items-start gap-1.5 text-xs font-medium text-accent mb-2" role="status" data-testid="aviso-cuenta">
                       <AlertTriangle size={16} className="shrink-0" aria-hidden="true" />
                       <span>{a.avisoCuenta}</span>
+                      {a.avisoCuentaId && a.historialId && (
+                        <button
+                          type="button"
+                          onClick={() => pasarACuenta(a, a.avisoCuentaId, { cambioAuto: { desde: a.cuentaId }, avisoCuenta: null })}
+                          className="min-h-11 -my-3 font-semibold underline shrink-0"
+                        >
+                          Cambiar
+                        </button>
+                      )}
                     </p>
                   )}
                   <AvisoCategorizados n={a.autoImportados} className="mb-2" />
