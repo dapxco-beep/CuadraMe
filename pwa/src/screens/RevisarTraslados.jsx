@@ -77,6 +77,10 @@ export default function RevisarTraslados() {
       <p className="px-6 text-sm text-ink-soft">
         Un traslado es plata que pasas entre tus cuentas: no cuenta como ingreso ni gasto. <Ayudita termino="traslado" />
       </p>
+      <p className="px-6 mt-1 text-xs text-ink-soft">
+        Los traslados exactos (mismo valor, entre tus cuentas, en pocos días) los marco yo sola y te aviso con «Deshacer».
+        Aquí quedan solo los que no tengo claros.
+      </p>
 
       {error && <p role="alert" className="mx-6 mt-4 text-sm text-danger">{error}</p>}
       {aviso && <p role="status" className="mx-6 mt-4 text-sm text-cuadra">{aviso}</p>}

@@ -203,6 +203,15 @@ def sugerir_cuenta_credito(historial, cuenta, cuentas: list, texto: str) -> dict
     marca = palabras_marca(cuenta.nombre)
     otras = [c for c in cuentas if c.id != cuenta.id and producto_de_cuenta(c) == CREDITO
              and (c.moneda or "COP") == (cuenta.moneda or "COP") and marca & palabras_marca(c.nombre)]
+    if len(otras) >= 2:  # varias tarjetas: los últimos 4 dígitos que dice el PDF desempatan solo si coinciden con UNA
+        from app.extractos_gmail import _ultimos4_de_cuenta
+
+        try:
+            u4 = str((json.loads(historial.lectura_json or "{}") or {}).get("ultimos4") or "")
+        except ValueError:
+            u4 = ""
+        con = [c for c in otras if u4 and u4 in _ultimos4_de_cuenta(c)]
+        otras = con if len(con) == 1 else otras
     if len(otras) != 1:
         return None
     return {"cuenta_id": otras[0].id, "nombre": otras[0].nombre}

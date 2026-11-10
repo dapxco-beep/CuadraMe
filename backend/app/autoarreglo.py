@@ -43,7 +43,7 @@ from app import fechas_extracto as fe
 from app import registrar_ajustes_extracto as rae
 from app import releer_extracto as rx
 from app.compartidos import bloquear_cuenta
-from app.contabilidad import delta_saldo
+from app.contabilidad import MARCA_ES_TRASLADO, delta_saldo
 from app.crons import MarcaCron
 from app.cuentas_banco import CREDITO, palabras_marca, producto_de_cuenta
 from app.limites import verificar_limite
@@ -85,7 +85,7 @@ TRAZADOS = ("cuenta_id", "tipo", "monto", "fecha", "descripcion", "fuente", "cat
 HIST_CAMPOS = ("cuenta_id", "estado", "review_json", "lectura_json", "total_movimientos", "exactos", "aproximados", "faltantes",
                "descartados", "importados", "saldo_inicial_extracto", "saldo_final_extracto", "fecha_corte", "periodo_inicio",
                "saldos_origen", "cuadre_estado", "cuadre_diferencia")
-TIPOS_MOV = ("mover_cuenta", "corregir_tipo", "corregir_monto", "quitar_repetido", "crear_linea", "ajuste_inicial")
+TIPOS_MOV = ("mover_cuenta", "corregir_tipo", "corregir_monto", "quitar_repetido", "crear_linea", "ajuste_inicial", "marcar_traslado")
 ESTADOS_LINEA_SUMA = ("importado", "exacto", "aproximado", "completado", "faltante", "borrado_antes", "anterior")
 
 
@@ -302,8 +302,12 @@ def _diferencias(a: dict, b: dict, paso: str) -> list[dict]:
                 tipo = "corregir_tipo"
             elif viejo["monto"] != nuevo["monto"]:
                 tipo = "corregir_monto"
+            elif viejo["descripcion"] != nuevo["descripcion"]:
+                tipo = "corregir_monto"
+            elif MARCA_ES_TRASLADO in (nuevo.get("notas") or "") and MARCA_ES_TRASLADO not in (viejo.get("notas") or ""):
+                tipo = "marcar_traslado"
             else:
-                tipo = "corregir_monto" if viejo["descripcion"] != nuevo["descripcion"] else "ajuste_inicial"
+                tipo = "ajuste_inicial"
             fila(tipo, mid, _traz(viejo), _traz(nuevo))
     for hid, nuevo in b["hist"].items():
         viejo = a["hist"].get(hid)
@@ -375,25 +379,31 @@ class _Ctx:
 
 
 # ── Lectura verificada ─────────────────────────────────────────────────────────────────────────────
+def _texto_del_pdf(db: Session, usuario, h: HistorialExtracto) -> str | None:
+    """Baja el PDF del correo del extracto y devuelve su texto (None si no se puede: sin Gmail, sin adjunto, clave mala)."""
+    from app.routers import correos as rc
+
+    fila = rx.correo_de(db, h)
+    perfil = rc._get_or_create_perfil(db, usuario.id)
+    if fila is None or not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
+        return None
+    gmail = rc.cliente_gmail(perfil.gmail_refresh_token_enc)
+    msg = gmail.users().messages().get(userId="me", id=fila.gmail_msg_id, format="full").execute()
+    pdfs = rx.listar_adjuntos_pdf(msg)
+    adj = next((a for a in pdfs if a["archivo"] == fila.archivo), None) or (pdfs[0] if len(pdfs) == 1 else None)
+    if adj is None:
+        return None
+    pdf = rx.descargar_adjunto(gmail, fila.gmail_msg_id, adj["attachment_id"])
+    estado, texto, _ = rx.abrir_pdf(pdf, rx.claves_candidatas(rc._clave_pdf(db, usuario.id)))
+    return texto if estado == "ok" else None
+
+
 def _lectura_del_pdf(db: Session, usuario, h: HistorialExtracto) -> bool | None:
     """Baja el PDF del correo y mide SIN escribir nada si la lectura de la tarjeta suma lo que dice el extracto.
     True / False; None si no se puede saber (no es un lector verificado, no hay Gmail, falló la descarga)."""
-    from app.routers import correos as rc
-
     try:
-        fila = rx.correo_de(db, h)
-        perfil = rc._get_or_create_perfil(db, usuario.id)
-        if fila is None or not perfil.gmail_conectado or not perfil.gmail_refresh_token_enc:
-            return None
-        gmail = rc.cliente_gmail(perfil.gmail_refresh_token_enc)
-        msg = gmail.users().messages().get(userId="me", id=fila.gmail_msg_id, format="full").execute()
-        pdfs = rx.listar_adjuntos_pdf(msg)
-        adj = next((a for a in pdfs if a["archivo"] == fila.archivo), None) or (pdfs[0] if len(pdfs) == 1 else None)
-        if adj is None:
-            return None
-        pdf = rx.descargar_adjunto(gmail, fila.gmail_msg_id, adj["attachment_id"])
-        estado, texto, _ = rx.abrir_pdf(pdf, rx.claves_candidatas(rc._clave_pdf(db, usuario.id)))
-        if estado != "ok" or not rx.es_extracto_tarjeta_nu(texto):
+        texto = _texto_del_pdf(db, usuario, h)
+        if texto is None or not rx.es_extracto_tarjeta_nu(texto):
             return None
         return bool(rx.datos_de_lectura(rx.leer_extracto_tarjeta_nu(texto))["lectura_completa"])
     except Exception as e:  # noqa: BLE001 - sin red o PDF raro: no se verifica y no se toca
@@ -534,9 +544,64 @@ def _reparar_fechas(ctx: _Ctx) -> dict:
     return {"fechas": len(r["fechas"]), "duplicados": len(r["duplicados"])}
 
 
+PREFIJO_U4 = "autoarreglo_u4:"  # extracto cuyos últimos 4 dígitos no se pudieron leer del PDF (se reintenta tras ESPERA_NULO)
+
+
+def _desempatar_tarjetas(ctx: _Ctx) -> int:
+    """Con VARIAS tarjetas del mismo banco, los últimos 4 dígitos que dice el PDF desempatan SOLO si coinciden con UNA tarjeta
+    (alias o nombre). Se guardan en la lectura del extracto (`ultimos4`) y el paso de tarjetas hace el resto, con su verificación."""
+    from app.extractos_gmail import _ultimos4_de_cuenta, detectar_ultimos4
+
+    db = ctx.db
+    cuentas = db.query(Cuenta).filter(Cuenta.usuario_id == ctx.uid).all()
+    hechos = 0
+    for h in db.query(HistorialExtracto).filter(HistorialExtracto.usuario_id == ctx.uid, HistorialExtracto.estado != "error").all():
+        cuenta = next((c for c in cuentas if c.id == h.cuenta_id), None)
+        if cuenta is None or producto_de_cuenta(cuenta) == CREDITO or h.id in ctx.excluidos:
+            continue
+        fila = rx.correo_de(db, h)
+        if fila is None or not rx.es_de_tarjeta(h, cuenta, fila) or at._destino(h, cuenta, cuentas, fila) is not None:
+            continue
+        marca = palabras_marca(cuenta.nombre)
+        candidatas = [c for c in cuentas if c.id != cuenta.id and producto_de_cuenta(c) == CREDITO
+                      and (c.moneda or "COP") == (cuenta.moneda or "COP") and marca & palabras_marca(c.nombre)]
+        if len(candidatas) < 2:
+            continue
+        lectura = _cargar(h.lectura_json) or {}
+        u4 = str(lectura.get("ultimos4") or "")
+        if not u4:
+            previa = _marca(db, ctx.uid, PREFIJO_U4 + h.id)
+            visto = _instante(previa.valor) if previa is not None else None
+            if visto and _ahora() - visto < ESPERA_NULO:
+                continue
+            if not ctx.reservar(1):
+                break
+            ctx.unidades += 1
+            try:
+                u4 = detectar_ultimos4(_texto_del_pdf(db, ctx.usuario, h) or "")
+            except Exception as e:  # noqa: BLE001
+                db.rollback()
+                logger.warning("Autoarreglo: no pude leer los dígitos (usuario %s): %s", ctx.uid[:8], type(e).__name__)
+                u4 = ""
+            if not u4:
+                _poner(db, ctx.uid, PREFIJO_U4 + h.id, _ahora().isoformat())
+                continue
+        con = [c for c in candidatas if u4 in _ultimos4_de_cuenta(c)]
+        if len(con) == 1 and lectura.get("ultimos4") != u4:
+            h.lectura_json = _json({**lectura, "ultimos4": u4})
+            db.commit()
+            hechos += 1
+    return hechos
+
+
 def _paso_tarjetas(ctx: _Ctx) -> dict:
     db = ctx.db
     reparadas = _reparar_fechas(ctx)
+    try:
+        _desempatar_tarjetas(ctx)
+    except Exception:  # noqa: BLE001 - desempatar es un extra: si falla, queda ambiguo como antes
+        db.rollback()
+        logger.warning("Autoarreglo: desempate de tarjetas falló (usuario %s)", ctx.uid[:8], exc_info=True)
     ambiguas = _tarjetas_ambiguas(db, ctx.uid)
     if ambiguas:
         ctx.decidir("varias_tarjetas", ambiguas)
@@ -747,9 +812,29 @@ def avisar_cuadre_roto(db: Session, uid: str, cuadre: list[dict]) -> int:
     return avisados
 
 
+def _arreglos_seguros(ctx: _Ctx) -> dict:
+    """Lo que se puede ordenar SIN preguntar (cada cosa, en su fase, queda en el lote y se deshace): traslados exactos entre tus
+    cuentas, sobrantes que están en el extracto de otra cuenta tuya y el descuadre con una sola causa exacta. Un fallo aquí
+    no impide medir el cuadre."""
+    from app import cuadre_auto, sobrantes_auto, traslados_auto
+
+    hecho: dict = {}
+    for clave, paso in (("traslados", lambda: traslados_auto.marcar_seguros(ctx.db, ctx.uid)),
+                        ("sobrantes", lambda: sobrantes_auto.mover_sobrantes(ctx.db, ctx.usuario, ctx.excluidos)),
+                        ("causas", lambda: cuadre_auto.resolver(ctx))):
+        try:
+            hecho[clave] = paso()
+            ctx.cerrar_fase("sobrantes" if clave == "sobrantes" else "cuadre")
+        except Exception:  # noqa: BLE001
+            ctx.db.rollback()
+            logger.exception("Autoarreglo: falló %s (usuario %s)", clave, ctx.uid[:8])
+    return hecho
+
+
 def _paso_cuadre(ctx: _Ctx) -> dict:
+    hecho = _arreglos_seguros(ctx)
     ctx.cuadre = cierre_extractos.cuadre_por_cuenta(ctx.db, ctx.uid)
-    return {"hecho": 0, "quedan": 0, "alertas": avisar_cuadre_roto(ctx.db, ctx.uid, ctx.cuadre)}
+    return {"hecho": 0, "quedan": 0, "alertas": avisar_cuadre_roto(ctx.db, ctx.uid, ctx.cuadre), "seguros": hecho}
 
 
 _EJECUTORES = {"errores": _paso_errores, "tarjetas": _paso_tarjetas, "ajustes": _paso_ajustes,
@@ -787,7 +872,7 @@ def resumen_lote(db: Session, uid: str, lote: str) -> dict:
     filas = _filas_del_lote(db, uid, lote)
     c = {"extractos_movidos": 0, "compras_corregidas": 0, "pagos_corregidos": 0, "repetidos_quitados": 0,
          "rendimientos_registrados": 0, "monto_rendimientos": 0.0, "lineas_importadas": 0, "ajustes_iniciales": 0,
-         "extractos_releidos": 0, "fechas_arregladas": 0, "duplicados_marcados": 0}
+         "extractos_releidos": 0, "fechas_arregladas": 0, "duplicados_marcados": 0, "traslados_marcados": 0, "sobrantes_movidos": 0}
     saldos: dict[str, dict] = {}
     detalle = []
     for f in filas:
@@ -803,6 +888,10 @@ def resumen_lote(db: Session, uid: str, lote: str) -> dict:
                 c["fechas_arregladas"] += 1
             else:
                 c["extractos_releidos"] += 1
+        elif f.tipo == "marcar_traslado":
+            c["traslados_marcados"] += 1
+        elif f.tipo == "mover_cuenta" and despues.get("_paso") == "sobrantes":
+            c["sobrantes_movidos"] += 1
         elif f.tipo == "corregir_tipo":
             c["compras_corregidas"] += 1
         elif f.tipo == "corregir_monto":
@@ -858,6 +947,11 @@ def texto_resumen(c: dict) -> str:
         partes.append(f"corregí las fechas de {_n(c['fechas_arregladas'], 'extracto', 'extractos')}")
     if c["duplicados_marcados"]:
         partes.append(f"aparté {_n(c['duplicados_marcados'], 'extracto repetido', 'extractos repetidos')} (no toqué tus movimientos)")
+    if c["traslados_marcados"]:
+        n = c["traslados_marcados"] // 2 or 1  # cada traslado son dos movimientos: la salida y la entrada
+        partes.append(f"marqué {_n(n, 'traslado', 'traslados')} entre tus cuentas")
+    if c["sobrantes_movidos"]:
+        partes.append(f"pasé {_n(c['sobrantes_movidos'], 'movimiento', 'movimientos')} a la cuenta donde está en tu extracto")
     if c["ajustes_iniciales"] and not partes:
         partes.append("actualicé el saldo con el que empezaron tus cuentas")
     return ("Listo, ordené tus cuentas: " + ", ".join(partes) + ".") if partes else "Tus cuentas ya estaban ordenadas."
@@ -997,6 +1091,8 @@ def _revertir_mov(db: Session, f: ArregloAuto, cuentas: dict[str, Cuenta]) -> No
         c_ahora = cuentas.get(actual.cuenta_id) or bloquear_cuenta(db, actual.cuenta_id)
         c_ahora.saldo = round((c_ahora.saldo or 0) - delta_saldo(actual), 2)
         _restaurar_campos(actual, antes)
+        if despues.get("_paso") == "sobrantes":  # lo respaldaba el extracto de la cuenta nueva; vuelve a quedar sin respaldo
+            actual.conciliado_en = actual.extracto_id = None
         c_antes = cuentas.get(actual.cuenta_id) or bloquear_cuenta(db, actual.cuenta_id)
         c_antes.saldo = round((c_antes.saldo or 0) + delta_saldo(actual), 2)
         if antes.get("cuenta_id") != despues.get("cuenta_id"):
@@ -1031,6 +1127,22 @@ def _ids_de_cuentas(filas: list[ArregloAuto]) -> set[str]:
     return ids
 
 
+def _deshacer_filas(db: Session, usuario_id: str, pendientes: list[ArregloAuto]) -> None:
+    """Revierte esas filas en orden inverso, con las cuentas bloqueadas (siempre por id). Sin commit. Lanza `Inconsistente`."""
+    cuentas = {}
+    for cid in sorted(_ids_de_cuentas(pendientes)):
+        c = bloquear_cuenta(db, cid)
+        if c is not None and c.usuario_id == usuario_id:
+            cuentas[cid] = c
+    for f in sorted(pendientes, key=lambda x: (x.creado_en, x.id), reverse=True):
+        if f.tipo == "historial":
+            _revertir_historial(db, f)
+        elif f.tipo in TIPOS_MOV:
+            _revertir_mov(db, f, cuentas)
+        f.revertido_en = _ahora()
+    db.flush()
+
+
 def deshacer_lote(db: Session, usuario_id: str, lote_id: str) -> dict:
     """Revierte el lote COMPLETO en orden inverso (con bloqueo de las cuentas). Idempotente. Si algo posterior dejó un
     cambio inconsistente → 409 y no se toca nada. Tras deshacer, esos extractos no se vuelven a ordenar solos y el orden
@@ -1045,20 +1157,8 @@ def deshacer_lote(db: Session, usuario_id: str, lote_id: str) -> dict:
     if token is None:
         raise HTTPException(status_code=409, detail="Estoy ordenando tus cuentas ahora mismo. Intenta de nuevo en un momento.")
     try:
-        ids = sorted(_ids_de_cuentas(pendientes))
-        cuentas = {}
-        for cid in ids:  # siempre en el mismo orden (por id), como el resto de operaciones de saldo
-            c = bloquear_cuenta(db, cid)
-            if c is not None and c.usuario_id == usuario_id:
-                cuentas[cid] = c
         try:
-            for f in sorted(pendientes, key=lambda x: (x.creado_en, x.id), reverse=True):
-                if f.tipo == "historial":
-                    _revertir_historial(db, f)
-                elif f.tipo in TIPOS_MOV:
-                    _revertir_mov(db, f, cuentas)
-                f.revertido_en = _ahora()
-            db.flush()
+            _deshacer_filas(db, usuario_id, pendientes)
         except Inconsistente as e:
             db.rollback()
             raise HTTPException(status_code=409, detail=f"No pude deshacerlo: {e}. Lo que hiciste después lo hace inconsistente; no cambié nada.") from e
@@ -1109,6 +1209,8 @@ def _frase_de_arreglo(f: ArregloAuto, nombres: dict[str, str]) -> str:
     antes, despues = _cargar(f.antes) or {}, _cargar(f.despues) or {}
     if f.tipo == "quitar_repetido":
         return "quité este movimiento porque era repetido de otro"
+    if f.tipo == "marcar_traslado":
+        return "lo marqué como traslado entre tus cuentas: salió de una y entró a la otra por el mismo valor, así que no cuenta como gasto ni ingreso"
     if f.tipo == "mover_cuenta":
         de, a = nombres.get(antes.get("cuenta_id"), "otra cuenta"), nombres.get(despues.get("cuenta_id"), "otra cuenta")
         return f"pasé este movimiento de «{de}» a «{a}», que es donde está en tu extracto"
