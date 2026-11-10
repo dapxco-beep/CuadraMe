@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { EsqueletoPantalla } from '../components/Esqueletos'
 import { Link, useParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
-import { ArrowLeft, ArrowLeftRight, ChevronRight, Copy, Info, Pencil, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, ChevronDown, ChevronRight, Copy, Info, Pencil, Trash2, X } from 'lucide-react'
 import { CATEGORIA_PAGO_TARJETA, esPagoTarjeta } from '../lib/contabilidad'
 import Icono from '../components/Icono'
 import Ayudita from '../components/Ayudita'
@@ -23,6 +23,7 @@ import { BotonLapiz, EditorNombre, PistaBanco } from '../components/NombreEditab
 import { limpiarNombre, MIN_REPETICIONES_NOMBRE, nombreDe, tieneNombrePropio } from '../lib/tituloMovimiento'
 import { parchearEnCaches, quitarDeCaches } from '../lib/useEstadoLista'
 import InputMonto from '../components/InputMonto'
+import SelectorCategoria from '../components/SelectorCategoria'
 import CompartirEnParche from '../components/CompartirEnParche'
 import {
   candidatosContraparte,
@@ -53,6 +54,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
   const [movimiento, setMovimiento] = useState(null)
   const [noEncontrado, setNoEncontrado] = useState(false)
   const [eliminando, setEliminando] = useState(false)
+  const [elegirCategoria, setElegirCategoria] = useState(false)
   const [editando, setEditando] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [form, setForm] = useState(null)
@@ -463,16 +465,28 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
           )}
           <label className="block">
             <span className="text-xs text-ink-soft">Categoría</span>
-            <select
-              className={`${campo} mt-1`}
-              value={form.categoria}
-              onChange={(e) => setForm({ ...form, categoria: e.target.value, subcategoria: '' })}
+            {/* Selector con búsqueda en vez del <select> nativo (la lista de categorías puede ser larga) */}
+            <button
+              type="button"
+              aria-label="Categoría"
+              aria-haspopup="dialog"
+              onClick={() => setElegirCategoria(true)}
+              className={`${campo} mt-1 flex items-center justify-between text-left`}
             >
-              {[...new Set([form.categoria, ...nombresDe(form.tipo)])].map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+              <span className="truncate">{form.categoria}</span>
+              <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-ink-soft" />
+            </button>
           </label>
+          {elegirCategoria && (
+            <SelectorCategoria
+              titulo="Categoría"
+              categoriaActual={form.categoria}
+              tipoMovimiento={form.tipo}
+              conSubcategorias={false}
+              onElegir={(cat) => setForm((f) => ({ ...f, categoria: cat, subcategoria: '' }))}
+              onCerrar={() => setElegirCategoria(false)}
+            />
+          )}
           {subsDe && subsDe(form.categoria).length > 0 && (
             <label className="block">
               <span className="text-xs text-ink-soft">Subcategoría (opcional)</span>

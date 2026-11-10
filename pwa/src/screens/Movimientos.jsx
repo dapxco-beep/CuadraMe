@@ -3,7 +3,7 @@ import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
 import { Boton } from '../components/ui'
 import { Link, useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router-dom'
-import { ArrowLeftRight, Check, RefreshCw, ChevronDown, ChevronRight, Download, ListChecks, MoreHorizontal, PieChart, Search, Shuffle, SlidersHorizontal, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeftRight, Check, RefreshCw, ChevronDown, ChevronRight, Download, ListChecks, MoreHorizontal, PieChart, Search, Shuffle, SlidersHorizontal, Tag, Trash2, Upload, X } from 'lucide-react'
 import Icono from '../components/Icono'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
@@ -38,7 +38,8 @@ import TarjetaMovimientosCorreo from '../components/TarjetaMovimientosCorreo'
 import { BotonLapiz, EditorNombre, PistaBanco } from '../components/NombreEditable'
 import { limpiarNombre, MIN_REPETICIONES_NOMBRE, nombreDe, tieneNombrePropio } from '../lib/tituloMovimiento'
 import { usePorRevisarCorreo } from '../lib/usePorRevisarCorreo'
-import { OPCIONES_BORRADO_VARIOS, vinoDeCorreoOExtracto } from '../lib/canales'
+import { OPCIONES_BORRADO, OPCIONES_BORRADO_VARIOS, vinoDeCorreoOExtracto } from '../lib/canales'
+import FilaDeslizable from '../components/FilaDeslizable'
 import { actualizarDesdeCorreo, resumenActualizacion } from '../lib/sincronizarGmail'
 import { useJalarParaRefrescar } from '../lib/jalarRefrescar'
 
@@ -52,7 +53,7 @@ const MARGEN_VENTANA = 800 // px extra arriba y abajo para que el scroll rápido
 // Una fila de la lista. Está memoizada: al categorizar UN movimiento solo se vuelve a pintar su
 // fila (las demás reciben las mismas props y React las salta), clave con miles de movimientos.
 const FilaMovimiento = memo(function FilaMovimiento({
-  m, icono, moneda, cuentaNombre, esSel, modoSel, panel, botonConfirmar, indice, onToggle, onChip, onConfirmar, onAbrir, onNombre,
+  m, icono, moneda, cuentaNombre, esSel, modoSel, panel, botonConfirmar, indice, onToggle, onChip, onConfirmar, onAbrir, onNombre, onBorrar,
 }) {
   const timer = useRef(null)
   const larga = useRef(false)
@@ -115,6 +116,13 @@ const FilaMovimiento = memo(function FilaMovimiento({
           direccion === 'income' ? 'bg-accent-2' : 'bg-ink'
         }`}
       />
+      <FilaDeslizable
+        desactivada={modoSel || panel}
+        acciones={[
+          ...(esTransfer ? [] : [{ id: 'categoria', texto: 'Categoría', icono: <Tag size={20} aria-hidden="true" />, onClick: () => onChip(m) }]),
+          { id: 'borrar', texto: 'Borrar', tono: 'peligro', confirmar: true, icono: <Trash2 size={20} aria-hidden="true" />, onClick: () => onBorrar?.(m) },
+        ]}
+      >
       <div className="flex items-start gap-3">
         <button
           type="button"
@@ -184,6 +192,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
           </span>
         </Link>
       </div>
+      </FilaDeslizable>
     </div>
   )
 })
@@ -821,6 +830,28 @@ export default function Movimientos() {
     }
   }
 
+  // Borrar una fila desde el gesto de deslizar: el segundo toque ya confirmó; si vino del correo o de un extracto
+  // se pregunta «¿Qué pasó?» igual que en el detalle. Optimista: sale de la lista y vuelve si el servidor falla.
+  async function eliminarUno(m) {
+    let motivo
+    if (m.fuente !== 'transferencia_interna' && vinoDeCorreoOExtracto(m)) {
+      motivo = await elegir('El saldo se ajusta como si nunca hubiera existido.', { titulo: '¿Qué pasó?', opciones: OPCIONES_BORRADO })
+      if (!motivo) return
+    }
+    const previa = movimientos
+    setMovimientos((prev) => prev.filter((x) => x.id !== m.id))
+    try {
+      await (motivo ? api.eliminarMovimiento(m.id, motivo) : api.eliminarMovimiento(m.id))
+      quitarDeCaches(m.id)
+      recargarCuentas?.()
+      recargarConteo()
+      avisar('Movimiento eliminado', 'ok')
+    } catch (err) {
+      setMovimientos(previa)
+      avisar(err.message || 'No se pudo eliminar. Revisa tu conexión e intenta de nuevo.')
+    }
+  }
+
   async function eliminarSeleccion() {
     const ids = [...seleccionados]
     const titulo = `¿Eliminar ${ids.length} ${ids.length === 1 ? 'movimiento' : 'movimientos'}?`
@@ -1362,6 +1393,7 @@ export default function Movimientos() {
                       onConfirmar={confirmarUno}
                       onAbrir={abrirPanel}
                       onNombre={abrirNombre}
+                      onBorrar={eliminarUno}
                     />
                   ))}
                 </div>
