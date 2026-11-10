@@ -146,7 +146,9 @@ export function normalizarPdf(r) {
     resumenTarjeta: r.resumen_tarjeta || null,
     completados: (r.review || []).filter((m) => m.estado === 'completado').map(filaInfo),
     // Los repetidos que la app ya unió sola (resuelto = 'unido') se muestran con su «Deshacer».
-    sobrantes: (r.review || []).filter((m) => m.estado === 'sobrante' || (m.estado === 'sobrante_resuelto' && m.resuelto === 'unido')).map((m) => ({ ...filaInfo(m), ...(m.resuelto === 'unido' ? { resuelto: 'unido' } : {}) })),
+    // Los que la app pasó sola a la cuenta donde está su extracto (resuelto = 'movido') dicen a cuál.
+    sobrantes: (r.review || []).filter((m) => m.estado === 'sobrante' || (m.estado === 'sobrante_resuelto' && (m.resuelto === 'unido' || m.resuelto === 'movido')))
+      .map((m) => ({ ...filaInfo(m), ...(m.resuelto === 'unido' ? { resuelto: 'unido' } : {}), ...(m.resuelto === 'movido' ? { resuelto: `movido a ${m.movido_a || 'otra cuenta'}` } : {}) })),
     propuestaTarjeta: r.propuesta_tarjeta || null,
     saldosExtracto: r.saldos_extracto || null, // saldos que imprime el extracto (para cuadrar con el banco)
     avisoCuenta: r.aviso_cuenta || null, // el PDF parece de otro producto del mismo banco (tarjeta vs ahorros)
