@@ -1,6 +1,6 @@
-// Catálogo de atajos en «Registro automático»: los 4 atajos con su botón de instalar, para quién sirven y sus pasos.
+// Guía de atajos en «Registro automático»: la persona elige qué conectar y ve solo sus pasos en tres etapas (Instalar, Activar, Probar).
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from './userEvent.js'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -17,7 +17,7 @@ import { DialogosProvider } from '../lib/DialogosContext'
 import CatalogoAtajos, { ATAJOS } from '../components/CatalogoAtajos'
 import ConectarDispositivo from '../screens/ConectarDispositivo'
 import {
-  ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL,
+  ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL, ATAJOS_ACTUALIZADOS,
 } from '../lib/atajosEnlaces'
 
 const CLAVE = { clave: 'cdm_demo', cargando: false, tieneClave: true, prefijo: '', recienCreada: false, crearNueva: vi.fn() }
@@ -31,64 +31,114 @@ const montarCatalogo = () =>
     </DialogosProvider>
   )
 
+const elegir = (nombre) => userEvent.click(screen.getByRole('button', { name: new RegExp(nombre) }))
+
 beforeEach(() => {
   Object.values(api).forEach((f) => f.mockReset())
   capturas.CAPTURAS_REALES = {}
   localStorage.clear()
 })
 
-describe('Catálogo de atajos', () => {
-  it('muestra los 3 atajos, cada uno con su botón de instalar al enlace correcto', () => {
+describe('Guía de atajos', () => {
+  it('sin elegir nada muestra las 3 opciones y pide elegir; la clave se copia en el mismo lugar', () => {
     montarCatalogo()
-    const esperados = {
-      'apple-pay': ATAJO_ICLOUD_URL,
-      notificaciones: ATAJO_NOTIFICACIONES_URL,
-      registrar: ATAJO_REGISTRAR_URL,
-    }
-    expect(ATAJOS.map((a) => a.id)).toEqual(Object.keys(esperados))
-    for (const [id, url] of Object.entries(esperados)) {
-      const tarjeta = screen.getByTestId(`atajo-${id}`)
-      const boton = within(tarjeta).getByRole('link', { name: /^Instalar CuadraMe/ })
-      expect(boton).toHaveAttribute('href', url)
-      expect(boton).toHaveAttribute('target', '_blank')
-      expect(boton).toHaveAttribute('rel', expect.stringContaining('noopener'))
-    }
-  })
-
-  it('cada atajo dice para quién es y trae sus pasos numerados', () => {
-    montarCatalogo()
-    for (const a of ATAJOS) {
-      const tarjeta = screen.getByTestId(`atajo-${a.id}`)
-      expect(tarjeta).toHaveTextContent(`Para ti si: ${a.paraQuien}`)
-      const pasos = within(screen.getByTestId(`pasos-${a.id}`)).getAllByRole('listitem')
-      expect(pasos.length).toBeGreaterThanOrEqual(4)
-    }
-    expect(screen.getByTestId('pasos-registrar')).toHaveTextContent('Tocar atrás')
-    expect(screen.getByTestId('pasos-notificaciones')).toHaveTextContent('Cuando recibo una notificación')
-    expect(screen.getByTestId('pasos-apple-pay')).toHaveTextContent('Transacción')
-  })
-
-  it('ayuda a elegir y muestra la clave para copiarla en el mismo lugar', () => {
-    montarCatalogo()
-    const guia = screen.getByTestId('cual-instalo')
-    expect(guia).toHaveTextContent('Pagas con Apple Pay')
-    expect(guia).toHaveTextContent('Tu banco no avisa')
+    const opciones = screen.getByTestId('cual-instalo')
+    expect(ATAJOS.map((a) => a.id)).toEqual(['apple-pay', 'notificaciones', 'registrar'])
+    expect(opciones).toHaveTextContent('Pagos con Apple Pay')
+    expect(opciones).toHaveTextContent('Mi banco me avisa')
+    expect(opciones).toHaveTextContent('Mi banco no avisa al enviar')
+    expect(screen.getByTestId('elige-una-opcion')).toBeInTheDocument()
+    expect(screen.queryByTestId('atajo-registrar')).toBeNull()
     expect(screen.getByTestId('clave-catalogo')).toHaveTextContent('cdm_demo')
     expect(screen.getByRole('button', { name: 'Copiar clave' })).toBeInTheDocument()
   })
 
-  it('usa las capturas reales cuando existen y el dibujo propio cuando no', () => {
+  it('al elegir, muestra SOLO ese atajo, con su botón Instalar al enlace correcto', async () => {
     montarCatalogo()
+    const esperados = { 'apple-pay': ATAJO_ICLOUD_URL, notificaciones: ATAJO_NOTIFICACIONES_URL, registrar: ATAJO_REGISTRAR_URL }
+    for (const a of ATAJOS) {
+      await elegir(a.opcion.split(' (')[0])
+      const tarjeta = screen.getByTestId(`atajo-${a.id}`)
+      const boton = within(tarjeta).getByRole('link', { name: /^Instalar CuadraMe/ })
+      expect(boton).toHaveAttribute('href', esperados[a.id])
+      expect(boton).toHaveAttribute('target', '_blank')
+      expect(boton).toHaveAttribute('rel', expect.stringContaining('noopener'))
+      expect(screen.getAllByRole('article')).toHaveLength(1) // solo la guía elegida
+      expect(tarjeta).toHaveTextContent(`Para ti si: ${a.paraQuien}`)
+    }
+  })
+
+  it('cada guía trae tres etapas (Instalar, Activar, Probar) con sus pasos numerados', async () => {
+    montarCatalogo()
+    for (const a of ATAJOS) {
+      await elegir(a.opcion.split(' (')[0])
+      const guia = screen.getByTestId(`atajo-${a.id}`)
+      for (const fase of ['instalar', 'activar', 'probar']) expect(within(guia).getByTestId(`fase-${fase}`)).toBeInTheDocument()
+      expect(within(screen.getByTestId(`pasos-${a.id}`)).getAllByRole('listitem').length).toBeGreaterThanOrEqual(5)
+      expect(within(guia).getByTestId('fase-instalar')).toHaveTextContent('pida tu clave, pégala')
+    }
+    await elegir('Mi banco no avisa')
+    expect(screen.getByTestId('pasos-registrar')).toHaveTextContent('Tocar atrás')
+    await elegir('Mi banco me avisa')
+    expect(screen.getByTestId('pasos-notificaciones')).toHaveTextContent('Cuando recibo una notificación')
+    await elegir('Pagos con Apple Pay')
+    expect(screen.getByTestId('pasos-apple-pay')).toHaveTextContent('Transacción')
+  })
+
+  it('resalta en negrita los textos exactos de los botones de iOS', async () => {
+    montarCatalogo()
+    await elegir('Mi banco no avisa')
+    const negritas = [...screen.getByTestId('fase-activar').querySelectorAll('b')].map((b) => b.textContent)
+    expect(negritas).toEqual(expect.arrayContaining(['«Tocar atrás»', '«Doble toque»', '«CuadraMe Registrar»']))
+  })
+
+  it('recuerda lo que elegiste la próxima vez', async () => {
+    const primera = montarCatalogo()
+    await elegir('Mi banco no avisa')
+    primera.unmount()
+    montarCatalogo()
+    expect(screen.getByTestId('atajo-registrar')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Mi banco no avisa/ })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('usa las capturas reales cuando existen y el dibujo propio cuando no', async () => {
+    const primera = montarCatalogo()
+    await elegir('Mi banco no avisa')
     expect(screen.getByTestId('atajo-registrar').querySelectorAll('img')).toHaveLength(0)
     expect(screen.getByTestId('atajo-registrar').querySelectorAll('svg[role="img"]').length).toBeGreaterThan(0)
+    primera.unmount()
     capturas.CAPTURAS_REALES = { registrar: [{ src: '/guia/registrar-1.webp', alt: 'Tocar atrás en Ajustes' }] }
-    const { container } = montarCatalogo()
+    const { container } = montarCatalogo() // la elección quedó guardada
     const real = container.querySelector('img[src="/guia/registrar-1.webp"]')
     expect(real).not.toBeNull()
     expect(real).toHaveAttribute('alt', 'Tocar atrás en Ajustes')
   })
 
-  it('en la pestaña «Registro automático» de iPhone el catálogo aparece desde la primera pantalla', async () => {
+  it('«Comprobar si llegó» dice que llegó cuando el atajo se conectó hace pocos minutos', async () => {
+    api.conexionesEstado.mockResolvedValue({ atajo: { ultimo_uso: new Date(Date.now() - 2 * 60000).toISOString() } })
+    montarCatalogo()
+    await elegir('Mi banco no avisa')
+    await userEvent.click(screen.getByRole('button', { name: 'Comprobar si llegó' }))
+    await waitFor(() => expect(screen.getByTestId('comprobar-llegada').querySelector('[data-resultado="llego"]')).not.toBeNull())
+    expect(screen.getByTestId('comprobar-llegada')).toHaveTextContent('¡Llegó!')
+  })
+
+  it('«Comprobar si llegó» explica qué hacer si no llegó nada reciente o si falla', async () => {
+    api.conexionesEstado.mockResolvedValueOnce({ atajo: { ultimo_uso: null } })
+    montarCatalogo()
+    await elegir('Mi banco me avisa')
+    await userEvent.click(screen.getByRole('button', { name: 'Comprobar si llegó' }))
+    await waitFor(() => expect(screen.getByTestId('comprobar-llegada').querySelector('[data-resultado="nada"]')).not.toBeNull())
+    expect(screen.getByTestId('comprobar-llegada')).toHaveTextContent('Todavía no llega nada')
+    api.conexionesEstado.mockResolvedValueOnce({ atajo: { ultimo_uso: new Date(Date.now() - 3 * 3600000).toISOString() } })
+    await userEvent.click(screen.getByRole('button', { name: 'Comprobar si llegó' }))
+    await waitFor(() => expect(screen.getByTestId('comprobar-llegada')).toHaveTextContent('La última conexión fue'))
+    api.conexionesEstado.mockRejectedValueOnce(new Error('sin red'))
+    await userEvent.click(screen.getByRole('button', { name: 'Comprobar si llegó' }))
+    await waitFor(() => expect(screen.getByTestId('comprobar-llegada').querySelector('[data-resultado="error"]')).not.toBeNull())
+  })
+
+  it('en la pestaña «Registro automático» de iPhone la guía aparece desde la primera pantalla', async () => {
     api.apiKey.mockResolvedValue({ api_key: 'cdm_demo', tiene_clave: true, nueva: false })
     api.conexionesEstado.mockResolvedValue({ atajo: { ultimo_uso: null } })
     localStorage.setItem('cuadrame:atajo-paso', '-1')
@@ -100,9 +150,8 @@ describe('Catálogo de atajos', () => {
       </DialogosProvider>
     )
     expect(await screen.findByTestId('catalogo-atajos')).toBeInTheDocument()
-    expect(screen.getByTestId('atajo-notificaciones')).toBeInTheDocument()
-    expect(screen.getByTestId('atajo-registrar')).toBeInTheDocument()
-    expect(screen.queryByTestId('atajo-cierre')).toBeNull() // el atajo de cierre de app ya no se ofrece
+    expect(screen.getByTestId('cual-instalo')).toHaveTextContent('Mi banco me avisa')
+    expect(screen.queryByText(/CuadraMe Cierre/)).toBeNull() // el atajo de cierre de app ya no se ofrece
   })
 
   it('explica cómo cambiar un atajo anterior y qué revisar si algo falla', () => {
@@ -119,7 +168,6 @@ describe('Catálogo de atajos', () => {
   })
 
   it('avisa que los atajos se actualizaron, y el aviso se cierra y no vuelve hasta la próxima versión', async () => {
-    const { ATAJOS_ACTUALIZADOS } = await import('../lib/atajosEnlaces')
     const primera = montarCatalogo()
     const aviso = screen.getByTestId('aviso-atajos-actualizados')
     expect(aviso).toHaveTextContent(`Actualizamos los atajos (${ATAJOS_ACTUALIZADOS.fecha})`)

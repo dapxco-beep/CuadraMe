@@ -5,26 +5,43 @@ import Icono from './Icono'
 import {
   CapturaAutomatizacion, CapturaGesto, CapturaNotificacion, CapturaPegarClave,
 } from './AtajoIlustraciones'
+import { api } from '../lib/api'
 import { CAPTURAS_REALES } from '../lib/capturasGuia'
+import { haceCuanto } from '../lib/sincronizarGmail'
 import {
   ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL, ATAJOS_ACTUALIZADOS,
 } from '../lib/atajosEnlaces'
 
-// Los atajos de CuadraMe para iPhone en un solo lugar: qué hace cada uno, para qué banco sirve, el botón para instalarlo
-// y sus pasos. Lo que registran queda siempre «por confirmar». El nombre debe coincidir con el del atajo compartido.
+// Los atajos de CuadraMe para iPhone como una guía corta: la persona elige QUÉ quiere conectar y ve solo los pasos de eso, en tres
+// etapas (Instalar, Activar, Probar). Lo que registran queda siempre «por confirmar». El nombre debe coincidir con el del atajo compartido.
+// En los pasos, lo que va entre « » es texto EXACTO de un botón de iOS y se resalta para encontrarlo rápido.
+const INSTALAR = [
+  'Toca «Instalar» (botón de abajo). Se abre la app Atajos.',
+  'Toca «Agregar atajo». Cuando pida tu clave, pégala (la copiaste arriba).',
+]
+
 export const ATAJOS = [
   {
     id: 'apple-pay',
     nombre: 'CuadraMe Apple Pay',
     icono: CreditCard,
+    opcion: 'Pagos con Apple Pay',
     paraQuien: 'Pagas con Apple Pay',
     queHace: 'Cada pago que haces con Apple Pay se anota solo, con el comercio, el valor y la tarjeta.',
     url: ATAJO_ICLOUD_URL,
-    pasos: [
-      'Toca «Instalar», luego «Agregar atajo» y pega tu clave de CuadraMe (cópiala arriba, en «Tu clave»).',
-      'Abre la app Atajos, ve a «Automatización» y toca + (arriba a la derecha). Elige «Transacción».',
-      'Marca tus tarjetas de Wallet, toca «Siguiente», elige «Ejecutar atajo» y escoge «CuadraMe Apple Pay».',
-      'Activa «Ejecutar inmediatamente» y toca «Listo». Haz un pago pequeño: aparece «por confirmar» en CuadraMe.',
+    fases: [
+      { id: 'instalar', titulo: 'Instalar', pasos: INSTALAR },
+      {
+        id: 'activar',
+        titulo: 'Activar (una sola vez)',
+        pasos: [
+          'En Atajos abre «Automatización» y toca «+» (arriba a la derecha).',
+          'Elige «Transacción», marca tus tarjetas de Wallet y toca «Siguiente».',
+          'Elige «Ejecutar atajo» y escoge «CuadraMe Apple Pay».',
+          'Activa «Ejecutar inmediatamente» y toca «Listo».',
+        ],
+      },
+      { id: 'probar', titulo: 'Probar', pasos: ['Haz un pago pequeño con Apple Pay. Debe salir una notificación de CuadraMe y el movimiento queda «por confirmar».'] },
     ],
     dibujos: [<CapturaPegarClave key="a" />, <CapturaAutomatizacion key="b" />],
     leyendas: ['Al instalar, pega tu clave', 'Así queda la automatización'],
@@ -33,15 +50,24 @@ export const ATAJOS = [
     id: 'notificaciones',
     nombre: 'CuadraMe Notificaciones',
     icono: Bell,
+    opcion: 'Mi banco me avisa (Nequi, Nu…)',
     paraQuien: 'Tu banco te avisa al pagar o recibir (Nequi, Nu…)',
     queHace: 'Lee el aviso que te manda el banco y lo registra. Se instala una sola vez y sirve para todos tus bancos.',
     url: ATAJO_NOTIFICACIONES_URL,
     nota: 'Necesita iOS 27. Cada banco necesita su propia automatización (iOS vigila una app por automatización), pero todas usan este mismo atajo.',
-    pasos: [
-      'Toca «Instalar», luego «Agregar atajo» y pega tu clave de CuadraMe.',
-      'En la app Atajos ve a «Automatización», toca + y elige «Cuando recibo una notificación».',
-      'Elige la app de tu banco (por ejemplo Nequi), toca «Siguiente», elige «Ejecutar atajo» y escoge «CuadraMe Notificaciones».',
-      'Activa «Ejecutar inmediatamente». Repite los pasos 2 y 3 con cada banco que te avise.',
+    fases: [
+      { id: 'instalar', titulo: 'Instalar', pasos: INSTALAR },
+      {
+        id: 'activar',
+        titulo: 'Activar (una vez por banco)',
+        pasos: [
+          'En Atajos abre «Automatización» y toca «+».',
+          'Elige «Cuando recibo una notificación» y escoge la app de tu banco (por ejemplo Nequi). Toca «Siguiente».',
+          'Elige «Ejecutar atajo» y escoge «CuadraMe Notificaciones».',
+          'Activa «Ejecutar inmediatamente» y toca «Listo». Repite con cada banco que te avise.',
+        ],
+      },
+      { id: 'probar', titulo: 'Probar', pasos: ['Haz un pago pequeño, o pídele a alguien que te envíe $1. Debe salir una notificación de CuadraMe y el movimiento queda «por confirmar».'] },
     ],
     dibujos: [<CapturaNotificacion key="a" />],
     leyendas: ['Así queda la automatización de tu banco'],
@@ -50,22 +76,44 @@ export const ATAJOS = [
     id: 'registrar',
     nombre: 'CuadraMe Registrar',
     icono: Hand,
+    opcion: 'Mi banco no avisa al enviar (Nu…)',
     paraQuien: 'Tu banco NO avisa al enviar plata (Nu…)',
     queHace: 'Con un gesto lee el comprobante que tienes en pantalla y lo registra. La foto no sale de tu iPhone: solo viaja el texto.',
     url: ATAJO_REGISTRAR_URL,
-    nota: 'Casi nunca pregunta nada: reconoce solo el banco, el valor y a quién le enviaste. Solo pregunta si no está seguro, y aprende.',
-    pasos: [
-      'Toca «Instalar», luego «Agregar atajo» y pega tu clave de CuadraMe.',
-      'Elige tu gesto. El más fácil: Ajustes › Accesibilidad › Tocar › Tocar atrás › «Doble toque» › «CuadraMe Registrar». También sirve el Botón de acción (iPhone 15 Pro o más nuevo) o decir «Oye Siri, CuadraMe Registrar».',
-      'Envía tu plata en el banco y deja abierto el comprobante.',
-      'Haz tu gesto (por ejemplo, toca dos veces la parte de atrás del iPhone). En unos segundos aparece «por confirmar» en CuadraMe.',
+    nota: 'Casi nunca pregunta nada: reconoce solo el banco, el valor y a quién le enviaste. Si no sabe de qué banco es, lo guarda en la cuenta que más usas y te lo dice.',
+    fases: [
+      { id: 'instalar', titulo: 'Instalar', pasos: INSTALAR },
+      {
+        id: 'activar',
+        titulo: 'Elegir tu gesto (una sola vez)',
+        pasos: [
+          'Abre Ajustes › Accesibilidad › Tocar › «Tocar atrás».',
+          'Toca «Doble toque» y, al final de la lista, en «Atajos», escoge «CuadraMe Registrar».',
+          'Alternativas: el Botón de acción (iPhone 15 Pro o más nuevo) o decir «Oye Siri, CuadraMe Registrar».',
+        ],
+      },
+      {
+        id: 'probar',
+        titulo: 'Probar',
+        pasos: [
+          'Envía tu plata en el banco y deja abierto el comprobante.',
+          'Toca dos veces la parte de atrás del iPhone. En unos segundos sale una notificación de CuadraMe y el movimiento queda «por confirmar».',
+        ],
+      },
     ],
     dibujos: [<CapturaGesto key="a" />],
     leyendas: ['Así eliges tu gesto en Ajustes'],
   },
 ]
 
-// Una captura REAL si la hay para este atajo y este paso; si no, el dibujo propio.
+// Lo que va entre « » es texto exacto de un botón de iOS: se resalta.
+function Resaltar({ texto }) {
+  return texto.split(/(«[^»]*»)/).map((trozo, i) =>
+    trozo.startsWith('«') ? <b key={i} className="text-ink">{trozo}</b> : <span key={i}>{trozo}</span>
+  )
+}
+
+// Una captura REAL si la hay para este atajo y este dibujo; si no, el dibujo propio.
 function Imagen({ id, indice, dibujo, leyenda }) {
   const real = (CAPTURAS_REALES[id] || [])[indice]
   return (
@@ -80,7 +128,75 @@ function Imagen({ id, indice, dibujo, leyenda }) {
   )
 }
 
-function TarjetaAtajo({ a }) {
+// «¿Ya llegó?»: el servidor anota cada vez que un atajo se conecta. Si fue hace poco, la prueba funcionó.
+function ComprobarLlegada() {
+  const [estado, setEstado] = useState(null)
+
+  async function comprobar() {
+    setEstado({ tipo: 'cargando' })
+    try {
+      const r = await api.conexionesEstado()
+      const uso = r?.atajo?.ultimo_uso || null
+      const t = uso ? Date.parse(/(Z|[+-]\d\d:?\d\d)$/.test(uso) ? uso : `${uso}Z`) : NaN
+      const minutos = Number.isNaN(t) ? Infinity : (Date.now() - t) / 60000
+      if (minutos <= 10) {
+        setEstado({ tipo: 'llego', texto: `¡Llegó! Tu atajo se conectó ${haceCuanto(uso)}. Mira «Por confirmar» en Movimientos.` })
+      } else {
+        setEstado({
+          tipo: 'nada',
+          texto: `${uso ? `La última conexión fue ${haceCuanto(uso)}. ` : 'Todavía no llega nada. '}Haz la prueba y toca «Comprobar» otra vez. Si sigue igual, mira «¿No funciona?» más abajo.`,
+        })
+      }
+    } catch {
+      setEstado({ tipo: 'error', texto: 'No pude comprobarlo ahora. Revisa tu conexión e inténtalo otra vez.' })
+    }
+  }
+
+  return (
+    <div className="mt-3" data-testid="comprobar-llegada">
+      <button
+        onClick={comprobar}
+        disabled={estado?.tipo === 'cargando'}
+        className="btn btn-suave btn-bloque inline-flex items-center justify-center gap-2 disabled:opacity-60"
+      >
+        {estado?.tipo === 'cargando' ? 'Comprobando…' : 'Comprobar si llegó'}
+      </button>
+      {estado?.texto && (
+        <p
+          role="status"
+          data-resultado={estado.tipo}
+          className={`text-sm mt-2 rounded-xl p-3 leading-relaxed ${estado.tipo === 'llego' ? 'bg-cuadra-soft font-semibold' : 'bg-paper text-ink-soft'}`}
+        >
+          <Resaltar texto={estado.texto} />
+        </p>
+      )}
+    </div>
+  )
+}
+
+function Fase({ n, fase, children }) {
+  return (
+    <section className="mt-4" aria-label={`${n}. ${fase.titulo}`} data-testid={`fase-${fase.id}`}>
+      <h4 className="flex items-center gap-2 text-sm font-bold">
+        <span
+          className="shrink-0 w-6 h-6 rounded-full bg-accent text-paper-raised text-xs font-bold flex items-center justify-center"
+          aria-hidden="true"
+        >
+          {n}
+        </span>
+        {fase.titulo}
+      </h4>
+      <ol className="list-decimal pl-11 mt-2 space-y-1.5 text-sm text-ink-soft leading-relaxed">
+        {fase.pasos.map((p) => (
+          <li key={p}><Resaltar texto={p} /></li>
+        ))}
+      </ol>
+      {children}
+    </section>
+  )
+}
+
+function GuiaAtajo({ a }) {
   return (
     <article className="mt-3 rounded-2xl bg-paper-raised border border-line p-4" data-testid={`atajo-${a.id}`} aria-label={a.nombre}>
       <div className="flex items-start gap-3">
@@ -93,32 +209,43 @@ function TarjetaAtajo({ a }) {
         </div>
       </div>
       <p className="text-sm text-ink-soft mt-2 leading-relaxed">{a.queHace}</p>
-      <a
-        href={a.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="btn btn-primario btn-bloque mt-3 inline-flex items-center justify-center gap-2"
-        aria-label={`Instalar ${a.nombre}`}
-      >
-        <Icono icono={Download} tam="md" /> Instalar
-      </a>
-      <details className="mt-3" data-testid={`pasos-${a.id}`}>
-        <summary className="text-sm font-semibold cursor-pointer min-h-6">Paso a paso</summary>
-        <ol className="list-decimal pl-5 mt-2 space-y-2 text-sm text-ink-soft leading-relaxed">
-          {a.pasos.map((p) => (
-            <li key={p}>{p}</li>
-          ))}
-        </ol>
-        {a.dibujos.map((d, i) => (
-          <Imagen key={a.leyendas[i]} id={a.id} indice={i} dibujo={d} leyenda={a.leyendas[i]} />
+
+      <div data-testid={`pasos-${a.id}`}>
+        {a.fases.map((fase, i) => (
+          <Fase key={fase.id} n={i + 1} fase={fase}>
+            {fase.id === 'instalar' && (
+              <a
+                href={a.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primario btn-bloque mt-3 inline-flex items-center justify-center gap-2"
+                aria-label={`Instalar ${a.nombre}`}
+              >
+                <Icono icono={Download} tam="md" /> Instalar
+              </a>
+            )}
+            {fase.id === 'activar' &&
+              a.dibujos.map((d, j) => <Imagen key={a.leyendas[j]} id={a.id} indice={j} dibujo={d} leyenda={a.leyendas[j]} />)}
+            {fase.id === 'probar' && <ComprobarLlegada />}
+          </Fase>
         ))}
-        {a.nota && <p className="text-xs text-ink-soft mt-3 rounded-xl bg-paper p-3 leading-relaxed">{a.nota}</p>}
-      </details>
+      </div>
+      {a.nota && <p className="text-xs text-ink-soft mt-4 rounded-xl bg-paper p-3 leading-relaxed">{a.nota}</p>}
     </article>
   )
 }
 
 const CLAVE_AVISO = 'cuadrame:atajos-aviso'
+const CLAVE_ELEGIDO = 'cuadrame:atajo-elegido'
+
+function leerElegido() {
+  try {
+    const id = localStorage.getItem(CLAVE_ELEGIDO)
+    return ATAJOS.some((a) => a.id === id) ? id : null
+  } catch {
+    return null
+  }
+}
 
 // «Actualizamos los atajos»: iOS no los actualiza solo y la app no sabe qué versión tiene cada persona, así que se avisa a todos
 // hasta que cada quien lo cierre. Vuelve a salir cuando cambia ATAJOS_ACTUALIZADOS.version.
@@ -155,33 +282,63 @@ function AvisoActualizados() {
 }
 
 export default function CatalogoAtajos({ claveAtajo }) {
+  const [elegido, setElegido] = useState(leerElegido)
+  const atajo = ATAJOS.find((a) => a.id === elegido) || null
+
+  function elegir(id) {
+    setElegido(id)
+    try {
+      localStorage.setItem(CLAVE_ELEGIDO, id)
+    } catch {
+      /* sin almacenamiento la elección dura mientras la pantalla esté abierta */
+    }
+  }
+
   return (
     <section className="mx-6 mt-6" aria-label="Todos los atajos de CuadraMe" data-testid="catalogo-atajos">
-      <h2 className="text-lg font-bold">Atajos de CuadraMe para tu iPhone</h2>
+      <h2 className="text-lg font-bold">Conecta tu iPhone</h2>
       <p className="text-sm text-ink-soft mt-1 leading-relaxed">
-        Se instalan una vez y sirven para todos tus bancos. Lo que registran queda «por confirmar».
+        Tus pagos se anotan solos. Se instala una vez y sirve para todos tus bancos. Lo que registra queda «por confirmar» hasta que lo revises.
       </p>
       <AvisoActualizados />
 
-      <div className="mt-3 rounded-2xl bg-paper-raised border border-line p-4" data-testid="cual-instalo">
-        <h3 className="text-sm font-bold">¿Cuál instalo?</h3>
-        <ul className="mt-2 space-y-1.5 text-sm text-ink-soft leading-relaxed">
-          <li><b className="text-ink">Pagas con Apple Pay</b> → CuadraMe Apple Pay</li>
-          <li><b className="text-ink">Tu banco te avisa</b> cuando pagas o recibes → CuadraMe Notificaciones</li>
-          <li><b className="text-ink">Tu banco no avisa</b> al enviar plata (Nu) → CuadraMe Registrar</li>
-        </ul>
-        <p className="text-xs text-ink-soft mt-2">Puedes instalar varios: no se estorban.</p>
-      </div>
-
       <div className="mt-3 rounded-2xl bg-paper-raised border border-line p-4" data-testid="clave-catalogo">
-        <h3 className="text-sm font-bold">Tu clave de conexión</h3>
-        <p className="text-xs text-ink-soft mt-1 mb-2">Cada atajo te la pide al instalar. Cópiala aquí.</p>
+        <h3 className="text-sm font-bold">Primero: copia tu clave</h3>
+        <p className="text-xs text-ink-soft mt-1 mb-2">Cada atajo te la pide al instalarlo.</p>
         <ClaveAtajo {...claveAtajo} />
       </div>
 
-      {ATAJOS.map((a) => (
-        <TarjetaAtajo key={a.id} a={a} />
-      ))}
+      <div className="mt-3 rounded-2xl bg-paper-raised border border-line p-4" data-testid="cual-instalo">
+        <h3 className="text-sm font-bold">Luego: ¿qué quieres conectar?</h3>
+        <div role="group" aria-label="Qué quieres conectar" className="mt-2 grid gap-2">
+          {ATAJOS.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => elegir(a.id)}
+              aria-pressed={elegido === a.id}
+              className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left min-h-11 ${
+                elegido === a.id ? 'border-accent bg-paper' : 'border-line'
+              }`}
+            >
+              <span className="shrink-0 w-9 h-9 rounded-lg bg-accent-soft text-accent flex items-center justify-center" aria-hidden="true">
+                <Icono icono={a.icono} tam="md" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold">{a.opcion}</span>
+                <span className="block text-xs text-ink-soft">{a.nombre}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-ink-soft mt-2">Puedes conectar varios: no se estorban.</p>
+      </div>
+
+      {atajo ? (
+        <GuiaAtajo a={atajo} />
+      ) : (
+        <p className="text-sm text-ink-soft mt-3 text-center" data-testid="elige-una-opcion">Elige una opción y te muestro los pasos.</p>
+      )}
 
       <details className="mt-4 rounded-2xl bg-paper-raised border border-line p-4" data-testid="ya-lo-tenias">
         <summary className="text-sm font-bold cursor-pointer min-h-6">¿Ya tenías un atajo instalado?</summary>
@@ -190,7 +347,7 @@ export default function CatalogoAtajos({ claveAtajo }) {
           reconoce solo el banco y siempre te dice qué pasó. Los anteriores siguen funcionando, pero sin esas mejoras.
         </p>
         <ol className="list-decimal pl-5 mt-2 space-y-2 text-sm text-ink-soft leading-relaxed">
-          <li>Toca «Instalar» en el atajo de arriba y luego «Agregar atajo». Pega tu clave otra vez.</li>
+          <li>Elige arriba lo que quieres conectar y toca «Instalar». Luego «Agregar atajo», y pega tu clave otra vez.</li>
           <li>Si iOS lo agrega con un «2» al final, ese es el nuevo: en la app Atajos mantén presionado el viejo y toca «Eliminar».</li>
           <li>Abre «Automatización» y, en cada automatización que usaba el viejo, cambia «Ejecutar atajo» al nuevo.</li>
         </ol>
