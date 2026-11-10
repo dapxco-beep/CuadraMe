@@ -29,6 +29,12 @@ export default function SubirArchivos({ inicial = {}, onImportado }) {
       setVersion((v) => v + 1)
     }
     if (inicial.manual) setManual(true)
+    // Archivos recibidos de otra app: quedan en la lista, sin procesarse hasta que la persona confirme.
+    if (inicial.compartidos?.length) {
+      setRevision(null)
+      setArchivos(inicial.compartidos)
+      setVersion((v) => v + 1)
+    }
   }, [inicial.n]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const cuentaPedida = cuentas.find((c) => c.id === inicial.cuentaId)
