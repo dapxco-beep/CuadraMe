@@ -21,7 +21,7 @@ export function siguientePasoInicio({ cuentas = 0, movimientos = 0, sinCategoriz
     return {
       id: 'traer',
       titulo: 'Trae tus movimientos',
-      apoyo: 'Con el extracto de tu banco (PDF o Excel) o con los avisos de tu correo. También puedes anotar uno a mano.',
+      apoyo: 'Sube el extracto de tu banco o anota un gasto.',
       ruta: '/sincronizacion',
       accion: 'Traer extractos',
     }
@@ -30,7 +30,7 @@ export function siguientePasoInicio({ cuentas = 0, movimientos = 0, sinCategoriz
     return {
       id: 'categorizar',
       titulo: 'Ordena lo que más pesa (opcional)',
-      apoyo: 'No hace falta todo: con los comercios que más pesan o se repiten ya ves en qué se va tu plata.',
+      apoyo: 'Ordena los gastos más grandes y ya ves en qué se va tu plata.',
       ruta: '/categorizar',
       accion: 'Ver lo que más pesa',
     }
