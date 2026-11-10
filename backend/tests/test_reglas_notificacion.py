@@ -629,3 +629,29 @@ def test_el_atajo_solo_puede_mover_sus_propios_movimientos_creados_por_un_atajo(
     if manual.status_code == 200:
         r3 = _pantallazo(h1b, "x", movimiento_id=manual.json()["id"], cuenta="Nu Colombia")
         assert r3["registrado"] is False and "No pude pasarlo" in r3["mensaje"]
+
+
+def test_con_una_sola_cuenta_no_hay_nada_que_adivinar_ni_que_preguntar():
+    h = _usuario("rn-unica")  # solo «Nequi»
+    r = _pantallazo(h, "Transferencia exitosa $ 20.000 Para CARLOS RUIZ Compartir Descargar")
+    assert r["registrado"] and r["cuenta_adivinada"] is None and "motivo" not in r, r
+    assert "¿Era" not in r["mensaje"]
+
+
+def test_elegir_en_la_lista_gana_aunque_ya_lo_hubiera_confirmado_en_la_app_con_la_cuenta_equivocada():
+    h = _preparar_nu_mas_reciente("rn-carrera")
+    texto = _sin_pista("Nequi", "ANA PEREZ", "20.000")
+    r = _pantallazo(h, texto)
+    assert r["cuenta_adivinada"] == "Nu Colombia"
+    # La persona abre la app y confirma ANTES de contestar la lista del atajo: se aprende «Nu» (la suposición)
+    assert client.post("/movimientos/confirmar-categorias", json={"movimiento_ids": [r["movimiento_id"]]}).status_code == 200
+    # Luego contesta la lista: «Nequi». Esa elección explícita reemplaza lo aprendido
+    r2 = _pantallazo(h, texto, movimiento_id=r["movimiento_id"], cuenta="Nequi")
+    assert r2["movido_a"] == "Nequi"
+    r3 = _pantallazo(h, _sin_pista("Bancolombia", "LUIS GOMEZ", "35.500"))
+    assert r3["cuenta_adivinada"] is None
+    movs = client.get("/movimientos").json()
+    mov = next(m for m in (movs if isinstance(movs, list) else movs["items"]) if m["id"] == r3["movimiento_id"])
+    assert _cuenta_nombre(mov) == "Nequi"
+    reglas = [x for x in client.get("/movimientos/reglas-notificacion").json() if x["app"].startswith("pantalla:")]
+    assert len(reglas) == 1 and "Nequi" in reglas[0]["significado"]  # una sola regla por pantalla

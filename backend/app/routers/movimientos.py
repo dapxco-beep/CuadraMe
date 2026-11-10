@@ -1212,16 +1212,21 @@ def _pasar_a_otra_cuenta(data: NotificacionAndroid, db: Session, usuario: Usuari
     como lo mueve, la app aprende esa pantalla. Solo puede mover movimientos de la propia persona creados por un atajo."""
     cuenta = (db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id, func.lower(Cuenta.nombre) == data.cuenta.strip().lower()).first())
     mov = (db.query(Movimiento).filter(Movimiento.id == data.movimiento_id, Movimiento.usuario_id == usuario.id,
-                                       Movimiento.fuente == "notificacion").first())
+                                       Movimiento.fuente == "notificacion").with_for_update().first())  # bloquea: dos disparos a la vez no descuadran saldos
     if cuenta is None or mov is None:
         return {"ok": True, "registrado": False, "mensaje": "No pude pasarlo a esa cuenta. Cámbialo desde CuadraMe."}
+    forma = rn.forma_estable(data.titulo, data.texto)
     if mov.cuenta_id == cuenta.id:
+        rn.aprender_cuenta(db, usuario.id, cuenta.nombre, forma)  # «sí, era esa»: también enseña
         return {"ok": True, "registrado": True, "movido_a": cuenta.nombre, "mensaje": f"Quedó en {cuenta.nombre}. ¡Gracias!"}
     r = mover_masivo(MoverMasivoRequest(movimiento_ids=[mov.id], cuenta_id=cuenta.id), db, usuario)
     if not r.actualizados:
         return {"ok": True, "registrado": False, "mensaje": "No pude pasarlo a esa cuenta. Cámbialo desde CuadraMe."}
+    # Lo que la persona ELIGE en la lista pesa más que cualquier cosa aprendida antes (p. ej. si ya lo había confirmado en la app con la
+    # cuenta equivocada): se reemplaza lo anterior de esa pantalla.
+    aprendio = rn.aprender_cuenta(db, usuario.id, cuenta.nombre, forma)
     return {"ok": True, "registrado": True, "movido_a": cuenta.nombre,
-            "mensaje": f"Listo: lo pasé a {cuenta.nombre}. La próxima vez reconoceré esta pantalla."}
+            "mensaje": f"Listo: lo pasé a {cuenta.nombre}." + (" La próxima vez reconoceré esta pantalla." if aprendio else "")}
 
 
 def _procesar_notificacion(
@@ -1254,8 +1259,9 @@ def _procesar_notificacion(
             cuenta_auto = rn.cuenta_mas_reciente(db, usuario.id)
             if cuenta_auto is None:
                 raise HTTPException(status_code=404, detail="El usuario no tiene ninguna cuenta creada")
-            adivinada = True
-            nota_cuenta = f" ¿Era {cuenta_auto}? Si no, cámbialo."
+            adivinada = len(cuentas_nombres) > 1  # con una sola cuenta no hay nada que adivinar ni que preguntar
+            if adivinada:
+                nota_cuenta = f" ¿Era {cuenta_auto}? Si no, cámbialo."
         if data.cuenta and data.aprender:
             rn.aprender_cuenta(db, usuario.id, cuenta_auto, rn.forma_estable(data.titulo, data.texto) or rn.esqueleto(data.titulo, data.texto))
         paquete = notif.banco_de_cuenta(cuenta_auto) or cuenta_auto

@@ -130,8 +130,10 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
         # El texto crudo (de la notificación o del pantallazo): el servidor lo lee, no el atajo
         _post(f"{base}/movimientos/rapido-notificacion", clave,
               [("paquete", nombre_banco), ("titulo", _texto("")), ("texto", _con_variable("", texto_var))], id_post),
-        _valor("motivo", id_post, id_motivo),
         _valor("mensaje", id_post, id_msg),
+        # Va de ÚLTIMO: la entrada de un «Si» es, por defecto, la salida de la acción inmediatamente anterior; así es «motivo» incluso si
+        # iOS ignora la entrada explícita que también se le pone.
+        _valor("motivo", id_post, id_motivo),
     ]
     # Segunda llamada con el MISMO texto + la respuesta de la persona: el servidor registra y aprende la forma del
     # aviso, así la próxima vez de este banco ya no pregunta.

@@ -131,3 +131,11 @@ def test_la_pregunta_entro_o_salio_usa_una_lista_fija_como_entrada():
     i = ids.index("choosefromlist")
     assert ids[i - 1] == "list"  # la lista fija se arma con la acción «Lista», justo antes
     assert "WFChooseFromListActionList" not in _acciones_de_la_rama("pantalla", "pedir_tipo")[i]["WFWorkflowActionParameters"]
+
+
+@pytest.mark.parametrize("modo", ["pantalla", "notificacion"])
+def test_la_accion_anterior_al_primer_si_es_la_que_se_compara(modo):
+    acciones = _atajo(modo)["WFWorkflowActions"]
+    i = next(i for i, a in enumerate(acciones) if a["WFWorkflowActionIdentifier"].endswith(".conditional"))
+    previa = acciones[i - 1]["WFWorkflowActionParameters"]
+    assert previa["WFDictionaryKey"] == "motivo" and previa["WFGetDictionaryValueType"] == "Value"
