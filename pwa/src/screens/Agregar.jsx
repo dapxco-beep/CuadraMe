@@ -1,4 +1,4 @@
-import { hoyISO } from '../lib/fechaLocal'
+import { fechaLocalISO, hoyISO } from '../lib/fechaLocal'
 import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -390,6 +390,19 @@ export default function Agregar() {
 
       {mostrarFecha && (
         <div className="px-5 mt-2">
+          <div className="flex gap-2 mb-2">
+            {[['Hoy', 0], ['Ayer', 1]].map(([texto, atras]) => {
+              const d = new Date()
+              d.setDate(d.getDate() - atras)
+              const iso = fechaLocalISO(d)
+              return (
+                <button key={texto} type="button" onClick={() => setFecha(iso)} aria-pressed={fecha === iso}
+                  className={`min-h-11 px-4 rounded-2xl border text-sm font-medium ${fecha === iso ? 'bg-accent-soft border-accent text-accent' : 'border-line text-ink-soft'}`}>
+                  {texto}
+                </button>
+              )
+            })}
+          </div>
           <input
             type="date"
             value={fecha}
@@ -424,6 +437,10 @@ export default function Agregar() {
           onBlur={onDescripcionBlur}
           placeholder="¿En qué fue? (ej. Éxito, Uber, Netflix)"
           aria-label="¿En qué fue?"
+          autoCapitalize="sentences"
+          autoComplete="off"
+          enterKeyHint="done"
+          onKeyDown={(e) => { if (e.key === 'Enter' && !guardando) { e.preventDefault(); guardar() } }}
           className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"
         />
         {categoriaAutoDetectada && categoria && (
@@ -573,7 +590,7 @@ export default function Agregar() {
         </div>
       )}
 
-      <div className="px-5">
+      <div className="px-5 sticky bottom-0 z-10 bg-paper/95 backdrop-blur pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <button
           onClick={() => guardar()}
           disabled={guardando}

@@ -5,7 +5,7 @@ import Icono from './Icono'
 import { useAuth } from '../lib/AuthContext'
 import { CATALOGO_ACCESOS } from '../lib/accesosInicio'
 
-// «¿Qué puedes hacer en CuadraMe?»: las cinco cosas principales, cada una con una frase de qué gana la persona.
+// «¿Qué puedes hacer en CuadraMe?»: las cosas principales, cada una con una frase de qué gana la persona.
 // En el Inicio se puede cerrar (se recuerda en este dispositivo); en Ayuda sale siempre (`fija`).
 
 const CLAVE = 'cuadrame:que-se-puede-hacer-oculta'
@@ -15,6 +15,9 @@ export const COSAS = [
   { id: 'traer', frase: 'Trae tus movimientos del banco sin escribirlos uno por uno' },
   { id: 'dividir', frase: 'Divide una cuenta con amigos y mira quién te debe' },
   { id: 'metas', frase: 'Guarda plata poco a poco para algo que quieres' },
+  { id: 'presupuesto', frase: 'Ponle un límite a tus gastos del mes' },
+  { id: 'fijos', frase: 'Registra lo que pagas cada mes: arriendo, suscripciones' },
+  { id: 'deudas', frase: 'Mira lo que debes y cuál conviene pagar primero' },
   { id: 'asistente', frase: 'Pregúntale a la IA cosas sobre tu plata' },
 ]
 

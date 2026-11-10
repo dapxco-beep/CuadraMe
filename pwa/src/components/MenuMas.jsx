@@ -99,7 +99,7 @@ export function HojaMas({ onCerrar, pathname }) {
               value={consulta}
               onChange={(e) => setConsulta(e.target.value)}
               onKeyDown={alTeclearBuscador}
-              placeholder="Buscar: deudas, metas, reglas…"
+              placeholder="¿Qué buscas? deudas, metas, dividir…"
               aria-label="Buscar en el menú"
               autoComplete="off"
               enterKeyHint="go"

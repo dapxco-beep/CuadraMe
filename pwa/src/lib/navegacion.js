@@ -28,7 +28,7 @@ export const GRUPOS = [
     icon: Database,
     items: [
       { to: '/movimientos-correo', icon: Mail, label: 'Movimientos del correo', corta: 'Correo', palabras: 'correo gmail avisos notificaciones banco compras transferencias movimientos del dia revisar aprobar leer' },
-      { to: '/sincronizacion', icon: RefreshCw, label: 'Traer extractos', corta: 'Extractos', palabras: 'sincronizar sincronizacion importar correo correos gmail extracto conciliar pdf excel csv archivo conexiones estado falla' },
+      { to: '/sincronizacion', icon: RefreshCw, label: 'Traer extractos', corta: 'Extractos', palabras: 'sincronizar sincronizacion importar correo correos gmail extracto conciliar pdf excel csv archivo conexiones estado falla bajar subir cuadrar banco traer movimientos' },
       { to: '/conectar-dispositivo', icon: Smartphone, label: 'Registro automático', palabras: 'conectar dispositivo atajo iphone android wallet celular' },
       { to: '/categorias', icon: Tag, label: 'Categorías', palabras: 'etiquetas iconos reglas automaticas comercio categoria por categorizar sin categoria' },
       { to: '/entrenar-categorias', icon: GraduationCap, label: 'Enseñar categorías', palabras: 'entrenar aprender clasificar' },
