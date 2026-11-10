@@ -141,9 +141,19 @@ def tendencias(
     ids_accesibles = cuentas_ids_accesibles(db, usuario.id)
     monedas = _monedas_por_cuenta(db, ids_accesibles)
     conv = ConvertidorBase.de_usuario(db, usuario.id)
-    movimientos = db.query(Movimiento).filter(Movimiento.cuenta_id.in_(ids_accesibles)).all()
-
     meses = max(1, min(meses, 24))  # 3/6/12 en la app; tope para no armar series enormes
+    # Solo la ventana pedida (más el margen para emparejar traslados): antes se leía TODO el historial.
+    hoy_ = ahora_co()
+    a, mm = hoy_.year, hoy_.month - (meses - 1)
+    while mm < 1:
+        mm += 12
+        a -= 1
+    inicio_ventana = datetime(a, mm, 1)
+    movimientos = (
+        db.query(Movimiento)
+        .filter(Movimiento.cuenta_id.in_(ids_accesibles), Movimiento.fecha >= inicio_ventana - _MARGEN_EMPAREJAR)
+        .all()
+    )
     te = tipos_efectivos(movimientos, tipos_cuenta_de(db, ids_accesibles))
     por_mes: dict[str, dict[str, float]] = {}
     for m in movimientos:

@@ -108,7 +108,7 @@ export default function ColectaPublica() {
                     p.avisado ? (
                       <span className="text-xs text-ink-soft">Avisó</span>
                     ) : (
-                      <button onClick={() => yaPague(p)} disabled={enviando === p.id} className="rounded-xl border border-line text-xs font-semibold px-3 py-1.5 disabled:opacity-40">
+                      <button onClick={() => yaPague(p)} disabled={enviando === p.id} className="rounded-xl border border-line text-xs font-semibold px-3 py-1.5 min-h-11 disabled:opacity-40">
                         Ya pagué
                       </button>
                     )

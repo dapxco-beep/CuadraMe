@@ -272,7 +272,7 @@ export default function DetalleColecta() {
 
             {p.estado !== 'pagado' && (
               <div className="flex flex-wrap gap-2 mt-2">
-                <button onClick={() => pagar(p)} className="flex-1 min-w-[7rem] rounded-xl bg-ink text-paper text-xs font-semibold py-2 flex items-center justify-center gap-1.5">
+                <button onClick={() => pagar(p)} className="flex-1 min-w-[7rem] rounded-xl bg-ink text-paper text-xs font-semibold py-2 min-h-11 flex items-center justify-center gap-1.5">
                   <Check size={16} /> Pagó {formatMoneda(p.falta, c.moneda)}
                 </button>
                 <button
@@ -381,7 +381,7 @@ export default function DetalleColecta() {
           <div className="rounded-2xl border border-line bg-paper-raised p-3">
             <p className="text-xs break-all text-ink-soft select-all">{enlace}</p>
             <div className="flex gap-2 mt-2">
-              <button onClick={() => copiar(enlace)} className="flex-1 rounded-xl border border-line text-xs font-semibold py-2 flex items-center justify-center gap-1.5">
+              <button onClick={() => copiar(enlace)} className="flex-1 rounded-xl border border-line text-xs font-semibold py-2 min-h-11 flex items-center justify-center gap-1.5">
                 <Copy size={16} /> Copiar
               </button>
               <a href={enlaceCompartirColecta({ colecta: c.nombre, enlace })} target="_blank" rel="noopener noreferrer" className="flex-1 rounded-xl bg-accent-soft text-accent text-xs font-semibold py-2 flex items-center justify-center gap-1.5">

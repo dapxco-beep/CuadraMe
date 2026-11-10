@@ -392,7 +392,7 @@ export default function Asistente() {
               {m.sugerencias?.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2.5">
                   {m.sugerencias.map((q) => (
-                    <button key={q} type="button" onClick={() => enviar(q)} className="text-xs rounded-full border border-line bg-paper px-3 py-1.5 min-h-[34px]">
+                    <button key={q} type="button" onClick={() => enviar(q)} className="text-xs rounded-full border border-line bg-paper px-3 py-1.5 min-h-11">
                       {q}
                     </button>
                   ))}

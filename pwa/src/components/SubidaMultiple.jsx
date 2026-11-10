@@ -872,7 +872,8 @@ export default function SubidaMultiple({
                     onChange={(e) => parchar(a.id, { password: e.target.value })}
                     placeholder="Clave del PDF"
                     aria-label={`Clave de ${a.nombre}`}
-                    className="flex-1 min-w-0 rounded-xl border border-line bg-paper-raised px-3 py-2 text-xs outline-none focus:border-accent"
+                    autoComplete="off"
+                    className="flex-1 min-w-0 rounded-xl border border-line bg-paper-raised px-3 py-2 text-base outline-none focus:border-accent"
                   />
                   <button onClick={() => reintentar(a)} disabled={!a.password || corriendo} className="rounded-xl bg-accent text-paper-raised px-3 text-xs font-semibold disabled:opacity-60">
                     Reintentar

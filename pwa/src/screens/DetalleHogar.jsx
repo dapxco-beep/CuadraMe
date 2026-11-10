@@ -369,8 +369,8 @@ export default function DetalleHogar() {
                   <p className="text-xs text-ink-soft">{i.email ? `Para ${i.email}` : 'Para quien tenga el enlace'}</p>
                   <p className="text-xs break-all mt-1 select-all">{enlace}</p>
                   <div className="flex gap-2 mt-2">
-                    <button onClick={() => copiar(enlace)} className="flex-1 rounded-xl border border-line text-xs font-semibold py-2 flex items-center justify-center gap-1.5"><Copy size={16} /> Copiar</button>
-                    <button onClick={() => compartir(enlace)} className="flex-1 rounded-xl bg-accent-soft text-accent text-xs font-semibold py-2 flex items-center justify-center gap-1.5"><Share2 size={16} /> Compartir</button>
+                    <button onClick={() => copiar(enlace)} className="flex-1 rounded-xl border border-line text-xs font-semibold py-2 min-h-11 flex items-center justify-center gap-1.5"><Copy size={16} /> Copiar</button>
+                    <button onClick={() => compartir(enlace)} className="flex-1 rounded-xl bg-accent-soft text-accent text-xs font-semibold py-2 min-h-11 flex items-center justify-center gap-1.5"><Share2 size={16} /> Compartir</button>
                     <button onClick={() => cancelar(i)} className="px-3 text-xs text-ink-soft underline">Cancelar</button>
                   </div>
                 </li>

@@ -272,7 +272,7 @@ export default function Impuestos() {
                                 >
                                   Guardar este gasto
                                 </button>
-                                <button onClick={() => setAbierto(null)} className="rounded-xl border border-line px-3 py-2 text-xs">
+                                <button onClick={() => setAbierto(null)} className="rounded-xl border border-line px-3 py-2 min-h-11 text-xs">
                                   Cancelar
                                 </button>
                               </div>

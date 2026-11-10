@@ -216,6 +216,18 @@ export default function Inicio() {
     return () => window.removeEventListener('cuadrame:movimientos-cambio', recargar)
   }, [])
 
+  // Al volver a la app tras un rato en segundo plano, las cifras pueden estar viejas: se recargan (máx. 1 vez por minuto).
+  useEffect(() => {
+    let ultima = Date.now()
+    const alVolver = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - ultima < 60000) return
+      ultima = Date.now()
+      setIntento((n) => n + 1)
+    }
+    document.addEventListener('visibilitychange', alVolver)
+    return () => document.removeEventListener('visibilitychange', alVolver)
+  }, [])
+
   // El total viene convertido a COP desde el backend (cuentas en USD, etc.);
   // mientras llega, se suma solo lo que ya está en pesos para no mezclar monedas.
   const saldoTotal =
