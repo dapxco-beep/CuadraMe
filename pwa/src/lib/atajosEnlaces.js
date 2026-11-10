@@ -11,6 +11,6 @@ export const ATAJO_REGISTRAR_URL = 'https://www.icloud.com/shortcuts/145fc78e5f2
 // Última vez que los atajos cambiaron de forma que conviene reinstalarlos. iOS NO actualiza los atajos instalados y la app no puede
 // saber qué versión tiene cada persona, así que el catálogo muestra un aviso (que cada quien cierra) cuando esta fecha cambia.
 // Al publicar atajos nuevos: cambia `version` (y `fecha`) para que el aviso vuelva a salir.
-export const ATAJOS_ACTUALIZADOS = { version: '2026-11-09', fecha: '9 de noviembre de 2026' }
+export const ATAJOS_ACTUALIZADOS = { version: '2026-11-10', fecha: '10 de noviembre de 2026' }
 // La app de Android («CuadraMe Captura») se descarga de aquí mismo, sin tiendas ni terceros.
 export const APK_URL = '/descargas/cuadrame-captura.apk'

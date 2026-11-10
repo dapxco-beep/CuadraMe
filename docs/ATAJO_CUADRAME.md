@@ -13,7 +13,9 @@
 | **CuadraMe Registrar** | Un gesto que elige cada persona (Tocar atrás, Botón de acción, Siri) | El texto leído de un pantallazo (OCR en el iPhone; la imagen no sale del teléfono), `paquete=auto` | Igual que Notificaciones, con lector de comprobantes de Nu, Nequi y Bancolombia |
 
 Cómo responde `/movimientos/rapido-notificacion` (campo `motivo`): sin motivo = registrado «por confirmar»; `pedir_monto` (salió plata y el aviso no trae cifra);
-`pedir_tipo` (hay monto pero no se sabe si entró o salió); `pedir_cuenta` (no se pudo deducir de qué cuenta es); `no_parece_un_movimiento`.
+`pedir_tipo` (hay monto pero no se sabe si entró o salió); `confirmar_cuenta` (no se supo de qué cuenta era: YA se registró en la más probable y el atajo
+pregunta «¿De qué cuenta es?» con `GET /movimientos/cuentas-rapido`; la respuesta vuelve con `movimiento_id` + `cuenta` y el servidor MUEVE ese movimiento con
+`mover_masivo` —saldos ajustados— y aprende esa pantalla; solo mueve movimientos propios creados por un atajo); `no_parece_un_movimiento`.
 Cada respuesta de la persona se aprende como regla personal (`reglas_notificacion`): plantilla anónima, sin texto, nombres ni montos; se ve y se borra en Conexiones.
 
 **Cuenta de un pantallazo**, en orden: lo que la persona enseñó → últimos 4 dígitos («*8223») contra el alias de sus cuentas → huellas por banco

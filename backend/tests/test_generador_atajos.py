@@ -97,3 +97,37 @@ def test_en_pantallazo_el_atajo_nunca_se_queda_mudo_y_en_notificaciones_ignora_e
 
     assert avisos_en_rama_sin_pago("pantalla") == 1
     assert avisos_en_rama_sin_pago("notificacion") == 0
+
+
+def _acciones_de_la_rama(modo, valor):
+    acciones = _atajo(modo)["WFWorkflowActions"]
+    for i, a in enumerate(acciones):
+        p = a["WFWorkflowActionParameters"]
+        if a["WFWorkflowActionIdentifier"].endswith(".conditional") and p.get("WFConditionalActionString") == valor:
+            grupo, dentro = p["GroupingIdentifier"], []
+            for b in acciones[i + 1:]:
+                q = b["WFWorkflowActionParameters"]
+                if b["WFWorkflowActionIdentifier"].endswith(".conditional") and q.get("GroupingIdentifier") == grupo:
+                    break
+                dentro.append(b)
+            return dentro
+    raise AssertionError(f"no hay rama {valor}")
+
+
+@pytest.mark.parametrize("modo", ["pantalla", "notificacion"])
+def test_si_no_sabe_la_cuenta_el_atajo_la_pregunta_entre_las_registradas(modo):
+    rama = _acciones_de_la_rama(modo, "confirmar_cuenta")
+    ids = [a["WFWorkflowActionIdentifier"].split(".")[-1] for a in rama]
+    assert ids == ["notification", "getvalueforkey", "downloadurl", "choosefromlist", "downloadurl", "getvalueforkey", "notification"]
+    # 1.º avisa dónde quedó; luego pide LAS CUENTAS de la persona al servidor y elige de esa lista (la entrada de «Elegir de la lista»)
+    assert rama[2]["WFWorkflowActionParameters"]["WFURL"].endswith("/movimientos/cuentas-rapido")
+    assert rama[2]["WFWorkflowActionParameters"]["WFHTTPMethod"] == "GET"
+    campos = {i["WFKey"]["Value"]["string"] for i in rama[4]["WFWorkflowActionParameters"]["WFJSONValues"]["Value"]["WFDictionaryFieldValueItems"]}
+    assert {"movimiento_id", "cuenta", "texto"} <= campos  # le dice al servidor QUÉ movimiento y a QUÉ cuenta
+
+
+def test_la_pregunta_entro_o_salio_usa_una_lista_fija_como_entrada():
+    ids = [a["WFWorkflowActionIdentifier"].split(".")[-1] for a in _acciones_de_la_rama("pantalla", "pedir_tipo")]
+    i = ids.index("choosefromlist")
+    assert ids[i - 1] == "list"  # la lista fija se arma con la acción «Lista», justo antes
+    assert "WFChooseFromListActionList" not in _acciones_de_la_rama("pantalla", "pedir_tipo")[i]["WFWorkflowActionParameters"]

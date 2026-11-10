@@ -1206,6 +1206,24 @@ def _mensaje_corto(out) -> str:
     return f"{signo} de {formato_cop(out.monto)} en {descripcion} ({out.cuenta_nombre}). Confírmalo en CuadraMe."
 
 
+def _pasar_a_otra_cuenta(data: NotificacionAndroid, db: Session, usuario: UsuarioActual) -> dict:
+    """Segunda llamada del atajo cuando el servidor no supo de qué cuenta era y la persona la eligió de la lista: pasa a ESA cuenta el
+    movimiento que el atajo acaba de registrar (con la misma función que usa la app, así los saldos de ambas cuentas se ajustan) y,
+    como lo mueve, la app aprende esa pantalla. Solo puede mover movimientos de la propia persona creados por un atajo."""
+    cuenta = (db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id, func.lower(Cuenta.nombre) == data.cuenta.strip().lower()).first())
+    mov = (db.query(Movimiento).filter(Movimiento.id == data.movimiento_id, Movimiento.usuario_id == usuario.id,
+                                       Movimiento.fuente == "notificacion").first())
+    if cuenta is None or mov is None:
+        return {"ok": True, "registrado": False, "mensaje": "No pude pasarlo a esa cuenta. Cámbialo desde CuadraMe."}
+    if mov.cuenta_id == cuenta.id:
+        return {"ok": True, "registrado": True, "movido_a": cuenta.nombre, "mensaje": f"Quedó en {cuenta.nombre}. ¡Gracias!"}
+    r = mover_masivo(MoverMasivoRequest(movimiento_ids=[mov.id], cuenta_id=cuenta.id), db, usuario)
+    if not r.actualizados:
+        return {"ok": True, "registrado": False, "mensaje": "No pude pasarlo a esa cuenta. Cámbialo desde CuadraMe."}
+    return {"ok": True, "registrado": True, "movido_a": cuenta.nombre,
+            "mensaje": f"Listo: lo pasé a {cuenta.nombre}. La próxima vez reconoceré esta pantalla."}
+
+
 def _procesar_notificacion(
     data: NotificacionAndroid,
     db: Session,
@@ -1216,6 +1234,8 @@ def _procesar_notificacion(
     Lo que no parece un movimiento (códigos, promociones, avisos sin monto) se ignora con 200 y registrado=false:
     el teléfono no debe reintentar. Un reintento de la MISMA notificación jamás crea un segundo movimiento."""
     verificar_limite(f"notificacion:{usuario.id}", 600, 3600, "Demasiadas notificaciones seguidas. Intenta en un rato.")
+    if data.movimiento_id and data.cuenta and data.monto is None:
+        return _pasar_a_otra_cuenta(data, db, usuario)
     paquete = data.paquete
     # Atajo «CuadraMe Registrar» (pantallazo): no dice de qué banco es; se deduce del propio texto, de lo que ya enseñó
     # la persona o de sus cuentas. Solo si no hay forma de saberlo se le pregunta (y se aprende para la próxima).
@@ -1269,7 +1289,8 @@ def _procesar_notificacion(
             rn.recordar_forma(db, usuario.id, out.id, rn.forma_estable(data.titulo, data.texto))
         return {"ok": True, "registrado": not out.duplicado, "duplicado": out.duplicado, "movimiento_id": out.id,
                 "mensaje": _mensaje_corto(out) + nota_cuenta, "por_confirmar": out.por_confirmar, "aprendido": aprendido,
-                "cuenta_adivinada": cuenta_auto if adivinada else None}
+                "cuenta_adivinada": cuenta_auto if adivinada else None,
+                **({"motivo": "confirmar_cuenta", "cuentas": cuentas_nombres} if adivinada else {})}
 
     if n is None:
         # iPhone: salió plata y el aviso no trae monto (o así lo enseñó la persona). El atajo pregunta cuánto y para qué.
@@ -1323,6 +1344,8 @@ def _procesar_notificacion(
         "ok": True, "registrado": not out.duplicado, "duplicado": out.duplicado, "movimiento_id": out.id,
         "mensaje": _mensaje_corto(out) + nota_cuenta, "por_confirmar": out.por_confirmar, "traslado_propio": n.traslado_propio,
         "cuenta_adivinada": cuenta_auto if adivinada else None,
+        # Ya está registrado en la cuenta más probable; el atajo puede preguntar «¿de qué cuenta es?» entre las de la persona
+        **({"motivo": "confirmar_cuenta", "cuentas": cuentas_nombres} if adivinada else {}),
     }
 
 
