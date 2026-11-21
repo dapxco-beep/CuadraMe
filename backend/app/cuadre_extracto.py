@@ -159,7 +159,8 @@ _ETQ_FINAL = [r"saldo\s+final(?:\s+del\s+periodo)?", r"saldo\s+actual", r"nuevo\
               r"saldo\s+al\s+corte", r"saldo\s+al\s+cierre", r"saldo\s+al\s+final",
               r"tu\s+dinero\s+a\s+final\s+del\s+mes"]  # último: Nu (cuenta de ahorros)
 _ETQ_DEUDA = [r"saldo\s+total", r"deuda\s+total", r"total\s+deuda", r"saldo\s+a\s+la\s+fecha\s+de\s+corte", r"saldo\s+al\s+corte",
-              r"saldo\s+final", r"nuevo\s+saldo", r"valor\s+total\s+a\s+pagar", r"total\s+a\s+pagar", r"pago\s+total"]
+              r"saldo\s+final", r"nuevo\s+saldo", r"valor\s+total\s+a\s+pagar", r"total\s+a\s+pagar", r"pago\s+total",
+              r"cupo\s+(?:usado|utilizado)", r"usado"]  # últimos: Nu (tarjeta) muestra la deuda como «Usado»
 _ETQ_DEUDA_INICIAL = [r"saldo\s+anterior", r"saldo\s+inicial", r"saldo\s+extracto\s+anterior"]
 _ETQ_CORTE = [r"fecha\s+de\s+corte", r"fecha\s+corte", r"fecha\s+de\s+cierre", r"corte\s+del\s+extracto", r"saldo\s+al\s+corte",
               r"hasta\s+el"]
