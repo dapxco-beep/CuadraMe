@@ -110,6 +110,13 @@ _FECHA = re.compile(
     r"(?:\s*(?:-|,|a\s+las?)?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?\s*m\.?|p\.?\s*m\.?)?)?",
     re.IGNORECASE,
 )
+# Detalle de una compra con tarjeta en la app de Nu: «Establecimiento Mundimotos 7 de Agosto Categoría Transporte Tarjeta física ···· 2370
+# Cuotas 1 cuota de $400.411,00». El nombre va entre «Establecimiento» y la siguiente etiqueta.
+_ESTABLECIMIENTO = re.compile(r"Establecimiento\s+(?P<c>.+?)\s+(?=Categor[ií]a|Tarjeta|Cuotas?|Comprobante|$)", re.IGNORECASE)
+_CUOTAS = re.compile(r"\b(?P<n>\d{1,2})\s+cuotas?\s+de\s+\$", re.IGNORECASE)
+_TARJETA_ROTULADA = re.compile(r"tarjeta\s+(?:f[ií]sica|virtual)\s*[^\d]{0,8}(?P<ult>\d{4})", re.IGNORECASE)
+# «12:26, Viernes, 13 de Noviembre de 2026»: en la app de Nu la hora va ANTES de la fecha
+_HORA_ANTES = re.compile(r"(\d{1,2}):(\d{2})\s*,?\s*(?:[a-záéíóú]+\s*,?\s*)?\d{1,2}\s+de\s+[a-záéíóú]+\s+de\s+\d{4}", re.IGNORECASE)
 _ID_COMPROBANTE = re.compile(r"(?:ID\s+MOL\)?|Referencia|Comprobante\s+No\.?)\s*[:\s]\s*([A-Z0-9]{6,})")
 # «Producto destino  Nequi  3143082864»: no trae nombre, solo a qué producto se envió (se muestra con los últimos 4 dígitos)
 _PRODUCTO_DESTINO = re.compile(r"Producto\s+destino\s+(?P<prod>[A-Za-zÁÉÍÓÚáéíóúñÑ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ]+){0,3}?)\s+[*•·]?\s*(?P<num>\d[\d\s]{3,})")
@@ -117,7 +124,7 @@ _PRODUCTO_DESTINO = re.compile(r"Producto\s+destino\s+(?P<prod>[A-Za-zÁÉÍÓÚ
 _MONTO_ETIQUETADO = re.compile(
     r"(?:valor\s+de\s+la\s+transferencia|monto\s+total|valor\s+total|cu[aá]nto\??)\s*:?\s*\$?\s*(\d[\d.,]*\d|\d)", re.IGNORECASE)
 # Pantalla de una compra con tarjeta (detalle de Apple Pay / Wallet, aviso del banco): «••1234», «Apple Pay»
-_TARJETA_PANTALLA = re.compile(r"[•·*]{2,}\s*\d{4}|apple\s+pay|\bwallet\b", re.IGNORECASE)
+_TARJETA_PANTALLA = re.compile(r"[•·*]{2,}\s*\d{4}|tarjeta\s+(?:f[ií]sica|virtual)|apple\s+pay|\bwallet\b", re.IGNORECASE)
 # Palabras que delatan que unas mayúsculas NO son un nombre de persona
 _NO_ES_NOMBRE = {"compra", "transferencia", "pago", "aprobada", "aprobado", "exitosa", "exitoso", "monto", "total", "valor",
                  "comprobante", "envio", "recibido", "retiro", "saldo", "cuenta", "tarjeta", "debito", "credito"}
@@ -203,6 +210,10 @@ def _fecha_en_texto(cuerpo: str) -> str | None:
         return None
     dia, mes, anio = int(m.group(1)), _MESES[m.group(2).lower()], int(m.group(3))
     hora, minuto, segundo = int(m.group(4) or 0), int(m.group(5) or 0), int(m.group(6) or 0)
+    if m.group(4) is None:
+        previa = _HORA_ANTES.search(_sin_tildes(cuerpo))
+        if previa:
+            hora, minuto = int(previa.group(1)), int(previa.group(2))
     meridiano = (m.group(7) or "").replace(".", "").replace(" ", "").lower()
     if meridiano == "pm" and hora < 12:
         hora += 12
@@ -274,6 +285,9 @@ def _limpiar(c: str) -> str:
 
 
 def _tarjeta(texto: str) -> str | None:
+    r = _TARJETA_ROTULADA.search(texto or "")
+    if r:
+        return r.group("ult")
     m = _ULT4.search(texto or "")
     if not m:
         return None
@@ -338,6 +352,12 @@ def interpretar(paquete: str, titulo: str, texto: str) -> Notificacion | None:
         quien = _quien(cuerpo) or _remitente(cuerpo)  # «ANA PEREZ te envió $45.000» / «Recibiste de Ana» -> «De Ana Perez»
         if quien:
             comercio = f"De {quien}"
+    est = _ESTABLECIMIENTO.search(cuerpo)
+    if est and tipo == "expense" and not comercio:  # detalle de compra de la app de Nu
+        comercio = _limpiar(est.group("c"))
+        cuotas = _CUOTAS.search(cuerpo)
+        if cuotas and int(cuotas.group("n")) > 1:
+            comercio = f"{comercio} ({cuotas.group('n')} cuotas)"
     m = _TITULO_WALLET.match(titulo)
     if m and not comercio:  # título de Wallet: «$20.000 COP a JUMBO»
         comercio = _limpiar(m.group(1))

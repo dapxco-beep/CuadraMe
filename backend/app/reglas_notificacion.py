@@ -139,6 +139,12 @@ def inferir_cuenta(db: Session, usuario_id: str, titulo: str, texto: str, elegid
         if len(con_alias) == 1:
             return con_alias[0], nombres
     plano = _sin_tildes(f"{titulo or ''} {texto or ''}")
+    # Detalle de una compra con tarjeta en la app de Nu («Establecimiento ... Tarjeta física ···· 2370 / Cuotas»): es la tarjeta
+    # de CRÉDITO de Nu (la de débito no tiene cuotas). Si hay varias, la que más se usó.
+    if "establecimiento" in plano and re.search(r"tarjeta\s+(?:fisica|virtual)", plano) and "cuota" in plano:
+        nu_credito = [c for c in cuentas if (c.tipo or "") == "credito" and (banco_de_cuenta(c.nombre) or "").lower() == "nu"]
+        if nu_credito:
+            return _elegir_de_un_banco(db, usuario_id, nu_credito, plano), nombres
     # Huella de pantalla: si la forma de la pantalla es inconfundible de un banco, es una cuenta de ese banco; si la persona
     # tiene varias (ahorros y tarjeta de Nu, por ejemplo), se elige la que corresponde al tipo de movimiento.
     for banco, frases in HUELLAS_BANCO.items():
