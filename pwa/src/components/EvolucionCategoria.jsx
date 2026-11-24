@@ -24,10 +24,12 @@ export default function EvolucionCategoria({ fmt, className = '' }) {
   const gid = useId()
   const [nMeses, setNMeses] = useState(6)
   const [cat, setCat] = useState(null)
+  const [verTodas, setVerTodas] = useState(false)
   const base = useEvolucionCategorias(nMeses, null)
   const det = useEvolucionCategorias(nMeses, cat, cat !== null)
   const datos = base.datos
-  const top = useMemo(() => (datos?.categorias || []).slice(0, 5), [datos])
+  const todas = useMemo(() => datos?.categorias || [], [datos])
+  const top = useMemo(() => (verTodas ? todas : todas.slice(0, 5)), [todas, verTodas])
 
   const serie = cat === null ? datos?.serie_total : datos?.categorias.find((c) => c.categoria === cat)
   const nombre = cat ?? 'tu gasto total'
@@ -87,13 +89,19 @@ export default function EvolucionCategoria({ fmt, className = '' }) {
         </div>
       </div>
 
-      <div role="group" aria-label="Categoría" className="flex gap-2 overflow-x-auto -mx-4 px-4 mt-3 pb-1">
+      <div role="group" aria-label="Categoría" className={`flex gap-2 mt-3 pb-1 ${verTodas ? 'flex-wrap' : 'overflow-x-auto -mx-4 px-4'}`}>
         {[null, ...top.map((t) => t.categoria)].map((n) => (
           <button key={n ?? '__todas'} type="button" aria-pressed={cat === n} onClick={() => setCat(n)}
             className={`shrink-0 px-3 min-h-[44px] rounded-full text-xs font-semibold border ${cat === n ? 'bg-accent text-white border-accent' : 'bg-paper text-ink border-line'}`}>
             {n ?? 'Todas'}
           </button>
         ))}
+        {todas.length > 5 && (
+          <button type="button" onClick={() => setVerTodas((v) => !v)} aria-expanded={verTodas}
+            className="shrink-0 px-3 min-h-[44px] rounded-full text-xs font-semibold text-accent">
+            {verTodas ? 'Menos' : `Ver las ${todas.length}`}
+          </button>
+        )}
       </div>
 
       <p className="text-sm mt-2" data-testid="frase-evolucion">{frase}</p>

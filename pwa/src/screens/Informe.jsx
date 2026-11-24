@@ -18,6 +18,7 @@ import EnlaceCostos from '../components/EnlaceCostos'
 import IngresosGastos from '../components/IngresosGastos'
 import GraficoEvolucion from '../components/GraficoEvolucion'
 import EvolucionCategoria from '../components/EvolucionCategoria'
+import HistorialCategorias from '../components/HistorialCategorias'
 import Sparkline from '../components/Sparkline'
 import { useEvolucionCategorias } from '../lib/useEvolucionCategorias'
 import { pctCorto } from '../lib/graficos'
@@ -182,8 +183,6 @@ export default function Informe() {
       <EnlaceCostos className="mx-6 mt-3" />
 
       <IngresosGastos params={paramsBase} fmt={fmt} className="mx-6 mt-4" seleccion={sel} onSeleccion={setSel} />
-      <EvolucionCategoria fmt={fmt} className="mx-6 mt-4" />
-      <GraficoEvolucion fmt={fmt} className="mx-6 mt-4" />
 
       {cargando && <div className="mx-6 mt-6 space-y-4"><EsqueletoGrafica alto={160} etiqueta="Cargando tu informe" /><EsqueletoLista filas={4} /></div>}
       {error && <p role="alert" className="mx-6 mt-6 text-sm text-danger text-center">{error}</p>}
@@ -355,6 +354,13 @@ export default function Informe() {
           )}
         </div>
       )}
+
+      {/* Evolución e historial: debajo del resumen, para que lo primero que se vea sea cuánto gastaste y en qué */}
+      <div className="mt-2">
+        <HistorialCategorias fmt={fmt} className="mx-6 mt-4" />
+        <EvolucionCategoria fmt={fmt} className="mx-6 mt-4" />
+        <GraficoEvolucion fmt={fmt} className="mx-6 mt-4" />
+      </div>
     </div>
   )
 }
