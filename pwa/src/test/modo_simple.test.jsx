@@ -22,7 +22,7 @@ import Perfil from '../screens/Perfil'
 import {
   EXPLICACION, GRUPOS, ITEMS_MAS, MAS_FUNCIONES_ID, RUTAS_AVANZADAS, buscarDestinos, extrasRiel, gruposSegunModo,
 } from '../lib/navegacion'
-import { detectarFuncionesEnUso, guardarModoCompleto, leerModoCompleto } from '../lib/modoSimple'
+import { detectarFuncionesEnUso, guardarModoCompleto, guardarPerfilUso, leerModoCompleto } from '../lib/modoSimple'
 import { armarCamino, CAMINO, META_CAMINO } from '../lib/primerUso'
 import { fechaHace, gastosDeLaSemana, siguientePasoInicio } from '../lib/inicioSimple'
 
@@ -134,16 +134,16 @@ describe('Menú «Más» (teléfono) en modo simple', () => {
     return userEvent.click(screen.getByRole('button', { name: 'Más' }))
   }
 
-  it('lo de todos los días está a la vista; lo avanzado, plegado en «Avanzadas» y con su frase', async () => {
+  it('por defecto (perfil Esencial) solo se ve lo básico; el resto, plegado en «Más funciones» y con su frase', async () => {
     await abrirMas()
     const hoja = await screen.findByRole('dialog', { name: 'Más opciones' })
-    for (const nombre of ['Traer extractos', 'Movimientos del correo', 'Cuentas', 'Plata con otros', 'Metas', 'Perfil', 'Ayuda']) {
+    for (const nombre of ['Traer extractos', 'Cuentas', 'Informes', 'Perfil', 'Ayuda']) {
       expect(within(hoja).getByRole('link', { name: new RegExp('^' + nombre) }), nombre).toBeInTheDocument()
     }
-    expect(within(hoja).queryByRole('link', { name: /Impuestos/ })).toBeNull()
-    expect(within(hoja).queryByRole('link', { name: /^Deudas/ })).toBeNull() // Deudas y Pagos fijos vuelven solos cuando ya hay datos
-    expect(within(hoja).queryByRole('link', { name: /^Pagos fijos/ })).toBeNull()
-    const boton = within(hoja).getByRole('button', { name: /Avanzadas/ })
+    for (const nombre of ['Movimientos del correo', 'Plata con otros', 'Metas', 'Impuestos', 'Deudas', 'Pagos fijos']) {
+      expect(within(hoja).queryByRole('link', { name: new RegExp('^' + nombre) }), nombre).toBeNull()
+    }
+    const boton = within(hoja).getByRole('button', { name: /Más funciones/ })
     expect(boton).toHaveAttribute('aria-expanded', 'false')
 
     await userEvent.click(boton)
@@ -152,7 +152,17 @@ describe('Menú «Más» (teléfono) en modo simple', () => {
     expect(impuestos).toHaveAttribute('href', '/impuestos')
     expect(impuestos).toHaveTextContent('Cuánto te cobran por el 4x1000')
     expect(within(hoja).getByRole('link', { name: /^Deudas/ })).toBeInTheDocument()
-    expect(within(hoja).getByRole('link', { name: /^Pagos fijos/ })).toBeInTheDocument()
+    expect(within(hoja).getByRole('link', { name: /^Metas/ })).toBeInTheDocument()
+  })
+
+  it('con el perfil «Controlo mis gastos» suben a la vista los avisos del correo y las categorías', async () => {
+    guardarPerfilUso(auth.usuario.id, 'gastos')
+    await abrirMas()
+    const hoja = await screen.findByRole('dialog', { name: 'Más opciones' })
+    for (const nombre of ['Movimientos del correo', 'Categorías', 'Pagos fijos']) {
+      expect(within(hoja).getByRole('link', { name: new RegExp('^' + nombre) }), nombre).toBeInTheDocument()
+    }
+    expect(within(hoja).queryByRole('link', { name: /^Metas/ })).toBeNull()
   })
 
   it('con «Mostrar todas las funciones» vuelve el menú completo por grupos', async () => {
@@ -181,7 +191,7 @@ describe('Barras de pantalla ancha en modo simple', () => {
     expect(within(nav).queryByRole('link', { name: 'Patrimonio' })).toBeNull()
   })
 
-  it('barra lateral: lo diario a la vista y «Avanzadas» empieza plegado y se abre con un toque', async () => {
+  it('barra lateral: lo básico a la vista y «Más funciones» empieza plegado y se abre con un toque', async () => {
     simularAncho(1440)
     render(
       <MemoryRouter>
@@ -193,12 +203,13 @@ describe('Barras de pantalla ancha en modo simple', () => {
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
     expect(within(nav).getByRole('link', { name: /^Traer extractos/ })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: 'Perfil' })).toBeInTheDocument()
-    expect(within(nav).getByRole('link', { name: /Plata con otros/ })).toBeInTheDocument()
+    expect(within(nav).queryByRole('link', { name: /Plata con otros/ })).toBeNull()
     expect(within(nav).queryByRole('link', { name: /Impuestos/ })).toBeNull()
-    const boton = within(nav).getByRole('button', { name: 'Avanzadas' })
+    const boton = within(nav).getByRole('button', { name: 'Más funciones' })
     expect(boton).toHaveAttribute('aria-expanded', 'false')
     await userEvent.click(boton)
     expect(within(nav).getByRole('link', { name: /Impuestos/ })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: /Plata con otros/ })).toBeInTheDocument()
   })
 })
 

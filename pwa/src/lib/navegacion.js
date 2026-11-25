@@ -21,6 +21,8 @@ export const PRINCIPALES = [
 
 // Ordenados por lo que la persona quiere hacer, no por tipo de dato. Los `id` no cambian (el menú recuerda
 // qué grupo dejó abierto); solo cambian los títulos y qué destino vive en cada uno.
+import { rutasDelPerfil } from './perfilesUso'
+
 export const GRUPOS = [
   {
     id: 'datos',
@@ -141,15 +143,17 @@ export const EXPLICACION = {
  * Grupos del menú según el modo. `enUso`: rutas de funciones que la persona ya usa (tiene metas,
  * deudas…): suben solas a «Lo que ya usas». En modo completo son los GRUPOS de siempre.
  */
-export function gruposSegunModo({ completo = false, enUso = [] } = {}) {
+export function gruposSegunModo({ completo = false, enUso = [], perfil } = {}) {
   if (completo) return GRUPOS
   const conExplica = (i) => ({ ...i, explica: EXPLICACION[i.to] })
-  const esAvanzada = (i) => RUTAS_AVANZADAS.includes(i.to) && !enUso.includes(i.to)
+  // Con un perfil de uso, lo visible lo decide el perfil; sin él, rige la lista de siempre (RUTAS_AVANZADAS).
+  const visibles = perfil ? rutasDelPerfil(perfil) : null
+  const esAvanzada = (i) => !enUso.includes(i.to) && (visibles ? !visibles.includes(i.to) : RUTAS_AVANZADAS.includes(i.to))
   const temas = GRUPOS.map((g) => ({ ...g, items: g.items.filter((i) => !esAvanzada(i)).map(conExplica) })).filter((g) => g.items.length)
   const avanzadas = ITEMS_MAS.filter(esAvanzada).map(conExplica)
   return [
     ...temas,
-    ...(avanzadas.length ? [{ id: MAS_FUNCIONES_ID, titulo: 'Avanzadas', icon: SlidersHorizontal, plegado: true, items: avanzadas }] : []),
+    ...(avanzadas.length ? [{ id: MAS_FUNCIONES_ID, titulo: visibles ? 'Más funciones' : 'Avanzadas', icon: SlidersHorizontal, plegado: true, items: avanzadas }] : []),
   ]
 }
 

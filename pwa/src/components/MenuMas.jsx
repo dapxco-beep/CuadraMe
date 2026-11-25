@@ -35,8 +35,8 @@ export function HojaMas({ onCerrar, pathname, enfocarBuscador = false }) {
   const buscador = useRef(null)
   const navigate = useNavigate()
   const admin = esAdminVisible(useAuth()?.usuario?.email)
-  const { completo, enUso, setCompleto } = useModoMenu()
-  const grupos = useMemo(() => gruposSegunModo({ completo, enUso }), [completo, enUso.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
+  const { completo, enUso, setCompleto, perfil } = useModoMenu()
+  const grupos = useMemo(() => gruposSegunModo({ completo, enUso, perfil }), [completo, perfil, enUso.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
   const [masAbierto, setMasAbierto] = useState(false)
   const [consulta, setConsulta] = useState('')
   const recientes = useMemo(() => leerRecientes(), [])

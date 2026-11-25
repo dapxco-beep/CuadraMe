@@ -106,8 +106,8 @@ function Lateral() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const info = TEMA_INFO[theme] || TEMA_INFO.auto
-  const { completo, enUso } = useModoMenu()
-  const grupos = useMemo(() => gruposSegunModo({ completo, enUso }), [completo, enUso.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
+  const { completo, enUso, perfil } = useModoMenu()
+  const grupos = useMemo(() => gruposSegunModo({ completo, enUso, perfil }), [completo, perfil, enUso.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
   const [consulta, setConsulta] = useState('')
   const [cerrados, setCerrados] = useState(leerGruposCerrados)
   // «Más funciones» (modo simple) nace plegado y se abre con un toque; es independiente de los demás grupos.

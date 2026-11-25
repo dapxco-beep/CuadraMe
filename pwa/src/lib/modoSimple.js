@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api'
 import { useAuth } from './AuthContext'
+import { PERFIL_POR_DEFECTO, esPerfilValido } from './perfilesUso'
 
 // ═══ Modo simple ═══════════════════════════════════════════════════════════
 // Por defecto el menú muestra solo lo esencial (Inicio, Movimientos, Presupuesto, Traer movimientos,
@@ -11,6 +12,7 @@ import { useAuth } from './AuthContext'
 // `ajustes_usuario`, solo hay que cambiar leer/guardar de este archivo.
 
 const CLAVE_MODO = 'cuadrame:modo-completo'
+const CLAVE_PERFIL = 'cuadrame:perfil-uso'
 const CLAVE_EN_USO = 'cuadrame:funciones-en-uso'
 const EVENTO = 'cuadrame:modo-menu'
 
@@ -30,6 +32,26 @@ export function guardarModoCompleto(uid = 'anon', completo) {
     /* sin almacenamiento: vale solo para esta sesión */
   }
   window.dispatchEvent(new Event(EVENTO))
+}
+
+/** Perfil de uso elegido en este dispositivo (null si la persona aún no eligió). */
+export function leerPerfilUso(uid = 'anon') {
+  try {
+    const v = localStorage.getItem(`${CLAVE_PERFIL}:${uid}`)
+    return esPerfilValido(v) ? v : null
+  } catch {
+    return null
+  }
+}
+
+/** Guarda el perfil y mantiene al día el interruptor «todas las funciones» (solo el perfil «todo» lo enciende). */
+export function guardarPerfilUso(uid = 'anon', perfil) {
+  try {
+    localStorage.setItem(`${CLAVE_PERFIL}:${uid}`, perfil)
+  } catch {
+    /* sin almacenamiento: vale solo para esta sesión */
+  }
+  guardarModoCompleto(uid, perfil === 'todo')
 }
 
 export function leerFuncionesEnUso(uid = 'anon') {
@@ -92,7 +114,10 @@ export function useModoMenu() {
   const { usuario } = useAuth() || {}
   const uid = usuario?.id || 'anon'
   const [, repintar] = useState(0)
-  const completo = leerModoCompleto(uid)
+  const guardado = leerPerfilUso(uid)
+  const completo = leerModoCompleto(uid) || guardado === 'todo'
+  // Sin elección: quien ya había encendido «todas las funciones» sigue en «todo»; el resto empieza en «esencial».
+  const perfil = completo ? 'todo' : guardado || PERFIL_POR_DEFECTO
   const enUso = leerFuncionesEnUso(uid)
 
   useEffect(() => {
@@ -117,6 +142,14 @@ export function useModoMenu() {
     })
   }, [completo, uid])
 
-  const setCompleto = useCallback((valor) => guardarModoCompleto(uid, !!valor), [uid])
-  return { completo, enUso, setCompleto }
+  const setPerfil = useCallback((id) => guardarPerfilUso(uid, id), [uid])
+  const setCompleto = useCallback(
+    (valor) => {
+      if (valor) return guardarPerfilUso(uid, 'todo')
+      const previo = leerPerfilUso(uid)
+      return guardarPerfilUso(uid, previo && previo !== 'todo' ? previo : PERFIL_POR_DEFECTO)
+    },
+    [uid],
+  )
+  return { completo, enUso, setCompleto, perfil, setPerfil }
 }
