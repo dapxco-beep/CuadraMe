@@ -14,13 +14,13 @@ import TarjetaSalud from '../components/TarjetaSalud'
 import { useAuth } from '../lib/AuthContext'
 import { useCategorias } from '../lib/CategoriasContext'
 import MazoCuentas from '../components/MazoCuentas'
-import ArbolFinanciero from '../components/ArbolFinanciero'
+import Cuadri from '../brand/Cuadri'
 import SabiasQue from '../components/SabiasQue'
 import { HojaMas } from '../components/MenuMas'
 import { useNombreParaSaludar } from '../lib/nombre'
 import AsistentePrimerUso from '../components/AsistentePrimerUso'
 import SugerenciaPais from '../components/SugerenciaPais'
-import { etapaPorScore } from '../lib/saludFinanciera'
+import { estadoPorScore } from '../lib/saludFinanciera'
 import ResumenSaldo from '../components/ResumenSaldo'
 import PreguntaMovimiento from '../components/PreguntaMovimiento'
 import Recordatorios from '../components/Recordatorios'
@@ -673,8 +673,8 @@ export default function Inicio() {
             >
               {reporte && (
                 <Link to="/ahorcado" className="flex items-center gap-4 py-2">
-                  <div className="w-14 h-14 shrink-0">
-                    <ArbolFinanciero etapa={etapaPorScore(reporte.salud.score)} />
+                  <div className="shrink-0">
+                    <Cuadri estado={estadoPorScore(reporte.salud.score)} size={64} animar={false} siempre />
                   </div>
                   <div className="flex-1">
                     <p className="t-cuerpo font-semibold">{reporte.salud.score >= 70 ? 'Vas muy bien este mes' : 'Hay espacio para mejorar'}</p>

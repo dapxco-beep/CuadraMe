@@ -66,8 +66,8 @@ export default function DiaADia({ desde, hasta, className = '' }) {
   const idx = sel !== null && barras[sel] ? sel : k - 1 // por defecto, el último día
   const actual = barras[idx]
 
-  if (error) return <p role="alert" className="mx-6 mt-4 text-xs text-danger">{error}</p>
-  if (!datos) return <div className="mx-6 mt-4 h-40 rounded-2xl bg-paper-raised border border-line" role="status" aria-label="Cargando el día a día" />
+  if (error) return <p role="alert" className={`${className.includes('sin-margen') ? '' : 'mx-6 mt-4'} text-xs text-danger`}>{error}</p>
+  if (!datos) return <div className={`${className.includes('sin-margen') ? '' : 'mx-6 mt-4'} h-40 rounded-2xl bg-paper-raised border border-line`} role="status" aria-label="Cargando el día a día" />
   if (k === 0) return null
 
   const etiqueta = (d) => (d.semana ? `Semana del ${diaCorto(d.dia)}` : diaLargo(d.dia))
@@ -98,7 +98,7 @@ export default function DiaADia({ desde, hasta, className = '' }) {
   const mover = (d) => setSel(Math.min(k - 1, Math.max(0, idx + d)))
 
   return (
-    <section className={`mx-6 mt-4 card-marca bg-paper-raised border border-line p-4 ${className}`} aria-label="Día a día" data-testid="dia-a-dia">
+    <section className={`${className.includes('sin-margen') ? '' : 'mx-6 mt-4'} card-marca bg-paper-raised border border-line p-4 ${className}`} aria-label="Día a día" data-testid="dia-a-dia">
       <h2 className="text-[15px] font-semibold">Día a día</h2>
       <div className="flex gap-1.5 mt-2" role="group" aria-label="Qué ver día a día">
         {[['gasto', 'Lo que gastas'], ['disponible', 'Lo que te queda']].map(([id, nombre]) => (

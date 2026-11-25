@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { EsqueletoGrafica, EsqueletoLista } from '../components/Esqueletos'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
-import { ArrowDownRight, ArrowLeft, ArrowUpRight, ChevronDown, PieChart, Store } from 'lucide-react'
+import { ArrowDownRight, ArrowLeft, ArrowUpRight, ChevronDown, LayoutGrid, PieChart, Store } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
@@ -19,6 +19,11 @@ import IngresosGastos from '../components/IngresosGastos'
 import GraficoEvolucion from '../components/GraficoEvolucion'
 import EvolucionCategoria from '../components/EvolucionCategoria'
 import HistorialCategorias from '../components/HistorialCategorias'
+import HeroGasto from '../components/informe/HeroGasto'
+import MapaCategorias from '../components/informe/MapaCategorias'
+import LoQueLlamaLaAtencion from '../components/informe/LoQueLlamaLaAtencion'
+import PersonalizarPaneles from '../components/informe/PersonalizarPaneles'
+import { PANELES, usePanelesInforme } from '../lib/panelesInforme'
 import Sparkline from '../components/Sparkline'
 import { useEvolucionCategorias } from '../lib/useEvolucionCategorias'
 import { pctCorto } from '../lib/graficos'
@@ -73,7 +78,7 @@ function Dona({ segmentos, total, fmt }) {
 }
 
 function Variacion({ pct, anteriorLabel }) {
-  if (pct === null || pct === undefined) return <span className="text-[11px] text-ink-soft">sin base para comparar</span>
+  if (pct === null || pct === undefined) return <span className="text-[11px] text-ink-soft">sin base</span>
   const sube = pct > 0
   const Icono = sube ? ArrowUpRight : ArrowDownRight
   return (
@@ -162,90 +167,55 @@ export default function Informe() {
   const tendenciaDe = (cat) => tendencias?.categorias.find((x) => x.categoria === cat)
   const segmentos = informe?.categorias ? segmentosDona(informe.categorias) : []
 
-  return (
-    <div className="flex-1 overflow-y-auto pb-8 screen-enter pantalla-ancha">
-      {!embebido && (
-      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
-        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="text-xl font-bold">En qué gasto mi plata</h1>
-      </header>
-      )}
+  const paneles = usePanelesInforme()
+  const [vistaCat, setVistaCat] = useState(() => {
+    try {
+      return localStorage.getItem('cuadrame:informe-vista-cat') === 'dona' ? 'dona' : 'mapa'
+    } catch {
+      return 'mapa'
+    }
+  })
+  const cambiarVista = (v) => {
+    setVistaCat(v)
+    try {
+      localStorage.setItem('cuadrame:informe-vista-cat', v)
+    } catch {
+      /* sin almacenamiento */
+    }
+  }
+  const hayDatos = !cargando && !!informe?.hay_datos
+  const esMesActual = !mes && !sel && valor.periodo === 'este_mes'
+  const anchos = new Set(PANELES.filter((p) => p.ancho).map((p) => p.id))
 
-      <section className="px-6 mt-2">
-        <SelectorPeriodo
-          valor={mes ? { periodo: 'mes' } : valor}
-          onChange={(v) => { setMes(null); setSel(null); setValor(v) }}
-        />
-      </section>
-
-      <EnlaceCostos className="mx-6 mt-3" />
-
-      <IngresosGastos params={paramsBase} fmt={fmt} className="mx-6 mt-4" seleccion={sel} onSeleccion={setSel} />
-
-      {cargando && <div className="mx-6 mt-6 space-y-4"><EsqueletoGrafica alto={160} etiqueta="Cargando tu informe" /><EsqueletoLista filas={4} /></div>}
-      {error && <p role="alert" className="mx-6 mt-6 text-sm text-danger text-center">{error}</p>}
-      {!cargando && informe && (
-        <AvisoSinTasa monedas={informe.monedas_sin_tasa} base={informe.moneda_base} onResuelto={() => setRecarga((n) => n + 1)} className="mx-6 mt-4" />
-      )}
-
-      {!cargando && informe && !informe.hay_datos && (
-        <EstadoVacio
-          icono={PieChart}
-          titulo={`No hay gastos en ${informe.etiqueta}`}
-          texto="Prueba con otro periodo o revisa un mes en el que sí registraste movimientos."
-          className="mx-6 mt-6"
-        >
-          {informe.ultimo_mes_con_datos && (
-            <button
-              type="button"
-              onClick={() => setMes(informe.ultimo_mes_con_datos)}
-              className="mt-4 text-sm text-accent font-semibold min-h-[44px] px-3"
-            >
-              Ver {nombreMesLargo(informe.ultimo_mes_con_datos)}
+  const panelCategorias = hayDatos && (
+    <section className="card-marca bg-paper-raised border border-line p-4" aria-label="Gasto por categoría">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h2 className="text-[15px] font-semibold">Por categoría</h2>
+        <div role="group" aria-label="Cómo ver las categorías" className="flex rounded-full bg-paper border border-line p-0.5 shrink-0">
+          {[['mapa', 'Mapa', LayoutGrid], ['dona', 'Dona', PieChart]].map(([id, texto, Ico]) => (
+            <button key={id} type="button" aria-pressed={vistaCat === id} onClick={() => cambiarVista(id)}
+              className={`px-3 min-h-[32px] rounded-full text-xs font-semibold inline-flex items-center gap-1 ${vistaCat === id ? 'bg-accent text-white' : 'text-ink-soft'}`}>
+              <Ico size={13} aria-hidden="true" />{texto}
             </button>
-          )}
-        </EstadoVacio>
+          ))}
+        </div>
+      </div>
+      {vistaCat === 'mapa' ? (
+        <MapaCategorias segmentos={segmentos} fmt={fmt} iconoDe={iconoDe} />
+      ) : (
+        <div className="flex items-center gap-4">
+          <Dona segmentos={segmentos} total={informe.total} fmt={fmt} />
+          <ul className="flex-1 min-w-0 space-y-1.5" aria-label="Leyenda de la dona">
+            {segmentos.map((s, i) => (
+              <li key={s.nombre} className="flex items-center gap-2 text-xs">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLORES[i % COLORES.length] }} aria-hidden="true" />
+                <span className="flex-1 min-w-0 leading-tight break-words">{s.nombre}</span>
+                <span className="font-semibold shrink-0 whitespace-nowrap">{String(s.pct).replace('.', ',')} %</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
-
-      {!cargando && informe?.hay_datos && (
-        <div className="dos-grid">
-          <section className="mx-6 mt-4 card-marca bg-paper-raised border border-line p-4 lg:col-start-1 lg:row-start-1">
-            <p className="t-kicker text-ink-soft capitalize">Gastaste en {informe.etiqueta}</p>
-            <p className="text-[32px] t-display mt-1">{fmt(informe.total)}</p>
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              {valor.periodo === 'este_mes' && informe.variacion_pct === -100 && !informe.total
-                ? <span className="text-xs text-ink-soft">El mes apenas empieza</span>
-                : <Variacion pct={informe.variacion_pct} anteriorLabel={informe.anterior.etiqueta} />}
-              <span className="text-xs text-ink-soft">
-                frente a {informe.anterior.etiqueta} ({fmt(informe.total_anterior)})
-              </span>
-            </div>
-            {informe.ingresos > 0 && (
-              <p className="text-xs text-ink-soft mt-2">
-                Ingresos {fmt(informe.ingresos)} · {informe.ahorro >= 0 ? 'Te sobró' : 'Te faltó'} {fmt(Math.abs(informe.ahorro))}
-              </p>
-            )}
-          </section>
-
-          {/* Día a día: lo que gastas cada día y cuánta plata te queda, en el mismo periodo */}
-          <DiaADia desde={informe.desde} hasta={informe.hasta} className="lg:col-start-1 lg:row-start-2" />
-
-          <section className="mx-6 mt-4 card-marca bg-paper-raised border border-line p-4 lg:col-start-2 lg:row-start-1 lg:row-span-2">
-            <h2 className="text-[15px] font-semibold mb-3">Por categoría</h2>
-            <div className="flex items-center gap-4">
-              <Dona segmentos={segmentos} total={informe.total} fmt={fmt} />
-              <ul className="flex-1 min-w-0 space-y-1.5" aria-label="Leyenda de la dona">
-                {segmentos.map((s, i) => (
-                  <li key={s.nombre} className="flex items-center gap-2 text-xs">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLORES[i % COLORES.length] }} aria-hidden="true" />
-                    <span className="flex-1 min-w-0 leading-tight break-words">{s.nombre}</span>
-                    <span className="font-semibold shrink-0 whitespace-nowrap">{String(s.pct).replace('.', ',')} %</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
 
             <ul className="mt-4 divide-y divide-line border-t border-line">
               {informe.categorias.map((c) => {
@@ -332,35 +302,93 @@ export default function Informe() {
                 )
               })}
             </ul>
-          </section>
+    </section>
+  )
 
-          {informe.comercios.length > 0 && (
-            <section className="mx-6 mt-4 card-marca bg-paper-raised border border-line p-4 lg:col-start-1 lg:row-start-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Store size={16} className="text-ink-soft" aria-hidden="true" />
-                <h2 className="text-[15px] font-semibold">Dónde más gastas</h2>
-              </div>
-              <ol className="divide-y divide-line">
-                {informe.comercios.map((c, i) => (
-                  <li key={c.nombre} className="flex items-center gap-3 py-2.5 text-sm">
-                    <span className="w-5 text-xs text-ink-soft">{i + 1}</span>
-                    <span className="flex-1 min-w-0 truncate">{c.nombre}</span>
-                    <span className="text-[11px] text-ink-soft">{formatVeces(c.num)}</span>
-                    <span className="font-semibold">{fmt(c.monto)}</span>
-                  </li>
-                ))}
-              </ol>
-            </section>
-          )}
-        </div>
+  const panelComercios = hayDatos && informe.comercios.length > 0 && (
+    <section className="card-marca bg-paper-raised border border-line p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Store size={16} className="text-ink-soft" aria-hidden="true" />
+        <h2 className="text-[15px] font-semibold">Dónde más gastas</h2>
+      </div>
+      <ol className="divide-y divide-line">
+        {informe.comercios.map((c, i) => (
+          <li key={c.nombre} className="flex items-center gap-3 py-2.5 text-sm">
+            <span className="w-5 text-xs text-ink-soft">{i + 1}</span>
+            <span className="flex-1 min-w-0 truncate">{c.nombre}</span>
+            <span className="text-[11px] text-ink-soft">{formatVeces(c.num)}</span>
+            <span className="font-semibold">{fmt(c.monto)}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+
+  const panel = {
+    resumen: hayDatos && <HeroGasto informe={informe} fmt={fmt} esMesActual={esMesActual} />,
+    atencion: hayDatos && <LoQueLlamaLaAtencion informe={informe} fmt={fmt} />,
+    categorias: panelCategorias,
+    dia: hayDatos && <DiaADia desde={informe.desde} hasta={informe.hasta} className="sin-margen" />,
+    comercios: panelComercios,
+    ingresos: <IngresosGastos params={paramsBase} fmt={fmt} className="" seleccion={sel} onSeleccion={setSel} />,
+    historial: <HistorialCategorias fmt={fmt} />,
+    evolucion: <EvolucionCategoria fmt={fmt} />,
+    mi_evolucion: <GraficoEvolucion fmt={fmt} />,
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto pb-8 screen-enter pantalla-ancha">
+      {!embebido && (
+      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="text-xl font-bold">En qué gasto mi plata</h1>
+      </header>
       )}
 
-      {/* Evolución e historial: debajo del resumen, para que lo primero que se vea sea cuánto gastaste y en qué */}
-      <div className="mt-2">
-        <HistorialCategorias fmt={fmt} className="mx-6 mt-4" />
-        <EvolucionCategoria fmt={fmt} className="mx-6 mt-4" />
-        <GraficoEvolucion fmt={fmt} className="mx-6 mt-4" />
+      <section className="px-6 mt-2">
+        <SelectorPeriodo
+          valor={mes ? { periodo: 'mes' } : valor}
+          onChange={(v) => { setMes(null); setSel(null); setValor(v) }}
+        />
+      </section>
+
+      <EnlaceCostos className="mx-6 mt-3" />
+
+      {cargando && <div className="mx-6 mt-6 space-y-4"><EsqueletoGrafica alto={160} etiqueta="Cargando tu informe" /><EsqueletoLista filas={4} /></div>}
+      {error && <p role="alert" className="mx-6 mt-6 text-sm text-danger text-center">{error}</p>}
+      {!cargando && informe && (
+        <AvisoSinTasa monedas={informe.monedas_sin_tasa} base={informe.moneda_base} onResuelto={() => setRecarga((n) => n + 1)} className="mx-6 mt-4" />
+      )}
+
+      {!cargando && informe && !informe.hay_datos && (
+        <EstadoVacio
+          icono={PieChart}
+          titulo={`No hay gastos en ${informe.etiqueta}`}
+          texto="Prueba con otro periodo o revisa un mes en el que sí registraste movimientos."
+          className="mx-6 mt-6"
+        >
+          {informe.ultimo_mes_con_datos && (
+            <button
+              type="button"
+              onClick={() => setMes(informe.ultimo_mes_con_datos)}
+              className="mt-4 text-sm text-accent font-semibold min-h-[44px] px-3"
+            >
+              Ver {nombreMesLargo(informe.ultimo_mes_con_datos)}
+            </button>
+          )}
+        </EstadoVacio>
+      )}
+
+      {/* Paneles: cada persona elige cuáles ve y en qué orden (Personalizar). */}
+      <div className="px-6 mt-4 grid gap-4 lg:grid-cols-2">
+        {paneles.orden.filter((id) => paneles.visible(id) && panel[id]).map((id) => (
+          <div key={id} className={`min-w-0 ${anchos.has(id) ? 'lg:col-span-2' : ''}`}>{panel[id]}</div>
+        ))}
       </div>
+
+      <PersonalizarPaneles paneles={paneles} className="px-6 mt-4" />
     </div>
   )
 }

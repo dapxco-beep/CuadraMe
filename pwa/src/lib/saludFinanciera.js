@@ -1,3 +1,22 @@
+// Estado de salud financiera de Cuadri (de mejor a peor). Lo usa <Cuadri estado=...>.
+export function estadoPorScore(score) {
+  if (score >= 85) return 'radiante'
+  if (score >= 70) return 'bien'
+  if (score >= 55) return 'regular'
+  if (score >= 40) return 'cansado'
+  if (score >= 25) return 'mal'
+  return 'critico'
+}
+
+export const MENSAJE_POR_ESTADO = {
+  radiante: '¡Cuadri está radiante! Tus finanzas van excelente',
+  bien: 'Cuadri está bien: vas por buen camino',
+  regular: 'Cuadri está tranquilo, pero puede estar mejor',
+  cansado: 'Cuadri anda cansado: hay gastos que ajustar',
+  mal: 'Cuadri no se siente bien: revisemos tu mes',
+  critico: 'Cuadri está en apuros: te ayudo a recuperarlo',
+}
+
 // score 0 → solo tierra (etapa 0). score 100 → árbol florecido (etapa 6).
 export function etapaPorScore(score) {
   if (score >= 90) return 6

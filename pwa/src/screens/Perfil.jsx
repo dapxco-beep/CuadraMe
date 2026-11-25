@@ -699,7 +699,7 @@ export default function Perfil() {
           </Link>
           <Link to="/ahorcado" className="flex items-center gap-3 px-4 py-3.5">
             <Sprout size={20} className="text-accent shrink-0" />
-            <p className="flex-1 text-sm font-medium">Tu árbol financiero</p>
+            <p className="flex-1 text-sm font-medium">Cómo está Cuadri</p>
             <ChevronRight size={16} className="text-ink-soft" />
           </Link>
         </div>
