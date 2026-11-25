@@ -99,10 +99,16 @@ export default function Patrimonio() {
             <div className="col">
             <TarjetaNeto datos={datos} />
 
-            {datos.historial.length > 0 && (
+            {datos.historial.length >= 2 && (
               <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': 1 }}>
                 <h2 className="text-sm font-semibold mb-3">Cómo ha cambiado</h2>
                 <GraficoPatrimonio historial={datos.historial} />
+              </section>
+            )}
+            {datos.historial.length === 1 && (
+              <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4" data-testid="historial-incipiente">
+                <h2 className="text-sm font-semibold">Cómo ha cambiado</h2>
+                <p className="text-xs text-ink-soft mt-1">Hoy tienes un solo punto guardado. La gráfica aparece cuando haya al menos dos meses de historia: ve registrando y se arma sola.</p>
               </section>
             )}
 

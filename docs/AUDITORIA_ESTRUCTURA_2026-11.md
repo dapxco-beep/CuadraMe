@@ -36,3 +36,18 @@ menos. Cada pantalla se muestra sin su encabezado propio dentro de la pestaña (
 ## Cosas que están y casi no se usan (por confirmar con datos de uso)
 No hay analítica de uso por pantalla. Antes de quitar nada, medir (de forma anónima y con consentimiento) qué pantallas se
 abren: candidatas a revisar son Ahorcado/juego, Costos, Enseñar categorías y Impuestos.
+
+## Segunda tanda (2026-11-24)
+- **Botones y encabezados unificados**: la acción principal es naranja en toda la app (97 botones; quedan oscuros solo los avisos
+  flotantes, tooltips y burbujas de chat) y todas las flechas de volver son redondas (20).
+- **Costos** ya es un panel de Gastos («Lo que te cuesta tu plata»); `/costos` lleva a ese panel.
+- **Revisar traslados y repetidos** se abre desde «Más acciones» de Movimientos (sigue en el buscador; salió del menú).
+- **Cierre / «Mi cuenta cuadra»**: ya eran la misma pestaña (`/mi-cuenta-cuadra` redirige a Cierre). Sin cambios.
+- **Días**: dentro de Informes ya no repite el enlace a Gastos ni el chat (que duplicaba al Asistente: ahora es un acceso al
+  Asistente); gráfica nueva «¿Qué día gastas más?» (promedio por día de la semana, con 2 semanas o más de datos).
+- **Patrimonio**: con un solo punto de historia explica por qué falta la gráfica en vez de dibujar un punto suelto.
+- **Medición anónima de uso** (opt-in «estadísticas anónimas», sin migración): se cuenta qué pantallas se abren (solo la ruta,
+  sin usuario). Lectura interna: `GET /formas-asunto/cron/pantallas` con el secreto de los crons. Con unas semanas de datos se
+  decide qué sobra (candidatas: Ahorcado/juego, Enseñar categorías).
+- **No se unió «Traer movimientos»** (extractos + correo + registro automático): existe una decisión previa de producto
+  (commit fc66f31) que los separó a propósito (cierre mensual vs avisos del día). Se respetó.

@@ -91,19 +91,21 @@ export default function Insights() {
       </header>
       )}
 
-      <Link
-        to="/informe"
-        className="mx-6 mt-4 card-marca bg-accent-soft border border-accent/20 p-3.5 flex items-center gap-3"
-      >
-        <span className="w-10 h-10 rounded-xl bg-paper-raised flex items-center justify-center shrink-0">
-          <PieChart size={20} className="text-accent" />
-        </span>
-        <div className="flex-1">
-          <p className="text-sm font-semibold">En qué gasto mi plata</p>
-          <p className="text-xs text-ink-soft mt-0.5">Informe por categoría y comercio, con el periodo que elijas</p>
-        </div>
-        <ChevronRight size={16} className="text-ink-soft shrink-0" />
-      </Link>
+      {!embebido && (
+        <Link
+          to="/informe"
+          className="mx-6 mt-4 card-marca bg-accent-soft border border-accent/20 p-3.5 flex items-center gap-3"
+        >
+          <span className="w-10 h-10 rounded-xl bg-paper-raised flex items-center justify-center shrink-0">
+            <PieChart size={20} className="text-accent" />
+          </span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold">En qué gasto mi plata</p>
+            <p className="text-xs text-ink-soft mt-0.5">Informe por categoría y comercio, con el periodo que elijas</p>
+          </div>
+          <ChevronRight size={16} className="text-ink-soft shrink-0" />
+        </Link>
+      )}
 
       <MapaActividad />
 
@@ -199,67 +201,78 @@ export default function Insights() {
         </>
       )}
 
-      <section className="mx-6 mt-6">
-        <div className="flex items-center gap-2 mb-3">
-          <TrendingUp size={16} className="text-ink-soft" />
-          <h2 className="text-[15px] font-semibold">Pregúntale a tus finanzas</h2>
-        </div>
+      {embebido ? (
+        <Link to="/asistente" className="mx-6 mt-6 card-marca bg-paper-raised border border-line p-3.5 flex items-center gap-3">
+          <span className="w-10 h-10 rounded-xl bg-accent-soft flex items-center justify-center shrink-0"><Sparkles size={20} className="text-accent" /></span>
+          <span className="flex-1">
+            <span className="block text-sm font-semibold">Pregúntale a CuadraMe</span>
+            <span className="block text-xs text-ink-soft mt-0.5">Te responde con tus números: «¿en qué gasté más este mes?»</span>
+          </span>
+          <ChevronRight size={16} className="text-ink-soft shrink-0" />
+        </Link>
+      ) : (
+        <section className="mx-6 mt-6">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp size={16} className="text-ink-soft" />
+            <h2 className="text-[15px] font-semibold">Pregúntale a tus finanzas</h2>
+          </div>
 
-        <div className="rounded-2xl bg-paper-raised border border-line p-4 min-h-[120px] flex flex-col gap-3">
-          {mensajes.length === 0 && (
-            <div>
-              <p className="text-xs text-ink-soft mb-2">Te respondo con tus números y te digo de qué fechas. Prueba:</p>
-              <div className="flex flex-wrap gap-1.5">
-                {PREGUNTAS_SUGERIDAS.map((q) => (
-                  <button key={q} type="button" onClick={() => enviarPregunta(null, q)} className="text-xs rounded-full border border-line bg-paper px-3 py-1.5 min-h-[34px]">
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {mensajes.map((m, i) => (
-            <div
-              key={i}
-              className={`text-sm rounded-2xl px-3.5 py-2.5 max-w-[85%] ${
-                m.rol === 'usuario'
-                  ? 'bg-ink text-paper self-end'
-                  : 'bg-paper border border-line self-start'
-              }`}
-            >
-              {m.texto}
-              {m.sugerencias?.length > 0 && (
-                <span className="flex flex-wrap gap-1.5 mt-2">
-                  {m.sugerencias.map((q) => (
-                    <button key={q} type="button" onClick={() => enviarPregunta(null, q)} className="text-xs rounded-full border border-line bg-paper-raised px-3 py-1.5 min-h-[32px]">
+          <div className="rounded-2xl bg-paper-raised border border-line p-4 min-h-[120px] flex flex-col gap-3">
+            {mensajes.length === 0 && (
+              <div>
+                <p className="text-xs text-ink-soft mb-2">Te respondo con tus números y te digo de qué fechas. Prueba:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {PREGUNTAS_SUGERIDAS.map((q) => (
+                    <button key={q} type="button" onClick={() => enviarPregunta(null, q)} className="text-xs rounded-full border border-line bg-paper px-3 py-1.5 min-h-[34px]">
                       {q}
                     </button>
                   ))}
-                </span>
-              )}
-            </div>
-          ))}
-          {enviando && <p className="text-xs text-ink-soft self-start">Pensando...</p>}
-          <div ref={scrollRef} />
-        </div>
+                </div>
+              </div>
+            )}
+            {mensajes.map((m, i) => (
+              <div
+                key={i}
+                className={`text-sm rounded-2xl px-3.5 py-2.5 max-w-[85%] ${
+                  m.rol === 'usuario'
+                    ? 'bg-ink text-paper self-end'
+                    : 'bg-paper border border-line self-start'
+                }`}
+              >
+                {m.texto}
+                {m.sugerencias?.length > 0 && (
+                  <span className="flex flex-wrap gap-1.5 mt-2">
+                    {m.sugerencias.map((q) => (
+                      <button key={q} type="button" onClick={() => enviarPregunta(null, q)} className="text-xs rounded-full border border-line bg-paper-raised px-3 py-1.5 min-h-[32px]">
+                        {q}
+                      </button>
+                    ))}
+                  </span>
+                )}
+              </div>
+            ))}
+            {enviando && <p className="text-xs text-ink-soft self-start">Pensando...</p>}
+            <div ref={scrollRef} />
+          </div>
 
-        <form onSubmit={enviarPregunta} className="flex gap-2 mt-3">
-          <input
-            value={pregunta}
-            onChange={(e) => setPregunta(e.target.value)}
-            placeholder="Escribe tu pregunta..."
-            className="flex-1 rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm outline-none focus:border-accent"
-          />
-          <button
-            type="submit"
-            disabled={enviando || !pregunta.trim()}
-            aria-label="Enviar pregunta"
-            className="w-12 h-12 shrink-0 rounded-2xl bg-accent text-paper-raised flex items-center justify-center disabled:opacity-50"
-          >
-            <Send size={16} />
-          </button>
-        </form>
-      </section>
+          <form onSubmit={enviarPregunta} className="flex gap-2 mt-3">
+            <input
+              value={pregunta}
+              onChange={(e) => setPregunta(e.target.value)}
+              placeholder="Escribe tu pregunta..."
+              className="flex-1 rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm outline-none focus:border-accent"
+            />
+            <button
+              type="submit"
+              disabled={enviando || !pregunta.trim()}
+              aria-label="Enviar pregunta"
+              className="w-12 h-12 shrink-0 rounded-2xl bg-accent text-paper-raised flex items-center justify-center disabled:opacity-50"
+            >
+              <Send size={16} />
+            </button>
+          </form>
+        </section>
+      )}
 
       <EnlacesRelacionados titulo="Sigue explorando" enlaces={[
         { a: '/presupuesto', texto: 'Mi presupuesto', apoyo: 'Cuánto quieres gastar por categoría' },
