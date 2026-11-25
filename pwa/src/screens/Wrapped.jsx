@@ -64,6 +64,8 @@ function mesRelativo(delta) {
   return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}`
 }
 
+const mayuscula1 = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t)
+
 export default function Wrapped() {
   const embebido = useEmbebido()
   const navigate = useNavigate()
@@ -171,9 +173,9 @@ export default function Wrapped() {
             <ChevronLeft size={16} />
           </button>
           <select value={mes} onChange={(e) => setMes(e.target.value)} aria-label="Elegir mes"
-            className="flex-1 min-h-[40px] rounded-full border border-line bg-paper-raised px-4 text-sm font-semibold text-center capitalize">
+            className="flex-1 min-h-[40px] rounded-full border border-line bg-paper-raised px-4 text-sm font-semibold text-center">
             {opciones.map((m) => (
-              <option key={m} value={m}>{nombreMesLargo(m)}{meses.includes(m) ? '' : ' (sin datos)'}</option>
+              <option key={m} value={m}>{mayuscula1(nombreMesLargo(m))}{meses.includes(m) ? '' : ' (sin datos)'}</option>
             ))}
           </select>
           <button type="button" aria-label="Mes siguiente" disabled={!haySiguiente} onClick={() => setMes(opciones[indice + 1])}

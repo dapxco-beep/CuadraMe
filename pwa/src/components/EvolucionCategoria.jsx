@@ -96,13 +96,13 @@ export default function EvolucionCategoria({ fmt, className = '' }) {
             {n ?? 'Todas'}
           </button>
         ))}
-        {todas.length > 5 && (
-          <button type="button" onClick={() => setVerTodas((v) => !v)} aria-expanded={verTodas}
-            className="shrink-0 px-3 min-h-[44px] rounded-full text-xs font-semibold text-accent">
-            {verTodas ? 'Menos' : `Ver las ${todas.length}`}
-          </button>
-        )}
       </div>
+      {todas.length > 5 && (
+        <button type="button" onClick={() => setVerTodas((v) => !v)} aria-expanded={verTodas}
+          className="text-xs font-semibold text-accent min-h-[44px] px-1">
+          {verTodas ? 'Mostrar menos categorías' : `Ver las ${todas.length} categorías`}
+        </button>
+      )}
 
       <p className="text-sm mt-2" data-testid="frase-evolucion">{frase}</p>
       <p className="text-[11px] text-ink-soft">Promedio mensual: {fmt(serie.promedio)} (sin contar el mes en curso)</p>
