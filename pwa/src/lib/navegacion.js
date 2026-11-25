@@ -64,7 +64,7 @@ export const GRUPOS = [
     icon: Lightbulb,
     items: [
       { to: '/informes', icon: PieChart, label: 'Informes', palabras: 'informe informes en que gasto mi plata categoria comercios reporte cierre de mes balance resumen del mes wrapped compartir mi cuenta cuadra cuadre extracto banco insights hallazgos cosas raras consejos patrimonio inversion activos neto cdt acciones' },
-      { to: '/ahorcado', icon: Sprout, label: 'Cómo está Cuadri (salud de mi plata)', palabras: 'cuadri salud financiera puntaje arbol ahorcado vidas' },
+      { to: '/ahorcado', icon: Sprout, label: 'Cómo está Cuadri', palabras: 'cuadri salud financiera puntaje arbol ahorcado vidas' },
       { to: '/asistente', icon: Bot, label: 'Asistente', palabras: 'cuadrame ai ia pregunta chat' },
     ],
   },
