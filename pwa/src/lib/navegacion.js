@@ -42,9 +42,6 @@ export const GRUPOS = [
     icon: Wallet,
     items: [
       { to: '/cuentas', icon: Wallet, label: 'Cuentas', palabras: 'saldo banco tarjeta efectivo ajustar' },
-      { to: '/deudas', icon: CreditCard, label: 'Deudas', palabras: 'prestamo credito cuotas pagar' },
-      { to: '/recurrentes', icon: Repeat, label: 'Pagos fijos', palabras: 'recurrentes recurrente suscripcion fijo mensual automatico arriendo nomina' },
-      { to: '/impuestos', icon: Receipt, label: 'Impuestos', palabras: '4x1000 renta dian deducible' },
     ],
   },
   {
@@ -61,7 +58,6 @@ export const GRUPOS = [
     icon: TrendingUp,
     items: [
       { to: '/metas', icon: PiggyBank, label: 'Metas', palabras: 'ahorro objetivo meta' },
-      { to: '/inversiones', icon: TrendingUp, label: 'Inversiones', corta: 'Invers.', palabras: 'acciones etf fondos broker portafolio ticker trii bolsa cripto rentabilidad' },
     ],
   },
   {
@@ -81,7 +77,6 @@ export const GRUPOS = [
     icon: Settings,
     items: [
       { to: '/perfil', icon: User, label: 'Perfil', palabras: 'cuenta usuario pin seguridad tema notificaciones' },
-      { to: '/aprende', icon: BookOpen, label: 'Aprende', palabras: 'lecciones glosario educacion finanzas tarjeta credito debito interes cupo presupuesto fraude que es' },
       { to: '/ayuda', icon: LifeBuoy, label: 'Ayuda', palabras: 'preguntas frecuentes dudas soporte como funciona extracto clave pdf gmail primeros pasos' },
       { to: '/legal/privacidad', icon: ShieldCheck, label: 'Privacidad', palabras: 'datos legal terminos politica' },
     ],
@@ -89,7 +84,13 @@ export const GRUPOS = [
 ]
 
 // Hoy todos los destinos viven en un grupo; queda por si algún día hay uno que solo deba encontrar el buscador.
-export const EXTRA_BUSQUEDA = []
+export const EXTRA_BUSQUEDA = [
+  { to: '/presupuesto?tab=fijos', icon: Repeat, label: 'Pagos fijos', palabras: 'recurrentes recurrente suscripcion fijo mensual automatico arriendo nomina' },
+  { to: '/cuentas?tab=deudas', icon: CreditCard, label: 'Deudas', palabras: 'prestamo credito cuotas pagar tarjeta debo' },
+  { to: '/metas?tab=inversiones', icon: TrendingUp, label: 'Inversiones', palabras: 'acciones etf fondos broker portafolio ticker trii bolsa cripto rentabilidad cdt' },
+  { to: '/informes?tab=impuestos', icon: Receipt, label: 'Impuestos', palabras: '4x1000 renta dian deducible declarar' },
+  { to: '/ayuda?tab=aprende', icon: BookOpen, label: 'Aprende', palabras: 'lecciones glosario educacion finanzas tarjeta credito debito interes cupo presupuesto fraude que es' },
+]
 
 // Destino SOLO para quien administra CuadraMe. No está en GRUPOS ni en el buscador: se agrega aparte
 // cuando el correo de la sesión coincide con VITE_ADMIN_EMAIL. Es solo comodidad visual; la seguridad
@@ -111,7 +112,7 @@ export const ITEMS_MAS = GRUPOS.flatMap((g) => g.items.map((i) => ({ ...i, grupo
 // por enlace directo y por el buscador.
 export const MAS_FUNCIONES_ID = 'mas-funciones'
 export const RUTAS_AVANZADAS = [
-  '/entrenar-categorias', '/conectar-dispositivo', '/revisar', '/deudas', '/recurrentes', '/impuestos', '/inversiones', '/ahorcado',
+  '/entrenar-categorias', '/conectar-dispositivo', '/revisar', '/ahorcado',
 ]
 
 export const EXPLICACION = {

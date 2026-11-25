@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { aFecha } from '../lib/fechaLocal'
 import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
@@ -33,6 +34,7 @@ function Campo({ etiqueta, children }) {
 const soloNumero = (v) => v.replace(/[^0-9.]/g, '')
 
 export default function Inversiones() {
+  const embebido = useEmbebido()
   const [datos, setDatos] = useState(null)
   const [error, setError] = useState('')
   const [hoja, setHoja] = useState(null) // { tipo: 'broker'|'posicion'|'csv'|'detalle'|'glosario', ... }
@@ -72,8 +74,8 @@ export default function Inversiones() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
-      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Inversiones</h1>
+      <header className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
+        {!embebido && <h1 className="text-xl font-semibold">Inversiones</h1>}
         <div className="flex gap-2">
           <button onClick={() => setHoja({ tipo: 'glosario' })} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="¿Qué significan estos términos?">
             <CircleHelp size={20} />

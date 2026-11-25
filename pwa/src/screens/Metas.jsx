@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
@@ -34,6 +35,7 @@ const RITMO = {
 }
 
 export default function Metas() {
+  const embebido = useEmbebido()
   const volver = useVolver('/perfil')
   const [metas, setMetas] = useState([])
   const [planes, setPlanes] = useState({})
@@ -67,15 +69,15 @@ export default function Metas() {
 
   return (
     <div ref={raiz} className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
+      <header className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
         <div className="flex items-center gap-3">
-          <button
+          {!embebido && (<><button
             onClick={volver}
             className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
            aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-xl font-semibold">Metas de ahorro</h1>
+          <h1 className="text-xl font-semibold">Metas de ahorro</h1></>)}
         </div>
         <div className="flex items-center gap-2">
           <button

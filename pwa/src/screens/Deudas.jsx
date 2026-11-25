@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -23,6 +24,7 @@ const urgenciaColor = {
 }
 
 export default function Deudas() {
+  const embebido = useEmbebido()
   const volver = useVolver('/perfil')
   const { recargar: recargarCuentas, cuentas: todasLasCuentas = [] } = useCuentas()
   // Las tarjetas de crédito con saldo en contra también son deuda, aunque no se hayan anotado como préstamo.
@@ -55,15 +57,15 @@ export default function Deudas() {
 
   return (
     <div ref={raiz} className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
+      <header className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
         <div className="flex items-center gap-3">
-          <button
+          {!embebido && (<><button
             onClick={volver}
             className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
            aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-xl font-semibold">Deudas</h1>
+          <h1 className="text-xl font-semibold">Deudas</h1></>)}
         </div>
         <button
           onClick={() => setMostrarForm(true)}

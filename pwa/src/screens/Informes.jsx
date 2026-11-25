@@ -13,6 +13,7 @@ const Wrapped = lazy(() => import('./Wrapped'))
 const Insights = lazy(() => import('./Insights'))
 const Patrimonio = lazy(() => import('./Patrimonio'))
 const CierreMes = lazy(() => import('./CierreMes'))
+const Impuestos = lazy(() => import('./Impuestos'))
 
 export const PESTANAS = [
   { id: 'gastos', texto: 'Gastos', Pantalla: Informe },
@@ -20,6 +21,7 @@ export const PESTANAS = [
   { id: 'dias', texto: 'Días', Pantalla: Insights },
   { id: 'patrimonio', texto: 'Patrimonio', Pantalla: Patrimonio },
   { id: 'cierre', texto: 'Cierre', Pantalla: CierreMes },
+  { id: 'impuestos', texto: 'Impuestos', Pantalla: Impuestos },
 ]
 
 export default function Informes() {

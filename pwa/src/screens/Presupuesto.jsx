@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
@@ -37,6 +38,7 @@ function gastosDe(reporte) {
 }
 
 export default function Presupuesto() {
+  const embebido = useEmbebido()
   const { avisar } = useDialogos() || {}
   // Lo último visto pinta la pantalla al instante; lo nuevo llega y la actualiza sola (sin esqueleto).
   const [previo] = useState(() => {
@@ -135,8 +137,8 @@ export default function Presupuesto() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
-      <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Presupuesto</h1>
+      <header className={embebido ? 'px-6 pt-3 flex items-center justify-end gap-2' : 'px-6 pantalla-top pb-2 flex items-center justify-between'}>
+        {!embebido && <h1 className="text-2xl font-bold">Presupuesto</h1>}
         <div className="flex items-center gap-2">
           {presupuestos.length > 1 && (
             <button

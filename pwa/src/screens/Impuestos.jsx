@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { Boton } from '../components/ui'
@@ -21,6 +22,7 @@ function etiquetaMes(clave) {
 }
 
 export default function Impuestos() {
+  const embebido = useEmbebido()
   const volver = useVolver('/perfil')
   const { tiene, cargado } = usePais()
   // La renta DIAN, el 4x1000 y los deducibles son solo de Colombia; en otro país se muestra el recordatorio.
@@ -99,15 +101,15 @@ export default function Impuestos() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-8 screen-enter">
-      <header className="px-5 pantalla-top pb-2 flex items-center gap-3 no-print">
-        <button
+      <header className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center gap-3 no-print'}>
+        {!embebido && (<><button
           onClick={volver}
           className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
           aria-label="Volver"
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-xl font-semibold flex-1">Impuestos</h1>
+        <h1 className="text-xl font-semibold flex-1">Impuestos</h1></>)}
         <select
           aria-label="Año"
           value={anio}

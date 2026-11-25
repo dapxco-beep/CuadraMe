@@ -7,7 +7,7 @@ import { EsqueletoLista } from './Esqueletos'
 
 // Una pantalla con título único, flecha de volver y pestañas. Cada pestaña muestra una pantalla de siempre, sin su
 // encabezado propio (ver EmbebidoContext). La pestaña activa vive en la dirección: ?tab=<id>.
-export default function PantallaConPestanas({ titulo, pestanas }) {
+export default function PantallaConPestanas({ titulo, pestanas, raiz = false }) {
   const volver = useVolver('/')
   const [params, setParams] = useSearchParams()
   const activa = pestanas.find((p) => p.id === params.get('tab')) || pestanas[0]
@@ -15,15 +15,17 @@ export default function PantallaConPestanas({ titulo, pestanas }) {
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={volver}
-          className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center"
-          aria-label="Volver"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="text-xl font-semibold">{titulo}</h1>
+        {!raiz && (
+          <button
+            type="button"
+            onClick={volver}
+            className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center"
+            aria-label="Volver"
+          >
+            <ArrowLeft size={20} />
+          </button>
+        )}
+        <h1 className={raiz ? 'text-2xl font-bold' : 'text-xl font-semibold'}>{titulo}</h1>
       </header>
       <div role="tablist" aria-label={titulo} className="px-5 pb-1 flex gap-2 overflow-x-auto no-scrollbar">
         {pestanas.map((p) => {

@@ -3,7 +3,7 @@
 // Se guarda solo en este dispositivo (ver modoSimple.js).
 
 // Lo que siempre se ve, sea cual sea el perfil.
-export const SIEMPRE_VISIBLES = ['/perfil', '/ayuda', '/aprende', '/legal/privacidad']
+export const SIEMPRE_VISIBLES = ['/perfil', '/ayuda', '/legal/privacidad']
 
 const BASE = ['/cuentas', '/sincronizacion', '/informes', '/ahorcado']
 
@@ -17,20 +17,20 @@ export const PERFILES = [
   {
     id: 'gastos',
     nombre: 'Controlo mis gastos',
-    desc: 'Para saber en qué se va la plata: avisos del banco, categorías y pagos fijos.',
-    rutas: [...BASE, '/movimientos-correo', '/categorias', '/recurrentes', '/revisar', '/asistente'],
+    desc: 'Para saber en qué se va la plata: avisos del banco, categorías y revisión de movimientos.',
+    rutas: [...BASE, '/movimientos-correo', '/categorias', '/revisar', '/asistente'],
   },
   {
     id: 'ahorro',
     nombre: 'Quiero ahorrar',
-    desc: 'Metas, deudas y pagos fijos para llegar a lo que quieres.',
-    rutas: [...BASE, '/metas', '/deudas', '/recurrentes', '/inversiones', '/asistente'],
+    desc: 'Metas e inversiones para llegar a lo que quieres.',
+    rutas: [...BASE, '/metas', '/asistente'],
   },
   {
     id: 'juntos',
     nombre: 'En pareja o familia',
     desc: 'Gastos compartidos, vacas y parches, además de lo básico.',
-    rutas: [...BASE, '/otros', '/recurrentes', '/categorias'],
+    rutas: [...BASE, '/otros', '/categorias'],
   },
   {
     id: 'todo',

@@ -1,0 +1,38 @@
+# Auditoría de diseño y estructura (noviembre 2026)
+
+Revisión pantalla por pantalla (41 pantallas, celular 390 px y computador 1536 px, con los datos de demostración; ver
+`docs/AUDITORIA_VISUAL.md`) y evaluación de qué secciones se pueden unir, simplificar o conectar.
+
+## Hallazgos visuales
+- Ninguna pantalla se desborda de lado. Estilo coherente (crema, naranja, tarjetas).
+- Corregido: botón «+» solo en una fila vacía (Categorías, Reglas, Patrimonio); «Ver las N categorías» escondido;
+  mayúsculas en cada palabra en el selector de «Mi mes»; «sin base para comparar» que sacaba el monto de la fila.
+- Pendiente (decisión de diseño): botones de agregar de dos colores (naranja y negro), encabezados con flecha redonda o suelta,
+  tarjetas de Cuentas con etiqueta lateral, gráfica «Cómo ha cambiado» de Patrimonio vacía con datos de demostración.
+
+## Qué se unió (2026-11-24)
+| Antes (pantallas sueltas) | Ahora |
+|---|---|
+| Presupuesto + Pagos fijos | `/presupuesto` con pestañas «Presupuesto» y «Pagos fijos» |
+| Metas + Inversiones | `/metas` con pestañas «Metas» e «Inversiones» |
+| Cuentas + Deudas | `/cuentas` con pestañas «Cuentas» y «Deudas» |
+| Ayuda + Aprende | `/ayuda` con pestañas «Ayuda» y «Aprende» |
+| Impuestos | pestaña «Impuestos» dentro de `/informes` |
+
+Las rutas viejas (`/recurrentes`, `/inversiones`, `/deudas`, `/aprende`, `/impuestos`) redirigen a su pestaña y conservan la
+consulta. El buscador del menú las sigue encontrando (`EXTRA_BUSQUEDA` en `lib/navegacion.js`). El menú «Más» tiene 5 entradas
+menos. Cada pantalla se muestra sin su encabezado propio dentro de la pestaña (`useEmbebido`).
+
+## Por qué no se unió más (pendiente, en orden de valor)
+1. **Traer movimientos**: `/sincronizacion` ya reúne extractos, correo y conexiones; falta sumar «Registro automático»
+   (`/conectar-dispositivo`, atajos) como pestaña. Es la pantalla más grande (1.768 líneas): conviene partirla antes.
+2. **Revisar movimientos** (traslados y repetidos) podría vivir dentro de Movimientos («Más acciones»).
+3. **Informes**: Mi mes, Días, Patrimonio y Cierre mantienen su diseño anterior; rediseñarlas con el mismo lenguaje que
+   Gastos (resumen, hallazgos, paneles personalizables). «Cierre» y «Mi cuenta cuadra» se solapan.
+4. **Costos** («Lo que te cuesta tu plata») hoy es un enlace desde Gastos; podría ser un panel de Gastos.
+5. **Asistente**: es una función aparte; valorar que «Ayuda» lo sugiera como primera opción.
+6. Preguntar el perfil de uso al entrar a una cuenta nueva (hoy está en Perfil).
+
+## Cosas que están y casi no se usan (por confirmar con datos de uso)
+No hay analítica de uso por pantalla. Antes de quitar nada, medir (de forma anónima y con consentimiento) qué pantallas se
+abren: candidatas a revisar son Ahorcado/juego, Costos, Enseñar categorías y Impuestos.

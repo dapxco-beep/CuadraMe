@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
@@ -56,6 +57,7 @@ const tipos = [
 ]
 
 export default function Cuentas() {
+  const embebido = useEmbebido()
   const volver = useVolver('/')
   const { cuentas, cargando, error, recargar } = useCuentas()
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -116,12 +118,12 @@ export default function Cuentas() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
+      <header className={embebido ? 'px-6 pt-3 flex items-center justify-end gap-2' : 'px-6 pantalla-top pb-2 flex items-center justify-between'}>
         <div className="flex items-center gap-3">
-          <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+          {!embebido && (<><button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-xl font-bold">Tus cuentas</h1>
+          <h1 className="text-xl font-bold">Tus cuentas</h1></>)}
         </div>
         <div className="flex items-center gap-2">
           <BotonOjo />
