@@ -17,6 +17,7 @@ import LimiteRuta from './components/LimiteRuta'
 import BandejaPorConfirmar from './components/BandejaPorConfirmar'
 import RedirigirAlCentro from './components/RedirigirAlCentro'
 import AInformes from './components/AInformes'
+import MedidorUso from './components/MedidorUso'
 import ATab from './components/ATab'
 import SplashMarca, { splashPendiente } from './brand/SplashMarca'
 import { CargandoMarca } from './brand/Marca'
@@ -39,30 +40,23 @@ const CrearCuenta = lazy(() => import('./screens/CrearCuenta'))
 const NuevaPassword = lazy(() => import('./screens/NuevaPassword'))
 const PedirNombre = lazy(() => import('./screens/PedirNombre'))
 const AutorizacionTratamiento = lazy(() => import('./screens/AutorizacionTratamiento'))
-const Cuentas = lazy(() => import('./screens/Cuentas'))
+const MisCuentas = lazy(() => import('./screens/MisCuentas'))
 const Movimientos = lazy(() => import('./screens/Movimientos'))
 const DetalleMovimiento = lazy(() => import('./screens/DetalleMovimiento'))
 const Agregar = lazy(() => import('./screens/Agregar'))
-const Presupuesto = lazy(() => import('./screens/Presupuesto'))
-const Inversiones = lazy(() => import('./screens/Inversiones'))
-const Metas = lazy(() => import('./screens/Metas'))
-const Recurrentes = lazy(() => import('./screens/Recurrentes'))
-const Deudas = lazy(() => import('./screens/Deudas'))
+const PresupuestoPlan = lazy(() => import('./screens/PresupuestoPlan'))
+const MetasAhorro = lazy(() => import('./screens/MetasAhorro'))
 const Ahorcado = lazy(() => import('./screens/Ahorcado'))
 const Compartir = lazy(() => import('./screens/Compartir'))
-const ConectarDispositivo = lazy(() => import('./screens/ConectarDispositivo'))
-const Sincronizacion = lazy(() => import('./screens/Sincronizacion'))
+const TraerMovimientos = lazy(() => import('./screens/TraerMovimientos'))
 const Asistente = lazy(() => import('./screens/Asistente'))
 const EntrenarCategorias = lazy(() => import('./screens/EntrenarCategorias'))
-const Impuestos = lazy(() => import('./screens/Impuestos'))
 const Informes = lazy(() => import('./screens/Informes'))
 const PlataConOtros = lazy(() => import('./screens/PlataConOtros'))
 const OrdenarCategorias = lazy(() => import('./screens/OrdenarCategorias'))
 const RevisarMovimientos = lazy(() => import('./screens/RevisarMovimientos'))
-const Costos = lazy(() => import('./screens/Costos'))
 const Perfil = lazy(() => import('./screens/Perfil'))
-const Ayuda = lazy(() => import('./screens/Ayuda'))
-const Aprende = lazy(() => import('./screens/Aprende'))
+const AyudaAprende = lazy(() => import('./screens/AyudaAprende'))
 const SaludNegocio = lazy(() => import('./screens/SaludNegocio'))
 const Opinion = lazy(() => import('./screens/Opinion'))
 const ComentariosAdmin = lazy(() => import('./screens/ComentariosAdmin'))
@@ -93,11 +87,11 @@ function Cargando() {
 const PRECARGAR = [
   () => import('./screens/Movimientos'),
   () => import('./screens/Agregar'),
-  () => import('./screens/Presupuesto'),
+  () => import('./screens/PresupuestoPlan'),
   () => import('./screens/Informe'),
   () => import('./screens/Asistente'),
   () => import('./screens/Wrapped'),
-  () => import('./screens/Sincronizacion'),
+  () => import('./screens/TraerMovimientos'),
   () => import('./screens/Perfil'),
 ]
 
@@ -165,13 +159,14 @@ function AppGate() {
 
   return (
     <>
+      <MedidorUso />
       <ShellApp>
       {/* Mientras llega el código de una pantalla se ve su esqueleto DENTRO de la app (con el menú), no una pantalla de marca aparte */}
       <Suspense fallback={<EsqueletoPantalla />}>
       <LimiteRuta>
       <Routes>
         <Route path="/" element={<Inicio />} />
-        <Route path="/cuentas" element={<Cuentas />} />
+        <Route path="/cuentas" element={<MisCuentas />} />
         <Route path="/movimientos" element={<Movimientos />} />
         <Route path="/movimientos/:id" element={<DetalleMovimiento />} />
         <Route path="/agregar" element={<Agregar />} />
@@ -186,23 +181,23 @@ function AppGate() {
         <Route path="/colectas/nueva" element={<NuevaColecta />} />
         <Route path="/colectas/:id" element={<DetalleColecta />} />
         <Route path="/c/:token" element={<ColectaPublica />} />
-        <Route path="/presupuesto" element={<Presupuesto />} />
+        <Route path="/presupuesto" element={<PresupuestoPlan />} />
         <Route path="/patrimonio" element={<AInformes tab="patrimonio" />} />
-        <Route path="/inversiones" element={<Inversiones />} />
-        <Route path="/metas" element={<Metas />} />
-        <Route path="/recurrentes" element={<Recurrentes />} />
-        <Route path="/deudas" element={<Deudas />} />
+        <Route path="/inversiones" element={<ATab a="/metas" tab="inversiones" />} />
+        <Route path="/metas" element={<MetasAhorro />} />
+        <Route path="/recurrentes" element={<ATab a="/presupuesto" tab="fijos" />} />
+        <Route path="/deudas" element={<ATab a="/cuentas" tab="deudas" />} />
         <Route path="/conciliacion" element={<RedirigirAlCentro ruta="/conciliacion" />} />
         <Route path="/correos" element={<RedirigirAlCentro ruta="/correos" />} />
         <Route path="/conexiones" element={<RedirigirAlCentro ruta="/conexiones" />} />
-        <Route path="/sincronizacion" element={<Sincronizacion />} />
-        <Route path="/movimientos-correo" element={<Sincronizacion modo="correo" />} />
+        <Route path="/sincronizacion" element={<TraerMovimientos />} />
+        <Route path="/movimientos-correo" element={<ATab a="/sincronizacion" tab="correo" />} />
         <Route path="/mi-cuenta-cuadra" element={<AInformes tab="cierre" />} />
         <Route path="/insights" element={<AInformes tab="dias" />} />
         <Route path="/asistente" element={<Asistente />} />
         <Route path="/compartir" element={<Compartir />} />
         <Route path="/otros" element={<PlataConOtros />} />
-        <Route path="/conectar-dispositivo" element={<ConectarDispositivo />} />
+        <Route path="/conectar-dispositivo" element={<ATab a="/sincronizacion" tab="automatico" />} />
         <Route path="/ahorcado" element={<Ahorcado />} />
         <Route path="/reglas-categoria" element={<ATab a="/categorias" tab="reglas" />} />
         <Route path="/categorizar" element={<ATab a="/categorias" tab="pendientes" />} />
@@ -213,14 +208,14 @@ function AppGate() {
         <Route path="/resumen" element={<AInformes tab="resumen" />} />
         <Route path="/informe" element={<AInformes tab="gastos" />} />
         <Route path="/informes" element={<Informes />} />
-        <Route path="/costos" element={<Costos />} />
+        <Route path="/costos" element={<AInformes tab="gastos" hash="costos" />} />
         <Route path="/importar" element={<RedirigirAlCentro ruta="/importar" />} />
-        <Route path="/impuestos" element={<Impuestos />} />
+        <Route path="/impuestos" element={<AInformes tab="impuestos" />} />
         <Route path="/cierre-mes" element={<AInformes tab="cierre" />} />
         <Route path="/perfil" element={<Perfil />} />
         <Route path="/buscar-duplicados" element={<ATab a="/revisar" tab="repetidos" />} />
-        <Route path="/ayuda" element={<Ayuda />} />
-        <Route path="/aprende" element={<Aprende />} />
+        <Route path="/ayuda" element={<AyudaAprende />} />
+        <Route path="/aprende" element={<ATab a="/ayuda" tab="aprende" />} />
         <Route path="/salud-negocio" element={<SaludNegocio />} />
         <Route path="/opinion" element={<Opinion />} />
         <Route path="/comentarios-admin" element={<ComentariosAdmin />} />

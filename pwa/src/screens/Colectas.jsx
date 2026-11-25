@@ -42,7 +42,7 @@ export default function Colectas() {
         </div>
         <button
           onClick={() => navigate('/colectas/nueva')}
-          className="w-11 h-11 shrink-0 rounded-full bg-ink text-paper flex items-center justify-center"
+          className="w-11 h-11 shrink-0 rounded-full bg-accent text-paper-raised flex items-center justify-center"
           aria-label="Nueva vaca"
         >
           <Plus size={20} />
@@ -66,7 +66,7 @@ export default function Colectas() {
           <p className="text-sm text-ink-soft mt-1">
             Para la inscripción del equipo, un paseo o un regalo: ves quién ya puso, quién falta, y se lo recuerdas por WhatsApp.
           </p>
-          <button onClick={() => navigate('/colectas/nueva')} className="mt-4 bg-ink text-paper rounded-2xl px-5 py-3 text-sm font-semibold">
+          <button onClick={() => navigate('/colectas/nueva')} className="mt-4 bg-accent text-paper-raised rounded-2xl px-5 py-3 text-sm font-semibold">
             Crear mi primera vaca
           </button>
         </div>

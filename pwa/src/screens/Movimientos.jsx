@@ -157,10 +157,9 @@ const FilaMovimiento = memo(function FilaMovimiento({
                 type="button"
                 onClick={() => (modoSel ? onToggle(m.id) : onChip(m))}
                 aria-label={`Cambiar categoría de ${m.descripcion}`}
-                className="relative before:absolute before:-inset-y-2 before:inset-x-0 before:content-[''] inline-flex items-center gap-1 text-xs text-ink-soft rounded-full border border-line px-2.5 min-h-[32px] hover:border-accent hover:text-ink"
+                className="relative before:absolute before:-inset-y-2 before:inset-x-0 before:content-[''] inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft rounded-full bg-paper-raised px-2.5 min-h-[32px] hover:text-ink"
               >
                 <span aria-hidden="true">{icono}</span> {m.categoria}{m.subcategoria ? ` · ${m.subcategoria}` : ''}
-                <ChevronDown size={16} aria-hidden="true" />
               </button>
             )}
             {onNombre && !esTransfer && !modoSel && <BotonLapiz className="ml-1.5" original={m.descripcion} onClick={() => onNombre(m)} />}
@@ -1143,7 +1142,7 @@ export default function Movimientos() {
                       key={c.k}
                       onClick={() => cambiarParams({ [c.k]: '' })}
                       aria-label={`Quitar filtro ${c.texto}`}
-                      className="inline-flex items-center gap-1 text-xs px-3 min-h-[32px] rounded-full bg-ink text-paper"
+                      className="inline-flex items-center gap-1 text-xs px-3 min-h-[32px] rounded-full bg-accent text-paper-raised"
                     >
                       {c.texto} <X size={16} aria-hidden="true" />
                     </button>
@@ -1467,6 +1466,9 @@ export default function Movimientos() {
                   <button className={fila} onClick={accion(() => setModoSeleccion(true))}>
                     <ListChecks size={20} aria-hidden="true" /> Seleccionar varios
                   </button>
+                  <Link to="/revisar" className={fila} onClick={() => cerrar()}>
+                    <ArrowLeftRight size={20} aria-hidden="true" /> Revisar traslados y repetidos
+                  </Link>
                   <button className={fila} disabled={leyendoCorreo} onClick={accion(() => actualizarCorreo(true))}>
                     <RefreshCw size={20} aria-hidden="true" /> Actualizar desde el correo
                   </button>

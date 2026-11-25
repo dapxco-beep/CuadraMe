@@ -1229,9 +1229,10 @@ def crear_movimiento_desde_notificacion(
     solo qué pasó (motivo, si registró, cuánto texto llegó). Nunca el texto, nombres, montos ni la clave."""
     resultado = _procesar_notificacion(data, db, usuario)
     adivinada = bool(resultado.get("cuenta_adivinada"))
-    # La «forma» es la plantilla anónima (vocabulario fijo; nombres y montos quedan en «*»): sirve para ver QUÉ pantalla no se
-    # entendió sin ver datos de nadie.
-    forma = rn.esqueleto(data.titulo, data.texto) if (resultado.get("motivo") or adivinada) else "-"
+    # La «forma» es la plantilla anónima (vocabulario fijo; nombres, montos y dígitos quedan en «*»): sirve para ver QUÉ aviso o
+    # pantalla llegó y cómo se parece a los que ya se leen, sin ver datos de nadie. Se anota siempre (no solo en los fallos): un
+    # aviso que se registra pero sin comercio ni tarjeta también necesita ajuste.
+    forma = rn.esqueleto(data.titulo, data.texto) or "-"
     logger.info(
         "atajo paquete=%s texto_len=%d respuesta_de_la_persona=%s motivo=%s registrado=%s duplicado=%s aprendido=%s "
         "cuenta_adivinada=%s forma=%s",

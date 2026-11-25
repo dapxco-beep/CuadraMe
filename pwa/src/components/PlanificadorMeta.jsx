@@ -100,7 +100,7 @@ export default function PlanificadorMeta({ onClose, onCreada }) {
         placeholder="Si la inviertes: ¿cuánto rinde al año, en %? (opcional)" aria-label="Rendimiento EA" className={campo} />
 
       {error && <p className="text-sm text-danger mb-3" role="alert">{error}</p>}
-      <button onClick={calcular} disabled={cargando} className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60">
+      <button onClick={calcular} disabled={cargando} className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60">
         {cargando ? 'Calculando...' : 'Calcular mi plan'}
       </button>
 

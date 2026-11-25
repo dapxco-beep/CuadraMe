@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { UsersRound, Bell, ShieldCheck, User, Flag, Mail, Receipt, Check, ChevronDown, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, MessageCircle, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
-import { useTheme, THEMES } from '../lib/ThemeContext'
+import { LayoutGrid, UsersRound, Bell, ShieldCheck, User, Flag, Mail, Receipt, Check, ChevronDown, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, MessageCircle, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
+import { useTheme, THEMES, ACENTOS } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
 import { useDialogos } from '../lib/DialogosContext'
 import SeccionPlegable from '../components/SeccionPlegable'
+import SelectorPerfilUso from '../components/SelectorPerfilUso'
 import LineaVersion from '../components/LineaVersion'
 import SeccionSeguridad from '../components/SeccionSeguridad'
 import SeccionPrivacidad from '../components/SeccionPrivacidad'
@@ -25,7 +26,7 @@ import { useModoAutomatico } from '../lib/modoAutomatico'
 import { activarPush, desactivarPush, estadoPermiso, pushSoportado } from '../lib/push'
 
 export default function Perfil() {
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, acento, setAcento, esOscuro } = useTheme()
   const { usuario, logout } = useAuth()
   const { avisar } = useDialogos()
   const claveAtajo = useClaveAtajo()
@@ -218,16 +219,10 @@ export default function Perfil() {
         </div>
       </SeccionPlegable>
 
-      {/* Lo que casi nadie cambia va plegado: así «Mi cuenta» muestra solo el nombre y el país. */}
-      <SeccionPlegable id="perfil-preferencias" titulo="Punto de partida y apariencia" icono={Palette} className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
+      {/* Lo más usado arriba y abierto: cómo se usa la app. Lo que casi nadie cambia va plegado. */}
+      <SeccionPlegable id="perfil-uso" titulo="Cómo uso CuadraMe" icono={LayoutGrid} abiertaPorDefecto className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
         <div className="-mx-4 -mt-1">
-      <section className="mx-6 mt-4" id="punto-de-partida" aria-labelledby="titulo-punto-de-partida">
-        <div className="flex items-center gap-2 mb-3">
-          <Flag size={16} className="text-ink-soft" aria-hidden="true" />
-          <h2 id="titulo-punto-de-partida" className="text-[15px] font-semibold">Punto de partida</h2>
-        </div>
-        <PuntoDePartida variante="perfil" />
-      </section>
+      <SelectorPerfilUso className="mx-6 mt-2" />
 
       {/* El interruptor «Mostrar todas las funciones» vive ahora en el menú «Más»; aquí queda un enlace corto para no perder la función */}
       <p className="mx-6 mt-4 text-xs text-ink-soft">
@@ -237,31 +232,70 @@ export default function Perfil() {
         </button>
         .
       </p>
+        </div>
+      </SeccionPlegable>
 
+      <SeccionPlegable id="perfil-preferencias" titulo="Apariencia y letra" icono={Palette} className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
+        <div className="-mx-4 -mt-1">
       <section className="mx-6 mt-8">
         <div className="flex items-center gap-2 mb-3">
           <Palette size={16} className="text-ink-soft" />
           <h2 className="text-[15px] font-semibold">Apariencia</h2>
         </div>
-        <div className="rounded-2xl bg-paper-raised border border-line overflow-hidden divide-y divide-line">
+        <div className="grid grid-cols-2 gap-3" role="group" aria-label="Tema de color">
           {THEMES.map((t) => (
             <button
               key={t.id}
+              type="button"
               onClick={() => setTheme(t.id)}
               aria-pressed={theme === t.id}
-              className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+              className={`text-left rounded-2xl border bg-paper-raised p-2.5 ${theme === t.id ? 'border-accent ring-2 ring-accent/30' : 'border-line'}`}
             >
-              <span
-                className="w-11 h-11 rounded-full shrink-0 border border-line"
-                style={{ background: themePreview[t.id] }}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{t.nombre}</p>
-                <p className="text-xs text-ink-soft">{t.desc}</p>
-              </div>
-              {theme === t.id && <Check size={20} className="text-accent shrink-0" />}
+              <span className="block relative h-16 rounded-xl p-2 overflow-hidden" style={{ background: t.vista.fondo }} aria-hidden="true">
+                <span className="block h-7 rounded-lg" style={{ background: t.vista.tarjeta, border: `1px solid ${t.vista.texto}22` }}>
+                  <span className="block h-1.5 w-9 rounded ml-2 pt-0 relative top-2" style={{ background: t.vista.texto, opacity: 0.7 }} />
+                  <span className="block h-1.5 w-5 rounded ml-2 relative top-3" style={{ background: t.vista.texto, opacity: 0.3 }} />
+                </span>
+                <span className="absolute right-3 bottom-2 w-6 h-6 rounded-full" style={{ background: t.vista.acento }} />
+              </span>
+              <span className="flex items-center justify-between mt-2">
+                <span className="text-sm font-semibold">{t.nombre}</span>
+                {theme === t.id && <Check size={16} className="text-accent shrink-0" aria-hidden="true" />}
+              </span>
+              <span className="block text-[11px] text-ink-soft leading-snug">{t.desc}</span>
             </button>
           ))}
+        </div>
+
+        {/* Color de acento: opcional, cambia botones y resaltados sin cambiar el tema */}
+        <div className="rounded-2xl bg-paper-raised border border-line p-4 mt-3">
+          <p className="text-sm font-medium">Color de acento</p>
+          <p className="text-xs text-ink-soft mt-0.5">Cambia el color de botones, enlaces y resaltados. Se guarda en este celular.</p>
+          <div className="flex flex-wrap items-center gap-2.5 mt-3" role="group" aria-label="Color de acento">
+            <button
+              type="button"
+              onClick={() => setAcento('')}
+              aria-pressed={!acento}
+              className={`min-h-11 px-3 rounded-full border text-xs font-semibold ${!acento ? 'border-accent text-accent bg-accent-soft' : 'border-line text-ink-soft'}`}
+            >
+              Del tema
+            </button>
+            {ACENTOS.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => setAcento(a.id)}
+                aria-pressed={acento === a.id}
+                aria-label={`Acento ${a.nombre}`}
+                title={a.nombre}
+                className={`w-11 h-11 rounded-full border-2 flex items-center justify-center ${acento === a.id ? 'border-ink' : 'border-transparent'}`}
+              >
+                <span className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: esOscuro ? a.oscuro : a.claro }}>
+                  {acento === a.id && <Check size={16} className="text-white" aria-hidden="true" />}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
         {/* Cuadri, la mascota: se guarda solo en este dispositivo y viene activado */}
         <div className="rounded-2xl bg-paper-raised border border-line p-4 flex items-center gap-3 mt-3">
@@ -314,6 +348,18 @@ export default function Perfil() {
         </div>
       </section>
 
+        </div>
+      </SeccionPlegable>
+
+      <SeccionPlegable id="perfil-punto" titulo="Punto de partida" icono={Flag} className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
+        <div className="-mx-4 -mt-1">
+      <section className="mx-6 mt-4" id="punto-de-partida" aria-labelledby="titulo-punto-de-partida">
+        <div className="flex items-center gap-2 mb-3">
+          <Flag size={16} className="text-ink-soft" aria-hidden="true" />
+          <h2 id="titulo-punto-de-partida" className="text-[15px] font-semibold">Punto de partida</h2>
+        </div>
+        <PuntoDePartida variante="perfil" />
+      </section>
         </div>
       </SeccionPlegable>
 
@@ -752,8 +798,3 @@ function GrupoPerfil({ id, titulo, apoyo, icono: Ic, children }) {
   )
 }
 
-const themePreview = {
-  auto: 'linear-gradient(135deg, #d9622b, #17140f)',
-  calido: 'linear-gradient(135deg, #d9622b, #d9a441)',
-  dark: 'linear-gradient(135deg, #17140f, #e8823f)',
-}

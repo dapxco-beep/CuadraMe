@@ -15,7 +15,9 @@ import { useDialogos } from '../lib/DialogosContext'
 import { Isotipo } from '../brand/Marca'
 import { esCampoDeTexto } from '../lib/atajos'
 import BarraProgreso from '../components/BarraProgreso'
-import { compartirImagen, construirDiapositivas, nombreMes } from '../lib/wrappedImagen'
+import { compartirImagen, construirDiapositivas, nombreMes, reaccionCuadri } from '../lib/wrappedImagen'
+import Cuadri from '../brand/Cuadri'
+import { useMostrarCuadri } from '../lib/cuadri'
 
 // Desglose del mes por categoría: la diapositiva solo cuenta cuánto gastaste, esto dice en qué.
 function DetalleCategorias({ datos, fmt, onVerInforme }) {
@@ -80,6 +82,7 @@ export default function Wrapped() {
   const [i, setI] = useState(0)
   const [dir, setDir] = useState(1)
   const [compartiendo, setCompartiendo] = useState(false)
+  const [conCuadri] = useMostrarCuadri()
 
   // Meses con movimientos: por defecto el actual si tiene datos; si no, el último que sí.
   useEffect(() => {
@@ -159,7 +162,7 @@ export default function Wrapped() {
     <div className="flex-1 flex flex-col overflow-y-auto screen-enter pantalla-ancha">
       {!embebido && (
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
-        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+        <button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold flex-1">Tu resumen</h1>
@@ -232,7 +235,11 @@ export default function Wrapped() {
                 className="absolute inset-0 flex flex-col items-center justify-center text-center px-8"
                 aria-live="polite"
               >
-                <span className="text-6xl mb-5" aria-hidden="true">{d.emoji}</span>
+                {conCuadri && datos ? (
+                  <span className="mb-4 block"><Cuadri {...reaccionCuadri(d.id, datos)} size={120} /></span>
+                ) : (
+                  <span className="text-6xl mb-5" aria-hidden="true">{d.emoji}</span>
+                )}
                 <p className="text-sm text-[#a39c8a]">{d.titulo}</p>
                 <p className="text-4xl font-extrabold mt-2 break-words max-w-full">{d.valor}</p>
                 <p className="text-sm text-[#a39c8a] mt-3">{d.detalle}</p>
@@ -253,7 +260,7 @@ export default function Wrapped() {
               type="button"
               onClick={compartir}
               disabled={compartiendo}
-              className="flex-1 bg-ink text-paper font-semibold rounded-2xl py-3.5 text-[15px] flex items-center justify-center gap-2 disabled:opacity-60"
+              className="flex-1 bg-accent text-paper-raised font-semibold rounded-2xl py-3.5 text-[15px] flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <Share2 size={16} /> {compartiendo ? 'Preparando...' : `Compartir mi ${nombreMes(datos.mes)}`}
             </button>

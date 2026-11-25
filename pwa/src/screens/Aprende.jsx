@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { Fragment, useEffect, useId, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -109,6 +110,7 @@ function Leccion({ l, abierta, onAlternar }) {
 }
 
 export default function Aprende() {
+  const embebido = useEmbebido()
   const volver = useVolver('/')
   const [params] = useSearchParams()
   const inicial = params.get('l')
@@ -129,8 +131,8 @@ export default function Aprende() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
-        <button
+      <header className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center gap-3'}>
+        {!embebido && (<><button
           onClick={volver}
           className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
           aria-label="Volver"
@@ -138,7 +140,7 @@ export default function Aprende() {
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-semibold flex-1">Aprende</h1>
-        <Cuadri pose="senalando" size={56} />
+        <Cuadri pose="senalando" size={56} /></>)}
       </header>
 
       <p className="mx-5 mt-1 t-cuerpo text-ink-soft">

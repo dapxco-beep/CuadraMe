@@ -421,7 +421,7 @@ export default function PuntoDePartida({ variante = 'perfil', inicial = null, on
           type="button"
           onClick={guardar}
           disabled={!modo || guardando}
-          className="flex-1 min-h-[44px] rounded-xl bg-ink text-paper text-sm font-semibold disabled:opacity-50"
+          className="flex-1 min-h-[44px] rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-50"
         >
           {guardando ? 'Guardando…' : modo === 'historico' ? 'Recrear mi histórico' : modo === 'hoy' ? 'Empezar desde hoy' : 'Elige una opción'}
         </button>

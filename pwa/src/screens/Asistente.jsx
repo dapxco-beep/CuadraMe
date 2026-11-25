@@ -431,7 +431,7 @@ export default function Asistente() {
           type="submit"
           disabled={enviando || !texto.trim()}
           aria-label="Enviar"
-          className="w-12 h-12 shrink-0 rounded-2xl bg-ink text-paper flex items-center justify-center disabled:opacity-50"
+          className="w-12 h-12 shrink-0 rounded-2xl bg-accent text-paper-raised flex items-center justify-center disabled:opacity-50"
         >
           <Send size={16} />
         </button>

@@ -77,10 +77,10 @@ describe('A. Metas con sugerencia', () => {
     const visibles = (g) => g.filter((x) => x.id !== 'mas-funciones').flatMap((x) => x.items.map((i) => i.to))
     const sin = gruposSegunModo({ completo: false, enUso: leerFuncionesEnUso(uid) })
     expect(visibles(sin)).toContain('/metas') // «Metas» es de todos los días: siempre a la vista
-    expect(visibles(sin)).not.toContain('/inversiones') // lo avanzado empieza en «Avanzadas»
-    marcarFuncionEnUso(uid, '/inversiones')
+    expect(visibles(sin)).not.toContain('/entrenar-categorias') // lo avanzado empieza en «Avanzadas»
+    marcarFuncionEnUso(uid, '/entrenar-categorias')
     const con = gruposSegunModo({ completo: false, enUso: leerFuncionesEnUso(uid) })
-    expect(visibles(con)).toContain('/inversiones') // al usarlo vuelve a su tema
+    expect(visibles(con)).toContain('/entrenar-categorias') // al usarlo vuelve a su tema
   })
 })
 

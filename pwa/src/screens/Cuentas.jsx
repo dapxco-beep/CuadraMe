@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
@@ -23,6 +24,7 @@ import TarjetaCuenta from '../components/TarjetaCuenta'
 import SelectorCuenta, { TIPOS_CUENTA } from '../components/SelectorCuenta'
 import AgregarOtraDelBanco from '../components/AgregarOtraDelBanco'
 import PanelTarjetaCredito from '../components/PanelTarjetaCredito'
+import { agruparCuentas, subtotalGrupo } from '../lib/gruposCuentas'
 import AvisoSinTasa from '../components/AvisoSinTasa'
 import CamposCuentaNueva, { CAMPOS_VACIOS } from '../components/CamposCuentaNueva'
 import { datosCuentaNueva, productoAlterno, validarTarjetaNueva } from '../lib/cuentaNueva'
@@ -56,11 +58,14 @@ const tipos = [
 ]
 
 export default function Cuentas() {
+  const embebido = useEmbebido()
   const volver = useVolver('/')
   const { cuentas, cargando, error, recargar } = useCuentas()
   const [mostrarForm, setMostrarForm] = useState(false)
   const [editando, setEditando] = useState(null)
   const { fmt } = useBloqueo()
+  const grupos = agruparCuentas(cuentas)
+  const conTitulos = grupos.length > 1 // con un solo tipo de cuenta no hace falta un encabezado
   const [params, setParams] = useSearchParams()
   const [resumen, setResumen] = useState(null)
   // El detalle se abre con ?cuenta=<id> (así también se llega desde el mazo de Inicio).
@@ -116,12 +121,12 @@ export default function Cuentas() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
+      <header className={embebido ? 'px-6 pt-3 flex items-center justify-end gap-2' : 'px-6 pantalla-top pb-2 flex items-center justify-between'}>
         <div className="flex items-center gap-3">
-          <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+          {!embebido && (<><button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-xl font-bold">Tus cuentas</h1>
+          <h1 className="text-xl font-bold">Tus cuentas</h1></>)}
         </div>
         <div className="flex items-center gap-2">
           <BotonOjo />
@@ -162,28 +167,30 @@ export default function Cuentas() {
         <EstadoVacio icono={Wallet} titulo="Aún no tienes cuentas" texto="Tu banco, Nequi, el efectivo o una tarjeta. Agrega la primera con el botón +." className="mx-6 mt-6" />
       ) : (
         <div className="mx-6 mt-4 space-y-3">
-          {cuentas.map((c, i) => (
+          {grupos.map((g) => (
+            <section key={g.id} aria-label={g.titulo} className="space-y-3">
+              {conTitulos && (
+                <h2 className="t-kicker text-ink-soft pt-1 px-1 flex items-baseline justify-between gap-2" data-testid={`grupo-${g.id}`}>
+                  <span>{g.titulo}</span>
+                  {subtotalGrupo(g.items) !== null && (
+                    <span className="normal-case tracking-normal font-semibold">
+                      {g.id === 'tarjetas' ? 'Debes ' : ''}{fmt(g.id === 'tarjetas' ? Math.abs(subtotalGrupo(g.items)) : subtotalGrupo(g.items))}
+                    </span>
+                  )}
+                </h2>
+              )}
+              {g.items.map((c) => {
+            const i = cuentas.indexOf(c)
+            return (
             <div key={c.id} className="stagger-item" style={{ '--stagger-i': i }}>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => abrirDetalle(c.id)}
-                  className="flex-1 min-w-0 text-left"
-                  aria-label={`Ver detalle de ${c.nombre}`}
-                >
-                  <TarjetaCuenta cuenta={c} ultimoMovimiento={resumen ? (resumen.ultimo_por_cuenta?.[c.id] ?? null) : undefined} />
-                </button>
-                <div className="flex flex-col items-center gap-1 shrink-0 w-[76px]">
-                  <button
-                    onClick={() => setEditando(c)}
-                    className="w-11 h-11 flex items-center justify-center text-ink-soft"
-                    aria-label="Editar cuenta"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <span className="text-[11px] text-ink-soft text-center max-w-[76px] leading-tight">{etiquetaCuenta(c).etiqueta}</span>
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => abrirDetalle(c.id)}
+                className="block w-full text-left"
+                aria-label={`Ver detalle de ${c.nombre}`}
+              >
+                <TarjetaCuenta cuenta={c} ultimoMovimiento={resumen ? (resumen.ultimo_por_cuenta?.[c.id] ?? null) : undefined} />
+              </button>
               {/* Qué significa el número de esta cuenta: saldo disponible (tuyo) vs lo que debes (tarjeta) */}
               {(c.tipo === 'credito' || c.tipo === 'inversion') && (
                 <p className="mt-1.5 px-1 text-xs text-ink-soft" data-testid="significado-saldo">
@@ -192,9 +199,22 @@ export default function Cuentas() {
               )}
               {/* La acción principal (ver movimientos) queda a la vista; lo demás (si coincide con el banco y
                   cuánto rinde) va plegado y solo pide datos al abrirse. */}
-              <Link to={`/movimientos?cuenta=${c.id}`} className="inline-flex items-center gap-1 text-xs text-accent font-semibold min-h-11 px-1">
-                Ver sus movimientos
-              </Link>
+              <div className="flex items-center justify-between gap-2">
+                <Link to={`/movimientos?cuenta=${c.id}`} className="inline-flex items-center gap-1 text-xs text-accent font-semibold min-h-11 px-1">
+                  Ver sus movimientos
+                </Link>
+                <div className="flex items-center gap-1 text-ink-soft">
+                  <span className="text-[11px] leading-tight">{etiquetaCuenta(c).etiqueta}</span>
+                  <button
+                    type="button"
+                    onClick={() => setEditando(c)}
+                    className="w-11 h-11 flex items-center justify-center"
+                    aria-label="Editar cuenta"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                </div>
+              </div>
               <DesplegableMas etiqueta="Más de esta cuenta" className="px-1" alAbrir={() => setVerCuadre(true)}>
                 {/* Estado de cuadre con el banco, sin ir a buscarlo a «Traer movimientos» */}
                 <LineaCuadre item={cuadrePorCuenta[c.id]} className="mt-2" />
@@ -204,6 +224,9 @@ export default function Cuentas() {
               {/* Las cuentas de crédito son tarjetas reales: cupo, corte y pago */}
               {c.tipo === 'credito' && <PanelTarjetaCredito cuenta={c} onCambio={recargar} />}
             </div>
+            )
+              })}
+            </section>
           ))}
 
           <EnlaceCostos className="" />
@@ -453,7 +476,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
       >
         {guardando ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Crear cuenta'}
       </button>

@@ -70,7 +70,7 @@ export default function SugerenciaIngreso({ monto: montoInicial, cuentaId, onClo
             placeholder="Monto del ingreso"
             className="flex-1 rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"
           />
-          <button onClick={() => calcular()} disabled={cargando} className="px-4 rounded-2xl bg-ink text-paper text-sm font-semibold disabled:opacity-60">
+          <button onClick={() => calcular()} disabled={cargando} className="px-4 rounded-2xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-60">
             Calcular
           </button>
         </div>
@@ -110,7 +110,7 @@ export default function SugerenciaIngreso({ monto: montoInicial, cuentaId, onClo
             <button
               onClick={aplicar}
               disabled={aplicando}
-              className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+              className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
             >
               {aplicando ? 'Apartando...' : 'Apartar para mis metas'}
             </button>

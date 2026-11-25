@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
@@ -37,6 +38,7 @@ function gastosDe(reporte) {
 }
 
 export default function Presupuesto() {
+  const embebido = useEmbebido()
   const { avisar } = useDialogos() || {}
   // Lo último visto pinta la pantalla al instante; lo nuevo llega y la actualiza sola (sin esqueleto).
   const [previo] = useState(() => {
@@ -135,8 +137,8 @@ export default function Presupuesto() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
-      <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Presupuesto</h1>
+      <header className={embebido ? 'px-6 pt-3 flex items-center justify-end gap-2' : 'px-6 pantalla-top pb-2 flex items-center justify-between'}>
+        {!embebido && <h1 className="text-2xl font-bold">Presupuesto</h1>}
         <div className="flex items-center gap-2">
           {presupuestos.length > 1 && (
             <button
@@ -191,8 +193,8 @@ export default function Presupuesto() {
           const pctGeneral = limiteTotal > 0 ? Math.min(100, Math.round((gastadoTotal / limiteTotal) * 100)) : 0
           const colorNivel = pctGeneral >= 100 ? 'var(--color-danger)' : pctGeneral >= 80 ? 'var(--color-accent-2)' : 'var(--color-accent)'
           const queda = limiteTotal - gastadoTotal
-          // Lo más urgente arriba: primero lo que ya se pasó o va más cargado.
-          const ordenados = [...conDatos].sort((a, b) => (b.pctReal || 0) - (a.pctReal || 0))
+          // Lo más urgente arriba: primero lo excedido, luego lo que anda en «ojo» y al final lo que va bien; dentro de cada grupo, lo más cargado.
+          const ordenados = [...conDatos].sort((a, b) => nivelPresupuesto(a) - nivelPresupuesto(b) || (b.pctReal || 0) - (a.pctReal || 0))
           const principales = ordenados.slice(0, MAX_VISIBLES)
           const otros = ordenados.slice(MAX_VISIBLES)
           const tarjeta = (p, i) => (
@@ -370,15 +372,34 @@ export default function Presupuesto() {
   )
 }
 
+/** 0 = excedido, 1 = ojo (cerca del límite o en riesgo según la proyección), 2 = va bien. Ordena las tarjetas y pinta la etiqueta. */
+export function nivelPresupuesto(p) {
+  const sobrepasado = p.pctReal > 100
+  const cerca = !sobrepasado && p.pct >= p.alerta_pct
+  const riesgo = !!p.proy && (p.proy.estado === 'excedido' || p.proy.estado === 'en_riesgo')
+  if (sobrepasado || p.proy?.estado === 'excedido') return 0
+  if (cerca || riesgo) return 1
+  return 2
+}
+
 // Una tarjeta por presupuesto: a la vista, lo que llevas, la barra y el aviso; el resto
 // (desglose, sobrante, ajustes, enlace a los movimientos) queda detrás de «Ver detalle».
 function TarjetaPresupuesto({ p, i, animarBarras, onQuitar }) {
   const [detalle, setDetalle] = useState(false)
   const sobrepasado = p.pctReal > 100
   const cercaDelLimite = !sobrepasado && p.pct >= p.alerta_pct
+  const { iconoDe } = useCategorias() || {}
+  const estado = [
+    { texto: 'Excedido', clase: 'bg-danger/10 text-danger' },
+    { texto: 'Ojo', clase: 'bg-accent-2/20 text-gold' },
+    { texto: 'Vas bien', clase: 'bg-cuadra/10 text-cuadra' },
+  ][nivelPresupuesto(p)]
   return (
     <div className="rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': i }}>
       <div className="flex items-start justify-between gap-2 mb-2">
+        {iconoDe && (
+          <span className="w-9 h-9 rounded-xl shrink-0 bg-accent-soft flex items-center justify-center text-lg" aria-hidden="true">{iconoDe(p.categoria)}</span>
+        )}
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">
             {p.categoria}
@@ -394,6 +415,7 @@ function TarjetaPresupuesto({ p, i, animarBarras, onQuitar }) {
             <span className="whitespace-nowrap">de {formatCOP(p.limite)}</span>
           </p>
         </div>
+        <span className={`shrink-0 mt-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold ${estado.clase}`} data-testid="estado-presupuesto">{estado.texto}</span>
         <button onClick={onQuitar} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label={`Quitar el presupuesto de ${p.categoria}`}>
           <X size={16} />
         </button>
@@ -544,7 +566,7 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
       >
         {guardando ? 'Guardando...' : 'Guardar presupuesto'}
       </button>
@@ -625,7 +647,7 @@ function FormMoverSobre({ presupuestos, onClose, onMovido }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
       >
         {guardando ? 'Pasando...' : 'Pasar plata'}
       </button>

@@ -115,7 +115,7 @@ export default function SaludNegocio() {
 
   const encabezado = (
     <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
-      <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+      <button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
         <Icono icono={ArrowLeft} tam="md" />
       </button>
       <h1 className="text-xl font-bold">Salud del negocio</h1>

@@ -512,6 +512,7 @@ export default function Agregar() {
         <div className="mb-4">
           <p className="px-5 text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">
             {esTransferencia ? 'Desde' : 'Cuenta'}
+            {cuentaActual && <span className="normal-case tracking-normal"> · <b className="text-ink">{cuentaActual.nombre}</b></span>}
           </p>
           <div ref={carruselRef} className="flex gap-3 overflow-x-auto no-scrollbar px-5 pb-1 snap-x snap-mandatory">
             {cuentas.map((c) => (
@@ -522,7 +523,7 @@ export default function Agregar() {
                 style={{ transform: cuentaId === c.id ? 'scale(1)' : 'scale(0.92)' }}
                 aria-pressed={cuentaId === c.id}
               >
-                <TarjetaCuenta cuenta={c} />
+                <TarjetaCuenta cuenta={c} compacta />
               </button>
             ))}
           </div>
@@ -613,7 +614,7 @@ export default function Agregar() {
           <div className="flex flex-col gap-2 mt-3">
             <button
               onClick={esElMismo}
-              className="rounded-xl bg-ink text-paper py-2.5 min-h-[44px] text-sm font-semibold"
+              className="rounded-xl bg-accent text-paper-raised py-2.5 min-h-[44px] text-sm font-semibold"
             >
               Es el mismo, no lo agregues
             </button>
@@ -632,7 +633,7 @@ export default function Agregar() {
         <button
           onClick={() => guardar()}
           disabled={guardando}
-          className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
+          className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
         >
           {guardando ? 'Guardando...' : esTransferencia ? (destinosPosibles.find((c) => c.id === destinoId)?.tipo === 'credito' ? 'Pagar la tarjeta' : 'Pasar la plata') : 'Guardar movimiento'}
         </button>

@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -71,6 +72,7 @@ function Tendencia({ meses, fmt }) {
 }
 
 export default function Costos() {
+  const embebido = useEmbebido()
   const volver = useVolver('/')
   const { fmt } = useBloqueo()
   const [datos, setDatos] = useState(null)
@@ -107,12 +109,14 @@ export default function Costos() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-8 screen-enter pantalla-ancha">
+      {!embebido && (
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
-        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+        <button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
           <Icono icono={ArrowLeft} tam="md" />
         </button>
         <h1 className="text-xl font-bold">Lo que te cuesta tu plata</h1>
       </header>
+      )}
 
       {cargando && (
         <div className="mx-6 mt-6 space-y-4">

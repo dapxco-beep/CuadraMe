@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
@@ -54,6 +55,7 @@ function guardarPasoAndroid(n) {
 //  - «Ya funciona» NO lo marca la persona: se sabe porque el atajo real ya envió algo (último uso de
 //    la clave, que viene de /conexiones/estado). La prueba del botón usa la sesión y no lo toca.
 export default function ConectarDispositivo() {
+  const embebido = useEmbebido()
   const volver = useVolver('/perfil')
   const claveAtajo = useClaveAtajo()
   const dispositivo = detectarDispositivo()
@@ -99,12 +101,14 @@ export default function ConectarDispositivo() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
+      {!embebido && (
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <Icono icono={ArrowLeft} tam="md" />
         </button>
         <h1 className="text-xl font-bold leading-tight">Registro automático de tus pagos</h1>
       </header>
+      )}
 
       {(plataforma === 'android' || paso < 0 || yaFunciona) && (
         <OtroCelular valor={plataforma} onCambio={setPlataforma} />

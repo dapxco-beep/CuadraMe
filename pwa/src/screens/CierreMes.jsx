@@ -10,7 +10,8 @@ import { useDialogos } from '../lib/DialogosContext'
 import CelebracionCuadri from '../brand/CelebracionCuadri'
 import CierreExtractos from '../components/CierreExtractos'
 import { FRASES } from '../lib/cuadri'
-import { PASOS, cosasRaras, estadoPasos, listoParaCerrar, pendientesDeCierre, textoAvance } from '../lib/cierreAsistente'
+import { PASOS, avanceCierre, cosasRaras, estadoPasos, listoParaCerrar, pendientesDeCierre, textoAvance } from '../lib/cierreAsistente'
+import Cuadri from '../brand/Cuadri'
 
 function mesAnterior() {
   const d = new Date()
@@ -57,6 +58,22 @@ function Pasos({ pasos, actual, onIr }) {
         </li>
       ))}
     </ol>
+  )
+}
+
+// Cuadri y una barra: de un vistazo, cuánto falta para cerrar el mes.
+function AvanceCierre({ pasos }) {
+  const a = avanceCierre(pasos)
+  return (
+    <div className="mb-3 flex items-center gap-3 rounded-2xl border border-line bg-paper-raised p-3" data-testid="avance-cierre">
+      <Cuadri estado={a.estado} size={56} animar={false} siempre />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold" role="status">{a.texto}</p>
+        <div className="mt-2 h-2 rounded-full bg-line overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={a.pct} aria-label="Avance del cierre">
+          <div className="h-full rounded-full bg-cuadra transition-all" style={{ width: `${a.pct}%` }} />
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -235,6 +252,7 @@ export default function CierreMes() {
           <p className="text-sm text-ink-soft mb-3">Aún no hay cierre de {nombreDelMes}. Revísalo paso a paso y ciérralo cuando todo esté bien.</p>
         )}
 
+        <AvanceCierre pasos={pasos} />
         <Pasos pasos={pasos} actual={paso} onIr={ir} />
         <CabeceraPaso paso={actual} indice={paso} pasos={pasos} />
 
@@ -260,7 +278,7 @@ export default function CierreMes() {
                 <>
                   <p className="text-3xl font-bold tabular-nums">{porCategorizar}</p>
                   <p className="text-sm text-ink-soft mt-1">Con categoría tus gráficos y tu presupuesto salen ciertos. Lo haces una vez por comercio y CuadraMe lo recuerda.</p>
-                  <button onClick={() => navigate('/categorizar')} className="mt-3 w-full min-h-11 rounded-2xl bg-ink text-paper text-sm font-semibold">
+                  <button onClick={() => navigate('/categorizar')} className="mt-3 w-full min-h-11 rounded-2xl bg-accent text-paper-raised text-sm font-semibold">
                     Ponerles categoría
                   </button>
                 </>
@@ -323,7 +341,7 @@ export default function CierreMes() {
               {informe === false && (
                 <div className="rounded-2xl bg-paper-raised border border-line p-5 text-center">
                   <p className="text-sm text-ink-soft mb-3">Aún no hay cierre de {nombreDelMes}. Se genera solo cada mes; también puedes crearlo ahora.</p>
-                  <button onClick={generar} disabled={cargando} className="bg-ink text-paper rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
+                  <button onClick={generar} disabled={cargando} className="bg-accent text-paper-raised rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
                     {cargando ? 'Generando...' : pendientes.length ? 'Generar cierre de todos modos' : 'Generar cierre'}
                   </button>
                 </div>
@@ -388,7 +406,7 @@ export default function CierreMes() {
             <ChevronLeft size={16} aria-hidden="true" /> Atrás
           </button>
           {siguiente && (
-            <button onClick={() => ir(paso + 1)} className="min-h-11 flex-1 px-4 rounded-2xl bg-ink text-paper text-sm font-semibold flex items-center justify-center gap-1.5">
+            <button onClick={() => ir(paso + 1)} className="min-h-11 flex-1 px-4 rounded-2xl bg-accent text-paper-raised text-sm font-semibold flex items-center justify-center gap-1.5">
               {actual.estado === 'atencion' ? 'Seguir sin resolverlo' : 'Siguiente'}: {siguiente.corto} <ArrowRight size={16} aria-hidden="true" />
             </button>
           )}

@@ -87,3 +87,18 @@ export function textoAvance(indice, pasos) {
   const k = pendientesDeCierre(pasos).length
   return `Paso ${indice + 1} de ${PASOS.length}${k ? ` · ${k} por resolver` : ''}`
 }
+
+/** Avance de las 3 revisiones previas al cierre: cuántas están bien, % y cómo se ve Cuadri (más radiante entre más listo). */
+export function avanceCierre(pasos) {
+  const primeros = (pasos || []).slice(0, 3)
+  const total = primeros.length || 3
+  const listos = primeros.filter((p) => p.estado === 'ok').length
+  const cargando = primeros.some((p) => p.estado === 'cargando')
+  const estado = listos === total ? 'radiante' : listos === total - 1 ? 'bien' : listos >= 1 ? 'regular' : 'cansado'
+  const texto = cargando
+    ? 'Revisando tu mes…'
+    : listos === total
+      ? '¡Todo listo para cerrar!'
+      : `${listos} de ${total} revisiones listas`
+  return { listos, total, pct: Math.round((listos / total) * 100), estado, texto, cargando }
+}

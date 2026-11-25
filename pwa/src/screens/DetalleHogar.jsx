@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Bell, BellOff, Copy, MessageCircle, Plus, Share2 } from 'lucide-react'
 import { EsqueletoLista } from '../components/Esqueletos'
+import { EstadoVacio } from '../brand/Marca'
 import Hoja from '../components/Hoja'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
@@ -244,7 +245,7 @@ export default function DetalleHogar() {
           <div className="rounded-2xl border border-accent bg-accent-soft p-4">
             <p className="text-base font-semibold">{recienCreado ? '¡Tu parche está listo!' : 'Estás solo en este parche'}</p>
             <p className="text-xs text-ink-soft mt-1">Invita a tu gente para llevar los gastos juntos y ver quién le debe a quién.</p>
-            <button onClick={compartirEnlace} className="mt-3 w-full bg-ink text-paper rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2 min-h-12">
+            <button onClick={compartirEnlace} className="mt-3 w-full bg-accent text-paper-raised rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2 min-h-12">
               <Share2 size={20} /> Invitar con un enlace
             </button>
           </div>
@@ -278,7 +279,7 @@ export default function DetalleHogar() {
           )}
         </div>
         <div className="flex gap-2 mt-3">
-          <button onClick={() => navigate(`/hogares/${id}/gasto`)} className="flex-1 bg-ink text-paper rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2">
+          <button onClick={() => navigate(`/hogares/${id}/gasto`)} className="flex-1 bg-accent text-paper-raised rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2">
             <Plus size={16} /> Nuevo gasto
           </button>
           <button onClick={() => navigate(`/hogares/${id}/resumen`)} className="rounded-2xl border border-line bg-paper-raised px-4 text-sm font-semibold">
@@ -289,7 +290,18 @@ export default function DetalleHogar() {
 
       <section className="px-5 mt-6">
         <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Gastos</p>
-        {gastos.length === 0 && <p className="text-sm text-ink-soft">Aún no hay gastos. Registra el primero con “Nuevo gasto”.</p>}
+        {gastos.length === 0 && (
+          <EstadoVacio
+            icono={Plus}
+            titulo="Aún no hay gastos"
+            texto="Registra el primero y CuadraMe va llevando la cuenta de quién puso qué y quién le debe a quién."
+            className="mt-2"
+          >
+            <button type="button" onClick={() => navigate(`/hogares/${id}/gasto`)} className="mt-4 bg-accent text-paper-raised rounded-2xl px-5 py-3 text-sm font-semibold min-h-11">
+              Registrar el primer gasto
+            </button>
+          </EstadoVacio>
+        )}
         <ul className="flex flex-col gap-2">
           {gastos.map((g) => (
             <li key={g.id} className="rounded-2xl border border-line bg-paper-raised px-4 py-3">
@@ -349,7 +361,7 @@ export default function DetalleHogar() {
       {esAdmin && (
         <section className="px-5 mt-6">
           <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Invitar</p>
-          <button onClick={compartirEnlace} data-testid="invitar-enlace" className="w-full bg-ink text-paper rounded-2xl px-4 py-3.5 text-sm font-semibold flex items-center justify-center gap-2 min-h-12">
+          <button onClick={compartirEnlace} data-testid="invitar-enlace" className="w-full bg-accent text-paper-raised rounded-2xl px-4 py-3.5 text-sm font-semibold flex items-center justify-center gap-2 min-h-12">
             <Share2 size={20} /> Invitar con un enlace
           </button>
           <p className="text-[11px] text-ink-soft mt-1.5">Se abre tu menú de compartir: elige WhatsApp, mensajes o un contacto. El enlace sirve una sola vez, por 7 días.</p>

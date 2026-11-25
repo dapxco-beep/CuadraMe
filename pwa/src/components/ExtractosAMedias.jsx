@@ -40,7 +40,7 @@ export default function ExtractosAMedias({ lista = [], onSeguir, onCambiarCuenta
               type="button"
               onClick={() => onSeguir(x)}
               aria-label={`Seguir con ${x.cuenta}${x.mes ? ` ${x.mes}` : ''}`}
-              className="shrink-0 min-h-[44px] rounded-xl bg-ink text-paper text-sm font-semibold px-4"
+              className="shrink-0 min-h-[44px] rounded-xl bg-accent text-paper-raised text-sm font-semibold px-4"
             >
               Seguir
             </button>

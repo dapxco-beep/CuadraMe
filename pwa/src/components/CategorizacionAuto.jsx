@@ -167,7 +167,7 @@ export function HojaCambiarCategoria({ movimiento, onClose, onHecho }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full mt-4 bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60 flex items-center justify-center gap-2"
+        className="w-full mt-4 bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60 flex items-center justify-center gap-2"
       >
         <Check size={16} /> {guardando ? 'Guardando...' : 'Guardar'}
       </button>

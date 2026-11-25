@@ -14,7 +14,7 @@ import { formatVeces } from '../lib/format'
 import SelectorPeriodo from '../components/SelectorPeriodo'
 import AvisoSinTasa from '../components/AvisoSinTasa'
 import BarraProgreso from '../components/BarraProgreso'
-import EnlaceCostos from '../components/EnlaceCostos'
+import Costos from './Costos'
 import IngresosGastos from '../components/IngresosGastos'
 import GraficoEvolucion from '../components/GraficoEvolucion'
 import EvolucionCategoria from '../components/EvolucionCategoria'
@@ -125,8 +125,9 @@ export default function Informe() {
 
   // Enlace «Ver mi evolución» (/informe#evolucion): baja hasta la gráfica evolutiva.
   useEffect(() => {
-    if (hash !== '#evolucion') return undefined
-    const t = setTimeout(() => document.getElementById('evolucion')?.scrollIntoView?.({ block: 'start' }), 60)
+    const destino = { '#evolucion': 'evolucion', '#costos': 'costos' }[hash]
+    if (!destino) return undefined
+    const t = setTimeout(() => document.getElementById(destino)?.scrollIntoView?.({ block: 'start' }), 60)
     return () => clearTimeout(t)
   }, [hash])
 
@@ -330,6 +331,7 @@ export default function Informe() {
     categorias: panelCategorias,
     dia: hayDatos && <DiaADia desde={informe.desde} hasta={informe.hasta} className="sin-margen" />,
     comercios: panelComercios,
+    costos: <div id="costos"><Costos /></div>,
     ingresos: <IngresosGastos params={paramsBase} fmt={fmt} className="" seleccion={sel} onSeleccion={setSel} />,
     historial: <HistorialCategorias fmt={fmt} />,
     evolucion: <EvolucionCategoria fmt={fmt} />,
@@ -340,7 +342,7 @@ export default function Informe() {
     <div className="flex-1 overflow-y-auto pb-8 screen-enter pantalla-ancha">
       {!embebido && (
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
-        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+        <button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">En qué gasto mi plata</h1>
@@ -353,8 +355,6 @@ export default function Informe() {
           onChange={(v) => { setMes(null); setSel(null); setValor(v) }}
         />
       </section>
-
-      <EnlaceCostos className="mx-6 mt-3" />
 
       {cargando && <div className="mx-6 mt-6 space-y-4"><EsqueletoGrafica alto={160} etiqueta="Cargando tu informe" /><EsqueletoLista filas={4} /></div>}
       {error && <p role="alert" className="mx-6 mt-6 text-sm text-danger text-center">{error}</p>}

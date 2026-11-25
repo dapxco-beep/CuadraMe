@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { aFecha } from '../lib/fechaLocal'
 import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
@@ -33,6 +34,7 @@ function Campo({ etiqueta, children }) {
 const soloNumero = (v) => v.replace(/[^0-9.]/g, '')
 
 export default function Inversiones() {
+  const embebido = useEmbebido()
   const [datos, setDatos] = useState(null)
   const [error, setError] = useState('')
   const [hoja, setHoja] = useState(null) // { tipo: 'broker'|'posicion'|'csv'|'detalle'|'glosario', ... }
@@ -72,8 +74,8 @@ export default function Inversiones() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
-      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Inversiones</h1>
+      <header className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
+        {!embebido && <h1 className="text-xl font-semibold">Inversiones</h1>}
         <div className="flex gap-2">
           <button onClick={() => setHoja({ tipo: 'glosario' })} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="¿Qué significan estos términos?">
             <CircleHelp size={20} />
@@ -170,7 +172,7 @@ function Vacio({ onAgregar, onCsv }) {
       <p className="text-sm text-ink-soft mb-4">
         Sigue tus acciones, fondos, cripto o CDT. Es opcional.
       </p>
-      <button onClick={onAgregar} className="bg-ink text-paper font-semibold rounded-2xl px-5 py-3 text-sm">Agregar mi primera inversión</button>
+      <button onClick={onAgregar} className="bg-accent text-paper-raised font-semibold rounded-2xl px-5 py-3 text-sm">Agregar mi primera inversión</button>
       <div><button onClick={onCsv} className="mt-2 text-xs font-semibold text-accent min-h-11">Tengo un archivo CSV</button></div>
     </div>
   )
@@ -310,7 +312,7 @@ function FormBroker({ onClose, onListo }) {
         </Campo>
       </div>
       {error && <p className="text-sm text-danger mb-3" role="alert">{error}</p>}
-      <button onClick={guardar} className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px]">Guardar plataforma</button>
+      <button onClick={guardar} className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px]">Guardar plataforma</button>
     </Hoja>
   )
 }
@@ -412,7 +414,7 @@ function FormPosicion({ brokers, onClose, onListo }) {
         <InputMonto value={precio} onValor={setPrecio} className={clsInput} />
       </Campo>
       {error && <p className="text-sm text-danger mb-3" role="alert">{error}</p>}
-      <button onClick={guardar} disabled={guardando} className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60">
+      <button onClick={guardar} disabled={guardando} className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60">
         {guardando ? 'Guardando...' : 'Agregar inversión'}
       </button>
     </Hoja>
@@ -470,9 +472,9 @@ function FormCsv({ brokers, onClose, onListo }) {
       )}
       {error && <p className="text-sm text-danger mb-3" role="alert">{error}</p>}
       {!vista ? (
-        <button onClick={() => enviar(false)} disabled={!texto.trim()} className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60">Ver vista previa</button>
+        <button onClick={() => enviar(false)} disabled={!texto.trim()} className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60">Ver vista previa</button>
       ) : (
-        <button onClick={() => enviar(true)} disabled={vista.validas === 0} className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60">
+        <button onClick={() => enviar(true)} disabled={vista.validas === 0} className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60">
           Importar {vista.validas} {vista.validas === 1 ? 'posición' : 'posiciones'}
         </button>
       )}
@@ -525,7 +527,7 @@ function Detalle({ id, onClose, onCambio }) {
             </svg>
           )}
           <div className="flex gap-2 mt-4">
-            <button onClick={() => setForm('tx')} className="flex-1 min-h-11 rounded-2xl bg-ink text-paper text-sm font-semibold">Registrar movimiento</button>
+            <button onClick={() => setForm('tx')} className="flex-1 min-h-11 rounded-2xl bg-accent text-paper-raised text-sm font-semibold">Registrar movimiento</button>
             <button onClick={() => setForm('precio')} className="flex-1 min-h-11 rounded-2xl border border-line text-sm font-semibold">Poner precio a mano</button>
           </div>
           {form === 'precio' && <FormPrecio id={id} moneda={p.moneda} onListo={() => { setForm(null); cargar(); onCambio() }} />}

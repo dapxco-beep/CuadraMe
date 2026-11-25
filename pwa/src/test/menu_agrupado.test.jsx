@@ -53,10 +53,10 @@ describe('navegacion.js (fuente única)', () => {
   it('agrupa los destinos por tema con los nombres pedidos', () => {
     expect(GRUPOS.map((g) => g.titulo)).toEqual(['Anotar y traer', 'Mi plata', 'Con otras personas', 'Metas y ahorro', 'Cómo voy', 'Ajustes'])
     const etiquetas = (id) => GRUPOS.find((g) => g.id === id).items.map((i) => i.label)
-    expect(etiquetas('dinero')).toEqual(['Cuentas', 'Deudas', 'Pagos fijos', 'Impuestos'])
-    expect(etiquetas('datos')).toContain('Traer extractos')
-    expect(ITEMS_MAS.find((i) => i.label === 'Traer extractos').to).toBe('/sincronizacion')
-    expect(etiquetas('ajustes')).toEqual(['Perfil', 'Aprende', 'Ayuda', 'Privacidad'])
+    expect(etiquetas('dinero')).toEqual(['Cuentas']) // Deudas vive en una pestaña de Cuentas; Pagos fijos, en Presupuesto
+    expect(etiquetas('datos')).toContain('Traer movimientos')
+    expect(ITEMS_MAS.find((i) => i.label === 'Traer movimientos').to).toBe('/sincronizacion')
+    expect(etiquetas('ajustes')).toEqual(['Perfil', 'Ayuda', 'Privacidad']) // Aprende vive en una pestaña de Ayuda
     // Dividir, hogar y colectas ya no se esconden: viven en un grupo a la vista
     expect(GRUPOS.find((g) => g.id === 'juntos').items.map((i) => i.to)).toEqual(['/otros'])
   })
@@ -64,15 +64,15 @@ describe('navegacion.js (fuente única)', () => {
   it('la búsqueda tolera acentos y mayúsculas, y encuentra por palabras clave', () => {
     expect(normalizar('Categorías')).toBe('categorias')
     expect(buscarDestinos('CATEGORIAS').map((d) => d.label)).toContain('Categorías')
-    expect(buscarDestinos('sincronizacion')[0].label).toBe('Traer extractos')
+    expect(buscarDestinos('sincronizacion')[0].label).toBe('Traer movimientos')
     expect(buscarDestinos('gmail').map((d) => d.to)).toContain('/sincronizacion')
     expect(buscarDestinos('zzzz')).toEqual([])
     expect(buscarDestinos('   ')).toEqual([])
   })
 
   it('recuerda los últimos 4 destinos, sin repetir, el más reciente primero', () => {
-    for (const r of ['/cuentas', '/deudas', '/metas', '/impuestos', '/deudas', '/informes', '/']) registrarReciente(r)
-    expect(leerRecientes().map((d) => d.to)).toEqual(['/informes', '/deudas', '/impuestos', '/metas'])
+    for (const r of ['/cuentas', '/entrenar-categorias', '/metas', '/asistente', '/entrenar-categorias', '/informes', '/']) registrarReciente(r)
+    expect(leerRecientes().map((d) => d.to)).toEqual(['/informes', '/entrenar-categorias', '/asistente', '/metas'])
   })
 })
 
@@ -93,7 +93,7 @@ describe('Menú «Más» del teléfono', () => {
     // sin acentos encuentra «Categorías» y «Entrenar categorías»; desaparecen los encabezados
     expect(within(hoja).getByRole('link', { name: 'Categorías' })).toBeInTheDocument()
     expect(within(hoja).getByRole('link', { name: 'Enseñar categorías' })).toBeInTheDocument()
-    expect(within(hoja).queryByRole('link', { name: 'Deudas' })).toBeNull()
+    expect(within(hoja).queryByRole('link', { name: 'Cuentas' })).toBeNull()
     expect(within(hoja).queryByRole('heading', { name: 'Mi plata' })).toBeNull()
 
     await userEvent.clear(buscador)
@@ -116,12 +116,12 @@ describe('Menú «Más» del teléfono', () => {
     expect(buscador).toHaveValue('')
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     await userEvent.type(buscador, 'deud{Enter}')
-    await waitFor(() => expect(screen.getByTestId('ruta')).toHaveTextContent('/deudas'))
+    await waitFor(() => expect(screen.getByTestId('ruta')).toHaveTextContent('/cuentas'))
   })
 
   it('«Recientes» lista los últimos destinos usados', async () => {
     registrarReciente('/metas')
-    registrarReciente('/deudas')
+    registrarReciente('/entrenar-categorias')
     simularAncho(390)
     render(
       <MemoryRouter>
@@ -132,7 +132,7 @@ describe('Menú «Más» del teléfono', () => {
     const hoja = await screen.findByRole('dialog')
     const seccion = within(hoja).getByRole('heading', { name: /Recientes/ }).closest('section')
     const enlaces = within(seccion).getAllByRole('link').map((a) => a.textContent)
-    expect(enlaces).toEqual(['Deudas', 'Metas'])
+    expect(enlaces).toEqual(['Enseñar categorías', 'Metas'])
   })
 })
 
@@ -142,11 +142,11 @@ describe('Barra lateral de escritorio', () => {
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
     const btnDatos = within(nav).getByRole('button', { name: 'Anotar y traer' })
     expect(btnDatos).toHaveAttribute('aria-expanded', 'true')
-    expect(within(nav).getByRole('link', { name: 'Traer extractos' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'Traer movimientos' })).toBeInTheDocument()
 
     await userEvent.click(btnDatos)
     expect(btnDatos).toHaveAttribute('aria-expanded', 'false')
-    expect(within(nav).queryByRole('link', { name: 'Traer extractos' })).toBeNull()
+    expect(within(nav).queryByRole('link', { name: 'Traer movimientos' })).toBeNull()
     expect(JSON.parse(localStorage.getItem('cuadrame:nav-grupos-cerrados'))).toEqual(['datos'])
   })
 
@@ -154,8 +154,8 @@ describe('Barra lateral de escritorio', () => {
     localStorage.setItem('cuadrame:nav-recientes', JSON.stringify(['/sincronizacion']))
     montarShell(1440)
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
-    // «Traer extractos» ya está en su grupo: aparece UNA sola vez y no se mueve arriba
-    expect(within(nav).getAllByRole('link', { name: 'Traer extractos' })).toHaveLength(1)
+    // «Traer movimientos» ya está en su grupo: aparece UNA sola vez y no se mueve arriba
+    expect(within(nav).getAllByRole('link', { name: 'Traer movimientos' })).toHaveLength(1)
     expect(within(nav).queryByText('Recientes')).toBeNull()
   })
 

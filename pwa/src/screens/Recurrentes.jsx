@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
@@ -28,6 +29,7 @@ const estadoLabel = {
 }
 
 export default function Recurrentes() {
+  const embebido = useEmbebido()
   const volver = useVolver('/perfil')
   const { avisar } = useDialogos() || {}
   const { recargar: recargarCuentas } = useCuentas()
@@ -100,15 +102,15 @@ export default function Recurrentes() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
+      <header className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
         <div className="flex items-center gap-3">
-          <button
+          {!embebido && (<><button
             onClick={volver}
             className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center"
            aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-xl font-semibold">Pagos fijos</h1>
+          <h1 className="text-xl font-semibold">Pagos fijos</h1></>)}
         </div>
         <button
           onClick={() => setMostrarForm(true)}
@@ -326,7 +328,7 @@ function FormRecurrente({ onClose, onGuardado }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
       >
         {guardando ? 'Guardando...' : 'Guardar pago fijo'}
       </button>

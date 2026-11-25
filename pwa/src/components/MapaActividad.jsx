@@ -3,6 +3,7 @@ import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { cuadriculaSemanas, rangoPeriodo } from '../lib/informe'
 import SelectorPeriodo, { PERIODOS_ACTIVIDAD } from './SelectorPeriodo'
+import GastoPorDiaSemana from './GastoPorDiaSemana'
 
 const DIAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
@@ -103,6 +104,8 @@ export default function MapaActividad() {
           </div>
         </div>
       )}
+
+      <GastoPorDiaSemana dias={dias} fmt={fmt} className="mt-3" />
     </section>
   )
 }

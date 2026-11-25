@@ -114,12 +114,179 @@
   --f-sans: 'Sora', -apple-system, system-ui, sans-serif;
 }
 
+/* Tema Menta (claro): verde fresco */
+:root[data-theme='menta'] {
+  --c-ink: #17261e;
+  --c-ink-soft: #566b5f;
+  --c-paper: #f1f7f3;
+  --c-paper-raised: #ffffff;
+  --c-line: #dbe8e0;
+  --c-accent: #1f6b4a;
+  --c-accent-2: #e0a43a;
+  --c-gold: #7a5a0a;
+  --c-accent-soft: #d9efe3;
+  --c-danger: #b8331f;
+  --c-danger-soft: #fbe2dd;
+  --c-brand: #2e9a6b;
+  --c-brand-2: #e0a43a;
+  --c-brand-ink: #17261e;
+  --c-hero-a: #1f6b4a;
+  --c-hero-b: #134632;
+  --c-hero-ink: #effaf4;
+  --c-hero-soft: #c9ecd9;
+  --c-cuadra: #2f6b3f;
+  --c-cuadra-soft: #e1efdf;
+  --c-serie-1: #2e9a6b;
+  --c-serie-2: #d9622b;
+  --c-serie-3: #d9a441;
+  --c-serie-4: #5b7fa6;
+  --c-serie-5: #8a5a9e;
+  --c-serie-6: #8f9a86;
+
+  --f-display: 'Sora', 'SF Pro Display', system-ui, sans-serif;
+  --f-sans: 'Sora', -apple-system, system-ui, sans-serif;
+}
+
+/* Tema Océano (claro): azul sereno */
+:root[data-theme='oceano'] {
+  --c-ink: #14212e;
+  --c-ink-soft: #556678;
+  --c-paper: #f1f6fb;
+  --c-paper-raised: #ffffff;
+  --c-line: #dbe5f0;
+  --c-accent: #1d5fa6;
+  --c-accent-2: #f0b24a;
+  --c-gold: #7a5a0a;
+  --c-accent-soft: #dbe9f8;
+  --c-danger: #b8331f;
+  --c-danger-soft: #fbe2dd;
+  --c-brand: #2f80d1;
+  --c-brand-2: #f0b24a;
+  --c-brand-ink: #14212e;
+  --c-hero-a: #1d5fa6;
+  --c-hero-b: #123f73;
+  --c-hero-ink: #eef6ff;
+  --c-hero-soft: #cfe3f8;
+  --c-cuadra: #2f6b3f;
+  --c-cuadra-soft: #e1efdf;
+  --c-serie-1: #2f80d1;
+  --c-serie-2: #2f6b3f;
+  --c-serie-3: #e0a43a;
+  --c-serie-4: #d9622b;
+  --c-serie-5: #8a5a9e;
+  --c-serie-6: #7d8aa0;
+
+  --f-display: 'Sora', 'SF Pro Display', system-ui, sans-serif;
+  --f-sans: 'Sora', -apple-system, system-ui, sans-serif;
+}
+
+/* Tema Ciruela (claro): morado cálido */
+:root[data-theme='ciruela'] {
+  --c-ink: #241a2e;
+  --c-ink-soft: #6a5c78;
+  --c-paper: #f8f4fb;
+  --c-paper-raised: #ffffff;
+  --c-line: #e6dcee;
+  --c-accent: #7a3fa5;
+  --c-accent-2: #e2a93f;
+  --c-gold: #7a5a0a;
+  --c-accent-soft: #eddcf8;
+  --c-danger: #b8331f;
+  --c-danger-soft: #fbe2dd;
+  --c-brand: #9b59c9;
+  --c-brand-2: #e2a93f;
+  --c-brand-ink: #241a2e;
+  --c-hero-a: #7a3fa5;
+  --c-hero-b: #52287a;
+  --c-hero-ink: #f8efff;
+  --c-hero-soft: #e3cdf5;
+  --c-cuadra: #2f6b3f;
+  --c-cuadra-soft: #e1efdf;
+  --c-serie-1: #9b59c9;
+  --c-serie-2: #2f6b3f;
+  --c-serie-3: #e2a93f;
+  --c-serie-4: #d9622b;
+  --c-serie-5: #5b7fa6;
+  --c-serie-6: #9a8fa8;
+
+  --f-display: 'Sora', 'SF Pro Display', system-ui, sans-serif;
+  --f-sans: 'Sora', -apple-system, system-ui, sans-serif;
+}
+
+/* Tema Noche (oscuro): azul profundo */
+:root[data-theme='noche'] {
+  --c-ink: #eaf0fb;
+  --c-ink-soft: #93a1bd;
+  --c-paper: #0f1624;
+  --c-paper-raised: #18223a;
+  --c-line: #26324f;
+  --c-accent: #6fa8ff;
+  --c-accent-2: #f0c05a;
+  --c-gold: #f0c05a;
+  --c-accent-soft: #1b2b4d;
+  --c-danger: #ff7a6b;
+  --c-danger-soft: #3a1c1c;
+  --c-brand: #6fa8ff;
+  --c-brand-2: #f0c05a;
+  --c-brand-ink: #0f1624;
+  --c-hero-a: #1d3a73;
+  --c-hero-b: #0f2147;
+  --c-hero-ink: #eaf2ff;
+  --c-hero-soft: #bcd2fb;
+  --c-cuadra: #7bd6a0;
+  --c-cuadra-soft: #16302a;
+  --c-serie-1: #6fa8ff;
+  --c-serie-2: #7bd6a0;
+  --c-serie-3: #f0c05a;
+  --c-serie-4: #ff8f7a;
+  --c-serie-5: #c9a0ff;
+  --c-serie-6: #9aa8c4;
+
+  --f-display: 'Sora', 'SF Pro Display', system-ui, sans-serif;
+  --f-sans: 'Sora', -apple-system, system-ui, sans-serif;
+}
+
+/* Tema Grafito (oscuro): negro con verde, ahorra batería en pantallas OLED */
+:root[data-theme='grafito'] {
+  --c-ink: #f2f2f3;
+  --c-ink-soft: #9b9ba3;
+  --c-paper: #0b0b0c;
+  --c-paper-raised: #161618;
+  --c-line: #2a2a2e;
+  --c-accent: #3ddc97;
+  --c-accent-2: #ffd166;
+  --c-gold: #ffd166;
+  --c-accent-soft: #12301f;
+  --c-danger: #ff7a6b;
+  --c-danger-soft: #3a1c1c;
+  --c-brand: #3ddc97;
+  --c-brand-2: #ffd166;
+  --c-brand-ink: #0b0b0c;
+  --c-hero-a: #14532d;
+  --c-hero-b: #0b2e19;
+  --c-hero-ink: #e9fff3;
+  --c-hero-soft: #b8f0d2;
+  --c-cuadra: #3ddc97;
+  --c-cuadra-soft: #12301f;
+  --c-serie-1: #3ddc97;
+  --c-serie-2: #ffd166;
+  --c-serie-3: #ff8f70;
+  --c-serie-4: #7aa7ff;
+  --c-serie-5: #c792ea;
+  --c-serie-6: #a0a0a8;
+
+  --f-display: 'Sora', 'SF Pro Display', system-ui, sans-serif;
+  --f-sans: 'Sora', -apple-system, system-ui, sans-serif;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
 :root { color-scheme: light; }
-:root[data-theme='dark'] { color-scheme: dark; }
+:root[data-theme='dark'],
+:root[data-theme='noche'],
+:root[data-theme='grafito'] { color-scheme: dark; }
 input[type='checkbox'], input[type='radio'], input[type='range'] { accent-color: var(--color-accent); }
 
 html, body, #root {

@@ -12,6 +12,7 @@ Quién lo alimenta: únicamente quien activó la finalidad opcional «estadistic
 revocable). Sin esa autorización registrar_forma no hace nada.
 """
 import logging
+import re
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -77,8 +78,48 @@ def registrar_aviso(db: Session, usuario_id: str, app: str, titulo: str, texto: 
         return False
 
 
+# Pantallas que se abren (solo la ruta de la app, sin identificadores ni datos): «/presupuesto?tab=fijos», «/movimientos/:id».
+DOMINIO_PANTALLA = "pantalla"
+_RUTA_PANTALLA = re.compile(r"^/[a-z0-9/_:-]{0,60}(\?tab=[a-z_]{1,24})?$")
+
+
+def ruta_valida(ruta: str) -> bool:
+    return bool(ruta) and len(ruta) <= 90 and bool(_RUTA_PANTALLA.match(ruta))
+
+
+def registrar_pantalla(db: Session, usuario_id: str, ruta: str) -> bool:
+    """Suma 1 a la pantalla abierta si la persona aceptó las estadísticas anónimas. Solo guarda la ruta de la app (sin
+    usuario, sin identificadores). Sirve para saber qué se usa y qué no. No hace commit."""
+    try:
+        from app.routers.consentimientos import tiene_consentimiento  # import tardío: evita un ciclo de módulos
+
+        if not ruta_valida(ruta) or not tiene_consentimiento(db, usuario_id, FINALIDAD):
+            return False
+        esq = f"pantalla {ruta}"
+        fila = db.query(FormaAsuntoFallida).filter(FormaAsuntoFallida.esqueleto == esq, FormaAsuntoFallida.dominio == DOMINIO_PANTALLA).first()
+        ahora = datetime.utcnow()
+        if fila is None:
+            db.add(FormaAsuntoFallida(esqueleto=esq, dominio=DOMINIO_PANTALLA, conteo=1, primera_vez=ahora, ultima_vez=ahora))
+        else:
+            fila.conteo = (fila.conteo or 0) + 1
+            fila.ultima_vez = ahora
+        db.flush()
+        return True
+    except Exception:  # noqa: BLE001
+        logger.exception("No se pudo anotar la pantalla (se ignora)")
+        return False
+
+
+def pantallas_mas_usadas(db: Session, limite: int = 100) -> list[dict]:
+    filas = (db.query(FormaAsuntoFallida).filter(FormaAsuntoFallida.dominio == DOMINIO_PANTALLA)
+             .order_by(FormaAsuntoFallida.conteo.desc()).limit(max(1, min(limite, 300))).all())
+    return [{"ruta": f.esqueleto[len("pantalla "):], "aperturas": f.conteo,
+             "ultima_vez": f.ultima_vez.isoformat() if f.ultima_vez else None} for f in filas]
+
+
 def mas_frecuentes(db: Session, limite: int = 50) -> list[dict]:
-    filas = (db.query(FormaAsuntoFallida).order_by(FormaAsuntoFallida.conteo.desc(), FormaAsuntoFallida.ultima_vez.desc())
+    filas = (db.query(FormaAsuntoFallida).filter(FormaAsuntoFallida.dominio != DOMINIO_PANTALLA)
+             .order_by(FormaAsuntoFallida.conteo.desc(), FormaAsuntoFallida.ultima_vez.desc())
              .limit(max(1, min(limite, 200))).all())
     return [{"esqueleto": f.esqueleto, "dominio": f.dominio, "conteo": f.conteo,
              "ultima_vez": f.ultima_vez.isoformat() if f.ultima_vez else None} for f in filas]

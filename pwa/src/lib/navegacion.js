@@ -21,15 +21,15 @@ export const PRINCIPALES = [
 
 // Ordenados por lo que la persona quiere hacer, no por tipo de dato. Los `id` no cambian (el menú recuerda
 // qué grupo dejó abierto); solo cambian los títulos y qué destino vive en cada uno.
+import { rutasDelPerfil } from './perfilesUso'
+
 export const GRUPOS = [
   {
     id: 'datos',
     titulo: 'Anotar y traer',
     icon: Database,
     items: [
-      { to: '/movimientos-correo', icon: Mail, label: 'Movimientos del correo', corta: 'Correo', palabras: 'correo gmail avisos notificaciones banco compras transferencias movimientos del dia revisar aprobar leer' },
-      { to: '/sincronizacion', icon: RefreshCw, label: 'Traer extractos', corta: 'Extractos', palabras: 'sincronizar sincronizacion importar correo correos gmail extracto conciliar pdf excel csv archivo conexiones estado falla bajar subir cuadrar banco traer movimientos' },
-      { to: '/conectar-dispositivo', icon: Smartphone, label: 'Registro automático', palabras: 'conectar dispositivo atajo iphone android wallet celular' },
+      { to: '/sincronizacion', icon: RefreshCw, label: 'Traer movimientos', corta: 'Traer', palabras: 'traer extractos correo gmail avisos notificaciones registro automatico atajo iphone android wallet celular sincronizar sincronizacion importar correo correos gmail extracto conciliar pdf excel csv archivo conexiones estado falla bajar subir cuadrar banco traer movimientos' },
       { to: '/categorias', icon: Tag, label: 'Categorías', palabras: 'etiquetas iconos reglas automaticas comercio categoria por categorizar sin categoria' },
       { to: '/entrenar-categorias', icon: GraduationCap, label: 'Enseñar categorías', palabras: 'entrenar aprender clasificar' },
     ],
@@ -40,9 +40,6 @@ export const GRUPOS = [
     icon: Wallet,
     items: [
       { to: '/cuentas', icon: Wallet, label: 'Cuentas', palabras: 'saldo banco tarjeta efectivo ajustar' },
-      { to: '/deudas', icon: CreditCard, label: 'Deudas', palabras: 'prestamo credito cuotas pagar' },
-      { to: '/recurrentes', icon: Repeat, label: 'Pagos fijos', palabras: 'recurrentes recurrente suscripcion fijo mensual automatico arriendo nomina' },
-      { to: '/impuestos', icon: Receipt, label: 'Impuestos', palabras: '4x1000 renta dian deducible' },
     ],
   },
   {
@@ -59,7 +56,6 @@ export const GRUPOS = [
     icon: TrendingUp,
     items: [
       { to: '/metas', icon: PiggyBank, label: 'Metas', palabras: 'ahorro objetivo meta' },
-      { to: '/inversiones', icon: TrendingUp, label: 'Inversiones', corta: 'Invers.', palabras: 'acciones etf fondos broker portafolio ticker trii bolsa cripto rentabilidad' },
     ],
   },
   {
@@ -68,7 +64,6 @@ export const GRUPOS = [
     icon: Lightbulb,
     items: [
       { to: '/informes', icon: PieChart, label: 'Informes', palabras: 'informe informes en que gasto mi plata categoria comercios reporte cierre de mes balance resumen del mes wrapped compartir mi cuenta cuadra cuadre extracto banco insights hallazgos cosas raras consejos patrimonio inversion activos neto cdt acciones' },
-      { to: '/revisar', icon: ArrowLeftRight, label: 'Revisar movimientos', palabras: 'traslado entre mis cuentas nequi nu bancolombia no cuenta duplicados repetidos repetido' },
       { to: '/ahorcado', icon: Sprout, label: 'Cómo está Cuadri (salud de mi plata)', palabras: 'cuadri salud financiera puntaje arbol ahorcado vidas' },
       { to: '/asistente', icon: Bot, label: 'Asistente', palabras: 'cuadrame ai ia pregunta chat' },
     ],
@@ -79,7 +74,6 @@ export const GRUPOS = [
     icon: Settings,
     items: [
       { to: '/perfil', icon: User, label: 'Perfil', palabras: 'cuenta usuario pin seguridad tema notificaciones' },
-      { to: '/aprende', icon: BookOpen, label: 'Aprende', palabras: 'lecciones glosario educacion finanzas tarjeta credito debito interes cupo presupuesto fraude que es' },
       { to: '/ayuda', icon: LifeBuoy, label: 'Ayuda', palabras: 'preguntas frecuentes dudas soporte como funciona extracto clave pdf gmail primeros pasos' },
       { to: '/legal/privacidad', icon: ShieldCheck, label: 'Privacidad', palabras: 'datos legal terminos politica' },
     ],
@@ -87,7 +81,16 @@ export const GRUPOS = [
 ]
 
 // Hoy todos los destinos viven en un grupo; queda por si algún día hay uno que solo deba encontrar el buscador.
-export const EXTRA_BUSQUEDA = []
+export const EXTRA_BUSQUEDA = [
+  { to: '/sincronizacion?tab=correo', icon: Mail, label: 'Movimientos del correo', palabras: 'correo gmail avisos notificaciones banco compras transferencias movimientos del dia revisar aprobar leer' },
+  { to: '/sincronizacion?tab=automatico', icon: Smartphone, label: 'Registro automático', palabras: 'conectar dispositivo atajo iphone android wallet celular' },
+  { to: '/revisar', icon: ArrowLeftRight, label: 'Revisar traslados y repetidos', palabras: 'revisar movimientos traslado entre mis cuentas nequi nu bancolombia no cuenta duplicados repetidos repetido' },
+  { to: '/presupuesto?tab=fijos', icon: Repeat, label: 'Pagos fijos', palabras: 'recurrentes recurrente suscripcion fijo mensual automatico arriendo nomina' },
+  { to: '/cuentas?tab=deudas', icon: CreditCard, label: 'Deudas', palabras: 'prestamo credito cuotas pagar tarjeta debo' },
+  { to: '/metas?tab=inversiones', icon: TrendingUp, label: 'Inversiones', palabras: 'acciones etf fondos broker portafolio ticker trii bolsa cripto rentabilidad cdt' },
+  { to: '/informes?tab=impuestos', icon: Receipt, label: 'Impuestos', palabras: '4x1000 renta dian deducible declarar' },
+  { to: '/ayuda?tab=aprende', icon: BookOpen, label: 'Aprende', palabras: 'lecciones glosario educacion finanzas tarjeta credito debito interes cupo presupuesto fraude que es' },
+]
 
 // Destino SOLO para quien administra CuadraMe. No está en GRUPOS ni en el buscador: se agrega aparte
 // cuando el correo de la sesión coincide con VITE_ADMIN_EMAIL. Es solo comodidad visual; la seguridad
@@ -109,7 +112,7 @@ export const ITEMS_MAS = GRUPOS.flatMap((g) => g.items.map((i) => ({ ...i, grupo
 // por enlace directo y por el buscador.
 export const MAS_FUNCIONES_ID = 'mas-funciones'
 export const RUTAS_AVANZADAS = [
-  '/entrenar-categorias', '/conectar-dispositivo', '/revisar', '/deudas', '/recurrentes', '/impuestos', '/inversiones', '/ahorcado',
+  '/entrenar-categorias', '/ahorcado',
 ]
 
 export const EXPLICACION = {
@@ -127,7 +130,7 @@ export const EXPLICACION = {
   '/categorias': 'Los tipos de gasto: comida, transporte, salud…',
   '/entrenar-categorias': 'Enséñale a CuadraMe en qué categoría va cada gasto.',
   '/aprende': 'Lecciones cortas, de un minuto, sobre plata.',
-  '/sincronizacion': 'Trae el extracto de tu banco (PDF o Excel) y mira si cada cuenta cuadra, mes a mes.',
+  '/sincronizacion': 'Trae tus movimientos: el extracto del banco, los avisos del correo y el registro automático desde tu celular.',
   '/movimientos-correo': 'Los avisos de compras y transferencias de tu banco llegan a tu correo; aquí los apruebas.',
   '/amigos': 'Divide una cuenta con amigos (cena, viaje) y mira quién te debe.',
   '/compartir': 'Deja que tu pareja o familia vea y anote en tu cuenta.',
@@ -141,15 +144,17 @@ export const EXPLICACION = {
  * Grupos del menú según el modo. `enUso`: rutas de funciones que la persona ya usa (tiene metas,
  * deudas…): suben solas a «Lo que ya usas». En modo completo son los GRUPOS de siempre.
  */
-export function gruposSegunModo({ completo = false, enUso = [] } = {}) {
+export function gruposSegunModo({ completo = false, enUso = [], perfil } = {}) {
   if (completo) return GRUPOS
   const conExplica = (i) => ({ ...i, explica: EXPLICACION[i.to] })
-  const esAvanzada = (i) => RUTAS_AVANZADAS.includes(i.to) && !enUso.includes(i.to)
+  // Con un perfil de uso, lo visible lo decide el perfil; sin él, rige la lista de siempre (RUTAS_AVANZADAS).
+  const visibles = perfil ? rutasDelPerfil(perfil) : null
+  const esAvanzada = (i) => !enUso.includes(i.to) && (visibles ? !visibles.includes(i.to) : RUTAS_AVANZADAS.includes(i.to))
   const temas = GRUPOS.map((g) => ({ ...g, items: g.items.filter((i) => !esAvanzada(i)).map(conExplica) })).filter((g) => g.items.length)
   const avanzadas = ITEMS_MAS.filter(esAvanzada).map(conExplica)
   return [
     ...temas,
-    ...(avanzadas.length ? [{ id: MAS_FUNCIONES_ID, titulo: 'Avanzadas', icon: SlidersHorizontal, plegado: true, items: avanzadas }] : []),
+    ...(avanzadas.length ? [{ id: MAS_FUNCIONES_ID, titulo: visibles ? 'Más funciones' : 'Avanzadas', icon: SlidersHorizontal, plegado: true, items: avanzadas }] : []),
   ]
 }
 

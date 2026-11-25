@@ -12,7 +12,8 @@ Finalidades:
 - ia (opcional): procesar texto/fotos con proveedores de IA (asistente, foto de factura).
 - notificaciones (opcional): avisos push y por correo.
 - estadisticas_anonimas (opcional, apagada por defecto): contar, sin datos personales ni usuario, qué formas de asunto
-  de correo no se leen bien (solo palabras de un vocabulario fijo), para mejorar el lector para todos.
+  de correo no se leen bien (solo palabras de un vocabulario fijo) y qué pantallas se abren (solo la ruta), para mejorar
+  el lector y la app para todos.
 """
 from datetime import datetime
 

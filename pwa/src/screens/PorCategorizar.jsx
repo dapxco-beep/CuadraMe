@@ -210,7 +210,7 @@ export default function PorCategorizar() {
     <div className="flex-1 overflow-y-auto pb-28 screen-enter">
       {!embebido && (
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
-        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+        <button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Por categorizar</h1>
@@ -251,7 +251,7 @@ export default function PorCategorizar() {
             <div className="text-center py-3">
               <p className="text-sm font-semibold">¡Listo! Categorizaste {plural(rapido.hechos, 'comercio', 'comercios')}.</p>
               <p className="text-xs text-ink-soft mt-1">Lo demás puede quedarse como está.</p>
-              <button onClick={() => setRapido(null)} className="mt-3 rounded-xl bg-ink text-paper px-4 py-2.5 text-sm font-semibold min-h-[44px]">
+              <button onClick={() => setRapido(null)} className="mt-3 rounded-xl bg-accent text-paper-raised px-4 py-2.5 text-sm font-semibold min-h-[44px]">
                 Terminar
               </button>
             </div>

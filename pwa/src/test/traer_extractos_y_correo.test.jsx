@@ -63,18 +63,17 @@ describe('tarjeta «Movimientos del correo» (en Movimientos)', () => {
   })
 })
 
-describe('el menú separa «Traer extractos» y «Movimientos del correo»', () => {
-  it('los dos viven en «Anotar y traer»; «Traer movimientos» ya no existe', () => {
+describe('el menú tiene una sola entrada «Traer movimientos» con tres pestañas', () => {
+  it('Extractos, correo y registro automático viven en una sola pantalla', () => {
     const datos = GRUPOS.find((g) => g.id === 'datos').items.map((i) => i.label)
-    expect(datos).toContain('Traer extractos')
-    expect(datos).toContain('Movimientos del correo')
-    expect(ITEMS_MAS.some((i) => i.label === 'Traer movimientos')).toBe(false)
-    expect(ITEMS_MAS.find((i) => i.label === 'Movimientos del correo').to).toBe('/movimientos-correo')
-    expect(ITEMS_MAS.find((i) => i.label === 'Traer extractos').to).toBe('/sincronizacion')
+    expect(datos).toContain('Traer movimientos')
+    expect(datos).not.toContain('Movimientos del correo')
+    expect(ITEMS_MAS.find((i) => i.label === 'Traer movimientos').to).toBe('/sincronizacion')
   })
 
-  it('el buscador encuentra cada uno por sus palabras', () => {
-    expect(buscarDestinos('avisos del banco')[0].to).toBe('/movimientos-correo')
+  it('el buscador encuentra cada cara por sus palabras y lleva a su pestaña', () => {
+    expect(buscarDestinos('avisos del banco')[0].to).toBe('/sincronizacion?tab=correo')
+    expect(buscarDestinos('atajo iphone').map((d) => d.to)).toContain('/sincronizacion?tab=automatico')
     expect(buscarDestinos('extracto pdf')[0].to).toBe('/sincronizacion')
   })
 })

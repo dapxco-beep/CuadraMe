@@ -13,6 +13,7 @@ vi.mock('../screens/Wrapped', () => ({ default: Marca('MIMES') }))
 vi.mock('../screens/Insights', () => ({ default: Marca('DIAS') }))
 vi.mock('../screens/Patrimonio', () => ({ default: Marca('PATRIMONIO') }))
 vi.mock('../screens/CierreMes', () => ({ default: Marca('CIERRE') }))
+vi.mock('../screens/Impuestos', () => ({ default: Marca('IMPUESTOS') }))
 
 import Informes from '../screens/Informes'
 import AInformes from '../components/AInformes'
@@ -33,10 +34,10 @@ const montar = (ruta) =>
   )
 
 describe('Informes: una pantalla con pestañas', () => {
-  it('sin pestaña elegida abre «Gastos» y muestra las cinco pestañas', async () => {
+  it('sin pestaña elegida abre «Gastos» y muestra las seis pestañas', async () => {
     montar('/informes')
     expect(await screen.findByText(/PANTALLA-GASTOS/)).toBeInTheDocument()
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Gastos', 'Mi mes', 'Días', 'Patrimonio', 'Cierre'])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Gastos', 'Mi mes', 'Días', 'Patrimonio', 'Cierre', 'Impuestos'])
     expect(screen.getByRole('tab', { name: 'Gastos' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('heading', { name: 'Informes', level: 1 })).toBeInTheDocument()
   })

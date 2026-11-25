@@ -168,7 +168,7 @@ export default function Compartir() {
   return (
     <div className="flex-1 overflow-y-auto pb-8 screen-enter">
       <header className="px-6 pantalla-top pb-1 flex items-center gap-3">
-        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+        <button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Compartir con mi pareja o familia</h1>
