@@ -66,7 +66,6 @@ export const GRUPOS = [
     icon: Lightbulb,
     items: [
       { to: '/informes', icon: PieChart, label: 'Informes', palabras: 'informe informes en que gasto mi plata categoria comercios reporte cierre de mes balance resumen del mes wrapped compartir mi cuenta cuadra cuadre extracto banco insights hallazgos cosas raras consejos patrimonio inversion activos neto cdt acciones' },
-      { to: '/revisar', icon: ArrowLeftRight, label: 'Revisar movimientos', palabras: 'traslado entre mis cuentas nequi nu bancolombia no cuenta duplicados repetidos repetido' },
       { to: '/ahorcado', icon: Sprout, label: 'Cómo está Cuadri (salud de mi plata)', palabras: 'cuadri salud financiera puntaje arbol ahorcado vidas' },
       { to: '/asistente', icon: Bot, label: 'Asistente', palabras: 'cuadrame ai ia pregunta chat' },
     ],
@@ -85,6 +84,7 @@ export const GRUPOS = [
 
 // Hoy todos los destinos viven en un grupo; queda por si algún día hay uno que solo deba encontrar el buscador.
 export const EXTRA_BUSQUEDA = [
+  { to: '/revisar', icon: ArrowLeftRight, label: 'Revisar traslados y repetidos', palabras: 'revisar movimientos traslado entre mis cuentas nequi nu bancolombia no cuenta duplicados repetidos repetido' },
   { to: '/presupuesto?tab=fijos', icon: Repeat, label: 'Pagos fijos', palabras: 'recurrentes recurrente suscripcion fijo mensual automatico arriendo nomina' },
   { to: '/cuentas?tab=deudas', icon: CreditCard, label: 'Deudas', palabras: 'prestamo credito cuotas pagar tarjeta debo' },
   { to: '/metas?tab=inversiones', icon: TrendingUp, label: 'Inversiones', palabras: 'acciones etf fondos broker portafolio ticker trii bolsa cripto rentabilidad cdt' },
@@ -112,7 +112,7 @@ export const ITEMS_MAS = GRUPOS.flatMap((g) => g.items.map((i) => ({ ...i, grupo
 // por enlace directo y por el buscador.
 export const MAS_FUNCIONES_ID = 'mas-funciones'
 export const RUTAS_AVANZADAS = [
-  '/entrenar-categorias', '/conectar-dispositivo', '/revisar', '/ahorcado',
+  '/entrenar-categorias', '/conectar-dispositivo', '/ahorcado',
 ]
 
 export const EXPLICACION = {

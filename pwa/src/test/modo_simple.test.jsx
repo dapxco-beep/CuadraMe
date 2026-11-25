@@ -82,9 +82,9 @@ describe('navegacion: grupos según el modo', () => {
   })
 
   it('una función avanzada que la persona ya usa deja de ser avanzada: vuelve a su tema', () => {
-    const g = gruposSegunModo({ completo: false, enUso: ['/entrenar-categorias', '/revisar'] })
+    const g = gruposSegunModo({ completo: false, enUso: ['/entrenar-categorias', '/conectar-dispositivo'] })
     expect(g.find((x) => x.id === 'datos').items.map((i) => i.to)).toContain('/entrenar-categorias')
-    expect(g.find((x) => x.id === 'entender').items.map((i) => i.to)).toContain('/revisar')
+    expect(g.find((x) => x.id === 'datos').items.map((i) => i.to)).toContain('/conectar-dispositivo')
     expect(g[g.length - 1].items.map((i) => i.to)).not.toContain('/entrenar-categorias')
   })
 
@@ -161,7 +161,7 @@ describe('Menú «Más» (teléfono) en modo simple', () => {
     guardarPerfilUso(auth.usuario.id, 'gastos')
     await abrirMas()
     const hoja = await screen.findByRole('dialog', { name: 'Más opciones' })
-    for (const nombre of ['Movimientos del correo', 'Categorías', 'Revisar movimientos']) {
+    for (const nombre of ['Movimientos del correo', 'Categorías', 'Asistente']) {
       expect(within(hoja).getByRole('link', { name: new RegExp('^' + nombre) }), nombre).toBeInTheDocument()
     }
     expect(within(hoja).queryByRole('link', { name: /^Metas/ })).toBeNull()

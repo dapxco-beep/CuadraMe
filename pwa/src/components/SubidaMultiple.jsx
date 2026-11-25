@@ -560,7 +560,7 @@ export default function SubidaMultiple({
           <Link
             to={totalAuto > 0 ? '/movimientos?revisar=1' : '/movimientos'}
             replace
-            className="flex-1 bg-ink text-paper rounded-2xl py-3 text-sm font-semibold text-center"
+            className="flex-1 bg-accent text-paper-raised rounded-2xl py-3 text-sm font-semibold text-center"
           >
             {totalAuto > 0 ? 'Revisar lo categorizado' : 'Ver movimientos'}
           </Link>
@@ -878,7 +878,7 @@ export default function SubidaMultiple({
           <button
             onClick={importar}
             disabled={(totalMarcados === 0 && totalJuntar === 0) || importando}
-            className="flex-1 bg-ink text-paper rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+            className="flex-1 bg-accent text-paper-raised rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <Check size={16} aria-hidden="true" /> {importando ? 'Importando...' : `Importar (${totalMarcados})`}
           </button>
@@ -1021,7 +1021,7 @@ export default function SubidaMultiple({
           <button
             onClick={procesar}
             disabled={corriendo || archivos.length === 0}
-            className="flex-1 bg-ink text-paper rounded-2xl py-3 text-sm font-semibold disabled:opacity-60"
+            className="flex-1 bg-accent text-paper-raised rounded-2xl py-3 text-sm font-semibold disabled:opacity-60"
           >
             {corriendo ? 'Procesando...' : `Procesar ${archivos.filter((a) => a.estado === 'pendiente').length} ${archivos.filter((a) => a.estado === 'pendiente').length === 1 ? 'archivo' : 'archivos'}`}
           </button>
@@ -1029,7 +1029,7 @@ export default function SubidaMultiple({
           <button
             onClick={() => empezarRevision(consolidado.archivos)}
             disabled={corriendo || listos.length === 0}
-            className="flex-1 bg-ink text-paper rounded-2xl py-3 text-sm font-semibold disabled:opacity-60"
+            className="flex-1 bg-accent text-paper-raised rounded-2xl py-3 text-sm font-semibold disabled:opacity-60"
           >
             Revisar ({listos.length} {listos.length === 1 ? 'archivo' : 'archivos'})
           </button>

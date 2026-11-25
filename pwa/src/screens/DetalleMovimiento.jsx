@@ -544,7 +544,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
             <button
               onClick={guardar}
               disabled={guardando}
-              className="flex-1 rounded-2xl bg-ink text-paper py-3 text-sm font-semibold disabled:opacity-60"
+              className="flex-1 rounded-2xl bg-accent text-paper-raised py-3 text-sm font-semibold disabled:opacity-60"
             >
               {guardando ? 'Guardando...' : 'Guardar cambios'}
             </button>

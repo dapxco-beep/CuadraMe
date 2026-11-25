@@ -74,7 +74,7 @@ function FormPin({ titulo, boton, pedirConfirmacion, onListo, onCancelar }) {
       {error && <p role="alert" className="text-xs text-danger">{error}</p>}
       <div className="flex gap-2">
         <button type="button" onClick={onCancelar} className="flex-1 rounded-2xl border border-line py-2.5 text-sm">Cancelar</button>
-        <button type="submit" disabled={trabajando} className="flex-1 rounded-2xl bg-ink text-paper py-2.5 text-sm font-semibold disabled:opacity-60">
+        <button type="submit" disabled={trabajando} className="flex-1 rounded-2xl bg-accent text-paper-raised py-2.5 text-sm font-semibold disabled:opacity-60">
           {boton}
         </button>
       </div>

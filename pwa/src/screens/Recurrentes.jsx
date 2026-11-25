@@ -328,7 +328,7 @@ function FormRecurrente({ onClose, onGuardado }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
       >
         {guardando ? 'Guardando...' : 'Guardar pago fijo'}
       </button>

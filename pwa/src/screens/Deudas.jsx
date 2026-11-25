@@ -137,7 +137,7 @@ export default function Deudas() {
               </div>
               <button
                 onClick={() => setPagando(d)}
-                className="w-full bg-ink text-paper font-semibold rounded-xl py-2.5 text-sm"
+                className="w-full bg-accent text-paper-raised font-semibold rounded-xl py-2.5 text-sm"
               >
                 Registrar pago
               </button>
@@ -294,7 +294,7 @@ function FormDeuda({ onClose, onGuardada }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
       >
         {guardando ? 'Guardando...' : 'Crear deuda'}
       </button>
@@ -344,7 +344,7 @@ function FormPago({ deuda, onClose, onPagado }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
       >
         {guardando ? 'Guardando...' : 'Registrar pago'}
       </button>

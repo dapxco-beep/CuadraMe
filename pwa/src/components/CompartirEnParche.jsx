@@ -200,7 +200,7 @@ export default function CompartirEnParche({ movimiento, className = '' }) {
         </div>
       )}
 
-      <button onClick={compartir} disabled={!elegido || enviando || (abierto && (!detalle || !repartoOk))} className="mt-3 w-full min-h-11 rounded-2xl bg-ink text-paper text-sm font-semibold disabled:opacity-40">
+      <button onClick={compartir} disabled={!elegido || enviando || (abierto && (!detalle || !repartoOk))} className="mt-3 w-full min-h-11 rounded-2xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-40">
         {enviando ? 'Compartiendo…' : 'Compartir'}
       </button>
     </section>

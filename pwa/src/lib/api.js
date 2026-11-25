@@ -302,6 +302,8 @@ export const api = {
   ajustarSaldo: (id, saldoReal) => request(`/cuentas/${id}/ajustar-saldo`, { method: 'POST', body: { saldo_real: saldoReal } }),
 
   consentimientos: () => request('/consentimientos'),
+  // Medición anónima de uso (solo cuenta si la persona aceptó las estadísticas anónimas): solo el nombre de la pantalla.
+  usoPantalla: (ruta) => request('/formas-asunto/pantalla', { method: 'POST', body: { ruta } }),
   historialConsentimientos: () => request('/consentimientos/historial'),
   guardarConsentimientos: (version, items, origen = 'app') =>
     request('/consentimientos', { method: 'POST', body: { version, items, origen } }),

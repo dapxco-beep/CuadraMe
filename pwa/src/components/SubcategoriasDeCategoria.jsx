@@ -135,7 +135,7 @@ export default function SubcategoriasDeCategoria({ categoria }) {
           <button
             onClick={agregar}
             disabled={ocupado}
-            className="rounded-xl bg-ink text-paper text-sm font-semibold px-4 min-h-[44px] disabled:opacity-60"
+            className="rounded-xl bg-accent text-paper-raised text-sm font-semibold px-4 min-h-[44px] disabled:opacity-60"
           >
             Guardar
           </button>

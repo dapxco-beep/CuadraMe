@@ -8,6 +8,7 @@ export const PANELES = [
   { id: 'dia', nombre: 'Día a día' },
   { id: 'comercios', nombre: 'Dónde más gastas' },
   { id: 'ingresos', nombre: 'Ingresos y gastos' },
+  { id: 'costos', nombre: 'Lo que te cuesta tu plata' },
   { id: 'historial', nombre: 'Historial por categoría', ancho: true },
   { id: 'evolucion', nombre: 'Evolución por categoría' },
   { id: 'mi_evolucion', nombre: 'Mi evolución' },

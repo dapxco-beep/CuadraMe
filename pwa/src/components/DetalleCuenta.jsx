@@ -122,7 +122,7 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
             <button
               onClick={() => setAjustando((v) => !v)}
               aria-expanded={ajustando}
-              className="flex items-center justify-center gap-2 bg-ink text-paper font-semibold rounded-2xl py-3.5 text-sm"
+              className="flex items-center justify-center gap-2 bg-accent text-paper-raised font-semibold rounded-2xl py-3.5 text-sm"
             >
               <Scale size={16} /> Ajustar saldo
             </button>

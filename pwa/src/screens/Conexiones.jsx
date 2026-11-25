@@ -135,12 +135,12 @@ function TarjetaGmail({ g, ir, recargar }) {
       {resultado && !error && <p className="text-xs font-semibold mt-2">{resultado}</p>}
       <div className="flex gap-2 mt-3">
         {g.conectado ? (
-          <Boton onClick={sincronizar} disabled={sincronizando} className="flex-1 bg-ink text-paper">
+          <Boton onClick={sincronizar} disabled={sincronizando} className="flex-1 bg-accent text-paper-raised">
             <RefreshCw size={16} className={sincronizando ? 'animate-spin' : ''} />
             {sincronizando ? 'Trayendo movimientos...' : 'Traer todo ahora'}
           </Boton>
         ) : (
-          <Boton onClick={() => ir('correo')} className="flex-1 bg-ink text-paper">
+          <Boton onClick={() => ir('correo')} className="flex-1 bg-accent text-paper-raised">
             Conectar Gmail
           </Boton>
         )}
@@ -430,7 +430,7 @@ function TarjetaPush({ p }) {
         <p className="text-xs text-ink-soft mt-2">Este navegador no admite notificaciones.</p>
       ) : (
         !activa && permiso !== 'denied' && (
-          <Boton onClick={activar} className="w-full mt-3 bg-ink text-paper">
+          <Boton onClick={activar} className="w-full mt-3 bg-accent text-paper-raised">
             Activar notificaciones
           </Boton>
         )
@@ -466,7 +466,7 @@ export default function Conexiones({ embebido = false, alIr }) {
     <div className={embebido ? '' : 'flex-1 overflow-y-auto pb-6 screen-enter'}>
       {!embebido && (
         <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
-          <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+          <button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-bold">Conexiones y estado</h1>

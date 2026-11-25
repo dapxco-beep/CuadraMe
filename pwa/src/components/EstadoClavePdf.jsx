@@ -117,7 +117,7 @@ export default function EstadoClavePdf({
         <button
           onClick={guardar}
           disabled={!clave.trim()}
-          className="px-4 min-h-[44px] rounded-xl bg-ink text-paper text-sm font-semibold disabled:opacity-50"
+          className="px-4 min-h-[44px] rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-50"
         >
           Guardar
         </button>

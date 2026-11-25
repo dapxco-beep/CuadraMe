@@ -159,7 +159,7 @@ export default function Wrapped() {
     <div className="flex-1 flex flex-col overflow-y-auto screen-enter pantalla-ancha">
       {!embebido && (
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
-        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+        <button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold flex-1">Tu resumen</h1>
@@ -253,7 +253,7 @@ export default function Wrapped() {
               type="button"
               onClick={compartir}
               disabled={compartiendo}
-              className="flex-1 bg-ink text-paper font-semibold rounded-2xl py-3.5 text-[15px] flex items-center justify-center gap-2 disabled:opacity-60"
+              className="flex-1 bg-accent text-paper-raised font-semibold rounded-2xl py-3.5 text-[15px] flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <Share2 size={16} /> {compartiendo ? 'Preparando...' : `Compartir mi ${nombreMes(datos.mes)}`}
             </button>

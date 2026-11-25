@@ -272,7 +272,7 @@ export default function DetalleColecta() {
 
             {p.estado !== 'pagado' && (
               <div className="flex flex-wrap gap-2 mt-2">
-                <button onClick={() => pagar(p)} className="flex-1 min-w-[7rem] rounded-xl bg-ink text-paper text-xs font-semibold py-2 min-h-11 flex items-center justify-center gap-1.5">
+                <button onClick={() => pagar(p)} className="flex-1 min-w-[7rem] rounded-xl bg-accent text-paper-raised text-xs font-semibold py-2 min-h-11 flex items-center justify-center gap-1.5">
                   <Check size={16} /> Pagó {formatMoneda(p.falta, c.moneda)}
                 </button>
                 <button
@@ -305,7 +305,7 @@ export default function DetalleColecta() {
                 <button
                   onClick={() => Number(parcial.monto) > 0 && pagar(p, Number(parcial.monto))}
                   disabled={!(Number(parcial.monto) > 0)}
-                  className="rounded-xl bg-ink text-paper text-xs font-semibold px-4 disabled:opacity-40"
+                  className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-4 disabled:opacity-40"
                 >
                   Guardar
                 </button>
@@ -363,7 +363,7 @@ export default function DetalleColecta() {
         <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">¿Cómo te pagan?</p>
         <div className="flex gap-2">
           <input aria-label="Datos para pagarte" value={datosPago} onChange={(e) => setDatosPago(e.target.value)} maxLength={200} placeholder="Ej. Llave Bre-B @torneo · Nequi 300 123 4567" className="flex-1 min-w-0 rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm outline-none focus:border-accent" />
-          <button onClick={guardarDatosPago} disabled={datosPago.trim() === (c.datos_pago || '')} className="shrink-0 bg-ink text-paper rounded-2xl px-4 text-sm font-semibold disabled:opacity-40">Guardar</button>
+          <button onClick={guardarDatosPago} disabled={datosPago.trim() === (c.datos_pago || '')} className="shrink-0 bg-accent text-paper-raised rounded-2xl px-4 text-sm font-semibold disabled:opacity-40">Guardar</button>
         </div>
         <p className="text-[11px] text-ink-soft mt-1">Lo verá quien tenga el enlace. Los pagos se hacen por fuera (Bre-B, Nequi, efectivo); CuadraMe solo lleva la cuenta.</p>
       </section>

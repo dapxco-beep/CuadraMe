@@ -120,7 +120,7 @@ export default function Cuentas() {
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className={embebido ? 'px-6 pt-3 flex items-center justify-end gap-2' : 'px-6 pantalla-top pb-2 flex items-center justify-between'}>
         <div className="flex items-center gap-3">
-          {!embebido && (<><button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+          {!embebido && (<><button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-bold">Tus cuentas</h1></>)}
@@ -455,7 +455,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
       >
         {guardando ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Crear cuenta'}
       </button>

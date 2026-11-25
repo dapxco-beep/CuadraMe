@@ -1143,7 +1143,7 @@ export default function Movimientos() {
                       key={c.k}
                       onClick={() => cambiarParams({ [c.k]: '' })}
                       aria-label={`Quitar filtro ${c.texto}`}
-                      className="inline-flex items-center gap-1 text-xs px-3 min-h-[32px] rounded-full bg-ink text-paper"
+                      className="inline-flex items-center gap-1 text-xs px-3 min-h-[32px] rounded-full bg-accent text-paper-raised"
                     >
                       {c.texto} <X size={16} aria-hidden="true" />
                     </button>
@@ -1467,6 +1467,9 @@ export default function Movimientos() {
                   <button className={fila} onClick={accion(() => setModoSeleccion(true))}>
                     <ListChecks size={20} aria-hidden="true" /> Seleccionar varios
                   </button>
+                  <Link to="/revisar" className={fila} onClick={() => cerrar()}>
+                    <ArrowLeftRight size={20} aria-hidden="true" /> Revisar traslados y repetidos
+                  </Link>
                   <button className={fila} disabled={leyendoCorreo} onClick={accion(() => actualizarCorreo(true))}>
                     <RefreshCw size={20} aria-hidden="true" /> Actualizar desde el correo
                   </button>

@@ -271,7 +271,7 @@ export default function BandejaPorConfirmar() {
           <button
             onClick={confirmarTodos}
             disabled={ocupado}
-            className="flex-1 bg-ink text-paper font-semibold rounded-2xl py-3.5 text-sm disabled:opacity-60"
+            className="flex-1 bg-accent text-paper-raised font-semibold rounded-2xl py-3.5 text-sm disabled:opacity-60"
           >
             Confirmar todos ({n})
           </button>
@@ -338,7 +338,7 @@ function FormEdicion({ m, cuentas, ocupado, onCancelar, onGuardar }) {
       </label>
       {error && <p className="text-xs text-danger">{error}</p>}
       <div className="flex gap-2">
-        <button onClick={guardar} disabled={ocupado} className="flex-1 bg-ink text-paper font-semibold rounded-xl py-2.5 text-sm disabled:opacity-60">
+        <button onClick={guardar} disabled={ocupado} className="flex-1 bg-accent text-paper-raised font-semibold rounded-xl py-2.5 text-sm disabled:opacity-60">
           Guardar y confirmar
         </button>
         <button onClick={onCancelar} className="px-4 rounded-xl border border-line text-sm font-medium">

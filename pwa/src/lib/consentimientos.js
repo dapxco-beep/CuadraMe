@@ -31,10 +31,10 @@ export const FINALIDADES = {
     texto: 'Autorizo recibir avisos (alertas de presupuesto, recordatorios de pago, resúmenes) por notificaciones push y correo.',
   },
   estadisticas_anonimas: {
-    titulo: 'Compartir estadísticas anónimas de lectura',
+    titulo: 'Compartir estadísticas anónimas de uso',
     obligatoria: false,
     texto:
-      'Cuando no logre leer un correo de mi banco, autorizo que se cuente, sin mi nombre, sin montos ni comercios, la forma general de su asunto (por ejemplo, «pagaste en * con cuenta nu»). Así CuadraMe aprende a leer más bancos. Lo que yo le enseñe a leer es solo mío y nunca se comparte.',
+      'Cuando no logre leer un correo de mi banco, autorizo que se cuente, sin mi nombre, sin montos ni comercios, la forma general de su asunto (por ejemplo, «pagaste en * con cuenta nu»). Así CuadraMe aprende a leer más bancos. También autorizo que se cuente, sin mi nombre, qué pantallas de la app se abren (solo el nombre de la pantalla, nunca lo que hay en ella), para saber qué sirve y qué mejorar. Lo que yo le enseñe a leer es solo mío y nunca se comparte.',
   },
 }
 

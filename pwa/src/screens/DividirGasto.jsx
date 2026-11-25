@@ -262,7 +262,7 @@ export default function DividirGasto() {
               className={campo}
             />
             <div className="flex gap-2">
-              <button onClick={agregarContacto} className="flex-1 bg-ink text-paper rounded-2xl py-2.5 text-sm font-semibold">
+              <button onClick={agregarContacto} className="flex-1 bg-accent text-paper-raised rounded-2xl py-2.5 text-sm font-semibold">
                 Agregar amigo
               </button>
               <button onClick={() => setNuevo(null)} className="px-4 text-sm text-ink-soft">
@@ -287,7 +287,7 @@ export default function DividirGasto() {
                 placeholder="Ej. Viaje a Cartagena"
                 className={campo}
               />
-              <button onClick={guardarGrupo} className="shrink-0 bg-ink text-paper rounded-2xl px-4 text-sm font-semibold">
+              <button onClick={guardarGrupo} className="shrink-0 bg-accent text-paper-raised rounded-2xl px-4 text-sm font-semibold">
                 Guardar
               </button>
             </div>
@@ -376,7 +376,7 @@ export default function DividirGasto() {
         <button
           onClick={guardar}
           disabled={guardando}
-          className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
+          className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
         >
           {guardando ? 'Guardando...' : 'Guardar gasto dividido'}
         </button>

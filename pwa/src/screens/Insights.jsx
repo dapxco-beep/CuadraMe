@@ -84,7 +84,7 @@ export default function Insights() {
     <div className="flex-1 overflow-y-auto pb-6 flex flex-col">
       {!embebido && (
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
-        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+        <button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Cosas raras en mis gastos</h1>
@@ -254,7 +254,7 @@ export default function Insights() {
             type="submit"
             disabled={enviando || !pregunta.trim()}
             aria-label="Enviar pregunta"
-            className="w-12 h-12 shrink-0 rounded-2xl bg-ink text-paper flex items-center justify-center disabled:opacity-50"
+            className="w-12 h-12 shrink-0 rounded-2xl bg-accent text-paper-raised flex items-center justify-center disabled:opacity-50"
           >
             <Send size={16} />
           </button>

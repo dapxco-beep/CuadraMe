@@ -71,8 +71,8 @@ describe('navegacion.js (fuente única)', () => {
   })
 
   it('recuerda los últimos 4 destinos, sin repetir, el más reciente primero', () => {
-    for (const r of ['/cuentas', '/revisar', '/metas', '/asistente', '/revisar', '/informes', '/']) registrarReciente(r)
-    expect(leerRecientes().map((d) => d.to)).toEqual(['/informes', '/revisar', '/asistente', '/metas'])
+    for (const r of ['/cuentas', '/entrenar-categorias', '/metas', '/asistente', '/entrenar-categorias', '/informes', '/']) registrarReciente(r)
+    expect(leerRecientes().map((d) => d.to)).toEqual(['/informes', '/entrenar-categorias', '/asistente', '/metas'])
   })
 })
 
@@ -93,7 +93,7 @@ describe('Menú «Más» del teléfono', () => {
     // sin acentos encuentra «Categorías» y «Entrenar categorías»; desaparecen los encabezados
     expect(within(hoja).getByRole('link', { name: 'Categorías' })).toBeInTheDocument()
     expect(within(hoja).getByRole('link', { name: 'Enseñar categorías' })).toBeInTheDocument()
-    expect(within(hoja).queryByRole('link', { name: 'Revisar movimientos' })).toBeNull()
+    expect(within(hoja).queryByRole('link', { name: 'Cuentas' })).toBeNull()
     expect(within(hoja).queryByRole('heading', { name: 'Mi plata' })).toBeNull()
 
     await userEvent.clear(buscador)
@@ -121,7 +121,7 @@ describe('Menú «Más» del teléfono', () => {
 
   it('«Recientes» lista los últimos destinos usados', async () => {
     registrarReciente('/metas')
-    registrarReciente('/revisar')
+    registrarReciente('/entrenar-categorias')
     simularAncho(390)
     render(
       <MemoryRouter>
@@ -132,7 +132,7 @@ describe('Menú «Más» del teléfono', () => {
     const hoja = await screen.findByRole('dialog')
     const seccion = within(hoja).getByRole('heading', { name: /Recientes/ }).closest('section')
     const enlaces = within(seccion).getAllByRole('link').map((a) => a.textContent)
-    expect(enlaces).toEqual(['Revisar movimientos', 'Metas'])
+    expect(enlaces).toEqual(['Enseñar categorías', 'Metas'])
   })
 })
 

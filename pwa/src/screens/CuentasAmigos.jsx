@@ -81,7 +81,7 @@ export default function CuentasAmigos() {
         </div>
         <button
           onClick={() => navigate('/dividir')}
-          className="w-11 h-11 rounded-full bg-ink text-paper flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"
           aria-label="Nuevo gasto dividido"
         >
           <Plus size={20} />

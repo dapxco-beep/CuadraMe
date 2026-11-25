@@ -546,7 +546,7 @@ function FormPresupuesto({ onClose, onGuardado, periodoInicial = 'monthly' }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
       >
         {guardando ? 'Guardando...' : 'Guardar presupuesto'}
       </button>
@@ -627,7 +627,7 @@ function FormMoverSobre({ presupuestos, onClose, onMovido }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
       >
         {guardando ? 'Pasando...' : 'Pasar plata'}
       </button>

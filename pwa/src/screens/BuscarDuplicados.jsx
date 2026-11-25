@@ -158,7 +158,7 @@ export default function BuscarDuplicados() {
                 <button
                   onClick={() => unir(g)}
                   disabled={ocupado === g.id}
-                  className="rounded-xl bg-ink text-paper py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
+                  className="rounded-xl bg-accent text-paper-raised py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
                 >
                   Unir en uno solo
                 </button>

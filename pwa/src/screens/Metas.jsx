@@ -258,7 +258,7 @@ function TarjetaMeta({ meta: m, plan, consejo, indice, onAportar }) {
       ) : (
         <button
           onClick={() => onAportar(montoSugerido(plan, m))}
-          className="w-full bg-ink text-paper font-semibold rounded-xl py-2.5 min-h-11 text-sm"
+          className="w-full bg-accent text-paper-raised font-semibold rounded-xl py-2.5 min-h-11 text-sm"
         >
           Aportar ahora
         </button>
@@ -341,7 +341,7 @@ function FormAporte({ meta, montoInicial, onClose, onAportado }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-ink text-paper font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
       >
         {guardando ? 'Guardando...' : 'Aportar ahora'}
       </button>

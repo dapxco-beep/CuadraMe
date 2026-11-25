@@ -17,6 +17,7 @@ import LimiteRuta from './components/LimiteRuta'
 import BandejaPorConfirmar from './components/BandejaPorConfirmar'
 import RedirigirAlCentro from './components/RedirigirAlCentro'
 import AInformes from './components/AInformes'
+import MedidorUso from './components/MedidorUso'
 import ATab from './components/ATab'
 import SplashMarca, { splashPendiente } from './brand/SplashMarca'
 import { CargandoMarca } from './brand/Marca'
@@ -47,15 +48,14 @@ const PresupuestoPlan = lazy(() => import('./screens/PresupuestoPlan'))
 const MetasAhorro = lazy(() => import('./screens/MetasAhorro'))
 const Ahorcado = lazy(() => import('./screens/Ahorcado'))
 const Compartir = lazy(() => import('./screens/Compartir'))
-const ConectarDispositivo = lazy(() => import('./screens/ConectarDispositivo'))
 const Sincronizacion = lazy(() => import('./screens/Sincronizacion'))
+const ConectarDispositivo = lazy(() => import('./screens/ConectarDispositivo'))
 const Asistente = lazy(() => import('./screens/Asistente'))
 const EntrenarCategorias = lazy(() => import('./screens/EntrenarCategorias'))
 const Informes = lazy(() => import('./screens/Informes'))
 const PlataConOtros = lazy(() => import('./screens/PlataConOtros'))
 const OrdenarCategorias = lazy(() => import('./screens/OrdenarCategorias'))
 const RevisarMovimientos = lazy(() => import('./screens/RevisarMovimientos'))
-const Costos = lazy(() => import('./screens/Costos'))
 const Perfil = lazy(() => import('./screens/Perfil'))
 const AyudaAprende = lazy(() => import('./screens/AyudaAprende'))
 const SaludNegocio = lazy(() => import('./screens/SaludNegocio'))
@@ -160,6 +160,7 @@ function AppGate() {
 
   return (
     <>
+      <MedidorUso />
       <ShellApp>
       {/* Mientras llega el código de una pantalla se ve su esqueleto DENTRO de la app (con el menú), no una pantalla de marca aparte */}
       <Suspense fallback={<EsqueletoPantalla />}>
@@ -208,7 +209,7 @@ function AppGate() {
         <Route path="/resumen" element={<AInformes tab="resumen" />} />
         <Route path="/informe" element={<AInformes tab="gastos" />} />
         <Route path="/informes" element={<Informes />} />
-        <Route path="/costos" element={<Costos />} />
+        <Route path="/costos" element={<AInformes tab="gastos" hash="costos" />} />
         <Route path="/importar" element={<RedirigirAlCentro ruta="/importar" />} />
         <Route path="/impuestos" element={<AInformes tab="impuestos" />} />
         <Route path="/cierre-mes" element={<AInformes tab="cierre" />} />

@@ -170,7 +170,7 @@ export default function NuevaColecta() {
               className={campo}
             />
             <div className="flex gap-2">
-              <button onClick={agregarContacto} className="flex-1 bg-ink text-paper rounded-2xl py-2.5 text-sm font-semibold">
+              <button onClick={agregarContacto} className="flex-1 bg-accent text-paper-raised rounded-2xl py-2.5 text-sm font-semibold">
                 Agregar
               </button>
               <button onClick={() => setNuevo(null)} className="px-4 text-sm text-ink-soft">
@@ -213,7 +213,7 @@ export default function NuevaColecta() {
             {personas} {personas === 1 ? 'persona' : 'personas'} · meta {formatMoneda(total, moneda)}
           </p>
         )}
-        <button onClick={crear} disabled={!puede} className="w-full bg-ink text-paper rounded-2xl py-3.5 text-sm font-semibold disabled:opacity-40">
+        <button onClick={crear} disabled={!puede} className="w-full bg-accent text-paper-raised rounded-2xl py-3.5 text-sm font-semibold disabled:opacity-40">
           {guardando ? 'Creando…' : 'Crear vaca'}
         </button>
       </div>

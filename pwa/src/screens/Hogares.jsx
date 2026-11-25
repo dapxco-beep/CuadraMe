@@ -55,7 +55,7 @@ export default function Hogares() {
           </button>
           <h1 className="text-2xl font-semibold truncate">Parche</h1>
         </div>
-        <button onClick={() => setNuevo({ nombre: '' })} className="w-11 h-11 shrink-0 rounded-full bg-ink text-paper flex items-center justify-center" aria-label="Nuevo parche">
+        <button onClick={() => setNuevo({ nombre: '' })} className="w-11 h-11 shrink-0 rounded-full bg-accent text-paper-raised flex items-center justify-center" aria-label="Nuevo parche">
           <Plus size={20} />
         </button>
       </header>
@@ -76,7 +76,7 @@ export default function Hogares() {
           <div className="rounded-2xl border border-line bg-paper-raised p-3 flex flex-col gap-2">
             <input aria-label="Nombre del parche" autoFocus value={nuevo.nombre} onChange={(e) => setNuevo({ nombre: e.target.value })} placeholder="Nombre (ej. Casa, Apartamento, Viaje)" maxLength={60} className={campo} />
             <div className="flex gap-2">
-              <button onClick={crear} disabled={!nuevo.nombre.trim() || creando} className="flex-1 bg-ink text-paper rounded-2xl py-2.5 text-sm font-semibold disabled:opacity-40">{creando ? 'Creando…' : 'Crear parche'}</button>
+              <button onClick={crear} disabled={!nuevo.nombre.trim() || creando} className="flex-1 bg-accent text-paper-raised rounded-2xl py-2.5 text-sm font-semibold disabled:opacity-40">{creando ? 'Creando…' : 'Crear parche'}</button>
               <button onClick={() => setNuevo(null)} className="px-4 text-sm text-ink-soft">Cancelar</button>
             </div>
           </div>
@@ -98,7 +98,7 @@ export default function Hogares() {
           <p className="text-sm text-ink-soft mt-1">
             Para la pareja, la familia o los compañeros de casa: cada quien con su cuenta, un libro común, y saber quién le debe a quién.
           </p>
-          <button onClick={() => setNuevo({ nombre: '' })} className="mt-4 bg-ink text-paper rounded-2xl px-5 py-3 text-sm font-semibold">
+          <button onClick={() => setNuevo({ nombre: '' })} className="mt-4 bg-accent text-paper-raised rounded-2xl px-5 py-3 text-sm font-semibold">
             Crear mi primer parche
           </button>
         </div>
