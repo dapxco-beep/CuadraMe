@@ -301,6 +301,10 @@ def construir_wallet(base: str) -> dict:
         "WFWorkflowTypes": [],
         "WFWorkflowInputContentItemClasses": ["WFStringContentItem", "WFGenericFileContentItem"],
         "WFWorkflowActions": acciones,
+        # En iOS 27 la automatización viaja DENTRO del atajo: «Transacción» de Wallet (identificador verificado: Atajos lo guarda tal
+        # cual en macOS 27.2). Sin parámetros = cualquier tarjeta de Wallet; solo se activa con pagos de Apple Pay.
+        "WFWorkflowTriggers": [{"WFTriggerIdentifier": "WFWalletTransactionTrigger", "WFTriggerSerializedParameters": {},
+                                "WFTriggerUUID": str(uuid.uuid4()).upper()}],
         "WFWorkflowImportQuestions": [
             {"ActionIndex": 0, "Category": "Parameter", "ParameterKey": "WFTextActionText", "DefaultValue": "",
              "Text": "Pega tu clave de CuadraMe (App > Conectar > Clave del atajo)"},

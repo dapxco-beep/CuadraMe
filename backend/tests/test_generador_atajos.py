@@ -194,3 +194,15 @@ def test_las_condiciones_usan_los_codigos_numericos_de_ios(modo):
         p = a["WFWorkflowActionParameters"]
         if a["WFWorkflowActionIdentifier"].endswith(".conditional") and p["WFControlFlowMode"] == 0:
             assert isinstance(p["WFCondition"], int) and p["WFCondition"] in (4, 100), p["WFCondition"]
+
+
+def test_apple_pay_trae_su_automatizacion_de_wallet_dentro_del_atajo():
+    """iOS 27 guarda la automatización dentro del atajo (WFWorkflowTriggers): quien lo instala ya la tiene."""
+    disparadores = _atajo("wallet")["WFWorkflowTriggers"]
+    assert [d["WFTriggerIdentifier"] for d in disparadores] == ["WFWalletTransactionTrigger"]
+    assert disparadores[0]["WFTriggerUUID"]
+
+
+def test_los_atajos_de_notificacion_no_traen_disparador_sin_filtro_de_app():
+    """Un disparador de notificación sin filtro mandaría al servidor el texto de CUALQUIER app: no se incluye hasta filtrarlo por app."""
+    assert "WFWorkflowTriggers" not in _atajo("unico") and "WFWorkflowTriggers" not in _atajo("notificacion")
