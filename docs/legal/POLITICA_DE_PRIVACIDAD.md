@@ -1,8 +1,8 @@
 # Política de Tratamiento de Datos Personales — CuadraMe
 
-> **BORRADOR PARA REVISIÓN DE ABOGADO.** No publicar como definitivo sin revisión jurídica. Los textos entre `[CORCHETES]` los debe decidir Daniel (ver `PENDIENTES_DANIEL.md`). Este borrador describe lo que la aplicación hace hoy según el código; si el producto cambia, hay que actualizarlo.
+> **Estado: VALIDADO por abogados (noviembre de 2026).** La versión vigente y publicada es la de la app (`pwa/src/screens/legal`, que genera `pwa/public/privacidad.html` y `terminos.html`). Este archivo conserva el texto de trabajo; los datos entre `[CORCHETES]` ya no aplican a lo publicado (en la app el responsable es «DAPX, persona natural en proceso de formalización»).
 
-Versión del borrador: 1.2 · Fecha: [FECHA DE PUBLICACIÓN]
+Versión: 1.2 · Fecha: [FECHA DE PUBLICACIÓN]
 (La versión que ve el usuario en la app y que se registra al autorizar sigue siendo la 1.1 hasta que se decida publicar esta; al cambiarla hay que subir `VERSION_TEXTOS` en `pwa/src/lib/consentimientos.js` y `backend/app/routers/consentimientos.py`.)
 
 ## 1. Responsable del tratamiento

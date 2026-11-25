@@ -241,7 +241,7 @@ export default function SelectorCuenta({
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           placeholder={
-            esEfectivo ? 'Nombre de la cuenta (ej. Efectivo)' : `Nombre de la cuenta (ej. ${ejemploBanco} Ahorros)`
+            esEfectivo ? 'Nombre de la cuenta (ej. Efectivo)' : 'Nombre de la cuenta'
           }
           aria-label="Nombre de la cuenta"
           className="w-full rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"

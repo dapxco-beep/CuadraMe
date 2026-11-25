@@ -14,7 +14,7 @@ export default function TerminosCondiciones() {
       </header>
 
       <div className="px-6 mt-4 text-sm leading-relaxed text-ink space-y-5">
-        <p className="text-xs text-ink-soft">Versión 1.2 (borrador) · Última actualización: 3 de octubre de 2026</p>
+        <p className="text-xs text-ink-soft">Versión 1.2 · Última actualización: 3 de octubre de 2026</p>
 
         <section>
           <h2 className="font-semibold mb-1.5">1. Quiénes somos</h2>
@@ -163,16 +163,6 @@ export default function TerminosCondiciones() {
           </p>
         </section>
 
-        <div className="rounded-2xl bg-accent-soft p-4 mt-6">
-          <p className="text-xs text-ink">
-            <b>BORRADOR PARA REVISIÓN DE ABOGADO.</b> Este documento es un borrador preparado como base de trabajo. Antes de operar
-            con usuarios reales, debe ser revisado y validado por un abogado colombiano especializado
-            en protección de datos y derecho digital/fintech, especialmente en lo referente a: (1)
-            responsabilidad por categorización automática y proyecciones financieras, (2)
-            actualización con NIT/razón social una vez constituida la empresa, y (3) cualquier
-            eventual cobro futuro.
-          </p>
-        </div>
       </div>
     </div>
   )

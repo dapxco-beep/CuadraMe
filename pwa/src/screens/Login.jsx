@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { EncabezadoMarca } from '../brand/Marca'
@@ -16,6 +17,7 @@ export default function Login() {
   const [cargando, setCargando] = useState(false)
   const [esperaCodigo, setEsperaCodigo] = useState(false) // tras crear la cuenta: escribe el código que llegó al correo
   const [codigo, setCodigo] = useState('')
+  const [verClave, setVerClave] = useState(false)
 
   async function onSubmit(e) {
     e.preventDefault()
@@ -160,17 +162,29 @@ export default function Login() {
           required
           className="rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"
         />
-        <input
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          type="password"
-          placeholder="Contraseña"
-          required
-          minLength={modo === 'registro' ? 8 : 6}
-          autoComplete={modo === 'registro' ? 'new-password' : 'current-password'}
-          aria-label="Contraseña"
-          className="rounded-2xl border border-line bg-paper-raised px-4 py-3.5 text-sm outline-none focus:border-accent"
-        />
+        <div className="relative">
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            type={verClave ? 'text' : 'password'}
+            placeholder="Contraseña"
+            required
+            minLength={modo === 'registro' ? 8 : 6}
+            autoComplete={modo === 'registro' ? 'new-password' : 'current-password'}
+            aria-label="Contraseña"
+            className="w-full rounded-2xl border border-line bg-paper-raised pl-4 pr-12 py-3.5 text-sm outline-none focus:border-accent"
+          />
+          <button
+            type="button"
+            onClick={() => setVerClave((v) => !v)}
+            aria-pressed={verClave}
+            aria-label={verClave ? 'Ocultar la clave' : 'Mostrar la clave'}
+            className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-ink-soft"
+          >
+            {verClave ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
+          </button>
+        </div>
+        {modo === 'registro' && <p className="text-xs text-ink-soft px-1 -mt-1">Mínimo 8 caracteres.</p>}
 
         {modo === 'login' && (
           <button type="button" onClick={onOlvide} className="text-xs text-accent font-medium text-right -mt-1">
@@ -197,6 +211,9 @@ export default function Login() {
           </label>
         )}
 
+        {modo === 'registro' && !aceptaTerminos && !error && (
+          <p className="text-xs text-ink-soft px-1 -mt-1" data-testid="pista-terminos">Marca la casilla de arriba para poder crear tu cuenta.</p>
+        )}
         {error && <p role="alert" className="text-sm text-danger">{error}</p>}
         {mensaje && <p role="status" className="text-sm text-accent">{mensaje}</p>}
 

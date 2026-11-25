@@ -1,6 +1,6 @@
 # Lo que debe decidir Daniel antes de publicar los textos legales
 
-> Los borradores de esta carpeta están marcados «BORRADOR PARA REVISIÓN DE ABOGADO». Nada se publica como definitivo sin esa revisión.
+> Actualización (nov-2026): los abogados validaron los textos de Política de Privacidad, Términos y Autorización de datos (versión 1.2) y ya se publican como definitivos. Lo que sigue en esta lista (razón social, dominio propio, correo de contacto, cobro) son decisiones de negocio pendientes, no revisiones jurídicas del texto vigente.
 
 ## Datos que solo tú puedes dar
 1. **Razón social / responsable.** Hoy los textos dicen «DAPX, persona natural en proceso de formalización». Define quién es el responsable del tratamiento (nombre o razón social, NIT o C.C., domicilio).
