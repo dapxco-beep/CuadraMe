@@ -14,7 +14,7 @@ export default function AutorizacionDatos() {
       </header>
 
       <div className="px-6 mt-4 text-sm leading-relaxed text-ink space-y-5">
-        <p className="text-xs text-ink-soft">Versión 1.2 (borrador) · Última actualización: 3 de octubre de 2026</p>
+        <p className="text-xs text-ink-soft">Versión 1.2 · Última actualización: 3 de octubre de 2026</p>
 
         <section>
           <p>
@@ -118,16 +118,6 @@ export default function AutorizacionDatos() {
           </ul>
         </section>
 
-        <div className="rounded-2xl bg-accent-soft p-4 mt-6">
-          <p className="text-xs text-ink">
-            <b>Nota:</b> este documento es un borrador preparado como base de trabajo. Antes de
-            operar con usuarios reales, debe ser revisado por un abogado colombiano especializado en
-            protección de datos personales, particularmente en cuanto al alcance exacto de la
-            autorización para el acceso a Gmail (scope de solo lectura) frente a los requisitos de la
-            política de datos de usuario limitado de Google, y su articulación con el registro ante el
-            RNBD si aplica.
-          </p>
-        </div>
       </div>
     </div>
   )

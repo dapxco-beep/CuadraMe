@@ -177,19 +177,19 @@ describe('pantalla Cierre de mes', () => {
 })
 
 describe('textos legales', () => {
-  it('reflejan lo nuevo y conservan el aviso de borrador y la versión', () => {
+  it('reflejan lo nuevo, traen la versión y ya no se presentan como borrador', () => {
     const { unmount: u1 } = montar(<PoliticaPrivacidad />)
-    expect(screen.getByText(/Versión 1.2 \(borrador\)/)).toBeTruthy()
+    expect(screen.getByText(/Versión 1\.2 ·/)).toBeTruthy()
     expect(screen.getByText(/Asistente de IA/)).toBeTruthy()
     expect(screen.getByText(/Clave del PDF/)).toBeTruthy()
-    expect(screen.getByText(/borrador preparado/)).toBeTruthy()
+    expect(screen.queryByText(/borrador/i)).toBeNull()
     u1()
     const { unmount: u2 } = montar(<TerminosCondiciones />)
     expect(screen.getByText(/no presta asesoría tributaria/)).toBeTruthy()
-    expect(screen.getByText(/borrador preparado/)).toBeTruthy()
+    expect(screen.queryByText(/borrador/i)).toBeNull()
     u2()
     montar(<AutorizacionDatos />)
     expect(screen.getByText(/datos de terceros/)).toBeTruthy()
-    expect(screen.getByText(/borrador preparado/)).toBeTruthy()
+    expect(screen.queryByText(/borrador/i)).toBeNull()
   })
 })

@@ -14,7 +14,7 @@ export default function PoliticaPrivacidad() {
       </header>
 
       <div className="px-6 mt-4 text-sm leading-relaxed text-ink space-y-5">
-        <p className="text-xs text-ink-soft">Versión 1.2 (borrador) · Última actualización: 7 de noviembre de 2026</p>
+        <p className="text-xs text-ink-soft">Versión 1.2 · Última actualización: 7 de noviembre de 2026</p>
 
         <section>
           <h2 className="font-semibold mb-1.5">1. Responsable del tratamiento</h2>
@@ -213,17 +213,6 @@ export default function PoliticaPrivacidad() {
           </p>
         </section>
 
-        <div className="rounded-2xl bg-accent-soft p-4 mt-6">
-          <p className="text-xs text-ink">
-            <b>BORRADOR PARA REVISIÓN DE ABOGADO.</b> Este documento es un borrador preparado como base de trabajo, alineado a la
-            Ley 1581 de 2012 y el Decreto 1377 de 2013. Antes de operar con usuarios reales, debe ser
-            revisado por un abogado colombiano especializado en protección de datos, en particular:
-            (1) el registro de la base de datos ante el Registro Nacional de Bases de Datos (RNBD) de
-            la SIC si se supera el umbral de responsable obligado a inscribirse, (2) la vigencia y
-            alcance exacto del acceso de solo lectura a Gmail frente a las políticas de Google, y (3)
-            actualización con NIT una vez constituida la empresa.
-          </p>
-        </div>
       </div>
     </div>
   )

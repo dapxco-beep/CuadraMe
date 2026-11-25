@@ -1,8 +1,8 @@
 # Términos y Condiciones de Uso — CuadraMe
 
-> **BORRADOR PARA REVISIÓN DE ABOGADO.** No publicar como definitivo sin revisión jurídica. Lo que está entre `[CORCHETES]` lo debe decidir Daniel (ver `PENDIENTES_DANIEL.md`). Describe lo que la app hace hoy.
+> **Estado: VALIDADO por abogados (noviembre de 2026).** La versión vigente y publicada es la de la app (`pwa/src/screens/legal`, que genera `pwa/public/privacidad.html` y `terminos.html`). Este archivo conserva el texto de trabajo; los datos entre `[CORCHETES]` ya no aplican a lo publicado (en la app el responsable es «DAPX, persona natural en proceso de formalización»).
 
-Versión del borrador: 1.2 · Fecha: [FECHA DE PUBLICACIÓN]
+Versión: 1.2 · Fecha: [FECHA DE PUBLICACIÓN]
 
 ## 1. Quiénes somos
 CuadraMe es un servicio de [RAZÓN SOCIAL / NOMBRE DE LA PERSONA NATURAL] (NIT/C.C. [NÚMERO]), con domicilio en [CIUDAD], Colombia, que opera bajo el nombre comercial DAPX. Contacto: [CORREO DE CONTACTO]. Sitio: [DOMINIO].

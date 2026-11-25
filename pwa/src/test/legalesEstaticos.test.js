@@ -18,17 +18,17 @@ describe('páginas legales estáticas', () => {
     expect(h).toContain('Uso Limitado')
     expect(h).toContain('developers.google.com/terms/api-services-user-data-policy')
     expect(h).toContain('gmail.readonly')
-    expect(h).toContain('BORRADOR PARA REVISIÓN DE ABOGADO')
+    expect(h).not.toMatch(/borrador/i) // textos validados por abogados: ya no son un borrador
     expect(h).toContain('Versión 1.2')
     expect(h).toContain('dapxco@gmail.com')
     expect(h).toContain('href="/"')
     expect(h).not.toMatch(/<script|className|\{'/)
   })
 
-  it('los términos traen aviso, versión y contacto', () => {
+  it('los términos traen versión y contacto', () => {
     const h = leer('terminos.html')
     expect(h).toContain('Términos y Condiciones')
-    expect(h).toContain('BORRADOR PARA REVISIÓN DE ABOGADO')
+    expect(h).not.toMatch(/borrador/i) // textos validados por abogados: ya no son un borrador
     expect(h).toContain('Versión 1.2')
     expect(h).toContain('dapxco@gmail.com')
     expect(h).not.toMatch(/<script|className|\{'/)
