@@ -243,8 +243,7 @@ describe('«Mostrar todas las funciones» vive en el menú «Más»', () => {
         </DialogosProvider>
       </ThemeProvider>
     )
-    // Esa parte vive en una sección plegada («Punto de partida y apariencia»): se abre primero.
-    await userEvent.click(await screen.findByRole('button', { name: /Punto de partida y apariencia/ }))
+    // Vive en «Cómo uso CuadraMe», que viene abierta.
     const enlace = await screen.findByTestId('enlace-todas-funciones')
     expect(screen.queryByRole('switch', { name: 'Mostrar todas las funciones' })).toBeNull()
     expect(screen.queryByText('Planeación')).toBeNull()

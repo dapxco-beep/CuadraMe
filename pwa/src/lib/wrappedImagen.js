@@ -14,6 +14,18 @@ export function nombreMes(mes) {
 
 // Devuelve las diapositivas a partir de los datos del backend. `fmt` permite
 // enmascarar montos en pantalla; para la imagen se usa formatCOP real.
+// Cómo reacciona Cuadri a cada tarjeta: solo para la pantalla (la imagen compartida sigue con su emoji).
+export function reaccionCuadri(id, d) {
+  const baja = d.variacion_gasto_pct != null && d.variacion_gasto_pct < 0
+  const sube = d.variacion_gasto_pct != null && d.variacion_gasto_pct > 10
+  if (id === 'gasto') return sube ? { pose: 'preocupado' } : { pose: 'feliz' }
+  if (id === 'categoria') return { pose: 'senalando' }
+  if (id === 'ahorro') return d.ahorro < 0 ? { estado: 'mal' } : d.tasa_ahorro >= 20 ? { estado: 'radiante' } : { estado: 'bien' }
+  if (id === 'racha') return d.mejor_racha >= 5 ? { pose: 'celebrando' } : { pose: 'feliz' }
+  if (id === 'comparacion') return baja ? { estado: 'bien' } : sube ? { estado: 'cansado' } : { pose: 'feliz' }
+  return { pose: 'feliz' }
+}
+
 export function construirDiapositivas(d, fmt = formatCOP) {
   const mes = nombreMes(d.mes)
   const vacio = d.num_movimientos === 0

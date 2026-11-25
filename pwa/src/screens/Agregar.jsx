@@ -512,6 +512,7 @@ export default function Agregar() {
         <div className="mb-4">
           <p className="px-5 text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">
             {esTransferencia ? 'Desde' : 'Cuenta'}
+            {cuentaActual && <span className="normal-case tracking-normal"> · <b className="text-ink">{cuentaActual.nombre}</b></span>}
           </p>
           <div ref={carruselRef} className="flex gap-3 overflow-x-auto no-scrollbar px-5 pb-1 snap-x snap-mandatory">
             {cuentas.map((c) => (
@@ -522,7 +523,7 @@ export default function Agregar() {
                 style={{ transform: cuentaId === c.id ? 'scale(1)' : 'scale(0.92)' }}
                 aria-pressed={cuentaId === c.id}
               >
-                <TarjetaCuenta cuenta={c} />
+                <TarjetaCuenta cuenta={c} compacta />
               </button>
             ))}
           </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { UsersRound, Bell, ShieldCheck, User, Flag, Mail, Receipt, Check, ChevronDown, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, MessageCircle, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
+import { LayoutGrid, UsersRound, Bell, ShieldCheck, User, Flag, Mail, Receipt, Check, ChevronDown, ChevronRight, CopyCheck, CreditCard, FileText, GraduationCap, Landmark, Link2, List, LogOut, MessageCircle, Trash2, Palette, PiggyBank, RefreshCw, Repeat, Sprout, Tag, Users, Wand2, LifeBuoy } from 'lucide-react'
 import { useTheme, THEMES, ACENTOS } from '../lib/ThemeContext'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/api'
@@ -219,18 +219,10 @@ export default function Perfil() {
         </div>
       </SeccionPlegable>
 
-      {/* Lo que casi nadie cambia va plegado: así «Mi cuenta» muestra solo el nombre y el país. */}
-      <SeccionPlegable id="perfil-preferencias" titulo="Punto de partida y apariencia" icono={Palette} className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
+      {/* Lo más usado arriba y abierto: cómo se usa la app. Lo que casi nadie cambia va plegado. */}
+      <SeccionPlegable id="perfil-uso" titulo="Cómo uso CuadraMe" icono={LayoutGrid} abiertaPorDefecto className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
         <div className="-mx-4 -mt-1">
-      <section className="mx-6 mt-4" id="punto-de-partida" aria-labelledby="titulo-punto-de-partida">
-        <div className="flex items-center gap-2 mb-3">
-          <Flag size={16} className="text-ink-soft" aria-hidden="true" />
-          <h2 id="titulo-punto-de-partida" className="text-[15px] font-semibold">Punto de partida</h2>
-        </div>
-        <PuntoDePartida variante="perfil" />
-      </section>
-
-      <SelectorPerfilUso className="mx-6 mt-6 rounded-2xl border border-line bg-paper-raised p-4" />
+      <SelectorPerfilUso className="mx-6 mt-2" />
 
       {/* El interruptor «Mostrar todas las funciones» vive ahora en el menú «Más»; aquí queda un enlace corto para no perder la función */}
       <p className="mx-6 mt-4 text-xs text-ink-soft">
@@ -240,7 +232,11 @@ export default function Perfil() {
         </button>
         .
       </p>
+        </div>
+      </SeccionPlegable>
 
+      <SeccionPlegable id="perfil-preferencias" titulo="Apariencia y letra" icono={Palette} className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
+        <div className="-mx-4 -mt-1">
       <section className="mx-6 mt-8">
         <div className="flex items-center gap-2 mb-3">
           <Palette size={16} className="text-ink-soft" />
@@ -352,6 +348,18 @@ export default function Perfil() {
         </div>
       </section>
 
+        </div>
+      </SeccionPlegable>
+
+      <SeccionPlegable id="perfil-punto" titulo="Punto de partida" icono={Flag} className="mx-6 mt-6 rounded-2xl border border-line overflow-hidden">
+        <div className="-mx-4 -mt-1">
+      <section className="mx-6 mt-4" id="punto-de-partida" aria-labelledby="titulo-punto-de-partida">
+        <div className="flex items-center gap-2 mb-3">
+          <Flag size={16} className="text-ink-soft" aria-hidden="true" />
+          <h2 id="titulo-punto-de-partida" className="text-[15px] font-semibold">Punto de partida</h2>
+        </div>
+        <PuntoDePartida variante="perfil" />
+      </section>
         </div>
       </SeccionPlegable>
 

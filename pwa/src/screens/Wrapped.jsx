@@ -15,7 +15,9 @@ import { useDialogos } from '../lib/DialogosContext'
 import { Isotipo } from '../brand/Marca'
 import { esCampoDeTexto } from '../lib/atajos'
 import BarraProgreso from '../components/BarraProgreso'
-import { compartirImagen, construirDiapositivas, nombreMes } from '../lib/wrappedImagen'
+import { compartirImagen, construirDiapositivas, nombreMes, reaccionCuadri } from '../lib/wrappedImagen'
+import Cuadri from '../brand/Cuadri'
+import { useMostrarCuadri } from '../lib/cuadri'
 
 // Desglose del mes por categoría: la diapositiva solo cuenta cuánto gastaste, esto dice en qué.
 function DetalleCategorias({ datos, fmt, onVerInforme }) {
@@ -80,6 +82,7 @@ export default function Wrapped() {
   const [i, setI] = useState(0)
   const [dir, setDir] = useState(1)
   const [compartiendo, setCompartiendo] = useState(false)
+  const [conCuadri] = useMostrarCuadri()
 
   // Meses con movimientos: por defecto el actual si tiene datos; si no, el último que sí.
   useEffect(() => {
@@ -232,7 +235,11 @@ export default function Wrapped() {
                 className="absolute inset-0 flex flex-col items-center justify-center text-center px-8"
                 aria-live="polite"
               >
-                <span className="text-6xl mb-5" aria-hidden="true">{d.emoji}</span>
+                {conCuadri && datos ? (
+                  <span className="mb-4 block"><Cuadri {...reaccionCuadri(d.id, datos)} size={120} /></span>
+                ) : (
+                  <span className="text-6xl mb-5" aria-hidden="true">{d.emoji}</span>
+                )}
                 <p className="text-sm text-[#a39c8a]">{d.titulo}</p>
                 <p className="text-4xl font-extrabold mt-2 break-words max-w-full">{d.valor}</p>
                 <p className="text-sm text-[#a39c8a] mt-3">{d.detalle}</p>

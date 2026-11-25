@@ -56,3 +56,12 @@ abren: candidatas a revisar son Ahorcado/juego, Costos, Enseñar categorías y I
 - **Tarjetas de Cuentas** a ancho completo (antes una columna lateral las dejaba de distinto ancho); «Ver sus movimientos» a la
   izquierda y tipo + editar a la derecha, en una sola fila.
 - **Invitación «¿Cómo quieres usar CuadraMe?»** en el Inicio (una vez, solo si ya hay 3+ movimientos y no se ha elegido perfil).
+
+## Tercera tanda (2026-11-25)
+- **Perfil** reordenado: «Cómo uso CuadraMe» (abierta), «Apariencia y letra» y «Punto de partida» son secciones separadas (antes todo
+  iba en una sola sección plegada).
+- **Mi mes**: ya era una historia de 5 tarjetas; ahora Cuadri reacciona en cada una (radiante si ahorraste, preocupado si el gasto
+  subió, celebra una buena racha). Si se apaga «Mostrar a Cuadri» vuelve el emoji. La imagen que se comparte no cambia.
+- **Cierre**: barra de avance «N de 3 revisiones listas» con Cuadri que se anima (`avanceCierre` en `lib/cierreAsistente.js`).
+- **Agregar**: muestra el nombre de la cuenta elegida y las tarjetas de cuenta son compactas.
+- Pendiente: Wallet del iPhone (necesita la captura de la notificación de Nu al pagar con Wallet).
