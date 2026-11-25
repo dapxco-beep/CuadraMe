@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Bell, BellOff, Copy, MessageCircle, Plus, Share2 } from 'lucide-react'
 import { EsqueletoLista } from '../components/Esqueletos'
+import { EstadoVacio } from '../brand/Marca'
 import Hoja from '../components/Hoja'
 import { api } from '../lib/api'
 import { useCuentas } from '../lib/CuentasContext'
@@ -289,7 +290,18 @@ export default function DetalleHogar() {
 
       <section className="px-5 mt-6">
         <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Gastos</p>
-        {gastos.length === 0 && <p className="text-sm text-ink-soft">Aún no hay gastos. Registra el primero con “Nuevo gasto”.</p>}
+        {gastos.length === 0 && (
+          <EstadoVacio
+            icono={Plus}
+            titulo="Aún no hay gastos"
+            texto="Registra el primero y CuadraMe va llevando la cuenta de quién puso qué y quién le debe a quién."
+            className="mt-2"
+          >
+            <button type="button" onClick={() => navigate(`/hogares/${id}/gasto`)} className="mt-4 bg-accent text-paper-raised rounded-2xl px-5 py-3 text-sm font-semibold min-h-11">
+              Registrar el primer gasto
+            </button>
+          </EstadoVacio>
+        )}
         <ul className="flex flex-col gap-2">
           {gastos.map((g) => (
             <li key={g.id} className="rounded-2xl border border-line bg-paper-raised px-4 py-3">

@@ -24,6 +24,7 @@ import TarjetaCuenta from '../components/TarjetaCuenta'
 import SelectorCuenta, { TIPOS_CUENTA } from '../components/SelectorCuenta'
 import AgregarOtraDelBanco from '../components/AgregarOtraDelBanco'
 import PanelTarjetaCredito from '../components/PanelTarjetaCredito'
+import { agruparCuentas, subtotalGrupo } from '../lib/gruposCuentas'
 import AvisoSinTasa from '../components/AvisoSinTasa'
 import CamposCuentaNueva, { CAMPOS_VACIOS } from '../components/CamposCuentaNueva'
 import { datosCuentaNueva, productoAlterno, validarTarjetaNueva } from '../lib/cuentaNueva'
@@ -63,6 +64,8 @@ export default function Cuentas() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [editando, setEditando] = useState(null)
   const { fmt } = useBloqueo()
+  const grupos = agruparCuentas(cuentas)
+  const conTitulos = grupos.length > 1 // con un solo tipo de cuenta no hace falta un encabezado
   const [params, setParams] = useSearchParams()
   const [resumen, setResumen] = useState(null)
   // El detalle se abre con ?cuenta=<id> (así también se llega desde el mazo de Inicio).
@@ -164,7 +167,21 @@ export default function Cuentas() {
         <EstadoVacio icono={Wallet} titulo="Aún no tienes cuentas" texto="Tu banco, Nequi, el efectivo o una tarjeta. Agrega la primera con el botón +." className="mx-6 mt-6" />
       ) : (
         <div className="mx-6 mt-4 space-y-3">
-          {cuentas.map((c, i) => (
+          {grupos.map((g) => (
+            <section key={g.id} aria-label={g.titulo} className="space-y-3">
+              {conTitulos && (
+                <h2 className="t-kicker text-ink-soft pt-1 px-1 flex items-baseline justify-between gap-2" data-testid={`grupo-${g.id}`}>
+                  <span>{g.titulo}</span>
+                  {subtotalGrupo(g.items) !== null && (
+                    <span className="normal-case tracking-normal font-semibold">
+                      {g.id === 'tarjetas' ? 'Debes ' : ''}{fmt(g.id === 'tarjetas' ? Math.abs(subtotalGrupo(g.items)) : subtotalGrupo(g.items))}
+                    </span>
+                  )}
+                </h2>
+              )}
+              {g.items.map((c) => {
+            const i = cuentas.indexOf(c)
+            return (
             <div key={c.id} className="stagger-item" style={{ '--stagger-i': i }}>
               <button
                 type="button"
@@ -207,6 +224,9 @@ export default function Cuentas() {
               {/* Las cuentas de crédito son tarjetas reales: cupo, corte y pago */}
               {c.tipo === 'credito' && <PanelTarjetaCredito cuenta={c} onCambio={recargar} />}
             </div>
+            )
+              })}
+            </section>
           ))}
 
           <EnlaceCostos className="" />

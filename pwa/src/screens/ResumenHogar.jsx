@@ -2,7 +2,8 @@ import { textoError } from '../lib/textoError'
 import { EsqueletoTexto } from '../components/Esqueletos'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Receipt } from 'lucide-react'
+import { EstadoVacio } from '../brand/Marca'
 import { api } from '../lib/api'
 import { formatMoneda } from '../lib/format'
 
@@ -62,7 +63,7 @@ export default function ResumenHogar() {
           </section>
 
           {r.por_miembro.length === 0 ? (
-            <p className="px-5 mt-6 text-sm text-ink-soft">No hay gastos en este mes.</p>
+            <EstadoVacio icono={Receipt} titulo="No hay gastos en este mes" texto="Cuando se registren gastos del parche, aquí verás cuánto puso cada uno." />
           ) : (
             <>
               <section className="px-5 mt-5">
