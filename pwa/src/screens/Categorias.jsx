@@ -57,7 +57,7 @@ export default function Categorias() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
+      <header className={embebido ? 'px-6 pt-3 flex items-center justify-end' : 'px-6 pantalla-top pb-2 flex items-center justify-between'}>
         {embebido ? <span /> : <div className="flex items-center gap-3">
           <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
             <ArrowLeft size={20} />
@@ -66,10 +66,10 @@ export default function Categorias() {
         </div>}
         <button
           onClick={() => setMostrarForm(true)}
-          className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"
+          className={embebido ? 'min-h-11 px-4 rounded-full bg-accent text-paper-raised flex items-center justify-center gap-1.5 text-sm font-semibold' : 'w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center'}
           aria-label="Nueva categoría"
         >
-          <Plus size={20} />
+          {embebido ? <><Plus size={16} /> Nueva categoría</> : <Plus size={20} />}
         </button>
       </header>
 

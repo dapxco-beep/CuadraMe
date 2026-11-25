@@ -64,14 +64,14 @@ export default function Patrimonio() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
-      <header className="px-5 pantalla-top pb-2 flex items-center justify-between">
+      <header className={embebido ? 'px-5 pt-3 flex items-center justify-end' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
         {embebido ? <span /> : <h1 className="text-xl font-semibold">Patrimonio</h1>}
         <button
           onClick={() => setFormulario({})}
-          className="w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center"
+          className={embebido ? 'min-h-11 px-4 rounded-full bg-accent text-paper-raised flex items-center justify-center gap-1.5 text-sm font-semibold' : 'w-11 h-11 rounded-full bg-accent text-paper-raised flex items-center justify-center'}
           aria-label="Agregar activo"
         >
-          <Plus size={20} />
+          {embebido ? <><Plus size={16} /> Agregar activo</> : <Plus size={20} />}
         </button>
       </header>
 
