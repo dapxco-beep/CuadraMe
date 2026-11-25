@@ -88,9 +88,19 @@ AVISO_ATAJO_VIEJO = " Hay un atajo nuevo: CuadraMe › Perfil › Registro autom
 _AVISADO_HOY: dict[str, str] = {}  # usuario -> día en que ya se le avisó (en memoria: se pierde al reiniciar, no importa)
 
 
-def _aviso_atajo_viejo(usuario_id: str, paquete: str) -> str:
-    """El aviso de actualización si el atajo es de una versión anterior y hoy no se le ha dado; si no, ''."""
-    if (paquete or "").strip().lower() in ("auto", "pantalla") or not notif.es_ios(paquete):
+# Versión que está en el generador (`VERSION_ATAJO` en tools/generar_atajo_notificaciones.py). Se sube SOLO cuando un cambio del atajo
+# obliga a reinstalarlo; los cambios que viven en el servidor no la tocan.
+VERSION_ATAJO_ACTUAL = 7
+
+
+def _aviso_atajo_viejo(usuario_id: str, paquete: str, version: int | None = None) -> str:
+    """El aviso de actualización si el atajo es de una versión anterior y hoy no se le ha dado; si no, ''.
+    Es anterior si manda el nombre de un banco (atajo de la primera época) o si es «auto» y su `version` es menor que la actual
+    (los «auto» más viejos no mandan versión). Android nunca recibe este aviso."""
+    auto = (paquete or "").strip().lower() in ("auto", "pantalla")
+    if not auto and not notif.es_ios(paquete):
+        return ""
+    if auto and (version or 0) >= VERSION_ATAJO_ACTUAL:
         return ""
     hoy = ahora_co().strftime("%Y-%m-%d")
     if _AVISADO_HOY.get(usuario_id) == hoy:
@@ -1231,7 +1241,7 @@ def crear_movimiento_desde_notificacion(
         adivinada, forma or "-",
     )
     if resultado.get("mensaje") is not None:
-        resultado["mensaje"] += _aviso_atajo_viejo(usuario.id, data.paquete)
+        resultado["mensaje"] += _aviso_atajo_viejo(usuario.id, data.paquete, data.version)
     return resultado
 
 

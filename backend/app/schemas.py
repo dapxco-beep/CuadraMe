@@ -302,6 +302,7 @@ class NotificacionAndroid(BaseModel):
     cuenta: Optional[str] = Field(default=None, max_length=120)  # la cuenta que la persona eligió cuando el servidor no supo cuál era
     movimiento_id: Optional[str] = Field(default=None, max_length=64)  # con `cuenta`: el movimiento que el atajo acaba de registrar
     aprender: bool = True  # guardar la plantilla anónima para no volver a preguntar
+    version: Optional[int] = Field(default=None, ge=0, le=10000)  # versión del atajo de iPhone que llama (no la manda Android)
 
 
 class MovimientoRapidoCreate(BaseModel):
