@@ -20,7 +20,7 @@ import { HojaMas } from '../components/MenuMas'
 import { useNombreParaSaludar } from '../lib/nombre'
 import AsistentePrimerUso from '../components/AsistentePrimerUso'
 import SugerenciaPais from '../components/SugerenciaPais'
-import { estadoPorScore } from '../lib/saludFinanciera'
+import { estadoPorScore, MENSAJE_POR_ESTADO } from '../lib/saludFinanciera'
 import ResumenSaldo from '../components/ResumenSaldo'
 import PreguntaMovimiento from '../components/PreguntaMovimiento'
 import Recordatorios from '../components/Recordatorios'
@@ -353,7 +353,14 @@ export default function Inicio() {
       {jalar.indicador}
       <header className="px-6 pantalla-top pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <Isotipo size={30} cuadra={cuadra !== false} />
+          {typeof reporte?.salud?.score === 'number' ? (
+            // Cuadri refleja la salud de tus finanzas: de un vistazo, y un toque lleva a «Cómo está Cuadri».
+            <Link to="/ahorcado" aria-label={MENSAJE_POR_ESTADO[estadoPorScore(reporte.salud.score)]} className="shrink-0 -ml-1" data-testid="cuadri-encabezado">
+              <Cuadri estado={estadoPorScore(reporte.salud.score)} size={42} animar={false} siempre />
+            </Link>
+          ) : (
+            <Isotipo size={30} cuadra={cuadra !== false} />
+          )}
           <h1 className="t-title text-lg">{primerNombre ? `Hola, ${primerNombre}` : 'Hola'}</h1>
         </div>
         <div className="flex items-center gap-1">

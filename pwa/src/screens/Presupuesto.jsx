@@ -193,8 +193,8 @@ export default function Presupuesto() {
           const pctGeneral = limiteTotal > 0 ? Math.min(100, Math.round((gastadoTotal / limiteTotal) * 100)) : 0
           const colorNivel = pctGeneral >= 100 ? 'var(--color-danger)' : pctGeneral >= 80 ? 'var(--color-accent-2)' : 'var(--color-accent)'
           const queda = limiteTotal - gastadoTotal
-          // Lo más urgente arriba: primero lo que ya se pasó o va más cargado.
-          const ordenados = [...conDatos].sort((a, b) => (b.pctReal || 0) - (a.pctReal || 0))
+          // Lo más urgente arriba: primero lo excedido, luego lo que anda en «ojo» y al final lo que va bien; dentro de cada grupo, lo más cargado.
+          const ordenados = [...conDatos].sort((a, b) => nivelPresupuesto(a) - nivelPresupuesto(b) || (b.pctReal || 0) - (a.pctReal || 0))
           const principales = ordenados.slice(0, MAX_VISIBLES)
           const otros = ordenados.slice(MAX_VISIBLES)
           const tarjeta = (p, i) => (
@@ -372,6 +372,16 @@ export default function Presupuesto() {
   )
 }
 
+/** 0 = excedido, 1 = ojo (cerca del límite o en riesgo según la proyección), 2 = va bien. Ordena las tarjetas y pinta la etiqueta. */
+export function nivelPresupuesto(p) {
+  const sobrepasado = p.pctReal > 100
+  const cerca = !sobrepasado && p.pct >= p.alerta_pct
+  const riesgo = !!p.proy && (p.proy.estado === 'excedido' || p.proy.estado === 'en_riesgo')
+  if (sobrepasado || p.proy?.estado === 'excedido') return 0
+  if (cerca || riesgo) return 1
+  return 2
+}
+
 // Una tarjeta por presupuesto: a la vista, lo que llevas, la barra y el aviso; el resto
 // (desglose, sobrante, ajustes, enlace a los movimientos) queda detrás de «Ver detalle».
 function TarjetaPresupuesto({ p, i, animarBarras, onQuitar }) {
@@ -379,12 +389,11 @@ function TarjetaPresupuesto({ p, i, animarBarras, onQuitar }) {
   const sobrepasado = p.pctReal > 100
   const cercaDelLimite = !sobrepasado && p.pct >= p.alerta_pct
   const { iconoDe } = useCategorias() || {}
-  const riesgo = p.proy && (p.proy.estado === 'excedido' || p.proy.estado === 'en_riesgo')
-  const estado = sobrepasado || p.proy?.estado === 'excedido'
-    ? { texto: 'Excedido', clase: 'bg-danger/10 text-danger' }
-    : cercaDelLimite || riesgo
-      ? { texto: 'Ojo', clase: 'bg-accent-2/20 text-gold' }
-      : { texto: 'Vas bien', clase: 'bg-cuadra/10 text-cuadra' }
+  const estado = [
+    { texto: 'Excedido', clase: 'bg-danger/10 text-danger' },
+    { texto: 'Ojo', clase: 'bg-accent-2/20 text-gold' },
+    { texto: 'Vas bien', clase: 'bg-cuadra/10 text-cuadra' },
+  ][nivelPresupuesto(p)]
   return (
     <div className="rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': i }}>
       <div className="flex items-start justify-between gap-2 mb-2">
