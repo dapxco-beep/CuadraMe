@@ -13,7 +13,7 @@ gen = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(gen)
 
 BASE = "https://api.cuadrame.dapx.shop"
-MODOS = ["notificacion", "pantalla", "captura", "wallet"]
+MODOS = ["unico", "notificacion", "pantalla", "captura", "wallet"]
 
 
 def _atajo(modo):
@@ -139,3 +139,58 @@ def test_la_accion_anterior_al_primer_si_es_la_que_se_compara(modo):
     i = next(i for i, a in enumerate(acciones) if a["WFWorkflowActionIdentifier"].endswith(".conditional"))
     previa = acciones[i - 1]["WFWorkflowActionParameters"]
     assert previa["WFDictionaryKey"] == "motivo" and previa["WFGetDictionaryValueType"] == "Value"
+
+
+def test_los_atajos_que_llaman_a_rapido_notificacion_mandan_su_version():
+    import json
+    for modo in ("unico", "notificacion", "pantalla"):
+        posts = [a["WFWorkflowActionParameters"] for a in _atajo(modo)["WFWorkflowActions"]
+                 if a["WFWorkflowActionIdentifier"].endswith(".downloadurl")
+                 and a["WFWorkflowActionParameters"].get("WFHTTPMethod") == "POST"]
+        assert posts
+        for p in posts:
+            claves = [i["WFKey"]["Value"]["string"] for i in p["WFJSONValues"]["Value"]["WFDictionaryFieldValueItems"]]
+            assert "version" in claves, json.dumps(claves)
+
+
+def test_el_cascaron_solo_llama_al_atajo_interno_por_nombre():
+    datos = plistlib.loads(plistlib.dumps(gen.construir_cascaron("CuadraMe Registrar"), fmt=plistlib.FMT_BINARY))
+    acciones = datos["WFWorkflowActions"]
+    assert len(acciones) == 1 and acciones[0]["WFWorkflowActionIdentifier"].endswith(".runworkflow")
+    assert acciones[0]["WFWorkflowActionParameters"]["WFWorkflowName"] == "CuadraMe Registrar"
+    assert datos["WFWorkflowImportQuestions"] == []  # no lleva ni pide clave: la tiene el atajo interno
+
+
+def test_la_version_del_generador_coincide_con_la_del_servidor():
+    from app.routers import movimientos as mv
+    assert gen.VERSION_ATAJO == mv.VERSION_ATAJO_ACTUAL
+
+
+def test_el_aviso_de_atajo_viejo_solo_sale_a_iphone_con_version_menor():
+    from app.routers import movimientos as mv
+    mv._AVISADO_HOY.clear()
+    assert mv._aviso_atajo_viejo("u1", "auto", mv.VERSION_ATAJO_ACTUAL) == ""      # al día
+    assert mv._aviso_atajo_viejo("u1", "auto", None) != ""                           # «auto» viejo, sin versión
+    assert mv._aviso_atajo_viejo("u1", "auto", None) == ""                           # una vez al día
+    assert mv._aviso_atajo_viejo("u2", "auto", 5) != ""                              # versión menor
+    assert mv._aviso_atajo_viejo("u3", "com.android.algo", None) == ""               # Android nunca
+
+
+def test_el_atajo_unico_elige_entre_notificacion_y_pantallazo_y_siempre_define_el_texto():
+    acciones = _atajo("unico")["WFWorkflowActions"]
+    ids = [a["WFWorkflowActionIdentifier"].split(".")[-1] for a in acciones]
+    assert "takescreenshot" in ids and "extracttextfromimage" in ids
+    variables = [a["WFWorkflowActionParameters"]["WFVariableName"] for a in acciones if a["WFWorkflowActionIdentifier"].endswith(".setvariable")]
+    assert variables.count(gen.VAR_TEXTO) == 2 and variables.count(gen.VAR_GESTO) == 2  # una vez por cada camino
+    # el texto que viaja al servidor sale de la variable, no de una salida que solo existe en uno de los caminos
+    post = next(a for a in acciones if a["WFWorkflowActionIdentifier"].endswith(".downloadurl") and a["WFWorkflowActionParameters"].get("WFHTTPMethod") == "POST")
+    assert gen.VAR_TEXTO in str(post)
+
+
+@pytest.mark.parametrize("modo", MODOS)
+def test_las_condiciones_usan_los_codigos_numericos_de_ios(modo):
+    """Un archivo de atajo guarda la condición como NÚMERO (4 = «es», 100 = «tiene algún valor»); con texto iOS no la entiende."""
+    for a in _atajo(modo)["WFWorkflowActions"]:
+        p = a["WFWorkflowActionParameters"]
+        if a["WFWorkflowActionIdentifier"].endswith(".conditional") and p["WFControlFlowMode"] == 0:
+            assert isinstance(p["WFCondition"], int) and p["WFCondition"] in (4, 100), p["WFCondition"]

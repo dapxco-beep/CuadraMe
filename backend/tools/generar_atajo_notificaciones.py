@@ -1,6 +1,7 @@
 """Genera «CuadraMe Notificaciones.shortcut» (sin firmar) para el disparador «Notificación» de iOS 27.
 
-Uso:   python tools/generar_atajo_notificaciones.py [--base URL] [--modo notificacion|pantalla|captura|wallet] [--salida archivo]
+Uso:   python tools/generar_atajo_notificaciones.py [--base URL] [--modo unico|notificacion|pantalla|captura|wallet] [--salida archivo]
+(modo «unico» = «CuadraMe Registrar»: notificaciones Y gesto en un solo atajo; es el que se entrega.)
 Firma (en el Mac, basta el Apple ID gratis):
        shortcuts sign -m anyone -i "CuadraMe Notificaciones.shortcut" -o "CuadraMe Notificaciones firmado.shortcut"
 
@@ -34,6 +35,8 @@ mismo enlace de iCloud sirve para todos los usuarios.
 OJO: escrito sin poder probarlo en un iPhone. Los identificadores de acción son los clásicos de Atajos;
 la entrada del atajo («Entrada del atajo») es lo que el disparador le pasa. Si iOS 27 cambia algo,
 abre el archivo en Atajos y corrige esa acción a mano."""
+from __future__ import annotations
+
 import argparse
 import plistlib
 import uuid
@@ -53,6 +56,10 @@ def _con_variable(prefijo: str, variable: dict, sufijo: str = "") -> dict:
     }
 
 
+# Sube SOLO cuando un cambio del atajo obliga a reinstalarlo (debe coincidir con VERSION_ATAJO_ACTUAL en routers/movimientos.py):
+# el servidor avisa a quien mande una versión menor.
+VERSION_ATAJO = 7
+
 ENTRADA = {"Type": "ExtensionInput"}  # «Entrada del atajo»: lo que manda la automatización
 
 
@@ -68,12 +75,22 @@ def _dic(pares: list[tuple[str, dict]]) -> dict:
     }
 
 
+# Parámetros que Atajos exige aunque tengan un valor «de siempre»: sin ellos la acción falla con «Elige un valor para cada parámetro
+# de la acción» (probado en un Mac con macOS 27.2; los valores son los de Cherri).
+PARAMETROS_POR_DEFECTO = {
+    "notification": {"WFNotificationActionSound": True},
+    "choosefromlist": {"WFChooseFromListActionSelectMultiple": False, "WFChooseFromListActionSelectAll": False},
+}
+
+
 def _accion(identificador: str, **parametros) -> dict:
     return {"WFWorkflowActionIdentifier": f"is.workflow.actions.{identificador}",
-            "WFWorkflowActionParameters": parametros}
+            "WFWorkflowActionParameters": {**PARAMETROS_POR_DEFECTO.get(identificador, {}), **parametros}}
 
 
 def _post(url: str, clave: dict, cuerpo: list[tuple[str, dict]], uid: str) -> dict:
+    if url.endswith("/rapido-notificacion"):
+        cuerpo = [*cuerpo, ("version", _texto(str(VERSION_ATAJO)))]  # para que el servidor sepa si hay que avisar de uno nuevo
     return _accion(
         "downloadurl", UUID=uid, WFURL=url, WFHTTPMethod="POST", WFHTTPBodyType="JSON",
         WFHTTPHeaders=_dic([("X-Api-Key", clave)]), WFJSONValues=_dic(cuerpo))
@@ -84,10 +101,29 @@ def _valor(clave: str, de: str, uid: str) -> dict:
                    WFInput={"Value": _salida(de, "Contenido de la URL"), "WFSerializationType": "WFTextTokenAttachment"})
 
 
-def _si_igual(grupo: str, variable_uid: str, nombre: str, valor: str, dentro: list[dict], si_no: list[dict] | None = None):
+# Códigos REALES de condición en un archivo de atajo (son números, no el texto que muestra la app). Verificados contra el compilador
+# Cherri (iOS 27.2): Es=4, Tiene algún valor=100.
+COND_ES = 4
+COND_TIENE_VALOR = 100
+
+VAR_TEXTO = "CuadraMe texto"   # el texto que se le manda al servidor (de la notificación o del pantallazo)
+VAR_GESTO = "CuadraMe gesto"   # «1» si la persona hizo el gesto (pantallazo); vacío si lo disparó una notificación
+
+
+def _variable(nombre: str) -> dict:
+    return {"Type": "Variable", "VariableName": nombre}
+
+
+def _si_igual(grupo: str, variable_uid: str | None, nombre: str, valor: str, dentro: list[dict], si_no: list[dict] | None = None,
+              variable: str | None = None):
+    """Si la salida `variable_uid` (o la variable con nombre `variable`) es igual a `valor`."""
+    origen = _variable(variable) if variable else _salida(variable_uid, nombre)
+    # El valor que sacó «Obtener valor del diccionario» no tiene tipo conocido: sin convertirlo a texto, Atajos no sabe comparar con
+    # «es» y falla con «Elige un valor para cada parámetro de la acción» (probado en macOS 27.2: con esta coerción corre).
+    origen = {**origen, "Aggrandizements": [{"Type": "WFCoercionVariableAggrandizement", "CoercionItemClass": "WFStringContentItem"}]}
     inicio = _accion(
-        "conditional", GroupingIdentifier=grupo, WFControlFlowMode=0, WFCondition="Equals", WFConditionalActionString=valor,
-        WFInput={"Type": "Variable", "Variable": {"Value": _salida(variable_uid, nombre), "WFSerializationType": "WFTextTokenAttachment"}})
+        "conditional", GroupingIdentifier=grupo, WFControlFlowMode=0, WFCondition=COND_ES, WFConditionalActionString=valor,
+        WFInput={"Type": "Variable", "Variable": {"Value": origen, "WFSerializationType": "WFTextTokenAttachment"}})
     medio = _accion("conditional", GroupingIdentifier=grupo, WFControlFlowMode=1)
     fin = _accion("conditional", GroupingIdentifier=grupo, WFControlFlowMode=2, UUID=str(uuid.uuid4()).upper())
     return [inicio, *dentro, medio, *(si_no or []), fin]
@@ -99,23 +135,49 @@ def _leer_imagen(modo: str, id_shot: str, id_ocr: str) -> list[dict]:
         return []
     if modo == "pantalla":
         origen = {"Value": _salida(id_shot, "Captura de pantalla"), "WFSerializationType": "WFTextTokenAttachment"}
-        previo = [_accion("takescreenshot", UUID=id_shot)]
+        previo = [_accion("takescreenshot", UUID=id_shot, WFTakeScreenshotScreenshotType="Full Screen")]
     else:  # captura: la imagen es la entrada del atajo
         origen = {"Value": ENTRADA, "WFSerializationType": "WFTextTokenAttachment"}
         previo = []
     return [*previo, _accion("extracttextfromimage", UUID=id_ocr, WFImage=origen)]
 
 
-def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> dict:
+def _texto_de_entrada_o_pantallazo(id_entrada: str, id_shot: str, id_ocr: str, id_v1: str, id_v2: str) -> list[dict]:
+    """Modo «unico»: UN atajo para todo. Si lo dispara una notificación (trae entrada) usa su texto; si lo dispara el gesto (sin
+    entrada) toma el pantallazo y le saca el texto en el iPhone. Deja el resultado en la variable `VAR_TEXTO` y marca `VAR_GESTO`."""
+    grupo = str(uuid.uuid4()).upper()
+    ent = {"Type": "Variable", "Variable": {"Value": ENTRADA, "WFSerializationType": "WFTextTokenAttachment"}}
+    como_entrada = lambda uid, n: {"Value": _salida(uid, n), "WFSerializationType": "WFTextTokenAttachment"}  # noqa: E731
+    return [
+        _accion("conditional", GroupingIdentifier=grupo, WFControlFlowMode=0, WFCondition=COND_TIENE_VALOR, WFInput=ent),
+        _accion("gettext", UUID=id_entrada, WFTextActionText=_con_variable("", ENTRADA)),
+        _accion("setvariable", WFVariableName=VAR_TEXTO, WFInput=como_entrada(id_entrada, "Texto")),
+        _accion("gettext", UUID=id_v1, WFTextActionText=""),
+        _accion("setvariable", WFVariableName=VAR_GESTO, WFInput=como_entrada(id_v1, "Texto")),
+        _accion("conditional", GroupingIdentifier=grupo, WFControlFlowMode=1),
+        _accion("takescreenshot", UUID=id_shot, WFTakeScreenshotScreenshotType="Full Screen"),
+        _accion("extracttextfromimage", UUID=id_ocr, WFImage=como_entrada(id_shot, "Captura de pantalla")),
+        _accion("setvariable", WFVariableName=VAR_TEXTO, WFInput=como_entrada(id_ocr, "Texto de la imagen")),
+        _accion("gettext", UUID=id_v2, WFTextActionText="1"),
+        _accion("setvariable", WFVariableName=VAR_GESTO, WFInput=como_entrada(id_v2, "Texto")),
+        _accion("conditional", GroupingIdentifier=grupo, WFControlFlowMode=2, UUID=str(uuid.uuid4()).upper()),
+    ]
+
+
+def construir(base: str, banco: str = "Nequi", modo: str = "notificacion", clave_prueba: str = "") -> dict:
     u = lambda: str(uuid.uuid4()).upper()  # noqa: E731
     id_clave, id_banco, id_post, id_motivo, id_msg = u(), u(), u(), u(), u()
     id_monto, id_para, id_rapido, id_resp = u(), u(), u(), u()
     id_monto2, id_com2, id_tipo, id_rapido2, id_resp2 = u(), u(), u(), u(), u()
     id_shot, id_ocr, id_cuentas = u(), u(), u()
-    elegir = modo in ("pantalla", "notificacion")  # no se pregunta el banco: el servidor lo deduce del texto o de lo aprendido
+    elegir = modo in ("pantalla", "notificacion", "unico")  # no se pregunta el banco: el servidor lo deduce del texto o de lo aprendido
     id_rapido3, id_resp3, id_movid = u(), u(), u()
     # De dónde sale el texto: la notificación misma o el texto leído de una imagen (pantallazo / captura)
-    texto_var = ENTRADA if modo == "notificacion" else _salida(id_ocr, "Texto de la imagen")
+    id_ent, id_v1, id_v2 = u(), u(), u()
+    if modo == "unico":
+        texto_var = _variable(VAR_TEXTO)
+    else:
+        texto_var = ENTRADA if modo == "notificacion" else _salida(id_ocr, "Texto de la imagen")
     clave = _con_variable("", _salida(id_clave, "Texto"))
     nombre_banco = _texto("auto") if elegir else _con_variable("", _salida(id_banco, "Texto"))
     entrada_texto = lambda uid, n="Entrada proporcionada": _con_variable("", _salida(uid, n))  # noqa: E731
@@ -124,9 +186,9 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
 
     acciones = [
         # 0: la clave API (se pregunta al instalar) y, salvo en «pantalla», 1: el banco (también al instalar)
-        _accion("gettext", UUID=id_clave, WFTextActionText=""),
+        _accion("gettext", UUID=id_clave, WFTextActionText=clave_prueba),  # clave_prueba: SOLO para pruebas locales
         *([] if elegir else [_accion("gettext", UUID=id_banco, WFTextActionText=banco)]),
-        *_leer_imagen(modo, id_shot, id_ocr),
+        *(_texto_de_entrada_o_pantallazo(id_ent, id_shot, id_ocr, id_v1, id_v2) if modo == "unico" else _leer_imagen(modo, id_shot, id_ocr)),
         # El texto crudo (de la notificación o del pantallazo): el servidor lo lee, no el atajo
         _post(f"{base}/movimientos/rapido-notificacion", clave,
               [("paquete", nombre_banco), ("titulo", _texto("")), ("texto", _con_variable("", texto_var))], id_post),
@@ -182,8 +244,10 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
     ]
     # En «pantalla» la persona acaba de hacer un gesto: nunca puede quedarse sin respuesta. En notificaciones, lo que no es un
     # pago (ofertas, códigos) se ignora en silencio.
-    nada = _si_igual(u(), id_motivo, "Valor del diccionario", "no_parece_un_movimiento",
-                     [aviso(id_msg)] if modo == "pantalla" else [], [aviso(id_msg)])
+    # «No parece un pago»: con el gesto la persona espera respuesta; con una notificación (ofertas, códigos) se calla.
+    sin_pago = (_si_igual(u(), None, "", "1", [aviso(id_msg)], variable=VAR_GESTO) if modo == "unico"
+                else [aviso(id_msg)] if modo == "pantalla" else [])
+    nada = _si_igual(u(), id_motivo, "Valor del diccionario", "no_parece_un_movimiento", sin_pago, [aviso(id_msg)])
     tipo = _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_tipo", pide_tipo, nada)
     monto = _si_igual(u(), id_motivo, "Valor del diccionario", "pedir_monto", pide_monto, tipo)
     acciones += _si_igual(u(), id_motivo, "Valor del diccionario", "confirmar_cuenta", confirma_cuenta, monto) if elegir else monto
@@ -196,10 +260,10 @@ def construir(base: str, banco: str = "Nequi", modo: str = "notificacion") -> di
         "WFWorkflowInputContentItemClasses": ["WFStringContentItem", "WFGenericFileContentItem"]
         + (["WFImageContentItem"] if modo == "captura" else []),
         "WFWorkflowActions": acciones,
-        "WFWorkflowImportQuestions": [
+        "WFWorkflowImportQuestions": ([] if clave_prueba else [
             {"ActionIndex": 0, "Category": "Parameter", "ParameterKey": "WFTextActionText", "DefaultValue": "",
              "Text": "Pega tu clave de CuadraMe (App > Conectar > Clave del atajo)"},
-        ] + ([] if elegir else [
+        ]) + ([] if elegir else [
             {"ActionIndex": 1, "Category": "Parameter", "ParameterKey": "WFTextActionText", "DefaultValue": banco,
              "Text": "¿De qué banco o app es? (Nequi, Nu, Bancolombia, Davivienda, Daviplata...)"},
         ]),
@@ -244,15 +308,37 @@ def construir_wallet(base: str) -> dict:
     }
 
 
+def construir_cascaron(interno: str = "CuadraMe Registrar") -> dict:
+    """«CuadraMe»: un atajo FIJO que solo llama al atajo real por su nombre. El gesto (Tocar atrás, Botón de acción) se asigna a
+    este y no se pierde cuando se cambia el atajo interno. Prueba: no se sabe si iOS 27 deja la referencia por nombre."""
+    return {
+        "WFWorkflowClientVersion": "2700",
+        "WFWorkflowMinimumClientVersion": 900,
+        "WFWorkflowIcon": {"WFWorkflowIconStartColor": 4282601983, "WFWorkflowIconGlyphNumber": 59511},
+        "WFWorkflowTypes": [],
+        "WFWorkflowInputContentItemClasses": ["WFStringContentItem", "WFGenericFileContentItem"],
+        "WFWorkflowActions": [_accion("runworkflow", WFWorkflowName=interno,
+                                      WFInput={"Value": ENTRADA, "WFSerializationType": "WFTextTokenAttachment"})],
+        "WFWorkflowImportQuestions": [],
+    }
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--base", default="https://api.cuadrame.dapx.shop")
     p.add_argument("--banco", default="Nequi")
-    p.add_argument("--modo", choices=["notificacion", "pantalla", "captura", "wallet"], default="notificacion")
+    p.add_argument("--modo", choices=["unico", "notificacion", "pantalla", "captura", "wallet", "cascaron"], default="notificacion")
     p.add_argument("--salida", default="CuadraMe Notificaciones.shortcut")
+    p.add_argument("--clave-prueba", default="", help="SOLO pruebas locales: pone una clave falsa dentro del archivo y no la pide al instalar")
+    p.add_argument("--interno", default="CuadraMe Registrar", help="solo para --modo cascaron: nombre del atajo que llama")
     a = p.parse_args()
     with open(a.salida, "wb") as f:
-        datos = construir_wallet(a.base.rstrip("/")) if a.modo == "wallet" else construir(a.base.rstrip("/"), a.banco, a.modo)
+        if a.modo == "wallet":
+            datos = construir_wallet(a.base.rstrip("/"))
+        elif a.modo == "cascaron":
+            datos = construir_cascaron(a.interno)
+        else:
+            datos = construir(a.base.rstrip("/"), a.banco, a.modo, a.clave_prueba)
         plistlib.dump(datos, f, fmt=plistlib.FMT_BINARY)
     print(f"Listo: {a.salida} (sin firmar). Fírmalo en el Mac con `shortcuts sign -m anyone -i ... -o ...`.")
 
