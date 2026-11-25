@@ -1,3 +1,4 @@
+import { useEmbebido } from '../lib/EmbebidoContext'
 import { textoError } from '../lib/textoError'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -103,6 +104,7 @@ function AlDia({ texto = 'Todo al día' }) {
 const TAREAS_DEL_CORREO = ['correos_por_revisar', 'correos_descartados', 'movimientos_por_categorizar', 'posibles_duplicados']
 
 export default function Sincronizacion({ modo = 'extractos' }) {
+  const embebido = useEmbebido()
   const esCorreo = modo === 'correo'
   const navigate = useNavigate()
   const location = useLocation()
@@ -1015,11 +1017,11 @@ export default function Sincronizacion({ modo = 'extractos' }) {
 
   return (
     <div ref={raiz} className="flex-1 overflow-y-auto pb-8 screen-enter pantalla-ancha">
-      <header className="px-6 pantalla-top pb-1 flex items-center gap-3">
-        <button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
+      <header className={embebido ? 'px-6 pt-3 flex items-center justify-end gap-3' : 'px-6 pantalla-top pb-1 flex items-center gap-3'}>
+        {!embebido && (<><button onClick={volver} className="w-11 h-11 flex items-center justify-center -ml-2" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="flex-1 min-w-0 text-xl font-bold leading-tight">{esCorreo ? 'Movimientos del correo' : 'Traer extractos'}</h1>
+        <h1 className="flex-1 min-w-0 text-xl font-bold leading-tight">{esCorreo ? 'Movimientos del correo' : 'Traer extractos'}</h1></>)}
         <button
           onClick={() => setHoja('conexion')}
           data-testid="abrir-conexiones"

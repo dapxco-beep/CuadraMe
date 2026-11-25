@@ -166,26 +166,14 @@ export default function Cuentas() {
         <div className="mx-6 mt-4 space-y-3">
           {cuentas.map((c, i) => (
             <div key={c.id} className="stagger-item" style={{ '--stagger-i': i }}>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => abrirDetalle(c.id)}
-                  className="flex-1 min-w-0 text-left"
-                  aria-label={`Ver detalle de ${c.nombre}`}
-                >
-                  <TarjetaCuenta cuenta={c} ultimoMovimiento={resumen ? (resumen.ultimo_por_cuenta?.[c.id] ?? null) : undefined} />
-                </button>
-                <div className="flex flex-col items-center gap-1 shrink-0 w-[76px]">
-                  <button
-                    onClick={() => setEditando(c)}
-                    className="w-11 h-11 flex items-center justify-center text-ink-soft"
-                    aria-label="Editar cuenta"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <span className="text-[11px] text-ink-soft text-center max-w-[76px] leading-tight">{etiquetaCuenta(c).etiqueta}</span>
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => abrirDetalle(c.id)}
+                className="block w-full text-left"
+                aria-label={`Ver detalle de ${c.nombre}`}
+              >
+                <TarjetaCuenta cuenta={c} ultimoMovimiento={resumen ? (resumen.ultimo_por_cuenta?.[c.id] ?? null) : undefined} />
+              </button>
               {/* Qué significa el número de esta cuenta: saldo disponible (tuyo) vs lo que debes (tarjeta) */}
               {(c.tipo === 'credito' || c.tipo === 'inversion') && (
                 <p className="mt-1.5 px-1 text-xs text-ink-soft" data-testid="significado-saldo">
@@ -194,9 +182,22 @@ export default function Cuentas() {
               )}
               {/* La acción principal (ver movimientos) queda a la vista; lo demás (si coincide con el banco y
                   cuánto rinde) va plegado y solo pide datos al abrirse. */}
-              <Link to={`/movimientos?cuenta=${c.id}`} className="inline-flex items-center gap-1 text-xs text-accent font-semibold min-h-11 px-1">
-                Ver sus movimientos
-              </Link>
+              <div className="flex items-center justify-between gap-2">
+                <Link to={`/movimientos?cuenta=${c.id}`} className="inline-flex items-center gap-1 text-xs text-accent font-semibold min-h-11 px-1">
+                  Ver sus movimientos
+                </Link>
+                <div className="flex items-center gap-1 text-ink-soft">
+                  <span className="text-[11px] leading-tight">{etiquetaCuenta(c).etiqueta}</span>
+                  <button
+                    type="button"
+                    onClick={() => setEditando(c)}
+                    className="w-11 h-11 flex items-center justify-center"
+                    aria-label="Editar cuenta"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                </div>
+              </div>
               <DesplegableMas etiqueta="Más de esta cuenta" className="px-1" alAbrir={() => setVerCuadre(true)}>
                 {/* Estado de cuadre con el banco, sin ir a buscarlo a «Traer movimientos» */}
                 <LineaCuadre item={cuadrePorCuenta[c.id]} className="mt-2" />

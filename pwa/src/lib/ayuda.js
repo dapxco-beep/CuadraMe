@@ -145,7 +145,7 @@ export const PREGUNTAS = [
       'Cada pago queda «por confirmar» para que lo revises cuando abras la app.',
     ],
     palabras: 'apple pay atajo shortcuts iphone wallet automatico siri tarjeta contactless',
-    accion: { texto: 'Instalar el atajo', to: '/conectar-dispositivo' },
+    accion: { texto: 'Instalar el atajo', to: '/sincronizacion?tab=automatico' },
   },
   {
     id: 'borrar-datos',

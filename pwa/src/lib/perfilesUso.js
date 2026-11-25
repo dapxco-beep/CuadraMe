@@ -18,7 +18,7 @@ export const PERFILES = [
     id: 'gastos',
     nombre: 'Controlo mis gastos',
     desc: 'Para saber en qué se va la plata: avisos del banco, categorías y el asistente.',
-    rutas: [...BASE, '/movimientos-correo', '/categorias', '/asistente'],
+    rutas: [...BASE, '/categorias', '/asistente'],
   },
   {
     id: 'ahorro',

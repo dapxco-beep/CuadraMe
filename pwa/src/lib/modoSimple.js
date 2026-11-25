@@ -151,5 +151,5 @@ export function useModoMenu() {
     },
     [uid],
   )
-  return { completo, enUso, setCompleto, perfil, setPerfil }
+  return { completo, enUso, setCompleto, perfil, setPerfil, elegido: guardado !== null || completo }
 }

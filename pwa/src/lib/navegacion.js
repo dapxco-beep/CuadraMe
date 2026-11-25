@@ -29,9 +29,7 @@ export const GRUPOS = [
     titulo: 'Anotar y traer',
     icon: Database,
     items: [
-      { to: '/movimientos-correo', icon: Mail, label: 'Movimientos del correo', corta: 'Correo', palabras: 'correo gmail avisos notificaciones banco compras transferencias movimientos del dia revisar aprobar leer' },
-      { to: '/sincronizacion', icon: RefreshCw, label: 'Traer extractos', corta: 'Extractos', palabras: 'sincronizar sincronizacion importar correo correos gmail extracto conciliar pdf excel csv archivo conexiones estado falla bajar subir cuadrar banco traer movimientos' },
-      { to: '/conectar-dispositivo', icon: Smartphone, label: 'Registro automático', palabras: 'conectar dispositivo atajo iphone android wallet celular' },
+      { to: '/sincronizacion', icon: RefreshCw, label: 'Traer movimientos', corta: 'Traer', palabras: 'traer extractos correo gmail avisos notificaciones registro automatico atajo iphone android wallet celular sincronizar sincronizacion importar correo correos gmail extracto conciliar pdf excel csv archivo conexiones estado falla bajar subir cuadrar banco traer movimientos' },
       { to: '/categorias', icon: Tag, label: 'Categorías', palabras: 'etiquetas iconos reglas automaticas comercio categoria por categorizar sin categoria' },
       { to: '/entrenar-categorias', icon: GraduationCap, label: 'Enseñar categorías', palabras: 'entrenar aprender clasificar' },
     ],
@@ -84,6 +82,8 @@ export const GRUPOS = [
 
 // Hoy todos los destinos viven en un grupo; queda por si algún día hay uno que solo deba encontrar el buscador.
 export const EXTRA_BUSQUEDA = [
+  { to: '/sincronizacion?tab=correo', icon: Mail, label: 'Movimientos del correo', palabras: 'correo gmail avisos notificaciones banco compras transferencias movimientos del dia revisar aprobar leer' },
+  { to: '/sincronizacion?tab=automatico', icon: Smartphone, label: 'Registro automático', palabras: 'conectar dispositivo atajo iphone android wallet celular' },
   { to: '/revisar', icon: ArrowLeftRight, label: 'Revisar traslados y repetidos', palabras: 'revisar movimientos traslado entre mis cuentas nequi nu bancolombia no cuenta duplicados repetidos repetido' },
   { to: '/presupuesto?tab=fijos', icon: Repeat, label: 'Pagos fijos', palabras: 'recurrentes recurrente suscripcion fijo mensual automatico arriendo nomina' },
   { to: '/cuentas?tab=deudas', icon: CreditCard, label: 'Deudas', palabras: 'prestamo credito cuotas pagar tarjeta debo' },
@@ -112,7 +112,7 @@ export const ITEMS_MAS = GRUPOS.flatMap((g) => g.items.map((i) => ({ ...i, grupo
 // por enlace directo y por el buscador.
 export const MAS_FUNCIONES_ID = 'mas-funciones'
 export const RUTAS_AVANZADAS = [
-  '/entrenar-categorias', '/conectar-dispositivo', '/ahorcado',
+  '/entrenar-categorias', '/ahorcado',
 ]
 
 export const EXPLICACION = {
@@ -130,7 +130,7 @@ export const EXPLICACION = {
   '/categorias': 'Los tipos de gasto: comida, transporte, salud…',
   '/entrenar-categorias': 'Enséñale a CuadraMe en qué categoría va cada gasto.',
   '/aprende': 'Lecciones cortas, de un minuto, sobre plata.',
-  '/sincronizacion': 'Trae el extracto de tu banco (PDF o Excel) y mira si cada cuenta cuadra, mes a mes.',
+  '/sincronizacion': 'Trae tus movimientos: el extracto del banco, los avisos del correo y el registro automático desde tu celular.',
   '/movimientos-correo': 'Los avisos de compras y transferencias de tu banco llegan a tu correo; aquí los apruebas.',
   '/amigos': 'Divide una cuenta con amigos (cena, viaje) y mira quién te debe.',
   '/compartir': 'Deja que tu pareja o familia vea y anote en tu cuenta.',

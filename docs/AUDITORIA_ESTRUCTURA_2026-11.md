@@ -49,5 +49,10 @@ abren: candidatas a revisar son Ahorcado/juego, Costos, Enseñar categorías y I
 - **Medición anónima de uso** (opt-in «estadísticas anónimas», sin migración): se cuenta qué pantallas se abren (solo la ruta,
   sin usuario). Lectura interna: `GET /formas-asunto/cron/pantallas` con el secreto de los crons. Con unas semanas de datos se
   decide qué sobra (candidatas: Ahorcado/juego, Enseñar categorías).
-- **No se unió «Traer movimientos»** (extractos + correo + registro automático): existe una decisión previa de producto
-  (commit fc66f31) que los separó a propósito (cierre mensual vs avisos del día). Se respetó.
+- **«Traer movimientos» unido** (por pedido de Daniel, 2026-11-25): una sola entrada del menú y una pantalla con pestañas
+  «Extractos», «Correo» y «Automático» (registro automático/atajos). Antes (commit fc66f31) extractos y correo estaban separados
+  a propósito; `/movimientos-correo`, `/conectar-dispositivo` y `/sincronizacion` siguen funcionando (redirigen a su pestaña y
+  conservan el estado de navegación).
+- **Tarjetas de Cuentas** a ancho completo (antes una columna lateral las dejaba de distinto ancho); «Ver sus movimientos» a la
+  izquierda y tipo + editar a la derecha, en una sola fila.
+- **Invitación «¿Cómo quieres usar CuadraMe?»** en el Inicio (una vez, solo si ya hay 3+ movimientos y no se ha elegido perfil).

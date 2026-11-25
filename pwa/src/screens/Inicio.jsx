@@ -34,6 +34,7 @@ import { Boton } from '../components/ui'
 import { Bloque, EsqueletoFila } from '../components/Esqueletos'
 import { textoActualizado } from '../lib/saldos'
 import InicioSimple from '../components/InicioSimple'
+import InvitacionPerfil from '../components/InvitacionPerfil'
 import { AccionesRapidas } from '../components/InicioExtras'
 import { useModoMenu } from '../lib/modoSimple'
 import { armarCamino, leerEstado } from '../lib/primerUso'
@@ -390,6 +391,7 @@ export default function Inicio() {
       {/* Modo simple: tres bloques y un «Ver más»; con «Mostrar todas las funciones», todo a la vista */}
       {!completo && (
         <>
+          {movimientos.length >= 3 && <InvitacionPerfil className="mx-6 mt-3" />}
           <InicioSimple
             saldo={gastarSaldo}
             notaSaldo={notaDisponible}

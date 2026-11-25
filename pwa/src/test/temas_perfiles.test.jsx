@@ -61,7 +61,7 @@ describe('Perfiles de uso', () => {
   })
 
   it('cada perfil agrega lo suyo a lo básico', () => {
-    expect(rutasDelPerfil('gastos')).toEqual(expect.arrayContaining(['/movimientos-correo', '/categorias']))
+    expect(rutasDelPerfil('gastos')).toEqual(expect.arrayContaining(['/categorias', '/asistente']))
     expect(rutasDelPerfil('ahorro')).toEqual(expect.arrayContaining(['/metas']))
     expect(rutasDelPerfil('juntos')).toEqual(expect.arrayContaining(['/otros']))
   })

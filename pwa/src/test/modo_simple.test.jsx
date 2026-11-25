@@ -68,7 +68,7 @@ describe('navegacion: grupos según el modo', () => {
     expect(g.map((x) => x.id)).toEqual(['datos', 'dinero', 'juntos', 'ahorro', 'entender', 'ajustes', MAS_FUNCIONES_ID])
     const visibles = g.slice(0, -1).flatMap((x) => x.items.map((i) => i.to))
     // lo de cada día está a la vista
-    for (const ruta of ['/sincronizacion', '/movimientos-correo', '/cuentas', '/otros', '/metas', '/informes', '/asistente', '/perfil', '/ayuda']) {
+    for (const ruta of ['/sincronizacion', '/cuentas', '/otros', '/metas', '/informes', '/asistente', '/perfil', '/ayuda']) {
       expect(visibles, ruta).toContain(ruta)
     }
     // lo avanzado está aparte, plegado y explicado
@@ -82,9 +82,9 @@ describe('navegacion: grupos según el modo', () => {
   })
 
   it('una función avanzada que la persona ya usa deja de ser avanzada: vuelve a su tema', () => {
-    const g = gruposSegunModo({ completo: false, enUso: ['/entrenar-categorias', '/conectar-dispositivo'] })
+    const g = gruposSegunModo({ completo: false, enUso: ['/entrenar-categorias', '/ahorcado'] })
     expect(g.find((x) => x.id === 'datos').items.map((i) => i.to)).toContain('/entrenar-categorias')
-    expect(g.find((x) => x.id === 'datos').items.map((i) => i.to)).toContain('/conectar-dispositivo')
+    expect(g.find((x) => x.id === 'entender').items.map((i) => i.to)).toContain('/ahorcado')
     expect(g[g.length - 1].items.map((i) => i.to)).not.toContain('/entrenar-categorias')
   })
 
@@ -96,7 +96,7 @@ describe('navegacion: grupos según el modo', () => {
     expect(buscarDestinos('acciones').map((d) => d.to)).toContain('/metas?tab=inversiones')
   })
 
-  it('el riel solo suma «Traer extractos» en modo simple', () => {
+  it('el riel solo suma «Traer movimientos» en modo simple', () => {
     expect(extrasRiel({ completo: false }).map((i) => i.to)).toEqual(['/sincronizacion'])
     expect(extrasRiel({ completo: true }).map((i) => i.to)).toEqual(['/informes', '/sincronizacion'])
   })
@@ -139,10 +139,10 @@ describe('Menú «Más» (teléfono) en modo simple', () => {
   it('por defecto (perfil Esencial) solo se ve lo básico; el resto, plegado en «Más funciones» y con su frase', async () => {
     await abrirMas()
     const hoja = await screen.findByRole('dialog', { name: 'Más opciones' })
-    for (const nombre of ['Traer extractos', 'Cuentas', 'Informes', 'Perfil', 'Ayuda']) {
+    for (const nombre of ['Traer movimientos', 'Cuentas', 'Informes', 'Perfil', 'Ayuda']) {
       expect(within(hoja).getByRole('link', { name: new RegExp('^' + nombre) }), nombre).toBeInTheDocument()
     }
-    for (const nombre of ['Movimientos del correo', 'Plata con otros', 'Metas']) {
+    for (const nombre of ['Categorías', 'Plata con otros', 'Metas']) {
       expect(within(hoja).queryByRole('link', { name: new RegExp('^' + nombre) }), nombre).toBeNull()
     }
     const boton = within(hoja).getByRole('button', { name: /Más funciones/ })
@@ -154,14 +154,14 @@ describe('Menú «Más» (teléfono) en modo simple', () => {
     expect(metas).toHaveAttribute('href', '/metas')
     expect(metas).toHaveTextContent('Guarda plata poco a poco')
     expect(within(hoja).getByRole('link', { name: /^Plata con otros/ })).toBeInTheDocument()
-    expect(within(hoja).getByRole('link', { name: /^Movimientos del correo/ })).toBeInTheDocument()
+    expect(within(hoja).getByRole('link', { name: /^Categorías/ })).toBeInTheDocument()
   })
 
   it('con el perfil «Controlo mis gastos» suben a la vista los avisos del correo y las categorías', async () => {
     guardarPerfilUso(auth.usuario.id, 'gastos')
     await abrirMas()
     const hoja = await screen.findByRole('dialog', { name: 'Más opciones' })
-    for (const nombre of ['Movimientos del correo', 'Categorías', 'Asistente']) {
+    for (const nombre of ['Categorías', 'Categorías', 'Asistente']) {
       expect(within(hoja).getByRole('link', { name: new RegExp('^' + nombre) }), nombre).toBeInTheDocument()
     }
     expect(within(hoja).queryByRole('link', { name: /^Metas/ })).toBeNull()
@@ -177,7 +177,7 @@ describe('Menú «Más» (teléfono) en modo simple', () => {
 })
 
 describe('Barras de pantalla ancha en modo simple', () => {
-  it('riel: Inicio, Movimientos, Presupuesto y Traer extractos; sin Patrimonio', () => {
+  it('riel: Inicio, Movimientos, Presupuesto y Traer movimientos; sin Patrimonio', () => {
     simularAncho(820)
     render(
       <MemoryRouter>
@@ -187,7 +187,7 @@ describe('Barras de pantalla ancha en modo simple', () => {
       </MemoryRouter>
     )
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
-    for (const nombre of ['Inicio', 'Movimientos', 'Presupuesto', 'Traer extractos']) {
+    for (const nombre of ['Inicio', 'Movimientos', 'Presupuesto', 'Traer movimientos']) {
       expect(within(nav).getByRole('link', { name: nombre })).toBeInTheDocument()
     }
     expect(within(nav).queryByRole('link', { name: 'Patrimonio' })).toBeNull()
@@ -203,14 +203,14 @@ describe('Barras de pantalla ancha en modo simple', () => {
       </MemoryRouter>
     )
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
-    expect(within(nav).getByRole('link', { name: /^Traer extractos/ })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: /^Traer movimientos/ })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: 'Perfil' })).toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: /Plata con otros/ })).toBeNull()
-    expect(within(nav).queryByRole('link', { name: /Movimientos del correo/ })).toBeNull()
+    expect(within(nav).queryByRole('link', { name: /^Categorías/ })).toBeNull()
     const boton = within(nav).getByRole('button', { name: 'Más funciones' })
     expect(boton).toHaveAttribute('aria-expanded', 'false')
     await userEvent.click(boton)
-    expect(within(nav).getByRole('link', { name: /Movimientos del correo/ })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: /^Categorías/ })).toBeInTheDocument()
     expect(within(nav).getByRole('link', { name: /Plata con otros/ })).toBeInTheDocument()
   })
 })

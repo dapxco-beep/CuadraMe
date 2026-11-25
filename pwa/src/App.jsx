@@ -48,8 +48,7 @@ const PresupuestoPlan = lazy(() => import('./screens/PresupuestoPlan'))
 const MetasAhorro = lazy(() => import('./screens/MetasAhorro'))
 const Ahorcado = lazy(() => import('./screens/Ahorcado'))
 const Compartir = lazy(() => import('./screens/Compartir'))
-const Sincronizacion = lazy(() => import('./screens/Sincronizacion'))
-const ConectarDispositivo = lazy(() => import('./screens/ConectarDispositivo'))
+const TraerMovimientos = lazy(() => import('./screens/TraerMovimientos'))
 const Asistente = lazy(() => import('./screens/Asistente'))
 const EntrenarCategorias = lazy(() => import('./screens/EntrenarCategorias'))
 const Informes = lazy(() => import('./screens/Informes'))
@@ -92,7 +91,7 @@ const PRECARGAR = [
   () => import('./screens/Informe'),
   () => import('./screens/Asistente'),
   () => import('./screens/Wrapped'),
-  () => import('./screens/Sincronizacion'),
+  () => import('./screens/TraerMovimientos'),
   () => import('./screens/Perfil'),
 ]
 
@@ -191,14 +190,14 @@ function AppGate() {
         <Route path="/conciliacion" element={<RedirigirAlCentro ruta="/conciliacion" />} />
         <Route path="/correos" element={<RedirigirAlCentro ruta="/correos" />} />
         <Route path="/conexiones" element={<RedirigirAlCentro ruta="/conexiones" />} />
-        <Route path="/sincronizacion" element={<Sincronizacion />} />
-        <Route path="/movimientos-correo" element={<Sincronizacion modo="correo" />} />
+        <Route path="/sincronizacion" element={<TraerMovimientos />} />
+        <Route path="/movimientos-correo" element={<ATab a="/sincronizacion" tab="correo" />} />
         <Route path="/mi-cuenta-cuadra" element={<AInformes tab="cierre" />} />
         <Route path="/insights" element={<AInformes tab="dias" />} />
         <Route path="/asistente" element={<Asistente />} />
         <Route path="/compartir" element={<Compartir />} />
         <Route path="/otros" element={<PlataConOtros />} />
-        <Route path="/conectar-dispositivo" element={<ConectarDispositivo />} />
+        <Route path="/conectar-dispositivo" element={<ATab a="/sincronizacion" tab="automatico" />} />
         <Route path="/ahorcado" element={<Ahorcado />} />
         <Route path="/reglas-categoria" element={<ATab a="/categorias" tab="reglas" />} />
         <Route path="/categorizar" element={<ATab a="/categorias" tab="pendientes" />} />
