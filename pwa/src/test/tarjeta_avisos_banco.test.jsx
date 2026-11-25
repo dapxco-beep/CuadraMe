@@ -96,11 +96,13 @@ describe('Tarjeta «Registro automático desde el banco»', () => {
 
 
 describe('Enlaces de los atajos nuevos', () => {
-  it('ambos apuntan a iCloud y la guía de gestos queda visible en Conexiones', async () => {
-    const { ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL } = await import('../screens/ConectarDispositivo')
-    expect(ATAJO_NOTIFICACIONES_URL).toMatch(/^https:\/\/www\.icloud\.com\/shortcuts\/[0-9a-f]{32}$/)
-    expect(ATAJO_REGISTRAR_URL).toMatch(/^https:\/\/www\.icloud\.com\/shortcuts\/[0-9a-f]{32}$/)
-    expect(ATAJO_NOTIFICACIONES_URL).not.toBe(ATAJO_REGISTRAR_URL)
+  it('los atajos se descargan de /descargas (archivos firmados que existen) y la guía de gestos queda visible en Conexiones', async () => {
+    const fs = await import('node:fs')
+    const { ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL, ATAJO_ICLOUD_URL } = await import('../screens/ConectarDispositivo')
+    for (const url of [ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL, ATAJO_ICLOUD_URL]) {
+      expect(url).toMatch(/^\/descargas\/CuadraMe%20[A-Za-z%0-9]+\.shortcut$/)
+      expect(fs.existsSync(`public${decodeURIComponent(url)}`)).toBe(true)
+    }
     api.conexionesEstado.mockResolvedValue(ESTADO)
     api.estadoNotificaciones.mockResolvedValue([])
     api.reglasNotificacion.mockResolvedValue([])

@@ -326,7 +326,7 @@ function TarjetaAvisosBanco() {
           <li>Toca «Instalar el atajo», pulsa «Agregar atajo» y pega tu clave de CuadraMe. Se instala una sola vez, sirve para todos tus bancos.</li>
           <li>En la app Atajos ve a Automatización, toca + y elige «Cuando recibo una notificación».</li>
           <li>Elige la app del banco y marca «Ejecutar inmediatamente».</li>
-          <li>Elige «Ejecutar atajo» y escoge CuadraMe Notificaciones. Repite estos pasos con cada banco.</li>
+          <li>Elige «Ejecutar atajo» y escoge CuadraMe Registrar. Repite estos pasos con cada banco.</li>
         </ol>
         <p className="mt-2 leading-relaxed">
           Necesitas iOS 27 y activar la automatización en tu iPhone. CuadraMe reconoce solo el banco y el valor; si el aviso

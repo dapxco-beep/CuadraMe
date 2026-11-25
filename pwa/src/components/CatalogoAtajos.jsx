@@ -35,6 +35,7 @@ export const ATAJOS = [
         id: 'activar',
         titulo: 'Activar (una sola vez)',
         pasos: [
+          'Este atajo ya trae su automatización de Wallet: al agregarlo, si iOS pregunta si la activas, elige «Ejecutar inmediatamente». Si no la ves en «Automatización», créala así:',
           'En Atajos abre «Automatización» y toca «+» (arriba a la derecha).',
           'Elige «Transacción», marca tus tarjetas de Wallet y toca «Siguiente».',
           'Elige «Ejecutar atajo» y escoge «CuadraMe Apple Pay».',
@@ -48,13 +49,13 @@ export const ATAJOS = [
   },
   {
     id: 'notificaciones',
-    nombre: 'CuadraMe Notificaciones',
+    nombre: 'CuadraMe Registrar',
     icono: Bell,
     opcion: 'Mi banco me avisa (Nequi, Nu…)',
     paraQuien: 'Tu banco te avisa al pagar o recibir (Nequi, Nu…)',
-    queHace: 'Lee el aviso que te manda el banco y lo registra. Se instala una sola vez y sirve para todos tus bancos.',
+    queHace: 'Lee el aviso que te manda el banco y lo registra. Es el mismo atajo del gesto: si ya instalaste «CuadraMe Registrar», no necesitas instalar otro.',
     url: ATAJO_NOTIFICACIONES_URL,
-    nota: 'Necesita iOS 27. Cada banco necesita su propia automatización (iOS vigila una app por automatización), pero todas usan este mismo atajo.',
+    nota: 'Necesita iOS 27. Cada banco necesita su propia automatización (iOS vigila una app por automatización), pero todas usan este mismo atajo, «CuadraMe Registrar».',
     fases: [
       { id: 'instalar', titulo: 'Instalar', pasos: INSTALAR },
       {
@@ -63,7 +64,7 @@ export const ATAJOS = [
         pasos: [
           'En Atajos abre «Automatización» y toca «+».',
           'Elige «Cuando recibo una notificación» y escoge la app de tu banco (por ejemplo Nequi). Toca «Siguiente».',
-          'Elige «Ejecutar atajo» y escoge «CuadraMe Notificaciones».',
+          'Elige «Ejecutar atajo» y escoge «CuadraMe Registrar».',
           'Activa «Ejecutar inmediatamente» y toca «Listo». Repite con cada banco que te avise.',
         ],
       },
