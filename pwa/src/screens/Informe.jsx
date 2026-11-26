@@ -325,11 +325,14 @@ export default function Informe() {
     </section>
   )
 
+  // Periodo ya cargado y sin gastos: el estado vacío de arriba lo dice; un calendario de puros ceros solo añade ruido
+  const informeVacio = !cargando && !!informe && !informe.hay_datos
+
   const panel = {
     resumen: hayDatos && <HeroGasto informe={informe} fmt={fmt} esMesActual={esMesActual} />,
     atencion: hayDatos && <LoQueLlamaLaAtencion informe={informe} fmt={fmt} />,
     categorias: panelCategorias,
-    dia: (
+    dia: !informeVacio && (
       <VistaAlternable
         etiqueta="Cómo ver tu gasto por día"
         valor={vistaDia}

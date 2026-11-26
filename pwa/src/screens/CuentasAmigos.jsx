@@ -89,7 +89,7 @@ export default function CuentasAmigos() {
       </header>
 
       {grupos.length > 0 && (
-        <div className="px-5 mt-2 flex gap-2 overflow-x-auto no-scrollbar">
+        <div className="pl-5 pr-9 mt-2 flex gap-2 overflow-x-auto no-scrollbar borde-fade-der">
           {[{ id: '', nombre: 'Todo' }, ...grupos].map((g) => (
             <button
               key={g.id || 'todo'}
