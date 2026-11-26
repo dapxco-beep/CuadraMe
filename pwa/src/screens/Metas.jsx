@@ -205,16 +205,16 @@ function TarjetaMeta({ meta: m, plan, consejo, indice, onAportar }) {
         <p className="text-lg font-bold tabular-nums text-accent shrink-0">{String(m.progreso_pct).replace('.', ',')} %</p>
       </div>
       <BarraProgreso pct={m.progreso_pct} label={`Progreso de ${m.nombre}`} className="h-2.5 rounded-full bg-line overflow-hidden mt-3 mb-2" />
-      <dl className="grid grid-cols-3 gap-2 mb-3">
-        <div className="min-w-0">
+      <dl className="flex flex-wrap gap-x-2 gap-y-2 mb-3">
+        <div className="flex-1 basis-[5.5rem]">
           <dt className="text-xs text-ink-soft">Llevas</dt>
           <dd className="text-sm font-bold tabular-nums whitespace-nowrap">{formatCOP(m.monto_actual)}</dd>
         </div>
-        <div className="min-w-0">
+        <div className="flex-1 basis-[5.5rem]">
           <dt className="text-xs text-ink-soft">Objetivo</dt>
           <dd className="text-sm font-semibold tabular-nums whitespace-nowrap text-ink-soft">{formatCOP(m.monto_objetivo)}</dd>
         </div>
-        <div className="min-w-0 text-right">
+        <div className="flex-1 basis-[5.5rem] text-right">
           <dt className="text-xs text-ink-soft">Te falta</dt>
           <dd className="text-sm font-bold tabular-nums whitespace-nowrap">{formatCOP(faltante)}</dd>
         </div>

@@ -432,16 +432,16 @@ function TarjetaPresupuesto({ p, i, animarBarras, onQuitar }) {
       </div>
 
       {/* Las tres cifras que importan, alineadas igual en todas las tarjetas */}
-      <dl className="mt-3 grid grid-cols-3 gap-2" data-testid="gastado-limite">
-        <div className="min-w-0">
+      <dl className="mt-3 flex flex-wrap gap-x-2 gap-y-2" data-testid="gastado-limite">
+        <div className="flex-1 basis-[5.5rem]">
           <dt className="text-xs text-ink-soft">Llevas</dt>
           <dd className="text-sm font-bold tabular-nums whitespace-nowrap">{formatCOP(p.gastado)}</dd>
         </div>
-        <div className="min-w-0">
+        <div className="flex-1 basis-[5.5rem]">
           <dt className="text-xs text-ink-soft">Límite</dt>
           <dd className="text-sm font-semibold tabular-nums whitespace-nowrap text-ink-soft">{formatCOP(p.limite)}</dd>
         </div>
-        <div className="min-w-0 text-right">
+        <div className="flex-1 basis-[5.5rem] text-right">
           <dt className="text-xs text-ink-soft">{disponible >= 0 ? 'Te queda' : 'Te pasaste'}</dt>
           <dd className={`text-sm font-bold tabular-nums whitespace-nowrap ${disponible < 0 ? 'text-danger' : ''}`}>{formatCOP(Math.abs(disponible))}</dd>
         </div>

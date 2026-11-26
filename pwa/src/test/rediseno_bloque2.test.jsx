@@ -95,3 +95,19 @@ describe('TarjetaCuenta: el tipo de cuenta vive dentro de la tarjeta', () => {
     expect(screen.getAllByText('Efectivo')).toHaveLength(1)
   })
 })
+
+describe('Cifras largas (iPhone): no se montan unas sobre otras', () => {
+  it('las tres cifras de Metas y de Presupuesto saltan de línea en vez de apretarse en tres columnas fijas', async () => {
+    api.metas.mockResolvedValue([{ id: 'm1', nombre: 'Casa', monto_objetivo: 1234567890, monto_actual: 1200000000, progreso_pct: 97, completada: false }])
+    const { unmount } = montar(<Metas />)
+    const t = await screen.findByTestId('meta-m1')
+    const dl = t.querySelector('dl')
+    expect(dl.className).toMatch(/flex-wrap/)
+    expect(dl.className).not.toMatch(/grid-cols-3/)
+    unmount()
+    montar(<Presupuesto />)
+    const cifras = await screen.findByTestId('gastado-limite')
+    expect(cifras.className).toMatch(/flex-wrap/)
+    expect(cifras.className).not.toMatch(/grid-cols-3/)
+  })
+})
