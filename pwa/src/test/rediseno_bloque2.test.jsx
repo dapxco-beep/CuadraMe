@@ -111,3 +111,17 @@ describe('Cifras largas (iPhone): no se montan unas sobre otras', () => {
     expect(cifras.className).not.toMatch(/grid-cols-3/)
   })
 })
+
+// Candado: todo carril de chips con scroll horizontal avisa que continúa (borde difuminado + espacio al final),
+// para que en un iPhone un chip a medias no parezca un defecto.
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+describe('Carriles de chips con scroll horizontal', () => {
+  const ARCHIVOS = ['screens/Movimientos.jsx', 'screens/Agregar.jsx', 'screens/CuentasAmigos.jsx', 'screens/DividirGasto.jsx', 'screens/ImportarArchivo.jsx', 'components/PantallaConPestanas.jsx', 'components/SelectorPeriodo.jsx']
+  it.each(ARCHIVOS)('%s: sus carriles de chips llevan borde-fade-der', (a) => {
+    const lineas = readFileSync(join(process.cwd(), 'src', a), 'latin1').split('\n')
+    const carriles = lineas.filter((l) => /overflow-x-auto/.test(l) && /no-scrollbar/.test(l) && /flex/.test(l) && !/snap-x/.test(l))
+    expect(carriles.length).toBeGreaterThan(0)
+    carriles.forEach((l) => expect(l).toMatch(/borde-fade-der/))
+  })
+})

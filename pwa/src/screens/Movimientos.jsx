@@ -1141,7 +1141,7 @@ export default function Movimientos() {
 
               {/* FILA 2 · periodo y pendientes en UNA sola fila de chips (antes eran dos grupos con estilos distintos) */}
               {!sinNada && (
-              <div className="px-5 mb-3 flex items-center gap-2 overflow-x-auto no-scrollbar lg:flex-wrap lg:overflow-visible">
+              <div className="pl-5 pr-9 lg:px-5 mb-3 flex items-center gap-2 overflow-x-auto no-scrollbar borde-fade-der lg:flex-wrap lg:overflow-visible lg:[mask-image:none] lg:[-webkit-mask-image:none]">
                 <div role="group" aria-label="Periodo" data-testid="chips-periodo" className="flex gap-2 shrink-0 lg:flex-wrap lg:shrink">
                   {PERIODOS.map((p) => (
                     <Chip key={p.id} activo={periodoActivo === p.id} onClick={() => cambiarParams({ desde: p.r.desde, hasta: p.r.hasta })}>

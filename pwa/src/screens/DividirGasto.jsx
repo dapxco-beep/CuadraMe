@@ -208,7 +208,7 @@ export default function DividirGasto() {
       <section className="px-5 mt-5">
         <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">¿Con quién?</p>
         {grupos.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto no-scrollbar mb-2">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar mb-2 pr-9 borde-fade-der">
             {grupos.map((g) => (
               <button
                 key={g.id}

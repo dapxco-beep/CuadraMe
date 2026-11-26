@@ -98,3 +98,13 @@ Principal = píldora (`.btn-primario`). Secundario = `.btn-secundario`. Terciari
 - Mis cuentas pasa a ancho de pantalla grande, lo que también ensancha Deudas.
 
 - Hover/disabled sin captura; revisar en dispositivo real.
+
+---
+
+# Ajustes posteriores al despliegue (2026-11-26, rama `ux/ajustes-3`, sin publicar)
+Revisión pedida tras ver cortes horizontales en iPhone.
+- **Estrés con datos extremos** (nombres de 60+ caracteres sin espacios, cifras de 9 a 11 dígitos) a 375 y 430 px en 26 pantallas: sin elementos fuera de pantalla ni texto cortado sin elipsis. Las cifras de 11 dígitos (miles de millones) aprietan la franja Ingresos/Gastos/Neto de Movimientos; no es un caso realista y no se tocó.
+- **Carriles de chips con scroll horizontal** (Movimientos, Agregar, Cuentas de amigos, Dividir gasto, Importar archivo): ahora llevan el borde difuminado y espacio al final (`borde-fade-der`, ya usado en pestañas y selector de periodo), así un chip a medias se lee como «hay más» y no como un defecto. En escritorio, donde los chips se acomodan en varias líneas, no cambia. Candado en `rediseno_bloque2.test.jsx`.
+- **Informes > Gastos sin gastos en el periodo (hallazgo #15):** se oculta el calendario de ceros; queda el estado vacío con su acción. La tarjeta «Todavía no veo cobros del banco» se conserva porque no depende del periodo.
+- **Movimiento reducido:** ya estaba cubierto en `index.css` (`prefers-reduced-motion` incluye `screen-enter` y `stagger-item`); sin cambios.
+- Pruebas: 186 archivos / 1630. Build OK.

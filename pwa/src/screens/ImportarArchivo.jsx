@@ -233,7 +233,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
           {cuentas.length > 1 && (
             <div className="mb-3">
               <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">¿A qué cuenta pertenece?</p>
-              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pr-9 borde-fade-der">
                 {cuentas.map((c) => (
                   <button
                     key={c.id}

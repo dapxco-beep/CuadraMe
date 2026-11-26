@@ -493,7 +493,7 @@ export default function Agregar() {
       {!esTransferencia && frecuentesDelTipo(frecuentes, tipo).length > 0 && !descripcion && (
         <div className="px-5 mb-4">
           <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Frecuentes</p>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pr-9 borde-fade-der">
             {frecuentesDelTipo(frecuentes, tipo).map((f) => (
               <button
                 key={f.descripcion}
