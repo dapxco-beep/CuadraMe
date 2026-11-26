@@ -4,7 +4,7 @@ import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { Link } from 'react-router-dom'
-import { ArrowLeftRight, CalendarClock, ChevronRight, HandCoins, PieChart, Plus, SlidersHorizontal, TrendingUp, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, CalendarClock, CheckCircle2, ChevronRight, HandCoins, PieChart, Plus, SlidersHorizontal, Trash2, TriangleAlert, TrendingUp, X } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
 import { formatCOP, formatPorcentaje } from '../lib/format'
 import { api } from '../lib/api'
@@ -383,83 +383,102 @@ export function nivelPresupuesto(p) {
   return 2
 }
 
-// Una tarjeta por presupuesto: a la vista, lo que llevas, la barra y el aviso; el resto
-// (desglose, sobrante, ajustes, enlace a los movimientos) queda detrás de «Ver detalle».
+// Una tarjeta por presupuesto. A la vista, SIEMPRE lo mismo y en el mismo sitio: gastado · límite · disponible, la barra con su
+// porcentaje y el estado (con icono y palabra, no solo color). Lo demás (aviso del ritmo si no va bien, desglose, sobrante,
+// ajustes, ver los movimientos y quitar el presupuesto) queda detrás de «Ver detalle»: quitar es una acción rara y no debe
+// estar a un toque de distancia en cada tarjeta (sigue teniendo «Deshacer»).
 function TarjetaPresupuesto({ p, i, animarBarras, onQuitar }) {
   const [detalle, setDetalle] = useState(false)
   const sobrepasado = p.pctReal > 100
   const cercaDelLimite = !sobrepasado && p.pct >= p.alerta_pct
   const { iconoDe } = useCategorias() || {}
+  const nivel = nivelPresupuesto(p)
   const estado = [
-    { texto: 'Excedido', clase: 'bg-danger/10 text-danger' },
-    { texto: 'Ojo', clase: 'bg-accent-2/20 text-gold' },
-    { texto: 'Vas bien', clase: 'bg-cuadra/10 text-cuadra' },
-  ][nivelPresupuesto(p)]
+    { texto: 'Excedido', clase: 'bg-danger/10 text-danger', Icono: AlertTriangle },
+    { texto: 'Ojo', clase: 'bg-accent-2/20 text-gold', Icono: TriangleAlert },
+    { texto: 'Vas bien', clase: 'bg-cuadra/10 text-cuadra', Icono: CheckCircle2 },
+  ][nivel]
+  const disponible = p.limite - p.gastado
+  const hayAviso = !!(p.proy && p.proy.mensaje && nivel < 2) || (!p.proy && (sobrepasado || cercaDelLimite))
+  const idDetalle = `detalle-presupuesto-${p.id}`
   return (
-    <div className="rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': i }}>
-      <div className="flex items-start justify-between gap-2 mb-2">
+    <div className="rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': i }} data-estado={nivel}>
+      <div className="flex items-center gap-3">
         {iconoDe && (
-          <span className="w-9 h-9 rounded-xl shrink-0 bg-accent-soft flex items-center justify-center text-lg" aria-hidden="true">{iconoDe(p.categoria)}</span>
+          <span className="w-10 h-10 rounded-xl shrink-0 bg-accent-soft flex items-center justify-center text-lg" aria-hidden="true">{iconoDe(p.categoria)}</span>
         )}
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">
-            {p.categoria}
-            {p.proy && p.proy.periodo !== 'monthly' && (
-              <span className="ml-1.5 text-[11px] font-bold text-ink-soft" data-testid="chip-periodo">
-                {etiquetaPeriodo(p.proy.periodo)} · {textoRango(p.proy.inicio, p.proy.fin)}
-              </span>
-            )}
-          </p>
-          {/* Las cifras van en su propia línea bajo el nombre: en 390 px no caben al lado sin encimarse */}
-          <p className="text-xs text-ink-soft mt-0.5" data-testid="gastado-limite">
-            <span className="whitespace-nowrap">Llevas {formatCOP(p.gastado)}</span>{' '}
-            <span className="whitespace-nowrap">de {formatCOP(p.limite)}</span>
-          </p>
-        </div>
-        <span className={`shrink-0 mt-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold ${estado.clase}`} data-testid="estado-presupuesto">{estado.texto}</span>
-        <button onClick={onQuitar} className="w-11 h-11 -mr-1.5 flex items-center justify-center text-ink-soft shrink-0" aria-label={`Quitar el presupuesto de ${p.categoria}`}>
-          <X size={16} />
-        </button>
+        <p className="min-w-0 flex-1 text-sm font-semibold">
+          {p.categoria}
+          {p.proy && p.proy.periodo !== 'monthly' && (
+            <span className="block text-xs font-medium text-ink-soft" data-testid="chip-periodo">
+              {etiquetaPeriodo(p.proy.periodo)} · {textoRango(p.proy.inicio, p.proy.fin)}
+            </span>
+          )}
+        </p>
+        <span className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${estado.clase}`} data-testid="estado-presupuesto">
+          <estado.Icono size={16} aria-hidden="true" />
+          {estado.texto}
+        </span>
       </div>
-      {p.proy && p.proy.estado !== 'sin_limite' ? (
-        <BarraProyeccion item={p.proy} animar={animarBarras} />
-      ) : (
-        <BarraProgreso
-          pct={animarBarras ? p.pct : 0}
-          label={`Gastado en ${p.categoria}`}
-          texto={`${formatPorcentaje(p.pct)} de lo que pusiste`}
-          color={sobrepasado ? 'var(--color-danger)' : cercaDelLimite ? 'var(--color-accent-2)' : 'var(--color-accent)'}
-        />
-      )}
-      {p.proy && p.proy.mensaje && (
+
+      {/* Las tres cifras que importan, alineadas igual en todas las tarjetas */}
+      <dl className="mt-3 grid grid-cols-3 gap-2" data-testid="gastado-limite">
+        <div className="min-w-0">
+          <dt className="text-xs text-ink-soft">Llevas</dt>
+          <dd className="text-sm font-bold tabular-nums whitespace-nowrap">{formatCOP(p.gastado)}</dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-xs text-ink-soft">Límite</dt>
+          <dd className="text-sm font-semibold tabular-nums whitespace-nowrap text-ink-soft">{formatCOP(p.limite)}</dd>
+        </div>
+        <div className="min-w-0 text-right">
+          <dt className="text-xs text-ink-soft">{disponible >= 0 ? 'Te queda' : 'Te pasaste'}</dt>
+          <dd className={`text-sm font-bold tabular-nums whitespace-nowrap ${disponible < 0 ? 'text-danger' : ''}`}>{formatCOP(Math.abs(disponible))}</dd>
+        </div>
+      </dl>
+
+      <div className="mt-2.5">
+        {p.proy && p.proy.estado !== 'sin_limite' ? (
+          <BarraProyeccion item={p.proy} animar={animarBarras} />
+        ) : (
+          <BarraProgreso
+            pct={animarBarras ? p.pct : 0}
+            label={`Gastado en ${p.categoria}`}
+            texto={`${formatPorcentaje(p.pct)} de lo que pusiste`}
+            color={sobrepasado ? 'var(--color-danger)' : cercaDelLimite ? 'var(--color-accent-2)' : 'var(--color-accent)'}
+          />
+        )}
+        <p className="mt-1 text-xs text-ink-soft tabular-nums">{formatPorcentaje(p.pctReal > 999 ? 999 : Math.round(p.pctReal || 0))} usado</p>
+      </div>
+
+      {/* El aviso solo cuando hay algo que decir (ojo, en riesgo o excedido); si vas bien, el mensaje del ritmo está en el detalle */}
+      {hayAviso && (
         <p
-          className={`text-xs mt-1.5 ${p.proy.estado === 'excedido' || p.proy.estado === 'en_riesgo' ? 'text-danger' : 'text-ink-soft'}`}
+          className={`text-xs mt-1.5 ${nivel === 0 ? 'text-danger' : 'text-ink-soft'}`}
           data-testid="mensaje-proyeccion"
         >
-          {p.proy.mensaje}
+          {p.proy?.mensaje ||
+            (sobrepasado
+              ? `Te pasaste por ${formatCOP(p.gastado - p.limite)}: ajusta el resto del mes para compensarlo`
+              : `Te quedan ${formatCOP(Math.max(0, p.limite - p.gastado))} para no pasarte este mes`)}
         </p>
       )}
-      {!p.proy && sobrepasado && (
-        <p className="text-xs text-danger mt-1.5">
-          Te pasaste por {formatCOP(p.gastado - p.limite)} — ajusta el resto del mes para compensarlo
-        </p>
-      )}
-      {!p.proy && cercaDelLimite && (
-        <p className="text-xs text-ink-soft mt-1.5">
-          Te quedan {formatCOP(Math.max(0, p.limite - p.gastado))} para no pasarte este mes
-        </p>
-      )}
+
       <button
         type="button"
         onClick={() => setDetalle((v) => !v)}
         aria-expanded={detalle}
+        aria-controls={idDetalle}
         className="inline-flex items-center gap-1 text-xs text-accent font-semibold mt-1 min-h-11"
       >
         {detalle ? 'Ver menos' : 'Ver detalle'}
         <ChevronRight size={16} className={detalle ? 'rotate-90' : ''} aria-hidden="true" />
       </button>
       {detalle && (
-        <div>
+        <div id={idDetalle} className="border-t border-line pt-2">
+          {!hayAviso && p.proy && p.proy.mensaje && (
+            <p className="text-xs text-ink-soft mb-1" data-testid="mensaje-proyeccion">{p.proy.mensaje}</p>
+          )}
           {p.sobre_ajuste !== 0 && (
             <p className={`text-xs ${p.sobre_ajuste > 0 ? 'text-gold' : 'text-ink-soft'}`}>
               {p.sobre_ajuste > 0
@@ -473,12 +492,23 @@ function TarjetaPresupuesto({ p, i, animarBarras, onQuitar }) {
             </p>
           )}
           <DesgloseSubcategorias categoria={p.categoria} />
-          <Link
-            to={`/movimientos?cat=${encodeURIComponent(p.categoria)}`}
-            className="inline-flex items-center gap-1 text-xs text-accent font-semibold mt-1 min-h-11"
-          >
-            Ver en qué lo gastaste <ChevronRight size={16} />
-          </Link>
+          <div className="flex flex-wrap items-center justify-between gap-x-4">
+            <Link
+              to={`/movimientos?cat=${encodeURIComponent(p.categoria)}`}
+              className="inline-flex items-center gap-1 text-xs text-accent font-semibold min-h-11"
+            >
+              Ver en qué lo gastaste <ChevronRight size={16} aria-hidden="true" />
+            </Link>
+            {/* Acción rara y destructiva: terciaria, dentro del detalle, con «Deshacer» al quitar */}
+            <button
+              type="button"
+              onClick={onQuitar}
+              aria-label={`Quitar el presupuesto de ${p.categoria}`}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-danger min-h-11 px-1"
+            >
+              <Trash2 size={16} aria-hidden="true" /> Quitar presupuesto
+            </button>
+          </div>
         </div>
       )}
     </div>

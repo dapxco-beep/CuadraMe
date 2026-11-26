@@ -109,7 +109,7 @@ export default function Metas() {
       ) : error ? (
         <div className="mx-5 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
           <p className="text-sm text-danger mb-3">{error}</p>
-          <button onClick={cargar} className="text-sm font-semibold text-danger underline">
+          <button onClick={cargar} className="btn btn-secundario btn-sm">
             Reintentar
           </button>
         </div>
@@ -182,17 +182,43 @@ function TarjetaMeta({ meta: m, plan, consejo, indice, onAportar }) {
   const ritmo = plan?.estado_ritmo && RITMO[plan.estado_ritmo]
   const opciones = plan?.opciones || []
   const sugerida = opciones.find((o) => o.id === plan?.opcion_sugerida)
+  const faltante = Math.max(0, (m.monto_objetivo || 0) - (m.monto_actual || 0))
+  const fechaMeta = m.fecha_objetivo ? new Date(m.fecha_objetivo) : null
+  const textoFecha = fechaMeta && !Number.isNaN(fechaMeta.getTime())
+    ? fechaMeta.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null
+  const dias = m.dias_restantes
+  const textoDias = dias == null || m.completada ? '' : dias < 0 ? ' · ya venció' : dias === 0 ? ' · es hoy' : ` · faltan ${dias} ${dias === 1 ? 'día' : 'días'}`
   return (
     <div className="rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': indice }} data-testid={`meta-${m.id}`}>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-semibold">{m.nombre}</p>
-        <p className="text-xs text-ink-soft">{String(m.progreso_pct).replace('.', ',')} %</p>
+      {/* Quién es y para cuándo; el porcentaje, lo primero que se lee */}
+      <div className="flex items-start gap-3">
+        <span className="w-10 h-10 rounded-xl shrink-0 bg-accent-soft flex items-center justify-center text-lg" aria-hidden="true">
+          {m.completada ? <PartyPopper size={20} className="text-accent" /> : (m.icono || <PiggyBank size={20} className="text-accent" />)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold break-words">{m.nombre}</p>
+          <p className="text-xs text-ink-soft">
+            {m.completada ? '¡Meta completada!' : textoFecha ? `Para el ${textoFecha}${textoDias}` : 'Sin fecha límite'}
+          </p>
+        </div>
+        <p className="text-lg font-bold tabular-nums text-accent shrink-0">{String(m.progreso_pct).replace('.', ',')} %</p>
       </div>
-      <BarraProgreso pct={m.progreso_pct} label={`Progreso de ${m.nombre}`} className="h-2 rounded-full bg-line overflow-hidden mb-2" />
-      <div className="flex items-center justify-between text-xs text-ink-soft mb-3">
-        <span>{formatCOP(m.monto_actual)}</span>
-        <span>{formatCOP(m.monto_objetivo)}</span>
-      </div>
+      <BarraProgreso pct={m.progreso_pct} label={`Progreso de ${m.nombre}`} className="h-2.5 rounded-full bg-line overflow-hidden mt-3 mb-2" />
+      <dl className="grid grid-cols-3 gap-2 mb-3">
+        <div className="min-w-0">
+          <dt className="text-xs text-ink-soft">Llevas</dt>
+          <dd className="text-sm font-bold tabular-nums whitespace-nowrap">{formatCOP(m.monto_actual)}</dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-xs text-ink-soft">Objetivo</dt>
+          <dd className="text-sm font-semibold tabular-nums whitespace-nowrap text-ink-soft">{formatCOP(m.monto_objetivo)}</dd>
+        </div>
+        <div className="min-w-0 text-right">
+          <dt className="text-xs text-ink-soft">Te falta</dt>
+          <dd className="text-sm font-bold tabular-nums whitespace-nowrap">{formatCOP(faltante)}</dd>
+        </div>
+      </dl>
 
       {!m.completada && plan?.frase_ritmo && ritmo && (
         <p className={`text-sm font-semibold flex items-center gap-1.5 mb-2 ${ritmo.clase}`} data-testid="ritmo-meta">
@@ -208,7 +234,7 @@ function TarjetaMeta({ meta: m, plan, consejo, indice, onAportar }) {
           {!plan?.texto_necesario && plan?.estado_ritmo === 'sin_fecha' && (
             <p className="text-xs text-ink-soft">Ponle una fecha a esta meta y te decimos cuánto apartar al mes.</p>
           )}
-          {m.eta_meses && !sugerida && (
+          {m.eta_meses && !sugerida && !(plan?.frase_ritmo && ritmo) && (
             <p className="text-xs text-ink-soft">
               Si sigues así, la alcanzas en ~{m.eta_meses} {m.eta_meses === 1 ? 'mes' : 'meses'}
             </p>
@@ -254,9 +280,7 @@ function TarjetaMeta({ meta: m, plan, consejo, indice, onAportar }) {
         </div>
       )}
 
-      {m.completada ? (
-        <p className="text-sm font-semibold text-accent flex items-center gap-1.5"><Icono icono={PartyPopper} tam="sm" /> ¡Meta completada!</p>
-      ) : (
+      {m.completada ? null : (
         <button
           onClick={() => onAportar(montoSugerido(plan, m))}
           className="btn btn-primario w-full"

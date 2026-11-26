@@ -163,6 +163,7 @@ export default function Cuentas() {
       ) : error ? (
         <div className="mx-6 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
           <p className="text-sm text-danger mb-3">{error}</p>
+          <button type="button" onClick={recargar} className="btn btn-secundario btn-sm">Reintentar</button>
         </div>
       ) : cuentas.length === 0 ? (
         <EstadoVacio icono={Wallet} titulo="Aún no tienes cuentas" texto="Tu banco, Nequi, el efectivo o una tarjeta. Agrega la primera con el botón +." className="mx-6 mt-6" />
@@ -190,7 +191,7 @@ export default function Cuentas() {
                 className="block w-full text-left"
               >
                 <span className="sr-only">Ver detalle de {c.nombre}. </span>
-                <TarjetaCuenta cuenta={c} ultimoMovimiento={resumen ? (resumen.ultimo_por_cuenta?.[c.id] ?? null) : undefined} />
+                <TarjetaCuenta cuenta={c} etiqueta={etiquetaCuenta(c).etiqueta} ultimoMovimiento={resumen ? (resumen.ultimo_por_cuenta?.[c.id] ?? null) : undefined} />
               </button>
               {/* Qué significa el número de esta cuenta: saldo disponible (tuyo) vs lo que debes (tarjeta) */}
               {(c.tipo === 'credito' || c.tipo === 'inversion') && (
@@ -204,17 +205,14 @@ export default function Cuentas() {
                 <Link to={`/movimientos?cuenta=${c.id}`} className="inline-flex items-center gap-1 text-xs text-accent font-semibold min-h-11 px-1">
                   Ver sus movimientos
                 </Link>
-                <div className="flex items-center gap-1 text-ink-soft">
-                  <span className="text-[11px] leading-tight">{etiquetaCuenta(c).etiqueta}</span>
-                  <button
-                    type="button"
-                    onClick={() => setEditando(c)}
-                    className="w-11 h-11 flex items-center justify-center"
-                    aria-label="Editar cuenta"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditando(c)}
+                  className="w-11 h-11 flex items-center justify-center text-ink-soft"
+                  aria-label="Editar cuenta"
+                >
+                  <Pencil size={16} />
+                </button>
               </div>
               <DesplegableMas etiqueta="Más de esta cuenta" className="px-1" alAbrir={() => setVerCuadre(true)}>
                 {/* Estado de cuadre con el banco, sin ir a buscarlo a «Traer movimientos» */}
