@@ -117,7 +117,7 @@ export default function RegistrarRendimientos({ className = '', onListo }) {
                     type="button"
                     disabled={trabajando}
                     onClick={registrarTodo}
-                    className="mt-4 w-full min-h-11 rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-60"
+                    className="btn btn-primario mt-4 w-full"
                   >
                     {trabajando ? 'Un momento...' : 'Sí, completar'}
                   </button>

@@ -55,7 +55,7 @@ export default function PropuestaTarjeta({ propuesta, cuentaId, className = '' }
             <button
               onClick={aplicar}
               disabled={aplicando}
-              className="flex-1 bg-accent text-paper-raised font-semibold rounded-2xl py-3 text-sm disabled:opacity-60 min-h-[44px]"
+              className="btn btn-primario flex-1"
             >
               {aplicando ? 'Aplicando...' : 'Aplicar'}
             </button>

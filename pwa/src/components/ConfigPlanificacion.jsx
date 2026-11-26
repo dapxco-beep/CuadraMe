@@ -127,7 +127,7 @@ export default function ConfigPlanificacion({ presupuestos, onClose, onGuardado 
       <button
         onClick={guardar}
         disabled={guardando || !cfg}
-        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="btn btn-primario btn-grande w-full"
       >
         {guardando ? 'Guardando...' : 'Guardar ajustes'}
       </button>

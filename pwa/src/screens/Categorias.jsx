@@ -186,7 +186,7 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
           {c.icono}
         </span>
         <div className="min-w-0">
-          <p className="text-sm font-medium line-clamp-2">{c.nombre}</p>
+          <p className="text-sm font-medium line-clamp-2 break-words">{c.nombre}</p>
           <p className="text-[11px] text-ink-soft line-clamp-2">
             {[c.es_base ? 'Base' : null, ETIQUETA_TIPO[c.tipo] || null, `${c.movimientos || 0} mov.`]
               .filter(Boolean)
@@ -440,7 +440,7 @@ function FormCategoria({ categoria, activas = [], onClose, onGuardada, onElimina
           <button
             onClick={guardar}
             disabled={guardando}
-            className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60 flex items-center justify-center gap-2"
+            className="btn btn-primario btn-grande w-full"
           >
             {guardando ? 'Guardando...' : (
               <>

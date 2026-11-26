@@ -18,7 +18,7 @@ import { useModoPantalla } from '../lib/useAncho'
 //   - UNA sola guía a la vez: el camino de 3 pasos (lo pinta Inicio) o, sin camino, el siguiente paso o «¿Qué puedes hacer?».
 //   - Con `mas` (el «Ver más» de Inicio) se suman lo reciente, el gasto por día, el consejo y las tarjetas informativas.
 //   - `conAviso`: Inicio ya pinta los avisos (solo el más importante); sin él, esta pantalla muestra el de saldo negativo.
-export default function InicioSimple({ saldo, notaSaldo = '', gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null, falloSaldo = false, onReintentar, mas: masPedido = true, conAviso = true, gmailConectado = true, consejos }) {
+export default function InicioSimple({ despuesDelSaldo = null, saldo, notaSaldo = '', gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null, falloSaldo = false, onReintentar, mas: masPedido = true, conAviso = true, gmailConectado = true, consejos }) {
   // En iPad horizontal y PC la segunda columna tiene sitio de sobra: no hace falta «Ver más» para verla
   const ancho = useModoPantalla() === 'lateral'
   const mas = masPedido || ancho
@@ -60,6 +60,8 @@ export default function InicioSimple({ saldo, notaSaldo = '', gastosSemana, reci
       {falloSaldo && <NoCargo onReintentar={onReintentar} className="mx-6 mt-2" />}
       {conAviso && <AvisoNegativo saldo={saldo} cuentas={cuentas} fmt={fmt} />}
       <AccionesRapidas />
+      {/* Avisos que no son urgentes (instalar la app, elegir el modo de uso): después de lo que se vino a ver */}
+      {despuesDelSaldo}
       {/* Una función por descubrir; con el camino de 3 pasos a la vista no se suma otra guía */}
       {!enCamino && <SabiasQue cuentasCount={cuentas.length} gmailConectado={gmailConectado} />}
      </div>

@@ -216,7 +216,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
             </button>
             <button
               onClick={() => (embebido ? onTerminar?.(resultado) : navigate('/movimientos', { replace: true }))}
-              className="flex-1 bg-accent text-paper-raised rounded-2xl py-3.5 text-sm font-semibold"
+              className="btn btn-primario flex-1"
             >
               {embebido ? 'Listo' : 'Ver movimientos'}
             </button>
@@ -367,7 +367,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
               <button
                 onClick={aplicarCambios}
                 disabled={cargando}
-                className="mt-3 w-full rounded-2xl bg-accent text-paper-raised py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                className="btn btn-primario mt-3 w-full"
               >
                 <RefreshCw size={16} /> {cargando ? 'Actualizando...' : 'Actualizar vista previa'}
               </button>
@@ -487,7 +487,7 @@ export default function ImportarArchivo({ embebido = false, cuentaInicial = '', 
             <button
               onClick={importar}
               disabled={filas.length === 0 || cargando || cambiosSinAplicar}
-              className="flex-1 bg-accent text-paper-raised rounded-2xl py-3.5 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+              className="btn btn-primario flex-1"
             >
               <Check size={16} /> {cargando ? 'Importando...' : `Importar (${filas.length})`}
             </button>

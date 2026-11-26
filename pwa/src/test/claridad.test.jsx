@@ -96,6 +96,9 @@ describe('Agregar: retroalimentación', () => {
 describe('Presupuesto', () => {
   it('quitar un presupuesto avisa con «Deshacer» y Deshacer lo vuelve a crear', async () => {
     montar(<Presupuesto />)
+    // Quitar es una acción rara y destructiva: vive dentro de «Ver detalle», no a un toque en cada tarjeta
+    expect(screen.queryByRole('button', { name: 'Quitar el presupuesto de Comida' })).toBeNull()
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Ver detalle' }))[0])
     await userEvent.click(await screen.findByRole('button', { name: 'Quitar el presupuesto de Comida' }))
     await waitFor(() => expect(api.eliminarPresupuesto).toHaveBeenCalledWith('p1'))
     await userEvent.click(await screen.findByRole('button', { name: 'Deshacer' }))

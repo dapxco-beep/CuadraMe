@@ -86,7 +86,7 @@ export default function AutorizacionTratamiento({ onListo }) {
           onClick={continuar}
           disabled={!marcas.tratamiento_basico || guardando}
           aria-describedby={!marcas.tratamiento_basico ? 'ayuda-aceptar' : undefined}
-          className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-50"
+          className="btn btn-primario btn-grande w-full"
         >
           {guardando ? 'Guardando...' : 'Aceptar y continuar'}
         </button>

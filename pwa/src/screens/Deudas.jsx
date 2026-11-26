@@ -1,4 +1,5 @@
 import { useEmbebido } from '../lib/EmbebidoContext'
+import { EncabezadoPantalla } from '../lib/AccionesPantallaContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -66,7 +67,7 @@ export default function Deudas({ enCuentas = false } = {}) {
           </button>
         </header>
       ) : (
-      <header className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
+      <EncabezadoPantalla embebido={embebido} className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
         <div className="flex items-center gap-3">
           {!embebido && (<><button
             onClick={volver}
@@ -82,7 +83,7 @@ export default function Deudas({ enCuentas = false } = {}) {
          aria-label="Nueva deuda">
           <Plus size={20} />
         </button>
-      </header>
+      </EncabezadoPantalla>
       )}
 
       {(deudas.length > 0 || (!enCuentas && tarjetasConDeuda.length > 0)) && (
@@ -152,7 +153,7 @@ export default function Deudas({ enCuentas = false } = {}) {
               </div>
               <button
                 onClick={() => setPagando(d)}
-                className="w-full bg-accent text-paper-raised font-semibold rounded-xl py-2.5 text-sm"
+                className="btn btn-primario w-full"
               >
                 Registrar pago
               </button>
@@ -309,7 +310,7 @@ function FormDeuda({ onClose, onGuardada }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="btn btn-primario btn-grande w-full"
       >
         {guardando ? 'Guardando...' : 'Crear deuda'}
       </button>
@@ -359,7 +360,7 @@ function FormPago({ deuda, onClose, onPagado }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="btn btn-primario btn-grande w-full"
       >
         {guardando ? 'Guardando...' : 'Registrar pago'}
       </button>

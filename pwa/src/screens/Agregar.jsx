@@ -500,7 +500,7 @@ export default function Agregar() {
                 onClick={() => usarFrecuente(f)}
                 className="shrink-0 rounded-2xl border border-line bg-paper-raised px-3.5 py-2.5 text-left"
               >
-                <p className="text-xs font-semibold max-w-[110px] truncate">{f.descripcion}</p>
+                <p className="text-xs font-semibold max-w-[140px] leading-snug line-clamp-2 break-words">{f.descripcion}</p>
                 <p className="text-[11px] text-ink-soft mt-0.5">{formatCOP(f.monto)}</p>
               </button>
             ))}
@@ -614,7 +614,7 @@ export default function Agregar() {
           <div className="flex flex-col gap-2 mt-3">
             <button
               onClick={esElMismo}
-              className="rounded-xl bg-accent text-paper-raised py-2.5 min-h-[44px] text-sm font-semibold"
+              className="btn btn-primario"
             >
               Es el mismo, no lo agregues
             </button>
@@ -633,7 +633,7 @@ export default function Agregar() {
         <button
           onClick={() => guardar()}
           disabled={guardando}
-          className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
+          className="btn btn-primario btn-grande w-full active:scale-[0.98] transition-transform"
         >
           {guardando ? 'Guardando...' : esTransferencia ? (destinosPosibles.find((c) => c.id === destinoId)?.tipo === 'credito' ? 'Pagar la tarjeta' : 'Pasar la plata') : 'Guardar movimiento'}
         </button>

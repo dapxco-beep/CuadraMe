@@ -68,7 +68,7 @@ function HojaTasa({ monedas, base, onCerrar, onResuelto }) {
           </label>
         ))}
         {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-        <button type="submit" disabled={guardando} className="w-full min-h-11 rounded-xl bg-accent text-paper-raised font-semibold">
+        <button type="submit" disabled={guardando} className="btn btn-primario w-full">
           {guardando ? 'Guardando…' : 'Guardar tasa'}
         </button>
       </form>

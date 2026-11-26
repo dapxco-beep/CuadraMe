@@ -33,7 +33,7 @@ export default function TarjetaMovimientosCorreo({ conectado = null, leyendo = f
 
       <div className="mt-3 flex gap-2">
         {conectado === false ? (
-          <Link to="/movimientos-correo" state={{ abrir: 'conexion' }} className="flex-1 min-h-11 rounded-xl bg-accent text-paper-raised text-sm font-semibold flex items-center justify-center">
+          <Link to="/movimientos-correo" state={{ abrir: 'conexion' }} className="btn btn-primario flex-1">
             Conectar mi correo
           </Link>
         ) : (
@@ -42,7 +42,7 @@ export default function TarjetaMovimientosCorreo({ conectado = null, leyendo = f
               type="button"
               onClick={onTraer}
               disabled={leyendo || conectado === null}
-              className="flex-1 min-h-11 rounded-xl bg-accent text-paper-raised text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+              className="btn btn-primario flex-1"
             >
               {leyendo ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={16} aria-hidden="true" />}
               {leyendo ? 'Leyendo…' : 'Traer del correo'}

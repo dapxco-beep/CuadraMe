@@ -63,7 +63,7 @@ function Fila({ item, categorias, onGuardar }) {
         <button
           onClick={guardar}
           disabled={estado === 'guardando'}
-          className="rounded-xl bg-accent text-paper-raised px-3.5 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-60"
+          className="btn btn-primario btn-sm"
         >
           <Check size={16} /> {estado === 'guardando' ? 'Guardando…' : 'Guardar regla'}
         </button>

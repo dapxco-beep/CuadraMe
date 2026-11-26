@@ -544,7 +544,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
             <button
               onClick={guardar}
               disabled={guardando}
-              className="flex-1 rounded-2xl bg-accent text-paper-raised py-3 text-sm font-semibold disabled:opacity-60"
+              className="btn btn-primario flex-1"
             >
               {guardando ? 'Guardando...' : 'Guardar cambios'}
             </button>
@@ -561,7 +561,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={confirmarCategoria}
-                  className="flex-1 rounded-xl bg-accent text-paper-raised py-2.5 text-sm font-semibold"
+                  className="btn btn-primario flex-1"
                 >
                   Está bien
                 </button>
@@ -600,7 +600,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                     onClick={() => aplicarTraslado('real', 'Listo: cuenta como ingreso')}
                     disabled={trasladando}
                     data-testid="es-ingreso-real"
-                    className="rounded-xl bg-accent text-paper-raised py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
+                    className="btn btn-primario"
                   >
                     No es un pago de la tarjeta: es un ingreso
                   </button>
@@ -623,7 +623,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
                     <button
                       onClick={() => aplicarTraslado('traslado', 'Listo: es un traslado, no cuenta como ingreso ni gasto')}
                       disabled={trasladando}
-                      className="rounded-xl bg-accent text-paper-raised py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
+                      className="btn btn-primario"
                     >
                       Es un traslado entre mis cuentas
                     </button>
@@ -687,7 +687,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
               <button
                 onClick={pasarAEfectivo}
                 disabled={trasladando}
-                className="mt-2 min-h-11 px-4 rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-60"
+                className="btn btn-primario mt-2"
               >
                 {oferta.boton}
               </button>

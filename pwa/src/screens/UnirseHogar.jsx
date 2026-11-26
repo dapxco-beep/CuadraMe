@@ -58,7 +58,7 @@ export default function UnirseHogar() {
             </label>
             <input id="apodo-hogar" value={apodo} onChange={(e) => setApodo(e.target.value)} maxLength={40} placeholder="Tu nombre o apodo" className="mt-1 w-full rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm normal-case tracking-normal text-ink outline-none focus:border-accent" />
           </div>
-          <button onClick={unirme} disabled={uniendo} className="w-full bg-accent text-paper-raised rounded-2xl py-3.5 text-sm font-semibold disabled:opacity-40">
+          <button onClick={unirme} disabled={uniendo} className="btn btn-primario w-full">
             {uniendo ? 'Uniéndote…' : 'Unirme al parche'}
           </button>
         </div>

@@ -136,7 +136,7 @@ export default function ArreglarTarjetas({ className = '', onListo, onRevisar })
                     type="button"
                     disabled={trabajando}
                     onClick={arreglarTodo}
-                    className="mt-4 w-full min-h-11 rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-60"
+                    className="btn btn-primario mt-4 w-full"
                   >
                     {trabajando ? 'Un momento...' : 'Sí, arreglar todo'}
                   </button>
@@ -156,7 +156,7 @@ export default function ArreglarTarjetas({ className = '', onListo, onRevisar })
                       type="button"
                       onClick={() => revisar(cerrar)}
                       data-testid="revisar-importar"
-                      className="mt-4 w-full min-h-11 rounded-xl bg-accent text-paper-raised text-sm font-semibold"
+                      className="btn btn-primario mt-4 w-full"
                     >
                       Revisar e importar
                     </button>

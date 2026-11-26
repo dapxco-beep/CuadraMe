@@ -70,7 +70,7 @@ export default function CambiarCuentaExtracto({ historialId, titulo, cuentaActua
             type="button"
             disabled={!previa || previa.ya_en_esa_cuenta || guardando}
             onClick={() => confirmar(cerrar)}
-            className="mt-4 w-full min-h-11 rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-50"
+            className="btn btn-primario mt-4 w-full"
           >
             {guardando ? 'Un momento...' : 'Sí, cambiar de cuenta'}
           </button>

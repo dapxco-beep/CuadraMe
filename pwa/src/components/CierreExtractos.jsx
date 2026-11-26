@@ -242,7 +242,7 @@ function BloqueCuenta({ c, mostrarNombre, onCambio }) {
             {(c.acciones || []).filter((a) => a.tipo !== 'ajuste').slice(0, 2).map((a, i) => (
               a.tipo === 'cambiar_cuenta' ? (
                 <button key={`${a.tipo}-${i}`} type="button" onClick={() => setCambiando(a)}
-                  className="min-h-11 w-full rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3">
+                  className="btn btn-primario btn-sm w-full">
                   {a.texto}
                 </button>
               ) : (
