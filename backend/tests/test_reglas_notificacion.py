@@ -665,3 +665,16 @@ def test_un_atajo_auto_sin_version_o_con_version_menor_recibe_el_aviso_una_vez_a
     otra = client.post("/movimientos/rapido-notificacion", headers=h,
                        json={"paquete": "auto", "titulo": "", "texto": "Transferencia exitosa $ 7.000 Para ANA PEREZ Nu", "version": 1}).json()
     assert "atajo nuevo" not in otra["mensaje"]  # ya se le avisó hoy
+
+
+def test_comprobante_viejo_conserva_la_fecha_que_trae_impresa_aunque_sea_de_hace_semanas():
+    # Un pantallazo de una compra de hace 15 días: la fecha del comprobante manda (antes se pisaba con «ahora» pasados 7 días)
+    from datetime import datetime, timedelta
+    h = _cuentas_nu_nequi("rn-fecha-vieja")
+    d = (datetime.now() - timedelta(days=15)).replace(hour=12, minute=26, second=0, microsecond=0)
+    mes = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"][d.month - 1]
+    texto = (f"Tienda Ejemplo $120.500,00 12:26, Viernes, {d.day} de {mes.capitalize()} de {d.year} Comprobante Reportar problema "
+             "Establecimiento Tienda Ejemplo Categoría Transporte Tarjeta física ···· 1234 Cuotas 1 cuota de $120.500,00")
+    assert _pantallazo(h, texto)["registrado"]
+    mov = _movimiento_mas_reciente()
+    assert mov["fecha"].startswith(d.strftime("%Y-%m-%d")), mov["fecha"]
