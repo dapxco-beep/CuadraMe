@@ -19,6 +19,7 @@ import IngresosGastos from '../components/IngresosGastos'
 import GraficoEvolucion from '../components/GraficoEvolucion'
 import EvolucionCategoria from '../components/EvolucionCategoria'
 import HistorialCategorias from '../components/HistorialCategorias'
+import VistaAlternable from '../components/informe/VistaAlternable'
 import HeroGasto from '../components/informe/HeroGasto'
 import MapaCategorias from '../components/informe/MapaCategorias'
 import LoQueLlamaLaAtencion from '../components/informe/LoQueLlamaLaAtencion'
@@ -186,7 +187,13 @@ export default function Informe() {
   }
   const hayDatos = !cargando && !!informe?.hay_datos
   const esMesActual = !mes && !sel && valor.periodo === 'este_mes'
-  const anchos = new Set(PANELES.filter((p) => p.ancho).map((p) => p.id))
+  // La tabla de categorías por mes necesita ancho completo; su gráfica, no (se estiraría demasiado)
+  const [vistaIngresos, setVistaIngresos] = useState(hash === '#evolucion' ? 'evolucion' : 'resumen')
+  const [vistaMes, setVistaMes] = useState('tabla')
+  useEffect(() => {
+    if (hash === '#evolucion') setVistaIngresos('evolucion')
+  }, [hash])
+  const anchos = new Set([...PANELES.filter((p) => p.ancho).map((p) => p.id), ...(vistaMes === 'tabla' ? ['mes_a_mes'] : [])])
 
   const panelCategorias = hayDatos && (
     <section className="card-marca bg-paper-raised border border-line p-4" aria-label="Gasto por categoría">
@@ -332,10 +339,28 @@ export default function Informe() {
     dia: hayDatos && <DiaADia desde={informe.desde} hasta={informe.hasta} className="sin-margen" />,
     comercios: panelComercios,
     costos: <div id="costos"><Costos /></div>,
-    ingresos: <IngresosGastos params={paramsBase} fmt={fmt} className="" seleccion={sel} onSeleccion={setSel} />,
-    historial: <HistorialCategorias fmt={fmt} />,
-    evolucion: <EvolucionCategoria fmt={fmt} />,
-    mi_evolucion: <GraficoEvolucion fmt={fmt} />,
+    ingresos: (
+      <VistaAlternable
+        etiqueta="Cómo ver tus ingresos y gastos"
+        valor={vistaIngresos}
+        onCambio={setVistaIngresos}
+        opciones={[
+          { id: 'resumen', texto: 'Resumen', nodo: <IngresosGastos params={paramsBase} fmt={fmt} className="" seleccion={sel} onSeleccion={setSel} /> },
+          { id: 'evolucion', texto: 'Evolución', nodo: <GraficoEvolucion fmt={fmt} /> },
+        ]}
+      />
+    ),
+    mes_a_mes: (
+      <VistaAlternable
+        etiqueta="Cómo ver tus categorías mes a mes"
+        valor={vistaMes}
+        onCambio={setVistaMes}
+        opciones={[
+          { id: 'tabla', texto: 'Tabla', nodo: <HistorialCategorias fmt={fmt} /> },
+          { id: 'grafica', texto: 'Gráfica', nodo: <EvolucionCategoria fmt={fmt} /> },
+        ]}
+      />
+    ),
   }
 
   return (

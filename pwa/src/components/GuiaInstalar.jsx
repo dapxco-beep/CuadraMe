@@ -1,9 +1,10 @@
-import { CheckCircle2, Download } from 'lucide-react'
+import { CheckCircle2, Download, Share } from 'lucide-react'
 import Hoja from './Hoja'
 import Icono from './Icono'
 import { Boton } from './ui'
 import { useDispositivo } from '../lib/dispositivo'
 import SelectorCelular from './SelectorCelular'
+import { abrirMenuCompartir, esNavegadorIntegrado, puedeCompartir } from '../lib/instalarIphone'
 import { instalar, useInstalable } from '../lib/instalarPwa'
 import {
   AndroidChrome, AndroidConfirmar, AndroidMenu, IosAnadir, IosCompartir, IosSafari, PantallaInicioConIcono,
@@ -84,7 +85,24 @@ export default function GuiaInstalar({ onCerrar, dispositivo: forzado }) {
               <Icono icono={CheckCircle2} tam="md" className="text-cuadra shrink-0" /> Ya la tienes instalada: estás usando la app.
             </p>
           )}
-          {dispositivo === 'ios' && <Lista pasos={PASOS_IOS} etiqueta="Pasos para iPhone" />}
+          {dispositivo === 'ios' && (
+            <>
+              {puedeCompartir() && !esNavegadorIntegrado() && (
+                <div className="mb-4">
+                  <Boton bloque onClick={() => abrirMenuCompartir()} data-testid="abrir-compartir">
+                    <Icono icono={Share} tam="md" /> Abrir el menú de compartir
+                  </Boton>
+                  <p className="t-apoyo mt-2">Te lleva directo al paso 2. Safari no deja instalar con un solo toque, pero así no tienes que buscar el botón.</p>
+                </div>
+              )}
+              {esNavegadorIntegrado() && (
+                <p className="t-cuerpo rounded-2xl bg-accent-soft p-3 mb-4" data-testid="abre-en-safari">
+                  Estás en el navegador de otra app (Instagram, WhatsApp…). Ahí no se puede instalar: copia el enlace y ábrelo en <b>Safari</b>.
+                </p>
+              )}
+              <Lista pasos={PASOS_IOS} etiqueta="Pasos para iPhone" />
+            </>
+          )}
           {dispositivo === 'android' && instalable && (
             <div className="mb-4">
               <Boton bloque onClick={() => instalar().then((r) => r === 'accepted' && cerrar())} data-testid="instalar-un-toque">

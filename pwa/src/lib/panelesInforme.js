@@ -7,22 +7,32 @@ export const PANELES = [
   { id: 'categorias', nombre: 'Gasto por categoría' },
   { id: 'dia', nombre: 'Día a día' },
   { id: 'comercios', nombre: 'Dónde más gastas' },
-  { id: 'ingresos', nombre: 'Ingresos y gastos' },
+  { id: 'ingresos', nombre: 'Ingresos, gastos y evolución' },
   { id: 'costos', nombre: 'Lo que te cuesta tu plata' },
-  { id: 'historial', nombre: 'Historial por categoría', ancho: true },
-  { id: 'evolucion', nombre: 'Evolución por categoría' },
-  { id: 'mi_evolucion', nombre: 'Mi evolución' },
+  { id: 'mes_a_mes', nombre: 'Categorías mes a mes' },
 ]
+
+// Antes eran cinco paneles; ahora dos (cada uno con su interruptor de vista). Lo que la persona ya había guardado se traduce.
+const ANTIGUOS = { historial: 'mes_a_mes', evolucion: 'mes_a_mes', mi_evolucion: 'ingresos' }
 
 const CLAVE = 'cuadrame:informe-paneles'
 const IDS = PANELES.map((p) => p.id)
 
 /** Normaliza lo guardado: quita ids que ya no existen y agrega al final los nuevos. */
 export function normalizarPaneles(guardado) {
-  const orden = Array.isArray(guardado?.orden) ? guardado.orden.filter((id) => IDS.includes(id)) : []
+  const traducir = (id) => ANTIGUOS[id] || id
+  const orden = Array.isArray(guardado?.orden) ? guardado.orden.map(traducir).filter((id) => IDS.includes(id)) : []
   for (const id of IDS) if (!orden.includes(id)) orden.push(id)
-  const ocultos = Array.isArray(guardado?.ocultos) ? guardado.ocultos.filter((id) => IDS.includes(id)) : []
-  return { orden: [...new Set(orden)], ocultos: [...new Set(ocultos)] }
+  const viejos = Array.isArray(guardado?.ocultos) ? guardado.ocultos : []
+  const ordenViejo = Array.isArray(guardado?.orden) ? guardado.orden : []
+  // Un panel unido se oculta solo si TODAS las partes que la persona tenía estaban ocultas
+  const ocultos = IDS.filter((id) => {
+    const antiguos = Object.keys(ANTIGUOS).filter((k) => ANTIGUOS[k] === id)
+    if (antiguos.length === 0) return viejos.includes(id)
+    const partes = [...(ordenViejo.includes(id) ? [id] : []), ...antiguos.filter((k) => ordenViejo.includes(k))]
+    return partes.length > 0 && partes.every((p) => viejos.includes(p))
+  })
+  return { orden: [...new Set(orden)], ocultos }
 }
 
 function leer() {

@@ -21,7 +21,7 @@ export const ACENTOS = [
   { id: 'azul', nombre: 'Azul', claro: '#1d5fa6', oscuro: '#7db4ff' },
   { id: 'morado', nombre: 'Morado', claro: '#6b3fa0', oscuro: '#c59bf0' },
   { id: 'rosa', nombre: 'Rosa', claro: '#b02a5b', oscuro: '#f59ab9' },
-  { id: 'turquesa', nombre: 'Turquesa', claro: '#0f766e', oscuro: '#5eead4' },
+  { id: 'turquesa', nombre: 'Turquesa', claro: '#0d6a63', oscuro: '#5eead4' },
   { id: 'dorado', nombre: 'Dorado', claro: '#8a5a00', oscuro: '#f0c05a' },
 ]
 

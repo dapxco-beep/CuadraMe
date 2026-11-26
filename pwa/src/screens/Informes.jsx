@@ -31,7 +31,7 @@ export default function Informes() {
   const { Pantalla } = activa
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
+    <div className={`flex-1 overflow-y-auto pb-6 screen-enter${activa.id === 'gastos' ? ' pantalla-ancha' : ''}`}>
       <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
         <button
           type="button"
@@ -44,7 +44,7 @@ export default function Informes() {
         <h1 className="text-xl font-semibold">Informes</h1>
       </header>
 
-      <div role="tablist" aria-label="Informes" className="px-5 pb-1 flex gap-2 overflow-x-auto no-scrollbar" data-testid="pestanas-informes">
+      <div role="tablist" aria-label="Informes" className="pl-5 pr-9 pb-1 flex gap-2 overflow-x-auto no-scrollbar borde-fade-der" data-testid="pestanas-informes">
         {PESTANAS.map((p) => {
           const es = p.id === activa.id
           return (
@@ -53,6 +53,7 @@ export default function Informes() {
               type="button"
               role="tab"
               aria-selected={es}
+              ref={es ? (el) => el?.scrollIntoView?.({ inline: 'center', block: 'nearest' }) : undefined}
               onClick={() => setParams({ tab: p.id }, { replace: true })}
               className={`min-h-11 px-4 rounded-full text-sm font-semibold border whitespace-nowrap ${es ? 'bg-accent-soft text-accent border-accent' : 'bg-paper-raised text-ink border-line'}`}
             >

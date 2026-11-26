@@ -22,9 +22,25 @@ describe('Paneles personalizables de Informes', () => {
   it('descarta paneles que ya no existen y agrega los nuevos al final', () => {
     const p = normalizarPaneles({ orden: ['dia', 'inexistente', 'resumen'], ocultos: ['comercios', 'otro'] })
     expect(p.orden.slice(0, 2)).toEqual(['dia', 'resumen'])
-    expect(p.orden).toContain('mi_evolucion')
+    expect(p.orden).toContain('mes_a_mes')
     expect(p.orden).not.toContain('inexistente')
     expect(p.ocultos).toEqual(['comercios'])
+  })
+})
+
+describe('Paneles unidos: lo que la persona ya tenía guardado se traduce', () => {
+  it('los cinco paneles viejos pasan a dos y respetan el orden', () => {
+    const p = normalizarPaneles({ orden: ['resumen', 'historial', 'ingresos', 'evolucion', 'mi_evolucion'], ocultos: [] })
+    expect(p.orden.filter((id) => ['mes_a_mes', 'ingresos'].includes(id))).toEqual(['mes_a_mes', 'ingresos'])
+    expect(p.orden).not.toContain('historial')
+    expect(p.orden).not.toContain('mi_evolucion')
+  })
+  it('un panel unido se oculta solo si ya tenía ocultas todas sus partes', () => {
+    const orden = ['historial', 'evolucion', 'ingresos', 'mi_evolucion']
+    expect(normalizarPaneles({ orden, ocultos: ['historial', 'evolucion'] }).ocultos).toEqual(['mes_a_mes'])
+    expect(normalizarPaneles({ orden, ocultos: ['historial'] }).ocultos).toEqual([])
+    expect(normalizarPaneles({ orden, ocultos: ['mi_evolucion'] }).ocultos).toEqual([])
+    expect(normalizarPaneles({ orden, ocultos: ['ingresos', 'mi_evolucion'] }).ocultos).toEqual(['ingresos'])
   })
 })
 

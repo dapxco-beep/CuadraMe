@@ -28,6 +28,7 @@ import ConsejoParaTi from '../components/ConsejoParaTi'
 import TarjetaTuPlata from '../components/TuPlataTrabajando'
 import TarjetaCostos from '../components/TarjetaCostos'
 import SeccionPlegable from '../components/SeccionPlegable'
+import AvisoInstalar from '../components/AvisoInstalar'
 import Sparkline, { resumenTendencia } from '../components/Sparkline'
 import Icono from '../components/Icono'
 import { Boton } from '../components/ui'
@@ -393,6 +394,7 @@ export default function Inicio() {
       {/* Una sola guía a la vez: mientras el camino de 3 pasos esté incompleto, es la única. Lo demás (siguiente paso,
           «¿Qué puedes hacer?», la lista de mejoras y el recorrido de 1 minuto) vive en Inicio solo cuando no hay camino, o en Perfil y Ayuda. */}
       <SugerenciaPais />
+      <AvisoInstalar className="mx-6 mt-3" />
       {!esperarSaldo && <AsistentePrimerUso variante="inicio" soloCamino camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />}
 
       {/* Modo simple: tres bloques y un «Ver más»; con «Mostrar todas las funciones», todo a la vista */}

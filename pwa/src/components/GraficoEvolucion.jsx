@@ -278,18 +278,18 @@ export function Evolucion({ d, fmt = formatCOP, acumulado = false, vista = 'graf
             {p.en_curso && <span className="ml-1.5 font-normal text-ink-soft">· en curso, aún no termina</span>}
           </p>
           {p.con_datos ? (
-            <dl className="grid grid-cols-1 min-[400px]:grid-cols-3 gap-1.5 min-[400px]:gap-2 mt-2">
-              <div className="flex items-baseline justify-between min-[400px]:block">
+            <dl className="flex flex-wrap gap-x-5 gap-y-2 mt-2">
+              <div className="min-w-[6.5rem]">
                 <dt className="text-[11px] text-ink-soft">Ingresos</dt>
-                <dd className="text-sm font-bold t-cifra">{fmt(p.ingresos)}</dd>
+                <dd className="text-sm font-bold t-cifra whitespace-nowrap">{fmt(p.ingresos)}</dd>
               </div>
-              <div className="flex items-baseline justify-between min-[400px]:block">
+              <div className="min-w-[6.5rem]">
                 <dt className="text-[11px] text-ink-soft">Gastos</dt>
-                <dd className="text-sm font-bold t-cifra">{fmt(p.gastos)}</dd>
+                <dd className="text-sm font-bold t-cifra whitespace-nowrap">{fmt(p.gastos)}</dd>
               </div>
-              <div className="flex items-baseline justify-between min-[400px]:block">
+              <div className="min-w-[6.5rem]">
                 <dt className="text-[11px] text-ink-soft">Ahorro</dt>
-                <dd className={`text-sm font-bold t-cifra ${p.ahorro < 0 ? 'text-danger' : 'text-ink'}`}>{fmt(p.ahorro)}</dd>
+                <dd className={`text-sm font-bold t-cifra whitespace-nowrap ${p.ahorro < 0 ? 'text-danger' : 'text-ink'}`}>{fmt(p.ahorro)}</dd>
               </div>
             </dl>
           ) : (

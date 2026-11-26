@@ -48,13 +48,12 @@ describe('Categorías: tres pantallas en una', () => {
 })
 
 describe('Revisar movimientos: traslados y repetidos en una', () => {
-  it('abre en «Entre mis cuentas» y cambia a «Repetidos»', async () => {
-    const user = userEvent.setup()
+  it('muestra las dos revisiones en la misma pantalla, sin pestañas', async () => {
     montar('/revisar')
     expect(await screen.findByText(/PANTALLA-TRASLADOS/)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Revisar movimientos', level: 1 })).toBeInTheDocument()
-    await user.click(screen.getByRole('tab', { name: 'Repetidos' }))
     expect(await screen.findByText(/PANTALLA-REPETIDOS/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Revisar movimientos', level: 1 })).toBeInTheDocument()
+    expect(screen.queryByRole('tab')).toBeNull()
   })
   it.each([['/traslados', 'TRASLADOS'], ['/buscar-duplicados', 'REPETIDOS']])('%s lleva a su pestaña y conserva la consulta', async (ruta, marca) => {
     montar(`${ruta}?desde=2026-10-01`)
