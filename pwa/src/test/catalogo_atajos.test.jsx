@@ -195,4 +195,26 @@ describe('Guía de atajos', () => {
     expect(await navigator.clipboard.readText()).toMatch(/\/descargas\/CuadraMe%20Registrar\.shortcut$/)
     expect(await screen.findByRole('button', { name: 'Enlace copiado' })).toBeInTheDocument()
   })
+
+  it('dibuja los tres pasos de instalar como pantallas de iPhone y ayuda si «Instalar» no abre nada', async () => {
+    montarCatalogo()
+    await elegir('Mi banco no avisa')
+    const dibujos = screen.getByTestId('pasos-instalar-dibujos')
+    expect(within(dibujos).getAllByRole('img')).toHaveLength(3)
+    expect(dibujos).toHaveTextContent('Descarga')
+    expect(dibujos).toHaveTextContent('Agrégalo')
+    expect(screen.getByTestId('no-se-abre')).toHaveTextContent('Archivos › Descargas')
+    expect(screen.queryByTestId('aviso-app-instalada')).toBeNull() // en el navegador normal no sale
+  })
+
+  it('si la app está abierta desde el ícono de la pantalla de inicio, avisa que hay que usar Safari', async () => {
+    Object.defineProperty(window.navigator, 'standalone', { value: true, configurable: true })
+    try {
+      montarCatalogo()
+      await elegir('Mi banco no avisa')
+      expect(screen.getByTestId('aviso-app-instalada')).toHaveTextContent('Safari')
+    } finally {
+      delete window.navigator.standalone
+    }
+  })
 })
