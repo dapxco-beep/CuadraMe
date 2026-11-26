@@ -1,7 +1,7 @@
 // Service worker de CuadraMe: notificaciones push + caché del "shell" de la app
 // para que abra aunque no haya conexión. Los datos (API, Supabase) NUNCA se
 // cachean aquí: un saldo viejo mostrado como si fuera actual es peor que un error.
-const VERSION = 'v5'
+const VERSION = 'v6'
 importScripts('/compartido-logica.js') // reglas del «Compartir con CuadraMe»
 const CACHE_COMPARTIDO = 'cuadrame-compartido' // archivos recibidos de otras apps, hasta que la app los use
 const CACHE_SHELL = `cuadrame-shell-${VERSION}`
@@ -69,6 +69,8 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return // API, Supabase, fuentes: directo a la red
   // /version.json (la app lo consulta para saber si hay compilación nueva) nunca pasa por caché.
   if (url.pathname === '/version.json') return
+  // Los atajos (.shortcut) son descargas: el service worker no debe tocarlas (en iOS dejan la pestaña en blanco).
+  if (url.pathname.startsWith('/descargas/')) return
 
   // Navegación (abrir la app): red primero para recibir siempre la versión nueva; si no hay
   // conexión —o la red tarda más de 4 s (datos móviles malos)— el último index.html guardado,

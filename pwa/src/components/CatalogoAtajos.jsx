@@ -303,8 +303,7 @@ function GuiaAtajo({ a }) {
               <>
                 <a
                   href={a.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  download
                   className="btn btn-primario btn-bloque mt-3 inline-flex items-center justify-center gap-2"
                   aria-label={`Instalar ${a.nombre}`}
                 >

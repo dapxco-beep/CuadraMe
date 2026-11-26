@@ -61,8 +61,8 @@ describe('Guía de atajos', () => {
       const tarjeta = screen.getByTestId(`atajo-${a.id}`)
       const boton = within(tarjeta).getByRole('link', { name: /^Instalar CuadraMe/ })
       expect(boton).toHaveAttribute('href', esperados[a.id])
-      expect(boton).toHaveAttribute('target', '_blank')
-      expect(boton).toHaveAttribute('rel', expect.stringContaining('noopener'))
+      expect(boton).toHaveAttribute('download') // misma pestaña: en iOS una pestaña nueva queda en blanco
+      expect(boton).not.toHaveAttribute('target')
       expect(screen.getAllByRole('article')).toHaveLength(1) // solo la guía elegida
       expect(tarjeta).toHaveTextContent(`Para ti si: ${a.paraQuien}`)
     }
