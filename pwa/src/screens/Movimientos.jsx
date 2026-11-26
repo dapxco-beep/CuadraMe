@@ -3,9 +3,9 @@ import { mensajeDeError } from '../lib/mensajes'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
 import { EstadoVacio } from '../brand/Marca'
-import { Boton } from '../components/ui'
+import { Boton, Chip } from '../components/ui'
 import { Link, useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router-dom'
-import { ArrowLeftRight, Check, RefreshCw, ChevronDown, ChevronRight, Download, ListChecks, MoreHorizontal, PieChart, Search, Shuffle, SlidersHorizontal, Tag, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeftRight, Check, Mail, RefreshCw, ChevronDown, ChevronRight, Download, ListChecks, MoreHorizontal, PieChart, Search, Shuffle, SlidersHorizontal, Tag, Trash2, Upload, X } from 'lucide-react'
 import Icono from '../components/Icono'
 import { formatCOP, formatMoneda } from '../lib/format'
 import { api } from '../lib/api'
@@ -34,7 +34,7 @@ import Hoja from '../components/Hoja'
 import TablaMovimientos from '../components/TablaMovimientos'
 import DetalleMovimiento from './DetalleMovimiento'
 import EtiquetaOrigen from '../components/EtiquetaOrigen'
-import { fechaHoraMovimiento, fechaDeMovimiento, claveDia, etiquetaDia } from '../lib/fechaMovimiento'
+import { fechaHoraMovimiento, horaCorta, fechaDeMovimiento, claveDia, etiquetaDia } from '../lib/fechaMovimiento'
 import PorRevisarCorreo from '../components/PorRevisarCorreo'
 import TarjetaMovimientosCorreo from '../components/TarjetaMovimientosCorreo'
 import { BotonLapiz, EditorNombre, PistaBanco } from '../components/NombreEditable'
@@ -46,10 +46,34 @@ import { actualizarDesdeCorreo, resumenActualizacion } from '../lib/sincronizarG
 import { useJalarParaRefrescar } from '../lib/jalarRefrescar'
 
 const TAMANO_PAGINA = 200
+// En escritorio ancho (≥1280 px) la TABLA es la vista por defecto (más densa y ordenable); en 1024-1279 px es angosta y la
+// lista se lee mejor. Lo que la persona elija se recuerda.
+const VISTA_GUARDADA = 'cuadrame:mov-vista'
+function leerVistaGuardada() {
+  try {
+    const v = localStorage.getItem(VISTA_GUARDADA)
+    return v === 'lista' || v === 'tabla' ? v : null
+  } catch {
+    return null
+  }
+}
+function useAnchoDeTabla() {
+  const consulta = '(min-width: 1280px)'
+  const [ancha, setAncha] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(consulta).matches)
+  useEffect(() => {
+    if (!window.matchMedia) return undefined
+    const m = window.matchMedia(consulta)
+    const alCambiar = () => setAncha(m.matches)
+    m.addEventListener?.('change', alCambiar)
+    alCambiar()
+    return () => m.removeEventListener?.('change', alCambiar)
+  }, [])
+  return ancha
+}
 const MAX_LOTES = 15 // tope de seguridad al re-pedir lo ya cargado (3.000 movimientos)
 const PRESION_LARGA_MS = 450
 const ALTO_DIA_BASE = 40 // etiqueta del día + espacio, para estimar antes de medir
-const ALTO_FILA_ESTIMADO = 72
+const ALTO_FILA_ESTIMADO = 68
 const MARGEN_VENTANA = 800 // px extra arriba y abajo para que el scroll rápido no muestre vacío
 
 // Una fila de la lista. Está memoizada: al categorizar UN movimiento solo se vuelve a pintar su
@@ -101,9 +125,12 @@ const FilaMovimiento = memo(function FilaMovimiento({
 
   return (
     <div
-      className="relative stagger-item [-webkit-touch-callout:none]"
+      className={`relative stagger-item [-webkit-touch-callout:none] rounded-2xl transition-colors ${
+        esSel ? 'bg-accent-soft' : 'md:hover:bg-paper-raised'
+      }`}
       style={{ '--stagger-i': indice }}
       data-fila={m.id}
+      data-seleccionada={esSel || undefined}
       onPointerDown={empezar}
       onPointerMove={mover}
       onPointerUp={cancelar}
@@ -113,11 +140,6 @@ const FilaMovimiento = memo(function FilaMovimiento({
         if (larga.current) e.preventDefault()
       }}
     >
-      <span
-        className={`absolute -left-5 top-[18px] w-2.5 h-2.5 rounded-full border-2 border-paper ${
-          direccion === 'income' ? 'bg-accent-2' : 'bg-ink'
-        }`}
-      />
       <FilaDeslizable
         desactivada={modoSel || panel}
         acciones={[
@@ -125,46 +147,50 @@ const FilaMovimiento = memo(function FilaMovimiento({
           { id: 'borrar', texto: 'Borrar', tono: 'peligro', confirmar: true, icono: <Trash2 size={20} aria-hidden="true" />, onClick: () => onBorrar?.(m) },
         ]}
       >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 px-1">
         <button
           type="button"
           role="checkbox"
           aria-checked={esSel}
           aria-label={`Seleccionar ${m.descripcion}`}
           onClick={() => onToggle(m.id)}
-          className={`${modoSel ? 'flex' : 'hidden md:flex'} relative before:absolute before:-inset-3 before:content-[''] mt-3 w-5 h-5 rounded-md border-2 shrink-0 items-center justify-center ${
+          className={`${modoSel ? 'flex' : 'hidden md:flex'} relative before:absolute before:-inset-3 before:content-[''] mt-[18px] w-5 h-5 rounded-md border-2 shrink-0 items-center justify-center ${
             esSel ? 'bg-accent border-accent' : 'border-line'
           }`}
         >
           {esSel && <Check size={16} className="text-paper-raised" />}
         </button>
+        {/* La categoría se ve de un vistazo en el icono; el nombre y el cambio de categoría están en la segunda línea */}
+        <span aria-hidden="true" className="mt-2.5 w-10 h-10 shrink-0 rounded-xl bg-accent-soft flex items-center justify-center text-lg leading-none">
+          {esTransfer ? <Icono icono={ArrowLeftRight} tam="md" className="text-accent" /> : icono}
+        </span>
         <div className="min-w-0 flex-1">
           <Link to={`/movimientos/${m.id}`} onClick={alClic} className="block pt-2.5 min-w-0">
-            <p className="text-sm font-semibold break-words line-clamp-4" title={m.descripcion}>{nombreDe(m)}</p>
+            <p className="text-sm font-semibold break-words line-clamp-2" title={m.descripcion}>{nombreDe(m)}</p>
             {tieneNombrePropio(m) && <PistaBanco original={m.descripcion} />}
-            <p className="text-xs text-ink-soft mt-0.5 break-words" data-testid="fila-fecha-cuenta">
-              {[fechaHoraMovimiento(fechaDeMovimiento(m)), cuentaNombre].filter(Boolean).join(' · ')}
-            </p>
             <EtiquetaOrigen origen={m.origen} canales={m.canales} soloAvisos className="mt-1" />
           </Link>
-          <div className="flex items-center flex-wrap gap-y-1 pt-0.5 pb-2.5">
+          {/* El día ya está en el encabezado del grupo; la hora va bajo el monto. Aquí: categoría, cuenta y lo que haya que atender */}
+          <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 pt-0.5 pb-2.5">
             {esTransfer ? (
-              <span className="text-xs text-ink-soft">
-                <Icono icono={ArrowLeftRight} tam="sm" className="inline -mt-0.5" /> {m.categoria}
-              </span>
+              <span className="text-xs font-medium text-ink-soft">{m.categoria}</span>
             ) : (
               <button
                 type="button"
                 onClick={() => (modoSel ? onToggle(m.id) : onChip(m))}
                 aria-label={`${m.categoria}${m.subcategoria ? ` · ${m.subcategoria}` : ''}. Cambiar categoría de ${m.descripcion}`}
-                className="relative before:absolute before:-inset-y-2 before:inset-x-0 before:content-[''] inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft rounded-full bg-paper-raised px-2.5 min-h-[32px] hover:text-ink"
+                className="relative before:absolute before:-inset-y-2.5 before:-inset-x-1 before:content-[''] inline-flex items-center gap-1 text-xs font-semibold text-accent rounded-full max-w-full"
               >
-                <span aria-hidden="true">{icono}</span> {m.categoria}{m.subcategoria ? ` · ${m.subcategoria}` : ''}
+                <span className="truncate">{m.categoria}{m.subcategoria ? ` · ${m.subcategoria}` : ''}</span>
+                <ChevronDown size={16} aria-hidden="true" className="shrink-0" />
               </button>
             )}
-            {onNombre && !esTransfer && !modoSel && <BotonLapiz className="ml-1.5" original={m.descripcion} onClick={() => onNombre(m)} />}
+            <span className="text-xs text-ink-soft truncate min-w-0 max-w-full flex-1" data-testid="fila-fecha-cuenta" title={cuentaNombre}>
+              {cuentaNombre}
+            </span>
+            {onNombre && !esTransfer && !modoSel && <BotonLapiz original={m.descripcion} onClick={() => onNombre(m)} />}
             {traslado && !esTransfer && (
-              <span className="ml-2 text-[11px] font-semibold text-ink-soft rounded-full bg-paper-raised border border-line px-2 py-0.5">
+              <span className="text-xs font-semibold text-ink-soft rounded-full bg-paper-raised border border-line px-2 py-0.5">
                 {traslado}
               </span>
             )}
@@ -173,7 +199,7 @@ const FilaMovimiento = memo(function FilaMovimiento({
               <button
                 onClick={() => onConfirmar(m)}
                 aria-label={`Confirmar categoría de ${m.descripcion}`}
-                className="ml-2 flex items-center gap-1 text-xs font-semibold px-3 min-h-[32px] rounded-full bg-accent text-paper-raised"
+                className="btn btn-primario btn-sm"
               >
                 <Check size={16} /> Confirmar
               </button>
@@ -185,12 +211,15 @@ const FilaMovimiento = memo(function FilaMovimiento({
           onClick={alClic}
           tabIndex={-1}
           aria-hidden="true"
-          className="pt-2.5 shrink-0 max-w-[45%]"
+          className="pt-3 shrink-0 max-w-[45%]"
         >
-          <span className={`text-[15px] font-bold tabular-nums whitespace-nowrap ${direccion === 'income' ? 'text-gold' : direccion ? 'text-ink' : 'text-ink-soft'}`}>
+          <span className={`block text-right text-[15px] font-bold tabular-nums whitespace-nowrap ${direccion === 'income' ? 'text-gold' : direccion ? 'text-ink' : 'text-ink-soft'}`}>
             {signoDe(m)}
             {formatMoneda(m.monto, moneda)}
           </span>
+          {horaCorta(fechaDeMovimiento(m)) && (
+            <span className="block text-right text-xs text-ink-soft mt-0.5 tabular-nums whitespace-nowrap">{horaCorta(fechaDeMovimiento(m))}</span>
+          )}
         </Link>
       </div>
       </FilaDeslizable>
@@ -215,6 +244,7 @@ export default function Movimientos() {
   const { avisar, confirmar, elegir } = useDialogos()
   const modo = useModoPantalla()
   const lateral = modo === 'lateral'
+  const hayAnchoParaTabla = useAnchoDeTabla()
   const location = useLocation()
   const [params, setParams] = useSearchParams()
   const raiz = useRef(null)
@@ -325,6 +355,7 @@ export default function Movimientos() {
   const [cargando, setCargando] = useState(!cacheInicial)
   const [cargandoMas, setCargandoMas] = useState(false)
   const [errorCarga, setErrorCarga] = useState('')
+  const [intento, setIntento] = useState(0) // «Reintentar» tras un error de carga
   const [conteo, setConteo] = useState({ auto: 0, otros: 0, total: 0 })
   const [exportando, setExportando] = useState(false)
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
@@ -414,7 +445,7 @@ export default function Movimientos() {
 
   useEffect(() => {
     const cambioFiltro = ultimaConsulta.current !== null && ultimaConsulta.current !== consultaKey
-    const silencioso = !cambioFiltro && !!cacheInicial // volver a una lista conocida: se revalida sin tapar nada
+    const silencioso = !cambioFiltro && !!cacheInicial && intento === 0 // volver a una lista conocida: se revalida sin tapar nada
     ultimaConsulta.current = consultaKey
     const objetivo = cambioFiltro
       ? TAMANO_PAGINA
@@ -444,7 +475,7 @@ export default function Movimientos() {
       .finally(() => mia === peticion.current && setCargando(false))
     recargarConteo()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [consultaKey])
+  }, [consultaKey, intento])
 
   // El caché sigue a la lista (incluye los cambios optimistas) para pintarla al volver
   useEffect(() => {
@@ -495,8 +526,23 @@ export default function Movimientos() {
     [filtrados, f.comercio, f.orden]
   )
   const recientes = useMemo(() => categoriasRecientes(movimientos, CATEGORIAS), [movimientos, CATEGORIAS])
-  const vistaActiva = f.comercio ? 'comercio' : lateral && f.tabla ? 'tabla' : 'lista'
-  const filtrosVisibles = mostrarFiltros || lateral || !!(f.cuenta || f.desde || f.hasta || f.tipo || f.origen)
+  const vistaParam = params.get('vista')
+  const vistaActiva = f.comercio
+    ? 'comercio'
+    : !lateral
+      ? 'lista'
+      : vistaParam === 'lista' || vistaParam === 'tabla'
+        ? vistaParam
+        : leerVistaGuardada() || (hayAnchoParaTabla ? 'tabla' : 'lista')
+  // Periodos rápidos (los chips): no cuentan como «filtro avanzado» ni abren el panel de fechas
+  const PERIODOS = [
+    { id: 'todo', texto: 'Todo', r: { desde: '', hasta: '' } },
+    { id: 'este_mes', texto: 'Este mes', r: rangoPeriodo('este_mes') },
+    { id: 'mes_pasado', texto: 'Mes pasado', r: rangoPeriodo('mes_pasado') },
+  ]
+  const periodoActivo = PERIODOS.find((p) => (f.desde || '') === (p.r.desde || '') && (f.hasta || '') === (p.r.hasta || ''))?.id || null
+  const nFiltros = [f.cuenta, f.cat && f.cat !== 'Otros' ? f.cat : '', f.tipo, f.origen, periodoActivo ? '' : f.desde || f.hasta].filter(Boolean).length
+  const filtrosVisibles = mostrarFiltros || lateral || nFiltros > 0
 
   // --- Ventana (virtualización por días) ---
   // Con 1.500+ movimientos solo se pintan los días que se ven más un margen; lo de arriba y abajo
@@ -913,7 +959,7 @@ export default function Movimientos() {
 
   const nombreCuenta = (id) => cuentas.find((c) => c.id === id)?.nombre || 'Cuenta'
   const nombreCuentaTabla = useCallback((id) => cuentas.find((c) => c.id === id)?.nombre || 'Cuenta', [cuentas])
-  const enTabla = lateral && f.tabla && !f.comercio
+  const enTabla = lateral && vistaActiva === 'tabla'
   const alternarTodos = useCallback(
     (marcar) => {
       if (marcar) {
@@ -935,29 +981,73 @@ export default function Movimientos() {
     f.hasta && { k: 'hasta', texto: `Hasta ${f.hasta}` },
   ].filter(Boolean)
 
-  const campo = 'rounded-xl border border-line bg-paper-raised px-3 py-2.5 text-xs'
-  const botonChip = (activo) =>
-    `shrink-0 text-sm px-4 py-1.5 min-h-[44px] rounded-full border font-medium ${
-      activo ? 'bg-accent text-paper-raised border-accent' : 'border-accent text-accent'
-    }`
+  // Cuenta nueva sin movimientos: no se muestran periodos, resumen ni vistas (no hay nada que filtrar)
+  const sinNada = !cargando && !errorCarga && filtrados.length === 0 && chipsActivos.length === 0 && !f.revisar && !f.cat && !f.conf && !f.comercio && !soloCorreo
+  const campo = 'campo-entrada'
+  const limpiarFiltros = () => {
+    setTexto('')
+    cambiarParams({ q: '', cuenta: '', cat: '', tipo: '', origen: '', desde: '', hasta: '', revisar: false, conf: false })
+  }
+  const elegirVista = (id) => {
+    if (lateral && id !== 'comercio') {
+      try {
+        localStorage.setItem(VISTA_GUARDADA, id)
+      } catch {
+        /* sin almacenamiento: la preferencia dura solo esta visita */
+      }
+    }
+    cambiarParams({ vista: id === 'lista' ? (lateral ? 'lista' : '') : id })
+  }
+  const selectorVista = (
+    <div role="group" aria-label="Vista" className="inline-flex rounded-full border border-line p-0.5 bg-paper">
+      {[
+        { id: 'lista', texto: 'Lista' },
+        ...(lateral ? [{ id: 'tabla', texto: 'Tabla' }] : []),
+        { id: 'comercio', texto: 'Comercios' },
+      ].map((v) => (
+        <button
+          key={v.id}
+          type="button"
+          aria-pressed={vistaActiva === v.id}
+          onClick={() => elegirVista(v.id)}
+          className={`text-xs px-2.5 min-h-11 rounded-full font-semibold ${vistaActiva === v.id ? 'bg-accent-soft text-accent' : 'text-ink-soft'}`}
+        >
+          {v.texto}
+        </button>
+      ))}
+    </div>
+  )
+  const enlaceInforme = (
+    <Link
+      to="/informe"
+      data-testid="ver-detalle-gastos"
+      title="¿En qué gasto mi plata?"
+      className="w-11 h-11 shrink-0 inline-flex items-center justify-center rounded-full text-accent hover:bg-accent-soft"
+    >
+      <PieChart size={20} aria-hidden="true" />
+      <span className="sr-only">¿En qué gasto mi plata?</span>
+    </Link>
+  )
 
   return (
     <div ref={asignarRaiz} className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
       {jalar.indicador}
-      <header className="px-5 pantalla-top pb-4 flex flex-wrap items-center justify-between gap-y-2">
+      <header className="px-5 pantalla-top pb-3 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Movimientos</h1>
         {modoSeleccion ? (
-          <button onClick={salirModoSeleccion} className="text-sm text-accent font-medium min-h-[44px] px-2">
+          <Boton variante="fantasma" tam="sm" onClick={salirModoSeleccion}>
             Cancelar
-          </button>
+          </Boton>
         ) : (
           <button
             onClick={() => setMenuAcciones(true)}
             aria-haspopup="dialog"
-            className="ml-auto inline-flex items-center gap-2 text-sm text-ink-soft font-medium px-4 min-h-[44px] rounded-full border border-line"
+            aria-label="Más acciones"
+            title="Más acciones"
+            className="ml-auto inline-flex items-center justify-center gap-2 text-sm text-ink-soft font-medium min-w-11 min-h-11 px-3 md:px-4 rounded-full border border-line hover:border-accent"
           >
-            <MoreHorizontal size={16} aria-hidden="true" />
-            Más acciones
+            <MoreHorizontal size={20} aria-hidden="true" />
+            <span className="hidden md:inline">Más acciones</span>
           </button>
         )}
       </header>
@@ -981,18 +1071,43 @@ export default function Movimientos() {
             <DetalleMovimiento key={panelId} id={panelId} embebido onCerrar={cerrarPanel} onCambio={alCambioDetalle} />
           ) : (
             <>
-              <div className="px-5 mb-3">
-                <div className="flex items-center gap-2 bg-paper-raised border border-line rounded-2xl px-4 py-3">
-                  <Search size={20} className="text-ink-soft" />
+              {/* FILA 1 · buscar y filtrar (en escritorio los filtros siempre están a la vista) */}
+              <div className="px-5 mb-3 flex items-center gap-2">
+                <div className="flex-1 min-w-0 flex items-center gap-2 bg-paper-raised border border-line rounded-2xl pl-4 pr-1 min-h-12 focus-within:border-accent">
+                  <Search size={20} className="text-ink-soft shrink-0" aria-hidden="true" />
                   <input
                     value={texto}
                     aria-label="Buscar movimiento"
                     data-atajo-buscar
                     onChange={(e) => setTexto(e.target.value)}
                     placeholder="Buscar movimiento"
-                    className="bg-transparent outline-none text-sm flex-1 placeholder:text-ink-soft"
+                    className="bg-transparent outline-none text-sm flex-1 min-w-0 placeholder:text-ink-soft"
                   />
+                  {texto && (
+                    <button type="button" onClick={() => setTexto('')} aria-label="Borrar búsqueda" className="w-10 h-10 shrink-0 rounded-full inline-flex items-center justify-center text-ink-soft hover:text-ink">
+                      <X size={16} aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
+                {!lateral && (
+                  <button
+                    type="button"
+                    onClick={() => setMostrarFiltros((v) => !v)}
+                    aria-expanded={filtrosVisibles}
+                    aria-controls="panel-filtros"
+                    className={`relative shrink-0 inline-flex items-center justify-center gap-2 min-w-12 min-h-12 px-3 rounded-2xl border text-sm font-semibold ${
+                      filtrosVisibles || nFiltros > 0 ? 'border-accent bg-accent-soft text-accent' : 'border-line bg-paper-raised text-ink-soft'
+                    }`}
+                  >
+                    <SlidersHorizontal size={20} aria-hidden="true" />
+                    <span className="sr-only md:not-sr-only">Filtros</span>
+                    {nFiltros > 0 && (
+                      <span aria-label={`${nFiltros} filtros activos`} className="min-w-5 h-5 px-1 rounded-full bg-accent text-paper-raised text-xs font-bold inline-flex items-center justify-center">
+                        {nFiltros}
+                      </span>
+                    )}
+                  </button>
+                )}
               </div>
 
               {(porCorreo.correos.length > 0 || descartados > 0) && (
@@ -1024,114 +1139,107 @@ export default function Movimientos() {
                 </div>
               )}
 
-              <div className="px-5 mb-3 flex gap-2 overflow-x-auto no-scrollbar lg:flex-wrap lg:overflow-visible">
+              {/* FILA 2 · periodo y pendientes en UNA sola fila de chips (antes eran dos grupos con estilos distintos) */}
+              {!sinNada && (
+              <div className="px-5 mb-3 flex items-center gap-2 overflow-x-auto no-scrollbar lg:flex-wrap lg:overflow-visible">
+                <div role="group" aria-label="Periodo" data-testid="chips-periodo" className="flex gap-2 shrink-0 lg:flex-wrap lg:shrink">
+                  {PERIODOS.map((p) => (
+                    <Chip key={p.id} activo={periodoActivo === p.id} onClick={() => cambiarParams({ desde: p.r.desde, hasta: p.r.hasta })}>
+                      {p.texto}
+                    </Chip>
+                  ))}
+                </div>
+                {(porCorreo.correos.length > 0 || soloCorreo || conteo.total > 0 || f.revisar || conteo.otros > 0 || f.cat === 'Otros' || f.conf) && (
+                  <span aria-hidden="true" className="w-px h-6 bg-line shrink-0 lg:hidden" />
+                )}
                 {(porCorreo.correos.length > 0 || soloCorreo) && (
-                  <button onClick={() => cambiarParams({ filtro: soloCorreo ? '' : 'por-revisar' })} aria-pressed={soloCorreo} className={botonChip(soloCorreo)}>
+                  <Chip className="shrink-0" activo={soloCorreo} onClick={() => cambiarParams({ filtro: soloCorreo ? '' : 'por-revisar' })}>
                     Del correo por revisar{porCorreo.correos.length > 0 ? ` (${porCorreo.correos.length})` : ''}
-                  </button>
+                  </Chip>
                 )}
                 {/* Sin repetir la misma lista con dos nombres: «Por revisar» no sale si es idéntica a «Sin categorizar»,
                     y «Por confirmar» solo sale cuando hay además otra clase de pendientes. */}
                 {(((conteo.total > 0) && !(conteo.otros > 0 && conteo.auto === 0)) || f.revisar) && (
-                  <button onClick={() => cambiarParams({ revisar: !f.revisar })} aria-pressed={f.revisar} className={botonChip(f.revisar)}>
+                  <Chip className="shrink-0" activo={f.revisar} onClick={() => cambiarParams({ revisar: !f.revisar })}>
                     Por revisar{conteo.total > 0 ? ` (${conteo.total})` : ''}
-                  </button>
+                  </Chip>
                 )}
                 {(conteo.otros > 0 || f.cat === 'Otros') && (
-                  <button
-                    onClick={() => cambiarParams({ cat: f.cat === 'Otros' ? '' : 'Otros' })}
-                    aria-pressed={f.cat === 'Otros'}
-                    className={botonChip(f.cat === 'Otros')}
-                  >
+                  <Chip className="shrink-0" activo={f.cat === 'Otros'} onClick={() => cambiarParams({ cat: f.cat === 'Otros' ? '' : 'Otros' })}>
                     Sin categorizar{conteo.otros > 0 ? ` (${conteo.otros})` : ''}
-                  </button>
+                  </Chip>
                 )}
                 {((conteo.auto > 0 && conteo.otros > 0) || f.conf) && (
-                  <button onClick={() => cambiarParams({ conf: !f.conf })} aria-pressed={f.conf} className={botonChip(f.conf)}>
+                  <Chip className="shrink-0" activo={f.conf} onClick={() => cambiarParams({ conf: !f.conf })}>
                     Por confirmar{conteo.auto > 0 ? ` (${conteo.auto})` : ''}
-                  </button>
+                  </Chip>
                 )}
-              </div>
-              {conteo.total > 0 && !f.revisar && (
-                <div className="px-5 mb-3">
-                  <Link to="/categorizar" className="text-xs text-ink-soft font-medium underline">
+                {conteo.total > 0 && !f.revisar && (
+                  <Link to="/categorizar" className="shrink-0 min-h-11 inline-flex items-center px-1 text-xs font-semibold text-accent underline underline-offset-2">
                     Poner categoría a lo que más pesa
                   </Link>
-                </div>
+                )}
+              </div>
               )}
               {f.revisar && conteo.auto > 0 && (
                 <div className="px-5 mb-3">
-                  <button onClick={confirmarTodas} className="text-xs text-ink-soft font-medium underline">
+                  <Boton variante="suave" tam="sm" onClick={confirmarTodas}>
                     Confirmar las {conteo.auto} automáticas
-                  </button>
+                  </Boton>
                 </div>
               )}
 
               {filtrosVisibles && (
-                <div className="px-5 mb-3 grid grid-cols-2 gap-2 [.dos-col-riel-tabla_&]:grid-cols-1">
-                  <input
-                    type="date"
-                    aria-label="Desde"
-                    value={f.desde}
-                    onChange={(e) => cambiarParams({ desde: e.target.value })}
-                    className={campo}
-                  />
-                  <input
-                    type="date"
-                    aria-label="Hasta"
-                    value={f.hasta}
-                    onChange={(e) => cambiarParams({ hasta: e.target.value })}
-                    className={campo}
-                  />
+                <div id="panel-filtros" className="px-5 mb-3 grid grid-cols-2 gap-x-2 gap-y-3 [.dos-col-riel-tabla_&]:grid-cols-1">
+                  <label className="block">
+                    <span className="campo-etiqueta">Desde</span>
+                    <input type="date" aria-label="Desde" value={f.desde} onChange={(e) => cambiarParams({ desde: e.target.value })} className={campo} />
+                  </label>
+                  <label className="block">
+                    <span className="campo-etiqueta">Hasta</span>
+                    <input type="date" aria-label="Hasta" value={f.hasta} onChange={(e) => cambiarParams({ hasta: e.target.value })} className={campo} />
+                  </label>
                   {cuentas.length > 1 && (
-                    <select
-                      aria-label="Filtrar por cuenta"
-                      value={f.cuenta}
-                      onChange={(e) => cambiarParams({ cuenta: e.target.value })}
-                      className={campo}
-                    >
-                      <option value="">Todas las cuentas</option>
-                      {cuentas.map((c) => (
-                        <option key={c.id} value={c.id}>{c.nombre}</option>
+                    <label className="block">
+                      <span className="campo-etiqueta">Cuenta</span>
+                      <select aria-label="Filtrar por cuenta" value={f.cuenta} onChange={(e) => cambiarParams({ cuenta: e.target.value })} className={campo}>
+                        <option value="">Todas</option>
+                        {cuentas.map((c) => (
+                          <option key={c.id} value={c.id}>{c.nombre}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <label className="block">
+                    <span className="campo-etiqueta">Categoría</span>
+                    <select aria-label="Filtrar por categoría" value={f.cat} onChange={(e) => cambiarParams({ cat: e.target.value })} className={campo}>
+                      <option value="">Todas</option>
+                      {[...new Set([...CATEGORIAS, ...(f.cat ? [f.cat] : [])])].map((c) => (
+                        <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
-                  )}
-                  <select
-                    aria-label="Filtrar por categoría"
-                    value={f.cat}
-                    onChange={(e) => cambiarParams({ cat: e.target.value })}
-                    className={campo}
-                  >
-                    <option value="">Todas las categorías</option>
-                    {[...new Set([...CATEGORIAS, ...(f.cat ? [f.cat] : [])])].map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label="Filtrar por tipo"
-                    value={f.tipo}
-                    onChange={(e) => cambiarParams({ tipo: e.target.value })}
-                    className={campo}
-                  >
-                    <option value="">Ingresos y gastos</option>
-                    <option value="expense">Solo gastos</option>
-                    <option value="income">Solo ingresos</option>
-                    <option value="transfer">Plata entre tus cuentas</option>
-                  </select>
-                  <select
-                    aria-label="Filtrar por origen"
-                    value={f.origen}
-                    onChange={(e) => cambiarParams({ origen: e.target.value })}
-                    className={campo}
-                  >
-                    <option value="">Todos los orígenes</option>
-                    {ORIGENES_FILTRO.map((o) => (
-                      <option key={o.id} value={o.id}>{o.texto}</option>
-                    ))}
-                  </select>
-                  <button onClick={() => exportar('csv')} className="text-xs text-accent font-medium px-2 text-left" aria-label="Exportar CSV">
-                    Descargar en CSV
-                  </button>
+                  </label>
+                  <label className="block">
+                    <span className="campo-etiqueta">Tipo</span>
+                    <select aria-label="Filtrar por tipo" value={f.tipo} onChange={(e) => cambiarParams({ tipo: e.target.value })} className={campo}>
+                      <option value="">Todos</option>
+                      <option value="expense">Gastos</option>
+                      <option value="income">Ingresos</option>
+                      <option value="transfer">Entre tus cuentas</option>
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="campo-etiqueta">Origen</span>
+                    <select aria-label="Filtrar por origen" value={f.origen} onChange={(e) => cambiarParams({ origen: e.target.value })} className={campo}>
+                      <option value="">Todos</option>
+                      {ORIGENES_FILTRO.map((o) => (
+                        <option key={o.id} value={o.id}>{o.texto}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <Boton variante="fantasma" tam="sm" onClick={() => exportar('csv')} aria-label="Exportar CSV" className="col-span-full justify-start">
+                    <Download size={16} aria-hidden="true" /> Descargar en CSV
+                  </Boton>
                 </div>
               )}
 
@@ -1142,112 +1250,63 @@ export default function Movimientos() {
                       key={c.k}
                       onClick={() => cambiarParams({ [c.k]: '' })}
                       aria-label={`Quitar filtro ${c.texto}`}
-                      className="inline-flex items-center gap-1 text-xs px-3 min-h-[32px] rounded-full bg-accent text-paper-raised"
+                      className="inline-flex items-center gap-1 text-xs font-semibold px-3 min-h-[32px] rounded-full bg-accent-soft text-accent border border-accent/40"
                     >
                       {c.texto} <X size={16} aria-hidden="true" />
                     </button>
                   ))}
-                  <button
-                    onClick={() => {
-                      setTexto('')
-                      cambiarParams({ q: '', cuenta: '', cat: '', tipo: '', origen: '', desde: '', hasta: '', revisar: false, conf: false })
-                    }}
-                    className="text-xs font-semibold text-accent underline px-1 min-h-[32px]"
-                  >
+                  <button onClick={limpiarFiltros} className="text-xs font-semibold text-accent underline px-1 min-h-[32px]">
                     Limpiar
                   </button>
                 </div>
               )}
 
-              {/* Periodo siempre a la vista: los totales de abajo suman lo que se ve, y esto dice de qué mes es. */}
-              <div className="px-5 mb-2 flex gap-2" role="group" aria-label="Periodo" data-testid="chips-periodo">
-                {[
-                  { id: 'todo', texto: 'Todo', r: { desde: '', hasta: '' } },
-                  { id: 'este_mes', texto: 'Este mes', r: rangoPeriodo('este_mes') },
-                  { id: 'mes_pasado', texto: 'Mes pasado', r: rangoPeriodo('mes_pasado') },
-                ].map((p) => {
-                  const activo = (f.desde || '') === (p.r.desde || '') && (f.hasta || '') === (p.r.hasta || '')
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      aria-pressed={activo}
-                      onClick={() => cambiarParams({ desde: p.r.desde, hasta: p.r.hasta })}
-                      className={`min-h-11 px-4 rounded-full text-sm font-semibold border ${activo ? 'bg-accent-soft text-accent border-accent' : 'bg-paper-raised text-ink border-line'}`}
-                    >
-                      {p.texto}
-                    </button>
-                  )
-                })}
-              </div>
-
-              {filtrados.length > 0 && (
-                <div className="px-5 mb-3 flex flex-wrap gap-2" data-testid="resumen-lista">
-                  <div className="flex-1 min-w-[104px] rounded-2xl bg-paper-raised border border-line p-3">
-                    <p className="text-[11px] text-ink-soft uppercase tracking-wide">Ingresos</p>
-                    <p className="text-sm font-bold text-gold mt-0.5">{formatCOP(totalIngresos)}</p>
-                  </div>
-                  <div className="flex-1 min-w-[104px] rounded-2xl bg-paper-raised border border-line p-3">
-                    <p className="text-[11px] text-ink-soft uppercase tracking-wide">Gastos</p>
-                    <p className="text-sm font-bold text-ink mt-0.5">{formatCOP(totalGastos)}</p>
-                  </div>
-                  <div className="flex-1 min-w-[104px] rounded-2xl bg-paper-raised border border-line p-3">
-                    <p className="text-[11px] text-ink-soft uppercase tracking-wide">Neto</p>
-                    <p className={`text-sm font-bold mt-0.5 ${totalNeto >= 0 ? 'text-gold' : 'text-ink'}`}>
-                      {totalNeto < 0 ? '-' : ''}{formatCOP(Math.abs(totalNeto))}
+              {/* RESUMEN de lo que se ve: una sola tarjeta (cifras, conteo y vista). En la tabla el resumen va sobre la tabla. */}
+              {filtrados.length > 0 && !enTabla ? (
+                <section data-testid="resumen-lista" aria-label="Resumen de lo que ves" className="mx-5 mb-3 rounded-2xl border border-line bg-paper-raised">
+                  <dl className="grid grid-cols-3 divide-x divide-line max-[359px]:grid-cols-1 max-[359px]:divide-x-0 max-[359px]:divide-y">
+                    <div className="px-2.5 py-2.5 min-w-0 max-[359px]:flex max-[359px]:items-baseline max-[359px]:justify-between">
+                      <dt className="t-kicker text-ink-soft">Ingresos</dt>
+                      <dd className="text-[13px] min-[400px]:text-sm font-bold text-gold mt-0.5 tabular-nums whitespace-nowrap">{formatCOP(totalIngresos)}</dd>
+                    </div>
+                    <div className="px-2.5 py-2.5 min-w-0 max-[359px]:flex max-[359px]:items-baseline max-[359px]:justify-between">
+                      <dt className="t-kicker text-ink-soft">Gastos</dt>
+                      <dd className="text-[13px] min-[400px]:text-sm font-bold text-ink mt-0.5 tabular-nums whitespace-nowrap">{formatCOP(totalGastos)}</dd>
+                    </div>
+                    <div className="px-2.5 py-2.5 min-w-0 max-[359px]:flex max-[359px]:items-baseline max-[359px]:justify-between">
+                      <dt className="t-kicker text-ink-soft">Neto</dt>
+                      <dd className={`text-[13px] min-[400px]:text-sm font-bold mt-0.5 tabular-nums whitespace-nowrap ${totalNeto >= 0 ? 'text-gold' : 'text-ink'}`}>
+                        {totalNeto < 0 ? '-' : ''}{formatCOP(Math.abs(totalNeto))}
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="flex items-center justify-between gap-2 border-t border-line pl-3 pr-1 py-0.5">
+                    <p className="text-xs text-ink-soft whitespace-nowrap pl-0.5" data-testid="resumen-conteo">
+                      {filtrados.length}
+                      {hayMas ? '+' : ''} movimiento{filtrados.length === 1 && !hayMas ? '' : 's'}
                     </p>
+                    <div className="flex items-center shrink-0">
+                      {selectorVista}
+                      {enlaceInforme}
+                    </div>
                   </div>
-                </div>
+                </section>
+              ) : (
+                !sinNada && (
+                  <div className="px-5 mb-3 flex items-center justify-between gap-2">
+                    {selectorVista}
+                    {enlaceInforme}
+                  </div>
+                )
               )}
-              {/* Del listado al detalle: en qué se va la plata (enlace discreto; la lista queda arriba) */}
-              <div className="px-5 -mt-1 mb-2 flex flex-wrap items-center gap-x-4">
-                <Link to="/informe" data-testid="ver-detalle-gastos" className="min-h-11 inline-flex items-center gap-1 text-xs font-semibold text-accent">
-                  <PieChart size={16} aria-hidden="true" /> ¿En qué gasto mi plata?
-                </Link>
-                {!(porCorreo.correos.length > 0 || leyendoCorreo || avisoCorreo) && (
-                  <Link to="/movimientos-correo" data-testid="ver-correo-discreto" className="min-h-11 inline-flex items-center text-xs font-semibold text-accent">
-                    Movimientos del correo
-                  </Link>
-                )}
-              </div>
-              {filtrados.length > 0 && (
-                <p className="px-5 -mt-1 mb-3 text-[11px] text-ink-soft" data-testid="resumen-conteo">
-                  {filtrados.length} movimiento{filtrados.length === 1 ? '' : 's'}
-                  {hayMas ? ' cargados · baja para ver más' : ''}
-                </p>
-              )}
-
-              <div className="px-5 mb-4 flex items-center gap-2">
-                <div role="group" aria-label="Vista" className="inline-flex rounded-full border border-line p-0.5 bg-paper-raised">
-                  {[
-                    { id: 'lista', texto: 'Lista' },
-                    ...(lateral ? [{ id: 'tabla', texto: 'Tabla' }] : []),
-                    { id: 'comercio', texto: 'Por comercio' },
-                  ].map((v) => (
-                    <button
-                      key={v.texto}
-                      aria-pressed={vistaActiva === v.id}
-                      onClick={() => cambiarParams({ vista: v.id === 'lista' ? '' : v.id })}
-                      className={`text-sm px-4 min-h-[44px] rounded-full font-medium ${
-                        vistaActiva === v.id ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-                      }`}
-                    >
-                      {v.texto}
-                    </button>
-                  ))}
-                </div>
-                {f.comercio && (
-                  <select
-                    aria-label="Ordenar comercios"
-                    value={f.orden}
-                    onChange={(e) => cambiarParams({ orden: e.target.value === 'monto' ? 'monto' : '' })}
-                    className={`${campo} ml-auto`}
-                  >
+              {f.comercio && (
+                <div className="px-5 mb-3 flex justify-end">
+                  <select aria-label="Ordenar comercios" value={f.orden} onChange={(e) => cambiarParams({ orden: e.target.value === 'monto' ? 'monto' : '' })} className={`${campo} !w-auto`}>
                     <option value="cantidad">Más movimientos</option>
                     <option value="monto">Mayor monto</option>
                   </select>
-                )}
-              </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -1263,6 +1322,9 @@ export default function Movimientos() {
           ) : errorCarga ? (
             <div role="alert" className="mx-5 rounded-3xl bg-danger-soft border border-danger/30 p-6 text-center">
               <p className="text-sm text-danger">{errorCarga}</p>
+              <Boton variante="secundario" tam="sm" className="mt-3" onClick={() => setIntento((n) => n + 1)}>
+                Reintentar
+              </Boton>
             </div>
           ) : filtrados.length === 0 && chipsActivos.length === 0 && !f.revisar && !f.cat && !f.conf && !f.comercio ? (
             // Sin ningún filtro y sin filas: la persona aún no tiene movimientos (no es "búsqueda sin resultados")
@@ -1288,7 +1350,11 @@ export default function Movimientos() {
                   : 'Prueba con otro filtro o búsqueda.'
               }
               className="mx-5"
-            />
+            >
+              <Boton variante="secundario" tam="sm" className="mt-4" onClick={limpiarFiltros}>
+                {f.revisar && chipsActivos.length === 0 && !f.cat && !f.conf ? 'Ver todos los movimientos' : 'Quitar los filtros'}
+              </Boton>
+            </EstadoVacio>
           ) : f.comercio ? (
             <div className="mx-5 space-y-2.5">
               {gruposComercio.map((g) => (
@@ -1368,15 +1434,15 @@ export default function Movimientos() {
               netoSeleccion={netoSeleccion}
             />
           ) : (
-            <div className="mx-5 relative pl-5">
-              <div className="absolute left-[9px] top-1.5 bottom-1.5 w-0.5 bg-line" />
+            <div className="mx-5 relative">
               <div ref={listaRef} style={{ paddingTop: ventana.arriba, paddingBottom: ventana.abajo }}>
               {gruposDia.slice(ventana.ini, ventana.fin).map((grupo, k) => {
                 const gi = ventana.ini + k
                 return (
                 <div key={grupo.diaKey} data-dia={grupo.diaKey} className={gi === 0 ? '' : 'pt-5'}>
-                  <div className="flex items-baseline justify-between gap-3 mb-1">
-                    <p className="text-[11px] font-bold text-ink-soft uppercase tracking-wide">{grupo.label}</p>
+                  {/* El día se queda fijo arriba mientras se recorre su grupo: siempre sabes de qué fecha estás leyendo */}
+                  <div className="sticky top-0 z-[1] -mx-1 px-2 py-1.5 mb-0.5 flex items-baseline justify-between gap-3 bg-paper/95 backdrop-blur-sm rounded-lg">
+                    <h2 className="text-xs font-bold text-ink-soft uppercase tracking-wide">{grupo.label}</h2>
                     <SubtotalDia items={grupo.items} tipos={tipos} />
                   </div>
                   {grupo.items.map((m, i) => (
@@ -1469,6 +1535,9 @@ export default function Movimientos() {
                   <Link to="/revisar" className={fila} onClick={() => cerrar()}>
                     <ArrowLeftRight size={20} aria-hidden="true" /> Revisar traslados y repetidos
                   </Link>
+                  <Link to="/movimientos-correo" data-testid="ver-correo-discreto" className={fila} onClick={() => cerrar()}>
+                    <Mail size={20} aria-hidden="true" /> Movimientos del correo
+                  </Link>
                   <button className={fila} disabled={leyendoCorreo} onClick={accion(() => actualizarCorreo(true))}>
                     <RefreshCw size={20} aria-hidden="true" /> Actualizar desde el correo
                   </button>
@@ -1526,19 +1595,24 @@ export default function Movimientos() {
 
       {modoSeleccion && (
         <div className="sticky bottom-0 mx-5 mt-4 rounded-2xl bg-ink p-3 shadow-lg pop-in z-10" role="toolbar" aria-label="Acciones sobre la selección">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-paper font-medium shrink-0 px-1" aria-live="polite">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-sm text-paper font-semibold px-1 pt-1" aria-live="polite">
               {seleccionados.size} seleccionado{seleccionados.size === 1 ? '' : 's'}
               {seleccionados.size > 0 && (
-                <span className="opacity-80 tabular-nums" data-testid="suma-seleccion">
-                  {' · '}{netoSeleccion < 0 ? '-' : ''}{formatCOP(Math.abs(netoSeleccion))}
+                <span className="block text-xs font-normal opacity-80 tabular-nums" data-testid="suma-seleccion">
+                  {netoSeleccion < 0 ? '-' : ''}{formatCOP(Math.abs(netoSeleccion))} en total
                 </span>
               )}
             </span>
+            <button onClick={salirModoSeleccion} className="w-11 h-11 shrink-0 -mt-1 -mr-1 rounded-xl flex items-center justify-center text-paper hover:bg-paper/10" aria-label="Cerrar">
+              <X size={20} aria-hidden="true" />
+            </button>
+          </div>
+          <div className={`grid gap-2 mt-2 ${cuentas.length > 1 ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <button
               disabled={seleccionados.size === 0 || aplicando}
               onClick={abrirChipMasivo}
-              className="rounded-xl bg-paper text-ink px-3 min-h-[44px] text-sm font-semibold disabled:opacity-40"
+              className="rounded-xl bg-paper text-ink px-3 min-h-11 text-sm font-semibold disabled:opacity-40"
             >
               Categoría
             </button>
@@ -1546,7 +1620,7 @@ export default function Movimientos() {
               <button
                 disabled={seleccionados.size === 0 || aplicando}
                 onClick={() => setMoverACuenta(true)}
-                className="rounded-xl bg-paper text-ink px-3 min-h-[44px] text-sm font-semibold disabled:opacity-40"
+                className="rounded-xl bg-paper text-ink px-3 min-h-11 text-sm font-semibold disabled:opacity-40"
               >
                 Cuenta
               </button>
@@ -1554,27 +1628,16 @@ export default function Movimientos() {
             <button
               disabled={seleccionados.size === 0 || aplicando}
               onClick={eliminarSeleccion}
-              className="rounded-xl bg-danger text-paper-raised px-3 min-h-[44px] text-sm font-semibold disabled:opacity-40 flex items-center gap-1"
+              className="rounded-xl bg-danger text-paper-raised px-3 min-h-11 text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-1.5"
             >
-              <Trash2 size={16} /> Eliminar
-            </button>
-            <button
-              onClick={salirModoSeleccion}
-              className="ml-auto w-11 h-11 shrink-0 rounded-xl bg-paper flex items-center justify-center"
-              aria-label="Cerrar"
-            >
-              <X size={16} className="text-ink" />
+              <Trash2 size={16} aria-hidden="true" /> Eliminar
             </button>
           </div>
-          <div className="flex gap-3 mt-2 px-1">
-            <button onClick={seleccionarTodoFiltrado} className="text-xs text-paper underline min-h-[32px]">
+          <div className="flex flex-wrap gap-x-4 mt-1 px-1">
+            <button onClick={seleccionarTodoFiltrado} className="text-xs text-paper underline min-h-11">
               Seleccionar todo lo filtrado ({filtrados.length})
             </button>
-            <button
-              onClick={seleccionarSimilares}
-              disabled={seleccionados.size === 0}
-              className="text-xs text-paper underline min-h-[32px] disabled:opacity-40"
-            >
+            <button onClick={seleccionarSimilares} disabled={seleccionados.size === 0} className="text-xs text-paper underline min-h-11 disabled:opacity-40">
               Seleccionar los similares
             </button>
           </div>
