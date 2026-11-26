@@ -12,12 +12,16 @@ import { nombreDe } from '../lib/tituloMovimiento'
 import { AccionesRapidas, AvisoNegativo, EsteMes, NoCargo } from './InicioExtras'
 import QueSePuedeHacer from './QueSePuedeHacer'
 import SabiasQue from './SabiasQue'
+import { useModoPantalla } from '../lib/useAncho'
 
 // Inicio para quien llega sin saber de finanzas. A la vista: el saldo, los accesos y «Este mes».
 //   - UNA sola guía a la vez: el camino de 3 pasos (lo pinta Inicio) o, sin camino, el siguiente paso o «¿Qué puedes hacer?».
 //   - Con `mas` (el «Ver más» de Inicio) se suman lo reciente, el gasto por día, el consejo y las tarjetas informativas.
 //   - `conAviso`: Inicio ya pinta los avisos (solo el más importante); sin él, esta pantalla muestra el de saldo negativo.
-export default function InicioSimple({ saldo, notaSaldo = '', gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null, falloSaldo = false, onReintentar, mas = true, conAviso = true, gmailConectado = true, consejos }) {
+export default function InicioSimple({ saldo, notaSaldo = '', gastosSemana, recientes, siguiente, fmt, iconoDe, cuadra = true, enCamino = false, cuentas = [], reporte = null, porDia = null, falloSaldo = false, onReintentar, mas: masPedido = true, conAviso = true, gmailConectado = true, consejos }) {
+  // En iPad horizontal y PC la segunda columna tiene sitio de sobra: no hace falta «Ver más» para verla
+  const ancho = useModoPantalla() === 'lateral'
+  const mas = masPedido || ancho
   const nuevo = recientes.length === 0
   const hayGuia = enCamino || !!siguiente
   return (

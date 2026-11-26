@@ -403,8 +403,7 @@ export default function Perfil() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium" id="etq-modo-automatico">Modo automático</p>
             <p className="text-sm text-ink-soft mt-0.5">
-              La app resuelve sola lo seguro (correos de tu banco, movimientos que reconoce, diferencias de centavos) y te dice qué hizo,
-              con «Deshacer». Lo dudoso te lo pregunta. Apágalo si prefieres aprobar todo tú.
+              La app resuelve sola lo seguro y te dice qué hizo, con «Deshacer». Lo dudoso te lo pregunta.
             </p>
           </div>
           <button
