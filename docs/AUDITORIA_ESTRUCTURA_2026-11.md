@@ -65,3 +65,27 @@ abren: candidatas a revisar son Ahorcado/juego, Costos, Enseñar categorías y I
 - **Cierre**: barra de avance «N de 3 revisiones listas» con Cuadri que se anima (`avanceCierre` en `lib/cierreAsistente.js`).
 - **Agregar**: muestra el nombre de la cuenta elegida y las tarjetas de cuenta son compactas.
 - Pendiente: Wallet del iPhone (necesita la captura de la notificación de Nu al pagar con Wallet).
+
+## Cuarta tanda: revisión de UI y diseño (2026-11-25/26)
+Revisión con capturas reales (390, 820, 1180 y 1440 px; temas claro, Noche y Grafito) y datos de la demo. Repetirla: ver
+`docs/AUDITORIA_VISUAL.md` (API demo en el puerto 8001, `verificar-ancho.mjs` con `PW_REAL=1`).
+- **Letra**: mínimo 12 px; texto de apoyo (`.t-apoyo`, campos, `text-[11px]`, `text-xs`) a 13 px. Revisado en 104 capturas sin desbordes.
+- **Cuadri en la esquina** (`CuadriEsquina`, `useSaludCuadri`): franja fija arriba a la derecha en todas las pantallas menos `/`, `/agregar`
+  y `/resumen`. Con «Mostrar a Cuadri» apagado no sale.
+- **Instalar la app**: «¿Qué celular usas?» (`lib/dispositivo.js`) y guía de instalar solo con los pasos de ese celular. `AvisoInstalar` en
+  Inicio: Android = botón Instalar (`beforeinstallprompt`); iPhone = abre el menú de compartir (Safari no permite instalar con un toque)
+  y detecta navegadores integrados (Instagram, WhatsApp). Los pasos siguen siendo dibujos; faltan capturas reales de iPhone y Android.
+- **Se unió** (menos pestañas y gráficas que repetían datos):
+  - Informes > Gastos: «Ingresos y gastos» + «Mi evolución» (interruptor Resumen/Evolución); «Historial» + «Evolución por categoría»
+    (Tabla/Gráfica); «Día a día» + calendario; «Resumen y cosas raras» (antes la pestaña Días) con el periodo elegido arriba.
+  - Revisar movimientos: traslados y repetidos en una sola pantalla.
+  - Cuentas: la pestaña Deudas pasó a ser la sección «Préstamos y deudas» al final (sin repetir las tarjetas).
+  - Categorías: «Reglas automáticas» es una sección (pestañas: Categorías, Por categorizar).
+  - Los paneles que la persona ya había personalizado se traducen en `normalizarPaneles`.
+- **Perfil «Esencial»**: Patrimonio e Impuestos no salen en la fila de pestañas de Informes (siguen por enlace y buscador).
+- **PC/iPad**: Informes > Gastos usa hasta 1180 px; Inicio muestra su segunda columna sin «Ver más» en pantallas anchas.
+- **Recorrido** con capturas reales (`public/recorrido/*.webp`, con respaldo al dibujo). Para rehacerlas: API demo con las fechas de los
+  movimientos corridas a hoy, 390 px, sesión sintética, recorte de 390×520.
+- **Contraste**: AA en 7 temas × 6 acentos (se oscureció el turquesa a `#0d6a63`).
+- Pendiente: capturas reales de iPhone/Android para la guía de instalar; solapamiento entre la pestaña «Resumen» (flujo neto, tasa de
+  ahorro) y el panel «Ingresos y gastos» de Gastos.
