@@ -2,7 +2,8 @@ import { CheckCircle2, Download } from 'lucide-react'
 import Hoja from './Hoja'
 import Icono from './Icono'
 import { Boton } from './ui'
-import { detectarDispositivo } from '../lib/primerUso'
+import { useDispositivo } from '../lib/dispositivo'
+import SelectorCelular from './SelectorCelular'
 import { instalar, useInstalable } from '../lib/instalarPwa'
 import {
   AndroidChrome, AndroidConfirmar, AndroidMenu, IosAnadir, IosCompartir, IosSafari, PantallaInicioConIcono,
@@ -58,10 +59,13 @@ function yaInstalada() {
 }
 
 /**
- * Hoja «Ponla en tu celular». Muestra solo los pasos del dispositivo detectado; si no se sabe
- * (computador), muestra los dos y avisa que se hace desde el celular.
+ * Hoja «Ponla en tu celular». Pregunta «¿Qué celular usas?» (iPhone o Android) y muestra SOLO los pasos de ese celular,
+ * nunca los dos juntos. Lo elegido se recuerda y lo usa toda la app (ver lib/dispositivo.js).
  */
-export default function GuiaInstalar({ onCerrar, dispositivo = detectarDispositivo() }) {
+export default function GuiaInstalar({ onCerrar, dispositivo: forzado }) {
+  const [detectado, elegir, yaPreguntado] = useDispositivo()
+  // Si la persona ya dijo qué celular usa, manda eso; si no, lo que detecta el navegador (o lo que pida quien nos llama)
+  const dispositivo = yaPreguntado ? detectado : forzado || detectado
   const instalable = useInstalable()
   const instalada = yaInstalada()
   return (
@@ -69,8 +73,12 @@ export default function GuiaInstalar({ onCerrar, dispositivo = detectarDispositi
       {({ cerrar }) => (
         <div>
           <p className="t-apoyo mb-4">
-            Así CuadraMe se abre con un toque, sin escribir la dirección, y puede mandarte avisos. No ocupa espacio y no cuesta nada.
+            CuadraMe no está en la App Store ni en Play Store: se instala desde el navegador de tu celular, en 4 toques. Queda con su ícono junto a tus demás apps, se abre con un toque y puede mandarte avisos. No ocupa espacio y no cuesta nada.
           </p>
+          <div className="mb-4">
+            <p className="t-cuerpo font-semibold mb-2">¿Qué celular usas?</p>
+            <SelectorCelular valor={dispositivo === 'otro' ? null : dispositivo} onElegir={elegir} />
+          </div>
           {instalada && (
             <p role="status" data-testid="ya-instalada" className="rounded-2xl bg-cuadra-soft p-3 mb-4 flex items-center gap-2 text-sm font-semibold">
               <Icono icono={CheckCircle2} tam="md" className="text-cuadra shrink-0" /> Ya la tienes instalada: estás usando la app.
@@ -92,19 +100,9 @@ export default function GuiaInstalar({ onCerrar, dispositivo = detectarDispositi
             </>
           )}
           {dispositivo === 'otro' && (
-            <div className="space-y-5">
-              <p className="t-cuerpo rounded-2xl bg-accent-soft p-3">
-                Estos pasos se hacen desde tu <b>celular</b>: abre CuadraMe allá con el mismo correo.
-              </p>
-              <div>
-                <h3 className="t-h2 mb-2">iPhone</h3>
-                <Lista pasos={PASOS_IOS} etiqueta="Pasos para iPhone" />
-              </div>
-              <div>
-                <h3 className="t-h2 mb-2">Android</h3>
-                <Lista pasos={PASOS_ANDROID} etiqueta="Pasos para Android" />
-              </div>
-            </div>
+            <p className="t-cuerpo rounded-2xl bg-accent-soft p-3" data-testid="elige-celular">
+              Elige arriba tu celular y te muestro solo los pasos que le sirven. Se hacen <b>desde el celular</b>: ábrelo allá con el mismo correo.
+            </p>
           )}
           <Boton variante="secundario" bloque className="mt-5" onClick={cerrar}>
             Entendido

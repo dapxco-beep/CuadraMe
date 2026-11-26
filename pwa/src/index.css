@@ -471,6 +471,8 @@ body[data-bloqueado] .hoja-fondo { visibility: hidden; }
   .pantalla-top {
     padding-top: max(3.5rem, calc(env(safe-area-inset-top) + 0.75rem));
   }
+  /* Con la franja de Cuadri arriba, la franja ya ocupa el hueco de la barra de estado: la pantalla empieza justo debajo */
+  .con-franja-cuadri .pantalla-top { padding-top: 0.25rem; }
 }
 
 /* Pulso corto para confirmar una acción (ej. saldo actualizado, check) */
@@ -894,3 +896,14 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [role='button']:fo
 
 /* Fila deslizable de pestañas: el borde derecho se desvanece para que se note que hay más (el relleno final deja la última pestaña limpia) */
 .borde-fade-der { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+
+/* Franja de Cuadri (esquina superior derecha de cada pantalla) */
+.cuadri-esquina {
+  display: flex; justify-content: flex-end; align-items: center; flex-shrink: 0;
+  min-height: 44px; /* siempre reserva el sitio de la ficha: nada salta cuando llega el dato */
+  padding: calc(env(safe-area-inset-top) + 0.5rem) 1rem 0 1rem;
+}
+.cuadri-esquina-ficha {
+  display: inline-flex; align-items: center; gap: 0.375rem; min-height: 44px; padding: 0 0.75rem 0 0.375rem;
+  border-radius: 9999px; border: 1px solid var(--color-line); background: var(--color-paper-raised); color: var(--color-ink);
+}
