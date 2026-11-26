@@ -182,4 +182,17 @@ describe('Guía de atajos', () => {
     montarCatalogo()
     expect(screen.getByTestId('aviso-atajos-actualizados')).toBeInTheDocument()
   })
+
+  it('explica antes de empezar (iOS 27, borrar atajos viejos, privacidad) y deja copiar el enlace para abrirlo en el iPhone', async () => {
+    montarCatalogo()
+    const antes = screen.getByTestId('antes-de-empezar')
+    for (const tema of ['iOS 27', 'bórralos primero', 'nunca sale del iPhone', 'CuadraMe Notificaciones']) {
+      expect(antes).toHaveTextContent(tema)
+    }
+    await elegir('Mi banco no avisa')
+    expect(screen.getByTestId('fase-instalar')).toHaveTextContent('se descarga el atajo')
+    await userEvent.click(screen.getByRole('button', { name: /Copia el enlace para abrirlo en tu iPhone/ }))
+    expect(await navigator.clipboard.readText()).toMatch(/\/descargas\/CuadraMe%20Registrar\.shortcut$/)
+    expect(await screen.findByRole('button', { name: 'Enlace copiado' })).toBeInTheDocument()
+  })
 })
