@@ -394,14 +394,20 @@ export default function Inicio() {
       {/* Una sola guía a la vez: mientras el camino de 3 pasos esté incompleto, es la única. Lo demás (siguiente paso,
           «¿Qué puedes hacer?», la lista de mejoras y el recorrido de 1 minuto) vive en Inicio solo cuando no hay camino, o en Perfil y Ayuda. */}
       <SugerenciaPais />
-      <AvisoInstalar className="mx-6 mt-3" />
+      {/* «Instalar» y «¿Cómo quieres usar CuadraMe?» no son lo primero que alguien viene a ver: en el modo simple van después del saldo y los accesos */}
+      {completo && <AvisoInstalar className="mx-6 mt-3" />}
       {!esperarSaldo && <AsistentePrimerUso variante="inicio" soloCamino camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />}
 
       {/* Modo simple: tres bloques y un «Ver más»; con «Mostrar todas las funciones», todo a la vista */}
       {!completo && (
         <>
-          {movimientos.length >= 3 && <InvitacionPerfil className="mx-6 mt-3" />}
           <InicioSimple
+            despuesDelSaldo={(
+              <>
+                <AvisoInstalar className="mx-6 mt-3" />
+                {movimientos.length >= 3 && <InvitacionPerfil className="mx-6 mt-3" />}
+              </>
+            )}
             saldo={gastarSaldo}
             notaSaldo={notaDisponible}
             gastosSemana={semana}

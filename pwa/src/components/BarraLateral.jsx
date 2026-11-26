@@ -86,15 +86,22 @@ const claseEnlace = ({ isActive }) =>
 function EnlaceLateral({ item, end }) {
   return (
     <NavLink to={item.to} end={end} className={claseEnlace} title={item.explica}>
-      <Icono icono={item.icon} tam="md" />
-      <span className="flex-1 min-w-0">
-        {item.label}
-        {item.explica && <span className="block text-[11px] font-normal leading-snug text-ink-soft">{item.explica}</span>}
-      </span>
-      {item.atajo && (
-        <kbd className="atajo-kbd" aria-hidden="true">
-          {item.atajo}
-        </kbd>
+      {({ isActive }) => (
+        <>
+          <Icono icono={item.icon} tam="md" />
+          <span className="flex-1 min-w-0">
+            {item.label}
+            {/* La explicación larga solo se ve en la sección donde estás (y como tooltip en las demás): con las 6 a la vista el menú era un muro de texto. Los lectores de pantalla la siguen leyendo. */}
+            {item.explica && (
+              <span className={isActive ? 'block text-[12px] font-normal leading-snug text-ink-soft' : 'sr-only'}>{item.explica}</span>
+            )}
+          </span>
+          {item.atajo && (
+            <kbd className="atajo-kbd" aria-hidden="true">
+              {item.atajo}
+            </kbd>
+          )}
+        </>
       )}
     </NavLink>
   )
