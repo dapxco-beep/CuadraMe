@@ -84,7 +84,7 @@ function Traer() {
     { x: 14, y: 14, t: 'Correo', s: 'Sin escribir nada', c: 'M18 38 h26 v-12 l-13 8 l-13 -8 z' },
     { x: 166, y: 14, t: 'Extracto PDF', s: 'Lo más exacto', c: '' },
     { x: 14, y: 98, t: 'Excel', s: 'Historial viejo', c: '' },
-    { x: 166, y: 98, t: 'Atajo Apple Pay', s: 'Solo iPhone · al instante', c: '' },
+    { x: 166, y: 98, t: 'Apple Pay', s: 'Solo iPhone · al instante', c: '' },
   ]
   return (
     <Marco>
