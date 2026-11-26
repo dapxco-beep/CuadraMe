@@ -83,7 +83,7 @@ const claseEnlace = ({ isActive }) =>
     isActive ? 'bg-accent-soft text-accent font-semibold' : 'text-ink-soft font-medium'
   }`
 
-function EnlaceLateral({ item, end }) {
+export function EnlaceLateral({ item, end }) {
   return (
     <NavLink to={item.to} end={end} className={claseEnlace} title={item.explica}>
       {({ isActive }) => (
