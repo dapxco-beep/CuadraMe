@@ -1,4 +1,5 @@
 import { useEmbebido } from '../lib/EmbebidoContext'
+import { EncabezadoPantalla } from '../lib/AccionesPantallaContext'
 import { aFecha } from '../lib/fechaLocal'
 import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
@@ -74,7 +75,7 @@ export default function Inversiones() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
-      <header className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
+      <EncabezadoPantalla embebido={embebido} className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
         {!embebido && <h1 className="text-xl font-semibold">Inversiones</h1>}
         <div className="flex gap-2">
           <button onClick={() => setHoja({ tipo: 'glosario' })} className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="¿Qué significan estos términos?">
@@ -84,7 +85,7 @@ export default function Inversiones() {
             <Plus size={20} />
           </button>
         </div>
-      </header>
+      </EncabezadoPantalla>
       <p className="mx-5 text-xs text-ink-soft">{AVISO_EDUCATIVO}</p>
 
       {!datos && !error && <div className="mx-5 mt-3"><EsqueletoTarjeta alto={128} etiqueta="Cargando tus inversiones" /></div>}

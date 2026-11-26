@@ -1,4 +1,5 @@
 import { useEmbebido } from '../lib/EmbebidoContext'
+import { EncabezadoPantalla } from '../lib/AccionesPantallaContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
@@ -137,7 +138,7 @@ export default function Presupuesto() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
-      <header className={embebido ? 'px-6 pt-3 flex items-center justify-end gap-2' : 'px-6 pantalla-top pb-2 flex items-center justify-between'}>
+      <EncabezadoPantalla embebido={embebido} className={embebido ? 'px-6 pt-3 flex items-center justify-end gap-2' : 'px-6 pantalla-top pb-2 flex items-center justify-between'}>
         {!embebido && <h1 className="text-2xl font-bold">Presupuesto</h1>}
         <div className="flex items-center gap-2">
           {presupuestos.length > 1 && (
@@ -156,7 +157,7 @@ export default function Presupuesto() {
             <Plus size={20} />
           </button>
         </div>
-      </header>
+      </EncabezadoPantalla>
 
       {/* ≥1024 px: resumen/proyección a la izquierda, categorías a la derecha */}
       <div className="dos-col dos-col-6-5">
@@ -222,13 +223,13 @@ export default function Presupuesto() {
               </div>
 
               {/* Categorías, las más cargadas primero */}
-              <div className="mt-3 space-y-3">
+              <div className="mt-3 space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 md:items-start lg:block lg:space-y-3">
                 {principales.map(tarjeta)}
               </div>
               {otros.length > 0 && (
                 <div className="-mx-5">
                   <VerMas titulo={`los otros ${otros.length} presupuestos`}>
-                    <div className="mx-5 mt-3 space-y-3">{otros.map((p, i) => tarjeta(p, i))}</div>
+                    <div className="mx-5 mt-3 space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 md:items-start lg:block lg:space-y-3">{otros.map((p, i) => tarjeta(p, i))}</div>
                   </VerMas>
                 </div>
               )}

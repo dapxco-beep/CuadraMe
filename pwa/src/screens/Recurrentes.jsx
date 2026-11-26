@@ -1,4 +1,5 @@
 import { useEmbebido } from '../lib/EmbebidoContext'
+import { EncabezadoPantalla } from '../lib/AccionesPantallaContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
@@ -102,7 +103,7 @@ export default function Recurrentes() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
+      <EncabezadoPantalla embebido={embebido} className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
         <div className="flex items-center gap-3">
           {!embebido && (<><button
             onClick={volver}
@@ -118,7 +119,7 @@ export default function Recurrentes() {
          aria-label="Agregar un pago fijo">
           <Plus size={20} />
         </button>
-      </header>
+      </EncabezadoPantalla>
 
       <p className="mx-5 mt-1 text-xs text-ink-soft">Lo que pagas o recibes cada mes: arriendo, suscripciones, nómina.</p>
 

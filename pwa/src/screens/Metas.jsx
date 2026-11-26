@@ -1,4 +1,5 @@
 import { useEmbebido } from '../lib/EmbebidoContext'
+import { EncabezadoPantalla } from '../lib/AccionesPantallaContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
@@ -69,7 +70,7 @@ export default function Metas() {
 
   return (
     <div ref={raiz} className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
+      <EncabezadoPantalla embebido={embebido} className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
         <div className="flex items-center gap-3">
           {!embebido && (<><button
             onClick={volver}
@@ -93,7 +94,7 @@ export default function Metas() {
             <Plus size={20} />
           </button>
         </div>
-      </header>
+      </EncabezadoPantalla>
 
       {/* Cuadri celebra una meta cumplida (una sola vez por meta, breve y descartable) */}
       {!cargando && (() => {
@@ -117,7 +118,7 @@ export default function Metas() {
           <button onClick={() => setMostrarForm(true)} className="btn btn-primario btn-sm mt-4">Crear mi primera meta</button>
         </EstadoVacio>
       ) : (
-        <div className="mx-5 mt-4 space-y-3 max-w-2xl md:mx-auto">
+        <div className="mx-5 mt-4 space-y-3 max-w-2xl md:mx-auto md:max-w-5xl md:space-y-0 md:grid md:grid-cols-2 md:gap-4 md:items-start">
           {metas.map((m, i) => (
             <TarjetaMeta
               key={m.id}

@@ -1,4 +1,5 @@
 import { useEmbebido } from '../lib/EmbebidoContext'
+import { EncabezadoPantalla } from '../lib/AccionesPantallaContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -66,7 +67,7 @@ export default function Deudas({ enCuentas = false } = {}) {
           </button>
         </header>
       ) : (
-      <header className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
+      <EncabezadoPantalla embebido={embebido} className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
         <div className="flex items-center gap-3">
           {!embebido && (<><button
             onClick={volver}
@@ -82,7 +83,7 @@ export default function Deudas({ enCuentas = false } = {}) {
          aria-label="Nueva deuda">
           <Plus size={20} />
         </button>
-      </header>
+      </EncabezadoPantalla>
       )}
 
       {(deudas.length > 0 || (!enCuentas && tarjetasConDeuda.length > 0)) && (
