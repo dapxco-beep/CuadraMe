@@ -23,7 +23,8 @@ const urgenciaColor = {
   normal: 'text-ink-soft',
 }
 
-export default function Deudas() {
+// enCuentas: va como sección al final de «Tus cuentas» (sin repetir las tarjetas, que esa pantalla ya muestra).
+export default function Deudas({ enCuentas = false } = {}) {
   const embebido = useEmbebido()
   const volver = useVolver('/perfil')
   const { recargar: recargarCuentas, cuentas: todasLasCuentas = [] } = useCuentas()
@@ -57,6 +58,14 @@ export default function Deudas() {
 
   return (
     <div ref={raiz} className="flex-1 overflow-y-auto pb-6 screen-enter">
+      {enCuentas ? (
+        <header className="px-5 flex items-center justify-between gap-2">
+          <h2 className="t-kicker">Préstamos y deudas</h2>
+          <button type="button" onClick={() => setMostrarForm(true)} className="btn btn-suave btn-sm">
+            <Plus size={16} aria-hidden="true" /> Agregar deuda
+          </button>
+        </header>
+      ) : (
       <header className={embebido ? 'px-5 pt-3 flex items-center justify-end gap-2' : 'px-5 pantalla-top pb-2 flex items-center justify-between'}>
         <div className="flex items-center gap-3">
           {!embebido && (<><button
@@ -74,15 +83,16 @@ export default function Deudas() {
           <Plus size={20} />
         </button>
       </header>
+      )}
 
-      {(deudas.length > 0 || tarjetasConDeuda.length > 0) && (
+      {(deudas.length > 0 || (!enCuentas && tarjetasConDeuda.length > 0)) && (
         <div className="mx-5 mt-3 rounded-2xl bg-danger-soft p-4">
           <p className="text-xs text-ink-soft mb-0.5">Lo que debes en total{tarjetasConDeuda.length > 0 ? ' (préstamos y tarjetas)' : ''}</p>
           <p className="text-2xl font-bold text-danger" data-testid="deuda-total">{formatCOP(totalDeuda + deudaTarjetas)}</p>
         </div>
       )}
 
-      {tarjetasConDeuda.length > 0 && (
+      {!enCuentas && tarjetasConDeuda.length > 0 && (
         <section className="mx-5 mt-3" aria-label="Tus tarjetas de crédito" data-testid="deudas-tarjetas">
           <p className="text-xs font-semibold text-ink-soft mb-1.5">Tus tarjetas de crédito</p>
           {tarjetasConDeuda.map((c) => (
@@ -103,6 +113,11 @@ export default function Deudas() {
             Reintentar
           </button>
         </div>
+      ) : deudas.length === 0 && enCuentas ? (
+        <section className="mx-5 mt-2 tarjeta" data-testid="sin-prestamos">
+          <p className="t-cuerpo font-semibold">No tienes préstamos registrados</p>
+          <p className="t-apoyo mt-0.5">Si debes un crédito o un préstamo, anótalo y te ayudo a planear cómo pagarlo.</p>
+        </section>
       ) : deudas.length === 0 ? (
         <EstadoVacio
           icono={Landmark}
@@ -151,11 +166,11 @@ export default function Deudas() {
           <VerMas titulo="cómo pagar más rápido">
             <SimuladorDeudas />
           </VerMas>
-          <EnlacesRelacionados enlaces={[
+          {!enCuentas && <EnlacesRelacionados enlaces={[
             { a: '/recurrentes', texto: 'Pagos fijos', apoyo: 'Anota aquí las cuotas que pagas cada mes' },
             { a: '/cuentas', texto: 'Mis cuentas', apoyo: 'Desde dónde pagas' },
             { a: '/presupuesto', texto: 'Mi presupuesto' },
-          ]} />
+          ]} />}
         </>
       )}
 

@@ -17,7 +17,7 @@ import {
   AndroidAccesoNotificaciones, AndroidDescarga, AndroidPegarClave, AndroidPermitirInstalar, AndroidProbar, FlujoAutomatico,
 } from '../components/IlustracionesGuia'
 import { useClaveAtajo } from '../lib/useClaveAtajo'
-import { detectarDispositivo } from '../lib/primerUso'
+import { useDispositivo } from '../lib/dispositivo'
 import {
   explicarErrorPrueba, fechaLegible, guardarPaso, leerPaso, PASOS_TOTAL, SI_NO_LLEGA,
 } from '../lib/atajoPrueba'
@@ -58,7 +58,7 @@ export default function ConectarDispositivo() {
   const embebido = useEmbebido()
   const volver = useVolver('/perfil')
   const claveAtajo = useClaveAtajo()
-  const dispositivo = detectarDispositivo()
+  const [dispositivo, elegirCelular] = useDispositivo()
   const [plataforma, setPlataforma] = useState(dispositivo === 'android' ? 'android' : 'ios') // iPhone usa Atajos; Android usa la app Captura
   const [paso, setPasoEstado] = useState(() => leerPaso()) // -1 intro, 0..2 pasos, 3 probar
   const [ultimoUso, setUltimoUso] = useState(null)
@@ -111,7 +111,7 @@ export default function ConectarDispositivo() {
       )}
 
       {(plataforma === 'android' || paso < 0 || yaFunciona) && (
-        <OtroCelular valor={plataforma} onCambio={setPlataforma} />
+        <OtroCelular valor={plataforma} onCambio={(v) => { setPlataforma(v); elegirCelular(v) }} />
       )}
 
       {plataforma === 'android' ? (

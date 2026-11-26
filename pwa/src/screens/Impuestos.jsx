@@ -5,6 +5,7 @@ import { Boton } from '../components/ui'
 import { useVolver } from '../lib/useVolver'
 import { ArrowLeft, Download, FileText, Info, Printer } from 'lucide-react'
 import { api } from '../lib/api'
+import { usePeriodoInforme, valorDeAnio } from '../lib/periodoInforme'
 import { formatCOPFijo as formatCOP } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
 import TarjetaRenta from '../components/TarjetaRenta'
@@ -29,7 +30,11 @@ export default function Impuestos() {
   const soloInformativo = !tiene('renta_dian')
   const { avisar } = useDialogos()
   const anioActual = new Date().getFullYear()
-  const [anio, setAnio] = useState(anioActual)
+  // Dentro de Informes el año es el del final del periodo global.
+  const periodo = usePeriodoInforme()
+  const [anioLocal, setAnioLocal] = useState(anioActual)
+  const anio = periodo ? Number(periodo.valor.hasta.slice(0, 4)) : anioLocal
+  const setAnio = (a) => (periodo ? periodo.setValor(valorDeAnio(Number(a))) : setAnioLocal(Number(a)))
   const [datos, setDatos] = useState(null)
   const [error, setError] = useState('')
   const [abierto, setAbierto] = useState(null) // movimiento_id con el editor de soporte abierto
@@ -116,7 +121,7 @@ export default function Impuestos() {
           onChange={(e) => setAnio(Number(e.target.value))}
           className="rounded-xl border border-line bg-paper-raised px-3 py-2 text-sm"
         >
-          {[anioActual, anioActual - 1, anioActual - 2].map((a) => (
+          {[...new Set([anioActual, anioActual - 1, anioActual - 2, anio])].sort((a, b) => b - a).map((a) => (
             <option key={a} value={a}>{a}</option>
           ))}
         </select>
@@ -234,7 +239,7 @@ export default function Impuestos() {
                   </div>
                   {/* La ayuda de cada categoría es larga y se repite: plegada para no empujar los gastos. */}
                   <details className="text-[11px] text-ink-soft mb-2">
-                    <summary aria-label={`¿Qué entra en ${cat.etiqueta}?`} className="min-h-11 flex items-center cursor-pointer font-medium text-ink">¿Qué entra aquí?</summary>
+                    <summary aria-label={`¿Qué entra aquí? (${cat.etiqueta})`} className="min-h-11 flex items-center cursor-pointer font-medium text-ink">¿Qué entra aquí?</summary>
                     <p>{cat.ayuda}</p>
                   </details>
                   <div className="rounded-2xl bg-paper-raised border border-line divide-y divide-line overflow-hidden">

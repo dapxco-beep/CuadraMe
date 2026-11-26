@@ -3,9 +3,9 @@ import { ArrowDown, ArrowUp, Eye, EyeOff, SlidersHorizontal } from 'lucide-react
 import { PANELES } from '../../lib/panelesInforme'
 
 /** «Personalizar»: elegir qué paneles se ven en Informes y en qué orden. Se guarda solo en este dispositivo. */
-export default function PersonalizarPaneles({ paneles, className = '' }) {
+export default function PersonalizarPaneles({ paneles, lista = PANELES, className = '' }) {
   const [abierto, setAbierto] = useState(false)
-  const nombre = (id) => PANELES.find((p) => p.id === id)?.nombre || id
+  const nombre = (id) => lista.find((p) => p.id === id)?.nombre || id
   return (
     <section className={className}>
       <button

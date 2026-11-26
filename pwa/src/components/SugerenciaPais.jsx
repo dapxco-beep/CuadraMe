@@ -29,7 +29,7 @@ export default function SugerenciaPais() {
         Así te mostramos tu moneda ({c.moneda}), tus bancos y los impuestos que aplican allá.
       </p>
       <div className="flex gap-2 mt-2.5">
-        <button type="button" onClick={confirmar} className="rounded-xl bg-accent text-white text-sm font-semibold px-4 min-h-[44px]">
+        <button type="button" onClick={confirmar} className="rounded-xl bg-accent text-paper-raised text-sm font-semibold px-4 min-h-[44px]">
           Sí, estoy en {c.nombre}
         </button>
         <button type="button" onClick={() => setOculto(true)} className="text-sm font-semibold text-accent px-3 min-h-[44px]">

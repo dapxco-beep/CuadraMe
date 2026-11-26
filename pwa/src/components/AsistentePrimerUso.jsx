@@ -6,11 +6,13 @@ import { useAuth } from '../lib/AuthContext'
 import { activarPush, estadoPermiso, pushSoportado } from '../lib/push'
 import { mensajeDeError } from '../lib/mensajes'
 import {
-  armarCamino, armarPasos, detectarDispositivo, estaInstalada, guardarEstado, leerEstado, META_CAMINO, resumenProgreso,
+  armarCamino, armarPasos, estaInstalada, guardarEstado, leerEstado, META_CAMINO, resumenProgreso,
   siguientePaso,
 } from '../lib/primerUso'
 import BarraProgreso from './BarraProgreso'
 import GuiaInstalar from './GuiaInstalar'
+import SelectorCelular from './SelectorCelular'
+import { useDispositivo } from '../lib/dispositivo'
 import Icono from './Icono'
 import CelebracionCuadri from '../brand/CelebracionCuadri'
 import { FRASES } from '../lib/cuadri'
@@ -28,7 +30,7 @@ const seguro = (f) => Promise.resolve().then(f).catch(() => null)
 function usePrimerUso() {
   const { usuario } = useAuth() || {}
   const uid = usuario?.id || 'anon'
-  const dispositivo = useMemo(() => detectarDispositivo(), [])
+  const [dispositivo, elegirCelular, yaPreguntado] = useDispositivo()
   const [datos, setDatos] = useState(null)
   const [memoria, setMemoria] = useState(() => leerEstado(uid))
 
@@ -73,6 +75,8 @@ function usePrimerUso() {
   return {
     cargado: !!datos,
     dispositivo,
+    elegirCelular,
+    yaPreguntado,
     pasos,
     progreso: resumenProgreso(pasos),
     oculto: memoria.oculto,
@@ -306,6 +310,14 @@ export default function AsistentePrimerUso({ variante = 'inicio', camino = null,
         </p>
       )}
 
+      {!p.yaPreguntado && (
+        <div className="mt-3 rounded-2xl bg-accent-soft p-3" data-testid="pregunta-celular">
+          <p className="t-cuerpo font-semibold">¿Qué celular usas?</p>
+          <p className="t-apoyo mt-0.5 mb-2">Así te muestro solo los pasos de tu celular.</p>
+          <SelectorCelular valor={p.dispositivo === 'otro' ? null : p.dispositivo} onElegir={p.elegirCelular} conNinguno />
+        </div>
+      )}
+
       <ul className="divide-y divide-line mt-1" aria-label="Lista de pasos">
         {visibles.map((paso) => (
           <FilaPaso
@@ -344,7 +356,7 @@ export default function AsistentePrimerUso({ variante = 'inicio', camino = null,
         </div>
       )}
 
-      {guia && <GuiaInstalar dispositivo={p.dispositivo} onCerrar={() => setGuia(false)} />}
+      {guia && <GuiaInstalar onCerrar={() => setGuia(false)} />}
     </section>
   )
 }

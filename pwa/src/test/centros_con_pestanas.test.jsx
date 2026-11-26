@@ -31,15 +31,16 @@ const montar = (ruta) =>
     </MemoryRouter>
   )
 
-describe('Categorías: tres pantallas en una', () => {
-  it('abre en «Categorías» con sus tres pestañas y cambia al tocar', async () => {
+describe('Categorías: reglas dentro de Categorías', () => {
+  it('abre en «Categorías» con sus reglas debajo y dos pestañas', async () => {
     const user = userEvent.setup()
     montar('/categorias')
     expect(await screen.findByText(/PANTALLA-CATEGORIAS/)).toBeInTheDocument()
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Categorías', 'Reglas', 'Por categorizar'])
-    await user.click(screen.getByRole('tab', { name: 'Reglas' }))
     expect(await screen.findByText(/PANTALLA-REGLAS/)).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Reglas' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('heading', { name: 'Reglas automáticas', level: 2 })).toBeInTheDocument()
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Categorías', 'Por categorizar'])
+    await user.click(screen.getByRole('tab', { name: 'Por categorizar' }))
+    expect(await screen.findByText(/PANTALLA-PENDIENTES/)).toBeInTheDocument()
   })
   it.each([['/reglas-categoria', 'REGLAS'], ['/categorizar', 'PENDIENTES']])('%s lleva a su pestaña', async (ruta, marca) => {
     montar(ruta)
@@ -48,13 +49,12 @@ describe('Categorías: tres pantallas en una', () => {
 })
 
 describe('Revisar movimientos: traslados y repetidos en una', () => {
-  it('abre en «Entre mis cuentas» y cambia a «Repetidos»', async () => {
-    const user = userEvent.setup()
+  it('muestra las dos revisiones en la misma pantalla, sin pestañas', async () => {
     montar('/revisar')
     expect(await screen.findByText(/PANTALLA-TRASLADOS/)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Revisar movimientos', level: 1 })).toBeInTheDocument()
-    await user.click(screen.getByRole('tab', { name: 'Repetidos' }))
     expect(await screen.findByText(/PANTALLA-REPETIDOS/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Revisar movimientos', level: 1 })).toBeInTheDocument()
+    expect(screen.queryByRole('tab')).toBeNull()
   })
   it.each([['/traslados', 'TRASLADOS'], ['/buscar-duplicados', 'REPETIDOS']])('%s lleva a su pestaña y conserva la consulta', async (ruta, marca) => {
     montar(`${ruta}?desde=2026-10-01`)

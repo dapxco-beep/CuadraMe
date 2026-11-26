@@ -81,7 +81,44 @@ export const MARCAS_FINANCIERAS_CO = {
   'Dale!': { mono: 'D!', bg: '#FFCC00', fg: '#1A1A1A' },
 }
 
+const aRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+const luminancia = ([r, g, b]) => {
+  const f = (c) => { const x = c / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4 }
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+}
+/** Contraste WCAG entre dos colores #rrggbb. */
+export function contraste(a, b) {
+  const [x, y] = [luminancia(aRgb(a)), luminancia(aRgb(b))].sort((p, q) => q - p)
+  return (x + 0.05) / (y + 0.05)
+}
+const aHex = (rgb) => '#' + rgb.map((c) => Math.round(c).toString(16).padStart(2, '0')).join('')
+const MIN_CONTRASTE = 5.5
+
+/**
+ * Los colores de marca (blanco sobre naranja, rojo o verde) a veces no llegan a un contraste legible para texto pequeño.
+ * Si el texto es más claro que el fondo se oscurece el fondo; si es más oscuro, se aclara; solo lo necesario.
+ */
+export function marcaLegible(marca) {
+  let bg = marca.bg
+  if (contraste(marca.fg, bg) >= MIN_CONTRASTE) return marca
+  const haciaNegro = luminancia(aRgb(marca.fg)) > luminancia(aRgb(bg))
+  const destino = haciaNegro ? [0, 0, 0] : [255, 255, 255]
+  for (let paso = 1; paso <= 20; paso++) {
+    const t = paso * 0.04
+    bg = aHex(aRgb(marca.bg).map((c, i) => c + (destino[i] - c) * t))
+    if (contraste(marca.fg, bg) >= MIN_CONTRASTE) break
+  }
+  return { ...marca, bg }
+}
+
+/** ¿El texto de la marca es más claro que su fondo? (decide cómo se tiñe la insignia del monograma) */
+export const textoMasClaroQueFondo = (marca) => luminancia(aRgb(marca.fg)) > luminancia(aRgb(marca.bg))
+
 export function marcaDeEntidad(nombreCuenta) {
+  return marcaLegible(marcaCruda(nombreCuenta))
+}
+
+function marcaCruda(nombreCuenta) {
   if (!nombreCuenta) return MARCA_DEFAULT
   const nombreLower = nombreCuenta.toLowerCase()
   const match = Object.keys(MARCAS_FINANCIERAS_CO).find((entidad) =>

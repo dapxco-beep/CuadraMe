@@ -8,9 +8,9 @@ const Marca = (nombre) => function Pantalla() {
   const { search } = useLocation()
   return <div>{`PANTALLA-${nombre}|${search}`}</div>
 }
+vi.mock('../screens/Panorama', () => ({ default: Marca('RESUMEN') }))
 vi.mock('../screens/Informe', () => ({ default: Marca('GASTOS') }))
 vi.mock('../screens/Wrapped', () => ({ default: Marca('MIMES') }))
-vi.mock('../screens/Insights', () => ({ default: Marca('DIAS') }))
 vi.mock('../screens/Patrimonio', () => ({ default: Marca('PATRIMONIO') }))
 vi.mock('../screens/CierreMes', () => ({ default: Marca('CIERRE') }))
 vi.mock('../screens/Impuestos', () => ({ default: Marca('IMPUESTOS') }))
@@ -25,7 +25,7 @@ const montar = (ruta) =>
         <Route path="/informes" element={<Informes />} />
         <Route path="/informe" element={<AInformes tab="gastos" />} />
         <Route path="/resumen" element={<AInformes tab="resumen" />} />
-        <Route path="/insights" element={<AInformes tab="dias" />} />
+        <Route path="/insights" element={<AInformes tab="gastos" hash="cosas" />} />
         <Route path="/patrimonio" element={<AInformes tab="patrimonio" />} />
         <Route path="/cierre-mes" element={<AInformes tab="cierre" />} />
         <Route path="/mi-cuenta-cuadra" element={<AInformes tab="cierre" />} />
@@ -34,28 +34,40 @@ const montar = (ruta) =>
   )
 
 describe('Informes: una pantalla con pestañas', () => {
-  it('sin pestaña elegida abre «Gastos» y muestra las seis pestañas', async () => {
+  it('sin pestaña elegida abre «Resumen» y con el perfil Esencial muestra las pestañas básicas', async () => {
     montar('/informes')
-    expect(await screen.findByText(/PANTALLA-GASTOS/)).toBeInTheDocument()
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Gastos', 'Mi mes', 'Días', 'Patrimonio', 'Cierre', 'Impuestos'])
-    expect(screen.getByRole('tab', { name: 'Gastos' })).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByText(/PANTALLA-RESUMEN/)).toBeInTheDocument()
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Resumen', 'Gastos', 'Mi mes', 'Cierre'])
+    expect(screen.getByRole('tab', { name: 'Resumen' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('heading', { name: 'Informes', level: 1 })).toBeInTheDocument()
+  })
+
+  it('con «Todo» (o un perfil avanzado) salen también Patrimonio e Impuestos; con Esencial, un enlace directo los muestra', async () => {
+    localStorage.setItem('cuadrame:perfil-uso:anon', 'todo')
+    const { unmount } = montar('/informes')
+    await screen.findByText(/PANTALLA-RESUMEN/)
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Resumen', 'Gastos', 'Mi mes', 'Patrimonio', 'Cierre', 'Impuestos'])
+    unmount()
+    localStorage.removeItem('cuadrame:perfil-uso:anon')
+    montar('/informes?tab=impuestos')
+    expect(await screen.findByText(/PANTALLA-IMPUESTOS/)).toBeInTheDocument()
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Resumen', 'Gastos', 'Mi mes', 'Cierre', 'Impuestos'])
   })
 
   it('tocar una pestaña cambia el contenido y la marca como activa', async () => {
     const user = userEvent.setup()
     montar('/informes')
-    await screen.findByText(/PANTALLA-GASTOS/)
+    await screen.findByText(/PANTALLA-RESUMEN/)
     await user.click(screen.getByRole('tab', { name: 'Cierre' }))
     expect(await screen.findByText(/PANTALLA-CIERRE/)).toBeInTheDocument()
-    expect(screen.queryByText(/PANTALLA-GASTOS/)).toBeNull()
+    expect(screen.queryByText(/PANTALLA-RESUMEN/)).toBeNull()
     expect(screen.getByRole('tab', { name: 'Cierre' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tab', { name: 'Gastos' })).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('tab', { name: 'Resumen' })).toHaveAttribute('aria-selected', 'false')
   })
 
-  it('una pestaña desconocida cae en «Gastos»', async () => {
+  it('una pestaña desconocida cae en «Resumen»', async () => {
     montar('/informes?tab=inventada')
-    expect(await screen.findByText(/PANTALLA-GASTOS/)).toBeInTheDocument()
+    expect(await screen.findByText(/PANTALLA-RESUMEN/)).toBeInTheDocument()
   })
 })
 
@@ -63,7 +75,7 @@ describe('Los enlaces viejos llevan a su pestaña y conservan la consulta', () =
   it.each([
     ['/informe', 'GASTOS'],
     ['/resumen', 'MIMES'],
-    ['/insights', 'DIAS'],
+    ['/insights', 'GASTOS'],
     ['/patrimonio', 'PATRIMONIO'],
     ['/cierre-mes', 'CIERRE'],
     ['/mi-cuenta-cuadra', 'CIERRE'],

@@ -6,7 +6,6 @@ import ATab from '../components/ATab'
 import AInformes from '../components/AInformes'
 import { PESTANAS_PLAN } from '../screens/PresupuestoPlan'
 import { PESTANAS_AHORRO } from '../screens/MetasAhorro'
-import { PESTANAS_CUENTAS } from '../screens/MisCuentas'
 import { PESTANAS_AYUDA } from '../screens/AyudaAprende'
 import { PESTANAS } from '../screens/Informes'
 import PantallaConPestanas from '../components/PantallaConPestanas'
@@ -54,9 +53,9 @@ describe('Pestañas de las pantallas unidas', () => {
   it('cada una trae sus pestañas', () => {
     expect(PESTANAS_PLAN.map((p) => p.id)).toEqual(['presupuesto', 'fijos'])
     expect(PESTANAS_AHORRO.map((p) => p.id)).toEqual(['metas', 'inversiones'])
-    expect(PESTANAS_CUENTAS.map((p) => p.id)).toEqual(['cuentas', 'deudas'])
     expect(PESTANAS_AYUDA.map((p) => p.id)).toEqual(['ayuda', 'aprende'])
     expect(PESTANAS.map((p) => p.id)).toContain('impuestos')
+    expect(PESTANAS.map((p) => p.id)).not.toContain('dias') // Días vive ahora dentro de Gastos
   })
 })
 

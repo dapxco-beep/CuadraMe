@@ -535,6 +535,7 @@ SIN_ID_DE_RECURSO = {
     # hogares: crear es solo del propio usuario; los tokens de invitación son la llave (aleatoria, de un solo uso, con límite de intentos)
     "/hogares", "/hogares/invitaciones/{token}", "/hogares/invitaciones/{token}/aceptar",
     # escrituras que solo afectan al propio usuario (no reciben ids ajenos)
+    "/formas-asunto/pantalla",  # medición de uso: no recibe ids de recursos; solo cuenta (de forma anónima) si la propia persona aceptó las estadísticas; sin sesión da 401 (test_sin_sesion_todo_endpoint_de_usuario_da_401; comportamiento en test_uso_pantallas.py)
     "/salud/crear-tarjeta",  # crea/lee solo filas PROPIAS por nombre de banco (probado en test_salud_autocuracion)
     "/ahorcado/nueva-partida", "/asistente/mensaje", "/categorias/orden", "/cierre-mes/preferencias",
     "/consentimientos", "/correos/gmail/desconectar", "/correos/gmail/etiqueta", "/correos/gmail/lectura", "/correos/sincronizar",
@@ -579,6 +580,7 @@ SIN_SESION = {
     "/push/cron/recordar-registro", "/push/cron/recordar-recurrentes", "/resumen/cron/semanal",
     "/colectas/publico/{token}", "/colectas/publico/{token}/aportes/{aporte_id}/avisar",  # enlace de solo lectura: el token largo y aleatorio es la llave (probado en test_colectas.py)
     "/formas-asunto/cron/mas-frecuentes",  # lista interna anónima: exige X-Cron-Secret
+    "/formas-asunto/cron/pantallas",  # conteo anónimo de pantallas (sin usuario): exige X-Cron-Secret (test_crons_exigen_secreto + test_uso_pantallas.py)
 }
 
 

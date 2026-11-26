@@ -10,6 +10,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, PieChart, Share2 } from 'lucide-r
 import { nombreMesLargo } from '../lib/informe'
 import { formatPorcentaje } from '../lib/format'
 import { api } from '../lib/api'
+import { esUnMes, mesDeValor, usePeriodoInforme, valorDeMes } from '../lib/periodoInforme'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useDialogos } from '../lib/DialogosContext'
 import { Isotipo } from '../brand/Marca'
@@ -25,7 +26,7 @@ function DetalleCategorias({ datos, fmt, onVerInforme }) {
   if (lista.length === 0) return null
   const mayor = Math.max(...lista.map((c) => c.monto), 1)
   return (
-    <section className="mx-6 mb-6 card-marca bg-paper-raised border border-line p-4" aria-label="Gasto por categoría">
+    <section className="mx-5 mb-6 card-marca bg-paper-raised border border-line p-4" aria-label="Gasto por categoría">
       <h2 className="text-[15px] font-bold">En qué gastaste en {nombreMesLargo(datos.mes)}</h2>
       <p className="text-xs text-ink-soft mt-0.5">Total: {fmt(datos.gasto_total)}</p>
       <ul className="mt-3 space-y-3">
@@ -74,7 +75,11 @@ export default function Wrapped() {
   const volver = useVolver('/')
   const { fmt } = useBloqueo()
   const { avisar } = useDialogos()
-  const [mes, setMes] = useState(null) // se decide al saber qué meses tienen datos
+  // Dentro de Informes el mes es el último del periodo global; suelta, se decide al saber qué meses tienen datos.
+  const periodo = usePeriodoInforme()
+  const [mesLocal, setMesLocal] = useState(null)
+  const mes = periodo ? mesDeValor(periodo.valor) : mesLocal
+  const setMes = (m) => (periodo ? periodo.setValor(valorDeMes(m)) : setMesLocal(m))
   const [meses, setMeses] = useState([]) // claves AAAA-MM con movimientos
   const [ultimo, setUltimo] = useState(null)
   const [datos, setDatos] = useState(null)
@@ -93,10 +98,11 @@ export default function Wrapped() {
         const claves = (r?.meses ?? []).map((m) => m.mes)
         setMeses(claves)
         setUltimo(r?.ultimo_con_datos ?? null)
+        if (periodo) return
         const actual = mesRelativo(0)
-        setMes(claves.includes(actual) || !r?.ultimo_con_datos ? actual : r.ultimo_con_datos)
+        setMesLocal(claves.includes(actual) || !r?.ultimo_con_datos ? actual : r.ultimo_con_datos)
       })
-      .catch(() => activo && setMes(mesRelativo(0)))
+      .catch(() => activo && !periodo && setMesLocal(mesRelativo(0)))
     return () => {
       activo = false
     }
@@ -161,7 +167,7 @@ export default function Wrapped() {
   return (
     <div className="flex-1 flex flex-col overflow-y-auto screen-enter pantalla-ancha">
       {!embebido && (
-      <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
+      <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
           <ArrowLeft size={20} />
         </button>
@@ -169,8 +175,14 @@ export default function Wrapped() {
             </header>
       )}
 
+      {periodo && !esUnMes(periodo.valor) && (
+        <p className="px-5 pb-1 text-xs text-ink-soft" data-testid="aviso-varios-meses">
+          Tu periodo abarca varios meses: «Mi mes» muestra el último, {nombreMesLargo(mes)}. Elige un mes con las flechas para cambiar todo el informe.
+        </p>
+      )}
+
       {mes && (
-        <div className="px-6 pb-1 flex items-center gap-2" role="group" aria-label="Mes del resumen">
+        <div className="px-5 pb-1 flex items-center gap-2" role="group" aria-label="Mes del resumen">
           <button type="button" aria-label="Mes anterior" disabled={!hayAnterior} onClick={() => setMes(opciones[indice - 1])}
             className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center disabled:opacity-40">
             <ChevronLeft size={16} />
@@ -189,7 +201,7 @@ export default function Wrapped() {
       )}
 
       {datos && datos.num_movimientos === 0 && (
-        <div className="mx-6 mt-8 text-center">
+        <div className="mx-5 mt-8 text-center">
           <p className="text-sm font-semibold">No hay movimientos en {nombreMesLargo(mes)}</p>
           <p className="text-xs text-ink-soft mt-1">Elige otro mes con las flechas o la lista.</p>
           {ultimo && ultimo !== mes && (
@@ -200,14 +212,14 @@ export default function Wrapped() {
         </div>
       )}
 
-      {error && <p role="alert" className="mx-6 mt-6 text-sm text-danger text-center">{error}</p>}
-      {mes && !datos && !error && <EsqueletoTarjeta alto={320} className="mx-6 mt-6" etiqueta="Cargando tu resumen" />}
+      {error && <p role="alert" className="mx-5 mt-6 text-sm text-danger text-center">{error}</p>}
+      {mes && !datos && !error && <EsqueletoTarjeta alto={320} className="mx-5 mt-6" etiqueta="Cargando tu resumen" />}
 
       {d && (
         <div className="dos-col dos-col-6-5">
           <div className="col">
           {/* Los toques en el tercio izquierdo/derecho cambian de diapositiva, como en las historias */}
-          <div className="relative flex-1 mx-6 mt-3 mb-3 overflow-hidden bg-[#17140f] text-[#f5f1e8] min-h-[360px] lg:min-h-[520px] card-marca"
+          <div className="relative flex-1 mx-5 mt-3 mb-3 overflow-hidden bg-[#17140f] text-[#f5f1e8] min-h-[360px] lg:min-h-[520px] card-marca"
             style={{
               backgroundImage:
                 'linear-gradient(to right, rgb(255 255 255 / 0.045) 1px, transparent 1px), linear-gradient(to bottom, rgb(255 255 255 / 0.045) 1px, transparent 1px)',
@@ -251,7 +263,7 @@ export default function Wrapped() {
             </div>
           </div>
 
-          <div className="px-6 pb-4 flex items-center gap-3">
+          <div className="px-5 pb-4 flex items-center gap-3">
             <button type="button" onClick={() => ir(i - 1)} disabled={i === 0} aria-label="Diapositiva anterior"
               className="w-11 h-11 rounded-full bg-paper-raised border border-line flex items-center justify-center disabled:opacity-40">
               <ChevronLeft size={20} />

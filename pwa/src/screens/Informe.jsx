@@ -2,14 +2,15 @@ import { textoError } from '../lib/textoError'
 import { useEmbebido } from '../lib/EmbebidoContext'
 import { useEffect, useMemo, useState } from 'react'
 import { EsqueletoGrafica, EsqueletoLista } from '../components/Esqueletos'
-import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { ArrowDownRight, ArrowLeft, ArrowUpRight, ChevronDown, LayoutGrid, PieChart, Store } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { useCategorias } from '../lib/CategoriasContext'
-import { nombreMesLargo, pctTexto, rangoPeriodo } from '../lib/informe'
+import { nombreMesLargo, pctTexto } from '../lib/informe'
+import { paramsApi, useValorPeriodo, valorDeMes } from '../lib/periodoInforme'
 import { formatVeces } from '../lib/format'
 import SelectorPeriodo from '../components/SelectorPeriodo'
 import AvisoSinTasa from '../components/AvisoSinTasa'
@@ -19,6 +20,9 @@ import IngresosGastos from '../components/IngresosGastos'
 import GraficoEvolucion from '../components/GraficoEvolucion'
 import EvolucionCategoria from '../components/EvolucionCategoria'
 import HistorialCategorias from '../components/HistorialCategorias'
+import VistaAlternable from '../components/informe/VistaAlternable'
+import Insights from './Insights'
+import MapaActividad from '../components/MapaActividad'
 import HeroGasto from '../components/informe/HeroGasto'
 import MapaCategorias from '../components/informe/MapaCategorias'
 import LoQueLlamaLaAtencion from '../components/informe/LoQueLlamaLaAtencion'
@@ -94,12 +98,9 @@ export default function Informe() {
   const volver = useVolver('/')
   const { fmt } = useBloqueo()
   const { iconoDe } = useCategorias()
-  const [valor, setValor] = useState({ periodo: 'este_mes', ...rangoPeriodo('este_mes') })
-  const [consulta] = useSearchParams()
+  // El periodo es el de Informes (único para todas las pestañas); suelta, la pantalla trae su propio selector.
+  const { valor, setValor, global: periodoGlobal } = useValorPeriodo('este_mes')
   const { hash } = useLocation()
-  const mesPedido = consulta.get('mes')
-  // Salto a un mes concreto: desde el estado vacío o desde el enlace del resumen (?mes=2026-09).
-  const [mes, setMes] = useState(/^\d{4}-(0[1-9]|1[0-2])$/.test(mesPedido || '') ? mesPedido : null)
   const [informe, setInforme] = useState(null)
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(true)
@@ -110,22 +111,14 @@ export default function Informe() {
 
   // Mes elegido tocando una barra del gráfico: enfoca el desglose sin cambiar lo que dibuja el gráfico.
   const [sel, setSel] = useState(null)
-  const paramsBase = useMemo(
-    () => (mes
-      ? { periodo: 'mes', mes }
-      : { periodo: valor.periodo, ...(valor.periodo === 'rango' ? { desde: valor.desde, hasta: valor.hasta } : {}) }),
-    [valor, mes]
-  )
-  const params = useMemo(
-    () => (sel ? { periodo: 'mes', mes: sel } : mes
-      ? { periodo: 'mes', mes }
-      : { periodo: valor.periodo, ...(valor.periodo === 'rango' ? { desde: valor.desde, hasta: valor.hasta } : {}) }),
-    [valor, mes, sel]
-  )
+  const paramsBase = useMemo(() => paramsApi(valor), [valor])
+  const params = useMemo(() => (sel ? { periodo: 'mes', mes: sel } : paramsBase), [paramsBase, sel])
+  // Cambiar de periodo suelta el mes enfocado en el gráfico.
+  useEffect(() => setSel(null), [paramsBase])
 
   // Enlace «Ver mi evolución» (/informe#evolucion): baja hasta la gráfica evolutiva.
   useEffect(() => {
-    const destino = { '#evolucion': 'evolucion', '#costos': 'costos' }[hash]
+    const destino = { '#evolucion': 'evolucion', '#costos': 'costos', '#cosas': 'cosas-raras' }[hash]
     if (!destino) return undefined
     const t = setTimeout(() => document.getElementById(destino)?.scrollIntoView?.({ block: 'start' }), 60)
     return () => clearTimeout(t)
@@ -185,8 +178,15 @@ export default function Informe() {
     }
   }
   const hayDatos = !cargando && !!informe?.hay_datos
-  const esMesActual = !mes && !sel && valor.periodo === 'este_mes'
-  const anchos = new Set(PANELES.filter((p) => p.ancho).map((p) => p.id))
+  const esMesActual = !sel && valor.periodo === 'este_mes'
+  // La tabla de categorías por mes necesita ancho completo; su gráfica, no (se estiraría demasiado)
+  const [vistaIngresos, setVistaIngresos] = useState(hash === '#evolucion' ? 'evolucion' : 'resumen')
+  const [vistaMes, setVistaMes] = useState('tabla')
+  const [vistaDia, setVistaDia] = useState('dia')
+  useEffect(() => {
+    if (hash === '#evolucion') setVistaIngresos('evolucion')
+  }, [hash])
+  const anchos = new Set([...PANELES.filter((p) => p.ancho).map((p) => p.id), ...(vistaMes === 'tabla' ? ['mes_a_mes'] : [])])
 
   const panelCategorias = hayDatos && (
     <section className="card-marca bg-paper-raised border border-line p-4" aria-label="Gasto por categoría">
@@ -195,7 +195,7 @@ export default function Informe() {
         <div role="group" aria-label="Cómo ver las categorías" className="flex rounded-full bg-paper border border-line p-0.5 shrink-0">
           {[['mapa', 'Mapa', LayoutGrid], ['dona', 'Dona', PieChart]].map(([id, texto, Ico]) => (
             <button key={id} type="button" aria-pressed={vistaCat === id} onClick={() => cambiarVista(id)}
-              className={`px-3 min-h-[32px] rounded-full text-xs font-semibold inline-flex items-center gap-1 ${vistaCat === id ? 'bg-accent text-white' : 'text-ink-soft'}`}>
+              className={`px-3 min-h-[32px] rounded-full text-xs font-semibold inline-flex items-center gap-1 ${vistaCat === id ? 'bg-accent text-paper-raised' : 'text-ink-soft'}`}>
               <Ico size={13} aria-hidden="true" />{texto}
             </button>
           ))}
@@ -329,13 +329,43 @@ export default function Informe() {
     resumen: hayDatos && <HeroGasto informe={informe} fmt={fmt} esMesActual={esMesActual} />,
     atencion: hayDatos && <LoQueLlamaLaAtencion informe={informe} fmt={fmt} />,
     categorias: panelCategorias,
-    dia: hayDatos && <DiaADia desde={informe.desde} hasta={informe.hasta} className="sin-margen" />,
+    dia: (
+      <VistaAlternable
+        etiqueta="Cómo ver tu gasto por día"
+        valor={vistaDia}
+        onCambio={setVistaDia}
+        opciones={[
+          // Sin gastos en el periodo, «Día a día» no tiene qué mostrar: queda solo el calendario
+          ...(hayDatos ? [{ id: 'dia', texto: 'Día a día', nodo: <DiaADia desde={informe.desde} hasta={informe.hasta} className="sin-margen" /> }] : []),
+          { id: 'calendario', texto: 'Calendario', nodo: <MapaActividad periodo={periodoGlobal && informe?.desde ? { desde: informe.desde, hasta: informe.hasta } : null} /> },
+        ]}
+      />
+    ),
+    cosas_raras: <div id="cosas-raras"><Insights sinMapa comoPanel periodo={informe?.desde ? { desde: informe.desde, hasta: informe.hasta } : null} /></div>,
     comercios: panelComercios,
     costos: <div id="costos"><Costos /></div>,
-    ingresos: <IngresosGastos params={paramsBase} fmt={fmt} className="" seleccion={sel} onSeleccion={setSel} />,
-    historial: <HistorialCategorias fmt={fmt} />,
-    evolucion: <EvolucionCategoria fmt={fmt} />,
-    mi_evolucion: <GraficoEvolucion fmt={fmt} />,
+    ingresos: (
+      <VistaAlternable
+        etiqueta="Cómo ver tus ingresos y gastos"
+        valor={vistaIngresos}
+        onCambio={setVistaIngresos}
+        opciones={[
+          { id: 'resumen', texto: 'Resumen', nodo: <IngresosGastos params={paramsBase} fmt={fmt} className="" seleccion={sel} onSeleccion={setSel} /> },
+          { id: 'evolucion', texto: 'Evolución', nodo: <GraficoEvolucion fmt={fmt} /> },
+        ]}
+      />
+    ),
+    mes_a_mes: (
+      <VistaAlternable
+        etiqueta="Cómo ver tus categorías mes a mes"
+        valor={vistaMes}
+        onCambio={setVistaMes}
+        opciones={[
+          { id: 'tabla', texto: 'Tabla', nodo: <HistorialCategorias fmt={fmt} /> },
+          { id: 'grafica', texto: 'Gráfica', nodo: <EvolucionCategoria fmt={fmt} /> },
+        ]}
+      />
+    ),
   }
 
   return (
@@ -350,10 +380,7 @@ export default function Informe() {
       )}
 
       <section className="px-6 mt-2">
-        <SelectorPeriodo
-          valor={mes ? { periodo: 'mes' } : valor}
-          onChange={(v) => { setMes(null); setSel(null); setValor(v) }}
-        />
+        {!periodoGlobal && <SelectorPeriodo valor={valor} onChange={(v) => { setSel(null); setValor(v) }} />}
       </section>
 
       {cargando && <div className="mx-6 mt-6 space-y-4"><EsqueletoGrafica alto={160} etiqueta="Cargando tu informe" /><EsqueletoLista filas={4} /></div>}
@@ -372,7 +399,7 @@ export default function Informe() {
           {informe.ultimo_mes_con_datos && (
             <button
               type="button"
-              onClick={() => setMes(informe.ultimo_mes_con_datos)}
+              onClick={() => setValor(valorDeMes(informe.ultimo_mes_con_datos))}
               className="mt-4 text-sm text-accent font-semibold min-h-[44px] px-3"
             >
               Ver {nombreMesLargo(informe.ultimo_mes_con_datos)}

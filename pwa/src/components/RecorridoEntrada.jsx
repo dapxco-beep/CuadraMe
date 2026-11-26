@@ -69,11 +69,15 @@ export default function RecorridoEntrada({ variante = 'enlace' }) {
             type="button"
             onClick={abrir}
             data-testid="ver-recorrido"
-            className="min-h-11 flex items-center gap-1.5 text-sm font-semibold text-accent text-left"
+            className="min-h-11 flex items-start gap-2 text-left"
           >
-            <Icono icono={Compass} tam="sm" />
-            {estado.terminado || estado.saltado || !estado.empezado ? 'Ver la guía rápida' : 'Continuar la guía rápida'}
-            <span className="font-normal text-ink-soft">· Conoce CuadraMe en 1 minuto ({TOTAL_PASOS} tarjetas)</span>
+            <Icono icono={Compass} tam="sm" className="text-accent mt-0.5 shrink-0" />
+            <span className="flex flex-col">
+              <span className="text-sm font-semibold text-accent">
+                {estado.terminado || estado.saltado || !estado.empezado ? 'Ver la guía rápida' : 'Continuar la guía rápida'}
+              </span>
+              <span className="t-apoyo">Conoce CuadraMe en 1 minuto ({TOTAL_PASOS} tarjetas)</span>
+            </span>
           </button>
         </section>
       )}

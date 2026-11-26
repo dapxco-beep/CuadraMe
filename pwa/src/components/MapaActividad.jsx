@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import { useBloqueo } from '../lib/BloqueoContext'
-import { cuadriculaSemanas, rangoPeriodo } from '../lib/informe'
+import { aISO, cuadriculaSemanas, diasEntre, rangoPeriodo } from '../lib/informe'
 import SelectorPeriodo, { PERIODOS_ACTIVIDAD } from './SelectorPeriodo'
 import GastoPorDiaSemana from './GastoPorDiaSemana'
 
@@ -24,9 +24,15 @@ function textoDia(dia) {
 // Calendario lunes-domingo con el número del día dentro de cada celda; al tocar una
 // celda se ve el gasto de ese día. Los datos vienen de /informes/diario (regla
 // contable aplicada: sin pagos de tarjeta ni traslados).
-export default function MapaActividad() {
+const MAX_DIAS_MAPA = 400 // tope del servidor (/informes/diario)
+
+// `periodo` (opcional): el periodo global de Informes. Con él el mapa no pinta su propio selector; si el periodo pasa de
+// 400 días se muestran los últimos 400 y se avisa.
+export default function MapaActividad({ periodo = null }) {
   const { fmt } = useBloqueo()
-  const [valor, setValor] = useState({ periodo: '5_semanas', ...rangoPeriodo('5_semanas') })
+  const [propio, setValor] = useState({ periodo: '5_semanas', ...rangoPeriodo('5_semanas') })
+  const recortado = !!periodo && diasEntre(periodo.desde, periodo.hasta) > MAX_DIAS_MAPA
+  const valor = !periodo ? propio : recortado ? { ...periodo, desde: aISO(new Date(new Date(`${periodo.hasta}T00:00:00`).getTime() - (MAX_DIAS_MAPA - 1) * 86400000)) } : periodo
   const [datos, setDatos] = useState(null)
   const [error, setError] = useState(false)
   const [sel, setSel] = useState(null)
@@ -52,7 +58,8 @@ export default function MapaActividad() {
   return (
     <section className="mx-6 mt-4">
       <p className="text-[11px] font-bold text-ink-soft uppercase tracking-wide mb-2.5">Tu gasto día a día</p>
-      <SelectorPeriodo opciones={PERIODOS_ACTIVIDAD} valor={valor} onChange={setValor} etiqueta="Periodo del gasto diario" />
+      {!periodo && <SelectorPeriodo opciones={PERIODOS_ACTIVIDAD} valor={valor} onChange={setValor} etiqueta="Periodo del gasto diario" />}
+      {recortado && <p className="text-xs text-ink-soft">Tu periodo es muy largo para un calendario: se muestran los últimos {MAX_DIAS_MAPA} días.</p>}
 
       {error && <p role="alert" className="text-xs text-danger mt-3">No se pudo cargar el gasto diario.</p>}
 

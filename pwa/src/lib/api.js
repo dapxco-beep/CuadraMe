@@ -709,6 +709,8 @@ export const api = {
   informeNoSeCuenta: (p = {}) => request(`/informes/no-se-cuenta?${new URLSearchParams(limpiar(p)).toString()}`),
   sugerenciasTraslado: () => request('/traslados/sugerencias'),
   decidirTraslado: (cuerpo) => request('/traslados/decidir', { method: 'POST', body: cuerpo }),
+  // Resumen de Informes en una sola lectura: totales, flujo neto, tasa de ahorro, fuentes, presupuesto y hallazgos.
+  informeResumen: (p = {}) => request(`/informes/resumen?${new URLSearchParams(limpiar(p)).toString()}`),
   informeGasto: (p = {}) => request(`/informes/gasto?${new URLSearchParams(limpiar(p)).toString()}`),
   informeMovimientos: (p = {}) => request(`/informes/gasto/movimientos?${new URLSearchParams(limpiar(p)).toString()}`),
   evolucionCategorias: (p = {}) => request(`/informes/evolucion-categorias?${new URLSearchParams(limpiar(p)).toString()}`),

@@ -176,7 +176,8 @@ function FilaCategoria({ c, onEditar, onToggle, onSubir, onBajar }) {
   return (
     <>
     <div className={`flex flex-wrap items-center gap-x-1 pl-4 pr-2 py-3 ${!c.activa ? 'opacity-70' : ''}`}>
-      <button onClick={onEditar} className="flex items-center gap-3 flex-1 min-w-[8.5rem] text-left" aria-label={`Editar ${c.nombre}`}>
+      <button onClick={onEditar} className="flex items-center gap-3 flex-1 min-w-[8.5rem] text-left">
+        <span className="sr-only">Editar </span>
         <span
           className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-xl bg-accent-soft"
           style={c.color ? { backgroundColor: `${c.color}26`, boxShadow: `inset 0 0 0 1.5px ${c.color}` } : undefined}

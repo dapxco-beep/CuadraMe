@@ -1,7 +1,7 @@
 import { useEmbebido } from '../lib/EmbebidoContext'
 import { Fragment, useEffect, useId, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, LifeBuoy, Mail, MessageCircle, Search } from 'lucide-react'
+import { ArrowLeft, ChevronDown, LifeBuoy, Mail, MessageCircle, Search, Smartphone } from 'lucide-react'
 import { EstadoVacio } from '../brand/Marca'
 import Cuadri from '../brand/Cuadri'
 import GuiaInstalar from '../components/GuiaInstalar'
@@ -141,6 +141,17 @@ export default function Ayuda() {
       </div>
 
       {!buscando && <RecorridoEntrada />}
+      {!buscando && (
+        <section className="mx-6 mt-1">
+          <button type="button" onClick={() => setGuia('instalar')} data-testid="abrir-instalar" className="min-h-11 flex items-start gap-2 text-left">
+            <Icono icono={Smartphone} tam="sm" className="text-accent mt-0.5 shrink-0" />
+            <span className="flex flex-col">
+              <span className="text-sm font-semibold text-accent">Instala la app en tu celular</span>
+              <span className="t-apoyo">Queda con su ícono, como cualquier app. Pasos con dibujos para iPhone o Android.</span>
+            </span>
+          </button>
+        </section>
+      )}
       {!buscando && <QueSePuedeHacer fija />}
 
       {resultados.length === 0 ? (

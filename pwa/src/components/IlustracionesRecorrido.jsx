@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { m, useReducedMotion } from 'framer-motion'
 
 // Ilustraciones del recorrido: SVG sencillos con los colores de la marca (se adaptan al modo oscuro
@@ -84,7 +85,7 @@ function Traer() {
     { x: 14, y: 14, t: 'Correo', s: 'Sin escribir nada', c: 'M18 38 h26 v-12 l-13 8 l-13 -8 z' },
     { x: 166, y: 14, t: 'Extracto PDF', s: 'Lo más exacto', c: '' },
     { x: 14, y: 98, t: 'Excel', s: 'Historial viejo', c: '' },
-    { x: 166, y: 98, t: 'Atajo Apple Pay', s: 'Solo iPhone · al instante', c: '' },
+    { x: 166, y: 98, t: 'Apple Pay', s: 'Solo iPhone · al instante', c: '' },
   ]
   return (
     <Marco>
@@ -230,7 +231,35 @@ function Privacidad() {
 
 const POR_ID = { inicio: Inicio, cuentas: Cuentas, traer: Traer, movimientos: Movimientos, presupuesto: Presupuesto, metas: Metas, informes: Informes, asistente: Asistente, privacidad: Privacidad }
 
+// Capturas REALES de la app (public/recorrido/<paso>.webp), tomadas con los datos de ejemplo de la demo.
+// Si una imagen no carga (sin conexión, archivo faltante) se vuelve al dibujo de siempre.
+const CAPTURAS = {
+  inicio: 'Pantalla de Inicio de CuadraMe: cuánto tienes disponible, lo gastado esta semana y accesos rápidos',
+  traer: 'Pantalla «Traer movimientos» con sus pestañas: Extractos, Correo y Automático',
+  informes: 'Pantalla de Informes: lo gastado en el mes frente al mes anterior',
+  privacidad: 'Respuesta de la Ayuda sobre qué leemos y qué nunca hacemos con tu correo',
+}
+
+function CapturaReal({ id, Respaldo }) {
+  const [fallo, setFallo] = useState(false)
+  if (fallo) return <Respaldo />
+  return (
+    <figure className="mx-auto w-[176px] rounded-[24px] border-[4px] border-ink bg-paper overflow-hidden shadow-lg" data-testid="captura-real">
+      <img
+        src={`/recorrido/${id}.webp`}
+        alt={CAPTURAS[id]}
+        width="390"
+        height="520"
+        decoding="async"
+        onError={() => setFallo(true)}
+        className="block w-full h-auto"
+      />
+    </figure>
+  )
+}
+
 export default function IlustracionRecorrido({ id }) {
   const Pieza = POR_ID[id]
-  return Pieza ? <Pieza /> : null
+  if (!Pieza) return null
+  return CAPTURAS[id] ? <CapturaReal id={id} Respaldo={Pieza} /> : <Pieza />
 }

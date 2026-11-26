@@ -9,19 +9,22 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app import informe as inf
+from app import informe_resumen as res
 from app.auth import UsuarioActual, get_current_user
 from app.database import get_db
 from app.compartidos import cuentas_ids_accesibles
 from app.contabilidad import delta_saldo
 from app.contabilidad import ConvertidorBase
 from app.informe_datos import cargar_movs_efectivos
-from app.models import Cuenta, Movimiento
+from app.limites import verificar_limite
+from app.models import Cuenta, Movimiento, Presupuesto
 from app.utiles import ahora_co
 
 router = APIRouter(prefix="/informes", tags=["informes"])
 
 MAX_MOVS_CATEGORIA = 300
 MAX_DIAS_DIARIO = 400
+LIMITE_RESUMEN_POR_MINUTO = 90  # la pantalla pide 1-2 por cambio de periodo o de agrupación
 
 
 def _rango(periodo: str, desde: str | None, hasta: str | None, mes: str | None) -> dict:
@@ -65,6 +68,8 @@ def informe_gasto(
 def movimientos_de_categoria(
     categoria: str | None = None,
     comercio: str | None = None,
+    fuente: str | None = None,
+    tipo: str = Query("gasto", pattern="^(gasto|ingreso)$"),
     periodo: str = Query("este_mes"),
     desde: str | None = None,
     hasta: str | None = None,
@@ -74,16 +79,17 @@ def movimientos_de_categoria(
 ):
     """Los gastos (reales, según la regla contable) de una categoría o de un
     comercio dentro del periodo, más recientes primero."""
-    if not categoria and not comercio:
-        raise HTTPException(status_code=422, detail="Indica una categoría o un comercio")
+    if not categoria and not comercio and not fuente:
+        raise HTTPException(status_code=422, detail="Indica una categoría, un comercio o una fuente")
     rango = _rango(periodo, desde, hasta, mes)
     movs = _cargar(db, usuario, rango)
     clave = inf.clave_comercio(comercio) if comercio else None
     filas = [
         m for m in movs
-        if m["tipo"] == "expense" and inf.en_rango(m, rango)
+        if m["tipo"] == ("income" if tipo == "ingreso" else "expense") and inf.en_rango(m, rango)
         and (categoria is None or m["categoria"] == categoria)
         and (clave is None or inf.clave_comercio(m["descripcion"]) == clave)
+        and (fuente is None or (inf.clave_comercio(m["descripcion"]) or inf.clave_comercio(m["categoria"] or "Otros")) == fuente)
     ]
     filas.sort(key=lambda m: m["fecha"], reverse=True)
     total = sum(m["monto"] for m in filas)
@@ -228,3 +234,47 @@ def no_se_cuenta(
     rango = _rango(periodo, desde, hasta, mes)
     movs = _cargar(db, usuario, rango)
     return inf.no_se_cuenta(movs, rango)
+
+
+@router.get("/resumen")
+def resumen(
+    periodo: str = Query("este_mes"),
+    desde: str | None = None,
+    hasta: str | None = None,
+    mes: str | None = None,
+    agrupar: str | None = Query(None, pattern="^(dia|semana|mes)$"),
+    db: Session = Depends(get_db),
+    usuario: UsuarioActual = Depends(get_current_user),
+):
+    """Resumen del periodo en una sola lectura: totales y comparación contra el periodo anterior equivalente,
+    flujo neto por día/semana/mes, tasa de ahorro mes a mes, ingresos por fuente, presupuesto contra gasto real y
+    hallazgos. Todo con la regla única de contabilidad (sin traslados ni pagos de tarjeta)."""
+    verificar_limite(f"informes-resumen:{usuario.id}", LIMITE_RESUMEN_POR_MINUTO, 60,
+                     "Estás consultando el resumen muy seguido. Intenta de nuevo en {espera}.")
+    hoy = ahora_co()
+    rango = _rango(periodo, desde, hasta, mes)
+    anterior = inf.periodo_anterior(rango)
+    n_meses = res.meses_de_la_serie(rango)
+    ultimo = rango["hasta"] - timedelta(days=1)
+    a, m = inf.sumar_meses(ultimo.year, ultimo.month, -(n_meses - 1))
+    ini = min(rango["desde"], anterior["desde"], inf.inicio_mes(a, m))
+    movs = cargar_movs_efectivos(db, usuario.id, ini, rango["hasta"])
+
+    base = inf.ingresos_gastos(movs, rango, anterior, n_meses)
+    informe = inf.informe_gasto(movs, rango, anterior)
+    presupuestos = [
+        {"categoria": p.categoria, "limite": p.limite, "periodo": p.periodo, "alerta_pct": p.alerta_pct,
+         "sobre_ajuste": p.sobre_ajuste, "activo": p.activo}
+        for p in db.query(Presupuesto).filter(Presupuesto.usuario_id == usuario.id).all()
+    ]
+    fuentes = res.ingresos_por_fuente(movs, rango, anterior)
+    presupuesto = res.presupuesto_vs_real(movs, presupuestos, rango, hoy)
+    base["periodo"] = periodo
+    base["flujo"] = res.flujo_neto(movs, rango, agrupar)
+    base["fuentes"] = fuentes
+    base["tasa_serie"] = res.resumen_tasa(base["meses"])
+    base["presupuesto"] = presupuesto
+    base["hallazgos"] = res.hallazgos(base, informe, presupuesto, rango["etiqueta"])
+    base["moneda_base"], base["monedas_sin_tasa"] = movs.base, list(movs.sin_tasa)
+    base["en_curso"] = (rango["hasta"] - timedelta(days=1)).date() >= hoy.date()
+    return base

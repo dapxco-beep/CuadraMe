@@ -186,13 +186,16 @@ describe('AsistentePrimerUso', () => {
     expect(within(guia).queryByRole('list', { name: 'Pasos para Android' })).not.toBeInTheDocument()
   })
 
-  it('un paso con dispositivo de escritorio muestra ambas guías y avisa que se hace desde el celular', async () => {
+  it('en escritorio la guía pregunta el celular y no muestra ninguna lista hasta elegir', async () => {
     montar(<AsistentePrimerUso variante="perfil" />)
     await screen.findByText('Primeros pasos')
     await userEvent.click(within(document.querySelector('[data-paso="instalar"]')).getByRole('button', { name: 'Ver cómo' }))
     const guia = await screen.findByTestId('guia-instalar')
-    expect(guia).toHaveTextContent('desde tu celular')
+    expect(guia).toHaveTextContent('desde el celular')
+    expect(within(guia).queryByRole('list')).toBeNull()
+    await userEvent.click(within(guia).getByRole('radio', { name: 'Android' }))
     expect(within(guia).getByRole('list', { name: 'Pasos para Android' })).toBeInTheDocument()
+    expect(within(guia).queryByRole('list', { name: 'Pasos para iPhone' })).toBeNull()
   })
 
   it('si falla la carga no rompe la pantalla: deja los pasos pendientes', async () => {

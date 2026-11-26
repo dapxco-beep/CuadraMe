@@ -7,6 +7,11 @@ import FranjaVersionNueva from './FranjaVersionNueva'
 import { useModoPantalla } from '../lib/useAncho'
 import { useAtajosTeclado } from '../lib/atajos'
 import { registrarReciente } from '../lib/navegacion'
+import { useMostrarCuadri } from '../lib/cuadri'
+import CuadriEsquina from './CuadriEsquina'
+
+// Pantallas que ya tienen a Cuadri en su cabecera (Inicio) o son de pantalla completa: sin franja.
+const SIN_FRANJA = ['/', '/agregar', '/resumen']
 
 // Estructura de la app autenticada:
 //  - <768 px (teléfono): columna de 480 px con barra inferior, igual que siempre.
@@ -18,6 +23,8 @@ export default function ShellApp({ children }) {
   const modo = useModoPantalla()
   const { pathname } = useLocation()
   useAtajosTeclado()
+  const [mostrarCuadri] = useMostrarCuadri()
+  const conFranja = mostrarCuadri && !SIN_FRANJA.includes(pathname)
   // «Recientes» del menú: cada pantalla del menú que se visita queda registrada
   useEffect(() => {
     registrarReciente(pathname)
@@ -25,9 +32,10 @@ export default function ShellApp({ children }) {
   return (
     <div className="app-shell" data-modo={modo}>
       {modo !== 'movil' && <BarraLateral modo={modo} />}
-      <main className="app-contenido">
+      <main className={`app-contenido${conFranja ? ' con-franja-cuadri' : ''}`}>
         <AvisoSinConexion />
         <FranjaVersionNueva />
+        {conFranja && <CuadriEsquina />}
         {children}
         {/* En «Nuevo movimiento» la barra inferior sobra (el + ya es esta pantalla y tapa el formulario): se sale con la X */}
         {modo === 'movil' && pathname !== '/agregar' && <BottomNav />}

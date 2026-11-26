@@ -28,6 +28,7 @@ import ConsejoParaTi from '../components/ConsejoParaTi'
 import TarjetaTuPlata from '../components/TuPlataTrabajando'
 import TarjetaCostos from '../components/TarjetaCostos'
 import SeccionPlegable from '../components/SeccionPlegable'
+import AvisoInstalar from '../components/AvisoInstalar'
 import Sparkline, { resumenTendencia } from '../components/Sparkline'
 import Icono from '../components/Icono'
 import { Boton } from '../components/ui'
@@ -393,6 +394,7 @@ export default function Inicio() {
       {/* Una sola guía a la vez: mientras el camino de 3 pasos esté incompleto, es la única. Lo demás (siguiente paso,
           «¿Qué puedes hacer?», la lista de mejoras y el recorrido de 1 minuto) vive en Inicio solo cuando no hay camino, o en Perfil y Ayuda. */}
       <SugerenciaPais />
+      <AvisoInstalar className="mx-6 mt-3" />
       {!esperarSaldo && <AsistentePrimerUso variante="inicio" soloCamino camino={{ cuentas: cuentas.length, movimientos: movimientos.length, resumenVisto }} />}
 
       {/* Modo simple: tres bloques y un «Ver más»; con «Mostrar todas las funciones», todo a la vista */}
@@ -432,7 +434,7 @@ export default function Inicio() {
               <Icono icono={ChevronDown} tam="sm" className={verMas ? 'rotate-180' : ''} />
             </button>
             {movimientos.length > 0 && (
-              <Link to="/informe#evolucion" data-testid="ver-evolucion" className="min-h-11 flex items-center justify-center gap-1.5 text-sm font-semibold text-accent">
+              <Link to="/informes?tab=panorama" data-testid="ver-evolucion" className="min-h-11 flex items-center justify-center gap-1.5 text-sm font-semibold text-accent">
                 <Icono icono={LineChart} tam="sm" />
                 Ver mi evolución
               </Link>
@@ -701,7 +703,7 @@ export default function Inicio() {
               <AccionesRapidas margen="mt-2" />
               <div className="divide-y divide-line mt-2">
                 <FilaEnlace to="/informe" icono={PieChart} titulo="En qué gasto mi plata" apoyo="Ingresos contra gastos, por categoría y comercio" />
-                <FilaEnlace to="/informe#evolucion" icono={LineChart} titulo="Mi evolución" apoyo="Cómo cambian tus ingresos, gastos y ahorro mes a mes" testId="ver-evolucion-completo" />
+                <FilaEnlace to="/informes?tab=panorama" icono={LineChart} titulo="Mi evolución" apoyo="Cómo cambian tus ingresos, gastos y ahorro mes a mes" testId="ver-evolucion-completo" />
                 <FilaEnlace to="/asistente" icono={Bot} titulo="Pregúntale a CuadraMe AI" apoyo="«¿Puedo comprar un celular?» · «Gasté 18.000 en almuerzo»" />
                 <FilaEnlace to="/resumen" icono={Gift} titulo="Tu resumen del mes" apoyo="Míralo en diapositivas y compártelo" />
               </div>

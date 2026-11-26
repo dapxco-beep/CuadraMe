@@ -187,8 +187,8 @@ export default function Cuentas() {
                 type="button"
                 onClick={() => abrirDetalle(c.id)}
                 className="block w-full text-left"
-                aria-label={`Ver detalle de ${c.nombre}`}
               >
+                <span className="sr-only">Ver detalle de {c.nombre}. </span>
                 <TarjetaCuenta cuenta={c} ultimoMovimiento={resumen ? (resumen.ultimo_por_cuenta?.[c.id] ?? null) : undefined} />
               </button>
               {/* Qué significa el número de esta cuenta: saldo disponible (tuyo) vs lo que debes (tarjeta) */}

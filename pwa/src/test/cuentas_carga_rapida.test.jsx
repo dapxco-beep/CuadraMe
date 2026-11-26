@@ -54,7 +54,7 @@ describe('Cuentas: carga rápida', () => {
     estado.cuentas = [cuenta('a')]
     estado.cargando = false
     rerender(montar())
-    await screen.findByLabelText('Ver detalle de Cuenta a')
+    await screen.findByRole('button', { name: /Ver detalle de Cuenta a/ })
     expect(api.resumenCuentas).toHaveBeenCalledTimes(1)
   })
 })
