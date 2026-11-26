@@ -245,7 +245,7 @@ export default function DetalleHogar() {
           <div className="rounded-2xl border border-accent bg-accent-soft p-4">
             <p className="text-base font-semibold">{recienCreado ? '¡Tu parche está listo!' : 'Estás solo en este parche'}</p>
             <p className="text-xs text-ink-soft mt-1">Invita a tu gente para llevar los gastos juntos y ver quién le debe a quién.</p>
-            <button onClick={compartirEnlace} className="mt-3 w-full bg-accent text-paper-raised rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2 min-h-12">
+            <button onClick={compartirEnlace} className="btn btn-primario mt-3 w-full">
               <Share2 size={20} /> Invitar con un enlace
             </button>
           </div>
@@ -279,7 +279,7 @@ export default function DetalleHogar() {
           )}
         </div>
         <div className="flex gap-2 mt-3">
-          <button onClick={() => navigate(`/hogares/${id}/gasto`)} className="flex-1 bg-accent text-paper-raised rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2">
+          <button onClick={() => navigate(`/hogares/${id}/gasto`)} className="btn btn-primario flex-1">
             <Plus size={16} /> Nuevo gasto
           </button>
           <button onClick={() => navigate(`/hogares/${id}/resumen`)} className="rounded-2xl border border-line bg-paper-raised px-4 text-sm font-semibold">
@@ -297,7 +297,7 @@ export default function DetalleHogar() {
             texto="Registra el primero y CuadraMe va llevando la cuenta de quién puso qué y quién le debe a quién."
             className="mt-2"
           >
-            <button type="button" onClick={() => navigate(`/hogares/${id}/gasto`)} className="mt-4 bg-accent text-paper-raised rounded-2xl px-5 py-3 text-sm font-semibold min-h-11">
+            <button type="button" onClick={() => navigate(`/hogares/${id}/gasto`)} className="btn btn-primario mt-4">
               Registrar el primer gasto
             </button>
           </EstadoVacio>
@@ -361,7 +361,7 @@ export default function DetalleHogar() {
       {esAdmin && (
         <section className="px-5 mt-6">
           <p className="text-xs text-ink-soft mb-2 font-medium uppercase tracking-wide">Invitar</p>
-          <button onClick={compartirEnlace} data-testid="invitar-enlace" className="w-full bg-accent text-paper-raised rounded-2xl px-4 py-3.5 text-sm font-semibold flex items-center justify-center gap-2 min-h-12">
+          <button onClick={compartirEnlace} data-testid="invitar-enlace" className="btn btn-primario w-full">
             <Share2 size={20} /> Invitar con un enlace
           </button>
           <p className="text-[11px] text-ink-soft mt-1.5">Se abre tu menú de compartir: elige WhatsApp, mensajes o un contacto. El enlace sirve una sola vez, por 7 días.</p>

@@ -154,7 +154,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada,
           type="button"
           onClick={aprobarCorrectos}
           disabled={aprobandoTodos}
-          className="w-full flex items-center justify-center gap-2 bg-accent text-paper-raised font-semibold rounded-xl min-h-[44px] text-sm mb-3 disabled:opacity-60"
+          className="btn btn-primario w-full mb-3"
           data-testid="aprobar-correctos"
         >
           <CheckCheck size={16} aria-hidden="true" />
@@ -339,7 +339,7 @@ export default function CorreosPorRevisar({ correos, onResuelto, onCuentaCreada,
                 <button
                   onClick={() => aprobar(c)}
                   disabled={procesando.has(c.id) || !cuentaId || !(monto > 0)}
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-accent text-paper-raised font-semibold rounded-xl py-2.5 text-sm disabled:opacity-50"
+                  className="btn btn-primario flex-1"
                 >
                   <Check size={16} aria-hidden="true" /> Aprobar
                 </button>

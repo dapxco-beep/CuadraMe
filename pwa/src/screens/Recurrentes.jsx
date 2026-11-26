@@ -143,7 +143,7 @@ export default function Recurrentes() {
                 </div>
                 <button
                   onClick={() => aceptarSugerencia(s)}
-                  className="min-h-11 px-4 rounded-full bg-accent text-paper-raised text-sm font-semibold flex items-center justify-center shrink-0"
+                  className="btn btn-secundario btn-sm shrink-0"
                  aria-label={`Agregar «${s.descripcion}» a mis pagos fijos`}>
                   Agregar
                 </button>
@@ -329,7 +329,7 @@ function FormRecurrente({ onClose, onGuardado }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="btn btn-primario btn-grande w-full"
       >
         {guardando ? 'Guardando...' : 'Guardar pago fijo'}
       </button>

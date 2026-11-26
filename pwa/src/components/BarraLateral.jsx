@@ -179,7 +179,7 @@ function Lateral() {
       <NavLink
         to="/agregar"
         title="Agregar movimiento (N)"
-        className="boton-hover flex items-center justify-center gap-2 bg-accent text-paper-raised font-semibold text-sm rounded-2xl py-3 mb-3 shadow-lg shadow-accent/25"
+        className="btn btn-primario boton-hover mb-3 shadow-lg shadow-accent/25"
       >
         <Plus size={20} strokeWidth={2.5} aria-hidden="true" />
         Agregar movimiento

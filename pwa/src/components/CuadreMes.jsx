@@ -73,7 +73,7 @@ function SaldoInicialSinExplicar({ cuentaId, diag, moneda, onHecho }) {
     <div className="rounded-xl bg-paper border border-line p-3 mt-2 text-xs" data-testid="saldo-inicial-sin-explicar">
       <p>Hay {formatCOP(Math.abs(diag.diferencia), moneda)} en el saldo de esta cuenta que no vienen de ningún movimiento. Puedes registrarlos como «Saldo inicial»: tu saldo no cambia y no cuenta como gasto ni ingreso.</p>
       <button disabled={ocupado} onClick={() => hacer(() => api.cuadreSaldoInicial({ cuenta_id: cuentaId, modo: 'sin_explicar', confirmar: true }))}
-        className="mt-2 w-full min-h-[44px] rounded-xl bg-accent text-paper-raised font-semibold disabled:opacity-60">
+        className="btn btn-primario mt-2 w-full">
         Registrar saldo inicial
       </button>
       {msg && <p role="status" className="mt-2">{msg}</p>}

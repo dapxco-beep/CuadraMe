@@ -66,7 +66,7 @@ export default function CrearCuentaBanco({ banco, onClose, onCreada }) {
         <button
           onClick={crear}
           disabled={guardando}
-          className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+          className="btn btn-primario btn-grande w-full"
         >
           {guardando ? 'Creando...' : 'Crear cuenta'}
         </button>

@@ -205,7 +205,7 @@ export default function ImportarRespaldo({ onCerrar }) {
           <button
             onClick={importar}
             disabled={ocupado || !hayNuevo}
-            className="flex-1 min-h-12 rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-40"
+            className="btn btn-primario flex-1"
           >
             {ocupado ? 'Importando...' : 'Importar'}
           </button>

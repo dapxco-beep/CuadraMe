@@ -134,7 +134,7 @@ function TarjetaPropuesta({ msg, onResuelto }) {
           type="button"
           onClick={confirmar}
           disabled={guardando}
-          className="flex-1 min-h-11 rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-50"
+          className="btn btn-primario flex-1"
         >
           {guardando ? 'Guardando…' : 'Confirmar'}
         </button>
@@ -227,7 +227,7 @@ function TarjetaPlan({ msg, onResuelto }) {
           type="button"
           onClick={aceptar}
           disabled={guardando}
-          className="flex-1 min-h-11 rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-50"
+          className="btn btn-primario flex-1"
         >
           {guardando ? 'Creando…' : 'Aceptar plan'}
         </button>

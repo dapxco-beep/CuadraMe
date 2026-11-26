@@ -275,7 +275,7 @@ export default function Impuestos() {
                                 <button
                                   onClick={() => marcar(i, 'confirmada')}
                                   disabled={guardando}
-                                  className="flex-1 bg-accent text-paper-raised rounded-xl py-2 text-xs font-semibold disabled:opacity-60"
+                                  className="btn btn-primario btn-sm flex-1"
                                 >
                                   Guardar este gasto
                                 </button>

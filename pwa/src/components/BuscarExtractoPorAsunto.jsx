@@ -100,7 +100,7 @@ export default function BuscarExtractoPorAsunto({ onAgregado, modo = 'extracto' 
           <button
             type="submit"
             disabled={buscando || asunto.trim().length < 3}
-            className="bg-accent text-paper-raised font-semibold rounded-xl px-4 min-h-[44px] text-sm disabled:opacity-50 flex items-center gap-1.5"
+            className="btn btn-primario"
           >
             {buscando ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Search size={16} aria-hidden="true" />}
             Buscar
@@ -149,7 +149,7 @@ export default function BuscarExtractoPorAsunto({ onAgregado, modo = 'extracto' 
           <button
             onClick={agregar}
             disabled={!nElegidos || agregando}
-            className="mt-2 w-full bg-accent text-paper-raised font-semibold rounded-xl min-h-[44px] text-sm disabled:opacity-50"
+            className="btn btn-primario mt-2 w-full"
           >
             {agregando ? 'Agregando…' : `Agregar ${nElegidos || ''} ${mov ? 'a Por revisar' : 'a mis extractos'}`.replace('  ', ' ')}
           </button>

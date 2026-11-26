@@ -70,7 +70,7 @@ export default function HojaNuevaCategoria({ onCreada, onCerrar }) {
           <button
             type="submit"
             disabled={guardando}
-            className="mt-4 w-full min-h-[44px] rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-50"
+            className="btn btn-primario mt-4 w-full"
           >
             {guardando ? 'Creando...' : 'Crear y elegir'}
           </button>

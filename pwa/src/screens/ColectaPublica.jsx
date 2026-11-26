@@ -124,7 +124,7 @@ export default function ColectaPublica() {
             <div className="rounded-2xl border border-line bg-paper-raised p-4 text-center">
               <p className="text-sm font-semibold">¿Armas vacas con tus amigos?</p>
               <p className="text-xs text-ink-soft mt-1">Crea la tuya gratis en CuadraMe: ves quién puso y quién falta.</p>
-              <a href="/" className="mt-3 inline-block bg-accent text-paper-raised rounded-2xl px-5 py-3 text-sm font-semibold">Crear mi vaca gratis</a>
+              <a href="/" className="btn btn-primario mt-3">Crear mi vaca gratis</a>
             </div>
           </section>
         </>

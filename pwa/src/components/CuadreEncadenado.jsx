@@ -48,7 +48,7 @@ function SaldoAMano({ item, moneda, onGuardado }) {
           <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)}
             className="min-h-11 rounded-xl border border-line bg-paper-raised px-3 text-sm text-ink" />
         </label>
-        <button type="submit" disabled={ocupado} className="min-h-11 rounded-xl bg-accent text-paper-raised font-semibold px-4 disabled:opacity-60">
+        <button type="submit" disabled={ocupado} className="btn btn-primario">
           {ocupado ? 'Guardando...' : 'Guardar saldo'}
         </button>
       </div>
@@ -137,7 +137,7 @@ export function Accion({ accion, onHecho, moneda, ocupado, setOcupado }) {
           )}
           <div className="mt-2 flex gap-2">
             <button type="button" disabled={ocupado || (fuerte && !entiendo)} onClick={ejecutar}
-              className="min-h-11 flex-1 rounded-xl bg-accent text-paper-raised font-semibold disabled:opacity-50">
+              className="btn btn-primario flex-1">
               {ocupado ? 'Un momento...' : 'Sí, hacerlo'}
             </button>
             <button type="button" disabled={ocupado} onClick={() => setPidiendo(false)} className="min-h-11 flex-1 rounded-xl border border-line font-semibold">

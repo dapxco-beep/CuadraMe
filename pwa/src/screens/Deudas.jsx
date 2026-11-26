@@ -153,7 +153,7 @@ export default function Deudas({ enCuentas = false } = {}) {
               </div>
               <button
                 onClick={() => setPagando(d)}
-                className="w-full bg-accent text-paper-raised font-semibold rounded-xl py-2.5 text-sm"
+                className="btn btn-primario w-full"
               >
                 Registrar pago
               </button>
@@ -310,7 +310,7 @@ function FormDeuda({ onClose, onGuardada }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="btn btn-primario btn-grande w-full"
       >
         {guardando ? 'Guardando...' : 'Crear deuda'}
       </button>
@@ -360,7 +360,7 @@ function FormPago({ deuda, onClose, onPagado }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="btn btn-primario btn-grande w-full"
       >
         {guardando ? 'Guardando...' : 'Registrar pago'}
       </button>

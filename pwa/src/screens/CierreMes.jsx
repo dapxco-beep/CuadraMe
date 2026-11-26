@@ -289,7 +289,7 @@ export default function CierreMes() {
                 <>
                   <p className="text-3xl font-bold tabular-nums">{porCategorizar}</p>
                   <p className="text-sm text-ink-soft mt-1">Con categoría tus gráficos y tu presupuesto salen ciertos. Lo haces una vez por comercio y CuadraMe lo recuerda.</p>
-                  <button onClick={() => navigate('/categorizar')} className="mt-3 w-full min-h-11 rounded-2xl bg-accent text-paper-raised text-sm font-semibold">
+                  <button onClick={() => navigate('/categorizar')} className="btn btn-primario mt-3 w-full">
                     Ponerles categoría
                   </button>
                 </>
@@ -352,7 +352,7 @@ export default function CierreMes() {
               {informe === false && (
                 <div className="rounded-2xl bg-paper-raised border border-line p-5 text-center">
                   <p className="text-sm text-ink-soft mb-3">Aún no hay cierre de {nombreDelMes}. Se genera solo cada mes; también puedes crearlo ahora.</p>
-                  <button onClick={generar} disabled={cargando} className="bg-accent text-paper-raised rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
+                  <button onClick={generar} disabled={cargando} className="btn btn-primario">
                     {cargando ? 'Generando...' : pendientes.length ? 'Generar cierre de todos modos' : 'Generar cierre'}
                   </button>
                 </div>
@@ -417,7 +417,7 @@ export default function CierreMes() {
             <ChevronLeft size={16} aria-hidden="true" /> Atrás
           </button>
           {siguiente && (
-            <button onClick={() => ir(paso + 1)} className="min-h-11 flex-1 px-4 rounded-2xl bg-accent text-paper-raised text-sm font-semibold flex items-center justify-center gap-1.5">
+            <button onClick={() => ir(paso + 1)} className="btn btn-primario flex-1">
               {actual.estado === 'atencion' ? 'Seguir sin resolverlo' : 'Siguiente'}: {siguiente.corto} <ArrowRight size={16} aria-hidden="true" />
             </button>
           )}

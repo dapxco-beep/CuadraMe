@@ -116,7 +116,7 @@ export default function SobrantesExtracto({ historialId, cuentaId = null, sobran
                   <option value="">¿En qué cuenta fue?</option>
                   {otras.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
-                <button type="button" disabled={!destino || !!ocupado} onClick={() => mover(s)} className="min-h-11 px-4 rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-50">Mover</button>
+                <button type="button" disabled={!destino || !!ocupado} onClick={() => mover(s)} className="btn btn-primario">Mover</button>
               </div>
             )}
           </li>
@@ -124,7 +124,7 @@ export default function SobrantesExtracto({ historialId, cuentaId = null, sobran
       </ul>
       {n > 1 && (
         <div className="mt-1 flex gap-2">
-          <button type="button" disabled={!!ocupado} onClick={() => actuar(pendientes.filter((s) => s.id), 'dejar')} className="flex-1 min-h-11 rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-50">Dejar todos</button>
+          <button type="button" disabled={!!ocupado} onClick={() => actuar(pendientes.filter((s) => s.id), 'dejar')} className="btn btn-primario flex-1">Dejar todos</button>
           <button type="button" disabled={!!ocupado} onClick={() => actuar(pendientes.filter((s) => s.id), 'borrar')} className="flex-1 min-h-11 rounded-xl border border-danger text-danger text-sm font-semibold disabled:opacity-50">Borrar todos</button>
         </div>
       )}

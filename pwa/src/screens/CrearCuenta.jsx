@@ -54,7 +54,7 @@ function Bienvenida({ onContinuar }) {
 
       <button
         onClick={onContinuar}
-        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform"
+        className="btn btn-primario btn-grande w-full active:scale-[0.98] transition-transform"
       >
         Empezar — crea tu primera cuenta
       </button>
@@ -191,7 +191,7 @@ export default function CrearCuenta({ onCreada }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
+        className="btn btn-primario btn-grande w-full active:scale-[0.98] transition-transform"
       >
         {guardando ? 'Creando...' : 'Crear mi cuenta'}
       </button>

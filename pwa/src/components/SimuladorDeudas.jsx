@@ -115,7 +115,7 @@ export default function SimuladorDeudas() {
         <button
           onClick={simular}
           disabled={cargando}
-          className="bg-accent text-paper-raised font-semibold rounded-2xl px-5 text-sm disabled:opacity-60"
+          className="btn btn-primario"
         >
           {cargando ? 'Simulando...' : 'Simular'}
         </button>

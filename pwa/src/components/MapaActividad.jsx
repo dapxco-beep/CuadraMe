@@ -70,7 +70,7 @@ export default function MapaActividad({ periodo = null }) {
               <span key={d} className="text-center text-[11px] font-semibold text-ink-soft">{d}</span>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-1.5" role="group" aria-label="Gasto por día">
+          <div className="grid grid-cols-7 gap-1" role="group" aria-label="Gasto por día">
             {semanas.flat().map((d, i) =>
               d ? (
                 <button
@@ -79,7 +79,7 @@ export default function MapaActividad({ periodo = null }) {
                   onClick={() => setSel(sel === d.dia ? null : d.dia)}
                   aria-pressed={sel === d.dia}
                   aria-label={`${textoDia(d.dia)}: ${fmt(d.gasto)}`}
-                  className={`aspect-square min-h-[38px] rounded-[8px] pop-in flex items-center justify-center text-[11px] font-medium ${sel === d.dia ? 'ring-2 ring-ink' : ''}`}
+                  className={`aspect-square min-h-11 rounded-[8px] pop-in flex items-center justify-center text-[11px] font-medium ${sel === d.dia ? 'ring-2 ring-ink' : ''}`}
                   style={{
                     background: colorIntensidad(d.gasto / max),
                     animationDelay: `${Math.min(i, 20) * 12}ms`,

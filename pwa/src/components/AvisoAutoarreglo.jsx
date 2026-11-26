@@ -66,7 +66,7 @@ export default function AvisoAutoarreglo({ className = '' }) {
             <div className="mt-1 flex flex-wrap gap-2">
               <button
                 type="button" onClick={() => setHoja({ modo: 'detalle', lote: a.resultado })}
-                className="min-h-11 rounded-xl bg-accent px-4 text-sm font-semibold text-paper-raised"
+                className="btn btn-primario"
               >
                 Ver qué hice
               </button>
@@ -185,7 +185,7 @@ export function DetalleAutoarreglo({ lote: inicial, confirmando: pideConfirmar =
               )}
               <button
                 type="button" disabled={ocupado} onClick={deshacer}
-                className="mt-3 min-h-11 w-full rounded-xl bg-accent text-sm font-semibold text-paper-raised disabled:opacity-60"
+                className="btn btn-primario mt-3 w-full"
               >
                 {ocupado ? 'Un momento...' : 'Sí, deshacer'}
               </button>

@@ -560,7 +560,7 @@ export default function SubidaMultiple({
           <Link
             to={totalAuto > 0 ? '/movimientos?revisar=1' : '/movimientos'}
             replace
-            className="flex-1 bg-accent text-paper-raised rounded-2xl py-3 text-sm font-semibold text-center"
+            className="btn btn-primario flex-1"
           >
             {totalAuto > 0 ? 'Revisar lo categorizado' : 'Ver movimientos'}
           </Link>
@@ -878,7 +878,7 @@ export default function SubidaMultiple({
           <button
             onClick={importar}
             disabled={(totalMarcados === 0 && totalJuntar === 0) || importando}
-            className="flex-1 bg-accent text-paper-raised rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+            className="btn btn-primario flex-1"
           >
             <Check size={16} aria-hidden="true" /> {importando ? 'Importando...' : `Importar (${totalMarcados})`}
           </button>
@@ -962,7 +962,7 @@ export default function SubidaMultiple({
                     autoComplete="off"
                     className="flex-1 min-w-0 rounded-xl border border-line bg-paper-raised px-3 py-2 text-base outline-none focus:border-accent"
                   />
-                  <button onClick={() => reintentar(a)} disabled={!a.password || corriendo} className="rounded-xl bg-accent text-paper-raised px-3 min-h-[44px] text-sm font-semibold disabled:opacity-60">
+                  <button onClick={() => reintentar(a)} disabled={!a.password || corriendo} className="btn btn-primario">
                     Reintentar
                   </button>
                 </div>
@@ -1021,7 +1021,7 @@ export default function SubidaMultiple({
           <button
             onClick={procesar}
             disabled={corriendo || archivos.length === 0}
-            className="flex-1 bg-accent text-paper-raised rounded-2xl py-3 text-sm font-semibold disabled:opacity-60"
+            className="btn btn-primario flex-1"
           >
             {corriendo ? 'Procesando...' : `Procesar ${archivos.filter((a) => a.estado === 'pendiente').length} ${archivos.filter((a) => a.estado === 'pendiente').length === 1 ? 'archivo' : 'archivos'}`}
           </button>
@@ -1029,7 +1029,7 @@ export default function SubidaMultiple({
           <button
             onClick={() => empezarRevision(consolidado.archivos)}
             disabled={corriendo || listos.length === 0}
-            className="flex-1 bg-accent text-paper-raised rounded-2xl py-3 text-sm font-semibold disabled:opacity-60"
+            className="btn btn-primario flex-1"
           >
             Revisar ({listos.length} {listos.length === 1 ? 'archivo' : 'archivos'})
           </button>

@@ -148,7 +148,7 @@ export default function CuadreExtracto({
                 className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm mt-1" />
             </label>
           )}
-          <button disabled={ocupado} onClick={guardarSaldoManual} className="mt-2 w-full min-h-[44px] rounded-xl bg-accent text-paper-raised text-xs font-semibold disabled:opacity-60">
+          <button disabled={ocupado} onClick={guardarSaldoManual} className="btn btn-primario btn-sm mt-2 w-full">
             Comparar con mis movimientos
           </button>
         </div>
@@ -183,7 +183,7 @@ export default function CuadreExtracto({
             )}
             {ajuste && (
               <button onClick={() => setPanel(panel === 'ajuste' ? null : 'ajuste')} disabled={!!bloqueoAjuste} aria-expanded={panel === 'ajuste'}
-                className="min-h-[44px] rounded-xl bg-accent text-paper-raised text-xs font-semibold disabled:opacity-50">
+                className="btn btn-primario btn-sm">
                 Crear ajuste de saldo
               </button>
             )}
@@ -219,7 +219,7 @@ export default function CuadreExtracto({
               <button disabled={ocupado} onClick={() => accion(() => api.cuadreSaldoInicial({
                 cuenta_id: cuentaId, modo: acc.saldo_inicial.modo, historial_id: historialId || undefined,
                 saldo_inicial: acc.saldo_inicial.monto, periodo_inicio: acc.saldo_inicial.fecha, confirmar: true,
-              }), 'Listo: registré el saldo inicial.')} className="mt-2 w-full min-h-[44px] rounded-xl bg-accent text-paper-raised text-xs font-semibold disabled:opacity-60">
+              }), 'Listo: registré el saldo inicial.')} className="btn btn-primario btn-sm mt-2 w-full">
                 Sí, registrar saldo inicial
               </button>
             </div>
@@ -245,7 +245,7 @@ export default function CuadreExtracto({
                 cuenta_id: cuentaId, historial_id: historialId || undefined,
                 ...(historialId ? {} : { saldo_final: ev.saldo_extracto, fecha_corte: ev.fecha_corte, moneda: manual?.moneda || saldos?.moneda }),
                 confirmar: true, confirmar_reforzado: reforzado,
-              }), 'Listo: creé el ajuste.')} className="mt-2 w-full min-h-[44px] rounded-xl bg-accent text-paper-raised text-xs font-semibold disabled:opacity-60">
+              }), 'Listo: creé el ajuste.')} className="btn btn-primario btn-sm mt-2 w-full">
                 Sí, crear el ajuste
               </button>
             </div>

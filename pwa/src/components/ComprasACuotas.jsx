@@ -215,7 +215,7 @@ function FormCuotas({ cuenta, onClose, onGuardada }) {
         Esto no cambia el saldo de tu tarjeta: la compra ya está registrada. Solo te mostramos cuánto te toca pagar cada mes.
       </p>
       {error && <p role="alert" className="text-sm text-danger mb-3">{error}</p>}
-      <button onClick={guardar} disabled={guardando} className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60">
+      <button onClick={guardar} disabled={guardando} className="btn btn-primario btn-grande w-full">
         {guardando ? 'Guardando...' : 'Guardar'}
       </button>
     </Hoja>

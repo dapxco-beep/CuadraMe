@@ -135,12 +135,12 @@ function TarjetaGmail({ g, ir, recargar }) {
       {resultado && !error && <p className="text-xs font-semibold mt-2">{resultado}</p>}
       <div className="flex gap-2 mt-3">
         {g.conectado ? (
-          <Boton onClick={sincronizar} disabled={sincronizando} className="flex-1 bg-accent text-paper-raised">
+          <Boton onClick={sincronizar} disabled={sincronizando} className="flex-1">
             <RefreshCw size={16} className={sincronizando ? 'animate-spin' : ''} />
             {sincronizando ? 'Trayendo movimientos...' : 'Traer todo ahora'}
           </Boton>
         ) : (
-          <Boton onClick={() => ir('correo')} className="flex-1 bg-accent text-paper-raised">
+          <Boton onClick={() => ir('correo')} className="flex-1">
             Conectar Gmail
           </Boton>
         )}
@@ -240,7 +240,7 @@ function TarjetaAtajo({ a, recargar }) {
         <Boton onClick={regenerar} className="border border-line">
           <KeyRound size={16} /> Clave nueva
         </Boton>
-        <Boton onClick={probar} disabled={probando} className="bg-accent text-paper-raised">
+        <Boton onClick={probar} disabled={probando}>
           <Send size={16} /> {probando ? 'Probando...' : 'Probar conexión'}
         </Boton>
       </div>
@@ -296,7 +296,7 @@ function TarjetaAvisosBanco() {
         href={ATAJO_NOTIFICACIONES_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-3 text-sm font-semibold bg-accent text-paper-raised mt-3"
+        className="btn btn-primario mt-3"
       >
         <Smartphone size={16} /> Instalar el atajo en mi iPhone
       </a>
@@ -430,7 +430,7 @@ function TarjetaPush({ p }) {
         <p className="text-xs text-ink-soft mt-2">Este navegador no admite notificaciones.</p>
       ) : (
         !activa && permiso !== 'denied' && (
-          <Boton onClick={activar} className="w-full mt-3 bg-accent text-paper-raised">
+          <Boton onClick={activar} className="w-full mt-3">
             Activar notificaciones
           </Boton>
         )

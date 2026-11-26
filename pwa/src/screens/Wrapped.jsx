@@ -272,7 +272,7 @@ export default function Wrapped() {
               type="button"
               onClick={compartir}
               disabled={compartiendo}
-              className="flex-1 bg-accent text-paper-raised font-semibold rounded-2xl py-3.5 text-[15px] flex items-center justify-center gap-2 disabled:opacity-60"
+              className="btn btn-primario btn-grande flex-1"
             >
               <Share2 size={16} /> {compartiendo ? 'Preparando...' : `Compartir mi ${nombreMes(datos.mes)}`}
             </button>
