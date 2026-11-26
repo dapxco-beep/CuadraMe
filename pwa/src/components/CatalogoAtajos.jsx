@@ -3,7 +3,8 @@ import { Bell, Check, CreditCard, Download, Hand, Link2, ShieldCheck, Smartphone
 import ClaveAtajo from './ClaveAtajo'
 import Icono from './Icono'
 import {
-  CapturaAutomatizacion, CapturaGesto, CapturaNotificacion, CapturaPegarClave,
+  CapturaAbrirDescarga, CapturaAgregarAtajo, CapturaAutomatizacion, CapturaDescargaSafari, CapturaGesto, CapturaNotificacion,
+  CapturaPegarClave,
 } from './AtajoIlustraciones'
 import { api } from '../lib/api'
 import { CAPTURAS_REALES } from '../lib/capturasGuia'
@@ -176,6 +177,62 @@ function ComprobarLlegada() {
   )
 }
 
+// Los tres momentos de instalar, dibujados como pantallas de iPhone (se desliza de lado si no caben).
+function PasosInstalar() {
+  const pasos = [
+    { titulo: 'Descarga', texto: 'Toca «Instalar» y luego «Descargar».', dibujo: <CapturaDescargaSafari /> },
+    { titulo: 'Ábrelo', texto: 'Botón de descargas de Safari › el archivo.', dibujo: <CapturaAbrirDescarga /> },
+    { titulo: 'Agrégalo', texto: 'Pega tu clave y toca «Agregar atajo».', dibujo: <CapturaAgregarAtajo /> },
+  ]
+  return (
+    <ol className="mt-3 flex gap-3 overflow-x-auto snap-x pb-2" data-testid="pasos-instalar-dibujos" aria-label="Los tres pasos para instalar">
+      {pasos.map((p, i) => (
+        <li key={p.titulo} className="snap-center shrink-0 w-[42%] min-w-[130px] max-w-[170px]">
+          <figure>
+            {p.dibujo}
+            <figcaption className="mt-1.5 text-center">
+              <span className="inline-flex w-5 h-5 rounded-full bg-accent text-paper-raised text-[11px] font-bold items-center justify-center">{i + 1}</span>
+              <span className="block text-xs font-bold mt-0.5">{p.titulo}</span>
+              <span className="block text-[11px] text-ink-soft leading-snug"><Resaltar texto={p.texto} /></span>
+            </figcaption>
+          </figure>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+// Desde el ícono instalado en la pantalla de inicio, iOS no deja descargar archivos: hay que usar Safari.
+function esAppInstalada() {
+  try {
+    return window.navigator.standalone === true || window.matchMedia?.('(display-mode: standalone)').matches === true
+  } catch {
+    return false
+  }
+}
+
+function AyudaSiNoAbre() {
+  return (
+    <>
+      {esAppInstalada() && (
+        <p role="alert" data-testid="aviso-app-instalada" className="mt-3 rounded-xl bg-accent-soft p-3 text-sm leading-relaxed">
+          <b>Estás usando CuadraMe desde el ícono de tu pantalla de inicio.</b> Desde ahí iOS no deja descargar atajos: abre
+          {' '}<b>cuadrame.dapx.shop</b> en <b>Safari</b>, entra a esta misma pantalla y toca «Instalar» allí.
+        </p>
+      )}
+      <details className="mt-3 rounded-xl bg-paper p-3" data-testid="no-se-abre">
+        <summary className="text-sm font-semibold cursor-pointer min-h-6">¿Tocaste «Instalar» y no pasó nada?</summary>
+        <ul className="list-disc pl-5 mt-2 space-y-1.5 text-xs text-ink-soft leading-relaxed">
+          <li>Safari no abre el atajo solo: descárgalo y luego toca el botón de descargas (la flecha en un círculo, junto a la barra de direcciones) y el archivo.</li>
+          <li>También lo encuentras en la app Archivos › Descargas. Tócalo y elige «Atajos».</li>
+          <li>Si usas CuadraMe desde el ícono de la pantalla de inicio, ábrelo en Safari: desde el ícono no se pueden descargar archivos.</li>
+          <li>Si nada de eso funciona, escríbenos y te mandamos el atajo por otro medio.</li>
+        </ul>
+      </details>
+    </>
+  )
+}
+
 // Para quien abre la app en un computador: copia el enlace del atajo y lo abre luego en su iPhone (WhatsApp, notas, AirDrop...).
 function CopiarEnlace({ url }) {
   const [copiado, setCopiado] = useState(false)
@@ -254,6 +311,8 @@ function GuiaAtajo({ a }) {
                   <Icono icono={Download} tam="md" /> Instalar
                 </a>
                 <CopiarEnlace url={a.url} />
+                <AyudaSiNoAbre />
+                <PasosInstalar />
               </>
             )}
             {fase.id === 'activar' &&
