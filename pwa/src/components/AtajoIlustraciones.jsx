@@ -178,3 +178,27 @@ export function CapturaAgregarAtajo() {
     </Iphone>
   )
 }
+
+export function CapturaBotonAccion() {
+  const modos = [28, 52, 76, 100, 124]
+  return (
+    <Iphone titulo="Dibujo: en Ajustes, Botón de acción, se elige el modo Atajo y luego «Elegir un atajo» con CuadraMe Registrar">
+      <text x="75" y="44" fontSize="8" fontWeight="700" textAnchor="middle" className="fill-ink">Botón de acción</text>
+      {modos.map((x, i) => (
+        <circle key={x} cx={x} cy="66" r="9" className={i === 3 ? 'fill-accent' : 'fill-line'} opacity={i === 3 ? 1 : 0.6} />
+      ))}
+      <path d="M96 66 l4 4 l7 -8" className="stroke-paper-raised" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <text x="100" y="88" fontSize="7" fontWeight="700" textAnchor="middle" className="fill-ink">Atajo</text>
+      <text x="75" y="104" fontSize="5.8" textAnchor="middle" className="fill-ink-soft">Desliza hasta «Atajo»</text>
+      <rect x="16" y="116" width="118" height="26" rx="8" className="fill-paper stroke-line" strokeWidth="1" />
+      <text x="24" y="132" fontSize="7" className="fill-ink">Elegir un atajo</text>
+      <path d="M124 129 l4 3 l-4 3" className="stroke-ink-soft" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+      <Toque x={92} y={130} />
+      <rect x="16" y="152" width="118" height="34" rx="8" className="fill-accent-soft stroke-accent" strokeWidth="1.2" />
+      <rect x="22" y="160" width="18" height="18" rx="5" className="fill-accent" />
+      <text x="46" y="171" fontSize="7" fontWeight="700" className="fill-ink">CuadraMe Registrar</text>
+      <text x="75" y="206" fontSize="6" textAnchor="middle" className="fill-ink-soft">Luego, mantén presionado el botón</text>
+      <text x="75" y="215" fontSize="6" textAnchor="middle" className="fill-ink-soft">del costado con el comprobante abierto</text>
+    </Iphone>
+  )
+}

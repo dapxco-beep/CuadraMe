@@ -36,7 +36,7 @@ describe('Tarjeta «Cuando el banco no avisa»', () => {
   })
 
   it('solo ofrece gestos que no sacan al usuario del comprobante', () => {
-    expect(GESTOS.map((g) => g.id)).toEqual(['atras', 'boton', 'siri'])
+    expect(GESTOS.map((g) => g.id)).toEqual(['atras', 'boton', 'asistive', 'siri'])
     expect(GESTOS.filter((g) => g.recomendado)).toHaveLength(1)
   })
 })

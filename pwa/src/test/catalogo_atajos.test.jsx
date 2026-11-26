@@ -89,7 +89,19 @@ describe('Guía de atajos', () => {
     montarCatalogo()
     await elegir('Mi banco no avisa')
     const negritas = [...screen.getByTestId('fase-activar').querySelectorAll('b')].map((b) => b.textContent)
-    expect(negritas).toEqual(expect.arrayContaining(['«Tocar atrás»', '«Doble toque»', '«CuadraMe Registrar»']))
+    expect(negritas).toEqual(expect.arrayContaining(['«Doble toque»', '«Atajos»', '«CuadraMe Registrar»']))
+  })
+
+  it('explica todas las formas de lanzar Registrar sin tapar el comprobante, y aclara lo del botón lateral', async () => {
+    montarCatalogo()
+    await elegir('Mi banco no avisa')
+    const formas = screen.getByTestId('formas-de-lanzar')
+    for (const id of ['atras', 'boton', 'asistive', 'siri']) expect(within(formas).getByTestId(`forma-${id}`)).toBeInTheDocument()
+    expect(within(formas).getByTestId('forma-boton')).toHaveTextContent('Ajustes > Botón de acción')
+    expect(within(formas).getByTestId('forma-asistive')).toHaveTextContent('AssistiveTouch')
+    expect(within(formas).getByTestId('forma-siri')).toHaveTextContent('botón lateral')
+    expect(formas).toHaveTextContent('Centro de')
+    expect(screen.getByTestId('fase-activar').querySelectorAll('svg[role="img"]').length).toBeGreaterThanOrEqual(2)
   })
 
   it('recuerda lo que elegiste la próxima vez', async () => {

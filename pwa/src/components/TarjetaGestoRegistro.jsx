@@ -4,7 +4,8 @@ import { Check, Hand, Smartphone } from 'lucide-react'
 // «Cuando el banco no avisa» (Nu al enviar plata, por ejemplo): un gesto del iPhone toma un pantallazo del comprobante,
 // el teléfono saca el texto y manda SOLO el texto a CuadraMe. El gesto lo elige cada persona en los Ajustes de su iPhone
 // (CuadraMe no puede ponerlo por ella), por eso esta guía: eliges uno y ves solo los pasos de ese.
-// Solo gestos que se hacen SIN salir del comprobante (Centro de control o widgets lo taparían en el pantallazo).
+// Solo gestos que se hacen SIN salir del comprobante: el Centro de control, un widget o el ícono de la pantalla de inicio
+// taparían el comprobante o sacarían a la persona de él, y el atajo toma un pantallazo de lo que haya en pantalla.
 export const GESTOS = [
   {
     id: 'atras',
@@ -17,6 +18,7 @@ export const GESTOS = [
       'Baja hasta la sección «Atajos» y escoge «CuadraMe Registrar».',
     ],
     uso: 'Con el comprobante abierto, toca dos veces la parte de atrás del iPhone.',
+    ayuda: 'Puedes poner «Doble toque» y «Triple toque» a cosas distintas. Si usas funda gruesa y no responde, prueba el triple toque.',
   },
   {
     id: 'boton',
@@ -28,6 +30,19 @@ export const GESTOS = [
       'Escoge «CuadraMe Registrar».',
     ],
     uso: 'Con el comprobante abierto, mantén presionado el botón de acción.',
+    ayuda: 'Es el botoncito del costado izquierdo, arriba de los de volumen (el que antes silenciaba). Si tu iPhone no lo tiene, usa Tocar atrás.',
+  },
+  {
+    id: 'asistive',
+    titulo: 'Botón flotante (AssistiveTouch)',
+    nota: 'Cualquier iPhone · un toque en pantalla',
+    pasos: [
+      'Abre Ajustes > Accesibilidad > Tocar > AssistiveTouch y actívalo.',
+      'En «Acciones personalizadas» elige «Un toque», «Doble toque» o «Mantener presionado».',
+      'Baja hasta «Atajos» y escoge «CuadraMe Registrar».',
+    ],
+    uso: 'Con el comprobante abierto, toca el botón flotante (con el toque que elegiste).',
+    ayuda: 'Déjalo en una esquina para que no tape nada del comprobante.',
   },
   {
     id: 'siri',
@@ -35,6 +50,7 @@ export const GESTOS = [
     nota: 'Cualquier iPhone con Siri',
     pasos: ['No hay que configurar nada: Siri reconoce el nombre del atajo.'],
     uso: 'Con el comprobante abierto, di «Oye Siri, CuadraMe Registrar».',
+    ayuda: 'El botón lateral (el de encender) no se puede asignar a un atajo, pero si lo mantienes presionado llamas a Siri y le dices el nombre.',
   },
 ]
 

@@ -3,9 +3,10 @@ import { Bell, Check, CreditCard, Download, Hand, Link2, ShieldCheck, Smartphone
 import ClaveAtajo from './ClaveAtajo'
 import Icono from './Icono'
 import {
-  CapturaAbrirDescarga, CapturaAgregarAtajo, CapturaAutomatizacion, CapturaDescargaSafari, CapturaGesto, CapturaNotificacion,
+  CapturaAbrirDescarga, CapturaAgregarAtajo, CapturaAutomatizacion, CapturaBotonAccion, CapturaDescargaSafari, CapturaGesto, CapturaNotificacion,
   CapturaPegarClave,
 } from './AtajoIlustraciones'
+import { GESTOS } from './TarjetaGestoRegistro'
 import { api } from '../lib/api'
 import { CAPTURAS_REALES } from '../lib/capturasGuia'
 import { haceCuanto } from '../lib/sincronizarGmail'
@@ -90,9 +91,8 @@ export const ATAJOS = [
         id: 'activar',
         titulo: 'Elegir tu gesto (una sola vez)',
         pasos: [
-          'Abre Ajustes › Accesibilidad › Tocar › «Tocar atrás».',
-          'Toca «Doble toque» y, al final de la lista, en «Atajos», escoge «CuadraMe Registrar».',
-          'Alternativas: el Botón de acción (iPhone 15 Pro o más nuevo) o decir «Oye Siri, CuadraMe Registrar».',
+          'Elige la forma que más te acomode de la lista de abajo: tocar atrás, botón de acción, botón flotante o Siri.',
+          'Abre Ajustes y asigna «CuadraMe Registrar» a esa forma. Cada una trae sus pasos.',
         ],
       },
       {
@@ -104,10 +104,41 @@ export const ATAJOS = [
         ],
       },
     ],
-    dibujos: [<CapturaGesto key="a" />],
-    leyendas: ['Así eliges tu gesto en Ajustes'],
+    dibujos: [<CapturaGesto key="a" />, <CapturaBotonAccion key="b" />],
+    leyendas: ['Tocar atrás: así lo eliges en Ajustes', 'Botón de acción (iPhone 15 Pro o más nuevo)'],
   },
 ]
+
+// Todas las formas de lanzar «CuadraMe Registrar» sin salir del comprobante, cada una con sus pasos.
+function FormasDeLanzar() {
+  return (
+    <div className="mt-4" data-testid="formas-de-lanzar">
+      <p className="text-sm font-semibold">Formas de lanzarlo</p>
+      <p className="text-xs text-ink-soft mt-1 leading-relaxed">
+        El atajo toma un pantallazo de lo que tengas abierto, así que sirven las formas que NO tapan el comprobante. El Centro de
+        control, un widget o el ícono en la pantalla de inicio no sirven: te sacan del comprobante o lo cubren.
+      </p>
+      <div className="mt-2 grid gap-2">
+        {GESTOS.map((g) => (
+          <details key={g.id} className="rounded-xl bg-paper p-3" data-testid={`forma-${g.id}`} open={g.recomendado || undefined}>
+            <summary className="cursor-pointer min-h-6">
+              <span className="text-sm font-semibold">{g.titulo}</span>
+              {g.recomendado && <span className="ml-2 text-[11px] font-semibold text-cuadra">Recomendado</span>}
+              <span className="block text-xs text-ink-soft">{g.nota}</span>
+            </summary>
+            <ol className="list-decimal pl-5 mt-2 space-y-1 text-xs text-ink-soft leading-relaxed">
+              {g.pasos.map((p) => (
+                <li key={p}><Resaltar texto={p} /></li>
+              ))}
+            </ol>
+            <p className="text-xs mt-2 leading-relaxed"><b>Para usarlo:</b> <Resaltar texto={g.uso} /></p>
+            {g.ayuda && <p className="text-xs text-ink-soft mt-1 leading-relaxed">{g.ayuda}</p>}
+          </details>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 // Lo que va entre « » es texto exacto de un botón de iOS: se resalta.
 function Resaltar({ texto }) {
@@ -315,6 +346,7 @@ function GuiaAtajo({ a }) {
             )}
             {fase.id === 'activar' &&
               a.dibujos.map((d, j) => <Imagen key={a.leyendas[j]} id={a.id} indice={j} dibujo={d} leyenda={a.leyendas[j]} />)}
+            {fase.id === 'activar' && a.id === 'registrar' && <FormasDeLanzar />}
             {fase.id === 'probar' && <ComprobarLlegada />}
           </Fase>
         ))}
