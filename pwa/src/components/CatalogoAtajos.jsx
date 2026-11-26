@@ -236,7 +236,9 @@ function AyudaSiNoAbre() {
 // Para quien abre la app en un computador: copia el enlace del atajo y lo abre luego en su iPhone (WhatsApp, notas, AirDrop...).
 // Enlace oficial de Apple: abre la app Atajos y ella misma trae el archivo (sin pasar por la descarga de Safari).
 function enlaceAtajos(a) {
-  const archivo = new URL(a.url, window.location.origin).href
+  // Copia con nombre simple y sin cabecera de descarga: es la que Atajos baja por su cuenta.
+  const simple = a.url.includes('Apple%20Pay') ? '/atajos/applepay.shortcut' : '/atajos/registrar.shortcut'
+  const archivo = new URL(simple, window.location.origin).href
   return `shortcuts://import-shortcut?url=${encodeURIComponent(archivo)}&name=${encodeURIComponent(a.nombre)}`
 }
 

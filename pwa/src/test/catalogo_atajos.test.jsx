@@ -60,7 +60,7 @@ describe('Guía de atajos', () => {
       await elegir(a.opcion.split(' (')[0])
       const tarjeta = screen.getByTestId(`atajo-${a.id}`)
       const boton = within(tarjeta).getByRole('link', { name: /^Instalar CuadraMe/ })
-      const archivo = new URL(esperados[a.id], window.location.origin).href
+      const archivo = new URL(a.id === 'apple-pay' ? '/atajos/applepay.shortcut' : '/atajos/registrar.shortcut', window.location.origin).href
       expect(boton.getAttribute('href')).toMatch(/^shortcuts:\/\/import-shortcut\?url=/)
       expect(decodeURIComponent(boton.getAttribute('href'))).toContain(archivo)
       expect(boton).not.toHaveAttribute('target')
