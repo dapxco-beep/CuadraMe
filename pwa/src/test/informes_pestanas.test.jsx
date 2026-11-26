@@ -33,12 +33,24 @@ const montar = (ruta) =>
   )
 
 describe('Informes: una pantalla con pestañas', () => {
-  it('sin pestaña elegida abre «Gastos» y muestra las cinco pestañas', async () => {
+  it('sin pestaña elegida abre «Gastos» y con el perfil Esencial muestra las pestañas básicas', async () => {
     montar('/informes')
     expect(await screen.findByText(/PANTALLA-GASTOS/)).toBeInTheDocument()
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Gastos', 'Mi mes', 'Patrimonio', 'Cierre', 'Impuestos'])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Gastos', 'Mi mes', 'Cierre'])
     expect(screen.getByRole('tab', { name: 'Gastos' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('heading', { name: 'Informes', level: 1 })).toBeInTheDocument()
+  })
+
+  it('con «Todo» (o un perfil avanzado) salen también Patrimonio e Impuestos; con Esencial, un enlace directo los muestra', async () => {
+    localStorage.setItem('cuadrame:perfil-uso:anon', 'todo')
+    const { unmount } = montar('/informes')
+    await screen.findByText(/PANTALLA-GASTOS/)
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Gastos', 'Mi mes', 'Patrimonio', 'Cierre', 'Impuestos'])
+    unmount()
+    localStorage.removeItem('cuadrame:perfil-uso:anon')
+    montar('/informes?tab=impuestos')
+    expect(await screen.findByText(/PANTALLA-IMPUESTOS/)).toBeInTheDocument()
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Gastos', 'Mi mes', 'Cierre', 'Impuestos'])
   })
 
   it('tocar una pestaña cambia el contenido y la marca como activa', async () => {

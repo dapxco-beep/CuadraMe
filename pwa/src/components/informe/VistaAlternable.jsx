@@ -4,6 +4,8 @@
  */
 export default function VistaAlternable({ etiqueta, opciones, valor, onCambio, className = '' }) {
   const activa = opciones.find((o) => o.id === valor) || opciones[0]
+  // Con una sola forma de ver no hay nada que alternar: se muestra tal cual, sin interruptor
+  if (opciones.length === 1) return <div className={className}>{activa.nodo}</div>
   return (
     <div className={className}>
       <div role="group" aria-label={etiqueta} className="flex justify-end mb-2">

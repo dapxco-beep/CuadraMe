@@ -4,6 +4,9 @@ import { useSearchParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { EmbebidoProvider } from '../lib/EmbebidoContext'
 import { EsqueletoLista } from '../components/Esqueletos'
+import { useModoMenu } from '../lib/modoSimple'
+
+const AVANZADAS = ['patrimonio', 'impuestos']
 
 // Una sola puerta para «cómo voy»: antes eran cinco pantallas sueltas (Informe, Mi resumen, Cosas raras, Patrimonio y
 // Cierre de mes), cada una con su flecha, su título y su selector de periodo. Cada pestaña muestra la pantalla de
@@ -27,6 +30,8 @@ export default function Informes() {
   const [params, setParams] = useSearchParams()
   const activa = PESTANAS.find((p) => p.id === params.get('tab')) || PESTANAS[0]
   const { Pantalla } = activa
+  const { perfil } = useModoMenu()
+  const visibles = PESTANAS.filter((p) => perfil !== 'esencial' || !AVANZADAS.includes(p.id) || p.id === activa.id)
 
   return (
     <div className={`flex-1 overflow-y-auto pb-6 screen-enter${activa.id === 'gastos' ? ' pantalla-ancha' : ''}`}>
@@ -43,7 +48,7 @@ export default function Informes() {
       </header>
 
       <div role="tablist" aria-label="Informes" className="pl-5 pr-9 pb-1 flex gap-2 overflow-x-auto no-scrollbar borde-fade-der" data-testid="pestanas-informes">
-        {PESTANAS.map((p) => {
+        {visibles.map((p) => {
           const es = p.id === activa.id
           return (
             <button

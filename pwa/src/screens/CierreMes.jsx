@@ -40,7 +40,7 @@ function Icono({ estado, className = '' }) {
 // Los cuatro pasos en una fila: tocas uno para ir, ves de un vistazo cuál está bien y cuál pide atención.
 function Pasos({ pasos, actual, onIr }) {
   return (
-    <ol className="grid grid-cols-4 gap-1.5" aria-label="Pasos del cierre">
+    <ol className="grid grid-cols-2 min-[560px]:grid-cols-4 gap-2" aria-label="Pasos del cierre">
       {pasos.map((p, i) => (
         <li key={p.id}>
           <button
@@ -53,7 +53,7 @@ function Pasos({ pasos, actual, onIr }) {
             }`}
           >
             <Icono estado={p.estado} />
-            <span className="truncate max-w-full">{p.corto}</span>
+            <span className="max-w-full text-center leading-tight">{p.corto}</span>
           </button>
         </li>
       ))}

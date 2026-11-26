@@ -907,3 +907,6 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [role='button']:fo
   display: inline-flex; align-items: center; gap: 0.375rem; min-height: 44px; padding: 0 0.75rem 0 0.375rem;
   border-radius: 9999px; border: 1px solid var(--color-line); background: var(--color-paper-raised); color: var(--color-ink);
 }
+
+/* Texto pequeño de 13 px también en text-xs (antes 12 px). Revisado en 104 capturas (360, 390, 820 y 1440 px): sin desbordes. */
+.text-xs { font-size: 0.8125rem; line-height: 1.25rem; }

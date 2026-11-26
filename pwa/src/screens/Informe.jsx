@@ -345,7 +345,8 @@ export default function Informe() {
         valor={vistaDia}
         onCambio={setVistaDia}
         opciones={[
-          { id: 'dia', texto: 'Día a día', nodo: hayDatos ? <DiaADia desde={informe.desde} hasta={informe.hasta} className="sin-margen" /> : <p className="text-sm text-ink-soft">Cuando haya gastos en este periodo, aquí verás cuánto gastaste cada día.</p> },
+          // Sin gastos en el periodo, «Día a día» no tiene qué mostrar: queda solo el calendario
+          ...(hayDatos ? [{ id: 'dia', texto: 'Día a día', nodo: <DiaADia desde={informe.desde} hasta={informe.hasta} className="sin-margen" /> }] : []),
           { id: 'calendario', texto: 'Calendario', nodo: <MapaActividad /> },
         ]}
       />

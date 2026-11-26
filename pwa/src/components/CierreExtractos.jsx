@@ -25,7 +25,7 @@ const ICONO_ESTADO = { cuadra: CheckCircle2, no_cuadra: XCircle, sin_extracto: C
 function Pildora({ estado, children, sinIcono = false }) {
   const I = ICONO_ESTADO[estado] || CircleDashed
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${PILDORA[estado] || PILDORA.sin_extracto}`}>
+    <span className={`inline-flex items-center gap-1 whitespace-nowrap shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${PILDORA[estado] || PILDORA.sin_extracto}`}>
       {!sinIcono && <I size={16} aria-hidden="true" />} {children}
     </span>
   )
