@@ -74,7 +74,7 @@ const Fila = memo(function Fila({ m, columnas, icono, moneda, cuenta, esSel, act
             <button
               type="button"
               onClick={() => onChip(m)}
-              aria-label={`Cambiar categoría de ${m.descripcion}`}
+              aria-label={`${m.categoria}${m.subcategoria ? ` · ${m.subcategoria}` : ''}. Cambiar categoría de ${m.descripcion}`}
               className="inline-flex items-center gap-1 max-w-full text-xs text-ink-soft rounded-full border border-line px-2.5 min-h-[32px] hover:border-accent hover:text-ink"
             >
               <span aria-hidden="true" className="shrink-0">{icono}</span>

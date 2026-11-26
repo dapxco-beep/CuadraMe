@@ -1,4 +1,4 @@
-import { marcaDeEntidad } from '../lib/entidadesFinancierasCO'
+import { marcaDeEntidad, textoMasClaroQueFondo } from '../lib/entidadesFinancierasCO'
 import { useBloqueo } from '../lib/BloqueoContext'
 import { esCredito, textoActualizado } from '../lib/saldos'
 import { resumenDeuda } from '../lib/deudaTarjeta'
@@ -27,18 +27,18 @@ export default function TarjetaCuenta({ cuenta, style, className = '', ultimoMov
       style={{ background: marca.bg, color: marca.fg, ...style }}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-xs font-bold opacity-85 truncate">{cuenta.nombre}</span>
+        <span className="text-xs font-bold truncate">{cuenta.nombre}</span>
         <span
           className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center text-[11px] font-extrabold"
-          style={{ background: 'rgba(255,255,255,0.22)' }}
+          style={{ background: textoMasClaroQueFondo(marca) ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.22)' }}
         >
           {marca.mono}
         </span>
       </div>
-      <p className="text-[11px] font-semibold uppercase tracking-wide opacity-75 mt-3">{r ? r.etiqueta : 'Saldo actual'}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide mt-3">{r ? r.etiqueta : 'Saldo actual'}</p>
       <p className={`${claseSaldo} font-extrabold whitespace-nowrap`}>{saldoTxt}</p>
       {!compacta && (
-        <p className="text-[11px] opacity-80 mt-0.5">
+        <p className="text-[11px] mt-0.5">
           {r && r.estado !== 'a_favor' && r.disponible ? `Cupo disponible ${r.disponible}` : ''}
           {r && r.estado !== 'a_favor' && r.disponible && ultimoMovimiento !== undefined ? ' · ' : ''}
           {/* undefined = aún no sabemos; null = la cuenta no tiene movimientos */}

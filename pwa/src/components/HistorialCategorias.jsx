@@ -37,7 +37,7 @@ export default function HistorialCategorias({ fmt, className = '' }) {
         <div role="group" aria-label="Meses del historial" className="flex rounded-full bg-paper border border-line p-0.5 shrink-0">
           {[6, 12].map((n) => (
             <button key={n} type="button" aria-pressed={nMeses === n} onClick={() => setNMeses(n)}
-              className={`px-3 min-h-[32px] rounded-full text-xs font-semibold ${nMeses === n ? 'bg-accent text-white' : 'text-ink-soft'}`}>{n} meses</button>
+              className={`px-3 min-h-[32px] rounded-full text-xs font-semibold ${nMeses === n ? 'bg-accent text-paper-raised' : 'text-ink-soft'}`}>{n} meses</button>
           ))}
         </div>
       </div>

@@ -84,7 +84,7 @@ export default function EvolucionCategoria({ fmt, className = '' }) {
         <div role="group" aria-label="Cantidad de meses" className="flex rounded-full bg-paper border border-line p-0.5 shrink-0">
           {[6, 12].map((n) => (
             <button key={n} type="button" aria-pressed={nMeses === n} onClick={() => setNMeses(n)}
-              className={`px-3 min-h-[32px] relative after:content-[''] after:absolute after:-inset-y-1.5 after:inset-x-0 rounded-full text-xs font-semibold ${nMeses === n ? 'bg-accent text-white' : 'text-ink-soft'}`}>{n} meses</button>
+              className={`px-3 min-h-[32px] relative after:content-[''] after:absolute after:-inset-y-1.5 after:inset-x-0 rounded-full text-xs font-semibold ${nMeses === n ? 'bg-accent text-paper-raised' : 'text-ink-soft'}`}>{n} meses</button>
           ))}
         </div>
       </div>
@@ -92,7 +92,7 @@ export default function EvolucionCategoria({ fmt, className = '' }) {
       <div role="group" aria-label="Categoría" className={`flex gap-2 mt-3 pb-1 ${verTodas ? 'flex-wrap' : 'overflow-x-auto -mx-4 px-4'}`}>
         {[null, ...top.map((t) => t.categoria)].map((n) => (
           <button key={n ?? '__todas'} type="button" aria-pressed={cat === n} onClick={() => setCat(n)}
-            className={`shrink-0 px-3 min-h-[44px] rounded-full text-xs font-semibold border ${cat === n ? 'bg-accent text-white border-accent' : 'bg-paper text-ink border-line'}`}>
+            className={`shrink-0 px-3 min-h-[44px] rounded-full text-xs font-semibold border ${cat === n ? 'bg-accent text-paper-raised border-accent' : 'bg-paper text-ink border-line'}`}>
             {n ?? 'Todas'}
           </button>
         ))}

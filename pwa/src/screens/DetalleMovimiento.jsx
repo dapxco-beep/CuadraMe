@@ -687,7 +687,7 @@ export default function DetalleMovimiento({ id: idProp, embebido = false, onCerr
               <button
                 onClick={pasarAEfectivo}
                 disabled={trasladando}
-                className="mt-2 min-h-11 px-4 rounded-xl bg-accent text-white text-sm font-semibold disabled:opacity-60"
+                className="mt-2 min-h-11 px-4 rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-60"
               >
                 {oferta.boton}
               </button>

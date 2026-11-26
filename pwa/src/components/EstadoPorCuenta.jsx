@@ -31,7 +31,7 @@ function ChipMes({ cuenta, mes, celda, etiqueta, onMes }) {
   return (
     <Etiqueta
       {...(interactivo ? { type: 'button', onClick: () => onMes?.(cuenta, celda, v) } : {})}
-      aria-label={`${nombreCompleto(cuenta)}, ${nombreMes(mes)}: ${v.texto}${v.detalle ? `, ${v.detalle}` : ''}${corte ? `, ${corte}` : ''}`}
+      aria-label={`${etiqueta} ${v.texto}${v.detalle ? ` ${v.detalle}` : ''}${corte ? ` ${corte}` : ''}. ${nombreCompleto(cuenta)}, ${nombreMes(mes)}`}
       data-testid={`mes-${cuenta.id}-${mes}`}
       data-estado={v.clave}
       className={`snap-start shrink-0 w-[104px] min-h-[76px] rounded-xl border px-2.5 py-2 text-left flex flex-col gap-0.5 ${e.caja}`}

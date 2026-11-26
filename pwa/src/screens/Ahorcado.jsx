@@ -47,7 +47,7 @@ export default function Ahorcado() {
           </p>
           <ol className="mt-4 grid grid-cols-3 sm:grid-cols-6 gap-1.5" aria-label="Estados de Cuadri, de peor a mejor">
             {ESCALA.map((e) => (
-              <li key={e} className={`flex flex-col items-center rounded-xl py-1.5 ${e === estado ? 'bg-accent-soft ring-1 ring-accent' : 'opacity-60'}`} aria-current={e === estado ? 'true' : undefined}>
+              <li key={e} className={`flex flex-col items-center rounded-xl py-1.5 ${e === estado ? 'bg-accent-soft ring-1 ring-accent' : 'opacity-75'}`} aria-current={e === estado ? 'true' : undefined}>
                 <Cuadri estado={e} size={38} animar={false} siempre />
                 <span className="text-xs leading-tight mt-0.5 font-medium">{NOMBRE_ESTADO[e]}</span>
               </li>

@@ -195,7 +195,7 @@ export default function Informe() {
         <div role="group" aria-label="Cómo ver las categorías" className="flex rounded-full bg-paper border border-line p-0.5 shrink-0">
           {[['mapa', 'Mapa', LayoutGrid], ['dona', 'Dona', PieChart]].map(([id, texto, Ico]) => (
             <button key={id} type="button" aria-pressed={vistaCat === id} onClick={() => cambiarVista(id)}
-              className={`px-3 min-h-[32px] rounded-full text-xs font-semibold inline-flex items-center gap-1 ${vistaCat === id ? 'bg-accent text-white' : 'text-ink-soft'}`}>
+              className={`px-3 min-h-[32px] rounded-full text-xs font-semibold inline-flex items-center gap-1 ${vistaCat === id ? 'bg-accent text-paper-raised' : 'text-ink-soft'}`}>
               <Ico size={13} aria-hidden="true" />{texto}
             </button>
           ))}

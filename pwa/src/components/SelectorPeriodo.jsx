@@ -53,7 +53,7 @@ export default function SelectorPeriodo({ opciones = PERIODOS_INFORME, valor, on
 
   return (
     <div>
-      <div ref={fila} className={desplazable ? 'flex gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1' : 'flex flex-wrap gap-1.5'} role="group" aria-label={etiqueta}>
+      <div ref={fila} className={desplazable ? 'flex gap-1.5 overflow-x-auto no-scrollbar -mx-1 pl-1 pr-9 pb-1 borde-fade-der' : 'flex flex-wrap gap-1.5'} role="group" aria-label={etiqueta}>
         {opciones.map((o) => (
           <Chip key={o.id} activo={valor?.periodo === o.id} onClick={() => elegir(o.id)} className={`text-xs font-semibold ${desplazable ? 'shrink-0 whitespace-nowrap' : ''}`}>
             {o.label}

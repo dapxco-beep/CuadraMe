@@ -108,7 +108,11 @@ describe('bancos por país en el selector de cuentas', () => {
     expect(screen.queryByRole('button', { name: /Banorte/ })).not.toBeInTheDocument()
   })
   it('marca de un banco de otro país sale del registro', () => {
-    expect(marcaDeEntidad('Banorte Ahorros').bg).toBe('#EB0029')
+    const m = marcaDeEntidad('Banorte Ahorros')
+    expect(m.mono).toBe('BN')
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(m.bg.slice(i, i + 2), 16))
+    expect(r).toBeGreaterThan(g * 2) // sigue siendo el rojo de Banorte, algo más oscuro para que el texto se lea
+    expect(r).toBeGreaterThan(b * 2)
     expect(bancosDePais('PE').some((b) => b.nombre === 'Yape')).toBe(true)
   })
 })

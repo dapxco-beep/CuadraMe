@@ -91,7 +91,7 @@ beforeEach(() => {
   })
 })
 
-const chipDe = (desc) => screen.getByRole('button', { name: `Cambiar categoría de ${desc}` })
+const chipDe = (desc) => screen.getByRole('button', { name: (nombre) => nombre.endsWith(`Cambiar categoría de ${desc}`) })
 
 describe('categorizar sin abrir el movimiento', () => {
   it('el chip guarda al elegir, sin navegar, y Deshacer lo revierte', async () => {

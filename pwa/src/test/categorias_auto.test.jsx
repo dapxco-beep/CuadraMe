@@ -97,7 +97,7 @@ describe('Categorías: nada queda inaccesible', () => {
     api.eliminarCategoria.mockRejectedValueOnce(err).mockResolvedValueOnce({ ok: true, movidos: 3 })
     // Mascotas está oculta; se edita desde la sección de ocultas.
     montar(<Categorias />)
-    await userEvent.click(screen.getByRole('button', { name: 'Editar Mascotas' }))
+    await userEvent.click(screen.getByRole('button', { name: /^Editar Mascotas/ }))
     await userEvent.click(screen.getByRole('button', { name: /Eliminar categoría/ }))
     await userEvent.click(await screen.findByRole('button', { name: 'Eliminar' }))
     expect(await screen.findByText('Esta categoría está en uso')).toBeInTheDocument()

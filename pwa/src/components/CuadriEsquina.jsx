@@ -16,7 +16,7 @@ export default function CuadriEsquina() {
       {salud && (
         <Link
           to="/ahorcado"
-          aria-label={`${MENSAJE_POR_ESTADO[salud.estado]}. Toca para ver cómo está`}
+          aria-label={`Cuadri: ${NOMBRE[salud.estado]}. ${MENSAJE_POR_ESTADO[salud.estado]}. Toca para ver cómo está`}
           className="cuadri-esquina-ficha"
         >
           <Cuadri estado={salud.estado} size={30} animar={false} siempre />

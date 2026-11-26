@@ -70,23 +70,31 @@ export default function IngresosGastos({ params, fmt, className = '', seleccion 
           <dl className="grid grid-cols-2 gap-3">
             <div>
               <dt className="text-xs text-ink-soft">Ingresos</dt>
-              <dd className="text-lg font-bold text-accent t-cifra">{fmt(d.ingresos)}</dd>
-              <Cambio pct={d.variacion.ingresos_pct} actual={d.ingresos} mejorSube />
+              <dd>
+                <span className="block text-lg font-bold text-accent t-cifra">{fmt(d.ingresos)}</span>
+                <Cambio pct={d.variacion.ingresos_pct} actual={d.ingresos} mejorSube />
+              </dd>
             </div>
             <div>
               <dt className="text-xs text-ink-soft">Gastos</dt>
-              <dd className="text-lg font-bold text-ink t-cifra">{fmt(d.gastos)}</dd>
-              <Cambio pct={d.variacion.gastos_pct} actual={d.gastos} mejorSube={false} />
+              <dd>
+                <span className="block text-lg font-bold text-ink t-cifra">{fmt(d.gastos)}</span>
+                <Cambio pct={d.variacion.gastos_pct} actual={d.gastos} mejorSube={false} />
+              </dd>
             </div>
             <div>
               <dt className="text-xs text-ink-soft">Balance</dt>
-              <dd className={`text-lg font-bold t-cifra ${colorBalance}`}>{signo}{fmt(Math.abs(d.balance))}</dd>
-              <Cambio pct={d.variacion.balance_pct} actual={d.balance} mejorSube />
+              <dd>
+                <span className={`block text-lg font-bold t-cifra ${colorBalance}`}>{signo}{fmt(Math.abs(d.balance))}</span>
+                <Cambio pct={d.variacion.balance_pct} actual={d.balance} mejorSube />
+              </dd>
             </div>
             <div>
               <dt className="text-xs text-ink-soft">Tasa de ahorro</dt>
-              <dd className="text-lg font-bold t-cifra">{d.tasa_ahorro === null ? '—' : `${String(d.tasa_ahorro).replace('.', ',')} %`}</dd>
-              {d.tasa_ahorro === null && <span className="text-[11px] text-ink-soft">Sin ingresos en el periodo</span>}
+              <dd>
+                <span className="block text-lg font-bold t-cifra">{d.tasa_ahorro === null ? '—' : `${String(d.tasa_ahorro).replace('.', ',')} %`}</span>
+                {d.tasa_ahorro === null && <span className="text-[11px] text-ink-soft">Sin ingresos en el periodo</span>}
+              </dd>
             </div>
           </dl>
           <p className="text-[11px] text-ink-soft mt-2">

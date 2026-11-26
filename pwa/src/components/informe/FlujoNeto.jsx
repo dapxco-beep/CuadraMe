@@ -97,7 +97,7 @@ export default function FlujoNeto({ flujo, fmt, agrupar, onAgrupar }) {
                   type="button"
                   aria-pressed={vista === id}
                   onClick={() => setVista(id)}
-                  className={`px-3 min-h-[44px] rounded-full text-xs font-semibold ${vista === id ? 'bg-accent text-white' : 'text-ink-soft'}`}
+                  className={`px-3 min-h-[44px] rounded-full text-xs font-semibold ${vista === id ? 'bg-accent text-paper-raised' : 'text-ink-soft'}`}
                 >
                   {texto}
                 </button>
