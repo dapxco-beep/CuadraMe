@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bell, CreditCard, Download, Hand } from 'lucide-react'
+import { Bell, Check, CreditCard, Download, Hand, Link2, ShieldCheck, Smartphone, Trash2 } from 'lucide-react'
 import ClaveAtajo from './ClaveAtajo'
 import Icono from './Icono'
 import {
@@ -16,8 +16,9 @@ import {
 // etapas (Instalar, Activar, Probar). Lo que registran queda siempre «por confirmar». El nombre debe coincidir con el del atajo compartido.
 // En los pasos, lo que va entre « » es texto EXACTO de un botón de iOS y se resalta para encontrarlo rápido.
 const INSTALAR = [
-  'Toca «Instalar» (botón de abajo). Se abre la app Atajos.',
-  'Toca «Agregar atajo». Cuando pida tu clave, pégala (la copiaste arriba).',
+  'Hazlo desde tu iPhone, en Safari. Toca «Instalar» (botón de abajo): se descarga el atajo.',
+  'Abre el archivo descargado (el botón de descargas de Safari, o la app Archivos › Descargas) y toca «Agregar atajo».',
+  'Cuando pida tu clave, pégala (la copiaste arriba).',
 ]
 
 export const ATAJOS = [
@@ -175,6 +176,33 @@ function ComprobarLlegada() {
   )
 }
 
+// Para quien abre la app en un computador: copia el enlace del atajo y lo abre luego en su iPhone (WhatsApp, notas, AirDrop...).
+function CopiarEnlace({ url }) {
+  const [copiado, setCopiado] = useState(false)
+  async function copiar() {
+    const completo = new URL(url, window.location.origin).href
+    try {
+      await navigator.clipboard.writeText(completo)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2500)
+    } catch {
+      window.prompt('Copia este enlace y ábrelo en tu iPhone:', completo)
+    }
+  }
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={copiar}
+        className="min-h-11 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-accent"
+      >
+        <Icono icono={copiado ? Check : Link2} tam="sm" />
+        {copiado ? 'Enlace copiado' : '¿Estás en un computador? Copia el enlace para abrirlo en tu iPhone'}
+      </button>
+    </div>
+  )
+}
+
 function Fase({ n, fase, children }) {
   return (
     <section className="mt-4" aria-label={`${n}. ${fase.titulo}`} data-testid={`fase-${fase.id}`}>
@@ -215,15 +243,18 @@ function GuiaAtajo({ a }) {
         {a.fases.map((fase, i) => (
           <Fase key={fase.id} n={i + 1} fase={fase}>
             {fase.id === 'instalar' && (
-              <a
-                href={a.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-primario btn-bloque mt-3 inline-flex items-center justify-center gap-2"
-                aria-label={`Instalar ${a.nombre}`}
-              >
-                <Icono icono={Download} tam="md" /> Instalar
-              </a>
+              <>
+                <a
+                  href={a.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primario btn-bloque mt-3 inline-flex items-center justify-center gap-2"
+                  aria-label={`Instalar ${a.nombre}`}
+                >
+                  <Icono icono={Download} tam="md" /> Instalar
+                </a>
+                <CopiarEnlace url={a.url} />
+              </>
             )}
             {fase.id === 'activar' &&
               a.dibujos.map((d, j) => <Imagen key={a.leyendas[j]} id={a.id} indice={j} dibujo={d} leyenda={a.leyendas[j]} />)}
@@ -272,8 +303,8 @@ function AvisoActualizados() {
       <p className="text-sm font-bold">Actualizamos los atajos ({ATAJOS_ACTUALIZADOS.fecha})</p>
       <p className="text-sm mt-1 leading-relaxed">
         Si los instalaste antes de esa fecha, vuelve a tocar «Instalar» en cada uno para tener la versión nueva: ahora casi no preguntan,
-        reconocen solo el banco y siempre te dicen qué pasó. Los anteriores siguen funcionando, pero sin esas mejoras. Al instalar, pega
-        tu clave otra vez y cambia el atajo en tus automatizaciones (abajo está explicado).
+        reconocen solo el banco y siempre te dicen qué pasó. «CuadraMe Notificaciones» y «CuadraMe Registrar» son ahora un solo atajo.
+        Al instalar, pega tu clave otra vez y cambia el atajo en tus automatizaciones (abajo está explicado).
       </p>
       <button onClick={cerrar} className="mt-2 min-h-11 text-sm font-semibold underline">
         Entendido
@@ -302,6 +333,27 @@ export default function CatalogoAtajos({ claveAtajo }) {
         Tus pagos se anotan solos. Se instala una vez y sirve para todos tus bancos. Lo que registra queda «por confirmar» hasta que lo revises.
       </p>
       <AvisoActualizados />
+
+      <div className="mt-3 rounded-2xl bg-paper-raised border border-line p-4" data-testid="antes-de-empezar">
+        <h3 className="text-sm font-bold">Antes de empezar</h3>
+        <ul className="mt-2 space-y-2.5 text-sm text-ink-soft leading-relaxed">
+          <li className="flex gap-3">
+            <span className="shrink-0 text-accent mt-0.5" aria-hidden="true"><Icono icono={Smartphone} tam="md" /></span>
+            <span>Necesitas un iPhone con <b className="text-ink">iOS 27</b>. Abre esta pantalla en Safari desde el propio iPhone.</span>
+          </li>
+          <li className="flex gap-3">
+            <span className="shrink-0 text-accent mt-0.5" aria-hidden="true"><Icono icono={Trash2} tam="md" /></span>
+            <span>
+              Si ya tienes atajos «CuadraMe …» instalados, <b className="text-ink">bórralos primero</b> (en Atajos, mantén presionado y toca «Eliminar»).
+              Los nuevos los reemplazan, y «CuadraMe Notificaciones» ahora es parte de «CuadraMe Registrar».
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="shrink-0 text-accent mt-0.5" aria-hidden="true"><Icono icono={ShieldCheck} tam="md" /></span>
+            <span>La foto de tu comprobante <b className="text-ink">nunca sale del iPhone</b>: solo viaja el texto. Todo lo que se anota queda «por confirmar» hasta que lo revises.</span>
+          </li>
+        </ul>
+      </div>
 
       <div className="mt-3 rounded-2xl bg-paper-raised border border-line p-4" data-testid="clave-catalogo">
         <h3 className="text-sm font-bold">Primero: copia tu clave</h3>
@@ -348,7 +400,7 @@ export default function CatalogoAtajos({ claveAtajo }) {
           reconoce solo el banco y siempre te dice qué pasó. Los anteriores siguen funcionando, pero sin esas mejoras.
         </p>
         <ol className="list-decimal pl-5 mt-2 space-y-2 text-sm text-ink-soft leading-relaxed">
-          <li>Elige arriba lo que quieres conectar y toca «Instalar». Luego «Agregar atajo», y pega tu clave otra vez.</li>
+          <li>Elige arriba lo que quieres conectar y toca «Instalar». Abre el archivo descargado, toca «Agregar atajo» y pega tu clave otra vez.</li>
           <li>Si iOS lo agrega con un «2» al final, ese es el nuevo: en la app Atajos mantén presionado el viejo y toca «Eliminar».</li>
           <li>Abre «Automatización» y, en cada automatización que usaba el viejo, cambia «Ejecutar atajo» al nuevo.</li>
         </ol>
