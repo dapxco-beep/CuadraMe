@@ -23,7 +23,7 @@ export default function MisCuentas() {
   }, [params])
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 screen-enter">
+    <div className="flex-1 overflow-y-auto pb-6 screen-enter pantalla-ancha">
       <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
         <button
           type="button"

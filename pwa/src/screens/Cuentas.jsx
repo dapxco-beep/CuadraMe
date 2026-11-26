@@ -170,9 +170,9 @@ export default function Cuentas() {
       ) : (
         <div className="mx-6 mt-4 space-y-3">
           {grupos.map((g) => (
-            <section key={g.id} aria-label={g.titulo} className="space-y-3">
+            <section key={g.id} aria-label={g.titulo} className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-x-4 lg:gap-y-3 lg:items-start">
               {conTitulos && (
-                <h2 className="t-kicker text-ink-soft pt-1 px-1 flex items-baseline justify-between gap-2" data-testid={`grupo-${g.id}`}>
+                <h2 className="lg:col-span-2 t-kicker text-ink-soft pt-1 px-1 flex items-baseline justify-between gap-2" data-testid={`grupo-${g.id}`}>
                   <span>{g.titulo}</span>
                   {subtotalGrupo(g.items) !== null && (
                     <span className="normal-case tracking-normal font-semibold">
