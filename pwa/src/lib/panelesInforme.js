@@ -7,7 +7,7 @@ export const PANELES = [
   { id: 'categorias', nombre: 'Gasto por categoría' },
   { id: 'dia', nombre: 'Día a día' },
   { id: 'comercios', nombre: 'Dónde más gastas' },
-  { id: 'ingresos', nombre: 'Ingresos, gastos y evolución' },
+  { id: 'ingresos', nombre: 'Ingresos, gastos y evolución', ocultoPorDefecto: true },
   { id: 'costos', nombre: 'Lo que te cuesta tu plata' },
   { id: 'mes_a_mes', nombre: 'Categorías mes a mes' },
   { id: 'cosas_raras', nombre: 'Resumen y cosas raras' },
@@ -46,6 +46,8 @@ export function normalizarPaneles(guardado, ids = IDS, antiguosDe = ANTIGUOS) {
     const partes = [...(ordenViejo.includes(id) ? [id] : []), ...antiguos.filter((k) => ordenViejo.includes(k))]
     return partes.length > 0 && partes.every((p) => viejos.includes(p))
   })
+  // Sin nada guardado: los paneles que ahora repite la pestaña Resumen empiezan ocultos
+  if (!guardado) return { orden: [...new Set(orden)], ocultos: PANELES.filter((p) => p.ocultoPorDefecto).map((p) => p.id) }
   return { orden: [...new Set(orden)], ocultos }
 }
 

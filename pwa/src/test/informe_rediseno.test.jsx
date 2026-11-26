@@ -14,10 +14,11 @@ describe('Cuadri según la salud financiera', () => {
 })
 
 describe('Paneles personalizables de Informes', () => {
-  it('sin nada guardado muestra todos en el orden original', () => {
+  it('sin nada guardado sigue el orden original y oculta lo que ahora repite la pestaña Resumen', () => {
     const p = normalizarPaneles(null)
     expect(p.orden[0]).toBe('resumen')
-    expect(p.ocultos).toEqual([])
+    expect(p.ocultos).toEqual(['ingresos'])
+    expect(p.orden).toContain('ingresos') // sigue disponible en «Personalizar paneles»
   })
   it('descarta paneles que ya no existen y agrega los nuevos al final', () => {
     const p = normalizarPaneles({ orden: ['dia', 'inexistente', 'resumen'], ocultos: ['comercios', 'otro'] })
