@@ -13,3 +13,7 @@ test_gemini.ipynb
 
 # Credenciales y secretos (nunca deben subirse)
 secrets/
+
+# Texto extraído de PDFs reales de extractos (trae nombres y cuentas): solo local, nunca al repositorio
+textos_locales/
+backend/textos_locales/

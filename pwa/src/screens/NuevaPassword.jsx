@@ -57,7 +57,7 @@ export default function NuevaPassword() {
         <button
           type="submit"
           disabled={cargando}
-          className="mt-2 w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+          className="btn btn-primario btn-grande mt-2 w-full"
         >
           {cargando ? 'Guardando...' : 'Guardar contraseña'}
         </button>

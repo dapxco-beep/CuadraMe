@@ -132,7 +132,7 @@ export default function SugerenciasReglas({ onCreadas }) {
       <button
         onClick={crear}
         disabled={ocupado || marcadas.size === 0}
-        className="mt-3 w-full rounded-xl bg-accent text-paper-raised px-4 py-3 text-sm font-semibold min-h-[44px] disabled:opacity-50"
+        className="btn btn-primario mt-3 w-full"
       >
         Crear las seleccionadas{marcadas.size > 0 ? ` (${marcadas.size})` : ''}
       </button>

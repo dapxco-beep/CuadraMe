@@ -242,7 +242,7 @@ export default function BandejaPorConfirmar() {
                 <button
                   onClick={() => confirmarUno(m)}
                   disabled={ocupado}
-                  className="flex items-center justify-center gap-1.5 rounded-xl bg-accent text-paper-raised text-xs font-semibold py-2.5 disabled:opacity-60"
+                  className="btn btn-primario btn-sm"
                 >
                   <Check size={16} /> Es mío
                 </button>
@@ -271,7 +271,7 @@ export default function BandejaPorConfirmar() {
           <button
             onClick={confirmarTodos}
             disabled={ocupado}
-            className="flex-1 bg-accent text-paper-raised font-semibold rounded-2xl py-3.5 text-sm disabled:opacity-60"
+            className="btn btn-primario flex-1"
           >
             Confirmar todos ({n})
           </button>
@@ -338,7 +338,7 @@ function FormEdicion({ m, cuentas, ocupado, onCancelar, onGuardar }) {
       </label>
       {error && <p className="text-xs text-danger">{error}</p>}
       <div className="flex gap-2">
-        <button onClick={guardar} disabled={ocupado} className="flex-1 bg-accent text-paper-raised font-semibold rounded-xl py-2.5 text-sm disabled:opacity-60">
+        <button onClick={guardar} disabled={ocupado} className="btn btn-primario flex-1">
           Guardar y confirmar
         </button>
         <button onClick={onCancelar} className="px-4 rounded-xl border border-line text-sm font-medium">

@@ -117,7 +117,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={cargando || codigo.length < 6}
-            className="mt-2 w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-50"
+            className="btn btn-primario btn-grande mt-2 w-full active:scale-[0.98] transition-transform"
           >
             {cargando ? 'Un momento...' : 'Confirmar y entrar'}
           </button>
@@ -220,7 +220,7 @@ export default function Login() {
         <button
           type="submit"
           disabled={cargando || (modo === 'registro' && !aceptaTerminos)}
-          className="mt-2 w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] active:scale-[0.98] transition-transform disabled:opacity-60"
+          className="btn btn-primario btn-grande mt-2 w-full active:scale-[0.98] transition-transform"
         >
           {cargando ? 'Un momento...' : modo === 'login' ? 'Entrar' : 'Crear cuenta'}
         </button>

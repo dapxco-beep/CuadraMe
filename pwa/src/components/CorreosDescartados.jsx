@@ -147,7 +147,7 @@ export default function CorreosDescartados({ cantidad = 0, abierto: abiertoInici
                 onClick={recuperarTodos}
                 disabled={Boolean(ocupado)}
                 data-testid="recuperar-todos"
-                className="w-full min-h-[44px] flex items-center justify-center gap-2 rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-60"
+                className="btn btn-primario w-full"
               >
                 <Undo2 size={16} aria-hidden="true" /> {ocupado === 'todos' ? 'Recuperando...' : `Recuperar todos (${lista.length})`}
               </button>

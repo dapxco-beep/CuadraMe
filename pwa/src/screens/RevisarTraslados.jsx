@@ -136,7 +136,7 @@ export default function RevisarTraslados() {
             <button
               onClick={() => decidir('traslado', seleccion)}
               disabled={guardando || seleccion.length === 0}
-              className="rounded-xl bg-accent text-paper-raised py-2.5 min-h-[44px] text-sm font-semibold disabled:opacity-60"
+              className="btn btn-primario"
             >
               Es un traslado entre mis cuentas ({seleccion.length})
             </button>

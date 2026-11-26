@@ -84,7 +84,7 @@ export default function TarjetaGestoRegistro({ url }) {
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-3 text-sm font-semibold bg-accent text-paper-raised mt-2"
+            className="btn btn-primario mt-2"
           >
             <Smartphone size={16} /> Instalar «CuadraMe Registrar»
           </a>

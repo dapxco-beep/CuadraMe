@@ -108,7 +108,7 @@ export function CategoriaEnBloque({ cantidad, nombres, iconoDe, onAplicar, aviso
           onAplicar(categoria, recordar)
           setCategoria('')
         }}
-        className="w-full min-h-[44px] rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-50"
+        className="btn btn-primario w-full"
       >
         Aplicar a las {cantidad}
       </button>

@@ -1,4 +1,5 @@
 import { useEmbebido } from '../lib/EmbebidoContext'
+import { EncabezadoPantalla } from '../lib/AccionesPantallaContext'
 import { textoError } from '../lib/textoError'
 import { useEffect, useRef, useState } from 'react'
 import { EsqueletoLista } from '../components/Esqueletos'
@@ -121,7 +122,7 @@ export default function Cuentas() {
 
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
-      <header className={embebido ? 'px-6 pt-3 flex items-center justify-end gap-2' : 'px-6 pantalla-top pb-2 flex items-center justify-between'}>
+      <EncabezadoPantalla embebido={embebido} className={embebido ? 'px-6 pt-3 flex items-center justify-end gap-2' : 'px-6 pantalla-top pb-2 flex items-center justify-between'}>
         <div className="flex items-center gap-3">
           {!embebido && (<><button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
             <ArrowLeft size={20} />
@@ -137,7 +138,7 @@ export default function Cuentas() {
             <Plus size={20} />
           </button>
         </div>
-      </header>
+      </EncabezadoPantalla>
 
       <p className="mx-6 mt-2 text-xs text-ink-soft">
         Toca una cuenta para ver su detalle.
@@ -162,15 +163,16 @@ export default function Cuentas() {
       ) : error ? (
         <div className="mx-6 mt-6 rounded-2xl bg-danger-soft p-6 text-center">
           <p className="text-sm text-danger mb-3">{error}</p>
+          <button type="button" onClick={recargar} className="btn btn-secundario btn-sm">Reintentar</button>
         </div>
       ) : cuentas.length === 0 ? (
         <EstadoVacio icono={Wallet} titulo="Aún no tienes cuentas" texto="Tu banco, Nequi, el efectivo o una tarjeta. Agrega la primera con el botón +." className="mx-6 mt-6" />
       ) : (
         <div className="mx-6 mt-4 space-y-3">
           {grupos.map((g) => (
-            <section key={g.id} aria-label={g.titulo} className="space-y-3">
+            <section key={g.id} aria-label={g.titulo} className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-x-4 lg:gap-y-3 lg:items-start">
               {conTitulos && (
-                <h2 className="t-kicker text-ink-soft pt-1 px-1 flex items-baseline justify-between gap-2" data-testid={`grupo-${g.id}`}>
+                <h2 className="lg:col-span-2 t-kicker text-ink-soft pt-1 px-1 flex items-baseline justify-between gap-2" data-testid={`grupo-${g.id}`}>
                   <span>{g.titulo}</span>
                   {subtotalGrupo(g.items) !== null && (
                     <span className="normal-case tracking-normal font-semibold">
@@ -189,7 +191,7 @@ export default function Cuentas() {
                 className="block w-full text-left"
               >
                 <span className="sr-only">Ver detalle de {c.nombre}. </span>
-                <TarjetaCuenta cuenta={c} ultimoMovimiento={resumen ? (resumen.ultimo_por_cuenta?.[c.id] ?? null) : undefined} />
+                <TarjetaCuenta cuenta={c} etiqueta={etiquetaCuenta(c).etiqueta} ultimoMovimiento={resumen ? (resumen.ultimo_por_cuenta?.[c.id] ?? null) : undefined} />
               </button>
               {/* Qué significa el número de esta cuenta: saldo disponible (tuyo) vs lo que debes (tarjeta) */}
               {(c.tipo === 'credito' || c.tipo === 'inversion') && (
@@ -203,17 +205,14 @@ export default function Cuentas() {
                 <Link to={`/movimientos?cuenta=${c.id}`} className="inline-flex items-center gap-1 text-xs text-accent font-semibold min-h-11 px-1">
                   Ver sus movimientos
                 </Link>
-                <div className="flex items-center gap-1 text-ink-soft">
-                  <span className="text-[11px] leading-tight">{etiquetaCuenta(c).etiqueta}</span>
-                  <button
-                    type="button"
-                    onClick={() => setEditando(c)}
-                    className="w-11 h-11 flex items-center justify-center"
-                    aria-label="Editar cuenta"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditando(c)}
+                  className="w-11 h-11 flex items-center justify-center text-ink-soft"
+                  aria-label="Editar cuenta"
+                >
+                  <Pencil size={16} />
+                </button>
               </div>
               <DesplegableMas etiqueta="Más de esta cuenta" className="px-1" alAbrir={() => setVerCuadre(true)}>
                 {/* Estado de cuadre con el banco, sin ir a buscarlo a «Traer movimientos» */}
@@ -476,7 +475,7 @@ function FormCuenta({ cuenta, onClose, onGuardada, onEliminada }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-60"
+        className="btn btn-primario btn-grande w-full"
       >
         {guardando ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Crear cuenta'}
       </button>

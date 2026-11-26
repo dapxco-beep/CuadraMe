@@ -10,7 +10,7 @@ import { resumenDeuda } from '../lib/deudaTarjeta'
 // El número siempre lleva su etiqueta: "Saldo actual" en cuentas normales y, en
 // tarjetas de crédito, "Debes" + "Disponible del cupo" (un saldo -800.000 solo
 // confunde). `ultimoMovimiento` (ISO) agrega "actualizado hoy" / la fecha.
-export default function TarjetaCuenta({ cuenta, style, className = '', ultimoMovimiento, compacta = false }) {
+export default function TarjetaCuenta({ cuenta, style, className = '', ultimoMovimiento, compacta = false, etiqueta }) {
   const marca = marcaDeEntidad(cuenta.nombre)
   const { fmt } = useBloqueo()
   const credito = esCredito(cuenta)
@@ -27,7 +27,10 @@ export default function TarjetaCuenta({ cuenta, style, className = '', ultimoMov
       style={{ background: marca.bg, color: marca.fg, ...style }}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-xs font-bold truncate">{cuenta.nombre}</span>
+        <span className="min-w-0">
+          <span className="block text-xs font-bold truncate">{cuenta.nombre}</span>
+          {etiqueta && etiqueta.trim().toLowerCase() !== cuenta.nombre.trim().toLowerCase() && <span className="block text-[11px] opacity-85 truncate">{etiqueta}</span>}
+        </span>
         <span
           className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center text-[11px] font-extrabold"
           style={{ background: textoMasClaroQueFondo(marca) ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.22)' }}

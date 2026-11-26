@@ -105,7 +105,7 @@ export default function PasoGuiado({
               type="button"
               onClick={() => onPaso(paso)}
               data-testid={`tarea-${paso.id}`}
-              className="mt-4 w-full flex items-center justify-center gap-2 bg-accent text-paper-raised font-semibold rounded-2xl min-h-[52px] text-[15px] active:scale-[0.99] motion-reduce:active:scale-100"
+              className="btn btn-primario btn-grande mt-4 w-full active:scale-[0.99] motion-reduce:active:scale-100"
             >
               {paso.boton} <ChevronRight size={16} aria-hidden="true" />
             </button>

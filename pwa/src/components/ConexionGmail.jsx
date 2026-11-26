@@ -74,7 +74,7 @@ export default function ConexionGmail({ estado, onCambio }) {
           <div className="flex gap-2 mt-3">
             <a
               href={`mailto:${estado?.soporte_email || 'dapxco@gmail.com'}?subject=${encodeURIComponent('Quiero conectar Gmail en CuadraMe')}&body=${encodeURIComponent(`Hola, por favor agreguen mi correo de Gmail para probar CuadraMe: ${usuario?.email || ''}`)}`}
-              className="flex-1 text-center bg-accent text-paper-raised font-semibold rounded-xl py-2.5 text-sm"
+              className="btn btn-primario flex-1"
             >
               Pedir acceso
             </a>
@@ -116,7 +116,7 @@ export default function ConexionGmail({ estado, onCambio }) {
           <p className="text-xs text-ink-soft mt-1 mb-3">
             Solo leo los correos de tus bancos y billeteras (compras, transferencias, extractos). No leo tus correos personales ni envío nada. Tú apruebas cada movimiento y lo desconectas cuando quieras desde aquí.
           </p>
-          <button onClick={() => conectar()} className="w-full bg-accent text-paper-raised font-semibold rounded-xl py-3 text-sm">
+          <button onClick={() => conectar()} className="btn btn-primario w-full">
             Conectar Gmail
           </button>
         </div>

@@ -122,7 +122,7 @@ export default function DetalleCuenta({ cuentaId, onClose, onCambio }) {
             <button
               onClick={() => setAjustando((v) => !v)}
               aria-expanded={ajustando}
-              className="flex items-center justify-center gap-2 bg-accent text-paper-raised font-semibold rounded-2xl py-3.5 text-sm"
+              className="btn btn-primario"
             >
               <Scale size={16} /> Ajustar saldo
             </button>
@@ -228,7 +228,7 @@ function FormAjuste({ cuenta, onHecho }) {
       <button
         onClick={guardar}
         disabled={guardando}
-        className="w-full mt-3 bg-accent text-paper-raised font-semibold rounded-2xl py-3 text-sm disabled:opacity-60"
+        className="btn btn-primario w-full mt-3"
       >
         {guardando ? 'Ajustando...' : 'Confirmar ajuste'}
       </button>

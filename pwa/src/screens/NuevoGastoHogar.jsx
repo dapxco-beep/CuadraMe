@@ -148,7 +148,7 @@ export default function NuevoGastoHogar() {
       )}
 
       <div className="px-5 mt-6">
-        <button onClick={guardar} disabled={!puede} className="w-full bg-accent text-paper-raised rounded-2xl py-3.5 text-sm font-semibold disabled:opacity-40">
+        <button onClick={guardar} disabled={!puede} className="btn btn-primario w-full">
           {guardando ? 'Guardando…' : 'Guardar gasto'}
         </button>
       </div>

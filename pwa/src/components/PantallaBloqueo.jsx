@@ -121,7 +121,7 @@ export default function PantallaBloqueo() {
           type="button"
           onClick={() => confirmar()}
           disabled={pin.length < 4 || verificando || espera > 0}
-          className="w-full max-w-[280px] mt-5 bg-accent text-paper-raised font-semibold rounded-2xl py-3.5 text-[15px] disabled:opacity-40"
+          className="btn btn-primario btn-grande w-full max-w-[280px] mt-5"
         >
           Entrar
         </button>

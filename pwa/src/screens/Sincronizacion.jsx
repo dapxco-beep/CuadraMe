@@ -1205,7 +1205,7 @@ export default function Sincronizacion({ modo = 'extractos' }) {
                           type="button"
                           onClick={verPorRevisar}
                           data-testid="ver-por-revisar"
-                          className="w-full flex items-center justify-center gap-2 bg-accent text-paper-raised font-semibold rounded-xl min-h-[44px] text-sm"
+                          className="btn btn-primario w-full"
                         >
                           <ListChecks size={16} aria-hidden="true" /> Ver los {nCorreos} por revisar
                         </button>
@@ -1343,21 +1343,21 @@ export default function Sincronizacion({ modo = 'extractos' }) {
                     {celdaDetalle.lista?.length > 0 && (
                       <button
                         onClick={() => abrirGrupoExtractos([], 'sinc-todos-extractos', { cuenta: `c:${cuentaDetalle.id}`, mes: celdaDetalle.mes })}
-                        className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5"
+                        className="btn btn-primario btn-sm"
                       >
                         Ver {celdaDetalle.lista.length === 1 ? 'el extracto' : 'los extractos'} de este mes
                       </button>
                     )}
                     {celdaDetalle.estado === 'extracto_pendiente' && (
-                      <button onClick={() => abrirBloque('extractos', 'sinc-extractos-correo')} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5">Revisar extracto</button>
+                      <button onClick={() => abrirBloque('extractos', 'sinc-extractos-correo')} className="btn btn-primario btn-sm">Revisar extracto</button>
                     )}
                     {celdaDetalle.estado === 'falta_clave' && (
-                      <button onClick={() => setHoja('clave')} className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5">Poner clave</button>
+                      <button onClick={() => setHoja('clave')} className="btn btn-primario btn-sm">Poner clave</button>
                     )}
                     {(celdaDetalle.estado === 'sin_extracto' || celdaDetalle.estado === 'vacio') && (
                       <button
                         onClick={() => pedirSubir({ cuentaId: cuentaDetalle.id, mes: celdaDetalle.mes })}
-                        className="rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 py-2.5"
+                        className="btn btn-primario btn-sm"
                       >
                         Subir el extracto de este mes
                       </button>
@@ -1600,7 +1600,7 @@ export default function Sincronizacion({ modo = 'extractos' }) {
                     key={s.banco}
                     type="button"
                     onClick={() => { cerrar(); setCrearBanco(s.banco) }}
-                    className="rounded-xl bg-accent text-paper-raised text-sm font-semibold px-3 py-2 min-h-[44px]"
+                    className="btn btn-primario"
                   >
                     Crear cuenta {s.banco}
                   </button>
@@ -1740,7 +1740,7 @@ function FilaExtracto({
           <button
             onClick={onConciliar}
             disabled={ocupado || !cuentaId}
-            className="flex-1 bg-accent text-paper-raised font-semibold rounded-xl py-2.5 text-sm disabled:opacity-50"
+            className="btn btn-primario flex-1"
           >
             {ocupado ? 'Revisando...' : 'Revisar extracto'}
           </button>
@@ -1755,7 +1755,7 @@ function FilaExtracto({
           </button>
         )}
         {ex.estado === 'falta_clave' && (
-          <button onClick={onClave} className="flex-1 bg-accent text-paper-raised font-semibold rounded-xl py-2.5 text-sm">
+          <button onClick={onClave} className="btn btn-primario flex-1">
             {claveConfigurada ? 'Cambiar la clave' : 'Poner clave'}
           </button>
         )}

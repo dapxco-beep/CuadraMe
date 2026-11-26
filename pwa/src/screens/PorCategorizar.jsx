@@ -251,7 +251,7 @@ export default function PorCategorizar() {
             <div className="text-center py-3">
               <p className="text-sm font-semibold">¡Listo! Categorizaste {plural(rapido.hechos, 'comercio', 'comercios')}.</p>
               <p className="text-xs text-ink-soft mt-1">Lo demás puede quedarse como está.</p>
-              <button onClick={() => setRapido(null)} className="mt-3 rounded-xl bg-accent text-paper-raised px-4 py-2.5 text-sm font-semibold min-h-[44px]">
+              <button onClick={() => setRapido(null)} className="btn btn-primario mt-3">
                 Terminar
               </button>
             </div>
@@ -268,7 +268,7 @@ export default function PorCategorizar() {
                     {plural(g.conteo, 'movimiento', 'movimientos')} · {formatCOP(g.monto_total)}
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
-                    <button onClick={() => setEligiendo('rapido')} disabled={ocupado} className="rounded-xl bg-accent text-paper-raised px-4 py-2.5 text-sm font-semibold min-h-[44px] flex items-center gap-2">
+                    <button onClick={() => setEligiendo('rapido')} disabled={ocupado} className="btn btn-primario">
                       <Tag size={16} /> Elegir categoría
                     </button>
                     <button onClick={() => avanzarRapido(0)} className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold min-h-[44px]">
@@ -318,7 +318,7 @@ export default function PorCategorizar() {
               </p>
               <button
                 onClick={empezarRapido}
-                className="mt-3 w-full rounded-xl bg-accent text-paper-raised px-4 py-3 text-sm font-semibold flex items-center justify-center gap-2 min-h-[44px]"
+                className="btn btn-primario mt-3 w-full"
               >
                 <Zap size={16} /> Categorizar lo que más pesa en 1 minuto
               </button>
@@ -407,7 +407,7 @@ export default function PorCategorizar() {
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper-raised px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" role="region" aria-label="Acciones sobre lo seleccionado">
           <p className="text-xs text-ink-soft mb-2">Seleccionaste {plural(nSel, 'movimiento', 'movimientos')}</p>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => setEligiendo('seleccion')} disabled={ocupado} className="rounded-xl bg-accent text-paper-raised px-3.5 py-2.5 text-sm font-semibold min-h-[44px] flex items-center gap-1.5">
+            <button onClick={() => setEligiendo('seleccion')} disabled={ocupado} className="btn btn-primario">
               <Tag size={16} /> Ponerles categoría…
             </button>
             <button onClick={() => ejecutar('dejar')} disabled={ocupado} className="rounded-xl border border-line px-3.5 py-2.5 text-sm font-semibold min-h-[44px] flex items-center gap-1.5">

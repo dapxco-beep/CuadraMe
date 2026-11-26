@@ -63,7 +63,7 @@ export default function ModalConsentimiento({ finalidad, onAceptado, onCancelar,
       <button
         onClick={autorizar}
         disabled={!acepta || guardando}
-        className="w-full mt-4 bg-accent text-paper-raised font-semibold rounded-2xl py-4 text-[15px] disabled:opacity-50"
+        className="btn btn-primario btn-grande w-full mt-4"
       >
         {guardando ? 'Guardando...' : 'Autorizo'}
       </button>

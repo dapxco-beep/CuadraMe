@@ -25,6 +25,7 @@ from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
 
+from app import extractos_co
 from app.config import settings
 from app.contabilidad import CATEGORIA_AJUSTE, FUENTE_AJUSTE, delta_saldo
 from app.models import Cuenta, HistorialExtracto, Movimiento
@@ -214,6 +215,7 @@ def leer_saldos_extracto(texto: str, es_credito: bool = False, datos_tarjeta: di
     la deuda va en NEGATIVO; «saldo total / deuda total / pago total» es lo que se debía al corte."""
     t = _sin_acentos(texto)
     out: dict = {}
+    lectura_co = None
     if es_credito:
         deuda = _valor_tras(t, _ETQ_DEUDA)
         previa = _valor_tras(t, _ETQ_DEUDA_INICIAL)
@@ -229,6 +231,13 @@ def leer_saldos_extracto(texto: str, es_credito: bool = False, datos_tarjeta: di
             out["aproximado"] = True  # el pago total puede no incluir lo comprado después del corte
     else:
         ini, fin = _valor_tras(t, _ETQ_INICIAL), _valor_tras(t, _ETQ_FINAL)
+        # Extractos con lector propio (varios meses en un PDF, palabras pegadas…): sus saldos salen del lector, que sí los entiende
+        lectura_co = extractos_co.leer(texto)
+        if lectura_co:
+            if lectura_co["saldo_inicial"] is not None:
+                ini = lectura_co["saldo_inicial"]
+            if lectura_co["saldo_final"] is not None:
+                fin = lectura_co["saldo_final"]
         if ini is not None:
             out["saldo_inicial"] = ini
         if fin is not None:
@@ -237,7 +246,10 @@ def leer_saldos_extracto(texto: str, es_credito: bool = False, datos_tarjeta: di
     if "saldo_final" not in out and "saldo_inicial" not in out:
         return None
     desde, hasta = _fechas_del_periodo(t)
-    corte = (a_fecha((datos_tarjeta or {}).get("fecha_corte")) if datos_tarjeta else None) or _fecha_tras(t, _ETQ_CORTE) or hasta
+    if lectura_co:  # el periodo que imprime el extracto (el primero y el último, si trae varios meses)
+        desde = a_fecha(lectura_co.get("periodo_inicio")) or desde
+        hasta = a_fecha(lectura_co.get("periodo_fin")) or hasta
+    corte = (a_fecha((datos_tarjeta or {}).get("fecha_corte")) if datos_tarjeta else None) or (hasta if lectura_co else None) or _fecha_tras(t, _ETQ_CORTE) or hasta
     if corte:
         out["fecha_corte"] = corte.isoformat()
     if desde:

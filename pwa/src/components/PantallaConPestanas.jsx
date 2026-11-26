@@ -1,8 +1,9 @@
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { EmbebidoProvider } from '../lib/EmbebidoContext'
+import { AccionesPantallaContext } from '../lib/AccionesPantallaContext'
 import { EsqueletoLista } from './Esqueletos'
 
 // Una pantalla con título único, flecha de volver y pestañas. Cada pestaña muestra una pantalla de siempre, sin su
@@ -12,6 +13,7 @@ export default function PantallaConPestanas({ titulo, pestanas, raiz = false }) 
   const [params, setParams] = useSearchParams()
   const activa = pestanas.find((p) => p.id === params.get('tab')) || pestanas[0]
   const { Pantalla } = activa
+  const [destinoAcciones, setDestinoAcciones] = useState(null) // línea del título: ahí van los botones de cada pestaña
   return (
     <div className="flex-1 overflow-y-auto pb-6 screen-enter">
       <header className="px-5 pantalla-top pb-2 flex items-center gap-3">
@@ -26,6 +28,7 @@ export default function PantallaConPestanas({ titulo, pestanas, raiz = false }) 
           </button>
         )}
         <h1 className={raiz ? 'text-2xl font-bold' : 'text-xl font-semibold'}>{titulo}</h1>
+        <div ref={setDestinoAcciones} data-testid="acciones-pantalla" className="ml-auto shrink-0 flex items-center gap-2 [&>div:empty]:hidden" />
       </header>
       <div role="tablist" aria-label={titulo} className="pl-5 pr-9 pb-1 flex gap-2 overflow-x-auto no-scrollbar borde-fade-der">
         {pestanas.map((p) => {
@@ -47,9 +50,11 @@ export default function PantallaConPestanas({ titulo, pestanas, raiz = false }) 
       </div>
       <div role="tabpanel" aria-label={activa.texto}>
         <EmbebidoProvider value>
-          <Suspense fallback={<EsqueletoLista filas={4} className="mx-5 mt-6" etiqueta="Cargando" />}>
-            <Pantalla key={activa.id} />
-          </Suspense>
+          <AccionesPantallaContext.Provider value={destinoAcciones}>
+            <Suspense fallback={<EsqueletoLista filas={4} className="mx-5 mt-6" etiqueta="Cargando" />}>
+              <Pantalla key={activa.id} />
+            </Suspense>
+          </AccionesPantallaContext.Provider>
         </EmbebidoProvider>
       </div>
     </div>

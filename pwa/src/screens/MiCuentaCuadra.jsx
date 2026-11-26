@@ -70,7 +70,7 @@ export default function MiCuentaCuadra() {
           texto="Cuando traigas el extracto de un banco o una tarjeta, aquí verás si tu cuenta cuadra mes a mes."
           className="mx-6 mt-6"
         >
-          <button type="button" onClick={() => navigate('/sincronizacion')} className="mt-3 min-h-11 rounded-xl bg-accent px-4 text-sm font-semibold text-paper-raised">
+          <button type="button" onClick={() => navigate('/sincronizacion')} className="btn btn-primario mt-3">
             Traer extractos
           </button>
         </EstadoVacio>

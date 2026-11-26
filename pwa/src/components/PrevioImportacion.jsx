@@ -92,7 +92,7 @@ export default function PrevioImportacion({ items, onDecidir, onDeshacerAuto, au
                 </div>
               </div>
               <div className="flex gap-2 mt-2">
-                <button disabled={ocupado} onClick={() => decidir([it], 'mismo')} className="flex-1 min-h-[44px] rounded-xl bg-accent text-paper-raised text-xs font-semibold disabled:opacity-60">
+                <button disabled={ocupado} onClick={() => decidir([it], 'mismo')} className="btn btn-primario btn-sm flex-1">
                   Sí, es el mismo
                 </button>
                 <button disabled={ocupado} onClick={() => decidir([it], 'otro')} className="flex-1 min-h-[44px] rounded-xl border border-line text-xs font-semibold disabled:opacity-60">

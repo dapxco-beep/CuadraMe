@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 
 from app.contabilidad import MARCA_TRASLADO_PROPIO
 from app.costos_financieros import es_costo_o_rendimiento
+from app import extractos_co
 from app.extractos_tarjeta_nu import es_extracto_tarjeta_nu, leer_extracto_tarjeta_nu
 from app.duplicados import Cand, ORIGEN_ATAJO, ORIGEN_EXTRACTO, ORIGEN_MANUAL, emparejar
 
@@ -132,6 +133,11 @@ def _banco_en(t: str) -> str | None:
 
 
 def detectar_banco(texto: str) -> str:
+    # Primero el formato propio del extracto (Davivienda, Bancolombia, Caja Social, BBVA…): sus encabezados valen más que un
+    # «TRANSFERENCIAS A NEQUI» suelto entre los movimientos, que antes hacía leer estos extractos como si fueran de Nequi.
+    formato = extractos_co.banco_de_formato(extractos_co.detectar_formato(texto))
+    if formato:
+        return formato
     t = texto.lower()
     if _FIRMA_NEQUI.search(t[:1500]):
         return "nequi"
@@ -237,6 +243,12 @@ def parse_texto_con_regex(texto: str) -> tuple[list[dict], int]:
     banco = detectar_banco(texto)
     movimientos: list[dict] = []
     descartados = 0
+
+    # Formatos con lector propio (extractos_co): se leen y se comprueban contra los totales que imprime el propio extracto.
+    # Si lo leído no suma lo mismo, se avisa con el contador de «descartados» en vez de importar a ciegas.
+    lectura_co = extractos_co.leer(texto)
+    if lectura_co:
+        return [{**_pista(m["descripcion"]), **m} for m in lectura_co["movimientos"]], (1 if lectura_co["lectura_completa"] is False else 0)
 
     # Extracto de la TARJETA de crédito de Nu: tiene su propio lector (la estructura no se parece a la de la cuenta de
     # ahorros). Si lo leído no suma lo que dice el resumen del extracto, se avisa con el contador de «descartados».

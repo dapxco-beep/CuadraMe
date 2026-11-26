@@ -68,7 +68,7 @@ export function EditorNombre({ original, valor = '', recordarInicial = false, co
         </label>
       )}
       <div className="flex flex-wrap gap-2 mt-2">
-        <button type="button" onClick={guardar} disabled={guardando} className="min-h-[44px] px-4 rounded-xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-60">
+        <button type="button" onClick={guardar} disabled={guardando} className="btn btn-primario">
           Guardar
         </button>
         <button type="button" onClick={onCancelar} className="min-h-[44px] px-4 rounded-xl border border-line text-sm text-ink-soft">

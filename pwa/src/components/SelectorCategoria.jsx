@@ -243,7 +243,7 @@ export default function SelectorCategoria({ titulo, subtitulo, categoriaActual, 
                     type="button"
                     onClick={() => crearSub(cerrar)}
                     disabled={guardandoSub}
-                    className="rounded-2xl bg-accent text-paper-raised text-sm font-semibold px-4 min-h-[44px] disabled:opacity-60"
+                    className="btn btn-primario"
                   >
                     Crear y poner
                   </button>

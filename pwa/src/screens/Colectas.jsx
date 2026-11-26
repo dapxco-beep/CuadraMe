@@ -66,7 +66,7 @@ export default function Colectas() {
           <p className="text-sm text-ink-soft mt-1">
             Para la inscripción del equipo, un paseo o un regalo: ves quién ya puso, quién falta, y se lo recuerdas por WhatsApp.
           </p>
-          <button onClick={() => navigate('/colectas/nueva')} className="mt-4 bg-accent text-paper-raised rounded-2xl px-5 py-3 text-sm font-semibold">
+          <button onClick={() => navigate('/colectas/nueva')} className="btn btn-primario mt-4">
             Crear mi primera vaca
           </button>
         </div>

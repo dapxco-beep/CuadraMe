@@ -108,7 +108,7 @@ export default function AvisoSalud({ className = '' }) {
                       type="button"
                       onClick={() => actuar(h)}
                       disabled={ocupado === h.codigo + (h.accion?.banco || '')}
-                      className="mt-3 w-full min-h-11 rounded-2xl bg-accent text-paper-raised text-sm font-semibold disabled:opacity-60"
+                      className="btn btn-primario mt-3 w-full"
                     >
                       {h.accion?.etiqueta || 'Revisar'}
                     </button>

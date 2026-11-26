@@ -65,7 +65,7 @@ function SelectorMes({ it, onFijarMes, ocupado }) {
         disabled={!valor || ocupado}
         onClick={() => onFijarMes(it, valor)}
         aria-label={`Guardar el mes de ${it.titulo}`}
-        className="min-h-11 rounded-xl bg-accent text-paper-raised text-xs font-semibold px-3.5 disabled:opacity-50"
+        className="btn btn-primario btn-sm"
       >
         Guardar mes
       </button>
