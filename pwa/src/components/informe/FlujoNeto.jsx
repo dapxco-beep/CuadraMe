@@ -13,7 +13,7 @@ import { Panel, conSigno } from './comun'
 // rayados además de rojos: el color nunca es la única señal.
 const W = 320
 const H = 200
-const M = { izq: 42, der: 8, arr: 10, aba: 24 }
+const M = { izq: 46, der: 8, arr: 10, aba: 24 }
 const FUENTE = { fontFamily: 'var(--font-sans)' }
 const AGRUPACIONES = [
   { id: 'dia', texto: 'Día' },
@@ -134,7 +134,7 @@ export default function FlujoNeto({ flujo, fmt, agrupar, onAgrupar }) {
               {ticks.map((t) => (
                 <g key={t}>
                   <line x1={M.izq} x2={W - M.der} y1={y(t)} y2={y(t)} stroke="var(--color-line)" strokeOpacity={t === 0 ? 1 : 0.55} strokeWidth={t === 0 ? 1 : 0.6} />
-                  <text x={M.izq - 6} y={y(t) + 3} textAnchor="end" fontSize="9" fill="var(--color-ink-soft)" style={FUENTE}>{abreviarEje(t)}</text>
+                  <text x={M.izq - 6} y={y(t) + 3} textAnchor="end" fontSize="11" fill="var(--color-ink-soft)" style={FUENTE}>{abreviarEje(t)}</text>
                 </g>
               ))}
               {enfoque !== null && (
@@ -161,7 +161,7 @@ export default function FlujoNeto({ flujo, fmt, agrupar, onAgrupar }) {
               )}
               {puntos.map((p, i) =>
                 i % paso === 0 ? (
-                  <text key={p.clave} x={x(i)} y={H - 7} textAnchor="middle" fontSize="10" fontWeight={i === sel ? 700 : 400} fill={i === sel ? 'var(--color-ink)' : 'var(--color-ink-soft)'} style={FUENTE}>
+                  <text key={p.clave} x={x(i)} y={H - 7} textAnchor="middle" fontSize="11" fontWeight={i === sel ? 700 : 400} fill={i === sel ? 'var(--color-ink)' : 'var(--color-ink-soft)'} style={FUENTE}>
                     {p.etiqueta}
                   </text>
                 ) : null

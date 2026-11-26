@@ -11,7 +11,7 @@ import { Panel, conSigno, pctSimple } from './comun'
 // el valor real siempre se ve en la lectura.
 const W = 320
 const H = 180
-const M = { izq: 38, der: 12, arr: 14, aba: 24 }
+const M = { izq: 44, der: 12, arr: 14, aba: 24 }
 const FUENTE = { fontFamily: 'var(--font-sans)' }
 const TOPE = 100
 const AYUDA =
@@ -92,7 +92,7 @@ export default function TasaAhorro({ meses, resumen, fmt, onVerMes }) {
               {ticks.map((t) => (
                 <g key={t}>
                   <line x1={M.izq} x2={W - M.der} y1={y(t)} y2={y(t)} stroke="var(--color-line)" strokeOpacity={t === 0 ? 1 : 0.55} strokeWidth={t === 0 ? 1.2 : 0.6} />
-                  <text x={M.izq - 6} y={y(t) + 3} textAnchor="end" fontSize="9" fill="var(--color-ink-soft)" style={FUENTE}>{t} %</text>
+                  <text x={M.izq - 6} y={y(t) + 3} textAnchor="end" fontSize="11" fill="var(--color-ink-soft)" style={FUENTE}>{t} %</text>
                 </g>
               ))}
               {enfoque !== null && <rect x={M.izq + g * enfoque + 0.5} y={M.arr} width={Math.max(g - 1, 2)} height={ph} rx="4" fill="var(--color-ink)" opacity="0.06" />}
@@ -115,14 +115,14 @@ export default function TasaAhorro({ meses, resumen, fmt, onVerMes }) {
                       <circle cx={x(i)} cy={y(m.tasa_ahorro)} r="3.5" fill="var(--color-cuadra)" stroke="var(--color-paper-raised)" strokeWidth="1" />
                     )}
                     {(i === n - 1 || i === sel) && (
-                      <text x={x(i)} y={y(m.tasa_ahorro) - 8} textAnchor={i === n - 1 && n > 1 ? 'end' : 'middle'} fontSize="10" fontWeight="700" fill="var(--color-ink)" style={FUENTE}>{pctSimple(m.tasa_ahorro)}</text>
+                      <text x={x(i)} y={y(m.tasa_ahorro) - 8} textAnchor={i === n - 1 && n > 1 ? 'end' : 'middle'} fontSize="11" fontWeight="700" fill="var(--color-ink)" style={FUENTE}>{pctSimple(m.tasa_ahorro)}</text>
                     )}
                   </g>
                 )
               )}
               {meses.map((m, i) =>
                 i % paso === 0 ? (
-                  <text key={m.mes} x={x(i)} y={H - 7} textAnchor="middle" fontSize="10" fontWeight={i === sel ? 700 : 400} fill={i === sel ? 'var(--color-ink)' : 'var(--color-ink-soft)'} style={FUENTE}>{m.etiqueta}</text>
+                  <text key={m.mes} x={x(i)} y={H - 7} textAnchor="middle" fontSize="11" fontWeight={i === sel ? 700 : 400} fill={i === sel ? 'var(--color-ink)' : 'var(--color-ink-soft)'} style={FUENTE}>{m.etiqueta}</text>
                 ) : null
               )}
             </svg>
