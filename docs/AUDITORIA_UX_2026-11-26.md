@@ -84,7 +84,7 @@ Principal = píldora (`.btn-primario`). Secundario = `.btn-secundario`. Terciari
 - Pruebas: 186 archivos / 1622 pruebas en verde (nuevas: `rediseno_bloque2.test.jsx` 7, `movimientos_bloque2.test.jsx` 4; ajustada `claridad.test.jsx`). En una corrida con la máquina cargada fallaron dos pruebas ya existentes (`movimientos_rapido`, `volumen`) y en la siguiente pasaron: intermitencia por carga, no relacionada con el cambio.
 - Build de producción: OK. oxlint: solo avisos ya existentes de dependencias de efectos.
 - Responsive: 360, 390, 430, 768, 1024, 1280 y 1440 en las 4 pantallas: sin desborde de página y sin errores de consola. En Movimientos lo que sobresale son carriles con scroll horizontal (intencional).
-- Contraste: 96 combinaciones (8 temas × 3 acentos × 4 pantallas): 1 fallo, ajeno a este bloque («En qué gasto mi plata», tarjeta de Informes en dark/azul, 3,85:1). Pendiente aparte.
+- Contraste: 96 combinaciones (8 temas × 3 acentos × 4 pantallas): 0 fallos. La tarjeta «En qué gasto mi plata» (Presupuesto e Informes) daba 3,85:1 en dark/azul por usar `text-ink-soft` sobre `bg-accent-soft`; ahora usa `text-ink`.
 - Estados capturados (390 y 1440): cargando, vacío, error, detalle expandido, hoja de aporte, hoja de editar cuenta y foco por teclado. Hover y disabled revisados en código (clases del sistema).
 
 ## Evidencia
@@ -96,5 +96,5 @@ Principal = píldora (`.btn-primario`). Secundario = `.btn-secundario`. Terciari
 ## Riesgos y pendientes
 - La tabla por defecto en escritorio cambia un hábito; se vuelve a la lista con el selector de vista.
 - Mis cuentas pasa a ancho de pantalla grande, lo que también ensancha Deudas.
-- Contraste de «En qué gasto mi plata» en dark/azul (3,85:1), fuera de alcance.
+
 - Hover/disabled sin captura; revisar en dispositivo real.
