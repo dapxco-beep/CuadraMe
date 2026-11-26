@@ -48,7 +48,7 @@ function Pasos({ pasos, actual, onIr }) {
             type="button"
             onClick={() => onIr(i)}
             aria-current={i === actual ? 'step' : undefined}
-            aria-label={`Paso ${i + 1}: ${p.titulo} (${p.corto})`}
+            aria-label={`Paso ${i + 1}: ${p.corto}. ${p.titulo}`}
             className={`w-full min-h-14 rounded-xl border px-1.5 py-2 flex flex-col items-center justify-center gap-1 text-[11px] font-semibold ${
               i === actual ? 'border-accent bg-accent-soft text-accent' : 'border-line bg-paper-raised text-ink-soft'
             }`}

@@ -36,13 +36,13 @@ function ChipMes({ cuenta, mes, celda, etiqueta, onMes }) {
       data-estado={v.clave}
       className={`snap-start shrink-0 w-[104px] min-h-[76px] rounded-xl border px-2.5 py-2 text-left flex flex-col gap-0.5 ${e.caja}`}
     >
-      <span className="text-[11px] font-semibold capitalize text-ink-soft">{etiqueta}</span>
+      <span className="text-[11px] font-semibold capitalize text-ink-soft">{etiqueta}</span>{' '}
       <span className="flex items-start gap-1 text-xs font-semibold leading-tight">
         <Icono icono={e.icono} tam="sm" className="mt-px" />
         <span>{v.texto}</span>
       </span>
-      {v.detalle && <span className="text-[11px] leading-tight text-ink-soft">{v.detalle}</span>}
-      {corte && <span className="text-[11px] leading-tight text-ink-soft">{corte}</span>}
+      {v.detalle && <>{' '}<span className="text-[11px] leading-tight text-ink-soft">{v.detalle}</span></>}
+      {corte && <>{' '}<span className="text-[11px] leading-tight text-ink-soft">{corte}</span></>}
     </Etiqueta>
   )
 }
