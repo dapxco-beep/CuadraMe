@@ -60,3 +60,41 @@ Movimientos (11), tarjetas de Presupuesto (12), Metas (13), Cuentas (14), unific
 - La otra sesión (autor DANIEL, `wt-ux-ui`) toca los mismos archivos (Inicio, Movimientos, Cuentas, Perfil). Mi rama toca 94 archivos, la mayoría con un cambio de una línea (botones). **Antes de integrar: `git fetch` y reubicar la rama**; si hay choques, el candado de botones y `EncabezadoPantalla` se reaplican sin esfuerzo.
 - El botón principal pasa de rectángulo redondeado a **píldora** (la forma que el sistema ya definía en `.btn`): es el cambio visual más notorio y conviene aprobarlo.
 - Fechas de los datos de demostración antiguas: los estados «sin gastos esta semana» de las capturas no reflejan una cuenta activa.
+
+---
+
+# Bloque 2 (2026-11-26): Movimientos, Presupuesto, Metas y Cuentas
+Base `9bdf1a6` (producción web). Sin push, merge ni deploy. Backend, API, modelos, migraciones, autenticación y dependencias sin tocar (`git diff 9bdf1a6 -- backend pwa/package*.json` vacío).
+
+## Problemas encontrados
+| # | Pantalla | Problema | Cambio |
+|---|---|---|---|
+| 1 | Movimientos | Encabezado con 6 grupos de controles; fila de ~95 px; muchas acciones compitiendo | 2 filas de encabezado, filtros con etiqueta, fila de ~58 px con icono de categoría, día fijo (h2) al desplazar, barra de selección clara, tabla por defecto en escritorio ≥1280 (la vista elegida se recuerda en `cuadrame:mov-vista`) |
+| 2 | Movimientos | Error de carga y «sin resultados» poco distinguibles | Estados propios con acción (Reintentar / Quitar los filtros) |
+| 3 | Presupuesto | Tarjeta sin cifras claras; botón de borrar siempre a un toque | Siempre Llevas · Límite · Te queda, barra con %, estado con icono y palabra; «Quitar presupuesto» solo dentro de «Ver detalle» (terciario destructivo, con Deshacer) |
+| 4 | Presupuesto | **Un fallo de carga se mostraba como «Aún no tienes presupuestos»** (el `catch` se tragaba el error) | Mensaje de error real con Reintentar; no pisa datos ya cargados |
+| 5 | Metas | 4 párrafos redundantes; progreso poco protagonista | Porcentaje grande, fecha y días que faltan, Llevas · Objetivo · Te falta; se quita el «Si sigues así…» cuando ya hay mensaje de ritmo y el duplicado de «Meta completada» |
+| 6 | Cuentas | Etiqueta de tipo suelta junto al lápiz; una sola columna de 670 px en escritorio; error sin acción | Tipo dentro de la tarjeta (sin repetirlo si es igual al nombre), dos columnas desde 1024, Reintentar |
+| 7 | Barra lateral | El CTA «Agregar movimiento» se partía en dos líneas | `whitespace-nowrap`, padding ajustado |
+
+## Jerarquía de botones (aprobada)
+Principal = píldora (`.btn-primario`). Secundario = `.btn-secundario`. Terciario = texto con color de acento. Destructivo = texto/icono `text-danger`, nunca el principal. No se convirtió ningún otro control en píldora.
+
+## Verificación
+- Pruebas: 186 archivos / 1622 pruebas en verde (nuevas: `rediseno_bloque2.test.jsx` 7, `movimientos_bloque2.test.jsx` 4; ajustada `claridad.test.jsx`). En una corrida con la máquina cargada fallaron dos pruebas ya existentes (`movimientos_rapido`, `volumen`) y en la siguiente pasaron: intermitencia por carga, no relacionada con el cambio.
+- Build de producción: OK. oxlint: solo avisos ya existentes de dependencias de efectos.
+- Responsive: 360, 390, 430, 768, 1024, 1280 y 1440 en las 4 pantallas: sin desborde de página y sin errores de consola. En Movimientos lo que sobresale son carriles con scroll horizontal (intencional).
+- Contraste: 96 combinaciones (8 temas × 3 acentos × 4 pantallas): 1 fallo, ajeno a este bloque («En qué gasto mi plata», tarjeta de Informes en dark/azul, 3,85:1). Pendiente aparte.
+- Estados capturados (390 y 1440): cargando, vacío, error, detalle expandido, hoja de aporte, hoja de editar cuenta y foco por teclado. Hover y disabled revisados en código (clases del sistema).
+
+## Evidencia
+`docs/rediseno-ux-capturas/bloque2/`: `CMP_movil_*` y `CMP_escritorio_*` (antes | después), `EST_390_*` (estados) y capturas sueltas. No se versiona.
+
+## Commits
+`cb27d28` Movimientos · `6f0aa54` Presupuesto/Metas/Cuentas · `93d7115` Cuentas en dos columnas · (este) error de Presupuesto, pruebas y documentación.
+
+## Riesgos y pendientes
+- La tabla por defecto en escritorio cambia un hábito; se vuelve a la lista con el selector de vista.
+- Mis cuentas pasa a ancho de pantalla grande, lo que también ensancha Deudas.
+- Contraste de «En qué gasto mi plata» en dark/azul (3,85:1), fuera de alcance.
+- Hover/disabled sin captura; revisar en dispositivo real.

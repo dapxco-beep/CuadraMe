@@ -60,6 +60,7 @@ export default function Presupuesto() {
   const [flujoCaja, setFlujoCaja] = useState(previo?.flujo || null)
   const [cargando, setCargando] = useState(!previo)
   const [yaCargo, setYaCargo] = useState(!!previo)
+  const [errorCarga, setErrorCarga] = useState('')
   const [mostrarForm, setMostrarForm] = useState(false)
   const [mostrarMover, setMostrarMover] = useState(false)
   const [animarBarras, setAnimarBarras] = useState(false)
@@ -87,6 +88,7 @@ export default function Presupuesto() {
   async function cargar() {
     // Solo la primera vez hay esqueleto; al recargar (tras borrar, crear...) se queda lo que ya se ve.
     if (!yaCargo) setCargando(true)
+    setErrorCarga('')
     try {
       const [ps, reporte, tend, flujo, proy] = await Promise.all([
         api.presupuestos(),
@@ -106,7 +108,10 @@ export default function Presupuesto() {
       })
       setProyecciones(porId)
       setConfigPlan(proy?.config || null)
-    } catch {}
+    } catch (err) {
+      // Antes se tragaba el fallo y parecía «aún no tienes presupuestos»: ahora se dice la verdad y se puede reintentar
+      setErrorCarga(err?.message || 'No pudimos cargar tu presupuesto. Revisa tu conexión e intenta de nuevo.')
+    }
     setYaCargo(true)
     setCargando(false)
   }
@@ -164,6 +169,11 @@ export default function Presupuesto() {
       <div className="col lg:col-start-2 lg:row-start-1">
       {cargando ? (
         <EsqueletoLista filas={4} className="mx-5 mt-4" etiqueta="Cargando tu presupuesto" />
+      ) : errorCarga && presupuestos.length === 0 ? (
+        <div className="mx-5 mt-4 rounded-2xl bg-danger-soft p-6 text-center" role="alert">
+          <p className="text-sm text-danger mb-3">{errorCarga}</p>
+          <button type="button" onClick={cargar} className="btn btn-secundario btn-sm">Reintentar</button>
+        </div>
       ) : presupuestos.length === 0 ? (
         <EstadoVacio
           icono={TrendingUp}
