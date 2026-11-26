@@ -293,8 +293,8 @@ html, body, #root {
   height: 100%;
 }
 
-/* ── Estable como app nativa ───────────────────────────────────────────
-   - touch-action: manipulation: sin zoom por doble toque (el scroll y los toques siguen igual).
+/* ── Estable como app nativa (sin bloquear el zoom) ────────────────────
+   - touch-action: manipulation: sin zoom por DOBLE toque (el pellizco para ampliar sigue permitido; el scroll y los toques igual).
    - text-size-adjust: el navegador no re-escala el texto al girar el teléfono; el tamaño de
      texto del sistema/navegador se respeta porque no se fija ningún px en <html>.
    - Nada sobresale del ancho: ni siquiera una hoja o un elemento fixed mal medido ensancha la página.

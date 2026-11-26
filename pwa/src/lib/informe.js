@@ -91,8 +91,12 @@ export function rangoPeriodo(periodo, hoy = new Date()) {
       return { desde: aISO(new Date(d.getFullYear(), d.getMonth() - 1, 1)), hasta: aISO(new Date(d.getFullYear(), d.getMonth(), 0)) }
     case '3_meses':
       return { desde: aISO(new Date(d.getFullYear(), d.getMonth() - 2, 1)), hasta: aISO(d) }
+    case '6_meses':
+      return { desde: aISO(new Date(d.getFullYear(), d.getMonth() - 5, 1)), hasta: aISO(d) }
     case 'anio':
       return { desde: aISO(new Date(d.getFullYear(), 0, 1)), hasta: aISO(d) }
+    case 'anio_pasado':
+      return { desde: aISO(new Date(d.getFullYear() - 1, 0, 1)), hasta: aISO(new Date(d.getFullYear() - 1, 11, 31)) }
     default:
       return { desde: aISO(d), hasta: aISO(d) }
   }
@@ -125,4 +129,18 @@ export function cuadriculaSemanas(dias) {
 
 export function pctTexto(x) {
   return formatPorcentaje(x, { signo: true })
+}
+
+const MESES_DE = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+const partes = (iso) => iso.split('-').map(Number)
+
+// «1 al 15 de octubre de 2026», «1 de agosto al 15 de octubre de 2026», «15 de octubre de 2026»…
+export function etiquetaRango(desde, hasta) {
+  if (!desde || !hasta) return ''
+  const [a1, m1, d1] = partes(desde)
+  const [a2, m2, d2] = partes(hasta)
+  if (desde === hasta) return `${d1} de ${MESES_DE[m1 - 1]} de ${a1}`
+  if (a1 === a2 && m1 === m2) return `${d1} al ${d2} de ${MESES_DE[m2 - 1]} de ${a2}`
+  if (a1 === a2) return `${d1} de ${MESES_DE[m1 - 1]} al ${d2} de ${MESES_DE[m2 - 1]} de ${a2}`
+  return `${d1} de ${MESES_DE[m1 - 1]} de ${a1} al ${d2} de ${MESES_DE[m2 - 1]} de ${a2}`
 }

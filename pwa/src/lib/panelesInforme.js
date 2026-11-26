@@ -16,11 +16,24 @@ export const PANELES = [
 // Antes eran cinco paneles; ahora dos (cada uno con su interruptor de vista). Lo que la persona ya había guardado se traduce.
 const ANTIGUOS = { historial: 'mes_a_mes', evolucion: 'mes_a_mes', mi_evolucion: 'ingresos' }
 
+// Paneles de Informes > Resumen (se guardan aparte de los de Gastos).
+export const PANELES_RESUMEN = [
+  { id: 'cifras', nombre: '¿Me alcanzó la plata?', ancho: true },
+  { id: 'hallazgos', nombre: 'Lo que dicen tus números', ancho: true },
+  { id: 'flujo', nombre: 'Flujo neto', ancho: true },
+  { id: 'tasa', nombre: 'Tasa de ahorro' },
+  { id: 'fuentes', nombre: 'Ingresos por fuente' },
+  { id: 'presupuesto', nombre: 'Presupuesto vs. gasto real', ancho: true },
+]
+
 const CLAVE = 'cuadrame:informe-paneles'
+const CLAVE_RESUMEN = 'cuadrame:informe-paneles-resumen'
 const IDS = PANELES.map((p) => p.id)
 
 /** Normaliza lo guardado: quita ids que ya no existen y agrega al final los nuevos. */
-export function normalizarPaneles(guardado) {
+export function normalizarPaneles(guardado, ids = IDS, antiguosDe = ANTIGUOS) {
+  const IDS = ids
+  const ANTIGUOS = antiguosDe
   const traducir = (id) => ANTIGUOS[id] || id
   const orden = Array.isArray(guardado?.orden) ? guardado.orden.map(traducir).filter((id) => IDS.includes(id)) : []
   for (const id of IDS) if (!orden.includes(id)) orden.push(id)
@@ -36,24 +49,27 @@ export function normalizarPaneles(guardado) {
   return { orden: [...new Set(orden)], ocultos }
 }
 
-function leer() {
+function leer(clave, ids, antiguos) {
   try {
-    return normalizarPaneles(JSON.parse(localStorage.getItem(CLAVE) || 'null'))
+    return normalizarPaneles(JSON.parse(localStorage.getItem(clave) || 'null'), ids, antiguos)
   } catch {
-    return normalizarPaneles(null)
+    return normalizarPaneles(null, ids, antiguos)
   }
 }
 
-export function usePanelesInforme() {
-  const [estado, setEstado] = useState(leer)
+/** Paneles personalizables de una pantalla de Informes. Sin argumentos: los de «Gastos». */
+export function usePanelesInforme(lista = PANELES, clave = lista === PANELES ? CLAVE : CLAVE_RESUMEN) {
+  const ids = lista.map((p) => p.id)
+  const antiguos = lista === PANELES ? ANTIGUOS : {}
+  const [estado, setEstado] = useState(() => leer(clave, ids, antiguos))
   const guardar = useCallback((nuevo) => {
     setEstado(nuevo)
     try {
-      localStorage.setItem(CLAVE, JSON.stringify(nuevo))
+      localStorage.setItem(clave, JSON.stringify(nuevo))
     } catch {
       /* sin almacenamiento: se queda en memoria */
     }
-  }, [])
+  }, [clave])
   const mover = (id, delta) => {
     const i = estado.orden.indexOf(id)
     const j = i + delta
@@ -64,6 +80,6 @@ export function usePanelesInforme() {
   }
   const alternar = (id) =>
     guardar({ ...estado, ocultos: estado.ocultos.includes(id) ? estado.ocultos.filter((x) => x !== id) : [...estado.ocultos, id] })
-  const restaurar = () => guardar(normalizarPaneles(null))
+  const restaurar = () => guardar(normalizarPaneles(null, ids, antiguos))
   return { ...estado, mover, alternar, restaurar, visible: (id) => !estado.ocultos.includes(id) }
 }

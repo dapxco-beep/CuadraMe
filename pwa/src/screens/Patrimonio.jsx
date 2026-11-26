@@ -8,6 +8,8 @@ import { EsqueletoGrafica, EsqueletoTarjeta } from '../components/Esqueletos'
 import { Info, Landmark, Plus, TrendingDown, TrendingUp, X } from 'lucide-react'
 import Icono from '../components/Icono'
 import { api } from '../lib/api'
+import { etiquetaRango } from '../lib/informe'
+import { usePeriodoInforme, ventanaHistorial } from '../lib/periodoInforme'
 import { formatCOP, formatMoneda, formatPorcentaje } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
 import { CLASES, CLASES_BIEN, CLASES_MERCADO, formatPct, valorCDT } from '../lib/patrimonio'
@@ -60,6 +62,15 @@ export default function Patrimonio() {
     cargar()
   }, [])
 
+  // Dentro de Informes: el patrimonio de HOY no depende del periodo (es una foto, no un flujo), pero las gráficas de su
+  // historia sí se acotan al periodo elegido. Se muestran al menos 6 meses para que haya tendencia que ver.
+  const periodo = usePeriodoInforme()
+  const ventana = periodo && datos ? ventanaHistorial(periodo.valor) : null
+  const enVentana = (h) => !ventana || (h.mes >= ventana.desde && h.mes <= ventana.hasta)
+  const historial = datos ? datos.historial.filter(enVentana) : []
+  const mesesDescomp = descomposicion.filter(enVentana)
+  const alCierre = ventana && ventana.hasta < hoyISO().slice(0, 7) ? datos?.historial.find((h) => h.mes === ventana.hasta) : null
+
   const vacio = datos && datos.activos.length === 0 && datos.pasivos.length === 0 && datos.total_cuentas === 0
 
   return (
@@ -98,26 +109,32 @@ export default function Patrimonio() {
           <div className="dos-col dos-col-5-6">
             <div className="col">
             <TarjetaNeto datos={datos} />
+            {periodo && (
+              <p className="mx-5 mt-2 text-xs text-ink-soft" data-testid="nota-periodo-patrimonio">
+                Arriba ves tu patrimonio de hoy. Las gráficas muestran {etiquetaRango(`${ventana.desde}-01`, periodo.valor.hasta)}.
+                {alCierre && <> Al cierre de ese periodo tenías <b className="text-ink">{formatCOP(alCierre.patrimonio_neto)}</b>.</>}
+              </p>
+            )}
 
-            {datos.historial.length >= 2 && (
+            {historial.length >= 2 && (
               <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4 stagger-item" style={{ '--stagger-i': 1 }}>
                 <h2 className="text-sm font-semibold mb-3">Cómo ha cambiado</h2>
-                <GraficoPatrimonio historial={datos.historial} />
+                <GraficoPatrimonio historial={historial} />
               </section>
             )}
-            {datos.historial.length === 1 && (
+            {historial.length === 1 && (
               <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4" data-testid="historial-incipiente">
                 <h2 className="text-sm font-semibold">Cómo ha cambiado</h2>
                 <p className="text-xs text-ink-soft mt-1">Hoy tienes un solo punto guardado. La gráfica aparece cuando haya al menos dos meses de historia: ve registrando y se arma sola.</p>
               </section>
             )}
 
-            {(descomposicion.length > 0 || datos.distribucion.length > 0) && (
+            {(mesesDescomp.length > 0 || datos.distribucion.length > 0) && (
               <VerMas titulo="más gráficos">
-                {descomposicion.length > 0 && (
+                {mesesDescomp.length > 0 && (
                   <section className="mx-5 mt-4 rounded-2xl bg-paper-raised border border-line p-4">
                     <h2 className="text-sm font-semibold mb-3">¿De dónde viene tu crecimiento?</h2>
-                    <GraficoDescomposicion meses={descomposicion} />
+                    <GraficoDescomposicion meses={mesesDescomp} />
                   </section>
                 )}
                 {datos.distribucion.length > 0 && (

@@ -1,5 +1,6 @@
 import { ArrowDownRight, ArrowUpRight, TrendingUp } from 'lucide-react'
 import { pctTexto } from '../../lib/informe'
+import { enPeriodo } from './comun'
 
 // Proyección simple del cierre del mes: lo gastado hasta hoy, al mismo ritmo, hasta el último día.
 export function proyeccionMes(total, hoy = new Date()) {
@@ -28,9 +29,9 @@ function Chip({ pct, titulo }) {
 
 function Ficha({ etiqueta, valor, tono }) {
   return (
-    <div className="rounded-2xl bg-paper border border-line px-3 py-2.5 min-w-0">
+    <div className="rounded-2xl bg-paper border border-line px-3 py-2.5 min-w-0 flex items-baseline justify-between gap-3 min-[480px]:block">
       <p className="text-xs uppercase tracking-wide text-ink-soft">{etiqueta}</p>
-      <p className={`text-sm font-bold mt-0.5 truncate ${tono || ''}`}>{valor}</p>
+      <p className={`text-sm font-bold min-[480px]:mt-0.5 min-[480px]:truncate ${tono || ''}`}>{valor}</p>
     </div>
   )
 }
@@ -45,16 +46,18 @@ export default function HeroGasto({ informe, fmt, esMesActual, className = '' })
 
   return (
     <section className={`card-marca bg-paper-raised border border-line p-4 ${className}`} aria-label="Resumen del periodo">
-      <p className="t-kicker text-ink-soft capitalize">Gastaste en {informe.etiqueta}</p>
+      <p className="t-kicker text-ink-soft capitalize">Gastaste {enPeriodo(informe.etiqueta)}</p>
       <div className="flex items-end justify-between gap-3 mt-1">
         <p className="text-[34px] leading-none t-display">{fmt(informe.total)}</p>
-        {sinBase ? <span className="text-xs text-ink-soft pb-1">El mes apenas empieza</span> : <Chip pct={informe.variacion_pct} titulo={informe.anterior.etiqueta} />}
+        {sinBase ? <span className="text-xs text-ink-soft pb-1">El mes apenas empieza</span> : prom > 0 ? <Chip pct={informe.variacion_pct} titulo={informe.anterior.etiqueta} /> : null}
       </div>
       <p className="text-xs text-ink-soft mt-1.5">
-        frente a {informe.anterior.etiqueta} ({fmt(informe.total_anterior)})
+        {prom > 0
+          ? <>frente a {informe.anterior.etiqueta} ({fmt(informe.total_anterior)})</>
+          : <>No hubo gastos {enPeriodo(informe.anterior.etiqueta)}, así que todavía no hay con qué comparar.</>}
       </p>
 
-      <div className="mt-3 space-y-1.5" aria-hidden="true">
+      {prom > 0 && <div className="mt-3 space-y-1.5" aria-hidden="true">
         <div className="flex items-center gap-2 text-[11px]">
           <span className="w-12 shrink-0 text-ink-soft">Ahora</span>
           <span className="flex-1 h-2.5 rounded-full bg-line overflow-hidden"><span className="block h-full rounded-full bg-brand" style={{ width: `${(informe.total / tope) * 100}%` }} /></span>
@@ -63,7 +66,7 @@ export default function HeroGasto({ informe, fmt, esMesActual, className = '' })
           <span className="w-12 shrink-0 text-ink-soft">Antes</span>
           <span className="flex-1 h-2.5 rounded-full bg-line overflow-hidden"><span className="block h-full rounded-full bg-ink-soft/50" style={{ width: `${(prom / tope) * 100}%` }} /></span>
         </div>
-      </div>
+      </div>}
 
       {proy && (
         <p className="mt-3 flex items-start gap-2 rounded-xl bg-accent-soft px-3 py-2 text-xs">
@@ -76,7 +79,7 @@ export default function HeroGasto({ informe, fmt, esMesActual, className = '' })
       )}
 
       {informe.ingresos > 0 && (
-        <div className="grid grid-cols-3 gap-2 mt-3">
+        <div className="grid grid-cols-1 min-[480px]:grid-cols-3 gap-2 mt-3">
           <Ficha etiqueta="Ingresos" valor={fmt(informe.ingresos)} />
           <Ficha etiqueta={informe.ahorro >= 0 ? 'Te sobró' : 'Te faltó'} valor={fmt(Math.abs(informe.ahorro))} tono={informe.ahorro >= 0 ? 'text-cuadra' : 'text-danger'} />
           <Ficha etiqueta="Ahorro" valor={tasa === null ? '—' : `${tasa} %`} tono={tasa !== null && tasa < 0 ? 'text-danger' : ''} />

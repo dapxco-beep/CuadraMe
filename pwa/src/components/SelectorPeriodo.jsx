@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Chip } from './ui'
 import { aISO, rangoPeriodo, rangoValido } from '../lib/informe'
 
@@ -21,11 +21,20 @@ export const PERIODOS_ACTIVIDAD = [
 // Chips de periodo + dos selectores de fecha nativos (en móvil abren el calendario
 // del sistema, que es lo más cómodo). Emite { periodo, desde, hasta } siempre con
 // fechas AAAA-MM-DD; el rango personalizado solo se emite cuando es válido.
-export default function SelectorPeriodo({ opciones = PERIODOS_INFORME, valor, onChange, maxDias = 400, etiqueta = 'Periodo' }) {
+export default function SelectorPeriodo({ opciones = PERIODOS_INFORME, valor, onChange, maxDias = 400, etiqueta = 'Periodo', desplazable = false }) {
   const hoy = aISO(new Date())
+  const fila = useRef(null)
   const [borrador, setBorrador] = useState({ desde: valor?.desde || hoy, hasta: valor?.hasta || hoy })
   const esRango = valor?.periodo === 'rango'
   const valido = rangoValido(borrador.desde, borrador.hasta, maxDias)
+
+  // En la fila desplazable, el periodo elegido se centra solo (si no, «6 meses» queda a medias en el borde).
+  useEffect(() => {
+    if (!desplazable) return
+    const el = fila.current?.querySelector('[aria-pressed="true"]')
+    const caja = fila.current
+    if (el && caja) caja.scrollTo?.({ left: el.offsetLeft - (caja.clientWidth - el.offsetWidth) / 2, behavior: 'auto' })
+  }, [desplazable, valor?.periodo])
 
   function elegir(id) {
     if (id === 'rango') {
@@ -44,9 +53,9 @@ export default function SelectorPeriodo({ opciones = PERIODOS_INFORME, valor, on
 
   return (
     <div>
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label={etiqueta}>
+      <div ref={fila} className={desplazable ? 'flex gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1' : 'flex flex-wrap gap-1.5'} role="group" aria-label={etiqueta}>
         {opciones.map((o) => (
-          <Chip key={o.id} activo={valor?.periodo === o.id} onClick={() => elegir(o.id)} className="text-xs font-semibold">
+          <Chip key={o.id} activo={valor?.periodo === o.id} onClick={() => elegir(o.id)} className={`text-xs font-semibold ${desplazable ? 'shrink-0 whitespace-nowrap' : ''}`}>
             {o.label}
           </Chip>
         ))}

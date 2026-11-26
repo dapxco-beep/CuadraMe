@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useVolver } from '../lib/useVolver'
 import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, CircleDashed, Lightbulb, Loader2, TrendingUp } from 'lucide-react'
 import { api } from '../lib/api'
+import { mesDeValor, usePeriodoInforme, valorDeMes } from '../lib/periodoInforme'
 import { formatCOP, formatPorcentaje } from '../lib/format'
 import { useDialogos } from '../lib/DialogosContext'
 import CelebracionCuadri from '../brand/CelebracionCuadri'
@@ -99,7 +100,11 @@ export default function CierreMes() {
   const { avisar } = useDialogos()
   const [lista, setLista] = useState(null)
   const listaRef = useRef(null) // cierres existentes, para no pedir los que no existen
-  const [mes, setMes] = useState(null)
+  // Dentro de Informes el mes es el último MES TERMINADO del periodo global (un cierre se hace con el mes cerrado).
+  const periodo = usePeriodoInforme()
+  const [mesLocal, setMesLocal] = useState(null)
+  const mes = periodo ? mesDeValor(periodo.valor, { terminado: true }) : mesLocal
+  const setMes = (m) => (periodo ? periodo.setValor(valorDeMes(m)) : setMesLocal(m))
   const [informe, setInforme] = useState(null)
   const [correo, setCorreo] = useState(false)
   const [error, setError] = useState('')
@@ -119,7 +124,7 @@ export default function CierreMes() {
       .then((l) => {
         listaRef.current = Array.isArray(l) ? l : null
         setLista(l)
-        setMes(l[0]?.mes || mesAnterior())
+        if (!periodo) setMesLocal(l[0]?.mes || mesAnterior())
       })
       .catch((e) => setError(textoError(e, 'cargar')))
   }, [])
@@ -235,6 +240,12 @@ export default function CierreMes() {
         </button>
         <h1 className="text-xl font-semibold flex-1">Cierre de mes</h1>
       </header>
+      )}
+
+      {periodo && mes && (
+        <p className="px-5 text-xs text-ink-soft" data-testid="aviso-cierre-mes">
+          El cierre se hace con un mes terminado: usa el último de tu periodo, {nombreDelMes}. Cambia el mes aquí abajo y el informe completo se ajusta.
+        </p>
       )}
 
       {mes && (
