@@ -105,7 +105,7 @@ CASOS = [
     ("IMPUESTO DE VEHICULOS", "Impuestos"), ("MATRICULA UNIVERSIDAD", "Educación"), ("UDEMY ONLINE COURSE", "Educación"),
     ("CUOTA DE MANEJO TARJETA", "Cuota de manejo"), ("COMISION TRANSFERENCIA", "Comisiones y seguros"),
     ("INTERESES CORRIENTES", "Intereses de tarjeta"), ("IVA CUOTA DE MANEJO", "Cuota de manejo"),
-    ("GMF 4X1000", "4x1000 (GMF)"), ("RETIRO CAJERO ATM", "Comisiones y costos financieros"),
+    ("GMF 4X1000", "4x1000 (GMF)"), ("RETIRO CAJERO ATM", "Efectivo"),  # un retiro normal no es un cobro del banco (el avance en efectivo sí)
     ("AVANCE EN EFECTIVO", "Comisiones y costos financieros"),
     ("TRANSFERENCIA NEQUI", "Transferencias"), ("BRE-B ENVIO", "Transferencias"), ("PAGO BRE B", "Transferencias"),
     ("NOMINA SKANDIA", "Ingresos"), ("ABONO INTERESES", "Rendimientos"),

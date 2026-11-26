@@ -18,6 +18,7 @@ activas; si no, se usa su categoría de respaldo (CATEGORIA_RESPALDO) o 'Otros'
 """
 
 COMISIONES = "Comisiones y costos financieros"
+EFECTIVO = "Efectivo"  # retiros de cajero/corresponsal: la plata sigue siendo tuya, no es un costo ni un gasto de consumo
 
 # Si el usuario no tiene la categoría sugerida, se prueba con esta antes de 'Otros'.
 CATEGORIA_RESPALDO: dict[str, str] = {
@@ -27,6 +28,7 @@ CATEGORIA_RESPALDO: dict[str, str] = {
     "Seguros": "Otros",
     "Impuestos": "Otros",
     "Ahorro e inversión": "Transferencias",  # es plata que cambia de bolsillo, no un gasto de consumo
+    EFECTIVO: "Otros",
     COMISIONES: "Otros",
 }
 
@@ -52,7 +54,7 @@ SECCIONES: dict[str, dict[str, str]] = {
         # telecomunicaciones
         "claro": "Hogar", "claro hogar": "Hogar", "movistar": "Hogar", "tigo": "Hogar", "tigo une": "Hogar",
         "wom": "Hogar", "virgin": "Hogar", "virgin mobile": "Hogar", "etb": "Hogar", "une": "Hogar",
-        "directv": "Hogar", "colombia telecomunicaciones": "Hogar", "avantel": "Hogar", "internet": "Hogar",
+        "directv": "Hogar", "colombia telecomunicaciones": "Hogar", "avantel": "Hogar", "internet hogar": "Hogar", "servicio de internet": "Hogar", "plan de internet": "Hogar", "pago internet": "Hogar",
         "plan de datos": "Hogar", "recarga celular": "Hogar", "recarga claro": "Hogar", "recarga movistar": "Hogar",
         "recarga tigo": "Hogar",
     },
@@ -226,8 +228,8 @@ SECCIONES: dict[str, dict[str, str]] = {
     # por patrón de línea, antes que este diccionario.)
     COMISIONES: {
         "cargo por servicio": COMISIONES, "iva": COMISIONES, "intereses": COMISIONES,
-        "retiro cajero": COMISIONES, "retiro atm": COMISIONES, "retiro en efectivo": COMISIONES, "retiro sin tarjeta": COMISIONES,
-        "retiro cajero electronico": COMISIONES, "avance": COMISIONES, "avance en efectivo": COMISIONES, "avance tarjeta": COMISIONES,
+        "retiro cajero": EFECTIVO, "retiro atm": EFECTIVO, "retiro en efectivo": EFECTIVO, "retiro sin tarjeta": EFECTIVO,
+        "retiro cajero electronico": EFECTIVO, "avance": COMISIONES, "avance en efectivo": COMISIONES, "avance tarjeta": COMISIONES,
         "servicio pse": COMISIONES, "sobregiro": COMISIONES, "cuota de apertura": COMISIONES,
     },
     "Transferencias": {
@@ -240,6 +242,46 @@ SECCIONES: dict[str, dict[str, str]] = {
         "rappi pay": "Transferencias", "rappipay": "Transferencias",
         "transferencia inmediata": "Transferencias", "transferencia inmediata bre b": "Transferencias",
         "transferencia entre cuentas": "Transferencias", "traslado entre cuentas": "Transferencias",
+    },
+
+    # ── Extractos reales de Bancolombia, BBVA, Caja Social y Davivienda (revisión de noviembre 2026) ──────────
+    # Conceptos bancarios que no son gasto de consumo. Frases largas a propósito: «retiro en cajero» le gana a un
+    # «cafam» que sea solo el lugar del cajero.
+    "Efectivo y movimientos propios": {
+        "retiro en cajero": EFECTIVO, "retiro cajero automatico": EFECTIVO, "retiro red propia": EFECTIVO,
+        "retiro corresponsal": EFECTIVO, "retiro en corresponsal": EFECTIVO, "retiro de efectivo": EFECTIVO,
+        # bolsillos y traslados entre cuentas propias: plata que cambia de lugar, no un gasto
+        "a bolsillo": "Transferencias", "de bolsillo": "Transferencias", "hacia bolsillo": "Transferencias",
+        "desde bolsillo": "Transferencias", "recibido de cuenta": "Transferencias", "enviado hacia cuenta": "Transferencias",
+        "enviado a cuenta": "Transferencias", "traslado de fondos": "Transferencias", "traslado otros bancos": "Transferencias",
+        "traslado virtual": "Transferencias", "traslado entre bolsillos": "Transferencias", "tfr": "Transferencias",
+        # inversión virtual (Bancolombia): la plata va a una inversión propia
+        "apertura inv virtual": "Ahorro e inversión", "inv virt*": "Ahorro e inversión",
+    },
+
+    # Comercios y palabras de comida que los bancos imprimen cortados a 20 letras («SUPERM AUT», «CAC DROG»)
+    "Comercios cortados y comida": {
+        "superm*": "Comida", "supertiend*": "Comida", "autoservicio*": "Comida", "tiendas ar": "Comida", "oxxo": "Comida",
+        "frutiver*": "Comida", "superfruve*": "Comida", "districarnes": "Comida", "salchichas": "Comida",
+        "hamburgues*": "Comida", "pasteler*": "Comida", "pastier*": "Comida", "tortas": "Comida", "alitas": "Comida",
+        "hornitos": "Comida", "obrador": "Comida", "corral": "Comida", "gastronom*": "Comida", "comida": "Comida",
+        "coffee": "Comida", "rest": "Comida", "grill": "Comida", "wok": "Comida", "waffle*": "Comida", "crepes*": "Comida",
+        "mcdonald*": "Comida", "mc donald": "Comida", "tim hortons": "Comida", "chipotle": "Comida", "burger king": "Comida",
+        "doordash*": "Comida", "coca cola": "Comida", "juan valdez": "Comida", "costco": "Comida",
+    },
+    "Salud y cuidado": {
+        "drog*": "Salud", "farm": "Salud", "shoppers drug": "Salud", "bucal": "Salud", "nails": "Cuidado personal",
+    },
+    "Transporte y viajes": {
+        "eds*": "Transporte", "parki*": "Transporte", "aparcar": "Transporte", "movilgas": "Transporte",
+        "aeromexico": "Transporte", "avianca": "Transporte",
+    },
+    "Compras, ocio y suscripciones": {
+        "marshalls": "Compras", "lovisa": "Compras", "dollarama": "Compras", "sporting life": "Compras", "skechers": "Compras",
+        "naf naf": "Compras", "panamerica*": "Compras", "gap outlet": "Compras", "petsmart": "Compras", "sephora": "Compras",
+        "casaideas": "Hogar", "comcel": "Hogar", "liceo": "Educación",
+        "cinepolis": "Ocio", "cinem*": "Ocio", "multiplex": "Ocio", "rush street": "Ocio", "onlyfans": "Ocio",
+        "figma": "Suscripciones", "paddle*": "Suscripciones", "amazonprime*": "Suscripciones", "plan protege": "Seguros",
     },
 }
 
@@ -255,6 +297,15 @@ INGRESOS: dict[str, str] = {
     "pago de intereses": "Ingresos", "intereses ganados": "Ingresos", "intereses de ahorro": "Ingresos",
     "intereses abonados": "Ingresos", "rendimiento*": "Ingresos", "reembolso realizado": "Ingresos",
     "cashback": "Ingresos",
+    # Extractos reales: pagos de empresas («PAGO DE PROV…», «PAGO DE NOMI…»), depósitos y abonos por domiciliación
+    "pago de prov": "Ingresos", "pago de nomi": "Ingresos", "pago interbanc*": "Ingresos", "deposito idm": "Ingresos",
+    "deposito efectivo*": "Ingresos", "deposito en efectivo": "Ingresos", "consig*": "Ingresos", "abono domi": "Ingresos",
+    "abono por pago de": "Ingresos",
+    # transferencias que ENTRAN (ni ingreso ni gasto: plata que llega de otra cuenta o persona)
+    "credito recibido ach": "Transferencias", "transferencia recibida": "Transferencias", "abono por transferencia": "Transferencias",
+    "traslado de fondo de": "Transferencias",
+    # devolución del capital de una inversión virtual
+    "cancela inv virt": "Ahorro e inversión",
 }
 
 # Inversión y ahorro: se evalúan ANTES que las frases de transferencia, porque lo que

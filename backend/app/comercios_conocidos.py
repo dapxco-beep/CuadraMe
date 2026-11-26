@@ -145,6 +145,32 @@ def _bre_b(texto_pad: str) -> dict | None:
     return None
 
 
+# Palabras del diccionario que, por ser largas y distintivas, se aceptan al INICIO de un nombre pegado.
+_MIN_PEGADO = 5
+_MIN_TOKEN_PEGADO = 9
+
+
+def _nombre_pegado(texto_pad: str) -> dict | None:
+    """Último recurso: algunos extractos (Davivienda) pegan el nombre del comercio con lo que sigue
+    («EXITOOCCIDENTE», «FARMATODOHAYUELOS»). Si una palabra larga y distintiva del diccionario abre ese nombre,
+    se usa (la más larga gana). Solo con palabras de 5 letras o más y nombres de 9 o más: 'ara' no se activa
+    dentro de 'arandanos'. Confianza menor: la persona debe poder corregirlo."""
+    mejor = None
+    for token in texto_pad.split():
+        if len(token) < _MIN_TOKEN_PEGADO:
+            continue
+        for n, largo, pat, _prefijo, categoria, tipo, original in _INDICE:
+            if n == 1 and largo >= _MIN_PEGADO and token.startswith(pat) and (mejor is None or largo > mejor[0]):
+                mejor = (largo, categoria, tipo, original, token)
+    if not mejor:
+        return None
+    _largo, categoria, tipo, original, token = mejor
+    return {
+        "categoria": categoria, "tipo": tipo, "confianza": 0.6, "fuente": "diccionario",
+        "palabra": original, "razon": f"por el comercio «{original}» dentro de «{token}»",
+    }
+
+
 def clasificar_por_diccionario(descripcion: str) -> dict | None:
     # Cobros y rendimientos bancarios (intereses, cuota de manejo, comisiones, 4x1000): por patrón de línea.
     costo = clasificar_costo(descripcion)
@@ -168,5 +194,9 @@ def clasificar_por_diccionario(descripcion: str) -> dict | None:
                 "categoria": categoria, "tipo": tipo, "confianza": 0.75, "fuente": "diccionario",
                 "palabra": original, "razon": f"por palabra clave «{original}»",
             }
+
+    r = _nombre_pegado(texto_pad)
+    if r:
+        return r
 
     return _transferencia(texto_pad, TRANSFERENCIA_PERSONA_DEBIL)

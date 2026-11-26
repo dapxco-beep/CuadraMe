@@ -107,7 +107,7 @@ DAVIBANK = """CUENTA DE AHORROS
 No 0000000000
 RESUMEN CUENTA AHORROS
 SALDO ANTERIOR DEPOSITOS Y OTROS CREDITOS RETIROS Y OTROS DEBITOS NUEVO SALDO
-100.000,00 800.009,00 351.000,00 549.009,00
+100.000,00 800.011,00 351.000,00 549.011,00
 DETALLE DE CUENTA
 FECHA OFICINA No DOCUM DESCRIPCION MONTO SALDO
 1/12/2025 CENTRAL DE C Pago por PSE -20.000,00 80.000,00
@@ -115,7 +115,9 @@ Recarga Nequi PSE
 1/12/2025 CENTRAL DE C CREDITO RECIBIDO ACH 800.000,00 880.000,00
 3/12/2025 CENTRAL DE C Pago por PSE -300.000,00 580.000,00
 31/12/2025 BOGOTA CENTR PAGO DE INTERES GENERADO 9,00 580.009,00
-IMP/TRANS FINANC/ACUM MES -31.000,00 549.009,00
+31/12/2025 BOGOTA CENTR PAGO DE INTERES GENERADO 1,00 580.010,00
+31/12/2025 BOGOTA CENTR PAGO DE INTERES GENERADO 1,00 580.011,00
+IMP/TRANS FINANC/ACUM MES -31.000,00 549.011,00
 """
 
 
@@ -213,6 +215,9 @@ def test_caja_social_decide_entrada_o_salida_con_los_saldos_del_banco():
     assert _tipos(l) == [("2026-03-02", "income", 500000.0), ("2026-03-05", "expense", 100000.0), ("2026-03-06", "expense", 50000.0)]
     assert l["lectura_completa"] is True
     assert (l["saldo_inicial"], l["saldo_final"]) == (100000.0, 450000.0)
+    # sin el número de documento ni el «lugar» (INTERNET, ACH), y con el detalle que el banco imprime debajo
+    assert l["movimientos"][0]["descripcion"] == "TRANSFERENCIA OTRA ENTIDA"
+    assert l["movimientos"][1]["descripcion"] == "COMPRA INTERNET · Pago de factura Postpago"
 
 
 # ── BBVA ──
@@ -236,12 +241,13 @@ def test_bbva_una_devolucion_no_rompe_la_verificacion():
 # ── Davibank ──
 def test_davibank_lee_la_fila_de_fin_de_mes_sin_fecha_y_cuadra():
     l = extractos_co.leer(DAVIBANK)
-    assert len(l["movimientos"]) == 5
-    assert [m["tipo"] for m in l["movimientos"]] == ["expense", "income", "expense", "income", "expense"]
+    assert len(l["movimientos"]) == 7
+    assert [m["tipo"] for m in l["movimientos"]][:5] == ["expense", "income", "expense", "income", "income"]
     assert l["movimientos"][-1]["fecha"] == "2025-12-31"  # la fila sin fecha lleva la de la anterior
-    assert l["movimientos"][0]["descripcion"] == "Pago por PSE"  # sin la columna «oficina» pegada
+    assert l["movimientos"][0]["descripcion"] == "Pago por PSE · Recarga Nequi PSE"  # sin la columna «oficina», con el detalle de la línea de abajo
+    assert l["movimientos"][3]["descripcion"] == "PAGO DE INTERES GENERADO"  # otra oficina («BOGOTA CENTR») tampoco queda pegada
     assert l["lectura_completa"] is True
-    assert (l["saldo_inicial"], l["saldo_final"]) == (100000.0, 549009.0)
+    assert (l["saldo_inicial"], l["saldo_final"]) == (100000.0, 549011.0)
 
 
 # ── Integración con el resto de la app ──

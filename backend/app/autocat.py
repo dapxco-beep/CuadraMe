@@ -142,6 +142,8 @@ def decidir_categoria(
                 r = None
     if not r:
         r = clasificar_por_diccionario(f"{descripcion} {texto_extra}".strip())
+        if r and r.get("categoria") == "Ingresos" and (contexto or {}).get("tipo") == "expense":
+            r = None  # un gasto nunca es «Ingresos» (p. ej. «Pago factura hogar» en el detalle de una compra)
         if r:
             r = {**r, "categoria": _ajustar(activas, r["categoria"])}
             if r["categoria"] == "Otros":

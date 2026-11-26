@@ -50,6 +50,23 @@ def _iso(anio: int, mes: int, dia: int) -> str | None:
         return None
 
 
+def _detalle_util(linea: str) -> str | None:
+    """Línea de detalle que algunos bancos imprimen DEBAJO de un movimiento («Recarga Nequi PSE», «Pago factura hogar -
+    Multiplay»). Sirve para categorizar. Solo si tiene al menos dos palabras de verdad y no parece un pie de página."""
+    t = (linea or "").strip()
+    t = re.sub(r"^\d{6,}\s+", "", t)  # referencia numérica delante
+    if not t or len(t) > 60 or t.endswith("."):
+        return None
+    palabras = re.findall(r"[A-Za-zÁÉÍÓÚáéíóúÑñ]{4,}", t)
+    if len(palabras) < 2 or re.search(r"\d{4}-\d{2}|www\.|@", t):
+        return None
+    return t
+
+
+def _con_detalle(desc: str, detalle: str | None) -> str:
+    return f"{desc.strip()} · {detalle}" if detalle else desc.strip()
+
+
 def _mov(fecha: str, desc: str, monto: float, tipo: str, saldo: float | None = None) -> dict:
     return {"fecha": fecha, "descripcion": desc.strip(), "monto": abs(monto), "tipo": tipo, "referencia": "", "saldo": saldo}
 
@@ -111,6 +128,11 @@ _DAV_FRASES = (
     (r"^AbonoPorTransferenciaDeFondos", "Abono por transferencia de fondos "),
     (r"^DescuentoPorTransferenciaDeFondos", "Descuento por transferencia de fondos "),
     (r"^RetiroenCajeroAutomatico\.?", "Retiro en cajero automático "),
+    (r"(?i)^transferenciade\s*dineroa\s*bolsillo", "Transferencia de dinero a bolsillo"),
+    (r"(?i)^transferenciadesde\s*cuentaa\s*bolsillo", "Transferencia desde cuenta a bolsillo"),
+    (r"(?i)^abono\s*de\s*bolsillo\s*acuenta", "Abono de bolsillo a cuenta"),
+    (r"(?i)^transferencia\s*de\s*bolsillo\s*acuenta", "Transferencia de bolsillo a cuenta"),
+    (r"(?i)^deposito\s*efectivocon\s*volante\s*oficina", "Depósito efectivo con volante oficina"),
     (r"^Compra(?=\S)", "Compra "),
     (r"^Pago(?=[A-Z])", "Pago "),
 )
@@ -251,6 +273,13 @@ _RE_CS_PERIODO = re.compile(r"(\d{1,2})\s+de\s+([A-Za-záéíóú]+)\s+a\s+(\d{1
 _RE_CS_RESUMEN = re.compile(r"^(-?[\d,]*\.\d{2})\s+(-?[\d,]*\.\d{2})\s+(-?[\d,]*\.\d{2})\s+(-?[\d,]*\.\d{2})\s+(-?[\d,]*\.\d{2})$")
 
 
+def _limpiar_documento_cs(desc: str) -> str:
+    """«COMPRA INTERNET 6332430 INTERNET» -> «COMPRA INTERNET»; conserva el detalle que va tras « · »."""
+    base, sep, detalle = desc.partition(" · ")
+    base = re.sub(r"\s+\d{5,}(?:\s+[A-ZÁÉÍÓÚÑ]+){0,2}$", "", base)
+    return base + (sep + detalle if sep else "")
+
+
 def _firma_cajasocial(t: str) -> bool:
     c = _compacto(t[:4000])
     return "periododelinforme" in c and "bancocajasocial" in _compacto(t)
@@ -277,7 +306,8 @@ def _leer_cajasocial(texto: str) -> dict | None:
     for k, s in enumerate(secciones):
         fin = secciones[k + 1]["i"] if k + 1 < len(secciones) else len(lineas)
         filas = []
-        for l in lineas[s["i"]:fin]:
+        bloque = lineas[s["i"]:fin]
+        for j, l in enumerate(bloque):
             m = _RE_CS_FILA.match(l)
             if not m:
                 continue
@@ -285,8 +315,12 @@ def _leer_cajasocial(texto: str) -> dict | None:
             anio = s["anio"] - 1 if s["mes_ini"] and mes > s["mes_ini"] + 6 else s["anio"]
             fecha = _iso(anio, mes, int(m.group(2)))
             if fecha:
-                filas.append((fecha, m.group(3), _us(m.group(4)), _us(m.group(5))))
+                sig = bloque[j + 1] if j + 1 < len(bloque) else ""
+                detalle = None if _RE_CS_FILA.match(sig) else _detalle_util(sig) if re.match(r"^\d{6,}\s+\S", sig) else None
+                filas.append((fecha, _con_detalle(m.group(3), detalle), _us(m.group(4)), _us(m.group(5))))
         previo = s["resumen"][0] if s["resumen"] else None
+        # (fecha, descripción limpia, monto, saldo): el documento y el «lugar» (INTERNET, ACH…) no dicen en qué se gastó
+        filas = [(f, _limpiar_documento_cs(d), mo, sa) for f, d, mo, sa in filas]
         firmadas, nr = _firmar_por_saldo(filas, previo)
         sin_resolver += nr
         for fecha, desc, monto, saldo, tipo in firmadas:
@@ -368,6 +402,14 @@ def _firma_davibank(t: str) -> bool:
     return "fechaoficinanodocumdescripcionmontosaldo" in c or ("depositosyotroscreditos" in c and "retirosyotrosdebitos" in c)
 
 
+def _quitar_oficina(descs: list[str]) -> list[str]:
+    """La columna «oficina» ocupa 12 letras fijas ('CENTRAL DE C', 'BOGOTA CENTR', 'BOGOTA LOS H') y queda pegada a la
+    descripción. Un prefijo de 12 letras que se repite en varias filas y termina en espacio es la oficina: se quita."""
+    cuenta = Counter(d[:12] for d in descs if len(d) > 13 and d[12] == " " and re.fullmatch(r"[A-ZÁÉÍÓÚÑ ]{12}", d[:12]))
+    oficinas = {o for o, n in cuenta.items() if n >= 3}
+    return [d[13:].strip() if d[:12] in oficinas and len(d) > 13 and d[12] == " " else d for d in descs]
+
+
 def _quitar_prefijo_comun(descs: list[str]) -> list[str]:
     """La columna «oficina» ('CENTRAL DE C') se pega a la descripción: si casi todas empiezan igual, se quita."""
     if len(descs) < 5:
@@ -390,12 +432,14 @@ def _leer_davibank(texto: str) -> dict | None:
             if len(nums) >= 4:
                 resumenes.append([_es(x) for x in nums[:4]])
     filas = []
-    for l in lineas:
+    for k, l in enumerate(lineas):
         m = _RE_DB_FILA.match(l)
         if m:
             fecha = _iso(int(m.group(3)), int(m.group(2)), int(m.group(1)))
             if fecha:
-                filas.append((fecha, m.group(4), _es(m.group(5)), _es(m.group(6))))
+                sig = lineas[k + 1] if k + 1 < len(lineas) else ""
+                detalle = None if (_RE_DB_FILA.match(sig) or _RE_DB_SIN_FECHA.match(sig)) else _detalle_util(sig)
+                filas.append((fecha, _con_detalle(m.group(4), detalle), _es(m.group(5)), _es(m.group(6))))
             continue
         # Fila de cierre de mes sin fecha propia («IMP/TRANS FINANC/ACUM MES -49.136,80 560.202,86»): lleva la fecha de la
         # fila anterior y solo se acepta si la cadena de saldos del banco la confirma (saldo previo + monto = saldo).
@@ -406,7 +450,8 @@ def _leer_davibank(texto: str) -> dict | None:
                 filas.append((filas[-1][0], sd.group(1), monto, saldo))
     if not filas:
         return None
-    descs = _quitar_prefijo_comun([f[1] for f in filas])
+    descs = _quitar_oficina([f[1] for f in filas])
+    descs = _quitar_prefijo_comun(descs)
     movs = [_mov(f[0], d, f[2], "expense" if f[2] < 0 else "income", f[3]) for f, d in zip(filas, descs)]
     return _lectura(
         "davibank", "davivienda", movs,
