@@ -47,7 +47,7 @@ export default function GastoPorDiaSemana({ dias, fmt, className = '' }) {
           const esTop = p.i === hall.i
           return (
             <div key={p.i} className="flex flex-col items-center justify-end h-full gap-1" aria-hidden="true">
-              <span className={`text-[10px] ${esTop ? 'font-bold text-ink' : 'text-ink-soft'}`}>{p.promedio ? abreviarEje(p.promedio) : ''}</span>
+              <span className={`text-xs ${esTop ? 'font-bold text-ink' : 'text-ink-soft'}`}>{p.promedio ? abreviarEje(p.promedio) : ''}</span>
               <span
                 className="w-full rounded-t-lg"
                 style={{ height: `${Math.max(4, (p.promedio / max) * 72)}px`, background: esTop ? 'var(--color-brand)' : 'color-mix(in srgb, var(--color-brand) 35%, var(--color-paper-raised))' }}

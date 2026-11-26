@@ -1027,7 +1027,7 @@ export default function Sincronizacion({ modo = 'extractos' }) {
           data-testid="abrir-conexiones"
           className="shrink-0 flex items-center justify-center gap-1.5 text-xs font-semibold text-accent min-h-[44px] min-w-[44px] px-1"
         >
-          <Plug size={16} aria-hidden="true" /> <span className="max-[400px]:sr-only">Conexiones y claves</span>
+          <Plug size={16} aria-hidden="true" /> <span className={embebido ? '' : 'max-[400px]:sr-only'}>Conexiones y claves</span>
         </button>
       </header>
 

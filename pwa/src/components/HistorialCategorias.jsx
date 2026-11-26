@@ -29,8 +29,8 @@ export default function HistorialCategorias({ fmt, className = '' }) {
 
   return (
     <section id="historial-categorias" className={`card-marca bg-paper-raised border border-line p-4 ${className}`} aria-label="Historial por categoría">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+        <div className="min-w-0 flex-1 basis-48">
           <h2 className="text-[15px] font-semibold">Historial por categoría</h2>
           <p className="text-[11px] text-ink-soft mt-0.5">Cuánto gastaste en cada una, mes a mes. Desliza de lado para ver todos los meses.</p>
         </div>

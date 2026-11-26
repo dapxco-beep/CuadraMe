@@ -253,7 +253,7 @@ export default function Informe() {
                           return (
                             <div className="shrink-0 text-ink-soft flex flex-col items-center" data-testid="tendencia-categoria">
                               <Sparkline valores={t.valores} ancho={40} alto={16} resumen={`Tendencia de ${c.categoria} en 6 meses: ${txt} frente a su promedio`} />
-                              <span className="text-[10px] leading-none mt-0.5" aria-hidden="true">{txt}</span>
+                              <span className="text-xs leading-none mt-0.5" aria-hidden="true">{txt}</span>
                             </div>
                           )
                         })()}

@@ -27,7 +27,7 @@ export default function PantallaConPestanas({ titulo, pestanas, raiz = false }) 
         )}
         <h1 className={raiz ? 'text-2xl font-bold' : 'text-xl font-semibold'}>{titulo}</h1>
       </header>
-      <div role="tablist" aria-label={titulo} className="px-5 pb-1 flex gap-2 overflow-x-auto no-scrollbar">
+      <div role="tablist" aria-label={titulo} className="pl-5 pr-9 pb-1 flex gap-2 overflow-x-auto no-scrollbar borde-fade-der">
         {pestanas.map((p) => {
           const es = p.id === activa.id
           return (
@@ -36,6 +36,7 @@ export default function PantallaConPestanas({ titulo, pestanas, raiz = false }) 
               type="button"
               role="tab"
               aria-selected={es}
+              ref={es ? (el) => el?.scrollIntoView?.({ inline: 'center', block: 'nearest' }) : undefined}
               onClick={() => setParams({ tab: p.id }, { replace: true })}
               className={`min-h-11 px-4 rounded-full text-sm font-semibold border whitespace-nowrap ${es ? 'bg-accent-soft text-accent border-accent' : 'bg-paper-raised text-ink border-line'}`}
             >
