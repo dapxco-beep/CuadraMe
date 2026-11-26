@@ -1022,7 +1022,9 @@ def _registrar_movimiento_rapido(
 
     cuenta = bloquear_cuenta(db, cuenta.id)  # serializa reintentos simultáneos del mismo pago
     ahora = ahora_co()
-    momento = fecha_razonable(parse_fecha(fecha), ahora)
+    # Un aviso/comprobante (fuente «notificacion») trae su fecha impresa: se respeta aunque sea de hace semanas.
+    # Apple Pay y los demás son de «ahora»: más de 7 días atrás es un dato absurdo.
+    momento = fecha_razonable(parse_fecha(fecha), ahora, 400 if fuente == "notificacion" else 7)
 
     notas = ""
     if tarjeta:

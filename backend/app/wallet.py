@@ -92,10 +92,12 @@ def parse_fecha(valor) -> datetime | None:
     return None
 
 
-def fecha_razonable(fecha: datetime | None, ahora: datetime) -> datetime:
+def fecha_razonable(fecha: datetime | None, ahora: datetime, dias_atras: int = 7) -> datetime:
     """Una compra con Wallet es de 'ahora': si la fecha no viene, o viene
-    absurda (futuro lejano o más de 7 días atrás), se usa la hora actual."""
-    if fecha is None or fecha > ahora + timedelta(days=1) or fecha < ahora - timedelta(days=7):
+    absurda (futuro lejano o más de `dias_atras` días atrás), se usa la hora actual.
+    Un comprobante o aviso que imprime su propia fecha (fuente «notificacion») pasa un margen mucho mayor:
+    esa fecha es la real aunque la persona lo suba días después."""
+    if fecha is None or fecha > ahora + timedelta(days=1) or fecha < ahora - timedelta(days=dias_atras):
         return ahora
     return fecha
 
