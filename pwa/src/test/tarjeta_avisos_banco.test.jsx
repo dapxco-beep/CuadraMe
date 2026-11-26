@@ -100,10 +100,8 @@ describe('Enlaces de los atajos nuevos', () => {
     const fs = await import('node:fs')
     const { ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL, ATAJO_ICLOUD_URL } = await import('../screens/ConectarDispositivo')
     for (const url of [ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL, ATAJO_ICLOUD_URL]) {
-      expect(url.startsWith("https://www.icloud.com/shortcuts/")).toBe(true)
-    }
-    for (const archivo of ["CuadraMe Registrar", "CuadraMe Apple Pay"]) {
-      expect(fs.existsSync(`public/descargas/${archivo}.shortcut`)).toBe(true)
+      expect(url).toMatch(/^\/descargas\/CuadraMe%20[A-Za-z%0-9]+\.shortcut$/)
+      expect(fs.existsSync(`public${decodeURIComponent(url)}`)).toBe(true)
     }
     api.conexionesEstado.mockResolvedValue(ESTADO)
     api.estadoNotificaciones.mockResolvedValue([])

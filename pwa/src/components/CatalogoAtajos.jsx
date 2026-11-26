@@ -11,7 +11,6 @@ import { CAPTURAS_REALES } from '../lib/capturasGuia'
 import { haceCuanto } from '../lib/sincronizarGmail'
 import {
   ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL, ATAJOS_ACTUALIZADOS,
-  ATAJO_ARCHIVO_APPLE_PAY, ATAJO_ARCHIVO_REGISTRAR,
 } from '../lib/atajosEnlaces'
 
 // Los atajos de CuadraMe para iPhone como una guía corta: la persona elige QUÉ quiere conectar y ve solo los pasos de eso, en tres
@@ -308,13 +307,6 @@ function GuiaAtajo({ a }) {
                   aria-label={`Instalar ${a.nombre}`}
                 >
                   <Icono icono={Download} tam="md" /> Instalar
-                </a>
-                <a
-                  href={a.id === 'apple-pay' ? ATAJO_ARCHIVO_APPLE_PAY : ATAJO_ARCHIVO_REGISTRAR}
-                  download
-                  className="min-h-11 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-accent"
-                >
-                  Si no abre, descarga el archivo
                 </a>
                 <CopiarEnlace url={a.url} />
                 <AyudaSiNoAbre />

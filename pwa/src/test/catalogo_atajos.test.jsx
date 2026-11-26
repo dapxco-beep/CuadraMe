@@ -18,7 +18,6 @@ import CatalogoAtajos, { ATAJOS } from '../components/CatalogoAtajos'
 import ConectarDispositivo from '../screens/ConectarDispositivo'
 import {
   ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL, ATAJOS_ACTUALIZADOS,
-  ATAJO_ARCHIVO_APPLE_PAY, ATAJO_ARCHIVO_REGISTRAR,
 } from '../lib/atajosEnlaces'
 
 const CLAVE = { clave: 'cdm_demo', cargando: false, tieneClave: true, prefijo: '', recienCreada: false, crearNueva: vi.fn() }
@@ -62,9 +61,8 @@ describe('Guía de atajos', () => {
       const tarjeta = screen.getByTestId(`atajo-${a.id}`)
       const boton = within(tarjeta).getByRole('link', { name: /^Instalar CuadraMe/ })
       expect(boton).toHaveAttribute('href', esperados[a.id])
-      expect(esperados[a.id].startsWith("https://www.icloud.com/shortcuts/")).toBe(true)
+      expect(esperados[a.id].startsWith("/descargas/")).toBe(true) // nunca un enlace de iCloud: llevaria la clave de quien lo compartio
       expect(boton).not.toHaveAttribute('target')
-      expect(within(tarjeta).getByRole('link', { name: /descarga el archivo/ })).toHaveAttribute('href', a.id === 'apple-pay' ? ATAJO_ARCHIVO_APPLE_PAY : ATAJO_ARCHIVO_REGISTRAR)
       expect(screen.getAllByRole('article')).toHaveLength(1) // solo la guía elegida
       expect(tarjeta).toHaveTextContent(`Para ti si: ${a.paraQuien}`)
     }
@@ -194,7 +192,7 @@ describe('Guía de atajos', () => {
     await elegir('Mi banco no avisa')
     expect(screen.getByTestId('fase-instalar')).toHaveTextContent('se descarga el atajo')
     await userEvent.click(screen.getByRole('button', { name: /Copia el enlace para abrirlo en tu iPhone/ }))
-    expect(await navigator.clipboard.readText()).toBe(ATAJO_REGISTRAR_URL)
+    expect(await navigator.clipboard.readText()).toMatch(/\/descargas\/CuadraMe%20Registrar\.shortcut$/)
     expect(await screen.findByRole('button', { name: 'Enlace copiado' })).toBeInTheDocument()
   })
 
