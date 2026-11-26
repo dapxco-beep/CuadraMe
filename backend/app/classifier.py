@@ -29,6 +29,9 @@ STOPWORDS = {
 GENERICAS = {
     "centro", "comercial", "zona", "tienda", "plaza", "local", "punto", "almacen", "cajero",
     "pagaste", "enviaste", "recibiste", "envio", "recibi", "bre", "llave", "inmediata", "nuestro",
+    # Canales y operaciones que imprimen los extractos (Bancolombia, BBVA, Caja Social, Davivienda): no dicen en qué se gastó
+    "intl", "internet", "canal", "electroni", "ach", "tfr", "net", "rec", "inter", "web", "pos", "qr", "app", "virtual",
+    "otra", "otro", "enviada", "enviado", "recibida", "recibido", "impto", "gobierno", "ahorros", "retiro", "propia", "red",
 }
 
 

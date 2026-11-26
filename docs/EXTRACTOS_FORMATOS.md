@@ -47,3 +47,26 @@ Nequi. La firma de cada formato es de su encabezado.
 ## Pendiente (formatos vistos y NO soportados)
 - Extractos de bancos de EE. UU. en inglés (TD Bank, Bank of America): fuera del alcance de la app hoy. El de Bank of America
   trae el texto del PDF dañado (la fuente cambia letras y cifras por signos), así que ni siquiera se puede leer sin OCR.
+
+## Categorías: qué se aprendió de los extractos reales (noviembre 2026)
+Se pasaron ~2.600 movimientos de extractos modelo por el categorizador. Antes el diccionario **no reconocía el 46 %**; ahora
+no reconoce el 19 %. Lo que queda son sobre todo comercios pequeños que ningún diccionario conoce y «Pago por PSE» sin comercio.
+Esto mide **cobertura y plausibilidad**, no exactitud: los PDFs no traen categorías confirmadas por nadie (para exactitud está
+`tools/evaluar_clasificador.py`, que necesita un export con categorías confirmadas).
+
+Medirlo con extractos nuevos (solo agregados; no imprime descripciones salvo que se pida):
+`cd backend && venv/Scripts/python.exe tools/probar_extractos.py "<carpeta>" --desde-hoy --categorias [--patrones 40]`
+
+Reglas que salieron de ahí (están en `diccionario_categorias.py`, `costos_financieros.py`, `comercios_conocidos.py`):
+- **El 4 por mil se imprime de muchas formas** («IMPTO GOBIERNO 4X1000», «CARGO POR IMPUESTO 4X1.000», «IMP/TRANS FINANC/ACUM MES»):
+  `4X1.000` se normaliza a «4x1 000» y por eso no entraba. Son el 17 % de los movimientos.
+- **Los bancos cortan el nombre a 20 letras** («SUPERM AUT», «CAC DROG», «TIENDAS AR»): hacen falta palabras con `*` (prefijo).
+- **Davivienda pega las palabras** («COMPRAEXITOOCCIDENTE»): `_nombre_pegado` acepta una palabra larga (5+ letras) al inicio de un nombre
+  de 9+ letras, con confianza menor (0.6) para que la persona lo confirme.
+- **«INTERNET» en Caja Social es el canal**, no el servicio del hogar: se quitó «internet» suelto de Hogar.
+- **Un retiro de cajero no es un cobro del banco**: va a «Efectivo» (sin esa categoría se pregunta). El cobro por cajero AJENO y el
+  avance en efectivo siguen siendo costos. Antes un cajero dentro de un Cafam salía como Salud.
+- **Un gasto nunca es «Ingresos»** (`autocat.decidir_categoria`): el detalle «Pago factura hogar» de una compra disparaba «pago factura».
+- **Bolsillos y traslados propios** son «Transferencias»: plata que cambia de lugar, no ingreso ni gasto.
+- El modelo aprendido por usuario ignora el ruido bancario (`intl`, `internet`, `ach`, `impto`…): no identifica al comercio.
+- Las líneas de detalle de debajo de un movimiento (Caja Social, Davibank) se suman a la descripción: ahí está el comercio.

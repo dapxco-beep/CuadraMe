@@ -43,6 +43,8 @@ _PREFIJOS = {
     "el", "los", "las", "mensual", "automatico", "automatica", "tc", "tdc", "tarjeta", "nu", "bancolombia",
     "davivienda", "bbva", "nequi", "daviplata", "iva", "impuesto", "total", "tu", "su", "mi", "aplicado",
     "aplicada", "nuevo", "nueva", "devolucion", "reverso", "reversion", "reintegro",
+    # Bancolombia: «IMPTO GOBIERNO 4X1000», «CXC IMPTO GOBIERNO 4X1000», «REV IMPTO GOBIERNO 4X1000»; «C MANEJO TARJ DEB»
+    "impto", "imp", "gobierno", "cxc", "rev", "c",
 }
 _MAX_PREFIJO = 4
 
@@ -53,7 +55,7 @@ _CONCEPTOS: list[tuple[tuple[str, ...], str]] = [
     (("intereses", "corrientes"), CAT_INTERESES), (("intereses", "corriente"), CAT_INTERESES),
     (("interes", "corriente"), CAT_INTERESES), (("interes", "corrientes"), CAT_INTERESES),
     (("intereses", "de", "mora"), CAT_INTERESES), (("interes", "de", "mora"), CAT_INTERESES),
-    (("intereses", "mora"), CAT_INTERESES), (("interes", "mora"), CAT_INTERESES),
+    (("intereses", "mora"), CAT_INTERESES), (("interes", "mora"), CAT_INTERESES), (("mora", "tarjeta"), CAT_INTERESES),
     (("intereses", "moratorios"), CAT_INTERESES),
     (("intereses", "de", "compras"), CAT_INTERESES), (("intereses", "compras"), CAT_INTERESES),
     (("intereses", "de", "avances"), CAT_INTERESES), (("intereses", "avances"), CAT_INTERESES),
@@ -62,15 +64,20 @@ _CONCEPTOS: list[tuple[tuple[str, ...], str]] = [
     (("intereses", "de", "sobregiro"), CAT_INTERESES),
     # cuota de manejo
     (("cuota", "de", "manejo"), CAT_CUOTA), (("cuota", "manejo"), CAT_CUOTA),
+    # «MANEJO TARJETA DEB», «C MANEJO TARJ DEB» (Bancolombia)
+    (("manejo", "tarjeta"), CAT_CUOTA), (("manejo", "tarj"), CAT_CUOTA),
     # 4x1000
     (("gmf",), CAT_GMF), (("gravamen",), CAT_GMF), (("gravamen", "movimientos", "financieros"), CAT_GMF),
     (("gravamen", "a", "los", "movimientos", "financieros"), CAT_GMF),
     (("gravamen", "al", "movimiento"), CAT_GMF), (("gravamen", "al", "movimiento", "financiero"), CAT_GMF),
     (("gravamen", "movimiento", "financiero"), CAT_GMF),
     (("4x1000",), CAT_GMF), (("4", "x", "1000"), CAT_GMF), (("4", "por", "mil"), CAT_GMF),
+    # «4X1.000» se normaliza a «4x1 000»; Davibank imprime «IMP/TRANS FINANC/ACUM MES»
+    (("4x1", "000"), CAT_GMF), (("4", "x", "1", "000"), CAT_GMF), (("imp", "trans", "financ"), CAT_GMF),
+    (("impuesto", "transacciones", "financieras"), CAT_GMF),
     (("4", "por", "1000"), CAT_GMF), (("cuatro", "por", "mil"), CAT_GMF),
     # comisiones y seguros
-    (("comision",), CAT_COMISIONES), (("comisiones",), CAT_COMISIONES),
+    (("comision",), CAT_COMISIONES), (("comisiones",), CAT_COMISIONES), (("comis",), CAT_COMISIONES),  # «COMIS SWIFT GIRO»
     (("seguro", "deudores"), CAT_COMISIONES), (("seguro", "de", "deudores"), CAT_COMISIONES),
     (("seguro", "deudor"), CAT_COMISIONES), (("seguro", "de", "deudor"), CAT_COMISIONES),
     (("seguro", "desempleo"), CAT_COMISIONES), (("seguro", "de", "desempleo"), CAT_COMISIONES),
@@ -93,6 +100,8 @@ _CONCEPTOS: list[tuple[tuple[str, ...], str]] = [
     (("interes", "cuenta", "ahorros"), CAT_RENDIMIENTOS), (("interes", "cdt"), CAT_RENDIMIENTOS),
     (("intereses", "cdt"), CAT_RENDIMIENTOS),
     (("rendimientos",), CAT_RENDIMIENTOS), (("rendimiento",), CAT_RENDIMIENTOS),
+    (("pago", "de", "interes", "generado"), CAT_RENDIMIENTOS),
+    (("interes", "inv", "virt"), CAT_RENDIMIENTOS), (("intereses", "inv", "virt"), CAT_RENDIMIENTOS),  # inversión virtual (Bancolombia)
 ]
 _CONCEPTOS.sort(key=lambda c: -len(c[0]))
 
@@ -105,7 +114,7 @@ _CONTEXTO_BANCARIO = {"tarjeta", "cuenta", "credito", "tc", "tdc", "banco", "pla
 _CONTEXTO_SEGURO_BANCO = {"tarjeta", "credito", "deudor", "deudores", "cuota", "saldo", "cobro", "cargo", "tc", "tdc",
                           "prestamo", "libranza", "hipoteca"}
 
-_PALABRAS_DEVOLUCION = {"devolucion", "reverso", "reversion", "reintegro"}
+_PALABRAS_DEVOLUCION = {"devolucion", "reverso", "reversion", "reintegro", "rev"}
 
 
 def _normalizar(texto: str) -> str:

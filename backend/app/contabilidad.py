@@ -53,7 +53,9 @@ PATRON_PAGO_TARJETA = re.compile(
     r"\b(?:pagos?|abonos?|pagaste|abonaste)\s+(?:(?:de|a|la|mi|tu|total|minimo|del)\s+)*"
     r"(?:tarjeta|tarj\.?|tc|tdc|t\.c\.?|visa|master\s?card|amex|american\s+express|diners)\b"
     r"|\b(?:pagos?|abonos?|pagaste|abonaste)\s+(?:(?:de|a|la|mi|tu|total|minimo|del)\s+)*"
-    rf"(?:{_ENTIDAD_TARJETA})\s+(?:tarjeta|tarj\.?|tc|tdc|t\.c\.?|credito)\b",
+    rf"(?:{_ENTIDAD_TARJETA})\s+(?:tarjeta|tarj\.?|tc|tdc|t\.c\.?|credito)\b"
+    # «PAGO SUC VIRT TC» (Bancolombia): pago de la tarjeta desde la sucursal virtual
+    r"|\bpagos?\s+suc(?:ursal)?\s+virt(?:ual)?\s+(?:tc|tdc|tarjeta)\b",
     re.IGNORECASE,
 )
 
