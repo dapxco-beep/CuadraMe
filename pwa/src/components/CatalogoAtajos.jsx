@@ -11,6 +11,7 @@ import { CAPTURAS_REALES } from '../lib/capturasGuia'
 import { haceCuanto } from '../lib/sincronizarGmail'
 import {
   ATAJO_ICLOUD_URL, ATAJO_NOTIFICACIONES_URL, ATAJO_REGISTRAR_URL, ATAJOS_ACTUALIZADOS,
+  ATAJO_ARCHIVO_APPLE_PAY, ATAJO_ARCHIVO_REGISTRAR,
 } from '../lib/atajosEnlaces'
 
 // Los atajos de CuadraMe para iPhone como una guía corta: la persona elige QUÉ quiere conectar y ve solo los pasos de eso, en tres
@@ -234,14 +235,6 @@ function AyudaSiNoAbre() {
 }
 
 // Para quien abre la app en un computador: copia el enlace del atajo y lo abre luego en su iPhone (WhatsApp, notas, AirDrop...).
-// Enlace oficial de Apple: abre la app Atajos y ella misma trae el archivo (sin pasar por la descarga de Safari).
-function enlaceAtajos(a) {
-  // Copia con nombre simple y sin cabecera de descarga: es la que Atajos baja por su cuenta.
-  const simple = a.url.includes('Apple%20Pay') ? '/atajos/applepay.shortcut' : '/atajos/registrar.shortcut'
-  const archivo = new URL(simple, window.location.origin).href
-  return `shortcuts://import-shortcut?url=${encodeURIComponent(archivo)}&name=${encodeURIComponent(a.nombre)}`
-}
-
 function CopiarEnlace({ url }) {
   const [copiado, setCopiado] = useState(false)
   async function copiar() {
@@ -310,18 +303,18 @@ function GuiaAtajo({ a }) {
             {fase.id === 'instalar' && (
               <>
                 <a
-                  href={enlaceAtajos(a)}
+                  href={a.url}
                   className="btn btn-primario btn-bloque mt-3 inline-flex items-center justify-center gap-2"
                   aria-label={`Instalar ${a.nombre}`}
                 >
                   <Icono icono={Download} tam="md" /> Instalar
                 </a>
                 <a
-                  href={a.url}
+                  href={a.id === 'apple-pay' ? ATAJO_ARCHIVO_APPLE_PAY : ATAJO_ARCHIVO_REGISTRAR}
                   download
                   className="min-h-11 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-accent"
                 >
-                  Si no abre Atajos, descarga el archivo
+                  Si no abre, descarga el archivo
                 </a>
                 <CopiarEnlace url={a.url} />
                 <AyudaSiNoAbre />
