@@ -35,7 +35,7 @@ export default function SemanaMini() {
             className={`w-full rounded-sm ${i === dias.length - 1 ? 'bg-white' : 'bg-white/55'}`}
             style={{ height: `${Math.max(3, Math.round((d.gasto / max) * 32))}px` }}
           />
-          <span className="text-[10px] opacity-80 leading-none">{inicialDe(d.dia)}</span>
+          <span className="text-xs opacity-80 leading-none">{inicialDe(d.dia)}</span>
         </span>
       ))}
     </Link>

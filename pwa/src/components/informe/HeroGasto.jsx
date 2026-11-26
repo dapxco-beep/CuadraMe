@@ -29,7 +29,7 @@ function Chip({ pct, titulo }) {
 function Ficha({ etiqueta, valor, tono }) {
   return (
     <div className="rounded-2xl bg-paper border border-line px-3 py-2.5 min-w-0">
-      <p className="text-[10px] uppercase tracking-wide text-ink-soft">{etiqueta}</p>
+      <p className="text-xs uppercase tracking-wide text-ink-soft">{etiqueta}</p>
       <p className={`text-sm font-bold mt-0.5 truncate ${tono || ''}`}>{valor}</p>
     </div>
   )

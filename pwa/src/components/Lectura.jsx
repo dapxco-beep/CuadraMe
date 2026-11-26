@@ -22,7 +22,7 @@ export default function Lectura({ pct, titulo, filas = [], pie = null }) {
           </div>
         ))}
       </dl>
-      {pie && <p className="text-[10px] text-ink-soft mt-1 leading-snug">{String(pie).replace(/ %/g, ' %')}</p>}
+      {pie && <p className="text-xs text-ink-soft mt-1 leading-snug">{String(pie).replace(/ %/g, ' %')}</p>}
     </div>
   )
 }
