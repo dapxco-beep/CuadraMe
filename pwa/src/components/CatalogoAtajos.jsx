@@ -234,6 +234,12 @@ function AyudaSiNoAbre() {
 }
 
 // Para quien abre la app en un computador: copia el enlace del atajo y lo abre luego en su iPhone (WhatsApp, notas, AirDrop...).
+// Enlace oficial de Apple: abre la app Atajos y ella misma trae el archivo (sin pasar por la descarga de Safari).
+function enlaceAtajos(a) {
+  const archivo = new URL(a.url, window.location.origin).href
+  return `shortcuts://import-shortcut?url=${encodeURIComponent(archivo)}&name=${encodeURIComponent(a.nombre)}`
+}
+
 function CopiarEnlace({ url }) {
   const [copiado, setCopiado] = useState(false)
   async function copiar() {
@@ -302,12 +308,18 @@ function GuiaAtajo({ a }) {
             {fase.id === 'instalar' && (
               <>
                 <a
-                  href={a.url}
-                  download
+                  href={enlaceAtajos(a)}
                   className="btn btn-primario btn-bloque mt-3 inline-flex items-center justify-center gap-2"
                   aria-label={`Instalar ${a.nombre}`}
                 >
                   <Icono icono={Download} tam="md" /> Instalar
+                </a>
+                <a
+                  href={a.url}
+                  download
+                  className="min-h-11 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-accent"
+                >
+                  Si no abre Atajos, descarga el archivo
                 </a>
                 <CopiarEnlace url={a.url} />
                 <AyudaSiNoAbre />

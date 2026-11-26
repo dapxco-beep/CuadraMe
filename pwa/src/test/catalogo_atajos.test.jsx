@@ -60,9 +60,11 @@ describe('Guía de atajos', () => {
       await elegir(a.opcion.split(' (')[0])
       const tarjeta = screen.getByTestId(`atajo-${a.id}`)
       const boton = within(tarjeta).getByRole('link', { name: /^Instalar CuadraMe/ })
-      expect(boton).toHaveAttribute('href', esperados[a.id])
-      expect(boton).toHaveAttribute('download') // misma pestaña: en iOS una pestaña nueva queda en blanco
+      const archivo = new URL(esperados[a.id], window.location.origin).href
+      expect(boton.getAttribute('href')).toMatch(/^shortcuts:\/\/import-shortcut\?url=/)
+      expect(decodeURIComponent(boton.getAttribute('href'))).toContain(archivo)
       expect(boton).not.toHaveAttribute('target')
+      expect(within(tarjeta).getByRole('link', { name: /descarga el archivo/ })).toHaveAttribute('href', esperados[a.id])
       expect(screen.getAllByRole('article')).toHaveLength(1) // solo la guía elegida
       expect(tarjeta).toHaveTextContent(`Para ti si: ${a.paraQuien}`)
     }
