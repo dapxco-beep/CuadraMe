@@ -10,7 +10,6 @@ import { EsqueletoLista } from '../components/Esqueletos'
 // siempre, sin su encabezado propio (ver EmbebidoContext).
 const Informe = lazy(() => import('./Informe'))
 const Wrapped = lazy(() => import('./Wrapped'))
-const Insights = lazy(() => import('./Insights'))
 const Patrimonio = lazy(() => import('./Patrimonio'))
 const CierreMes = lazy(() => import('./CierreMes'))
 const Impuestos = lazy(() => import('./Impuestos'))
@@ -18,7 +17,6 @@ const Impuestos = lazy(() => import('./Impuestos'))
 export const PESTANAS = [
   { id: 'gastos', texto: 'Gastos', Pantalla: Informe },
   { id: 'resumen', texto: 'Mi mes', Pantalla: Wrapped },
-  { id: 'dias', texto: 'Días', Pantalla: Insights },
   { id: 'patrimonio', texto: 'Patrimonio', Pantalla: Patrimonio },
   { id: 'cierre', texto: 'Cierre', Pantalla: CierreMes },
   { id: 'impuestos', texto: 'Impuestos', Pantalla: Impuestos },

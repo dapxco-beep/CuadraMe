@@ -762,7 +762,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [role='button']:fo
   .t-h1 { font-size: 1.5rem; line-height: 1.75rem; font-weight: 700; letter-spacing: -0.03em; }
   .t-h2 { font-size: 1.0625rem; line-height: 1.5rem; font-weight: 600; letter-spacing: -0.015em; }
   .t-cuerpo { font-size: 0.875rem; line-height: 1.375rem; }
-  .t-apoyo { font-size: 0.75rem; line-height: 1.125rem; color: var(--color-ink-soft); }
+  .t-apoyo { font-size: 0.8125rem; line-height: 1.25rem; color: var(--color-ink-soft); }
   .t-cifra { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
 
   /* Botones */
@@ -805,7 +805,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [role='button']:fo
   .tarjeta-lista > * + * { border-top: 1px solid var(--color-line); }
 
   /* Campos: etiqueta visible arriba, error junto al campo */
-  .campo-etiqueta { display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-ink-soft); margin-bottom: 0.375rem; }
+  .campo-etiqueta { display: block; font-size: 0.8125rem; font-weight: 600; color: var(--color-ink-soft); margin-bottom: 0.375rem; }
   .campo-entrada {
     width: 100%; min-height: 44px; padding: 0 0.875rem; border-radius: 14px; border: 1px solid var(--color-line);
     background: var(--color-paper-raised); color: var(--color-ink); font-size: 1rem; outline: none;
@@ -814,8 +814,8 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [role='button']:fo
   .campo-entrada:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent); }
   .campo-entrada[aria-invalid='true'] { border-color: var(--color-danger); }
   .campo-entrada:disabled { opacity: 0.55; cursor: not-allowed; }
-  .campo-error { display: flex; align-items: flex-start; gap: 0.375rem; margin-top: 0.375rem; font-size: 0.75rem; color: var(--color-danger); }
-  .campo-ayuda { margin-top: 0.375rem; font-size: 0.75rem; color: var(--color-ink-soft); }
+  .campo-error { display: flex; align-items: flex-start; gap: 0.375rem; margin-top: 0.375rem; font-size: 0.8125rem; color: var(--color-danger); }
+  .campo-ayuda { margin-top: 0.375rem; font-size: 0.8125rem; color: var(--color-ink-soft); }
 }
 @media (hover: hover) {
   .btn-primario:hover:not(:disabled) { filter: brightness(1.08); }
@@ -891,8 +891,8 @@ button:focus-visible, a:focus-visible, summary:focus-visible, [role='button']:fo
   .guia-pulso { animation: none; opacity: 0.35; }
 }
 
-/* Letra mínima de lectura: 12 px. Los textos de apoyo escritos con text-[11px] suben sin tocar cada pantalla. */
-.text-\[11px\] { font-size: 0.75rem; line-height: 1.125rem; }
+/* Letra mínima de lectura: 13 px. Los textos de apoyo escritos con text-[11px] suben sin tocar cada pantalla. */
+.text-\[11px\] { font-size: 0.8125rem; line-height: 1.25rem; }
 
 /* Fila deslizable de pestañas: el borde derecho se desvanece para que se note que hay más (el relleno final deja la última pestaña limpia) */
 .borde-fade-der { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }

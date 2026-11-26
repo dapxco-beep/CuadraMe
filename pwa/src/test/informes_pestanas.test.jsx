@@ -10,7 +10,6 @@ const Marca = (nombre) => function Pantalla() {
 }
 vi.mock('../screens/Informe', () => ({ default: Marca('GASTOS') }))
 vi.mock('../screens/Wrapped', () => ({ default: Marca('MIMES') }))
-vi.mock('../screens/Insights', () => ({ default: Marca('DIAS') }))
 vi.mock('../screens/Patrimonio', () => ({ default: Marca('PATRIMONIO') }))
 vi.mock('../screens/CierreMes', () => ({ default: Marca('CIERRE') }))
 vi.mock('../screens/Impuestos', () => ({ default: Marca('IMPUESTOS') }))
@@ -25,7 +24,7 @@ const montar = (ruta) =>
         <Route path="/informes" element={<Informes />} />
         <Route path="/informe" element={<AInformes tab="gastos" />} />
         <Route path="/resumen" element={<AInformes tab="resumen" />} />
-        <Route path="/insights" element={<AInformes tab="dias" />} />
+        <Route path="/insights" element={<AInformes tab="gastos" hash="cosas" />} />
         <Route path="/patrimonio" element={<AInformes tab="patrimonio" />} />
         <Route path="/cierre-mes" element={<AInformes tab="cierre" />} />
         <Route path="/mi-cuenta-cuadra" element={<AInformes tab="cierre" />} />
@@ -34,10 +33,10 @@ const montar = (ruta) =>
   )
 
 describe('Informes: una pantalla con pestañas', () => {
-  it('sin pestaña elegida abre «Gastos» y muestra las seis pestañas', async () => {
+  it('sin pestaña elegida abre «Gastos» y muestra las cinco pestañas', async () => {
     montar('/informes')
     expect(await screen.findByText(/PANTALLA-GASTOS/)).toBeInTheDocument()
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Gastos', 'Mi mes', 'Días', 'Patrimonio', 'Cierre', 'Impuestos'])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Gastos', 'Mi mes', 'Patrimonio', 'Cierre', 'Impuestos'])
     expect(screen.getByRole('tab', { name: 'Gastos' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('heading', { name: 'Informes', level: 1 })).toBeInTheDocument()
   })
@@ -63,7 +62,7 @@ describe('Los enlaces viejos llevan a su pestaña y conservan la consulta', () =
   it.each([
     ['/informe', 'GASTOS'],
     ['/resumen', 'MIMES'],
-    ['/insights', 'DIAS'],
+    ['/insights', 'GASTOS'],
     ['/patrimonio', 'PATRIMONIO'],
     ['/cierre-mes', 'CIERRE'],
     ['/mi-cuenta-cuadra', 'CIERRE'],

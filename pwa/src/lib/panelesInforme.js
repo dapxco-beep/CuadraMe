@@ -10,6 +10,7 @@ export const PANELES = [
   { id: 'ingresos', nombre: 'Ingresos, gastos y evolución' },
   { id: 'costos', nombre: 'Lo que te cuesta tu plata' },
   { id: 'mes_a_mes', nombre: 'Categorías mes a mes' },
+  { id: 'cosas_raras', nombre: 'Resumen y cosas raras' },
 ]
 
 // Antes eran cinco paneles; ahora dos (cada uno con su interruptor de vista). Lo que la persona ya había guardado se traduce.

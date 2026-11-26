@@ -142,9 +142,19 @@ describe('Recorrido (pantalla completa)', () => {
     expect(leerRecorrido('u1').terminado).toBe(true)
   })
 
-  it('las ilustraciones son decorativas para el lector de pantalla', () => {
+  it('el paso muestra una captura REAL de la app, con texto alternativo para el lector de pantalla', () => {
     montar(<Recorrido desde={1} onCerrar={() => {}} />)
-    const svg = screen.getByRole('dialog').querySelector('main svg')
+    const img = screen.getByRole('dialog').querySelector('main img[src="/recorrido/traer.webp"]')
+    expect(img).toBeTruthy()
+    expect(img.getAttribute('alt')).toMatch(/Traer movimientos/)
+  })
+
+  it('si la captura no carga vuelve al dibujo, que es decorativo para el lector de pantalla', () => {
+    montar(<Recorrido desde={1} onCerrar={() => {}} />)
+    const dialogo = screen.getByRole('dialog')
+    fireEvent.error(dialogo.querySelector('main img[src="/recorrido/traer.webp"]'))
+    expect(dialogo.querySelector('main img[src="/recorrido/traer.webp"]')).toBeNull()
+    const svg = dialogo.querySelector('main svg')
     expect(svg).toHaveAttribute('aria-hidden', 'true')
     expect(svg.textContent).toMatch(/Correo/)
     expect(svg.textContent).toMatch(/PDF/)

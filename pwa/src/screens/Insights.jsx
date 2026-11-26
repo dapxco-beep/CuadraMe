@@ -25,13 +25,17 @@ const PREGUNTAS_SUGERIDAS = [
   '¿Voy bien con mi presupuesto?',
 ]
 
-export default function Insights() {
+// sinMapa: sin el calendario de gasto por día (en Informes > Gastos ya vive junto a «Día a día»).
+// comoPanel: se muestra como un panel más de Gastos (sin márgenes propios, sin enlaces repetidos y SIN su propio selector
+// de periodo: usa el que la persona ya eligió arriba, `periodo` = { desde, hasta }).
+export default function Insights({ sinMapa = false, comoPanel = false, periodo = null } = {}) {
   const embebido = useEmbebido()
   const volver = useVolver('/')
   const [resumen, setResumen] = useState(null)
   const [edadDinero, setEdadDinero] = useState(null)
   const [alertas, setAlertas] = useState(null)
-  const [periodoResumen, setPeriodoResumen] = useState({ periodo: '7_dias', ...rangoPeriodo('7_dias') })
+  const [periodoPropio, setPeriodoResumen] = useState({ periodo: '7_dias', ...rangoPeriodo('7_dias') })
+  const periodoResumen = comoPanel && periodo?.desde && periodo?.hasta ? periodo : periodoPropio
   const [cargando, setCargando] = useState(true)
   const [mensajes, setMensajes] = useState([])
   const [pregunta, setPregunta] = useState('')
@@ -81,7 +85,7 @@ export default function Insights() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-6 flex flex-col">
+    <div className={comoPanel ? '-mx-6 pb-2 flex flex-col' : 'flex-1 overflow-y-auto pb-6 flex flex-col'}>
       {!embebido && (
       <header className="px-6 pantalla-top pb-2 flex items-center gap-3">
         <button onClick={volver} className="w-11 h-11 shrink-0 rounded-full bg-paper-raised border border-line flex items-center justify-center" aria-label="Volver">
@@ -107,16 +111,18 @@ export default function Insights() {
         </Link>
       )}
 
-      <MapaActividad />
+      {!sinMapa && <MapaActividad />}
 
-      <section className="mx-6 mt-5">
-        <SelectorPeriodo
-          opciones={PERIODOS_RESUMEN}
-          valor={periodoResumen}
-          onChange={setPeriodoResumen}
-          etiqueta="Periodo del resumen"
-        />
-      </section>
+      {!comoPanel && (
+        <section className="mx-6 mt-5">
+          <SelectorPeriodo
+            opciones={PERIODOS_RESUMEN}
+            valor={periodoPropio}
+            onChange={setPeriodoResumen}
+            etiqueta="Periodo del resumen"
+          />
+        </section>
+      )}
 
       {!cargando && resumen && (
         <>
@@ -274,11 +280,11 @@ export default function Insights() {
         </section>
       )}
 
-      <EnlacesRelacionados titulo="Sigue explorando" enlaces={[
+      {!comoPanel && <EnlacesRelacionados titulo="Sigue explorando" enlaces={[
         { a: '/presupuesto', texto: 'Mi presupuesto', apoyo: 'Cuánto quieres gastar por categoría' },
         { a: '/recurrentes', texto: 'Pagos fijos', apoyo: 'Lo que pagas cada mes' },
         { a: '/categorizar', texto: 'Poner categorías', apoyo: 'Para que estos números sean más exactos' },
-      ]} />
+      ]} />}
     </div>
   )
 }

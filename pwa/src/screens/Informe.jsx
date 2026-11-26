@@ -20,6 +20,8 @@ import GraficoEvolucion from '../components/GraficoEvolucion'
 import EvolucionCategoria from '../components/EvolucionCategoria'
 import HistorialCategorias from '../components/HistorialCategorias'
 import VistaAlternable from '../components/informe/VistaAlternable'
+import Insights from './Insights'
+import MapaActividad from '../components/MapaActividad'
 import HeroGasto from '../components/informe/HeroGasto'
 import MapaCategorias from '../components/informe/MapaCategorias'
 import LoQueLlamaLaAtencion from '../components/informe/LoQueLlamaLaAtencion'
@@ -126,7 +128,7 @@ export default function Informe() {
 
   // Enlace «Ver mi evolución» (/informe#evolucion): baja hasta la gráfica evolutiva.
   useEffect(() => {
-    const destino = { '#evolucion': 'evolucion', '#costos': 'costos' }[hash]
+    const destino = { '#evolucion': 'evolucion', '#costos': 'costos', '#cosas': 'cosas-raras' }[hash]
     if (!destino) return undefined
     const t = setTimeout(() => document.getElementById(destino)?.scrollIntoView?.({ block: 'start' }), 60)
     return () => clearTimeout(t)
@@ -190,6 +192,7 @@ export default function Informe() {
   // La tabla de categorías por mes necesita ancho completo; su gráfica, no (se estiraría demasiado)
   const [vistaIngresos, setVistaIngresos] = useState(hash === '#evolucion' ? 'evolucion' : 'resumen')
   const [vistaMes, setVistaMes] = useState('tabla')
+  const [vistaDia, setVistaDia] = useState('dia')
   useEffect(() => {
     if (hash === '#evolucion') setVistaIngresos('evolucion')
   }, [hash])
@@ -336,7 +339,18 @@ export default function Informe() {
     resumen: hayDatos && <HeroGasto informe={informe} fmt={fmt} esMesActual={esMesActual} />,
     atencion: hayDatos && <LoQueLlamaLaAtencion informe={informe} fmt={fmt} />,
     categorias: panelCategorias,
-    dia: hayDatos && <DiaADia desde={informe.desde} hasta={informe.hasta} className="sin-margen" />,
+    dia: (
+      <VistaAlternable
+        etiqueta="Cómo ver tu gasto por día"
+        valor={vistaDia}
+        onCambio={setVistaDia}
+        opciones={[
+          { id: 'dia', texto: 'Día a día', nodo: hayDatos ? <DiaADia desde={informe.desde} hasta={informe.hasta} className="sin-margen" /> : <p className="text-sm text-ink-soft">Cuando haya gastos en este periodo, aquí verás cuánto gastaste cada día.</p> },
+          { id: 'calendario', texto: 'Calendario', nodo: <MapaActividad /> },
+        ]}
+      />
+    ),
+    cosas_raras: <div id="cosas-raras"><Insights sinMapa comoPanel periodo={informe?.desde ? { desde: informe.desde, hasta: informe.hasta } : null} /></div>,
     comercios: panelComercios,
     costos: <div id="costos"><Costos /></div>,
     ingresos: (

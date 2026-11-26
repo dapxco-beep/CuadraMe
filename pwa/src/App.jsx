@@ -193,7 +193,7 @@ function AppGate() {
         <Route path="/sincronizacion" element={<TraerMovimientos />} />
         <Route path="/movimientos-correo" element={<ATab a="/sincronizacion" tab="correo" />} />
         <Route path="/mi-cuenta-cuadra" element={<AInformes tab="cierre" />} />
-        <Route path="/insights" element={<AInformes tab="dias" />} />
+        <Route path="/insights" element={<AInformes tab="gastos" hash="cosas" />} />
         <Route path="/asistente" element={<Asistente />} />
         <Route path="/compartir" element={<Compartir />} />
         <Route path="/otros" element={<PlataConOtros />} />
