@@ -34,7 +34,7 @@ function ChipMes({ cuenta, mes, celda, etiqueta, onMes }) {
       aria-label={`${etiqueta} ${v.texto}${v.detalle ? ` ${v.detalle}` : ''}${corte ? ` ${corte}` : ''}. ${nombreCompleto(cuenta)}, ${nombreMes(mes)}`}
       data-testid={`mes-${cuenta.id}-${mes}`}
       data-estado={v.clave}
-      className={`snap-start shrink-0 w-[104px] min-h-[76px] rounded-xl border px-2.5 py-2 text-left flex flex-col gap-0.5 ${e.caja}`}
+      className={`snap-start shrink-0 w-[104px] max-[460px]:w-[calc((100%-1rem)/3)] max-[460px]:min-w-[92px] min-h-[76px] rounded-xl border px-2.5 py-2 text-left flex flex-col gap-0.5 ${e.caja}`}
     >
       <span className="text-[11px] font-semibold capitalize text-ink-soft">{etiqueta}</span>{' '}
       <span className="flex items-start gap-1 text-xs font-semibold leading-tight">
@@ -84,7 +84,7 @@ export default function EstadoPorCuenta({ cuentas = [], meses = [], onMes, pieCr
                     el.dataset.listo = '1'
                     // Si hay meses más atrás, el borde izquierdo se desvanece: se nota que se puede deslizar, no que se cortó.
                     if (el.scrollWidth > el.clientWidth + 4) {
-                      const m = 'linear-gradient(to right, transparent 0, #000 32px)'
+                      const m = 'linear-gradient(to right, transparent 0, #000 12px)'
                       el.style.webkitMaskImage = m
                       el.style.maskImage = m
                     }
